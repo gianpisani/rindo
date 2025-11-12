@@ -18,9 +18,15 @@ const typeColors = {
   Inversión: "text-info",
 };
 
+const typeBg = {
+  Ingreso: "bg-success/5",
+  Gasto: "bg-destructive/5",
+  Inversión: "bg-info/5",
+};
+
 export default function RecentTransactions() {
   const { transactions } = useTransactions();
-  const recentTransactions = transactions.slice(0, 3);
+  const recentTransactions = transactions.slice(0, 5);
 
   const formatCurrency = (amount: number) => {
     return new Intl.NumberFormat("es-CL", {
@@ -30,11 +36,11 @@ export default function RecentTransactions() {
   };
 
   return (
-    <Card>
-      <CardHeader className="flex flex-row items-center justify-between">
-        <CardTitle>Últimas Transacciones</CardTitle>
+    <Card className="rounded-2xl shadow-elevated border-border/50">
+      <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-4">
+        <CardTitle className="text-xl font-semibold">Últimas Transacciones</CardTitle>
         <Link to="/transactions">
-          <Button variant="ghost" size="sm" className="gap-2">
+          <Button variant="ghost" size="sm" className="gap-2 rounded-full -mr-2">
             Ver todo
             <ArrowRight className="h-4 w-4" />
           </Button>
@@ -42,39 +48,40 @@ export default function RecentTransactions() {
       </CardHeader>
       <CardContent>
         {recentTransactions.length === 0 ? (
-          <p className="text-center text-muted-foreground py-8">
-            No hay transacciones aún. ¡Agrega tu primera transacción arriba!
+          <p className="text-center text-muted-foreground py-12">
+            No hay transacciones aún. ¡Agrega tu primera transacción!
           </p>
         ) : (
-          <div className="space-y-4">
+          <div className="space-y-3">
             {recentTransactions.map((transaction) => {
               const Icon = typeIcons[transaction.type];
               const colorClass = typeColors[transaction.type];
+              const bgClass = typeBg[transaction.type];
 
               return (
                 <div
                   key={transaction.id}
-                  className="flex items-center justify-between p-3 rounded-lg border border-border hover:bg-accent/50 transition-colors"
+                  className="flex items-center justify-between p-4 rounded-full border border-border/50 hover:shadow-sm hover:border-border transition-all duration-200"
                 >
-                  <div className="flex items-center gap-3">
-                    <div className={`p-2 rounded-full bg-accent`}>
-                      <Icon className={`h-4 w-4 ${colorClass}`} />
+                  <div className="flex items-center gap-4 min-w-0 flex-1">
+                    <div className={`p-3 rounded-full ${bgClass} flex-shrink-0`}>
+                      <Icon className={`h-5 w-5 ${colorClass}`} />
                     </div>
-                    <div>
-                      <p className="font-medium">{transaction.category_name}</p>
-                      <p className="text-sm text-muted-foreground">
-                        {format(new Date(transaction.date), "d 'de' MMMM, yyyy", {
+                    <div className="min-w-0 flex-1">
+                      <p className="font-semibold text-sm truncate">{transaction.category_name}</p>
+                      <p className="text-xs text-muted-foreground">
+                        {format(new Date(transaction.date), "d 'de' MMM", {
                           locale: es,
                         })}
                       </p>
                       {transaction.detail && (
-                        <p className="text-xs text-muted-foreground mt-1">
+                        <p className="text-xs text-muted-foreground mt-0.5 truncate">
                           {transaction.detail}
                         </p>
                       )}
                     </div>
                   </div>
-                  <div className={`font-bold ${colorClass}`}>
+                  <div className={`font-semibold text-sm ${colorClass} ml-2 flex-shrink-0`}>
                     {formatCurrency(Number(transaction.amount))}
                   </div>
                 </div>

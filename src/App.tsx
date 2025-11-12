@@ -10,6 +10,7 @@ import Index from "./pages/Index";
 import Dashboard from "./pages/Dashboard";
 import Transactions from "./pages/Transactions";
 import Categories from "./pages/Categories";
+import RecategorizeTransactions from "./pages/RecategorizeTransactions";
 import NotFound from "./pages/NotFound";
 import Auth from "./components/Auth";
 
@@ -68,6 +69,7 @@ const App = () => {
             <Route path="/dashboard" element={<Dashboard />} />
             <Route path="/transactions" element={<Transactions />} />
             <Route path="/categories" element={<Categories />} />
+            <Route path="/recategorize" element={<RecategorizeTransactions />} />
             <Route path="*" element={<NotFound />} />
           </Routes>
         </BrowserRouter>

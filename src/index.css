@@ -2,119 +2,119 @@
 @tailwind components;
 @tailwind utilities;
 
-/* Definition of the design system. All colors, gradients, fonts, etc should be defined here. 
-All colors MUST be HSL.
+/* Minimalist Design System - Mobile First
+All colors MUST be HSL. Subtle palette with generous spacing.
 */
 
 @layer base {
   :root {
-    --background: 0 0% 98%;
-    --foreground: 220 13% 13%;
+    --background: 0 0% 97%;
+    --foreground: 222 15% 15%;
 
     --card: 0 0% 100%;
-    --card-foreground: 220 13% 13%;
+    --card-foreground: 222 15% 15%;
 
     --popover: 0 0% 100%;
-    --popover-foreground: 220 13% 13%;
+    --popover-foreground: 222 15% 15%;
 
-    --primary: 220 70% 50%;
+    --primary: 222 47% 45%;
     --primary-foreground: 0 0% 100%;
 
-    --secondary: 220 14.3% 95.9%;
-    --secondary-foreground: 220 13% 13%;
+    --secondary: 222 12% 93%;
+    --secondary-foreground: 222 15% 15%;
 
-    --muted: 220 14.3% 95.9%;
-    --muted-foreground: 220 8.9% 46.1%;
+    --muted: 222 12% 94%;
+    --muted-foreground: 222 10% 50%;
 
-    --accent: 220 14.3% 95.9%;
-    --accent-foreground: 220 13% 13%;
+    --accent: 222 12% 92%;
+    --accent-foreground: 222 15% 15%;
 
-    --destructive: 0 84.2% 60.2%;
+    --destructive: 0 72% 58%;
     --destructive-foreground: 0 0% 100%;
 
-    --success: 142 76% 36%;
+    --success: 142 65% 42%;
     --success-foreground: 0 0% 100%;
 
-    --warning: 38 92% 50%;
+    --warning: 38 85% 55%;
     --warning-foreground: 0 0% 100%;
 
-    --info: 221 83% 53%;
+    --info: 221 70% 55%;
     --info-foreground: 0 0% 100%;
 
-    --border: 220 13% 91%;
-    --input: 220 13% 91%;
-    --ring: 220 70% 50%;
+    --border: 222 12% 88%;
+    --input: 222 12% 88%;
+    --ring: 222 47% 45%;
 
-    --radius: 0.75rem;
+    --radius: 1rem;
 
-    --sidebar-background: 0 0% 98%;
-    --sidebar-foreground: 240 5.3% 26.1%;
-    --sidebar-primary: 240 5.9% 10%;
-    --sidebar-primary-foreground: 0 0% 98%;
-    --sidebar-accent: 240 4.8% 95.9%;
-    --sidebar-accent-foreground: 240 5.9% 10%;
-    --sidebar-border: 220 13% 91%;
-    --sidebar-ring: 217.2 91.2% 59.8%;
+    --sidebar-background: 0 0% 97%;
+    --sidebar-foreground: 222 15% 20%;
+    --sidebar-primary: 222 15% 12%;
+    --sidebar-primary-foreground: 0 0% 97%;
+    --sidebar-accent: 222 12% 93%;
+    --sidebar-accent-foreground: 222 15% 12%;
+    --sidebar-border: 222 12% 88%;
+    --sidebar-ring: 222 47% 45%;
 
-    --chart-1: 142 76% 36%;
-    --chart-2: 0 84.2% 60.2%;
-    --chart-3: 221 83% 53%;
-    --chart-4: 38 92% 50%;
-    --chart-5: 280 65% 60%;
+    --chart-1: 142 65% 42%;
+    --chart-2: 0 72% 58%;
+    --chart-3: 221 70% 55%;
+    --chart-4: 38 85% 55%;
+    --chart-5: 280 60% 58%;
   }
 
   .dark {
-    --background: 220 13% 9%;
+    --background: 222 15% 10%;
     --foreground: 0 0% 95%;
 
-    --card: 220 13% 11%;
+    --card: 222 15% 12%;
     --card-foreground: 0 0% 95%;
 
-    --popover: 220 13% 11%;
+    --popover: 222 15% 12%;
     --popover-foreground: 0 0% 95%;
 
-    --primary: 220 70% 55%;
+    --primary: 222 55% 60%;
     --primary-foreground: 0 0% 100%;
 
-    --secondary: 220 13% 16%;
+    --secondary: 222 15% 18%;
     --secondary-foreground: 0 0% 95%;
 
-    --muted: 220 13% 16%;
-    --muted-foreground: 220 8.9% 66%;
+    --muted: 222 15% 18%;
+    --muted-foreground: 222 10% 65%;
 
-    --accent: 220 13% 16%;
+    --accent: 222 15% 18%;
     --accent-foreground: 0 0% 95%;
 
-    --destructive: 0 62.8% 50%;
+    --destructive: 0 65% 55%;
     --destructive-foreground: 0 0% 100%;
 
-    --success: 142 70% 45%;
+    --success: 142 60% 48%;
     --success-foreground: 0 0% 100%;
 
-    --warning: 38 92% 55%;
+    --warning: 38 85% 60%;
     --warning-foreground: 0 0% 100%;
 
-    --info: 221 83% 60%;
+    --info: 221 70% 62%;
     --info-foreground: 0 0% 100%;
 
-    --border: 220 13% 20%;
-    --input: 220 13% 20%;
-    --ring: 220 70% 55%;
+    --border: 222 15% 22%;
+    --input: 222 15% 22%;
+    --ring: 222 55% 60%;
 
-    --sidebar-background: 220 13% 9%;
+    --sidebar-background: 222 15% 10%;
     --sidebar-foreground: 0 0% 95%;
-    --sidebar-primary: 220 70% 55%;
+    --sidebar-primary: 222 55% 60%;
     --sidebar-primary-foreground: 0 0% 100%;
-    --sidebar-accent: 220 13% 16%;
+    --sidebar-accent: 222 15% 18%;
     --sidebar-accent-foreground: 0 0% 95%;
-    --sidebar-border: 220 13% 20%;
-    --sidebar-ring: 220 70% 55%;
+    --sidebar-border: 222 15% 22%;
+    --sidebar-ring: 222 55% 60%;
 
-    --chart-1: 142 70% 45%;
-    --chart-2: 0 62.8% 50%;
-    --chart-3: 221 83% 60%;
-    --chart-4: 38 92% 55%;
-    --chart-5: 280 65% 65%;
+    --chart-1: 142 60% 48%;
+    --chart-2: 0 65% 55%;
+    --chart-3: 221 70% 62%;
+    --chart-4: 38 85% 60%;
+    --chart-5: 280 60% 65%;
   }
 }
 
@@ -123,7 +123,42 @@ All colors MUST be HSL.
     @apply border-border;
   }
 
+  html {
+    scroll-behavior: smooth;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+
   body {
-    @apply bg-background text-foreground;
+    @apply bg-background text-foreground antialiased;
+    overscroll-behavior: none;
+  }
+
+  /* Smooth transitions for mobile touch interactions */
+  @media (hover: none) and (pointer: coarse) {
+    * {
+      -webkit-tap-highlight-color: transparent;
+      touch-action: manipulation;
+    }
+  }
+}
+
+@layer utilities {
+  .shadow-elegant {
+    box-shadow: 0 1px 3px 0 rgb(0 0 0 / 0.05), 0 1px 2px -1px rgb(0 0 0 / 0.05);
+  }
+  
+  .shadow-elevated {
+    box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.07), 0 2px 4px -2px rgb(0 0 0 / 0.07);
+  }
+
+  .shadow-floating {
+    box-shadow: 0 10px 15px -3px rgb(0 0 0 / 0.08), 0 4px 6px -4px rgb(0 0 0 / 0.08);
+  }
+
+  /* Smooth page transitions */
+  .page-transition {
+    transition: opacity 0.3s ease-in-out, transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    will-change: opacity, transform;
   }
 }
