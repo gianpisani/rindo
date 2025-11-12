@@ -1,13 +1,28 @@
-// Update this page (the content is just a fallback if you fail to update the page)
+import Layout from "@/components/Layout";
+import QuickTransactionForm from "@/components/QuickTransactionForm";
+import BalanceSummary from "@/components/BalanceSummary";
+import RecentTransactions from "@/components/RecentTransactions";
 
 const Index = () => {
   return (
-    <div className="flex min-h-screen items-center justify-center bg-background">
-      <div className="text-center">
-        <h1 className="mb-4 text-4xl font-bold">Welcome to Your Blank App</h1>
-        <p className="text-xl text-muted-foreground">Start building your amazing project here!</p>
+    <Layout>
+      <div className="space-y-8">
+        <div className="text-center space-y-2">
+          <h1 className="text-4xl font-bold">Gestión Financiera Personal</h1>
+          <p className="text-muted-foreground text-lg">
+            Controla tus finanzas de manera simple y efectiva
+          </p>
+        </div>
+
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          <QuickTransactionForm />
+          <div className="space-y-6">
+            <BalanceSummary />
+            <RecentTransactions />
+          </div>
+        </div>
       </div>
-    </div>
+    </Layout>
   );
 };
 
