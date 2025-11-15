@@ -727,50 +727,70 @@ export default function Transactions() {
                   key={transaction.id} 
                   className="rounded-2xl shadow-sm border-border/50 hover:shadow-elevated transition-all duration-200"
                 >
-                  <CardContent className="p-4">
-                    <div className="flex items-start justify-between gap-4">
-                      <div className="flex items-start gap-4 min-w-0 flex-1">
-                        <div className={`p-3 rounded-full ${bgClass} flex-shrink-0`}>
-                          <Icon className={`h-5 w-5 ${colorClass}`} />
-                        </div>
-                        <div className="min-w-0 flex-1">
-                          <div className="flex items-start justify-between gap-2 mb-1">
-                            <div className="min-w-0 flex-1">
-                              <p className="font-semibold truncate">{transaction.category_name}</p>
-                              <p className="text-xs text-muted-foreground">
-                                {format(new Date(transaction.date), "d 'de' MMM, yyyy", { locale: es })}
-                              </p>
-                            </div>
-                            <Badge className={`rounded-full text-xs ${colorClass} bg-transparent border-0`}>
-                              {transaction.type}
-                            </Badge>
-                          </div>
-                          {transaction.detail && (
-                            <p className="text-sm text-muted-foreground mt-2 line-clamp-2">
-                              {transaction.detail}
+                  <CardContent className="p-3">
+                    <div className="flex items-center gap-3">
+                      <div className={`p-2 rounded-full ${bgClass} flex-shrink-0`}>
+                        <Icon className={`h-4 w-4 ${colorClass}`} />
+                      </div>
+                      <div className="min-w-0 flex-1">
+                        <div className="flex items-center justify-between gap-2">
+                          <div className="min-w-0 flex-1">
+                            <p className="text-xs text-muted-foreground">
+                              {format(new Date(transaction.date), "d MMM", { locale: es })}
                             </p>
-                          )}
-                          <p className={`text-lg font-semibold mt-2 ${colorClass}`}>
-                            {formatCurrency(Number(transaction.amount))}
-                          </p>
+                            <p className={`text-sm font-semibold ${colorClass}`}>
+                              {formatCurrency(Number(transaction.amount))}
+                            </p>
+                          </div>
+                          <Select 
+                            value={transaction.category_name}
+                            onValueChange={async (newCategory) => {
+                              try {
+                                await updateTransaction.mutateAsync({
+                                  id: transaction.id,
+                                  category_name: newCategory,
+                                });
+                              } catch (error) {
+                                console.error("Error al actualizar categoría:", error);
+                              }
+                            }}
+                          >
+                            <SelectTrigger className="h-8 w-[140px] rounded-full text-xs">
+                              <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent>
+                              {categories
+                                .filter((cat) => cat.type === transaction.type)
+                                .map((cat) => (
+                                  <SelectItem key={cat.id} value={cat.name}>
+                                    {cat.name}
+                                  </SelectItem>
+                                ))}
+                            </SelectContent>
+                          </Select>
                         </div>
+                        {transaction.detail && (
+                          <p className="text-xs text-muted-foreground mt-1 truncate">
+                            {transaction.detail}
+                          </p>
+                        )}
                       </div>
                       <div className="flex gap-1 flex-shrink-0">
                         <Button
                           variant="ghost"
                           size="sm"
                           onClick={() => handleEdit(transaction)}
-                          className="h-9 w-9 p-0 rounded-full"
+                          className="h-8 w-8 p-0 rounded-full"
                         >
-                          <Pencil className="h-4 w-4" />
+                          <Pencil className="h-3 w-3" />
                         </Button>
                         <Button
                           variant="ghost"
                           size="sm"
-                          onClick={() => handleDelete(transaction.id)}
-                          className="h-9 w-9 p-0 rounded-full text-destructive hover:text-destructive"
+                          onClick={() => setConfirmDelete({ open: true, id: transaction.id })}
+                          className="h-8 w-8 p-0 rounded-full text-destructive hover:text-destructive hover:bg-destructive/10"
                         >
-                          <Trash2 className="h-4 w-4" />
+                          <Trash2 className="h-3 w-3" />
                         </Button>
                       </div>
                     </div>

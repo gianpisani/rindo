@@ -10,6 +10,7 @@ import { useState } from "react";
 export default function ProjectionCard() {
   const { transactions } = useTransactions();
   const [projectionMonths, setProjectionMonths] = useState<number>(3);
+  const [analysisMonths, setAnalysisMonths] = useState<number>(3);
 
   // Calcular patrimonio acumulado mes a mes (solo meses completos)
   const last12Months = eachMonthOfInterval({
@@ -73,8 +74,8 @@ export default function ProjectionCard() {
     return m.hasIncome;
   });
   
-  // Usar últimos 3-6 meses completos para calcular tendencia
-  const recentCompleteMonths = completeMonths.slice(-Math.min(6, completeMonths.length));
+  // Usar últimos meses completos según la selección del usuario
+  const recentCompleteMonths = completeMonths.slice(-Math.min(analysisMonths, completeMonths.length));
   
   // Información para el usuario
   const excludingCurrentMonth = !monthlyPatrimonio[monthlyPatrimonio.length - 1]?.hasIncome;
@@ -179,49 +180,74 @@ export default function ProjectionCard() {
             </div>
           </div>
           
-          {/* Selector de período de proyección */}
-          <div className="flex items-center justify-between gap-4">
-            <p className="text-xs text-muted-foreground">
-              {recentCompleteMonths.length > 0 ? (
-                <>
-                  Basado en {recentCompleteMonths.length} mes{recentCompleteMonths.length !== 1 ? 'es' : ''} completo{recentCompleteMonths.length !== 1 ? 's' : ''}
-                  {excludingCurrentMonth && " (excluyendo mes actual sin ingresos)"}
-                </>
-              ) : (
-                "Sin datos suficientes"
-              )}
-            </p>
-            <ToggleGroup 
-              type="single" 
-              value={projectionMonths.toString()} 
-              onValueChange={(value) => value && setProjectionMonths(Number(value))}
-              className="gap-1"
-            >
-              <ToggleGroupItem 
-                value="3" 
-                className="h-8 px-3 text-xs data-[state=on]:bg-primary data-[state=on]:text-primary-foreground"
+          {/* Selectores de período */}
+          <div className="flex flex-col gap-3">
+            <div className="flex items-center justify-between gap-4">
+              <p className="text-xs text-muted-foreground">
+                Análisis basado en:
+              </p>
+              <ToggleGroup 
+                type="single" 
+                value={analysisMonths.toString()} 
+                onValueChange={(value) => value && setAnalysisMonths(Number(value))}
+                className="gap-1"
               >
-                3M
-              </ToggleGroupItem>
-              <ToggleGroupItem 
-                value="6" 
-                className="h-8 px-3 text-xs data-[state=on]:bg-primary data-[state=on]:text-primary-foreground"
+                <ToggleGroupItem 
+                  value="1" 
+                  className="h-7 px-2.5 text-xs rounded-full data-[state=on]:bg-primary data-[state=on]:text-primary-foreground"
+                >
+                  1m
+                </ToggleGroupItem>
+                <ToggleGroupItem 
+                  value="2" 
+                  className="h-7 px-2.5 text-xs rounded-full data-[state=on]:bg-primary data-[state=on]:text-primary-foreground"
+                >
+                  2m
+                </ToggleGroupItem>
+                <ToggleGroupItem 
+                  value="3" 
+                  className="h-7 px-2.5 text-xs rounded-full data-[state=on]:bg-primary data-[state=on]:text-primary-foreground"
+                >
+                  3m
+                </ToggleGroupItem>
+                <ToggleGroupItem 
+                  value="6" 
+                  className="h-7 px-2.5 text-xs rounded-full data-[state=on]:bg-primary data-[state=on]:text-primary-foreground"
+                >
+                  6m
+                </ToggleGroupItem>
+              </ToggleGroup>
+            </div>
+            <div className="flex items-center justify-between gap-4">
+              <p className="text-xs text-muted-foreground">
+                Proyectar siguiente:
+              </p>
+              <ToggleGroup 
+                type="single" 
+                value={projectionMonths.toString()} 
+                onValueChange={(value) => value && setProjectionMonths(Number(value))}
+                className="gap-1"
               >
-                6M
-              </ToggleGroupItem>
-              <ToggleGroupItem 
-                value="12" 
-                className="h-8 px-3 text-xs data-[state=on]:bg-primary data-[state=on]:text-primary-foreground"
-              >
-                1A
-              </ToggleGroupItem>
-              <ToggleGroupItem 
-                value="24" 
-                className="h-8 px-3 text-xs data-[state=on]:bg-primary data-[state=on]:text-primary-foreground"
-              >
-                2A
-              </ToggleGroupItem>
-            </ToggleGroup>
+                <ToggleGroupItem 
+                  value="3" 
+                  className="h-7 px-2.5 text-xs rounded-full data-[state=on]:bg-primary data-[state=on]:text-primary-foreground"
+                >
+                  3m
+                </ToggleGroupItem>
+                <ToggleGroupItem 
+                  value="6" 
+                  className="h-7 px-2.5 text-xs rounded-full data-[state=on]:bg-primary data-[state=on]:text-primary-foreground"
+                >
+                  6m
+                </ToggleGroupItem>
+                <ToggleGroupItem 
+                  value="12" 
+                  className="h-7 px-2.5 text-xs rounded-full data-[state=on]:bg-primary data-[state=on]:text-primary-foreground"
+                >
+                  12m
+                </ToggleGroupItem>
+              </ToggleGroup>
+            </div>
           </div>
         </div>
       </CardHeader>
