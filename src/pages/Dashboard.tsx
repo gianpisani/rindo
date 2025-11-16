@@ -1,6 +1,7 @@
 import Layout from "@/components/Layout";
 import BalanceSummary from "@/components/BalanceSummary";
 import ProjectionCard from "@/components/ProjectionCard";
+import { NotificationSetup } from "@/components/NotificationSetup";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { useTransactions } from "@/hooks/useTransactions";
 import { useCategories } from "@/hooks/useCategories";
@@ -149,6 +150,8 @@ export default function Dashboard() {
             Resumen completo de tus finanzas
           </p>
         </div>
+
+        <NotificationSetup />
 
         <BalanceSummary />
         
