@@ -1,4 +1,5 @@
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.39.3';
+import webpush from 'npm:web-push@3.6.7';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -27,75 +28,24 @@ async function sendWebPush(
   vapidPrivateKey: string
 ): Promise<boolean> {
   try {
-    const payloadString = JSON.stringify(payload);
-    
-    // Parse VAPID keys
-    const url = new URL(subscription.endpoint);
-    const audience = `${url.protocol}//${url.hostname}`;
-    
-    // Import private key for signing (raw format from web-push)
-    const privateKeyBuffer = Uint8Array.from(
-      atob(vapidPrivateKey.replace(/-/g, '+').replace(/_/g, '/')),
-      c => c.charCodeAt(0)
+    // Configure web-push with VAPID keys
+    webpush.setVapidDetails(
+      'mailto:notifications@yourapp.com',
+      vapidPublicKey,
+      vapidPrivateKey
     );
-    
-    const privateKey = await crypto.subtle.importKey(
-      'raw',
-      privateKeyBuffer,
-      { name: 'ECDSA', namedCurve: 'P-256' },
-      false,
-      ['sign']
-    );
-    
-    // Create JWT
-    const header = { typ: 'JWT', alg: 'ES256' };
-    const jwtPayload = {
-      aud: audience,
-      exp: Math.floor(Date.now() / 1000) + 43200,
-      sub: 'mailto:notifications@yourapp.com'
-    };
-    
-    const base64UrlEncode = (data: ArrayBuffer | string) => {
-      const str = typeof data === 'string' 
-        ? data 
-        : String.fromCharCode(...new Uint8Array(data));
-      return btoa(str)
-        .replace(/\+/g, '-')
-        .replace(/\//g, '_')
-        .replace(/=+$/, '');
-    };
-    
-    const headerEncoded = base64UrlEncode(JSON.stringify(header));
-    const payloadEncoded = base64UrlEncode(JSON.stringify(jwtPayload));
-    const unsignedToken = `${headerEncoded}.${payloadEncoded}`;
-    
-    // Sign the JWT
-    const signature = await crypto.subtle.sign(
-      { name: 'ECDSA', hash: 'SHA-256' },
-      privateKey,
-      new TextEncoder().encode(unsignedToken)
-    );
-    
-    const signatureEncoded = base64UrlEncode(signature);
-    const jwt = `${unsignedToken}.${signatureEncoded}`;
-    
-    // Send push
-    const response = await fetch(subscription.endpoint, {
-      method: 'POST',
-      headers: {
-        'TTL': '86400',
-        'Content-Type': 'application/octet-stream',
-        'Content-Length': payloadString.length.toString(),
-        'Authorization': `vapid t=${jwt}, k=${vapidPublicKey}`,
-      },
-      body: payloadString,
-    });
 
-    if (!response.ok) {
-      const errorText = await response.text();
-      console.error(`Push notification failed: ${response.status} ${response.statusText}`, errorText);
-      return false;
-    }
+    // Send notification
+    await webpush.sendNotification(
+      {
+        endpoint: subscription.endpoint,
+        keys: {
+          p256dh: subscription.p256dh,
+          auth: subscription.auth,
+        }
+      },
+      JSON.stringify(payload)
+    );
 
     return true;
   } catch (error) {
