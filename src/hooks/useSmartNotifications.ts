@@ -1,7 +1,7 @@
 import { useEffect } from "react";
 import { useNotifications } from "./useNotifications";
 import { Transaction } from "./useTransactions";
-import { startOfDay, startOfWeek, differenceInDays, format } from "date-fns";
+import { startOfDay, startOfWeek, startOfMonth, endOfMonth, differenceInDays, format, isBefore, subMonths, eachMonthOfInterval } from "date-fns";
 import { es } from "date-fns/locale";
 
 interface NotificationSchedule {
@@ -37,24 +37,27 @@ export function useSmartNotifications(transactions: Transaction[]) {
       }
     }
 
-    // 2. Resumen semanal (Lunes 10 AM)
-    if (now.getDay() === 1 && now.getHours() === 10) {
+    // 2. Resumen semanal de gastos (Lunes 8 AM)
+    if (now.getDay() === 1 && now.getHours() === 8) {
       const weekStart = startOfWeek(now, { weekStartsOn: 1 });
       if (!schedule.lastWeeklySummary || new Date(schedule.lastWeeklySummary) < weekStart) {
-        const weekTransactions = transactions.filter(
-          (t) => new Date(t.date) >= weekStart
+        // Calcular gastos de la semana anterior
+        const lastWeekStart = new Date(weekStart);
+        lastWeekStart.setDate(lastWeekStart.getDate() - 7);
+        
+        const lastWeekTransactions = transactions.filter(
+          (t) => {
+            const tDate = new Date(t.date);
+            return tDate >= lastWeekStart && tDate < weekStart;
+          }
         );
         
-        const gastos = weekTransactions
+        const gastos = lastWeekTransactions
           .filter((t) => t.type === "Gasto")
           .reduce((sum, t) => sum + t.amount, 0);
-        
-        const ingresos = weekTransactions
-          .filter((t) => t.type === "Ingreso")
-          .reduce((sum, t) => sum + t.amount, 0);
 
-        sendNotification("📊 Resumen semanal", {
-          body: `Esta semana: +$${ingresos.toLocaleString()} ingresos, -$${gastos.toLocaleString()} gastos`,
+        sendNotification("📊 Resumen de gastos semanal", {
+          body: `La semana pasada gastaste $${gastos.toLocaleString()} pesos`,
           tag: "weekly-summary",
         });
         updateSchedule({ lastWeeklySummary: today.toISOString() });
