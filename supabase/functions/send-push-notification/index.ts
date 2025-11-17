@@ -27,25 +27,38 @@ async function sendWebPush(
   vapidPrivateKey: string
 ): Promise<boolean> {
   try {
-    // Using native fetch to send web push without external libraries
-    // This is a simplified version that works in Deno/Supabase
-    
     const payloadString = JSON.stringify(payload);
     
-    // Create VAPID authentication header
+    // Parse VAPID keys
     const url = new URL(subscription.endpoint);
     const audience = `${url.protocol}//${url.hostname}`;
     
-    // Create JWT for VAPID
+    // Import private key for signing (raw format from web-push)
+    const privateKeyBuffer = Uint8Array.from(
+      atob(vapidPrivateKey.replace(/-/g, '+').replace(/_/g, '/')),
+      c => c.charCodeAt(0)
+    );
+    
+    const privateKey = await crypto.subtle.importKey(
+      'raw',
+      privateKeyBuffer,
+      { name: 'ECDSA', namedCurve: 'P-256' },
+      false,
+      ['sign']
+    );
+    
+    // Create JWT
     const header = { typ: 'JWT', alg: 'ES256' };
     const jwtPayload = {
       aud: audience,
-      exp: Math.floor(Date.now() / 1000) + 43200, // 12 hours
-      sub: 'mailto:notifications@flux.app'
+      exp: Math.floor(Date.now() / 1000) + 43200,
+      sub: 'mailto:notifications@yourapp.com'
     };
     
-    // Base64URL encode
-    const base64UrlEncode = (str: string) => {
+    const base64UrlEncode = (data: ArrayBuffer | string) => {
+      const str = typeof data === 'string' 
+        ? data 
+        : String.fromCharCode(...new Uint8Array(data));
       return btoa(str)
         .replace(/\+/g, '-')
         .replace(/\//g, '_')
@@ -54,17 +67,26 @@ async function sendWebPush(
     
     const headerEncoded = base64UrlEncode(JSON.stringify(header));
     const payloadEncoded = base64UrlEncode(JSON.stringify(jwtPayload));
+    const unsignedToken = `${headerEncoded}.${payloadEncoded}`;
     
-    // For now, send without encryption to test basic functionality
-    // Note: In production, payloads should be encrypted
+    // Sign the JWT
+    const signature = await crypto.subtle.sign(
+      { name: 'ECDSA', hash: 'SHA-256' },
+      privateKey,
+      new TextEncoder().encode(unsignedToken)
+    );
+    
+    const signatureEncoded = base64UrlEncode(signature);
+    const jwt = `${unsignedToken}.${signatureEncoded}`;
+    
+    // Send push
     const response = await fetch(subscription.endpoint, {
       method: 'POST',
       headers: {
         'TTL': '86400',
-        'Content-Type': 'text/plain',
+        'Content-Type': 'application/octet-stream',
         'Content-Length': payloadString.length.toString(),
-        // Simplified VAPID header - in production this needs proper JWT signing
-        'Authorization': `WebPush ${headerEncoded}.${payloadEncoded}`,
+        'Authorization': `vapid t=${jwt}, k=${vapidPublicKey}`,
       },
       body: payloadString,
     });
