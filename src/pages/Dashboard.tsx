@@ -6,6 +6,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { useTransactions } from "@/hooks/useTransactions";
 import { useCategories } from "@/hooks/useCategories";
 import { useSmartNotifications } from "@/hooks/useSmartNotifications";
+import { useEmailTransactionNotifications } from "@/hooks/useEmailTransactionNotifications";
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, Legend, LineChart, Line } from "recharts";
 import { format, startOfMonth, endOfMonth, eachMonthOfInterval, subMonths } from "date-fns";
 import { es } from "date-fns/locale";
@@ -22,6 +23,9 @@ export default function Dashboard() {
   
   // Sistema de notificaciones inteligentes
   useSmartNotifications(transactions);
+  
+  // Notificaciones automáticas de emails
+  useEmailTransactionNotifications();
 
   // Monthly summary
   const last6Months = eachMonthOfInterval({
