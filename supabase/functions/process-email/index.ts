@@ -16,7 +16,10 @@ serve(async (req) => {
   try {
     const { subject, content, from, date } = await req.json();
     
-    console.log("📧 Email recibido:", { subject, from });
+    console.log("📧 Email recibido:", { subject, from, date });
+    
+    // Usar la fecha de hoy si no viene o está en formato inesperado
+    const transactionDate = date || new Date().toISOString().split('T')[0];
 
     // Extraer monto del email
     const text = `${subject || ''} ${content || ''}`;
@@ -58,8 +61,8 @@ serve(async (req) => {
       .from("transactions")
       .insert({
         user_id: "3e4ea0ad-2f99-478c-aff7-7605b4f2d0c3",
-        date: new Date().toISOString().split('T')[0],
-        detail: `${bank} - ${subject?.substring(0, 50) || 'Email bancario'}`,
+        date: transactionDate,
+        detail: `📧 ${bank} - ${subject?.substring(0, 40) || 'Email bancario'} (${from.split('@')[0]})`,
         category_name: "Otros gastos",
         type: type,
         amount: amount,
@@ -95,10 +98,13 @@ serve(async (req) => {
     );
   } catch (error) {
     console.error("❌ Error general:", error);
+    const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+    const errorDetails = error instanceof Error ? error.toString() : String(error);
+    
     return new Response(
       JSON.stringify({ 
-        error: error.message,
-        details: error.toString()
+        error: errorMessage,
+        details: errorDetails
       }),
       {
         status: 500,
