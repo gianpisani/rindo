@@ -77,6 +77,41 @@ serve(async (req) => {
 
     console.log("✅ Transacción creada:", data.id);
 
+    // Send push notification
+    try {
+      const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
+      const supabaseKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
+      
+      const notificationPayload = {
+        userId: "3e4ea0ad-2f99-478c-aff7-7605b4f2d0c3",
+        notification: {
+          title: `${type === 'Ingreso' ? '💰' : '💳'} Nuevo ${type} desde Email`,
+          body: `$${amount.toLocaleString()} - ${bank}: ${subject?.substring(0, 50) || 'Transacción bancaria'}`,
+          tag: 'email-transaction',
+          requireInteraction: true,
+        }
+      };
+
+      const pushResponse = await fetch(`${supabaseUrl}/functions/v1/send-push-notification`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${supabaseKey}`,
+        },
+        body: JSON.stringify(notificationPayload),
+      });
+
+      if (pushResponse.ok) {
+        const pushResult = await pushResponse.json();
+        console.log('📱 Push notification sent:', pushResult);
+      } else {
+        console.error('⚠️ Push notification failed:', await pushResponse.text());
+      }
+    } catch (pushError) {
+      console.error('⚠️ Error sending push notification:', pushError);
+      // Don't fail the whole request if push fails
+    }
+
     return new Response(
       JSON.stringify({ 
         success: true, 
