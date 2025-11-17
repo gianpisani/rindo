@@ -1,10 +1,17 @@
-import { Bell, BellOff } from "lucide-react";
+import { Bell, BellOff, TestTube } from "lucide-react";
 import { Button } from "./ui/button";
 import { useNotifications } from "@/hooks/useNotifications";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "./ui/card";
 
 export function NotificationSetup() {
-  const { permission, requestPermission, isSupported } = useNotifications();
+  const { permission, requestPermission, sendNotification, isSupported } = useNotifications();
+  
+  const sendTestNotification = () => {
+    sendNotification("🎉 ¡Notificaciones activadas!", {
+      body: "Recibirás alertas sobre gastos importantes, recordatorios y resúmenes semanales.",
+      tag: "test",
+    });
+  };
 
   if (!isSupported) {
     return null;
@@ -19,9 +26,15 @@ export function NotificationSetup() {
             Notificaciones activadas
           </CardTitle>
           <CardDescription>
-            Recibirás alertas importantes sobre tus finanzas
+            Recibirás alertas sobre gastos grandes, recordatorios diarios y resúmenes semanales
           </CardDescription>
         </CardHeader>
+        <CardContent>
+          <Button onClick={sendTestNotification} variant="outline" className="w-full">
+            <TestTube className="mr-2 h-4 w-4" />
+            Enviar notificación de prueba
+          </Button>
+        </CardContent>
       </Card>
     );
   }

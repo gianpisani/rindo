@@ -5,6 +5,7 @@ import { NotificationSetup } from "@/components/NotificationSetup";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { useTransactions } from "@/hooks/useTransactions";
 import { useCategories } from "@/hooks/useCategories";
+import { useSmartNotifications } from "@/hooks/useSmartNotifications";
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, Legend, LineChart, Line } from "recharts";
 import { format, startOfMonth, endOfMonth, eachMonthOfInterval, subMonths } from "date-fns";
 import { es } from "date-fns/locale";
@@ -18,6 +19,9 @@ const COLORS = {
 export default function Dashboard() {
   const { transactions } = useTransactions();
   const { categories } = useCategories();
+  
+  // Sistema de notificaciones inteligentes
+  useSmartNotifications(transactions);
 
   // Monthly summary
   const last6Months = eachMonthOfInterval({
