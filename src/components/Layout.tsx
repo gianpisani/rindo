@@ -1,6 +1,6 @@
 import { ReactNode, useEffect, useRef, useState } from "react";
 import { Link, useLocation } from "react-router-dom";
-import { Home, BarChart3, Receipt, FolderOpen, LogOut, Sparkles, Webhook, Wand2 } from "lucide-react";
+import { Home, BarChart3, Receipt, FolderOpen, LogOut, Sparkles, Webhook, Wand2, Layers } from "lucide-react";
 import { motion } from "framer-motion";
 import { Button } from "./ui/button";
 import { supabase } from "@/integrations/supabase/client";
@@ -30,7 +30,7 @@ export default function Layout({ children }: LayoutProps) {
     { path: "/dashboard", label: "Dashboard", icon: BarChart3 },
     { path: "/transactions", label: "Transacciones", icon: Receipt },
     { path: "/categories", label: "Categorías", icon: FolderOpen },
-    { path: "/recategorize", label: "IA Categorías", icon: Wand2 },
+    { path: "/bulk-recategorize", label: "Recategorizar", icon: Layers },
   ];
 
   useEffect(() => {

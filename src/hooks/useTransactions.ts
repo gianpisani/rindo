@@ -123,11 +123,40 @@ export function useTransactions() {
     },
   });
 
+  const deleteAllTransactions = useMutation({
+    mutationFn: async () => {
+      const { data: userData } = await supabase.auth.getUser();
+      if (!userData.user) throw new Error("No user found");
+
+      const { error } = await supabase
+        .from("transactions")
+        .delete()
+        .eq("user_id", userData.user.id);
+
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["transactions"] });
+      toast({
+        title: "Todas las transacciones eliminadas",
+        description: "Se han eliminado todas tus transacciones correctamente",
+      });
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Error",
+        description: error.message,
+        variant: "destructive",
+      });
+    },
+  });
+
   return {
     transactions,
     isLoading,
     addTransaction,
     updateTransaction,
     deleteTransaction,
+    deleteAllTransactions,
   };
 }

@@ -9,7 +9,7 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { Plus, Download, Pencil, Trash2, TrendingUp, TrendingDown, PiggyBank, Filter, Upload, X, Sparkles, Info } from "lucide-react";
+import { Plus, Download, Pencil, Trash2, TrendingUp, TrendingDown, PiggyBank, Filter, Upload, X, Sparkles, Info, AlertTriangle, Layers } from "lucide-react";
 import { useTransactions } from "@/hooks/useTransactions";
 import { useCategories } from "@/hooks/useCategories";
 import { format, parse } from "date-fns";
@@ -18,6 +18,7 @@ import Papa from "papaparse";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { categorizeTransaction, debounce } from "@/lib/categorizer";
+import { useNavigate } from "react-router-dom";
 
 const typeIcons = {
   Ingreso: TrendingUp,
@@ -38,9 +39,10 @@ const typeBg = {
 };
 
 export default function Transactions() {
-  const { transactions, addTransaction, updateTransaction, deleteTransaction } = useTransactions();
+  const { transactions, addTransaction, updateTransaction, deleteTransaction, deleteAllTransactions } = useTransactions();
   const { categories } = useCategories();
   const { toast } = useToast();
+  const navigate = useNavigate();
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const [isDialogOpen, setIsDialogOpen] = useState(false);
@@ -55,6 +57,7 @@ export default function Transactions() {
     open: false,
     id: null,
   });
+  const [confirmDeleteAll, setConfirmDeleteAll] = useState(false);
   const [suggestion, setSuggestion] = useState<{
     category: string;
     type: "Ingreso" | "Gasto" | "Inversión";
@@ -210,6 +213,10 @@ export default function Transactions() {
     if (confirmDelete.id) {
       await deleteTransaction.mutateAsync(confirmDelete.id);
     }
+  };
+
+  const confirmDeleteAllAction = async () => {
+    await deleteAllTransactions.mutateAsync();
   };
 
   const handleExportCSV = () => {
@@ -642,6 +649,30 @@ export default function Transactions() {
             <Download className="h-4 w-4" />
             <span className="hidden sm:inline">Exportar</span>
           </Button>
+
+          {transactions.length > 0 && (
+            <>
+              <Button 
+                onClick={() => navigate("/bulk-recategorize")}
+                variant="outline" 
+                size="sm" 
+                className="rounded-full gap-2 text-purple-600 hover:text-purple-700 hover:bg-purple-50 border-purple-200"
+              >
+                <Layers className="h-4 w-4" />
+                <span className="hidden sm:inline">Recategorizar</span>
+              </Button>
+
+              <Button 
+                onClick={() => setConfirmDeleteAll(true)}
+                variant="outline" 
+                size="sm" 
+                className="rounded-full gap-2 text-destructive hover:text-destructive hover:bg-destructive/10 border-destructive/20"
+              >
+                <Trash2 className="h-4 w-4" />
+                <span className="hidden sm:inline">Borrar Todo</span>
+              </Button>
+            </>
+          )}
         </div>
 
         {showFilters && (
@@ -790,6 +821,17 @@ export default function Transactions() {
         description="Esta acción no se puede deshacer. La transacción será eliminada permanentemente."
         confirmText="Eliminar"
         cancelText="Cancelar"
+      />
+
+      <ConfirmDialog
+        open={confirmDeleteAll}
+        onOpenChange={setConfirmDeleteAll}
+        onConfirm={confirmDeleteAllAction}
+        title="⚠️ ¿Eliminar TODAS las transacciones?"
+        description={`Esta acción eliminará permanentemente las ${transactions.length} transacciones. Esta acción NO se puede deshacer.`}
+        confirmText="Sí, eliminar todas"
+        cancelText="Cancelar"
+        variant="destructive"
       />
     </Layout>
   );
