@@ -17,7 +17,11 @@ const typeConfig = {
   Inversión: { icon: PiggyBank, color: "bg-info text-info-foreground", textColor: "text-info" },
 };
 
-export default function QuickTransactionForm() {
+interface QuickTransactionFormProps {
+  onSuccess?: () => void;
+}
+
+export default function QuickTransactionForm({ onSuccess }: QuickTransactionFormProps = {}) {
   const [amount, setAmount] = useState("");
   const [selectedType, setSelectedType] = useState<"Ingreso" | "Gasto" | "Inversión" | null>(null);
   const [selectedCategory, setSelectedCategory] = useState("");
@@ -131,6 +135,9 @@ export default function QuickTransactionForm() {
     setSelectedCategory("");
     setDetail("");
     setSuggestion(null);
+    
+    // Call onSuccess callback if provided
+    onSuccess?.();
   };
 
   const formatCurrency = (value: string) => {

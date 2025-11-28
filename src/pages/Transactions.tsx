@@ -1,6 +1,7 @@
 import { useState, useRef, useEffect, useCallback } from "react";
 import Layout from "@/components/Layout";
 import ConfirmDialog from "@/components/ConfirmDialog";
+import { TransactionsTable } from "@/components/TransactionsTable";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -9,7 +10,7 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { Plus, Download, Pencil, Trash2, TrendingUp, TrendingDown, PiggyBank, Filter, Upload, X, Sparkles, Info, AlertTriangle, Layers } from "lucide-react";
+import { Plus, Download, Pencil, Trash2, TrendingUp, TrendingDown, PiggyBank, Upload, X, Sparkles, Info, AlertTriangle, Layers } from "lucide-react";
 import { useTransactions } from "@/hooks/useTransactions";
 import { useCategories } from "@/hooks/useCategories";
 import { format, parse } from "date-fns";
@@ -48,11 +49,7 @@ export default function Transactions() {
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [isImportDialogOpen, setIsImportDialogOpen] = useState(false);
   const [editingTransaction, setEditingTransaction] = useState<any>(null);
-  const [filterType, setFilterType] = useState<string>("all");
-  const [filterCategory, setFilterCategory] = useState<string>("all");
-  const [searchTerm, setSearchTerm] = useState("");
   const [isImporting, setIsImporting] = useState(false);
-  const [showFilters, setShowFilters] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState<{ open: boolean; id: string | null }>({
     open: false,
     id: null,
@@ -74,14 +71,6 @@ export default function Transactions() {
     amount: "",
   });
 
-  const filteredTransactions = transactions.filter((transaction) => {
-    const matchesType = filterType === "all" || transaction.type === filterType;
-    const matchesCategory = filterCategory === "all" || transaction.category_name === filterCategory;
-    const matchesSearch = !searchTerm || 
-      transaction.detail?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      transaction.category_name.toLowerCase().includes(searchTerm.toLowerCase());
-    return matchesType && matchesCategory && matchesSearch;
-  });
 
   const filteredCategories = categories.filter((cat) => cat.type === formData.type);
 
@@ -374,7 +363,6 @@ export default function Transactions() {
     });
   };
 
-  const hasActiveFilters = filterType !== "all" || filterCategory !== "all" || searchTerm;
 
   return (
     <Layout>
@@ -578,17 +566,6 @@ export default function Transactions() {
         </div>
 
         <div className="flex flex-wrap gap-2">
-          <Button 
-            variant="outline" 
-            size="sm" 
-            className="rounded-full gap-2"
-            onClick={() => setShowFilters(!showFilters)}
-          >
-            <Filter className="h-4 w-4" />
-            Filtros
-            {hasActiveFilters && <Badge variant="default" className="ml-1 h-5 w-5 p-0 rounded-full text-xs">!</Badge>}
-          </Button>
-          
           <Dialog open={isImportDialogOpen} onOpenChange={setIsImportDialogOpen}>
             <DialogTrigger asChild>
               <Button variant="outline" size="sm" className="rounded-full gap-2">
@@ -675,142 +652,12 @@ export default function Transactions() {
           )}
         </div>
 
-        {showFilters && (
-          <Card className="rounded-2xl shadow-sm border-border/50">
-            <CardContent className="pt-6">
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-                <div className="space-y-2">
-                  <Label className="text-sm font-medium">Buscar</Label>
-                  <Input
-                    placeholder="Buscar..."
-                    value={searchTerm}
-                    onChange={(e) => setSearchTerm(e.target.value)}
-                    className="h-10 rounded-full px-4"
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label className="text-sm font-medium">Tipo</Label>
-                  <Select value={filterType} onValueChange={setFilterType}>
-                    <SelectTrigger className="h-10 rounded-full px-4">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="all">Todos</SelectItem>
-                      <SelectItem value="Ingreso">Ingreso</SelectItem>
-                      <SelectItem value="Gasto">Gasto</SelectItem>
-                      <SelectItem value="Inversión">Inversión</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div className="space-y-2">
-                  <Label className="text-sm font-medium">Categoría</Label>
-                  <Select value={filterCategory} onValueChange={setFilterCategory}>
-                    <SelectTrigger className="h-10 rounded-full px-4">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="all">Todas</SelectItem>
-                      {categories
-                        .filter(cat => cat.name && cat.name.trim().length > 0)
-                        .map((cat) => (
-                          <SelectItem key={cat.id} value={cat.name}>
-                            {cat.name}
-                          </SelectItem>
-                        ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-              </div>
-              {hasActiveFilters && (
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  className="mt-4 rounded-full"
-                  onClick={() => {
-                    setFilterType("all");
-                    setFilterCategory("all");
-                    setSearchTerm("");
-                  }}
-                >
-                  <X className="h-4 w-4 mr-2" />
-                  Limpiar filtros
-                </Button>
-              )}
-            </CardContent>
-          </Card>
-        )}
-
-        <div className="space-y-3">
-          {filteredTransactions.length === 0 ? (
-            <Card className="rounded-2xl shadow-sm border-border/50">
-              <CardContent className="py-12 text-center text-muted-foreground">
-                No se encontraron transacciones
-              </CardContent>
-            </Card>
-          ) : (
-            filteredTransactions.map((transaction) => {
-              const Icon = typeIcons[transaction.type];
-              const colorClass = typeColors[transaction.type];
-              const bgClass = typeBg[transaction.type];
-
-              return (
-                <Card 
-                  key={transaction.id} 
-                  className="rounded-2xl shadow-sm border-border/50 hover:shadow-elevated transition-all duration-200"
-                >
-                  <CardContent className="p-4">
-                    <div className="flex items-start justify-between gap-4">
-                      <div className="flex items-start gap-4 min-w-0 flex-1">
-                        <div className={`p-3 rounded-full ${bgClass} flex-shrink-0`}>
-                          <Icon className={`h-5 w-5 ${colorClass}`} />
-                        </div>
-                        <div className="min-w-0 flex-1">
-                          <div className="flex items-start justify-between gap-2 mb-1">
-                            <div className="min-w-0 flex-1">
-                              <p className="font-semibold truncate">{transaction.category_name}</p>
-                              <p className="text-xs text-muted-foreground">
-                                {format(new Date(transaction.date), "d 'de' MMM, yyyy", { locale: es })}
-                              </p>
-                            </div>
-                            <Badge className={`rounded-full text-xs ${colorClass} bg-transparent border-0`}>
-                              {transaction.type}
-                            </Badge>
-                          </div>
-                          {transaction.detail && (
-                            <p className="text-sm text-muted-foreground mt-2 line-clamp-2">
-                              {transaction.detail}
-                            </p>
-                          )}
-                          <p className={`text-lg font-semibold mt-2 ${colorClass}`}>
-                            {formatCurrency(Number(transaction.amount))}
-                          </p>
-                        </div>
-                      </div>
-                      <div className="flex gap-1 flex-shrink-0">
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => handleEdit(transaction)}
-                          className="h-9 w-9 p-0 rounded-full"
-                        >
-                          <Pencil className="h-4 w-4" />
-                        </Button>
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => handleDelete(transaction.id)}
-                          className="h-9 w-9 p-0 rounded-full text-destructive hover:text-destructive"
-                        >
-                          <Trash2 className="h-4 w-4" />
-                        </Button>
-                      </div>
-                    </div>
-                  </CardContent>
-                </Card>
-              );
-            })
-          )}
-        </div>
+        <TransactionsTable
+          transactions={transactions}
+          categories={categories}
+          onEdit={handleEdit}
+          onDelete={handleDelete}
+        />
       </div>
 
       <ConfirmDialog

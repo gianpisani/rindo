@@ -1,22 +1,55 @@
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 import Layout from "@/components/Layout";
 import ConfirmDialog from "@/components/ConfirmDialog";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Checkbox } from "@/components/ui/checkbox";
-import { Check, Filter, Sparkles, Info, AlertTriangle, Wand2 } from "lucide-react";
+import { Info, AlertTriangle, Wand2, Sparkles } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
-import { useTransactions } from "@/hooks/useTransactions";
+import { useTransactions, Transaction } from "@/hooks/useTransactions";
 import { useCategories } from "@/hooks/useCategories";
+import {
+  useReactTable,
+  getCoreRowModel,
+  getSortedRowModel,
+  getFilteredRowModel,
+  getPaginationRowModel,
+  flexRender,
+  SortingState,
+  ColumnDef,
+} from "@tanstack/react-table";
+import { 
+  ChevronDown, 
+  ChevronUp, 
+  ChevronsUpDown,
+  TrendingUp,
+  TrendingDown,
+  PiggyBank,
+  Search,
+  X,
+} from "lucide-react";
 import { format } from "date-fns";
 import { es } from "date-fns/locale";
+import { cn } from "@/lib/utils";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Input } from "@/components/ui/input";
+
+const typeIcons = {
+  Ingreso: TrendingUp,
+  Gasto: TrendingDown,
+  Inversión: PiggyBank,
+};
+
+const typeColors = {
+  Ingreso: "text-success bg-success/10",
+  Gasto: "text-destructive bg-destructive/10",
+  Inversión: "text-info bg-info/10",
+};
 
 export default function BulkRecategorize() {
   const { transactions } = useTransactions();
@@ -24,45 +57,212 @@ export default function BulkRecategorize() {
   const { toast } = useToast();
   const navigate = useNavigate();
 
-  const [filterCategory, setFilterCategory] = useState<string>("all");
-  const [filterType, setFilterType] = useState<string>("all");
-  const [searchTerm, setSearchTerm] = useState("");
-  const [selectedTransactions, setSelectedTransactions] = useState<Set<string>>(new Set());
+  const [sorting, setSorting] = useState<SortingState>([
+    { id: "date", desc: true }
+  ]);
+  const [globalFilter, setGlobalFilter] = useState("");
+  const [typeFilter, setTypeFilter] = useState<string>("all");
+  const [categoryFilter, setCategoryFilter] = useState<string>("all");
+  const [rowSelection, setRowSelection] = useState({});
   const [newCategory, setNewCategory] = useState<string>("");
   const [showConfirm, setShowConfirm] = useState(false);
   const [isApplying, setIsApplying] = useState(false);
 
-  // Filtrar transacciones
-  const filteredTransactions = transactions.filter((transaction) => {
-    const matchesCategory = filterCategory === "all" || transaction.category_name === filterCategory;
-    const matchesType = filterType === "all" || transaction.type === filterType;
-    const matchesSearch = !searchTerm || 
-      transaction.detail?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      transaction.category_name.toLowerCase().includes(searchTerm.toLowerCase());
-    return matchesCategory && matchesType && matchesSearch;
+  const formatCurrency = (amount: number) => {
+    return new Intl.NumberFormat("es-CL", {
+      style: "currency",
+      currency: "CLP",
+      minimumFractionDigits: 0,
+    }).format(amount);
+  };
+
+  const columns = useMemo<ColumnDef<Transaction>[]>(() => [
+    {
+      id: "select",
+      header: ({ table }) => (
+        <Checkbox
+          checked={table.getIsAllPageRowsSelected()}
+          onCheckedChange={(value) => table.toggleAllPageRowsSelected(!!value)}
+          aria-label="Seleccionar todas"
+        />
+      ),
+      cell: ({ row }) => (
+        <Checkbox
+          checked={row.getIsSelected()}
+          onCheckedChange={(value) => row.toggleSelected(!!value)}
+          aria-label="Seleccionar fila"
+        />
+      ),
+      enableSorting: false,
+      enableHiding: false,
+    },
+    {
+      accessorKey: "date",
+      header: ({ column }) => {
+        return (
+          <div
+            className="flex items-center cursor-pointer hover:bg-muted rounded px-2 py-1"
+            onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
+          >
+            <span className="text-xs font-semibold">Fecha</span>
+            {column.getIsSorted() === "asc" ? (
+              <ChevronUp className="ml-2 h-4 w-4" />
+            ) : column.getIsSorted() === "desc" ? (
+              <ChevronDown className="ml-2 h-4 w-4" />
+            ) : (
+              <ChevronsUpDown className="ml-2 h-4 w-4 opacity-50" />
+            )}
+          </div>
+        );
+      },
+      cell: ({ row }) => {
+        const date = new Date(row.original.date);
+        return (
+          <div className="font-medium text-sm">
+            {format(date, "dd MMM yyyy", { locale: es })}
+          </div>
+        );
+      },
+    },
+    {
+      accessorKey: "type",
+      header: "Tipo",
+      cell: ({ row }) => {
+        const type = row.original.type;
+        const Icon = typeIcons[type];
+        return (
+          <Badge
+            variant="outline"
+            className={cn("gap-1.5 font-medium", typeColors[type])}
+          >
+            <Icon className="h-3.5 w-3.5" />
+            {type}
+          </Badge>
+        );
+      },
+      filterFn: (row, id, value) => {
+        return value === "all" || row.getValue(id) === value;
+      },
+    },
+    {
+      accessorKey: "category_name",
+      header: ({ column }) => {
+        return (
+          <div
+            className="flex items-center cursor-pointer hover:bg-muted rounded px-2 py-1"
+            onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
+          >
+            <span className="text-xs font-semibold">Categoría</span>
+            {column.getIsSorted() === "asc" ? (
+              <ChevronUp className="ml-2 h-4 w-4" />
+            ) : column.getIsSorted() === "desc" ? (
+              <ChevronDown className="ml-2 h-4 w-4" />
+            ) : (
+              <ChevronsUpDown className="ml-2 h-4 w-4 opacity-50" />
+            )}
+          </div>
+        );
+      },
+      cell: ({ row }) => {
+        return (
+          <div className="font-medium text-sm">
+            {row.original.category_name}
+          </div>
+        );
+      },
+      filterFn: (row, id, value) => {
+        return value === "all" || row.getValue(id) === value;
+      },
+    },
+    {
+      accessorKey: "detail",
+      header: "Detalle",
+      cell: ({ row }) => {
+        return (
+          <div className="max-w-[300px] truncate text-sm text-muted-foreground">
+            {row.original.detail || "-"}
+          </div>
+        );
+      },
+    },
+    {
+      accessorKey: "amount",
+      header: ({ column }) => {
+        return (
+          <div
+            className="flex items-center justify-end cursor-pointer hover:bg-muted rounded px-2 py-1 ml-auto"
+            onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
+          >
+            <span className="text-xs font-semibold">Monto</span>
+            {column.getIsSorted() === "asc" ? (
+              <ChevronUp className="ml-2 h-4 w-4" />
+            ) : column.getIsSorted() === "desc" ? (
+              <ChevronDown className="ml-2 h-4 w-4" />
+            ) : (
+              <ChevronsUpDown className="ml-2 h-4 w-4 opacity-50" />
+            )}
+          </div>
+        );
+      },
+      cell: ({ row }) => {
+        const amount = parseFloat(row.getValue("amount"));
+        const type = row.original.type;
+        return (
+          <div className={cn(
+            "text-right font-semibold text-sm",
+            type === "Ingreso" && "text-success",
+            type === "Gasto" && "text-destructive",
+            type === "Inversión" && "text-info"
+          )}>
+            {formatCurrency(amount)}
+          </div>
+        );
+      },
+    },
+  ], [categories]);
+
+  const columnFilters = useMemo(() => [
+    { id: "type", value: typeFilter },
+    { id: "category_name", value: categoryFilter },
+  ], [typeFilter, categoryFilter]);
+
+  const table = useReactTable({
+    data: transactions,
+    columns,
+    getCoreRowModel: getCoreRowModel(),
+    getSortedRowModel: getSortedRowModel(),
+    getFilteredRowModel: getFilteredRowModel(),
+    getPaginationRowModel: getPaginationRowModel(),
+    onSortingChange: setSorting,
+    onGlobalFilterChange: setGlobalFilter,
+    onRowSelectionChange: setRowSelection,
+    globalFilterFn: "includesString",
+    state: {
+      sorting,
+      globalFilter,
+      columnFilters,
+      rowSelection,
+    },
+    initialState: {
+      pagination: {
+        pageSize: 20,
+      },
+    },
   });
 
-  // Toggle selección de transacción
-  const toggleTransaction = (id: string) => {
-    const newSelected = new Set(selectedTransactions);
-    if (newSelected.has(id)) {
-      newSelected.delete(id);
-    } else {
-      newSelected.add(id);
-    }
-    setSelectedTransactions(newSelected);
-  };
+  const selectedRows = table.getFilteredSelectedRowModel().rows;
+  const selectedCount = selectedRows.length;
 
-  // Seleccionar todas las filtradas
-  const selectAll = () => {
-    if (selectedTransactions.size === filteredTransactions.length) {
-      setSelectedTransactions(new Set());
-    } else {
-      setSelectedTransactions(new Set(filteredTransactions.map(t => t.id)));
-    }
-  };
+  // Obtener tipo de las transacciones seleccionadas
+  const selectedTypes = new Set(
+    selectedRows.map(row => row.original.type)
+  );
 
-  // Aplicar recategorización
+  // Categorías disponibles según los tipos seleccionados
+  const availableCategories = selectedTypes.size === 1
+    ? categories.filter(c => c.type === Array.from(selectedTypes)[0])
+    : categories;
+
   const applyRecategorization = async () => {
     setShowConfirm(false);
     setIsApplying(true);
@@ -71,7 +271,7 @@ export default function BulkRecategorize() {
       const { data: userData } = await supabase.auth.getUser();
       if (!userData.user) throw new Error("No user found");
 
-      if (selectedTransactions.size === 0) {
+      if (selectedCount === 0) {
         toast({
           title: "Sin selección",
           description: "Debes seleccionar al menos una transacción",
@@ -93,13 +293,13 @@ export default function BulkRecategorize() {
       let errors = 0;
 
       // Actualizar cada transacción seleccionada
-      for (const txId of Array.from(selectedTransactions)) {
+      for (const row of selectedRows) {
         try {
           const { error } = await supabase
             .from("transactions")
             .update({ category_name: newCategory })
-            .eq("id", txId)
-            .eq("user_id", userData.user.id); // Seguridad: solo del usuario actual
+            .eq("id", row.original.id)
+            .eq("user_id", userData.user.id);
 
           if (error) {
             console.error("Error actualizando:", error);
@@ -119,7 +319,7 @@ export default function BulkRecategorize() {
       });
 
       // Limpiar selección y recargar
-      setSelectedTransactions(new Set());
+      setRowSelection({});
       setNewCategory("");
       window.location.reload();
     } catch (error) {
@@ -132,20 +332,6 @@ export default function BulkRecategorize() {
       setIsApplying(false);
     }
   };
-
-  // Obtener tipo de las transacciones seleccionadas
-  const selectedTypes = new Set(
-    Array.from(selectedTransactions)
-      .map(id => transactions.find(t => t.id === id)?.type)
-      .filter(Boolean)
-  );
-
-  // Categorías disponibles según los tipos seleccionados
-  const availableCategories = selectedTypes.size === 1
-    ? categories.filter(c => c.type === Array.from(selectedTypes)[0])
-    : categories;
-
-  const allSelected = filteredTransactions.length > 0 && selectedTransactions.size === filteredTransactions.length;
 
   return (
     <Layout>
@@ -171,77 +357,22 @@ export default function BulkRecategorize() {
           <Info className="h-4 w-4 text-blue-600" />
           <AlertDescription className="text-sm">
             <ul className="text-xs space-y-1 list-disc list-inside">
-              <li>Filtra las transacciones que deseas recategorizar</li>
-              <li>Selecciona manualmente o marca todas</li>
+              <li>Usa los filtros y búsqueda para encontrar transacciones</li>
+              <li>Selecciona las filas con los checkboxes</li>
               <li>Elige la nueva categoría y aplica los cambios</li>
               <li>Solo tus transacciones serán modificadas</li>
             </ul>
           </AlertDescription>
         </Alert>
 
-        {/* Panel de filtros */}
-        <Card className="rounded-2xl shadow-sm border-border/50">
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2 text-lg">
-              <Filter className="h-5 w-5" />
-              Filtros
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-              <div className="space-y-2">
-                <Label className="text-sm font-medium">Buscar</Label>
-                <Input
-                  placeholder="Buscar por detalle o categoría..."
-                  value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
-                  className="h-10 rounded-full px-4"
-                />
-              </div>
-              <div className="space-y-2">
-                <Label className="text-sm font-medium">Tipo</Label>
-                <Select value={filterType} onValueChange={setFilterType}>
-                  <SelectTrigger className="h-10 rounded-full px-4">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="all">Todos</SelectItem>
-                    <SelectItem value="Ingreso">Ingreso</SelectItem>
-                    <SelectItem value="Gasto">Gasto</SelectItem>
-                    <SelectItem value="Inversión">Inversión</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-              <div className="space-y-2">
-                <Label className="text-sm font-medium">Categoría Actual</Label>
-                <Select value={filterCategory} onValueChange={setFilterCategory}>
-                  <SelectTrigger className="h-10 rounded-full px-4">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="all">Todas</SelectItem>
-                    {categories
-                      .filter(cat => cat.name && cat.name.trim().length > 0)
-                      .map((cat) => (
-                        <SelectItem key={cat.id} value={cat.name}>
-                          {cat.name}
-                        </SelectItem>
-                      ))}
-                  </SelectContent>
-                </Select>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-
         {/* Panel de acción masiva */}
-        {selectedTransactions.size > 0 && (
+        {selectedCount > 0 && (
           <Card className="rounded-2xl shadow-sm border-purple-300 bg-gradient-to-r from-purple-50/50 to-pink-50/50 dark:from-purple-950/20 dark:to-pink-950/20 sticky top-20 z-10 backdrop-blur-xl">
             <CardContent className="pt-6">
               <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
                 <div className="flex items-center gap-4">
                   <div>
-                    <p className="text-2xl font-bold text-purple-600">{selectedTransactions.size}</p>
+                    <p className="text-2xl font-bold text-purple-600">{selectedCount}</p>
                     <p className="text-xs text-muted-foreground">Seleccionadas</p>
                   </div>
                   <div className="h-8 w-px bg-border" />
@@ -295,93 +426,150 @@ export default function BulkRecategorize() {
           </Card>
         )}
 
-        {/* Botón seleccionar todas */}
-        {filteredTransactions.length > 0 && (
-          <div className="flex items-center gap-2">
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={selectAll}
-              className="rounded-full"
-            >
-              {allSelected ? "Deseleccionar todas" : "Seleccionar todas"}
-            </Button>
-            <p className="text-xs text-muted-foreground">
-              {filteredTransactions.length} transacciones mostradas
-            </p>
-          </div>
-        )}
+        {/* Tabla de transacciones */}
+        <Card className="rounded-2xl shadow-sm border-border/50">
+          <CardHeader>
+            <CardTitle className="text-lg">Transacciones</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            {/* Filtros */}
+            <div className="flex flex-col md:flex-row gap-4">
+              <div className="relative flex-1">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                <Input
+                  placeholder="Buscar en todas las columnas..."
+                  value={globalFilter}
+                  onChange={(e) => setGlobalFilter(e.target.value)}
+                  className="pl-9 pr-9 h-10 rounded-full"
+                />
+                {globalFilter && (
+                  <button
+                    onClick={() => setGlobalFilter("")}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                  >
+                    <X className="h-4 w-4" />
+                  </button>
+                )}
+              </div>
+              <Select value={typeFilter} onValueChange={setTypeFilter}>
+                <SelectTrigger className="w-full md:w-[180px] h-10 rounded-full">
+                  <SelectValue placeholder="Tipo" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">Todos los tipos</SelectItem>
+                  <SelectItem value="Ingreso">Ingreso</SelectItem>
+                  <SelectItem value="Gasto">Gasto</SelectItem>
+                  <SelectItem value="Inversión">Inversión</SelectItem>
+                </SelectContent>
+              </Select>
+              <Select value={categoryFilter} onValueChange={setCategoryFilter}>
+                <SelectTrigger className="w-full md:w-[200px] h-10 rounded-full">
+                  <SelectValue placeholder="Categoría" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">Todas las categorías</SelectItem>
+                  {categories
+                    .filter(cat => cat.name && cat.name.trim().length > 0)
+                    .map((cat) => (
+                      <SelectItem key={cat.id} value={cat.name}>
+                        {cat.name}
+                      </SelectItem>
+                    ))}
+                </SelectContent>
+              </Select>
+            </div>
 
-        {/* Lista de transacciones */}
-        <div className="space-y-3">
-          {filteredTransactions.length === 0 ? (
-            <Card className="rounded-2xl shadow-sm border-border/50">
-              <CardContent className="py-12 text-center text-muted-foreground">
-                No se encontraron transacciones con esos filtros
-              </CardContent>
-            </Card>
-          ) : (
-            filteredTransactions.map((transaction) => {
-              const isSelected = selectedTransactions.has(transaction.id);
-              
-              return (
-                <Card 
-                  key={transaction.id} 
-                  className={`rounded-2xl shadow-sm border transition-all duration-200 cursor-pointer hover:shadow-md ${
-                    isSelected
-                      ? "border-purple-300 bg-purple-50/50 dark:bg-purple-950/10"
-                      : "border-border/50"
-                  }`}
-                  onClick={() => toggleTransaction(transaction.id)}
-                >
-                  <CardContent className="p-4">
-                    <div className="flex items-start gap-4">
-                      <div className="flex-shrink-0 pt-1">
-                        <div
-                          className={`h-6 w-6 rounded-full border-2 flex items-center justify-center transition-all ${
-                            isSelected
-                              ? "bg-purple-600 border-purple-600"
-                              : "border-gray-300 hover:border-purple-400"
-                          }`}
-                        >
-                          {isSelected && (
-                            <Check className="h-4 w-4 text-white" />
+            {/* Tabla */}
+            <div className="rounded-xl border border-border overflow-hidden">
+              <div className="overflow-x-auto">
+                <table className="w-full">
+                  <thead className="bg-muted/50">
+                    {table.getHeaderGroups().map((headerGroup) => (
+                      <tr key={headerGroup.id}>
+                        {headerGroup.headers.map((header) => (
+                          <th
+                            key={header.id}
+                            className="px-4 py-3 text-left text-xs font-semibold text-muted-foreground uppercase tracking-wider"
+                          >
+                            {header.isPlaceholder
+                              ? null
+                              : flexRender(
+                                  header.column.columnDef.header,
+                                  header.getContext()
+                                )}
+                          </th>
+                        ))}
+                      </tr>
+                    ))}
+                  </thead>
+                  <tbody className="divide-y divide-border">
+                    {table.getRowModel().rows?.length ? (
+                      table.getRowModel().rows.map((row) => (
+                        <tr
+                          key={row.id}
+                          className={cn(
+                            "hover:bg-muted/30 transition-colors",
+                            row.getIsSelected() && "bg-purple-50/50 dark:bg-purple-950/10"
                           )}
-                        </div>
-                      </div>
+                        >
+                          {row.getVisibleCells().map((cell) => (
+                            <td key={cell.id} className="px-4 py-3 whitespace-nowrap">
+                              {flexRender(
+                                cell.column.columnDef.cell,
+                                cell.getContext()
+                              )}
+                            </td>
+                          ))}
+                        </tr>
+                      ))
+                    ) : (
+                      <tr>
+                        <td
+                          colSpan={columns.length}
+                          className="px-4 py-12 text-center text-muted-foreground"
+                        >
+                          No se encontraron transacciones
+                        </td>
+                      </tr>
+                    )}
+                  </tbody>
+                </table>
+              </div>
+            </div>
 
-                      <div className="flex-1 min-w-0">
-                        <div className="flex items-start justify-between gap-2 mb-1">
-                          <div className="min-w-0 flex-1">
-                            <div className="flex items-center gap-2 mb-1">
-                              <Badge variant="outline" className="text-xs">
-                                {transaction.type}
-                              </Badge>
-                              <Badge className="text-xs bg-gray-600">
-                                {transaction.category_name}
-                              </Badge>
-                            </div>
-                            <p className="text-xs text-muted-foreground">
-                              {format(new Date(transaction.date), "d 'de' MMM, yyyy", { locale: es })}
-                            </p>
-                          </div>
-                        </div>
-                        {transaction.detail && (
-                          <p className="text-sm text-muted-foreground mt-2 line-clamp-2">
-                            {transaction.detail}
-                          </p>
-                        )}
-                        <p className="text-lg font-semibold mt-2">
-                          ${Number(transaction.amount).toLocaleString("es-CL")}
-                        </p>
-                      </div>
-                    </div>
-                  </CardContent>
-                </Card>
-              );
-            })
-          )}
-        </div>
+            {/* Paginación */}
+            <div className="flex items-center justify-between">
+              <div className="text-sm text-muted-foreground">
+                {table.getFilteredSelectedRowModel().rows.length} de{" "}
+                {table.getFilteredRowModel().rows.length} fila(s) seleccionada(s)
+              </div>
+              <div className="flex items-center gap-2">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => table.previousPage()}
+                  disabled={!table.getCanPreviousPage()}
+                  className="rounded-full"
+                >
+                  Anterior
+                </Button>
+                <span className="text-sm text-muted-foreground">
+                  Página {table.getState().pagination.pageIndex + 1} de{" "}
+                  {table.getPageCount()}
+                </span>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => table.nextPage()}
+                  disabled={!table.getCanNextPage()}
+                  className="rounded-full"
+                >
+                  Siguiente
+                </Button>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
       </div>
 
       <ConfirmDialog
@@ -389,11 +577,10 @@ export default function BulkRecategorize() {
         onOpenChange={setShowConfirm}
         onConfirm={applyRecategorization}
         title="¿Aplicar recategorización?"
-        description={`Se cambiarán ${selectedTransactions.size} transacciones a la categoría "${newCategory}". Esta acción no se puede deshacer.`}
+        description={`Se cambiarán ${selectedCount} transacciones a la categoría "${newCategory}". Esta acción no se puede deshacer.`}
         confirmText="Aplicar cambios"
         cancelText="Cancelar"
       />
     </Layout>
   );
 }
-

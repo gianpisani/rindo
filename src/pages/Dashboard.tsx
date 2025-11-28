@@ -2,7 +2,8 @@ import Layout from "@/components/Layout";
 import BalanceSummary from "@/components/BalanceSummary";
 import ProjectionCard from "@/components/ProjectionCard";
 import ReconciliationCard from "@/components/ReconciliationCard";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { GlassCard } from "@/components/GlassCard";
+import { CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { useTransactions } from "@/hooks/useTransactions";
 import { useCategories } from "@/hooks/useCategories";
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, Legend, LineChart, Line } from "recharts";
@@ -144,23 +145,27 @@ export default function Dashboard() {
   return (
     <Layout>
       <div className="space-y-6">
-        <div>
-          <h1 className="text-2xl font-semibold mb-1">Dashboard</h1>
-          <p className="text-sm text-muted-foreground">
-            Resumen completo de tus finanzas
-          </p>
+        <div className="flex items-center justify-between">
+          <div>
+            <h1 className="text-3xl font-semibold tracking-tight mb-1">Dashboard</h1>
+            <p className="text-sm text-muted-foreground">
+              Resumen completo de tus finanzas
+            </p>
+          </div>
         </div>
 
         <BalanceSummary />
         
-        <ReconciliationCard />
+        <div id="reconciliation-card">
+          <ReconciliationCard />
+        </div>
         
         <ProjectionCard />
 
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-          <Card className="rounded-2xl shadow-elevated border-border/50">
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+          <GlassCard>
             <CardHeader className="pb-4">
-              <CardTitle className="text-lg font-semibold">Evolución Mensual</CardTitle>
+              <CardTitle className="text-base font-semibold">Evolución Mensual</CardTitle>
             </CardHeader>
             <CardContent>
               <ResponsiveContainer width="100%" height={280}>
@@ -218,11 +223,11 @@ export default function Dashboard() {
                 </LineChart>
               </ResponsiveContainer>
             </CardContent>
-          </Card>
+          </GlassCard>
 
-          <Card className="rounded-2xl shadow-elevated border-border/50">
+          <GlassCard>
             <CardHeader className="pb-4">
-              <CardTitle className="text-lg font-semibold">
+              <CardTitle className="text-base font-semibold">
                 Distribución por Tipo y Categoría
               </CardTitle>
               <p className="text-sm text-muted-foreground mt-1">
@@ -410,11 +415,11 @@ export default function Dashboard() {
                 </div>
               </div>
             </CardContent>
-          </Card>
+          </GlassCard>
 
-          <Card className="lg:col-span-2 rounded-2xl shadow-elevated border-border/50">
+          <GlassCard className="lg:col-span-2">
             <CardHeader className="pb-4">
-              <CardTitle className="text-lg font-semibold">Gastos por Categoría</CardTitle>
+              <CardTitle className="text-base font-semibold">Gastos por Categoría</CardTitle>
             </CardHeader>
             <CardContent>
               <ResponsiveContainer width="100%" height={400}>
@@ -456,7 +461,7 @@ export default function Dashboard() {
                 </BarChart>
               </ResponsiveContainer>
             </CardContent>
-          </Card>
+          </GlassCard>
         </div>
       </div>
     </Layout>

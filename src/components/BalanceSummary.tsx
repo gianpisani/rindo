@@ -1,6 +1,8 @@
-import { Card, CardContent, CardHeader, CardTitle } from "./ui/card";
+import { CardContent, CardHeader, CardTitle } from "./ui/card";
 import { TrendingUp, TrendingDown, PiggyBank, Wallet, DollarSign } from "lucide-react";
 import { useTransactions } from "@/hooks/useTransactions";
+import { AnimatedNumber } from "./AnimatedNumber";
+import { GlassCard } from "./GlassCard";
 
 export default function BalanceSummary() {
   const { transactions } = useTransactions();
@@ -68,26 +70,23 @@ export default function BalanceSummary() {
   ];
 
   return (
-    <div className="grid grid-cols-2 lg:grid-cols-5 gap-4">
+    <div className="grid grid-cols-2 lg:grid-cols-5 gap-3">
       {cards.map((card) => (
-        <Card 
-          key={card.title} 
-          className="rounded-2xl shadow-elevated border-border/50 hover:shadow-floating transition-all duration-200"
-        >
-          <CardHeader className="flex flex-row items-center justify-between pb-3 space-y-0">
-            <CardTitle className="text-xs font-medium text-muted-foreground">
+        <GlassCard key={card.title}>
+          <CardHeader className="flex flex-row items-center justify-between pb-2 space-y-0">
+            <CardTitle className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
               {card.title}
             </CardTitle>
-            <div className={`p-3 rounded-full ${card.bg} shadow-sm`}>
-              <card.icon className={`h-5 w-5 ${card.color}`} />
+            <div className={`p-2 rounded-md ${card.bg}`}>
+              <card.icon className={`h-4 w-4 ${card.color}`} />
             </div>
           </CardHeader>
           <CardContent className="pt-0">
-            <div className={`text-xl lg:text-2xl font-semibold ${card.color}`}>
-              {formatCurrency(card.amount)}
+            <div className={`text-2xl font-semibold ${card.color} tracking-tight`}>
+              <AnimatedNumber value={card.amount} />
             </div>
           </CardContent>
-        </Card>
+        </GlassCard>
       ))}
     </div>
   );

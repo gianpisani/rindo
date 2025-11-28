@@ -1,4 +1,4 @@
-import { useState } from "react";
+import React, { useState, useMemo } from "react";
 import Layout from "@/components/Layout";
 import ConfirmDialog from "@/components/ConfirmDialog";
 import { Button } from "@/components/ui/button";
@@ -8,8 +8,31 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, Dialog
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
-import { Plus, Pencil, Trash2, TrendingUp, TrendingDown, PiggyBank } from "lucide-react";
+import { 
+  Plus, 
+  Pencil, 
+  Trash2, 
+  TrendingUp, 
+  TrendingDown, 
+  PiggyBank,
+  MoreHorizontal,
+} from "lucide-react";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { useCategories } from "@/hooks/useCategories";
+import {
+  useReactTable,
+  getCoreRowModel,
+  getSortedRowModel,
+  flexRender,
+  ColumnDef,
+  SortingState,
+} from "@tanstack/react-table";
+import { cn } from "@/lib/utils";
 
 const typeIcons = {
   Ingreso: TrendingUp,
@@ -18,15 +41,15 @@ const typeIcons = {
 };
 
 const typeColors = {
-  Ingreso: "text-success",
-  Gasto: "text-destructive",
-  Inversión: "text-info",
+  Ingreso: "text-success bg-success/10",
+  Gasto: "text-destructive bg-destructive/10",
+  Inversión: "text-info bg-info/10",
 };
 
-const typeBg = {
-  Ingreso: "bg-success/5",
-  Gasto: "bg-destructive/5",
-  Inversión: "bg-info/5",
+const typeBgGradient = {
+  Ingreso: "from-success/5 to-success/10",
+  Gasto: "from-destructive/5 to-destructive/10",
+  Inversión: "from-info/5 to-info/10",
 };
 
 const defaultColors = [
@@ -35,6 +58,13 @@ const defaultColors = [
   "#fbbf24", "#facc15", "#a3e635", "#f472b6",
   "#e11d48", "#be123c", "#f43f5e", "#3b82f6",
 ];
+
+interface Category {
+  id: string;
+  name: string;
+  type: "Ingreso" | "Gasto" | "Inversión";
+  color?: string;
+}
 
 export default function Categories() {
   const { categories, addCategory, updateCategory, deleteCategory } = useCategories();
@@ -105,11 +135,11 @@ export default function Categories() {
   return (
     <Layout>
       <div className="space-y-6">
-          <div className="flex items-center justify-between">
-            <div>
-              <h1 className="text-2xl font-semibold mb-1">Categorías</h1>
+        <div className="flex items-center justify-between">
+          <div>
+            <h1 className="text-2xl font-semibold mb-1">Categorías</h1>
             <p className="text-sm text-muted-foreground">
-              Gestiona tus categorías
+              Gestiona tus categorías de transacciones
             </p>
           </div>
           <Dialog open={isDialogOpen} onOpenChange={(open) => {
@@ -120,9 +150,9 @@ export default function Categories() {
             }
           }}>
             <DialogTrigger asChild>
-              <Button className="rounded-full h-12 w-12 p-0 shadow-elevated md:w-auto md:px-6">
-                <Plus className="h-5 w-5 md:mr-2" />
-                <span className="hidden md:inline">Nueva</span>
+              <Button className="rounded-full gap-2 shadow-sm">
+                <Plus className="h-4 w-4" />
+                <span className="hidden sm:inline">Nueva Categoría</span>
               </Button>
             </DialogTrigger>
             <DialogContent className="rounded-2xl">
@@ -196,69 +226,16 @@ export default function Categories() {
           </Dialog>
         </div>
 
-        {Object.entries(groupedCategories).map(([type, cats]) => {
-          const Icon = typeIcons[type as keyof typeof typeIcons];
-          const colorClass = typeColors[type as keyof typeof typeColors];
-          const bgClass = typeBg[type as keyof typeof typeBg];
-
-          return (
-            <Card key={type} className="rounded-2xl shadow-elevated border-border/50">
-              <CardHeader className="pb-4">
-                <CardTitle className="flex items-center gap-3 text-lg">
-                  <div className={`p-2 rounded-full ${bgClass}`}>
-                    <Icon className={`h-5 w-5 ${colorClass}`} />
-                  </div>
-                  <span className="font-semibold">{type}s</span>
-                  <Badge variant="outline" className="ml-auto rounded-full">
-                    {cats.length}
-                  </Badge>
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                {cats.length === 0 ? (
-                  <p className="text-center text-muted-foreground py-8">
-                    No hay categorías de este tipo
-                  </p>
-                ) : (
-                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
-                    {cats.map((category) => (
-                      <div
-                        key={category.id}
-                        className="p-4 rounded-full border border-border/50 hover:shadow-sm hover:border-border transition-all duration-200 flex items-center justify-between gap-3"
-                      >
-                        <div className="flex items-center gap-3 min-w-0 flex-1">
-                          <div
-                            className="h-10 w-10 rounded-full flex-shrink-0 shadow-sm"
-                            style={{ backgroundColor: category.color || "#gray" }}
-                          />
-                          <span className="font-medium text-sm truncate">{category.name}</span>
-                        </div>
-                        <div className="flex gap-1 flex-shrink-0">
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => handleEdit(category)}
-                            className="h-8 w-8 p-0 rounded-full"
-                          >
-                            <Pencil className="h-4 w-4" />
-                          </Button>
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => handleDelete(category.id)}
-                            className="h-8 w-8 p-0 rounded-full text-destructive hover:text-destructive"
-                          >
-                            <Trash2 className="h-4 w-4" />
-                          </Button>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </CardContent>
-            </Card>
-          );
-        })}
+        {/* Tablas por tipo */}
+        {Object.entries(groupedCategories).map(([type, cats]) => (
+          <CategoryTable
+            key={type}
+            type={type as keyof typeof typeIcons}
+            categories={cats}
+            onEdit={handleEdit}
+            onDelete={handleDelete}
+          />
+        ))}
       </div>
 
       <ConfirmDialog
@@ -271,5 +248,189 @@ export default function Categories() {
         cancelText="Cancelar"
       />
     </Layout>
+  );
+}
+
+interface CategoryTableProps {
+  type: "Ingreso" | "Gasto" | "Inversión";
+  categories: Category[];
+  onEdit: (category: Category) => void;
+  onDelete: (id: string) => void;
+}
+
+function CategoryTable({ type, categories, onEdit, onDelete }: CategoryTableProps) {
+  const [sorting, setSorting] = useState<SortingState>([]);
+
+  const Icon = typeIcons[type];
+  const colorClass = typeColors[type];
+  const bgGradient = typeBgGradient[type];
+
+  const columns = useMemo<ColumnDef<Category>[]>(() => [
+    {
+      accessorKey: "color",
+      header: "",
+      cell: ({ row }) => {
+        return (
+          <div
+            className="h-8 w-8 rounded-full shadow-sm flex-shrink-0"
+            style={{ backgroundColor: row.original.color || "#gray" }}
+          />
+        );
+      },
+      enableSorting: false,
+      size: 80,
+      minSize: 80,
+      maxSize: 80,
+    },
+    {
+      accessorKey: "name",
+      header: () => <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Nombre</span>,
+      cell: ({ row }) => {
+        return (
+          <div className="font-medium text-sm truncate max-w-[200px] md:max-w-none">
+            {row.original.name}
+          </div>
+        );
+      },
+    },
+    {
+      id: "actions",
+      header: "",
+      cell: ({ row }) => {
+        const handleEditClick = (e: React.MouseEvent) => {
+          e.stopPropagation();
+          onEdit(row.original);
+        };
+
+        const handleDeleteClick = (e: React.MouseEvent) => {
+          e.stopPropagation();
+          onDelete(row.original.id);
+        };
+
+        return (
+          <div className="flex justify-end">
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button 
+                  variant="ghost" 
+                  size="sm" 
+                  className="h-8 w-8 p-0"
+                  onClick={(e) => e.stopPropagation()}
+                >
+                  <MoreHorizontal className="h-4 w-4" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end">
+                <DropdownMenuItem onClick={handleEditClick}>
+                  <Pencil className="mr-2 h-4 w-4" />
+                  Editar
+                </DropdownMenuItem>
+                <DropdownMenuItem
+                  onClick={handleDeleteClick}
+                  className="text-destructive"
+                >
+                  <Trash2 className="mr-2 h-4 w-4" />
+                  Eliminar
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+          </div>
+        );
+      },
+      size: 80,
+      minSize: 80,
+      maxSize: 80,
+      enableSorting: false,
+    },
+  ], [onEdit, onDelete]);
+
+  const table = useReactTable({
+    data: categories,
+    columns,
+    getCoreRowModel: getCoreRowModel(),
+    getSortedRowModel: getSortedRowModel(),
+    onSortingChange: setSorting,
+    state: {
+      sorting,
+    },
+  });
+
+  return (
+    <Card className="rounded-2xl shadow-sm border-border/50 overflow-hidden">
+      <CardHeader className={cn("pb-4 bg-gradient-to-r", bgGradient)}>
+        <CardTitle className="flex items-center gap-3 text-lg">
+          <div className={cn("p-2 rounded-full", colorClass.split(" ")[1])}>
+            <Icon className={cn("h-5 w-5", colorClass.split(" ")[0])} />
+          </div>
+          <span className="font-semibold">{type}s</span>
+          <Badge variant="outline" className="ml-auto rounded-full">
+            {categories.length}
+          </Badge>
+        </CardTitle>
+      </CardHeader>
+      <CardContent className="p-0">
+        {categories.length === 0 ? (
+          <div className="text-center text-muted-foreground py-12">
+            No hay categorías de tipo {type}
+          </div>
+        ) : (
+          <div className="overflow-x-auto">
+            <table className="w-full table-fixed">
+              <thead className="bg-muted/50">
+                {table.getHeaderGroups().map((headerGroup) => (
+                  <tr key={headerGroup.id}>
+                    {headerGroup.headers.map((header) => (
+                      <th
+                        key={header.id}
+                        style={{
+                          width: header.getSize() !== 150 ? header.getSize() : undefined,
+                        }}
+                        className={cn(
+                          "px-6 py-3 text-xs font-semibold text-muted-foreground uppercase tracking-wider",
+                          header.id === "actions" ? "text-right w-20" : "text-left",
+                          header.id === "color" && "w-20"
+                        )}
+                      >
+                        {header.isPlaceholder
+                          ? null
+                          : flexRender(
+                              header.column.columnDef.header,
+                              header.getContext()
+                            )}
+                      </th>
+                    ))}
+                  </tr>
+                ))}
+              </thead>
+              <tbody className="divide-y divide-border">
+                {table.getRowModel().rows.map((row) => (
+                    <tr
+                      key={row.id}
+                      className="hover:bg-muted/30 transition-colors"
+                    >
+                      {row.getVisibleCells().map((cell) => (
+                        <td 
+                          key={cell.id} 
+                          className={cn(
+                            "px-6 py-4",
+                            cell.column.id === "color" && "w-20",
+                            cell.column.id === "actions" && "w-20",
+                            cell.column.id === "name" ? "max-w-0" : "whitespace-nowrap"
+                          )}
+                        >
+                          {flexRender(
+                            cell.column.columnDef.cell,
+                            cell.getContext()
+                          )}
+                        </td>
+                      ))}
+                    </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </CardContent>
+    </Card>
   );
 }

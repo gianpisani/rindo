@@ -6,6 +6,7 @@ import { Button } from "./ui/button";
 import { Calculator, CreditCard, Wallet, AlertTriangle, Wand2, CheckCircle2, ArrowRight, PencilRuler } from "lucide-react";
 import { useTransactions } from "@/hooks/useTransactions";
 import { useCategories } from "@/hooks/useCategories";
+import { GlassCard } from "./GlassCard";
 
 export default function ReconciliationCard() {
   const { transactions, addTransaction } = useTransactions();
@@ -108,7 +109,7 @@ export default function ReconciliationCard() {
   const hasInputs = cuentaCorrienteNum > 0 || tarjetaCreditoNum > 0;
 
   return (
-    <Card className="rounded-2xl shadow-elevated border-border/50">
+    <GlassCard>
       <CardHeader className="pb-3">
         <div className="flex items-center gap-2">
           <Calculator className="h-5 w-5 text-primary" />
@@ -218,7 +219,7 @@ export default function ReconciliationCard() {
           </div>
         )}
       </CardContent>
-    </Card>
+    </GlassCard>
   );
 }
 

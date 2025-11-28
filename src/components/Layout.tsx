@@ -1,8 +1,11 @@
 import { ReactNode, useEffect, useRef, useState } from "react";
-import { Link, useLocation } from "react-router-dom";
-import { Home, BarChart3, Receipt, FolderOpen, LogOut, Sparkles, Webhook, Wand2, Layers } from "lucide-react";
-import { motion } from "framer-motion";
+import { Link, useLocation, useNavigate } from "react-router-dom";
+import { Home, BarChart3, Receipt, FolderOpen, LogOut, Webhook, Layers } from "lucide-react";
 import { Button } from "./ui/button";
+import { CommandBar } from "./CommandBar";
+import { KeyboardShortcuts } from "./KeyboardShortcuts";
+import { QuickAddDrawer } from "./QuickAddDrawer";
+import { FloatingActionButton } from "./FloatingActionButton";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
@@ -13,9 +16,9 @@ interface LayoutProps {
 
 export default function Layout({ children }: LayoutProps) {
   const location = useLocation();
+  const navigate = useNavigate();
   const { toast } = useToast();
-  const [indicatorStyle, setIndicatorStyle] = useState({ left: 0, width: 0 });
-  const navRefs = useRef<(HTMLAnchorElement | null)[]>([]);
+  const [drawerOpen, setDrawerOpen] = useState(false);
 
   const handleLogout = async () => {
     await supabase.auth.signOut();
@@ -33,59 +36,52 @@ export default function Layout({ children }: LayoutProps) {
     { path: "/bulk-recategorize", label: "Recategorizar", icon: Layers },
   ];
 
-  useEffect(() => {
-    const activeIndex = navItems.findIndex((item) => item.path === location.pathname);
-    const activeElement = navRefs.current[activeIndex];
-    
-    if (activeElement) {
-      const { offsetLeft, offsetWidth } = activeElement;
-      setIndicatorStyle({ left: offsetLeft, width: offsetWidth });
-    }
-  }, [location.pathname]);
-
   return (
     <div className="min-h-screen bg-background pb-24 md:pb-0">
+      {/* Keyboard Shortcuts - Global */}
+      <KeyboardShortcuts onAddTransaction={() => setDrawerOpen(true)} />
+
+      {/* Command Bar - Global */}
+      <CommandBar 
+        onAddTransaction={() => setDrawerOpen(true)}
+        onConciliate={() => {
+          navigate("/");
+          setTimeout(() => {
+            document.getElementById("reconciliation-card")?.scrollIntoView({ behavior: "smooth" });
+          }, 100);
+        }}
+      />
+
+      {/* Floating Action Button - Mobile only */}
+      <FloatingActionButton onClick={() => setDrawerOpen(true)} />
+
+      {/* Quick Add Drawer - Global */}
+      <QuickAddDrawer open={drawerOpen} onOpenChange={setDrawerOpen} />
+
       {/* Desktop Navigation - Top Bar */}
-      <nav className="hidden md:block border-b border-border/50 bg-card/80 backdrop-blur-sm sticky top-0 z-50">
+      <nav className="hidden md:block border-b border-border bg-card shadow-sm sticky top-0 z-50">
         <div className="container mx-auto px-6">
           <div className="flex h-16 items-center justify-between">
             <div className="flex items-center gap-8">
-              <Link to="/" className="flex items-center gap-2">
-                <div className="relative">
-                  <Webhook className="h-5 w-5 text-primary animate-pulse" />
-                </div>
-                <span className="text-xl font-light tracking-tight text-foreground">
-                  Flux
+              <Link to="/" className="flex items-center gap-2.5">
+                <Webhook className="h-5 w-5 text-primary" />
+                <span className="text-lg font-semibold tracking-tight text-foreground">
+                  Finanzas
                 </span>
               </Link>
-              <div className="relative flex items-center gap-1 bg-muted/40 rounded-full p-1">
-                {/* Animated indicator */}
-                <motion.div
-                  className="absolute h-10 bg-primary rounded-full z-0"
-                  initial={false}
-                  animate={{
-                    left: indicatorStyle.left,
-                    width: indicatorStyle.width,
-                  }}
-                  transition={{
-                    type: "spring",
-                    stiffness: 380,
-                    damping: 30,
-                  }}
-                />
-                {navItems.map((item, index) => {
+              <div className="flex items-center gap-1">
+                {navItems.map((item) => {
                   const Icon = item.icon;
                   const isActive = location.pathname === item.path;
                   return (
                     <Link 
                       key={item.path} 
                       to={item.path}
-                      ref={(el) => (navRefs.current[index] = el)}
                       className={cn(
-                        "relative z-10 flex items-center gap-2 px-4 h-10 rounded-full transition-colors duration-200",
+                        "flex items-center gap-2 px-4 py-2 rounded-md transition-colors duration-150",
                         isActive
-                          ? "text-primary-foreground"
-                          : "text-muted-foreground hover:text-foreground"
+                          ? "bg-primary text-primary-foreground"
+                          : "text-muted-foreground hover:text-foreground hover:bg-muted"
                       )}
                     >
                       <Icon className="h-4 w-4" />
@@ -95,21 +91,26 @@ export default function Layout({ children }: LayoutProps) {
                 })}
               </div>
             </div>
-            <Button 
-              onClick={handleLogout} 
-              variant="ghost" 
-              size="sm" 
-              className="gap-2 rounded-full"
-            >
-              <LogOut className="h-4 w-4" />
-              Salir
-            </Button>
+            <div className="flex items-center gap-3">
+              <kbd className="hidden lg:inline-flex h-7 select-none items-center gap-1 rounded bg-muted px-2 font-mono text-[11px] font-medium text-muted-foreground">
+                <span className="text-xs">⌘</span>K
+              </kbd>
+              <Button 
+                onClick={handleLogout} 
+                variant="ghost" 
+                size="sm" 
+                className="gap-2"
+              >
+                <LogOut className="h-4 w-4" />
+                <span className="hidden lg:inline">Salir</span>
+              </Button>
+            </div>
           </div>
         </div>
       </nav>
 
       {/* Mobile Top Bar - Minimal */}
-      <div className="md:hidden sticky top-0 z-50 bg-card/80 backdrop-blur-sm border-b border-border/50">
+      <div className="md:hidden sticky top-0 z-50 bg-card border-b border-border shadow-sm">
         <div className="flex h-14 items-center justify-between px-6">
           <Link to="/" className="flex items-center gap-2">
             <div className="relative">
@@ -135,7 +136,7 @@ export default function Layout({ children }: LayoutProps) {
 
       {/* Mobile Bottom Navigation */}
       <nav className="md:hidden fixed bottom-0 left-0 right-0 z-50 px-4 pb-4">
-        <div className="relative bg-card rounded-full shadow-floating border border-border/50 p-2">
+        <div className="relative bg-card rounded-full shadow-lg border border-border p-2 shadow-lg">
           <div className="relative z-10 flex items-center justify-around">
             {navItems.map((item) => {
               const Icon = item.icon;

@@ -8,44 +8,50 @@ All colors MUST be HSL. Subtle palette with generous spacing.
 
 @layer base {
   :root {
-    --background: 0 0% 97%;
-    --foreground: 222 15% 15%;
+    /* Elegant Teal - Fresh & Professional */
+    --background: 0 0% 98%;
+    --foreground: 189 47% 15%;
 
     --card: 0 0% 100%;
-    --card-foreground: 222 15% 15%;
+    --card-foreground: 189 47% 15%;
 
     --popover: 0 0% 100%;
-    --popover-foreground: 222 15% 15%;
+    --popover-foreground: 189 47% 15%;
 
-    --primary: 222 47% 45%;
-    --primary-foreground: 0 0% 100%;
+    /* Primary: Professional Teal */
+    --primary: 189 43% 35%;
+    --primary-foreground: 180 25% 98%;
 
-    --secondary: 222 12% 93%;
-    --secondary-foreground: 222 15% 15%;
+    /* Secondary: Cool grays */
+    --secondary: 185 15% 93%;
+    --secondary-foreground: 189 47% 15%;
 
-    --muted: 222 12% 94%;
-    --muted-foreground: 222 10% 50%;
+    --muted: 185 15% 95%;
+    --muted-foreground: 185 10% 47%;
 
-    --accent: 222 12% 92%;
-    --accent-foreground: 222 15% 15%;
+    --accent: 185 15% 92%;
+    --accent-foreground: 189 47% 15%;
 
-    --destructive: 0 72% 58%;
+    /* Semantic colors - Balanced and clear */
+    --destructive: 0 65% 51%;
     --destructive-foreground: 0 0% 100%;
 
-    --success: 142 65% 42%;
+    --success: 142 70% 40%;
     --success-foreground: 0 0% 100%;
 
-    --warning: 38 85% 55%;
+    --warning: 32 95% 44%;
     --warning-foreground: 0 0% 100%;
 
-    --info: 221 70% 55%;
+    --info: 199 89% 48%;
     --info-foreground: 0 0% 100%;
 
-    --border: 222 12% 88%;
-    --input: 222 12% 88%;
-    --ring: 222 47% 45%;
+    /* Borders - Subtle teal hint */
+    --border: 185 20% 90%;
+    --input: 185 20% 90%;
+    --ring: 189 43% 35%;
 
-    --radius: 1rem;
+    /* Standard border radius */
+    --radius: 0.5rem;
 
     --sidebar-background: 0 0% 97%;
     --sidebar-foreground: 222 15% 20%;
@@ -64,42 +70,45 @@ All colors MUST be HSL. Subtle palette with generous spacing.
   }
 
   .dark {
-    --background: 222 15% 10%;
-    --foreground: 0 0% 95%;
+    /* Dark mode - Elegant teal */
+    --background: 189 40% 8%;
+    --foreground: 180 25% 98%;
 
-    --card: 222 15% 12%;
-    --card-foreground: 0 0% 95%;
+    --card: 189 40% 10%;
+    --card-foreground: 180 25% 98%;
 
-    --popover: 222 15% 12%;
-    --popover-foreground: 0 0% 95%;
+    --popover: 189 40% 10%;
+    --popover-foreground: 180 25% 98%;
 
-    --primary: 222 55% 60%;
-    --primary-foreground: 0 0% 100%;
+    /* Primary: Lighter teal for dark */
+    --primary: 189 60% 50%;
+    --primary-foreground: 189 47% 15%;
 
-    --secondary: 222 15% 18%;
-    --secondary-foreground: 0 0% 95%;
+    --secondary: 189 30% 17%;
+    --secondary-foreground: 180 25% 98%;
 
-    --muted: 222 15% 18%;
-    --muted-foreground: 222 10% 65%;
+    --muted: 189 35% 15%;
+    --muted-foreground: 185 15% 65%;
 
-    --accent: 222 15% 18%;
-    --accent-foreground: 0 0% 95%;
+    --accent: 189 30% 17%;
+    --accent-foreground: 180 25% 98%;
 
-    --destructive: 0 65% 55%;
+    /* Semantic - Adjusted for dark */
+    --destructive: 0 65% 51%;
     --destructive-foreground: 0 0% 100%;
 
-    --success: 142 60% 48%;
+    --success: 142 70% 40%;
     --success-foreground: 0 0% 100%;
 
-    --warning: 38 85% 60%;
+    --warning: 32 95% 44%;
     --warning-foreground: 0 0% 100%;
 
-    --info: 221 70% 62%;
+    --info: 199 89% 48%;
     --info-foreground: 0 0% 100%;
 
-    --border: 222 15% 22%;
-    --input: 222 15% 22%;
-    --ring: 222 55% 60%;
+    --border: 189 25% 17%;
+    --input: 189 25% 17%;
+    --ring: 189 60% 50%;
 
     --sidebar-background: 222 15% 10%;
     --sidebar-foreground: 0 0% 95%;
@@ -159,21 +168,55 @@ All colors MUST be HSL. Subtle palette with generous spacing.
 }
 
 @layer utilities {
-  .shadow-elegant {
-    box-shadow: 0 1px 3px 0 rgb(0 0 0 / 0.05), 0 1px 2px -1px rgb(0 0 0 / 0.05);
+  /* Standardized shadow system */
+  .shadow-sm {
+    box-shadow: 0 1px 2px 0 rgb(0 0 0 / 0.05);
   }
   
-  .shadow-elevated {
-    box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.07), 0 2px 4px -2px rgb(0 0 0 / 0.07);
+  .shadow-card {
+    box-shadow: 0 1px 3px 0 rgb(0 0 0 / 0.1), 0 1px 2px -1px rgb(0 0 0 / 0.1);
   }
 
-  .shadow-floating {
-    box-shadow: 0 10px 15px -3px rgb(0 0 0 / 0.08), 0 4px 6px -4px rgb(0 0 0 / 0.08);
+  .shadow-md {
+    box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
+  }
+
+  .shadow-lg {
+    box-shadow: 0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1);
   }
 
   /* Smooth page transitions */
   .page-transition {
     transition: opacity 0.3s ease-in-out, transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
     will-change: opacity, transform;
+  }
+
+  /* Glassmorphism utilities */
+  .glass {
+    background: rgba(255, 255, 255, 0.05);
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
+  }
+
+  .glass-dark {
+    background: rgba(0, 0, 0, 0.05);
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
+  }
+
+  /* Smooth animations */
+  @keyframes ripple {
+    0% {
+      transform: scale(0);
+      opacity: 1;
+    }
+    100% {
+      transform: scale(4);
+      opacity: 0;
+    }
+  }
+
+  .ripple {
+    animation: ripple 0.6s ease-out;
   }
 }
