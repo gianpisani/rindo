@@ -1,8 +1,6 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "./use-toast";
-import { useNotifications } from "./useNotifications";
-import { calculateProjectionImpact } from "./useProjectionImpact";
 
 export interface Transaction {
   id: string;
@@ -17,7 +15,6 @@ export interface Transaction {
 
 export function useTransactions() {
   const { toast } = useToast();
-  const { sendNotification } = useNotifications();
   const queryClient = useQueryClient();
 
   const { data: transactions = [], isLoading } = useQuery({
@@ -48,29 +45,10 @@ export function useTransactions() {
         .single();
 
       if (error) throw error;
-      return { data: data as Transaction, transaction };
+      return data as Transaction;
     },
-    onSuccess: ({ data, transaction }) => {
+    onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["transactions"] });
-      
-      // Verificar impacto en proyección si es un gasto
-      if (transaction.type === "Gasto") {
-        const impact = calculateProjectionImpact(transactions, data);
-        const impactAbs = Math.abs(impact.impact);
-        
-        if (impactAbs > 100000) {
-          const isPositive = impact.impact > 0;
-          const message = isPositive 
-            ? `¡Vas bien! Tu proyección mejoró en $${impactAbs.toLocaleString()}`
-            : `Tienes que mejorar. Tu proyección empeoró en $${impactAbs.toLocaleString()}`;
-          
-          sendNotification(isPositive ? "✅ Buen trabajo" : "⚠️ Alerta de proyección", {
-            body: message,
-            tag: "projection-impact",
-          });
-        }
-      }
-      
       toast({
         title: "Transacción agregada",
         description: "La transacción se ha guardado correctamente",
