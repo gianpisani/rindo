@@ -50,8 +50,8 @@ export default function BalanceSummary() {
       title: "Inversiones",
       amount: totals.investments,
       icon: PiggyBank,
-      color: "text-info",
-      bg: "bg-info/5",
+      color: "text-blue",
+      bg: "bg-blue/5",
     },
     {
       title: "Patrimonio",

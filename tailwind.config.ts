@@ -14,9 +14,23 @@ export default {
     },
     extend: {
       fontFamily: {
-        sans: ["Nunito", "sans-serif"],
+        sans: ["Plus Jakarta Sans", "sans-serif"],
+      },
+      fontWeight: {
+        light: "300",
+        normal: "400",
+        medium: "500",
+        semibold: "600",
+        bold: "700",
+        extrabold: "800",
       },
       colors: {
+        // Brand colors
+        blue: "hsl(var(--color-blue))",
+        cyan: "hsl(var(--color-cyan))",
+        violet: "hsl(var(--color-violet))",
+        fuchsia: "hsl(var(--color-fuchsia))",
+        
         border: "hsl(var(--border))",
         input: "hsl(var(--input))",
         ring: "hsl(var(--ring))",

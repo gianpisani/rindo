@@ -15,13 +15,13 @@ const typeIcons = {
 const typeColors = {
   Ingreso: "text-success",
   Gasto: "text-destructive",
-  Inversión: "text-info",
+  Inversión: "text-blue",
 };
 
 const typeBg = {
   Ingreso: "bg-success/5",
   Gasto: "bg-destructive/5",
-  Inversión: "bg-info/5",
+  Inversión: "bg-blue/5",
 };
 
 export default function RecentTransactions() {

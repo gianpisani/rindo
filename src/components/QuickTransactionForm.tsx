@@ -14,7 +14,7 @@ import { supabase } from "@/integrations/supabase/client";
 const typeConfig = {
   Ingreso: { icon: TrendingUp, color: "bg-success text-success-foreground", textColor: "text-success" },
   Gasto: { icon: TrendingDown, color: "bg-destructive text-destructive-foreground", textColor: "text-destructive" },
-  Inversión: { icon: PiggyBank, color: "bg-info text-info-foreground", textColor: "text-info" },
+  Inversión: { icon: PiggyBank, color: "bg-blue text-white", textColor: "text-blue" },
 };
 
 interface QuickTransactionFormProps {

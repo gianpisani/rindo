@@ -59,7 +59,7 @@ const typeIcons = {
 const typeColors = {
   Ingreso: "text-success bg-success/10",
   Gasto: "text-destructive bg-destructive/10",
-  Inversión: "text-info bg-info/10",
+  Inversión: "text-blue bg-blue/10",
 };
 
 export function TransactionsTable({

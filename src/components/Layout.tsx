@@ -1,6 +1,6 @@
 import { ReactNode, useEffect, useRef, useState } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
-import { Home, BarChart3, Receipt, FolderOpen, LogOut, Webhook, Layers } from "lucide-react";
+import { Home, BarChart3, Receipt, FolderOpen, LogOut, Layers } from "lucide-react";
 import { Button } from "./ui/button";
 import { CommandBar } from "./CommandBar";
 import { KeyboardShortcuts } from "./KeyboardShortcuts";
@@ -59,14 +59,13 @@ export default function Layout({ children }: LayoutProps) {
       <QuickAddDrawer open={drawerOpen} onOpenChange={setDrawerOpen} />
 
       {/* Desktop Navigation - Top Bar */}
-      <nav className="hidden md:block border-b border-border bg-card shadow-sm sticky top-0 z-50">
+      <nav className="hidden md:block border-b border-sidebar-border bg-sidebar shadow-lg sticky top-0 z-50">
         <div className="container mx-auto px-6">
           <div className="flex h-16 items-center justify-between">
             <div className="flex items-center gap-8">
-              <Link to="/" className="flex items-center gap-2.5">
-                <Webhook className="h-5 w-5 text-primary" />
-                <span className="text-lg font-semibold tracking-tight text-foreground">
-                  Finanzas
+              <Link to="/" className="flex items-center">
+                <span className="text-lg font-bold tracking-tight text-white">
+                  Finanzas<span className="text-blue">.</span>
                 </span>
               </Link>
               <div className="flex items-center gap-1">
@@ -78,28 +77,28 @@ export default function Layout({ children }: LayoutProps) {
                       key={item.path} 
                       to={item.path}
                       className={cn(
-                        "flex items-center gap-2 px-4 py-2 rounded-md transition-colors duration-150",
+                        "flex items-center gap-2 px-4 py-2 rounded-md transition-all duration-150",
                         isActive
-                          ? "bg-primary text-primary-foreground"
-                          : "text-muted-foreground hover:text-foreground hover:bg-muted"
+                          ? "bg-blue text-white shadow-lg"
+                          : "text-gray-400 hover:text-white hover:bg-sidebar-accent"
                       )}
                     >
                       <Icon className="h-4 w-4" />
-                      <span className="font-medium text-sm">{item.label}</span>
+                      <span className="font-semibold text-sm">{item.label}</span>
                     </Link>
                   );
                 })}
               </div>
             </div>
             <div className="flex items-center gap-3">
-              <kbd className="hidden lg:inline-flex h-7 select-none items-center gap-1 rounded bg-muted px-2 font-mono text-[11px] font-medium text-muted-foreground">
+              <kbd className="hidden lg:inline-flex h-7 select-none items-center gap-1 rounded bg-sidebar-accent px-2 font-mono text-[11px] font-medium text-white border border-sidebar-border">
                 <span className="text-xs">⌘</span>K
               </kbd>
               <Button 
                 onClick={handleLogout} 
-                variant="ghost" 
+                variant="ghost"
+                className="text-red-400 hover:text-red-300 hover:bg-sidebar-accent" 
                 size="sm" 
-                className="gap-2"
               >
                 <LogOut className="h-4 w-4" />
                 <span className="hidden lg:inline">Salir</span>
@@ -110,21 +109,18 @@ export default function Layout({ children }: LayoutProps) {
       </nav>
 
       {/* Mobile Top Bar - Minimal */}
-      <div className="md:hidden sticky top-0 z-50 bg-card border-b border-border shadow-sm">
+      <div className="md:hidden sticky top-0 z-50 bg-sidebar border-b border-sidebar-border shadow-lg">
         <div className="flex h-14 items-center justify-between px-6">
-          <Link to="/" className="flex items-center gap-2">
-            <div className="relative">
-              <Webhook className="h-5 w-5 text-primary animate-pulse" />
-            </div>
-            <span className="text-xl font-light tracking-tight text-foreground">
-              Flux
+          <Link to="/" className="flex items-center">
+            <span className="text-xl font-bold tracking-tight text-white">
+              Finanzas<span className="text-blue">.</span>
             </span>
           </Link>
           <Button 
             onClick={handleLogout} 
             variant="ghost" 
             size="sm" 
-            className="rounded-full h-9 w-9 p-0"
+            className="rounded-full h-9 w-9 p-0 text-red-400 hover:text-red-300 hover:bg-sidebar-accent"
           >
             <LogOut className="h-4 w-4" />
           </Button>
@@ -136,7 +132,7 @@ export default function Layout({ children }: LayoutProps) {
 
       {/* Mobile Bottom Navigation */}
       <nav className="md:hidden fixed bottom-0 left-0 right-0 z-50 px-4 pb-4">
-        <div className="relative bg-card rounded-full shadow-lg border border-border p-2 shadow-lg">
+        <div className="relative bg-sidebar rounded-full shadow-2xl border border-sidebar-border p-2">
           <div className="relative z-10 flex items-center justify-around">
             {navItems.map((item) => {
               const Icon = item.icon;
@@ -146,14 +142,14 @@ export default function Layout({ children }: LayoutProps) {
                   key={item.path} 
                   to={item.path} 
                   className={cn(
-                    "flex-1 flex flex-col items-center justify-center gap-1 h-14 rounded-full transition-colors duration-200",
+                    "flex-1 flex flex-col items-center justify-center gap-1 h-14 rounded-full transition-all duration-200",
                     isActive
-                      ? "text-primary"
-                      : "text-muted-foreground"
+                      ? "bg-blue text-white shadow-lg"
+                      : "text-gray-400"
                   )}
                 >
                   <Icon className="h-5 w-5" />
-                  <span className="text-[10px] font-medium">{item.label}</span>
+                  <span className="text-[10px] font-semibold">{item.label}</span>
                 </Link>
               );
             })}

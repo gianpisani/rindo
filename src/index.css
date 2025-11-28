@@ -2,128 +2,138 @@
 @tailwind components;
 @tailwind utilities;
 
-/* Minimalist Design System - Mobile First
-All colors MUST be HSL. Subtle palette with generous spacing.
+/* Modern Vibrant Design System - Professional & Bold
+Based on Blue, Cyan, Violet, Fuchsia palette
 */
 
 @layer base {
   :root {
-    /* Elegant Teal - Fresh & Professional */
-    --background: 0 0% 98%;
-    --foreground: 189 47% 15%;
+    /* Brand Colors - Vibrant & Professional */
+    --color-blue: 217 91% 60%;      /* #3b82f6 */
+    --color-cyan: 188 86% 43%;      /* #06b6d4 */
+    --color-violet: 258 90% 66%;    /* #8b5cf6 */
+    --color-fuchsia: 292 76% 63%;   /* #d946ef */
+
+    /* Base - Clean whites and pure black */
+    --background: 0 0% 100%;         /* Pure white */
+    --foreground: 0 0% 0%;           /* Pure black */
 
     --card: 0 0% 100%;
-    --card-foreground: 189 47% 15%;
+    --card-foreground: 0 0% 0%;
 
     --popover: 0 0% 100%;
-    --popover-foreground: 189 47% 15%;
+    --popover-foreground: 0 0% 0%;
 
-    /* Primary: Professional Teal */
-    --primary: 189 43% 35%;
-    --primary-foreground: 180 25% 98%;
+    /* Primary: Blue */
+    --primary: 217 91% 60%;
+    --primary-foreground: 0 0% 100%;
 
-    /* Secondary: Cool grays */
-    --secondary: 185 15% 93%;
-    --secondary-foreground: 189 47% 15%;
+    /* Secondary: Subtle grays */
+    --secondary: 0 0% 96%;
+    --secondary-foreground: 0 0% 0%;
 
-    --muted: 185 15% 95%;
-    --muted-foreground: 185 10% 47%;
+    --muted: 0 0% 96%;
+    --muted-foreground: 0 0% 45%;
 
-    --accent: 185 15% 92%;
-    --accent-foreground: 189 47% 15%;
+    --accent: 217 91% 60%;
+    --accent-foreground: 0 0% 100%;
 
-    /* Semantic colors - Balanced and clear */
-    --destructive: 0 65% 51%;
+    /* Semantic colors - Using brand palette */
+    --destructive: 0 84% 60%;
     --destructive-foreground: 0 0% 100%;
 
-    --success: 142 70% 40%;
+    --success: 142 76% 36%;
     --success-foreground: 0 0% 100%;
 
-    --warning: 32 95% 44%;
-    --warning-foreground: 0 0% 100%;
+    --warning: 38 92% 50%;
+    --warning-foreground: 0 0% 0%;
 
-    --info: 199 89% 48%;
+    --info: 188 86% 43%;  /* Cyan */
     --info-foreground: 0 0% 100%;
 
-    /* Borders - Subtle teal hint */
-    --border: 185 20% 90%;
-    --input: 185 20% 90%;
-    --ring: 189 43% 35%;
+    /* Borders - Subtle */
+    --border: 0 0% 90%;
+    --input: 0 0% 90%;
+    --ring: 217 91% 60%;
 
     /* Standard border radius */
     --radius: 0.5rem;
 
-    --sidebar-background: 0 0% 97%;
-    --sidebar-foreground: 222 15% 20%;
-    --sidebar-primary: 222 15% 12%;
-    --sidebar-primary-foreground: 0 0% 97%;
-    --sidebar-accent: 222 12% 93%;
-    --sidebar-accent-foreground: 222 15% 12%;
-    --sidebar-border: 222 12% 88%;
-    --sidebar-ring: 222 47% 45%;
+    /* Navigation - Black background */
+    --sidebar-background: 0 0% 0%;      /* Pure black */
+    --sidebar-foreground: 0 0% 100%;
+    --sidebar-primary: 217 91% 60%;     /* Blue */
+    --sidebar-primary-foreground: 0 0% 100%;
+    --sidebar-accent: 0 0% 10%;
+    --sidebar-accent-foreground: 0 0% 100%;
+    --sidebar-border: 0 0% 15%;
+    --sidebar-ring: 217 91% 60%;
 
-    --chart-1: 142 65% 42%;
-    --chart-2: 0 72% 58%;
-    --chart-3: 221 70% 55%;
-    --chart-4: 38 85% 55%;
-    --chart-5: 280 60% 58%;
+    /* Charts - Using brand colors */
+    --chart-1: 142 76% 36%;   /* Success/Green */
+    --chart-2: 0 84% 60%;     /* Destructive/Red */
+    --chart-3: 217 91% 60%;   /* Blue */
+    --chart-4: 188 86% 43%;   /* Cyan */
+    --chart-5: 258 90% 66%;   /* Violet */
   }
 
   .dark {
-    /* Dark mode - Elegant teal */
-    --background: 189 40% 8%;
-    --foreground: 180 25% 98%;
+    /* Dark mode - Deep blacks with vibrant accents */
+    --background: 0 0% 5%;           /* Almost black */
+    --foreground: 0 0% 100%;
 
-    --card: 189 40% 10%;
-    --card-foreground: 180 25% 98%;
+    --card: 0 0% 8%;
+    --card-foreground: 0 0% 100%;
 
-    --popover: 189 40% 10%;
-    --popover-foreground: 180 25% 98%;
+    --popover: 0 0% 8%;
+    --popover-foreground: 0 0% 100%;
 
-    /* Primary: Lighter teal for dark */
-    --primary: 189 60% 50%;
-    --primary-foreground: 189 47% 15%;
+    /* Primary: Blue (brighter for dark) */
+    --primary: 217 91% 65%;
+    --primary-foreground: 0 0% 100%;
 
-    --secondary: 189 30% 17%;
-    --secondary-foreground: 180 25% 98%;
+    --secondary: 0 0% 12%;
+    --secondary-foreground: 0 0% 100%;
 
-    --muted: 189 35% 15%;
-    --muted-foreground: 185 15% 65%;
+    --muted: 0 0% 15%;
+    --muted-foreground: 0 0% 65%;
 
-    --accent: 189 30% 17%;
-    --accent-foreground: 180 25% 98%;
+    --accent: 217 91% 65%;
+    --accent-foreground: 0 0% 100%;
 
-    /* Semantic - Adjusted for dark */
-    --destructive: 0 65% 51%;
+    /* Semantic - Brighter for dark */
+    --destructive: 0 84% 65%;
     --destructive-foreground: 0 0% 100%;
 
-    --success: 142 70% 40%;
+    --success: 142 76% 45%;
     --success-foreground: 0 0% 100%;
 
-    --warning: 32 95% 44%;
-    --warning-foreground: 0 0% 100%;
+    --warning: 38 92% 55%;
+    --warning-foreground: 0 0% 0%;
 
-    --info: 199 89% 48%;
+    --info: 188 86% 50%;
     --info-foreground: 0 0% 100%;
 
-    --border: 189 25% 17%;
-    --input: 189 25% 17%;
-    --ring: 189 60% 50%;
+    --border: 0 0% 20%;
+    --input: 0 0% 20%;
+    --ring: 217 91% 65%;
 
-    --sidebar-background: 222 15% 10%;
-    --sidebar-foreground: 0 0% 95%;
-    --sidebar-primary: 222 55% 60%;
+    /* Navigation - Pure black */
+    --sidebar-background: 0 0% 0%;
+    --sidebar-foreground: 0 0% 100%;
+    --sidebar-primary: 217 91% 65%;
     --sidebar-primary-foreground: 0 0% 100%;
-    --sidebar-accent: 222 15% 18%;
-    --sidebar-accent-foreground: 0 0% 95%;
-    --sidebar-border: 222 15% 22%;
-    --sidebar-ring: 222 55% 60%;
+    --sidebar-accent: 0 0% 15%;
+    --sidebar-accent-foreground: 0 0% 100%;
+    --sidebar-border: 0 0% 20%;
+    --sidebar-ring: 217 91% 65%;
 
-    --chart-1: 142 60% 48%;
-    --chart-2: 0 65% 55%;
-    --chart-3: 221 70% 62%;
-    --chart-4: 38 85% 60%;
-    --chart-5: 280 60% 65%;
+    /* Charts - Vibrant for dark */
+    --chart-1: 142 76% 45%;
+    --chart-2: 0 84% 65%;
+    --chart-3: 217 91% 65%;
+    --chart-4: 188 86% 50%;
+    --chart-5: 258 90% 70%;
   }
 }
 
@@ -146,6 +156,8 @@ All colors MUST be HSL. Subtle palette with generous spacing.
 
   body {
     @apply bg-background text-foreground antialiased;
+    font-family: 'Plus Jakarta Sans', sans-serif;
+    font-weight: 400;
     overscroll-behavior: none;
     overflow-x: hidden;
     max-width: 100vw;
@@ -168,6 +180,31 @@ All colors MUST be HSL. Subtle palette with generous spacing.
 }
 
 @layer utilities {
+  /* Plus Jakarta Sans font weight utilities */
+  .font-jakarta-light {
+    font-weight: 300;
+  }
+  
+  .font-jakarta-regular {
+    font-weight: 400;
+  }
+  
+  .font-jakarta-medium {
+    font-weight: 500;
+  }
+  
+  .font-jakarta-semibold {
+    font-weight: 600;
+  }
+  
+  .font-jakarta-bold {
+    font-weight: 700;
+  }
+  
+  .font-jakarta-extrabold {
+    font-weight: 800;
+  }
+
   /* Standardized shadow system */
   .shadow-sm {
     box-shadow: 0 1px 2px 0 rgb(0 0 0 / 0.05);
