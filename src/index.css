@@ -273,4 +273,16 @@ Based on Blue, Cyan, Violet, Fuchsia palette
   .ripple {
     animation: ripple 0.6s ease-out;
   }
+
+  /* Number Flow - Apple-style number animations */
+  @keyframes number-flow-slide {
+    from {
+      transform: translateY(100%);
+      opacity: 0;
+    }
+    to {
+      transform: translateY(0);
+      opacity: 1;
+    }
+  }
 }

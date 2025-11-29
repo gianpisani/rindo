@@ -1,8 +1,8 @@
 import { CardContent, CardHeader, CardTitle } from "./ui/card";
 import { TrendingUp, TrendingDown, PiggyBank, Wallet, DollarSign } from "lucide-react";
 import { useTransactions } from "@/hooks/useTransactions";
-import { AnimatedNumber } from "./AnimatedNumber";
 import { GlassCard } from "./GlassCard";
+import NumberFlow from "@number-flow/react";
 
 export default function BalanceSummary() {
   const { transactions } = useTransactions();
@@ -83,7 +83,15 @@ export default function BalanceSummary() {
           </CardHeader>
           <CardContent className="pt-0">
             <div className={`text-2xl font-semibold ${card.color} tracking-tight`}>
-              <AnimatedNumber value={card.amount} />
+              $<NumberFlow 
+                value={card.amount} 
+                format={{ 
+                  style: "decimal",
+                  minimumFractionDigits: 0,
+                  maximumFractionDigits: 0
+                }}
+                locales="es-CL"
+              />
             </div>
           </CardContent>
         </GlassCard>

@@ -10,6 +10,7 @@ import { useNavigate } from "react-router-dom";
 import { format, startOfMonth, endOfMonth, subMonths } from "date-fns";
 import { es } from "date-fns/locale";
 import { cn } from "@/lib/utils";
+import NumberFlow from "@number-flow/react";
 
 const Index = () => {
   const { transactions } = useTransactions();
@@ -106,7 +107,15 @@ const Index = () => {
               </span>
             </div>
             <div className="text-4xl md:text-5xl font-bold">
-              {formatCurrency(totalBalance)}
+              $<NumberFlow 
+                value={totalBalance} 
+                format={{ 
+                  style: "decimal",
+                  minimumFractionDigits: 0,
+                  maximumFractionDigits: 0
+                }}
+                locales="es-CL"
+              />
             </div>
             <div className="space-y-2 pt-4 border-t border-border/50">
               <p className="text-xs text-muted-foreground font-medium">Este mes ({format(now, "MMM yyyy", { locale: es })})</p>
@@ -116,13 +125,31 @@ const Index = () => {
                     <TrendingUp className="h-3.5 w-3.5" />
                     <span className="text-xs font-medium">Ingresos</span>
                   </div>
-                  <p className="text-sm font-semibold">{formatCurrency(currentIncome)}</p>
+                  <p className="text-sm font-semibold">
+                    $<NumberFlow 
+                      value={currentIncome} 
+                      format={{ 
+                        style: "decimal",
+                        minimumFractionDigits: 0,
+                        maximumFractionDigits: 0
+                      }}
+                      locales="es-CL"
+                    />
+                  </p>
                   {incomeChange !== 0 && (
                     <p className={cn(
                       "text-xs",
                       incomeChange > 0 ? "text-success" : "text-destructive"
                     )}>
-                      {incomeChange > 0 ? "+" : ""}{incomeChange.toFixed(0)}%
+                      {incomeChange > 0 ? "+" : ""}
+                      <NumberFlow 
+                        value={incomeChange} 
+                        format={{ 
+                          style: "decimal",
+                          minimumFractionDigits: 0,
+                          maximumFractionDigits: 0
+                        }}
+                      />%
                     </p>
                   )}
                 </div>
@@ -131,13 +158,31 @@ const Index = () => {
                     <TrendingDown className="h-3.5 w-3.5" />
                     <span className="text-xs font-medium">Gastos</span>
                   </div>
-                  <p className="text-sm font-semibold">{formatCurrency(currentExpenses)}</p>
+                  <p className="text-sm font-semibold">
+                    $<NumberFlow 
+                      value={currentExpenses} 
+                      format={{ 
+                        style: "decimal",
+                        minimumFractionDigits: 0,
+                        maximumFractionDigits: 0
+                      }}
+                      locales="es-CL"
+                    />
+                  </p>
                   {expenseChange !== 0 && (
                     <p className={cn(
                       "text-xs",
                       expenseChange > 0 ? "text-destructive" : "text-success"
                     )}>
-                      {expenseChange > 0 ? "+" : ""}{expenseChange.toFixed(0)}%
+                      {expenseChange > 0 ? "+" : ""}
+                      <NumberFlow 
+                        value={expenseChange} 
+                        format={{ 
+                          style: "decimal",
+                          minimumFractionDigits: 0,
+                          maximumFractionDigits: 0
+                        }}
+                      />%
                     </p>
                   )}
                 </div>
@@ -146,7 +191,17 @@ const Index = () => {
                     <PiggyBank className="h-3.5 w-3.5" />
                     <span className="text-xs font-medium">Inversiones</span>
                   </div>
-                  <p className="text-sm font-semibold">{formatCurrency(currentInvestments)}</p>
+                  <p className="text-sm font-semibold">
+                    $<NumberFlow 
+                      value={currentInvestments} 
+                      format={{ 
+                        style: "decimal",
+                        minimumFractionDigits: 0,
+                        maximumFractionDigits: 0
+                      }}
+                      locales="es-CL"
+                    />
+                  </p>
                 </div>
               </div>
             </div>
