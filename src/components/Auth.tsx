@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "./ui/button";
 import { Input } from "./ui/input";
@@ -12,16 +12,66 @@ import {
   BoltIcon, 
   BanknotesIcon,
   CheckBadgeIcon,
-  CursorArrowRaysIcon
+  CursorArrowRaysIcon,
+  FaceSmileIcon
 } from "@heroicons/react/24/outline";
 import { CommandIcon } from "lucide-react";
+import Particles, { initParticlesEngine } from "@tsparticles/react";
+import { loadLinksPreset } from "@tsparticles/preset-links";
+import type { Engine } from "@tsparticles/engine";
 
 export default function Auth() {
   const [isLogin, setIsLogin] = useState(true);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
+  const [particlesInit, setParticlesInit] = useState(false);
   const { toast } = useToast();
+
+  useEffect(() => {
+    initParticlesEngine(async (engine: Engine) => {
+      await loadLinksPreset(engine);
+    }).then(() => {
+      setParticlesInit(true);
+    });
+  }, []);
+
+  const particlesOptions = useMemo(
+    () => ({
+      preset: "links",
+      background: {
+        color: {
+          value: "transparent",
+        },
+      },
+      particles: {
+        color: {
+          value: "#3b82f6",
+        },
+        links: {
+          color: "#3b82f6",
+          distance: 150,
+          enable: true,
+          opacity: 0.3,
+          width: 1,
+        },
+        move: {
+          enable: true,
+          speed: 1,
+        },
+        number: {
+          value: 80,
+        },
+        opacity: {
+          value: 0.5,
+        },
+        size: {
+          value: { min: 1, max: 3 },
+        },
+      },
+    }),
+    []
+  );
 
   const handleAuth = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -64,11 +114,13 @@ export default function Auth() {
     <div className="min-h-screen bg-black flex flex-col lg:flex-row">
       {/* Left Panel - Brand & Value Proposition (Hidden on mobile) */}
       <div className="hidden lg:flex lg:flex-1 bg-gradient-to-br from-black via-gray-950 to-black p-12 flex-col justify-between relative overflow-hidden">
-        {/* Subtle animated background */}
-        <div className="absolute inset-0 opacity-10">
-          <div className="absolute top-1/4 left-1/4 w-96 h-96 bg-blue rounded-full blur-[120px] animate-pulse" />
-          <div className="absolute bottom-1/4 right-1/4 w-96 h-96 bg-blue rounded-full blur-[120px] animate-pulse" style={{ animationDelay: "1s" }} />
-        </div>
+        {/* tsParticles Background */}
+        {particlesInit && (
+          <Particles
+            className="absolute inset-0"
+            options={particlesOptions}
+          />
+        )}
 
         <div className="relative z-10">
           {/* Logo */}
@@ -234,11 +286,11 @@ export default function Auth() {
           <div className="lg:hidden pt-8 space-y-4 border-t border-border">
             <div className="flex items-start gap-3">
               <div className="p-2 rounded-lg bg-blue/10">
-                <CommandIcon className="h-4 w-4 text-blue" />
+                <FaceSmileIcon className="h-4 w-4 text-blue" />
               </div>
               <div className="flex-1">
-                <h4 className="text-sm font-semibold mb-0.5">Keyboard-first</h4>
-                <p className="text-xs text-muted-foreground">Cmd+K, búsqueda fuzzy, acciones instantáneas</p>
+                <h4 className="text-sm font-semibold mb-0.5">Registra tus gastos en segundos</h4>
+                <p className="text-xs text-muted-foreground">Toca, escribe, listo. Sin fricciones.</p>
               </div>
             </div>
             <div className="flex items-start gap-3">
@@ -247,7 +299,7 @@ export default function Auth() {
               </div>
               <div className="flex-1">
                 <h4 className="text-sm font-semibold mb-0.5">Categorización automática</h4>
-                <p className="text-xs text-muted-foreground">Machine learning que mejora con el uso</p>
+                <p className="text-xs text-muted-foreground">Aprendizaje automático que mejora con el uso</p>
               </div>
             </div>
 
