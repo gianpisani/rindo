@@ -41,39 +41,12 @@ export type Database = {
         }
         Relationships: []
       }
-      push_subscriptions: {
-        Row: {
-          auth: string
-          created_at: string | null
-          endpoint: string
-          id: string
-          p256dh: string
-          user_id: string
-        }
-        Insert: {
-          auth: string
-          created_at?: string | null
-          endpoint: string
-          id?: string
-          p256dh: string
-          user_id: string
-        }
-        Update: {
-          auth?: string
-          created_at?: string | null
-          endpoint?: string
-          id?: string
-          p256dh?: string
-          user_id?: string
-        }
-        Relationships: []
-      }
       transactions: {
         Row: {
           amount: number
           category_name: string
           created_at: string
-          date: string
+          date: string // TIMESTAMPTZ with Chile timezone
           detail: string | null
           id: string
           type: string
@@ -83,7 +56,7 @@ export type Database = {
           amount: number
           category_name: string
           created_at?: string
-          date: string
+          date?: string // Defaults to now() in Chile timezone
           detail?: string | null
           id?: string
           type: string

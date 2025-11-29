@@ -152,15 +152,22 @@ export default function Transactions() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
+    // Convert date string (yyyy-MM-dd) to ISO timestamp with current time
+    const dateObj = parse(formData.date, "yyyy-MM-dd", new Date());
+    const now = new Date();
+    dateObj.setHours(now.getHours(), now.getMinutes(), now.getSeconds());
+    
     if (editingTransaction) {
       await updateTransaction.mutateAsync({
         id: editingTransaction.id,
         ...formData,
+        date: dateObj.toISOString(),
         amount: parseFloat(formData.amount.replace(/\D/g, "")),
       });
     } else {
       await addTransaction.mutateAsync({
         ...formData,
+        date: dateObj.toISOString(),
         amount: parseFloat(formData.amount.replace(/\D/g, "")),
       });
     }
@@ -209,7 +216,7 @@ export default function Transactions() {
   };
 
   const handleExportCSV = () => {
-    const csvData = filteredTransactions.map((t) => ({
+    const csvData = transactions.map((t) => ({
       Fecha: format(new Date(t.date), "dd/MM/yyyy"),
       Detalle: t.detail || "",
       Categoría: t.category_name,

@@ -134,7 +134,7 @@ export default function QuickTransactionForm({ onSuccess, defaultType }: QuickTr
       type: selectedType,
       category_name: selectedCategory,
       detail: detail || null,
-      date: format(new Date(), "yyyy-MM-dd"),
+      date: new Date().toISOString(),
     });
 
     // Reset form

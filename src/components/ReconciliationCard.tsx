@@ -93,7 +93,7 @@ export function ReconciliationCard({ onSuccess }: ReconciliationCardProps = {}) 
       const type = diferencia > 0 ? "Ingreso" : "Gasto";
       
       await addTransaction.mutateAsync({
-        date: new Date().toISOString().split("T")[0],
+        date: new Date().toISOString(),
         detail: `Conciliación automática - Ajuste de ${formatCurrency(Math.abs(diferencia))}`,
         category_name: categoryName,
         type: type,

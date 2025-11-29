@@ -4,7 +4,7 @@ import { useToast } from "./use-toast";
 
 export interface Transaction {
   id: string;
-  date: string;
+  date: string; // Now TIMESTAMPTZ in Chile timezone
   detail: string | null;
   category_name: string;
   type: "Ingreso" | "Gasto" | "Inversión";
