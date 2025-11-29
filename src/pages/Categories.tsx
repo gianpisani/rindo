@@ -150,9 +150,9 @@ export default function Categories() {
             }
           }}>
             <DialogTrigger asChild>
-              <Button className="rounded-full gap-2 shadow-sm">
-                <Plus className="h-4 w-4" />
-                <span className="hidden sm:inline">Nueva Categoría</span>
+              <Button className="rounded-full h-12 w-12 p-0 shadow-elevated md:w-auto md:px-6">
+                <Plus className="h-5 w-5 md:mr-2" />
+                <span className="hidden md:inline">Agregar</span>
               </Button>
             </DialogTrigger>
             <DialogContent className="rounded-2xl">

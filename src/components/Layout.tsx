@@ -5,7 +5,6 @@ import { Button } from "./ui/button";
 import { CommandBar } from "./CommandBar";
 import { QuickAddDrawer } from "./QuickAddDrawer";
 import { ReconciliationDrawer } from "./ReconciliationDrawer";
-import { FloatingActionButton } from "./FloatingActionButton";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
@@ -117,9 +116,6 @@ export default function Layout({ children }: LayoutProps) {
         onConciliate={() => setReconciliationOpen(true)}
       />
 
-      {/* Floating Action Button - Mobile only */}
-      <FloatingActionButton onClick={() => setDrawerOpen(true)} />
-
       {/* Quick Add Drawer - Global */}
       <QuickAddDrawer open={drawerOpen} onOpenChange={setDrawerOpen} />
 
@@ -199,14 +195,8 @@ export default function Layout({ children }: LayoutProps) {
       <main className="container mx-auto px-6 py-8" data-scrollable>{children}</main>
 
       {/* Mobile Bottom Navigation */}
-      <nav className="md:hidden fixed bottom-0 left-0 right-0 z-50 px-4 pb-safe">
-        <div 
-          className="relative bg-sidebar rounded-full shadow-2xl border border-sidebar-border px-2 backdrop-blur-xl bg-opacity-95"
-          style={{ 
-            marginBottom: 'max(env(safe-area-inset-bottom, 0px), 16px)',
-            paddingBottom: 'env(safe-area-inset-bottom, 0px)'
-          }}
-        >
+      <nav className="md:hidden fixed bottom-0 left-0 right-0 z-50 px-4" style={{ paddingBottom: 'max(env(safe-area-inset-bottom, 16px), 16px)' }}>
+        <div className="relative bg-sidebar rounded-full shadow-2xl border border-sidebar-border px-2 backdrop-blur-xl bg-opacity-95">
           <div className="relative z-10 flex items-center justify-around">
             {navItems.map((item) => {
               const Icon = item.icon;
