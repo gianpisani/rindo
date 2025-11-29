@@ -100,9 +100,9 @@ export default function Layout({ children }: LayoutProps) {
         <div className="container mx-auto px-6">
           <div className="flex h-16 items-center justify-between">
             <div className="flex items-center gap-8">
-              <Link to="/" className="flex items-center">
+              <Link to="/" className="flex items-center gap-2">
                 <span className="text-lg font-bold tracking-tight text-white">
-                  Finanzas<span className="text-blue">.</span>
+                  Rindo<span className="text-blue">.</span>
                 </span>
               </Link>
               <div className="flex items-center gap-1">
@@ -148,9 +148,9 @@ export default function Layout({ children }: LayoutProps) {
       {/* Mobile Top Bar - Minimal */}
       <div className="md:hidden sticky top-0 z-50 bg-sidebar border-b border-sidebar-border shadow-lg">
         <div className="flex h-14 items-center justify-between px-6">
-          <Link to="/" className="flex items-center">
+          <Link to="/" className="flex items-center gap-2">
             <span className="text-xl font-bold tracking-tight text-white">
-              Finanzas<span className="text-blue">.</span>
+              Rindo<span className="text-blue">.</span>
             </span>
           </Link>
           <Button 
@@ -169,7 +169,7 @@ export default function Layout({ children }: LayoutProps) {
 
       {/* Mobile Bottom Navigation */}
       <nav className="md:hidden fixed bottom-0 left-0 right-0 z-50 px-4 pb-4">
-        <div className="relative bg-sidebar rounded-full shadow-2xl border border-sidebar-border p-2">
+        <div className="relative bg-sidebar rounded-full shadow-2xl border border-sidebar-border px-2">
           <div className="relative z-10 flex items-center justify-around">
             {navItems.map((item) => {
               const Icon = item.icon;

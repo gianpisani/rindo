@@ -1,19 +1,19 @@
-<svg width="1024" height="1024" viewBox="0 0 1024 1024" fill="none" xmlns="http://www.w3.org/2000/svg">
-  <!-- Background -->
-  <rect width="1024" height="1024" fill="#000000"/>
-  
-  <!-- Main Logo Group - Perfectly Centered -->
-  <g transform="translate(577, 512)">
-    <!-- F Letter -->
-    <path d="M-200,-220 L-200,220 L-110,220 L-110,30 L80,30 L80,-60 L-110,-60 L-110,-130 L130,-130 L130,-220 Z" 
-          fill="#FFFFFF" 
-          stroke="none"/>
-    
-    <!-- Black Circle on top right corner (centered with F edge) -->
-    <circle cx="130" cy="-175" r="60" fill="#000000"/>
-    
-    <!-- Blue Dot (perfectly centered with black circle, above it) -->
-    <circle cx="130" cy="-175" r="40" fill="#3b82f6"/>
-  </g>
-</svg>
+<?xml version="1.0" standalone="no"?>
+<!DOCTYPE svg PUBLIC "-//W3C//DTD SVG 20010904//EN"
+ "http://www.w3.org/TR/2001/REC-SVG-20010904/DTD/svg10.dtd">
+<svg version="1.0" xmlns="http://www.w3.org/2000/svg"
+ width="500.000000pt" height="500.000000pt" viewBox="0 0 500.000000 500.000000"
+ preserveAspectRatio="xMidYMid meet">
 
+<g transform="translate(0.000000,500.000000) scale(0.100000,-0.100000)"
+fill="#000000" stroke="none">
+<path d="M0 2500 l0 -2500 2500 0 2500 0 0 2500 0 2500 -2500 0 -2500 0 0
+-2500z m2585 1116 c270 -48 439 -192 502 -427 27 -102 22 -273 -11 -376 -45
+-138 -117 -228 -243 -303 l-59 -35 73 -135 c40 -74 73 -138 73 -142 0 -4 -6
+-5 -13 -2 -24 9 -137 -14 -186 -38 -25 -12 -67 -43 -93 -69 l-46 -46 -97 183
+-97 184 -159 0 -159 0 0 -335 0 -335 -190 0 -190 0 0 945 0 945 408 0 c307 0
+427 -4 487 -14z"/>
+<path d="M2070 3020 l0 -292 218 4 c214 3 218 4 274 31 99 49 148 134 148 258
+0 84 -31 160 -86 208 -75 66 -110 74 -346 79 l-208 4 0 -292z"/>
+</g>
+</svg>
