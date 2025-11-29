@@ -1,9 +1,8 @@
-import React, { useState, useMemo } from "react";
+import React, { useState, useMemo, useEffect } from "react";
 import {
   useReactTable,
   getCoreRowModel,
   getSortedRowModel,
-  getFilteredRowModel,
   getPaginationRowModel,
   flexRender,
   SortingState,
@@ -39,9 +38,11 @@ import {
   X,
 } from "lucide-react";
 import { Transaction } from "@/hooks/useTransactions";
+import { useFuzzySearch } from "@/hooks/useFuzzySearch";
 import { format } from "date-fns";
 import { es } from "date-fns/locale";
 import { cn } from "@/lib/utils";
+import { useSearchParams } from "react-router-dom";
 
 interface TransactionsTableProps {
   transactions: Transaction[];
@@ -68,12 +69,21 @@ export function TransactionsTable({
   onDelete,
   categories,
 }: TransactionsTableProps) {
+  const [searchParams, setSearchParams] = useSearchParams();
   const [sorting, setSorting] = useState<SortingState>([
     { id: "date", desc: true }
   ]);
-  const [globalFilter, setGlobalFilter] = useState("");
+  const [globalFilter, setGlobalFilter] = useState(searchParams.get("search") || "");
   const [typeFilter, setTypeFilter] = useState<string>("all");
   const [categoryFilter, setCategoryFilter] = useState<string>("all");
+  
+  // Sincronizar con URL params
+  useEffect(() => {
+    const searchFromUrl = searchParams.get("search");
+    if (searchFromUrl) {
+      setGlobalFilter(searchFromUrl);
+    }
+  }, [searchParams]);
 
   const formatCurrency = (amount: number) => {
     return new Intl.NumberFormat("es-CL", {
@@ -248,25 +258,33 @@ export function TransactionsTable({
     },
   ], [onEdit, onDelete, categories]);
 
-  const columnFilters = React.useMemo(() => [
-    { id: "type", value: typeFilter },
-    { id: "category_name", value: categoryFilter },
-  ], [typeFilter, categoryFilter]);
+  // Aplicar fuzzy search + filtros
+  const fuzzyResults = useFuzzySearch(transactions, globalFilter);
+  
+  const filteredData = useMemo(() => {
+    // Usar fuzzy si hay búsqueda, sino todas
+    let data = globalFilter ? fuzzyResults : transactions;
+    
+    // Aplicar filtros adicionales
+    if (typeFilter !== "all") {
+      data = data.filter(t => t.type === typeFilter);
+    }
+    if (categoryFilter !== "all") {
+      data = data.filter(t => t.category_name === categoryFilter);
+    }
+    
+    return data;
+  }, [fuzzyResults, transactions, globalFilter, typeFilter, categoryFilter]);
 
   const table = useReactTable({
-    data: transactions,
+    data: filteredData,
     columns,
     getCoreRowModel: getCoreRowModel(),
     getSortedRowModel: getSortedRowModel(),
-    getFilteredRowModel: getFilteredRowModel(),
     getPaginationRowModel: getPaginationRowModel(),
     onSortingChange: setSorting,
-    onGlobalFilterChange: setGlobalFilter,
-    globalFilterFn: "includesString",
     state: {
       sorting,
-      globalFilter,
-      columnFilters,
     },
     initialState: {
       pagination: {

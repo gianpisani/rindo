@@ -13,22 +13,48 @@ import {
   Home,
   TrendingUp,
   FolderKanban,
-  Settings,
   Plus,
   Calculator,
   Search,
   DollarSign,
   BarChart3,
+  Receipt,
+  TrendingDown,
+  PiggyBank,
+  ArrowRight,
 } from "lucide-react";
+import { useTransactions } from "@/hooks/useTransactions";
+import { useFuzzySearch } from "@/hooks/useFuzzySearch";
+import { format } from "date-fns";
+import { es } from "date-fns/locale";
+import { Badge } from "@/components/ui/badge";
 
 interface CommandBarProps {
   onAddTransaction?: () => void;
   onConciliate?: () => void;
 }
 
+const typeIcons = {
+  Ingreso: TrendingUp,
+  Gasto: TrendingDown,
+  Inversión: PiggyBank,
+};
+
+const typeColors = {
+  Ingreso: "bg-green-50 text-green-700 border-green-200",
+  Gasto: "bg-red-50 text-red-700 border-red-200",
+  Inversión: "bg-blue-50 text-blue-700 border-blue-200",
+};
+
 export function CommandBar({ onAddTransaction, onConciliate }: CommandBarProps) {
   const [open, setOpen] = useState(false);
+  const [search, setSearch] = useState("");
   const navigate = useNavigate();
+  const { transactions } = useTransactions();
+  
+  // Fuzzy search
+  const searchResults = useFuzzySearch(transactions, search);
+  const showTransactions = search.length >= 2;
 
   useEffect(() => {
     const down = (e: KeyboardEvent) => {
@@ -42,17 +68,97 @@ export function CommandBar({ onAddTransaction, onConciliate }: CommandBarProps) 
     return () => document.removeEventListener("keydown", down);
   }, []);
 
+  useEffect(() => {
+    if (!open) {
+      setSearch("");
+    }
+  }, [open]);
+
   const runCommand = (command: () => void) => {
     setOpen(false);
     command();
   };
+  
+  const formatCurrency = (amount: number) => {
+    return new Intl.NumberFormat("es-CL", {
+      style: "currency",
+      currency: "CLP",
+      minimumFractionDigits: 0,
+    }).format(amount);
+  };
 
   return (
     <CommandDialog open={open} onOpenChange={setOpen}>
-      <CommandInput placeholder="¿Qué quieres hacer?" />
+      <CommandInput 
+        placeholder="Busca transacciones o navega..." 
+        value={search}
+        onValueChange={setSearch}
+      />
       <CommandList>
-        <CommandEmpty>No se encontraron resultados.</CommandEmpty>
+        <CommandEmpty>
+          {showTransactions 
+            ? "No se encontraron transacciones con ese término" 
+            : "Escribe para buscar transacciones..."}
+        </CommandEmpty>
         
+        {/* Resultados de búsqueda de transacciones */}
+        {showTransactions && searchResults.length > 0 && (
+          <>
+            <CommandGroup heading={`🔍 Transacciones (${searchResults.length} encontradas)`}>
+              {searchResults.slice(0, 8).map((transaction) => {
+                const TypeIcon = typeIcons[transaction.type];
+                return (
+                  <CommandItem
+                    key={transaction.id}
+                    value={transaction.id}
+                    onSelect={() => 
+                      runCommand(() => navigate(`/transactions?search=${encodeURIComponent(search)}`))
+                    }
+                    className="flex items-start gap-3 py-3 cursor-pointer"
+                  >
+                    <Receipt className="h-4 w-4 text-muted-foreground mt-0.5" />
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2 mb-1">
+                        <span className="font-medium text-sm truncate">
+                          {transaction.detail || transaction.category_name}
+                        </span>
+                        <Badge variant="outline" className={`text-xs shrink-0 ${typeColors[transaction.type]}`}>
+                          <TypeIcon className="h-3 w-3 mr-1" />
+                          {transaction.type}
+                        </Badge>
+                      </div>
+                      <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                        <span>{format(new Date(transaction.date), "dd MMM yyyy", { locale: es })}</span>
+                        <span>•</span>
+                        <span className="truncate">{transaction.category_name}</span>
+                        <span>•</span>
+                        <span className="font-semibold text-foreground">
+                          {formatCurrency(transaction.amount)}
+                        </span>
+                      </div>
+                    </div>
+                  </CommandItem>
+                );
+              })}
+              
+              {searchResults.length > 8 && (
+                <CommandItem
+                  value="ver-todas"
+                  onSelect={() => 
+                    runCommand(() => navigate(`/transactions?search=${encodeURIComponent(search)}`))
+                  }
+                  className="justify-center text-sm text-primary font-medium cursor-pointer"
+                >
+                  Ver todas las {searchResults.length} transacciones
+                  <ArrowRight className="ml-2 h-4 w-4" />
+                </CommandItem>
+              )}
+            </CommandGroup>
+            <CommandSeparator />
+          </>
+        )}
+        
+        {/* Acciones y navegación (siempre visible) */}
         <CommandGroup heading="Acciones">
           <CommandItem onSelect={() => runCommand(() => onAddTransaction?.())}>
             <Plus className="mr-2 h-4 w-4" />
@@ -86,15 +192,6 @@ export function CommandBar({ onAddTransaction, onConciliate }: CommandBarProps) 
           <CommandItem onSelect={() => runCommand(() => navigate("/recategorize"))}>
             <BarChart3 className="mr-2 h-4 w-4" />
             <span>Recategorizar</span>
-          </CommandItem>
-        </CommandGroup>
-
-        <CommandSeparator />
-
-        <CommandGroup heading="Buscar">
-          <CommandItem onSelect={() => runCommand(() => navigate("/transactions"))}>
-            <Search className="mr-2 h-4 w-4" />
-            <span>Buscar Transacciones</span>
           </CommandItem>
         </CommandGroup>
       </CommandList>

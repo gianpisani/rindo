@@ -98,7 +98,7 @@ const Index = () => {
     <Layout>
       <div className="space-y-6 max-w-4xl mx-auto">
         {/* Hero Balance Card */}
-        <Card className="p-6 bg-gradient-to-br from-blue/5 to-violet/5 border-blue/20">
+        <Card className="p-6 bg-blue/5 border-blue/20">
           <div className="space-y-4">
             <div className="flex items-center justify-between">
               <span className="text-sm text-muted-foreground font-medium">Balance Total</span>
