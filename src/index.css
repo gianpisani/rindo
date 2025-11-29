@@ -2,6 +2,26 @@
 @tailwind components;
 @tailwind utilities;
 
+/* Privacy Mode Blur Effect */
+.privacy-blur {
+  filter: blur(6px);
+  transition: filter 0.2s ease-in-out;
+  user-select: none;
+  pointer-events: none;
+}
+
+.privacy-blur-light {
+  filter: blur(3px);
+  transition: filter 0.2s ease-in-out;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .privacy-blur,
+  .privacy-blur-light {
+    transition: none;
+  }
+}
+
 /* Modern Vibrant Design System - Professional & Bold
 Based on Blue, Cyan, Violet, Fuchsia palette
 */

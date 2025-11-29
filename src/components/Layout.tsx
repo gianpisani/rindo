@@ -1,6 +1,6 @@
 import { ReactNode, useEffect, useRef, useState } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
-import { Home, BarChart3, Receipt, FolderOpen, LogOut, Layers } from "lucide-react";
+import { Home, BarChart3, Receipt, FolderOpen, LogOut, Layers, Eye, EyeOff } from "lucide-react";
 import { Button } from "./ui/button";
 import { CommandBar } from "./CommandBar";
 import { QuickAddDrawer } from "./QuickAddDrawer";
@@ -8,6 +8,7 @@ import { ReconciliationDrawer } from "./ReconciliationDrawer";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
+import { usePrivacyMode } from "@/hooks/usePrivacyMode";
 
 interface LayoutProps {
   children: ReactNode;
@@ -19,6 +20,7 @@ export default function Layout({ children }: LayoutProps) {
   const { toast } = useToast();
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [reconciliationOpen, setReconciliationOpen] = useState(false);
+  const { isPrivacyMode, togglePrivacyMode } = usePrivacyMode();
   
   // Prevenir zoom en iOS con double-tap y optimizar scroll
   useEffect(() => {
@@ -155,6 +157,24 @@ export default function Layout({ children }: LayoutProps) {
               </div>
             </div>
             <div className="flex items-center gap-3">
+              <Button
+                onClick={togglePrivacyMode}
+                variant="ghost"
+                size="sm"
+                className={cn(
+                  "rounded-full h-8 w-8 p-0 transition-all duration-200",
+                  isPrivacyMode 
+                    ? "bg-blue/20 text-blue hover:bg-blue/30" 
+                    : "bg-muted/10 text-muted-foreground hover:bg-muted hover:text-foreground"
+                )}
+                title={isPrivacyMode ? "Desactivar modo privado" : "Activar modo privado"}
+              >
+                {isPrivacyMode ? (
+                  <EyeOff className="h-4 w-4" />
+                ) : (
+                  <Eye className="h-4 w-4" />
+                )}
+              </Button>
               <kbd className="hidden lg:inline-flex h-7 select-none items-center gap-1 rounded bg-sidebar-accent px-2 font-mono text-[11px] font-medium text-white border border-sidebar-border">
                 <span className="text-xs">⌘</span>K
               </kbd>
@@ -175,19 +195,41 @@ export default function Layout({ children }: LayoutProps) {
       {/* Mobile Top Bar - Minimal */}
       <div className="md:hidden sticky top-0 z-50 bg-sidebar border-b border-sidebar-border shadow-lg backdrop-blur-xl bg-opacity-95">
         <div className="flex h-14 items-center justify-between px-6" style={{ paddingTop: 'env(safe-area-inset-top, 0)' }}>
-          <Link to="/" className="flex items-center gap-2 active:scale-95 transition-transform">
-            <span className="text-xl font-bold tracking-tight text-white">
-              Rindo<span className="text-blue">.</span>
-            </span>
-          </Link>
-          <Button 
-            onClick={handleLogout} 
-            variant="ghost" 
-            size="sm" 
-            className="rounded-full h-9 w-9 p-0 text-red-400 hover:text-red-300 hover:bg-sidebar-accent active:scale-90 transition-transform"
-          >
-            <LogOut className="h-4 w-4" />
-          </Button>
+          <div className="flex items-center gap-2">
+            <Link to="/" className="flex items-center gap-2 active:scale-95 transition-transform">
+              <span className="text-xl font-bold tracking-tight text-white">
+                Rindo<span className="text-blue">.</span>
+              </span>
+            </Link>
+          </div>
+          <div className="flex items-center gap-2"> 
+            <Button
+                onClick={togglePrivacyMode}
+                variant="ghost"
+                size="sm"
+                className={cn(
+                  "rounded-full h-9 w-9 p-0 active:scale-90 transition-all duration-200",
+                  isPrivacyMode 
+                    ? "bg-blue/20 text-blue hover:bg-blue/30" 
+                    : "bg-muted/10 text-muted-foreground hover:bg-muted hover:text-foreground"
+                )}
+                title={isPrivacyMode ? "Desactivar modo privado" : "Activar modo privado"}
+              >
+                {isPrivacyMode ? (
+                  <EyeOff className="h-4 w-4" />
+                ) : (
+                  <Eye className="h-4 w-4" />
+                )}
+              </Button>
+            <Button 
+              onClick={handleLogout} 
+              variant="ghost" 
+              size="sm" 
+              className="rounded-full h-9 w-9 p-0 text-red-400 hover:text-red-300 hover:bg-sidebar-accent active:scale-90 transition-transform"
+            >
+              <LogOut className="h-4 w-4" />
+            </Button>
+          </div>
         </div>
       </div>
 

@@ -10,6 +10,8 @@ import { TrendingUp, TrendingDown, PiggyBank, Wallet, DollarSign } from "lucide-
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, LineChart, Line, Legend, Cell } from "recharts";
 import { format, startOfMonth, endOfMonth, eachMonthOfInterval, subMonths } from "date-fns";
 import { es } from "date-fns/locale";
+import { usePrivacyMode } from "@/hooks/usePrivacyMode";
+import { cn } from "@/lib/utils";
 
 const COLORS = {
   Ingreso: "hsl(var(--chart-1))",
@@ -20,6 +22,7 @@ const COLORS = {
 export default function Dashboard() {
   const { transactions } = useTransactions();
   const { categories } = useCategories();
+  const { isPrivacyMode } = usePrivacyMode();
 
   // Calculate totals for balance cards
   const totals = transactions.reduce(
@@ -233,7 +236,7 @@ export default function Dashboard() {
           {/* Widget 4 - Evolution Chart */}
           <DashboardWidget key="evolution" title="Evolución Mensual">
             <ResponsiveContainer width="100%" height="100%" minHeight={250}>
-                <LineChart data={monthlyData}>
+                <LineChart data={monthlyData} className={cn(isPrivacyMode && "privacy-blur")}>
                   <XAxis 
                     dataKey="month" 
                     stroke="hsl(var(--muted-foreground))" 
@@ -291,7 +294,7 @@ export default function Dashboard() {
           {/* Widget - Expenses Bar Chart */}
           <DashboardWidget key="expensesChart" title="Gastos por Categoría">
             <ResponsiveContainer width="100%" height="100%" minHeight={300}>
-                <BarChart data={expensesByCategory} layout="vertical">
+                <BarChart data={expensesByCategory} layout="vertical" className={cn(isPrivacyMode && "privacy-blur")}>
                   <XAxis 
                     type="number" 
                     stroke="hsl(var(--muted-foreground))" 

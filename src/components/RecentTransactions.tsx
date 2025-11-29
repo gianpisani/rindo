@@ -5,6 +5,8 @@ import { ArrowRight, TrendingUp, TrendingDown, PiggyBank } from "lucide-react";
 import { useTransactions } from "@/hooks/useTransactions";
 import { format } from "date-fns";
 import { es } from "date-fns/locale";
+import { usePrivacyMode } from "@/hooks/usePrivacyMode";
+import { cn } from "@/lib/utils";
 
 const typeIcons = {
   Ingreso: TrendingUp,
@@ -27,6 +29,7 @@ const typeBg = {
 export default function RecentTransactions() {
   const { transactions } = useTransactions();
   const recentTransactions = transactions.slice(0, 5);
+  const { isPrivacyMode } = usePrivacyMode();
 
   const formatCurrency = (amount: number) => {
     return new Intl.NumberFormat("es-CL", {
@@ -68,20 +71,20 @@ export default function RecentTransactions() {
                       <Icon className={`h-5 w-5 ${colorClass}`} />
                     </div>
                     <div className="min-w-0 flex-1">
-                      <p className="font-semibold text-sm truncate">{transaction.category_name}</p>
-                      <p className="text-xs text-muted-foreground">
+                      <p className={cn("font-semibold text-sm truncate", isPrivacyMode && "privacy-blur")}>{transaction.category_name}</p>
+                      <p className={cn("text-xs text-muted-foreground", isPrivacyMode && "privacy-blur-light")}>
                         {format(new Date(transaction.date), "d 'de' MMM", {
                           locale: es,
                         })}
                       </p>
                       {transaction.detail && (
-                        <p className="text-xs text-muted-foreground mt-0.5 truncate">
+                        <p className={cn("text-xs text-muted-foreground mt-0.5 truncate", isPrivacyMode && "privacy-blur")}>
                           {transaction.detail}
                         </p>
                       )}
                     </div>
                   </div>
-                  <div className={`font-semibold text-sm ${colorClass} ml-2 flex-shrink-0`}>
+                  <div className={cn("font-semibold text-sm ml-2 flex-shrink-0", colorClass, isPrivacyMode && "privacy-blur")}>
                     {formatCurrency(Number(transaction.amount))}
                   </div>
                 </div>

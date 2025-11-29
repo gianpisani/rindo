@@ -11,6 +11,7 @@ import { format, startOfMonth, endOfMonth, subMonths } from "date-fns";
 import { es } from "date-fns/locale";
 import { cn } from "@/lib/utils";
 import NumberFlow from "@number-flow/react";
+import { usePrivacyMode } from "@/hooks/usePrivacyMode";
 
 const Index = () => {
   const { transactions } = useTransactions();
@@ -18,6 +19,7 @@ const Index = () => {
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [reconciliationOpen, setReconciliationOpen] = useState(false);
   const [preselectedType, setPreselectedType] = useState<"Ingreso" | "Gasto" | "Inversión" | undefined>();
+  const { isPrivacyMode } = usePrivacyMode();
 
   const handleQuickAdd = (type: "Ingreso" | "Gasto" | "Inversión") => {
     setPreselectedType(type);
@@ -106,7 +108,7 @@ const Index = () => {
                 {format(now, "MMMM yyyy", { locale: es })}
               </span>
             </div>
-            <div className="text-4xl md:text-5xl font-bold">
+            <div className={cn("text-4xl md:text-5xl font-bold", isPrivacyMode && "privacy-blur")}>
               $<NumberFlow 
                 value={totalBalance} 
                 format={{ 
@@ -125,7 +127,7 @@ const Index = () => {
                     <TrendingUp className="h-3.5 w-3.5" />
                     <span className="text-xs font-medium">Ingresos</span>
                   </div>
-                  <p className="text-sm font-semibold">
+                  <p className={cn("text-sm font-semibold", isPrivacyMode && "privacy-blur")}>
                     $<NumberFlow 
                       value={currentIncome} 
                       format={{ 
@@ -139,7 +141,8 @@ const Index = () => {
                   {incomeChange !== 0 && (
                     <p className={cn(
                       "text-xs",
-                      incomeChange > 0 ? "text-success" : "text-destructive"
+                      incomeChange > 0 ? "text-success" : "text-destructive",
+                      isPrivacyMode && "privacy-blur"
                     )}>
                       {incomeChange > 0 ? "+" : ""}
                       <NumberFlow 
@@ -158,7 +161,7 @@ const Index = () => {
                     <TrendingDown className="h-3.5 w-3.5" />
                     <span className="text-xs font-medium">Gastos</span>
                   </div>
-                  <p className="text-sm font-semibold">
+                  <p className={cn("text-sm font-semibold", isPrivacyMode && "privacy-blur")}>
                     $<NumberFlow 
                       value={currentExpenses} 
                       format={{ 
@@ -172,7 +175,8 @@ const Index = () => {
                   {expenseChange !== 0 && (
                     <p className={cn(
                       "text-xs",
-                      expenseChange > 0 ? "text-destructive" : "text-success"
+                      expenseChange > 0 ? "text-destructive" : "text-success",
+                      isPrivacyMode && "privacy-blur"
                     )}>
                       {expenseChange > 0 ? "+" : ""}
                       <NumberFlow 
@@ -191,7 +195,7 @@ const Index = () => {
                     <PiggyBank className="h-3.5 w-3.5" />
                     <span className="text-xs font-medium">Inversiones</span>
                   </div>
-                  <p className="text-sm font-semibold">
+                  <p className={cn("text-sm font-semibold", isPrivacyMode && "privacy-blur")}>
                     $<NumberFlow 
                       value={currentInvestments} 
                       format={{ 
@@ -298,10 +302,10 @@ const Index = () => {
                         )} />
                       </div>
                       <div className="min-w-0 flex-1">
-                        <p className="text-sm font-medium truncate">
+                        <p className={cn("text-sm font-medium truncate", isPrivacyMode && "privacy-blur")}>
                           {transaction.category_name}
                         </p>
-                        <p className="text-xs text-muted-foreground">
+                        <p className={cn("text-xs text-muted-foreground", isPrivacyMode && "privacy-blur-light")}>
                           {format(new Date(transaction.date), "d MMM", { locale: es })}
                           {transaction.detail && ` • ${transaction.detail}`}
                         </p>
@@ -311,7 +315,8 @@ const Index = () => {
                       "text-sm font-semibold whitespace-nowrap ml-3",
                       transaction.type === "Ingreso" && "text-success",
                       transaction.type === "Gasto" && "text-destructive",
-                      transaction.type === "Inversión" && "text-blue"
+                      transaction.type === "Inversión" && "text-blue",
+                      isPrivacyMode && "privacy-blur"
                     )}>
                       {formatCurrency(Number(transaction.amount))}
                     </div>

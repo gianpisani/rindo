@@ -43,6 +43,7 @@ import { format } from "date-fns";
 import { es } from "date-fns/locale";
 import { cn } from "@/lib/utils";
 import { useSearchParams } from "react-router-dom";
+import { usePrivacyMode } from "@/hooks/usePrivacyMode";
 
 interface TransactionsTableProps {
   transactions: Transaction[];
@@ -76,6 +77,7 @@ export function TransactionsTable({
   const [globalFilter, setGlobalFilter] = useState(searchParams.get("search") || "");
   const [typeFilter, setTypeFilter] = useState<string>("all");
   const [categoryFilter, setCategoryFilter] = useState<string>("all");
+  const { isPrivacyMode } = usePrivacyMode();
   
   // Sincronizar con URL params
   useEffect(() => {
@@ -116,7 +118,7 @@ export function TransactionsTable({
       cell: ({ row }) => {
         const date = new Date(row.original.date);
         return (
-          <div className="font-medium text-sm">
+          <div className={cn("font-medium text-sm", isPrivacyMode && "privacy-blur-light")}>
             {format(date, "dd MMM yyyy", { locale: es })}
           </div>
         );
@@ -166,7 +168,7 @@ export function TransactionsTable({
           (c) => c.name === row.original.category_name
         );
         return (
-          <div className="font-medium text-sm">
+          <div className={cn("font-medium text-sm", isPrivacyMode && "privacy-blur")}>
             {row.original.category_name}
           </div>
         );
@@ -180,7 +182,7 @@ export function TransactionsTable({
       header: "Detalle",
       cell: ({ row }) => {
         return (
-          <div className="max-w-[300px] truncate text-sm text-muted-foreground">
+          <div className={cn("max-w-[300px] truncate text-sm text-muted-foreground", isPrivacyMode && "privacy-blur")}>
             {row.original.detail || "-"}
           </div>
         );
@@ -208,7 +210,7 @@ export function TransactionsTable({
       cell: ({ row }) => {
         const amount = parseFloat(row.getValue("amount"));
         return (
-          <div className="text-right font-semibold text-sm">
+          <div className={cn("text-right font-semibold text-sm", isPrivacyMode && "privacy-blur")}>
             {formatCurrency(amount)}
           </div>
         );

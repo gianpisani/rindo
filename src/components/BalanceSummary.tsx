@@ -3,9 +3,12 @@ import { TrendingUp, TrendingDown, PiggyBank, Wallet, DollarSign } from "lucide-
 import { useTransactions } from "@/hooks/useTransactions";
 import { GlassCard } from "./GlassCard";
 import NumberFlow from "@number-flow/react";
+import { usePrivacyMode } from "@/hooks/usePrivacyMode";
+import { cn } from "@/lib/utils";
 
 export default function BalanceSummary() {
   const { transactions } = useTransactions();
+  const { isPrivacyMode } = usePrivacyMode();
 
   const totals = transactions.reduce(
     (acc, transaction) => {
@@ -82,7 +85,7 @@ export default function BalanceSummary() {
             </div>
           </CardHeader>
           <CardContent className="pt-0">
-            <div className={`text-lg font-semibold ${card.color} tracking-tight inline`}>
+            <div className={cn("text-lg font-semibold tracking-tight inline", card.color, isPrivacyMode && "privacy-blur")}>
               $<NumberFlow 
                 value={card.amount} 
                 format={{ 

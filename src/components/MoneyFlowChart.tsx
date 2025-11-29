@@ -2,10 +2,13 @@ import { ResponsiveSankey } from "@nivo/sankey";
 import { useTransactions } from "@/hooks/useTransactions";
 import { useCategories } from "@/hooks/useCategories";
 import { startOfMonth, endOfMonth } from "date-fns";
+import { usePrivacyMode } from "@/hooks/usePrivacyMode";
+import { cn } from "@/lib/utils";
 
 export function MoneyFlowChart() {
   const { transactions } = useTransactions();
   const { categories } = useCategories();
+  const { isPrivacyMode } = usePrivacyMode();
 
   // Filtrar transacciones del mes actual
   const now = new Date();
@@ -131,7 +134,7 @@ export function MoneyFlowChart() {
         </p>
       )}
       <div className="h-[400px] md:h-[400px] overflow-x-auto scrollbar-thin scrollbar-thumb-muted scrollbar-track-transparent">
-        <div className={isMobile ? "min-w-[600px] h-full" : "h-full"}>
+        <div className={cn(isMobile ? "min-w-[600px] h-full" : "h-full", isPrivacyMode && "privacy-blur")}>
         <ResponsiveSankey
           data={data}
           margin={isMobile 

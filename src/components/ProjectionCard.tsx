@@ -5,10 +5,13 @@ import { format, startOfMonth, endOfMonth, eachMonthOfInterval, subMonths, addMo
 import { es } from "date-fns/locale";
 import { ToggleGroup, ToggleGroupItem } from "./ui/toggle-group";
 import { useState } from "react";
+import { usePrivacyMode } from "@/hooks/usePrivacyMode";
+import { cn } from "@/lib/utils";
 
 export default function ProjectionCard() {
   const { transactions } = useTransactions();
   const [projectionMonths, setProjectionMonths] = useState<number>(3);
+  const { isPrivacyMode } = usePrivacyMode();
 
   // Calcular patrimonio acumulado mes a mes (solo meses completos)
   const last12Months = eachMonthOfInterval({
@@ -221,19 +224,19 @@ export default function ProjectionCard() {
         <div className="grid grid-cols-2 lg:grid-cols-3 gap-4">
           <div className="space-y-1">
             <p className="text-xs text-muted-foreground">Crecimiento/Mes</p>
-            <p className={`text-2xl font-semibold ${avgMonthlyGrowth >= 0 ? "text-success" : "text-destructive"}`}>
+            <p className={cn("text-2xl font-semibold", avgMonthlyGrowth >= 0 ? "text-success" : "text-destructive", isPrivacyMode && "privacy-blur")}>
               {formatCurrency(avgMonthlyGrowth)}
             </p>
           </div>
           <div className="space-y-1">
             <p className="text-xs text-muted-foreground">Patrimonio Actual</p>
-            <p className="text-2xl font-semibold text-foreground">
+            <p className={cn("text-2xl font-semibold text-foreground", isPrivacyMode && "privacy-blur")}>
               {formatCurrency(currentPatrimonio)}
             </p>
           </div>
           <div className="space-y-1 col-span-2 lg:col-span-1">
             <p className="text-xs text-muted-foreground">Proyección {projectionLabel}</p>
-            <p className={`text-2xl font-semibold ${projectedValue >= currentPatrimonio ? "text-success" : "text-destructive"}`}>
+            <p className={cn("text-2xl font-semibold", projectedValue >= currentPatrimonio ? "text-success" : "text-destructive", isPrivacyMode && "privacy-blur")}>
               {formatCurrency(projectedValue)}
             </p>
           </div>
@@ -255,7 +258,7 @@ export default function ProjectionCard() {
             </div>
           </div>
           <ResponsiveContainer width="100%" height={240}>
-            <LineChart data={chartData}>
+            <LineChart data={chartData} className={cn(isPrivacyMode && "privacy-blur")}>
               <XAxis 
                 dataKey="month" 
                 stroke="hsl(var(--muted-foreground))" 
