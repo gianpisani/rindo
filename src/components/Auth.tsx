@@ -127,7 +127,7 @@ export default function Auth() {
 
         <div className="relative z-10">
           <p className="text-gray-500 text-sm">
-            Hecho por alguien que se cansó de apps de finanzas sobrecargadas
+            Hecho para que no sea tan personal
           </p>
         </div>
       </div>
@@ -156,7 +156,7 @@ export default function Auth() {
             <p className="text-muted-foreground">
               {isLogin
                 ? "Registra. Analiza. Optimiza."
-                : "Finanzas personales sin las típicas huevadas"}
+                : "Finanzas personales pero no tan personales"}
             </p>
           </div>
 
