@@ -1,0 +1,28 @@
+{
+  "name": "Finanzas - Gestión Inteligente",
+  "short_name": "Finanzas",
+  "description": "Gestión financiera personal moderna y efectiva. Control total de tus ingresos, gastos e inversiones con análisis inteligentes.",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#000000",
+  "theme_color": "#3b82f6",
+  "orientation": "portrait-primary",
+  "icons": [
+    {
+      "src": "/icon-192x192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/icon-512x512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ],
+  "categories": ["finance", "productivity"],
+  "lang": "es-CL",
+  "dir": "ltr"
+}
+

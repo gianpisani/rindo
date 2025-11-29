@@ -1,0 +1,19 @@
+<svg width="1024" height="1024" viewBox="0 0 1024 1024" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <!-- Background -->
+  <rect width="1024" height="1024" fill="#000000"/>
+  
+  <!-- Main Logo Group - Perfectly Centered -->
+  <g transform="translate(577, 512)">
+    <!-- F Letter -->
+    <path d="M-200,-220 L-200,220 L-110,220 L-110,30 L80,30 L80,-60 L-110,-60 L-110,-130 L130,-130 L130,-220 Z" 
+          fill="#FFFFFF" 
+          stroke="none"/>
+    
+    <!-- Black Circle on top right corner (centered with F edge) -->
+    <circle cx="130" cy="-175" r="60" fill="#000000"/>
+    
+    <!-- Blue Dot (perfectly centered with black circle, above it) -->
+    <circle cx="130" cy="-175" r="40" fill="#3b82f6"/>
+  </g>
+</svg>
+

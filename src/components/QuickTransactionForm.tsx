@@ -12,9 +12,9 @@ import { categorizeTransaction, debounce } from "@/lib/categorizer";
 import { supabase } from "@/integrations/supabase/client";
 
 const typeConfig = {
-  Ingreso: { icon: TrendingUp, color: "bg-success text-success-foreground", textColor: "text-success" },
-  Gasto: { icon: TrendingDown, color: "bg-destructive text-destructive-foreground", textColor: "text-destructive" },
-  Inversión: { icon: PiggyBank, color: "bg-blue text-white", textColor: "text-blue" },
+  Ingreso: { icon: TrendingUp, color: "bg-success hover:bg-success/80 text-success-foreground", textColor: "text-success" },
+  Gasto: { icon: TrendingDown, color: "bg-destructive hover:bg-destructive/80 text-destructive-foreground", textColor: "text-destructive" },
+  Inversión: { icon: PiggyBank, color: "bg-blue hover:bg-blue/80 text-white", textColor: "text-blue" },
 };
 
 interface QuickTransactionFormProps {
@@ -187,10 +187,10 @@ export default function QuickTransactionForm({ onSuccess, defaultType }: QuickTr
                     key={type}
                     type="button"
                     variant={isSelected ? "default" : "outline"}
-                    className={`h-16 flex flex-col gap-1 rounded-xl transition-all duration-200 ${
+                    className={`h-16 flex flex-col gap-1 rounded-xl transition-all duration-200 hover:${color} text-gray-600 ${
                       isSelected 
                         ? color + " shadow-sm" 
-                        : "border-border/30 hover:bg-muted/30"
+                        : "border-border/30"
                     }`}
                     onClick={() => {
                       setSelectedType(type);

@@ -164,6 +164,23 @@ Based on Blue, Cyan, Violet, Fuchsia palette
     position: relative;
   }
 
+  /* PWA Splash Screen - Logo centered */
+  html {
+    background-color: #000000;
+    background-image: url('/splash-screen.svg');
+    background-size: contain;
+    background-position: center;
+    background-repeat: no-repeat;
+  }
+  
+  /* iOS PWA status bar */
+  @supports (-webkit-touch-callout: none) {
+    body {
+      padding-top: env(safe-area-inset-top);
+      padding-bottom: env(safe-area-inset-bottom);
+    }
+  }
+
   /* Prevenir scroll horizontal en todos los elementos */
   img, video, iframe {
     max-width: 100%;
