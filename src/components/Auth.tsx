@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo, memo } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "./ui/button";
 import { Input } from "./ui/input";
@@ -19,6 +19,11 @@ import { CommandIcon } from "lucide-react";
 import Particles, { initParticlesEngine } from "@tsparticles/react";
 import { loadLinksPreset } from "@tsparticles/preset-links";
 import type { Engine } from "@tsparticles/engine";
+
+// Memoizar las partículas para evitar re-renders
+const MemoizedParticles = memo(({ options }: { options: any }) => (
+  <Particles className="absolute inset-0" options={options} />
+));
 
 export default function Auth() {
   const [isLogin, setIsLogin] = useState(true);
@@ -115,12 +120,7 @@ export default function Auth() {
       {/* Left Panel - Brand & Value Proposition (Hidden on mobile) */}
       <div className="hidden lg:flex lg:flex-1 bg-gradient-to-br from-black via-gray-950 to-black p-12 flex-col justify-between relative overflow-hidden">
         {/* tsParticles Background */}
-        {particlesInit && (
-          <Particles
-            className="absolute inset-0"
-            options={particlesOptions}
-          />
-        )}
+        {particlesInit && <MemoizedParticles options={particlesOptions} />}
 
         <div className="relative z-10">
           {/* Logo */}

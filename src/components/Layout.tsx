@@ -20,6 +20,37 @@ export default function Layout({ children }: LayoutProps) {
   const { toast } = useToast();
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [reconciliationOpen, setReconciliationOpen] = useState(false);
+  
+  // Prevenir zoom en iOS con double-tap y optimizar scroll
+  useEffect(() => {
+    let lastTouchEnd = 0;
+    const preventZoom = (e: TouchEvent) => {
+      const now = Date.now();
+      if (now - lastTouchEnd <= 300) {
+        e.preventDefault();
+      }
+      lastTouchEnd = now;
+    };
+    
+    document.addEventListener('touchend', preventZoom, { passive: false });
+    
+    // Prevenir elastic scroll en iOS (bounce effect)
+    const preventPullToRefresh = (e: TouchEvent) => {
+      const element = e.target as HTMLElement;
+      const scrollable = element.closest('[data-scrollable]');
+      
+      if (!scrollable && window.scrollY === 0) {
+        e.preventDefault();
+      }
+    };
+    
+    document.addEventListener('touchmove', preventPullToRefresh, { passive: false });
+    
+    return () => {
+      document.removeEventListener('touchend', preventZoom);
+      document.removeEventListener('touchmove', preventPullToRefresh);
+    };
+  }, []);
 
   const handleLogout = async () => {
     await supabase.auth.signOut();
@@ -146,9 +177,9 @@ export default function Layout({ children }: LayoutProps) {
       </nav>
 
       {/* Mobile Top Bar - Minimal */}
-      <div className="md:hidden sticky top-0 z-50 bg-sidebar border-b border-sidebar-border shadow-lg">
-        <div className="flex h-14 items-center justify-between px-6">
-          <Link to="/" className="flex items-center gap-2">
+      <div className="md:hidden sticky top-0 z-50 bg-sidebar border-b border-sidebar-border shadow-lg backdrop-blur-xl bg-opacity-95">
+        <div className="flex h-14 items-center justify-between px-6" style={{ paddingTop: 'env(safe-area-inset-top, 0)' }}>
+          <Link to="/" className="flex items-center gap-2 active:scale-95 transition-transform">
             <span className="text-xl font-bold tracking-tight text-white">
               Rindo<span className="text-blue">.</span>
             </span>
@@ -157,7 +188,7 @@ export default function Layout({ children }: LayoutProps) {
             onClick={handleLogout} 
             variant="ghost" 
             size="sm" 
-            className="rounded-full h-9 w-9 p-0 text-red-400 hover:text-red-300 hover:bg-sidebar-accent"
+            className="rounded-full h-9 w-9 p-0 text-red-400 hover:text-red-300 hover:bg-sidebar-accent active:scale-90 transition-transform"
           >
             <LogOut className="h-4 w-4" />
           </Button>
@@ -165,11 +196,17 @@ export default function Layout({ children }: LayoutProps) {
       </div>
 
       {/* Main Content */}
-      <main className="container mx-auto px-6 py-8">{children}</main>
+      <main className="container mx-auto px-6 py-8" data-scrollable>{children}</main>
 
       {/* Mobile Bottom Navigation */}
-      <nav className="md:hidden fixed bottom-0 left-0 right-0 z-50 px-4 pb-4">
-        <div className="relative bg-sidebar rounded-full shadow-2xl border border-sidebar-border px-2">
+      <nav className="md:hidden fixed bottom-0 left-0 right-0 z-50 px-4 pb-safe">
+        <div 
+          className="relative bg-sidebar rounded-full shadow-2xl border border-sidebar-border px-2 backdrop-blur-xl bg-opacity-95"
+          style={{ 
+            marginBottom: 'max(env(safe-area-inset-bottom, 0px), 16px)',
+            paddingBottom: 'env(safe-area-inset-bottom, 0px)'
+          }}
+        >
           <div className="relative z-10 flex items-center justify-around">
             {navItems.map((item) => {
               const Icon = item.icon;
@@ -179,13 +216,13 @@ export default function Layout({ children }: LayoutProps) {
                   key={item.path} 
                   to={item.path} 
                   className={cn(
-                    "flex-1 flex flex-col items-center justify-center gap-1 h-14 rounded-full transition-all duration-200",
+                    "flex-1 flex flex-col items-center justify-center gap-1 h-14 rounded-full transition-all duration-200 active:scale-90",
                     isActive
-                      ? "text-blue"
+                      ? "text-blue scale-105"
                       : "text-gray-300"
                   )}
                 >
-                  <Icon className="h-5 w-5" />
+                  <Icon className={cn("h-5 w-5 transition-all", isActive && "scale-110")} />
                   <span className="text-[9px] font-semibold">{item.label}</span>
                 </Link>
               );
