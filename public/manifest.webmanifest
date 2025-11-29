@@ -7,7 +7,7 @@
   "display": "standalone",
   "display_override": ["window-controls-overlay", "standalone"],
   "background_color": "#000000",
-  "theme_color": "#3b82f6",
+  "theme_color": "#000000",
   "orientation": "portrait-primary",
   "id": "cl.rindo.app",
   "icons": [

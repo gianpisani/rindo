@@ -162,6 +162,8 @@ Based on Blue, Cyan, Violet, Fuchsia palette
     overflow-x: hidden;
     max-width: 100vw;
     position: relative;
+    min-height: 100vh;
+    min-height: -webkit-fill-available;
   }
 
   /* PWA Splash Screen - Logo centered */
@@ -171,13 +173,21 @@ Based on Blue, Cyan, Violet, Fuchsia palette
     background-size: contain;
     background-position: center;
     background-repeat: no-repeat;
+    min-height: 100vh;
+    min-height: -webkit-fill-available;
   }
   
-  /* iOS PWA status bar */
+  /* iOS PWA - Background negro para safe areas */
   @supports (-webkit-touch-callout: none) {
-    body {
+    html, body {
+      background-color: #000000;
+    }
+    
+    #root {
       padding-top: env(safe-area-inset-top);
       padding-bottom: env(safe-area-inset-bottom);
+      min-height: 100vh;
+      min-height: -webkit-fill-available;
     }
   }
 
