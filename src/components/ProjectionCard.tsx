@@ -170,15 +170,7 @@ export default function ProjectionCard() {
   return (
     <Card className="rounded-2xl shadow-elevated border-border/50">
       <CardHeader className="pb-4">
-        <div className="flex flex-col gap-4">
-          <div className="flex items-center justify-between">
-            <CardTitle className="text-xl font-semibold">Proyección Financiera</CardTitle>
-            <div className={`flex items-center gap-2 px-3 py-1.5 rounded-full ${trendBg}`}>
-              <TrendIcon className={`h-4 w-4 ${trendColor}`} />
-              <span className={`text-sm font-medium ${trendColor}`}>{trendText}</span>
-            </div>
-          </div>
-          
+        <div className="flex flex-col gap-4">          
           {/* Selector de período de proyección */}
           <div className="flex items-center justify-between gap-4">
             <p className="text-xs text-muted-foreground">
@@ -296,9 +288,9 @@ export default function ProjectionCard() {
                 stroke="hsl(var(--primary))"
                 strokeWidth={3}
                 dot={(props) => {
-                  const { cx, cy, payload } = props;
+                  const { cx, cy, payload, index } = props;
                   if (!payload.patrimonio) return null;
-                  return <circle cx={cx} cy={cy} r={4} fill="hsl(var(--primary))" />;
+                  return <circle key={`real-${index}`} cx={cx} cy={cy} r={4} fill="hsl(var(--primary))" />;
                 }}
                 connectNulls={false}
               />
@@ -310,9 +302,9 @@ export default function ProjectionCard() {
                 strokeWidth={3}
                 strokeDasharray="5 5"
                 dot={(props) => {
-                  const { cx, cy, payload } = props;
+                  const { cx, cy, payload, index } = props;
                   if (!payload.proyeccion || !payload.isProjection) return null;
-                  return <circle cx={cx} cy={cy} r={4} fill="hsl(var(--primary) / 0.4)" />;
+                  return <circle key={`proj-${index}`} cx={cx} cy={cy} r={4} fill="hsl(var(--primary) / 0.4)" />;
                 }}
                 connectNulls={false}
               />

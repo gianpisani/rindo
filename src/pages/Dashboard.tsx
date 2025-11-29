@@ -1,11 +1,12 @@
 import Layout from "@/components/Layout";
-import BalanceSummary from "@/components/BalanceSummary";
+import { BalanceCard } from "@/components/BalanceCard";
 import ProjectionCard from "@/components/ProjectionCard";
 import { MoneyFlowChart } from "@/components/MoneyFlowChart";
-import { GlassCard } from "@/components/GlassCard";
-import { CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { DashboardGrid } from "@/components/DashboardGrid";
+import { DashboardWidget } from "@/components/DashboardWidget";
 import { useTransactions } from "@/hooks/useTransactions";
 import { useCategories } from "@/hooks/useCategories";
+import { TrendingUp, TrendingDown, PiggyBank, Wallet, DollarSign } from "lucide-react";
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, LineChart, Line, Legend, Cell } from "recharts";
 import { format, startOfMonth, endOfMonth, eachMonthOfInterval, subMonths } from "date-fns";
 import { es } from "date-fns/locale";
@@ -19,6 +20,24 @@ const COLORS = {
 export default function Dashboard() {
   const { transactions } = useTransactions();
   const { categories } = useCategories();
+
+  // Calculate totals for balance cards
+  const totals = transactions.reduce(
+    (acc, transaction) => {
+      if (transaction.type === "Ingreso") {
+        acc.income += Number(transaction.amount);
+      } else if (transaction.type === "Gasto") {
+        acc.expenses += Number(transaction.amount);
+      } else if (transaction.type === "Inversión") {
+        acc.investments += Number(transaction.amount);
+      }
+      return acc;
+    },
+    { income: 0, expenses: 0, investments: 0 }
+  );
+
+  const disponible = totals.income - totals.expenses - totals.investments;
+  const patrimonio = totals.income - totals.expenses;
 
   // Monthly summary
   const last6Months = eachMonthOfInterval({
@@ -154,17 +173,66 @@ export default function Dashboard() {
           </div>
         </div>
 
-        <BalanceSummary />
-        
-        <ProjectionCard />
+        <DashboardGrid>
+          {/* Balance Cards - Individual widgets */}
+          <DashboardWidget key="income" title="Ingresos" icon={TrendingUp}>
+            <BalanceCard
+              amount={totals.income}
+              color="text-success"
+              bg="bg-success/5"
+            />
+          </DashboardWidget>
 
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-          <GlassCard>
-            <CardHeader className="pb-4">
-              <CardTitle className="text-base font-semibold">Evolución Mensual</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <ResponsiveContainer width="100%" height={280}>
+          <DashboardWidget key="expenses" title="Gastos" icon={TrendingDown}>
+            <BalanceCard
+              amount={totals.expenses}
+              color="text-destructive"
+              bg="bg-destructive/5"
+            />
+          </DashboardWidget>
+
+          <DashboardWidget key="investments" title="Inversiones" icon={PiggyBank}>
+            <BalanceCard
+              amount={totals.investments}
+              color="text-blue"
+              bg="bg-blue/5"
+            />
+          </DashboardWidget>
+
+          <DashboardWidget key="patrimony" title="Patrimonio" icon={DollarSign}>
+            <BalanceCard
+              amount={patrimonio}
+              color={patrimonio >= 0 ? "text-success" : "text-destructive"}
+              bg={patrimonio >= 0 ? "bg-success/5" : "bg-destructive/5"}
+            />
+          </DashboardWidget>
+
+          <DashboardWidget key="available" title="Disponible" icon={Wallet}>
+            <BalanceCard
+              amount={disponible}
+              color={disponible >= 0 ? "text-success" : "text-destructive"}
+              bg={disponible >= 0 ? "bg-success/5" : "bg-destructive/5"}
+            />
+          </DashboardWidget>
+
+          {/* Widget - Projection */}
+          <DashboardWidget key="projection" title="Proyección Financiera">
+            <ProjectionCard />
+          </DashboardWidget>
+
+          {/* Widget 3 - Money Flow */}
+          <DashboardWidget key="flow" title="Flujo de Dinero">
+            <div className="space-y-2">
+              <p className="text-sm text-muted-foreground">
+                {format(new Date(), "MMMM yyyy", { locale: es })}
+              </p>
+              <MoneyFlowChart />
+            </div>
+          </DashboardWidget>
+
+          {/* Widget 4 - Evolution Chart */}
+          <DashboardWidget key="evolution" title="Evolución Mensual">
+            <ResponsiveContainer width="100%" height="100%" minHeight={250}>
                 <LineChart data={monthlyData}>
                   <XAxis 
                     dataKey="month" 
@@ -218,29 +286,11 @@ export default function Dashboard() {
                   />
                 </LineChart>
               </ResponsiveContainer>
-            </CardContent>
-          </GlassCard>
+          </DashboardWidget>
 
-          <GlassCard className="lg:col-span-2">
-            <CardHeader className="pb-4">
-              <CardTitle className="text-base font-semibold">
-                Flujo de Dinero - {format(new Date(), "MMMM yyyy", { locale: es })}
-              </CardTitle>
-              <p className="text-sm text-muted-foreground mt-1">
-                Visualiza cómo fluye tu dinero desde ingresos hasta gastos e inversiones
-              </p>
-            </CardHeader>
-            <CardContent>
-              <MoneyFlowChart />
-            </CardContent>
-          </GlassCard>
-
-          <GlassCard className="lg:col-span-2">
-            <CardHeader className="pb-4">
-              <CardTitle className="text-base font-semibold">Gastos por Categoría</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <ResponsiveContainer width="100%" height={400}>
+          {/* Widget - Expenses Bar Chart */}
+          <DashboardWidget key="expensesChart" title="Gastos por Categoría">
+            <ResponsiveContainer width="100%" height="100%" minHeight={300}>
                 <BarChart data={expensesByCategory} layout="vertical">
                   <XAxis 
                     type="number" 
@@ -278,9 +328,8 @@ export default function Dashboard() {
                   </Bar>
                 </BarChart>
               </ResponsiveContainer>
-            </CardContent>
-          </GlassCard>
-        </div>
+          </DashboardWidget>
+        </DashboardGrid>
       </div>
     </Layout>
   );

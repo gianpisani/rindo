@@ -285,4 +285,59 @@ Based on Blue, Cyan, Violet, Fuchsia palette
       opacity: 1;
     }
   }
+
+  /* React Grid Layout - Custom styles */
+  .dashboard-widget {
+    transition: all 0.2s ease;
+  }
+
+  .dashboard-widget:hover {
+    z-index: 10;
+  }
+
+  .react-grid-item.react-grid-placeholder {
+    background: hsl(var(--primary) / 0.2);
+    border: 2px dashed hsl(var(--primary));
+    border-radius: 0.5rem;
+    transition: all 0.2s ease;
+  }
+
+  .react-grid-item.resizing {
+    transition: none;
+  }
+
+  .react-grid-item.react-draggable-dragging {
+    transition: none;
+    z-index: 100;
+    opacity: 0.9;
+  }
+
+  .react-grid-item > .react-resizable-handle::after {
+    border-color: hsl(var(--muted-foreground)) !important;
+  }
+
+  .drag-handle {
+    -webkit-touch-callout: none;
+    -webkit-user-select: none;
+    user-select: none;
+  }
+
+  /* Scrollbar personalizada para widgets */
+  .dashboard-widget ::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+  }
+
+  .dashboard-widget ::-webkit-scrollbar-track {
+    background: transparent;
+  }
+
+  .dashboard-widget ::-webkit-scrollbar-thumb {
+    background: hsl(var(--muted));
+    border-radius: 3px;
+  }
+
+  .dashboard-widget ::-webkit-scrollbar-thumb:hover {
+    background: hsl(var(--muted-foreground));
+  }
 }
