@@ -3,8 +3,8 @@ import { Link, useLocation, useNavigate } from "react-router-dom";
 import { Home, BarChart3, Receipt, FolderOpen, LogOut, Layers } from "lucide-react";
 import { Button } from "./ui/button";
 import { CommandBar } from "./CommandBar";
-import { KeyboardShortcuts } from "./KeyboardShortcuts";
 import { QuickAddDrawer } from "./QuickAddDrawer";
+import { ReconciliationDrawer } from "./ReconciliationDrawer";
 import { FloatingActionButton } from "./FloatingActionButton";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
@@ -19,6 +19,7 @@ export default function Layout({ children }: LayoutProps) {
   const navigate = useNavigate();
   const { toast } = useToast();
   const [drawerOpen, setDrawerOpen] = useState(false);
+  const [reconciliationOpen, setReconciliationOpen] = useState(false);
 
   const handleLogout = async () => {
     await supabase.auth.signOut();
@@ -36,20 +37,53 @@ export default function Layout({ children }: LayoutProps) {
     { path: "/bulk-recategorize", label: "Recategorizar", icon: Layers },
   ];
 
+  const routes = navItems.map(item => item.path);
+
+  // Keyboard shortcuts
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      const target = e.target as HTMLElement;
+      const isInputField = target.tagName === "INPUT" || target.tagName === "TEXTAREA";
+
+      // Cmd+C para agregar transacción rápida
+      if ((e.metaKey || e.ctrlKey) && e.key === "c" && !e.shiftKey && !isInputField) {
+        e.preventDefault();
+        setDrawerOpen(true);
+        return;
+      }
+
+      // Cmd + ← / → para navegar entre tabs
+      if ((e.metaKey || e.ctrlKey) && (e.key === "ArrowLeft" || e.key === "ArrowRight")) {
+        e.preventDefault();
+        const currentIndex = routes.indexOf(location.pathname);
+        
+        if (e.key === "ArrowLeft" && currentIndex > 0) {
+          navigate(routes[currentIndex - 1]);
+        } else if (e.key === "ArrowRight" && currentIndex < routes.length - 1) {
+          navigate(routes[currentIndex + 1]);
+        }
+      }
+
+      // Cmd + 1-5 para navegar directo
+      if ((e.metaKey || e.ctrlKey) && e.key >= "1" && e.key <= "5") {
+        e.preventDefault();
+        const index = parseInt(e.key) - 1;
+        if (routes[index]) {
+          navigate(routes[index]);
+        }
+      }
+    };
+
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [navigate, location.pathname, routes]);
+
   return (
     <div className="min-h-screen bg-background pb-24 md:pb-0">
-      {/* Keyboard Shortcuts - Global */}
-      <KeyboardShortcuts onAddTransaction={() => setDrawerOpen(true)} />
-
       {/* Command Bar - Global */}
       <CommandBar 
         onAddTransaction={() => setDrawerOpen(true)}
-        onConciliate={() => {
-          navigate("/");
-          setTimeout(() => {
-            document.getElementById("reconciliation-card")?.scrollIntoView({ behavior: "smooth" });
-          }, 100);
-        }}
+        onConciliate={() => setReconciliationOpen(true)}
       />
 
       {/* Floating Action Button - Mobile only */}
@@ -57,6 +91,9 @@ export default function Layout({ children }: LayoutProps) {
 
       {/* Quick Add Drawer - Global */}
       <QuickAddDrawer open={drawerOpen} onOpenChange={setDrawerOpen} />
+
+      {/* Reconciliation Drawer - Global */}
+      <ReconciliationDrawer open={reconciliationOpen} onOpenChange={setReconciliationOpen} />
 
       {/* Desktop Navigation - Top Bar */}
       <nav className="hidden md:block border-b border-sidebar-border bg-sidebar shadow-lg sticky top-0 z-50">
@@ -144,12 +181,12 @@ export default function Layout({ children }: LayoutProps) {
                   className={cn(
                     "flex-1 flex flex-col items-center justify-center gap-1 h-14 rounded-full transition-all duration-200",
                     isActive
-                      ? "bg-blue text-white shadow-lg"
-                      : "text-gray-400"
+                      ? "text-blue"
+                      : "text-gray-300"
                   )}
                 >
                   <Icon className="h-5 w-5" />
-                  <span className="text-[10px] font-semibold">{item.label}</span>
+                  <span className="text-[9px] font-semibold">{item.label}</span>
                 </Link>
               );
             })}

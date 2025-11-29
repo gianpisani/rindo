@@ -19,11 +19,12 @@ const typeConfig = {
 
 interface QuickTransactionFormProps {
   onSuccess?: () => void;
+  defaultType?: "Ingreso" | "Gasto" | "Inversión";
 }
 
-export default function QuickTransactionForm({ onSuccess }: QuickTransactionFormProps = {}) {
+export default function QuickTransactionForm({ onSuccess, defaultType }: QuickTransactionFormProps = {}) {
   const [amount, setAmount] = useState("");
-  const [selectedType, setSelectedType] = useState<"Ingreso" | "Gasto" | "Inversión" | null>(null);
+  const [selectedType, setSelectedType] = useState<"Ingreso" | "Gasto" | "Inversión" | null>(defaultType || null);
   const [selectedCategory, setSelectedCategory] = useState("");
   const [detail, setDetail] = useState("");
   const [suggestion, setSuggestion] = useState<{
@@ -36,6 +37,13 @@ export default function QuickTransactionForm({ onSuccess }: QuickTransactionForm
 
   const { categories } = useCategories();
   const { addTransaction } = useTransactions();
+
+  // Reset selectedType when defaultType changes
+  useEffect(() => {
+    if (defaultType) {
+      setSelectedType(defaultType);
+    }
+  }, [defaultType]);
 
   const filteredCategories = categories.filter((cat) => cat.type === selectedType);
 

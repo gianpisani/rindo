@@ -1,14 +1,16 @@
 import { useState, useEffect } from "react";
-import { Card, CardContent, CardHeader, CardTitle } from "./ui/card";
 import { Input } from "./ui/input";
 import { Label } from "./ui/label";
 import { Button } from "./ui/button";
-import { Calculator, CreditCard, Wallet, AlertTriangle, Wand2, CheckCircle2, ArrowRight, PencilRuler } from "lucide-react";
+import { CreditCard, Wallet, AlertTriangle, CheckCircle2, PencilRuler } from "lucide-react";
 import { useTransactions } from "@/hooks/useTransactions";
 import { useCategories } from "@/hooks/useCategories";
-import { GlassCard } from "./GlassCard";
 
-export default function ReconciliationCard() {
+interface ReconciliationCardProps {
+  onSuccess?: () => void;
+}
+
+export function ReconciliationCard({ onSuccess }: ReconciliationCardProps = {}) {
   const { transactions, addTransaction } = useTransactions();
   const { categories } = useCategories();
   const [cuentaCorriente, setCuentaCorriente] = useState<string>("");
@@ -101,6 +103,11 @@ export default function ReconciliationCard() {
       // Limpiar inputs después de conciliar
       setCuentaCorriente("");
       setTarjetaCredito("");
+      
+      // Llamar callback si existe
+      if (onSuccess) {
+        onSuccess();
+      }
     } finally {
       setIsCreating(false);
     }
@@ -109,117 +116,108 @@ export default function ReconciliationCard() {
   const hasInputs = cuentaCorrienteNum > 0 || tarjetaCreditoNum > 0;
 
   return (
-    <GlassCard>
-      <CardHeader className="pb-3">
-        <div className="flex items-center gap-2">
-          <Calculator className="h-5 w-5 text-primary" />
-          <CardTitle className="text-base font-semibold">Conciliación Rápida</CardTitle>
-        </div>
-      </CardHeader>
-
-      <CardContent className="space-y-3">
-        {/* Inputs compactos */}
-        <div className="grid grid-cols-2 gap-3">
-          <div className="space-y-1.5">
-            <Label htmlFor="cuenta-corriente" className="flex items-center gap-1.5 text-xs font-medium text-green-600">
-              <Wallet className="h-3.5 w-3.5" />
-              Cta. Corriente
-            </Label>
-            <div className="relative">
-              <span className="absolute left-2.5 top-1/2 -translate-y-1/2 text-sm text-muted-foreground">$</span>
-              <Input
-                id="cuenta-corriente"
-                type="text"
-                placeholder="0"
-                value={cuentaCorriente}
-                onChange={(e) => handleInputChange(e, setCuentaCorriente)}
-                className="text-base font-semibold pl-6 h-9"
-              />
-            </div>
-          </div>
-
-          <div className="space-y-1.5">
-            <Label htmlFor="tarjeta-credito" className="flex items-center gap-1.5 text-xs font-medium text-red-600">
-              <CreditCard className="h-3.5 w-3.5" />
-              Tarjeta Crédito (Deuda)
-            </Label>
-            <div className="relative">
-              <span className="absolute left-2.5 top-1/2 -translate-y-1/2 text-sm text-muted-foreground">$</span>
-              <Input
-                id="tarjeta-credito"
-                type="text"
-                placeholder="0"
-                value={tarjetaCredito}
-                onChange={(e) => handleInputChange(e, setTarjetaCredito)}
-                className="text-base font-semibold pl-6 h-9"
-              />
-            </div>
+    <div className="space-y-4">
+      {/* Inputs */}
+      <div className="space-y-4">
+        <div className="space-y-2">
+          <Label htmlFor="cuenta-corriente" className="flex items-center gap-2 text-sm font-medium">
+            <Wallet className="h-4 w-4 text-success" />
+            Cuenta Corriente
+          </Label>
+          <div className="relative">
+            <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm text-muted-foreground">$</span>
+            <Input
+              id="cuenta-corriente"
+              type="text"
+              placeholder="0"
+              value={cuentaCorriente}
+              onChange={(e) => handleInputChange(e, setCuentaCorriente)}
+              className="pl-7 h-11"
+            />
           </div>
         </div>
 
-        {/* Results compactos */}
-        {hasInputs && (
-          <div className="space-y-2 pt-2 border-t">
-            <div className="flex justify-between text-xs">
-              <span className="text-muted-foreground">Balance Real</span>
-              <span className={`font-semibold ${balanceReal >= 0 ? "text-green-600" : "text-red-600"}`}>
-                {formatCurrency(balanceReal)}
-              </span>
-            </div>
-            <div className="flex justify-between text-xs">
-              <span className="text-muted-foreground">Balance App</span>
-              <span className={`font-semibold ${balanceApp >= 0 ? "text-green-600" : "text-red-600"}`}>
-                {formatCurrency(balanceApp)}
-              </span>
-            </div>
+        <div className="space-y-2">
+          <Label htmlFor="tarjeta-credito" className="flex items-center gap-2 text-sm font-medium">
+            <CreditCard className="h-4 w-4 text-destructive" />
+            Tarjeta de Crédito (Deuda)
+          </Label>
+          <div className="relative">
+            <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm text-muted-foreground">$</span>
+            <Input
+              id="tarjeta-credito"
+              type="text"
+              placeholder="0"
+              value={tarjetaCredito}
+              onChange={(e) => handleInputChange(e, setTarjetaCredito)}
+              className="pl-7 h-11"
+            />
+          </div>
+        </div>
+      </div>
 
-            {/* Diferencia y botón */}
-            <div className={`rounded-lg p-2.5 mt-2 ${
-              !needsReconciliation 
-                ? "bg-green-500/10 border border-green-500/20" 
-                : "bg-destructive/10 border border-destructive/20"
-            }`}>
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-1.5">
-                  {!needsReconciliation ? (
-                    <CheckCircle2 className="h-4 w-4 text-green-600" />
-                  ) : (
-                    <AlertTriangle className="h-4 w-4 text-destructive" />
-                  )}
-                  <span className="text-xs font-medium">
-                    {!needsReconciliation ? "Conciliado" : "Diferencia"}
-                  </span>
-                </div>
-                <span className={`text-lg font-bold ${diferenciaColor}`}>
-                  {formatCurrency(Math.abs(diferencia))}
+      {/* Results */}
+      {hasInputs && (
+        <div className="space-y-3 pt-4 border-t">
+          <div className="flex justify-between items-center">
+            <span className="text-sm text-muted-foreground">Balance Real</span>
+            <span className={`text-lg font-semibold ${balanceReal >= 0 ? "text-success" : "text-destructive"}`}>
+              {formatCurrency(balanceReal)}
+            </span>
+          </div>
+          <div className="flex justify-between items-center">
+            <span className="text-sm text-muted-foreground">Balance App</span>
+            <span className={`text-lg font-semibold ${balanceApp >= 0 ? "text-success" : "text-destructive"}`}>
+              {formatCurrency(balanceApp)}
+            </span>
+          </div>
+
+          {/* Diferencia */}
+          <div className={`rounded-lg p-4 mt-2 ${
+            !needsReconciliation 
+              ? "bg-success/10 border border-success/20" 
+              : "bg-destructive/10 border border-destructive/20"
+          }`}>
+            <div className="flex items-center justify-between mb-3">
+              <div className="flex items-center gap-2">
+                {!needsReconciliation ? (
+                  <CheckCircle2 className="h-5 w-5 text-success" />
+                ) : (
+                  <AlertTriangle className="h-5 w-5 text-destructive" />
+                )}
+                <span className="text-sm font-medium">
+                  {!needsReconciliation ? "Balances Conciliados ✓" : "Diferencia Detectada"}
                 </span>
               </div>
-              
-              {needsReconciliation && (
-                <Button 
-                  onClick={handleCreateReconciliation}
-                  disabled={isCreating}
-                  className="w-full h-8 text-xs font-semibold mt-2"
-                  size="sm"
-                >
-                  {isCreating ? (
-                    <>
-                      <div className="h-3 w-3 border-2 border-white/30 border-t-white rounded-full animate-spin mr-1.5" />
-                      Creando...
-                    </>
-                  ) : (
-                    <>
-                      <PencilRuler className="h-3.5 w-3.5 mr-1.5" />
-                      Conciliar
-                    </>
-                  )}
-                </Button>
-              )}
+              <span className={`text-xl font-bold ${diferenciaColor}`}>
+                {formatCurrency(Math.abs(diferencia))}
+              </span>
             </div>
+            
+            {needsReconciliation && (
+              <Button 
+                onClick={handleCreateReconciliation}
+                disabled={isCreating}
+                className="w-full"
+              >
+                {isCreating ? (
+                  <>
+                    <div className="h-4 w-4 border-2 border-white/30 border-t-white rounded-full animate-spin mr-2" />
+                    Creando transacción...
+                  </>
+                ) : (
+                  <>
+                    <PencilRuler className="h-4 w-4 mr-2" />
+                    Crear Transacción de Ajuste
+                  </>
+                )}
+              </Button>
+            )}
           </div>
-        )}
-      </CardContent>
-    </GlassCard>
+        </div>
+      )}
+    </div>
   );
 }
 
+export default ReconciliationCard;

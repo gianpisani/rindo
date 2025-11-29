@@ -1,7 +1,6 @@
 import Layout from "@/components/Layout";
 import BalanceSummary from "@/components/BalanceSummary";
 import ProjectionCard from "@/components/ProjectionCard";
-import ReconciliationCard from "@/components/ReconciliationCard";
 import { GlassCard } from "@/components/GlassCard";
 import { CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { useTransactions } from "@/hooks/useTransactions";
@@ -155,10 +154,6 @@ export default function Dashboard() {
         </div>
 
         <BalanceSummary />
-        
-        <div id="reconciliation-card">
-          <ReconciliationCard />
-        </div>
         
         <ProjectionCard />
 
