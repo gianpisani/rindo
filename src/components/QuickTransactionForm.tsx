@@ -173,7 +173,6 @@ export default function QuickTransactionForm({ onSuccess, defaultType }: QuickTr
                 setAmount(formatted);
               }}
               className="text-4xl h-16 text-center font-semibold rounded-2xl border-border/30 focus:border-primary/50 transition-all bg-muted/30"
-              autoFocus
             />
           </div>
 
