@@ -1,6 +1,7 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "./use-toast";
+import { useEffect } from "react";
 
 export interface Transaction {
   id: string;
@@ -20,14 +21,18 @@ export function useTransactions() {
   const { data: transactions = [], isLoading } = useQuery({
     queryKey: ["transactions"],
     queryFn: async () => {
+      console.log("🔍 Fetching transactions...");
       const { data, error } = await supabase
         .from("transactions")
         .select("*")
         .order("date", { ascending: false });
 
       if (error) throw error;
+      console.log("📦 Transactions fetched:", data?.length || 0);
       return data as Transaction[];
     },
+    refetchOnWindowFocus: true,
+    staleTime: 0,
   });
 
   const addTransaction = useMutation({

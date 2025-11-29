@@ -44,6 +44,7 @@ import { es } from "date-fns/locale";
 import { cn } from "@/lib/utils";
 import { useSearchParams } from "react-router-dom";
 import { usePrivacyMode } from "@/hooks/usePrivacyMode";
+import { AnalyzingBadge } from "./AnalyzingBadge";
 
 interface TransactionsTableProps {
   transactions: Transaction[];
@@ -164,12 +165,15 @@ export function TransactionsTable({
         );
       },
       cell: ({ row }) => {
-        const category = categories.find(
-          (c) => c.name === row.original.category_name
-        );
+        const categoryName = row.original.category_name;
+        
+        if (categoryName === "⚡ Analizando...") {
+          return <AnalyzingBadge />;
+        }
+        
         return (
           <div className={cn("font-medium text-sm", isPrivacyMode && "privacy-blur")}>
-            {row.original.category_name}
+            {categoryName}
           </div>
         );
       },
@@ -258,7 +262,7 @@ export function TransactionsTable({
         );
       },
     },
-  ], [onEdit, onDelete, categories]);
+  ], [onEdit, onDelete, categories, isPrivacyMode]);
 
   // Aplicar fuzzy search + filtros
   const fuzzyResults = useFuzzySearch(transactions, globalFilter);
@@ -293,6 +297,8 @@ export function TransactionsTable({
         pageSize: 20,
       },
     },
+    // Force re-render when transactions change
+    autoResetPageIndex: false,
   });
 
   const uniqueCategories = Array.from(

@@ -191,8 +191,12 @@ export default function Transactions() {
 
   const handleEdit = (transaction: any) => {
     setEditingTransaction(transaction);
+    // Parse the date from ISO string to yyyy-MM-dd format for the date input
+    const dateObj = new Date(transaction.date);
+    const formattedDate = format(dateObj, "yyyy-MM-dd");
+    
     setFormData({
-      date: transaction.date,
+      date: formattedDate,
       detail: transaction.detail || "",
       category_name: transaction.category_name,
       type: transaction.type,

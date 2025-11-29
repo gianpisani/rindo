@@ -2,10 +2,13 @@ import { useState, useRef } from "react";
 import { Button } from "./ui/button";
 import { Input } from "./ui/input";
 import { Card, CardContent } from "./ui/card";
-import { Sparkles, Zap } from "lucide-react";
+import { ArrowRightToLine, CornerDownLeft, CornerDownLeftIcon, Cpu, Sparkles, Zap } from "lucide-react";
 import { useCategories } from "@/hooks/useCategories";
 import { useTransactions } from "@/hooks/useTransactions";
 import { supabase } from "@/integrations/supabase/client";
+import { useQueryClient } from "@tanstack/react-query";
+import { useToast } from "@/hooks/use-toast";
+import { FingerPrintIcon } from "@heroicons/react/24/outline";
 
 interface QuickTransactionFormProps {
   onSuccess?: () => void;
@@ -14,16 +17,13 @@ interface QuickTransactionFormProps {
 
 const typeTexts = {
   "Ingreso": {
-    placeholder: "¿De dónde vino esta plata?",
-    emoji: "💰",
+    placeholder: "¿De dónde salió esta plata?",
   },
   "Gasto": {
-    placeholder: "¿En qué gastaste?",
-    emoji: "💸",
+    placeholder: "¿En qué te lo gastaste?",
   },
   "Inversión": {
-    placeholder: "¿En qué invertiste?",
-    emoji: "📈",
+    placeholder: "¿Dónde pusiste la plata?",
   },
 };
 
@@ -33,6 +33,8 @@ export default function QuickTransactionForm({ onSuccess, defaultType = "Gasto" 
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const { categories } = useCategories();
+  const queryClient = useQueryClient();
+  const { toast } = useToast();
   const { addTransaction } = useTransactions();
   const detailInputRef = useRef<HTMLInputElement>(null);
   const amountInputRef = useRef<HTMLInputElement>(null);
@@ -72,6 +74,20 @@ export default function QuickTransactionForm({ onSuccess, defaultType = "Gasto" 
       const result = await response.json();
       console.log('Respuesta de auto-categorize:', result);
       
+      // Actualizar la UI inmediatamente
+      if (result.success && result.category) {
+        // Invalidar queries para refrescar
+        queryClient.invalidateQueries({ queryKey: ["transactions"] });
+        
+        // Mostrar toast con el resultado
+        if (result.category !== "Sin categoría") {
+          toast({
+            title: "Categorizado automáticamente",
+            description: `${result.category} · ${result.confidence}% de confianza`,
+          });
+        }
+      }
+      
     } catch (error) {
       console.error('Error en auto-categorización:', error);
     }
@@ -91,12 +107,12 @@ export default function QuickTransactionForm({ onSuccess, defaultType = "Gasto" 
       const { data: userData } = await supabase.auth.getUser();
       if (!userData.user) return;
 
-      // 1. GUARDAR con estado "Analizando..." si hay detalle, sino "Sin categoría"
+      // 1. GUARDAR con estado especial si va a analizar
       const willAnalyze = detail && detail.trim().length >= 3;
       const transaction = await addTransaction.mutateAsync({
         amount: parsedAmount,
         type: defaultType,
-        category_name: willAnalyze ? "🤖 Analizando..." : "Sin categoría",
+        category_name: willAnalyze ? "⚡ Analizando..." : "Sin categoría",
         detail: detail || null,
         date: new Date().toISOString(),
       });
@@ -154,7 +170,7 @@ export default function QuickTransactionForm({ onSuccess, defaultType = "Gasto" 
   const showKeyboardHints = !isMobile();
 
   return (
-    <Card className="rounded-3xl shadow-lg border-0 bg-gradient-to-br from-white to-slate-50 dark:from-slate-900 dark:to-slate-800 overflow-hidden">
+    <Card className="border-0 shadow-none dark:from-slate-900 dark:to-slate-800 overflow-hidden">
       <CardContent className="p-6 sm:p-8">
         <form onSubmit={handleSubmit} className="space-y-6">
           {/* Amount Input - MÁS GRANDE */}
@@ -171,12 +187,12 @@ export default function QuickTransactionForm({ onSuccess, defaultType = "Gasto" 
                 setAmount(formatted);
               }}
               onKeyDown={handleAmountKeyDown}
-              className="text-8xl sm:text-9xl h-32 sm:h-40 text-center font-bold rounded-3xl border-2 border-slate-200 dark:border-slate-700 focus:border-primary focus:ring-4 focus:ring-primary/20 transition-all bg-white dark:bg-slate-900 placeholder:text-slate-300"
+              className="h-32 sm:h-40 md:text-4xl text-center font-bold rounded-3xl border-2 border-slate-200 dark:border-slate-700 focus:border-primary focus:ring-4 focus:ring-primary/20 transition-all bg-white dark:bg-slate-900 placeholder:text-slate-300"
             />
             {showKeyboardHints && (
-              <p className="text-center text-sm text-slate-500 flex items-center justify-center gap-1.5">
-                <Zap className="h-3.5 w-3.5" />
-                <span className="font-medium">Tab</span> para continuar
+              <p className="text-center text-xs text-slate-400 dark:text-slate-500 flex items-center justify-center gap-1.5">
+                <ArrowRightToLine className="h-3.5 w-3.5" />
+                <span><span className="font-bold">Tab</span> para continuar</span>
               </p>
             )}
           </div>
@@ -187,17 +203,17 @@ export default function QuickTransactionForm({ onSuccess, defaultType = "Gasto" 
               <Input
                 ref={detailInputRef}
                 id="detail"
-                placeholder={`${typeConfig.emoji} ${typeConfig.placeholder} (opcional)`}
+                placeholder={`${typeConfig.placeholder} (opcional)`}
                 value={detail}
                 onChange={(e) => setDetail(e.target.value)}
                 onKeyDown={handleDetailKeyDown}
-                className="h-14 text-lg rounded-2xl px-5 border-2 border-slate-200 dark:border-slate-700 focus:border-primary focus:ring-4 focus:ring-primary/20 transition-all bg-white dark:bg-slate-900 placeholder:text-slate-400"
+                className="h-14 text-lg rounded-2xl px-5 border-2 border-slate-200 dark:border-slate-700 focus:border-primary focus:ring-4 focus:ring-primary/20 transition-all bg-white dark:bg-slate-900 placeholder:text-slate-400 text-center"
               />
             </div>
             
-            <p className="text-center text-xs text-slate-500 flex items-center justify-center gap-1.5">
-              <Sparkles className="h-3 w-3" />
-              Lo categorizaremos automáticamente con IA
+            <p className="text-center text-xs text-slate-400 dark:text-slate-500 flex items-center justify-center gap-1.5">
+              <Cpu className="h-3.5 w-3.5" />
+              <span>Lo categorizaremos nosotros por ti</span>
             </p>
           </div>
 
@@ -215,15 +231,16 @@ export default function QuickTransactionForm({ onSuccess, defaultType = "Gasto" 
               </span>
             ) : (
               <span className="flex items-center gap-2">
-                <Zap className="h-4 w-4" />
+                <FingerPrintIcon className="h-4 w-4" />
                 Agregar {amount && `${amount}`}
               </span>
             )}
           </Button>
           
           {showKeyboardHints && (
-            <p className="text-center text-xs text-slate-400">
-              <kbd className="px-2 py-1 bg-slate-100 dark:bg-slate-800 rounded text-[10px] font-mono">Enter</kbd> para guardar rápido
+            <p className="text-center text-xs text-slate-400 dark:text-slate-500 flex items-center justify-center gap-1.5">
+              <CornerDownLeft className="h-3.5 w-3.5" />
+              <span><span className="font-bold">Enter</span> para guardar rápido</span>
             </p>
           )}
         </form>

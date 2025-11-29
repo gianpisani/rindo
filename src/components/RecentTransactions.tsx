@@ -6,6 +6,7 @@ import { useTransactions } from "@/hooks/useTransactions";
 import { format } from "date-fns";
 import { es } from "date-fns/locale";
 import { usePrivacyMode } from "@/hooks/usePrivacyMode";
+import { AnalyzingBadge } from "./AnalyzingBadge";
 import { cn } from "@/lib/utils";
 
 const typeIcons = {
@@ -30,6 +31,9 @@ export default function RecentTransactions() {
   const { transactions } = useTransactions();
   const recentTransactions = transactions.slice(0, 5);
   const { isPrivacyMode } = usePrivacyMode();
+  
+  // Force re-render key based on transactions
+  const transactionsKey = transactions.map(t => `${t.id}-${t.category_name}`).join(',');
 
   const formatCurrency = (amount: number) => {
     return new Intl.NumberFormat("es-CL", {
@@ -55,7 +59,7 @@ export default function RecentTransactions() {
             No hay transacciones aún. ¡Agrega tu primera transacción!
           </p>
         ) : (
-          <div className="space-y-3">
+          <div className="space-y-3" key={transactionsKey}>
             {recentTransactions.map((transaction) => {
               const Icon = typeIcons[transaction.type];
               const colorClass = typeColors[transaction.type];
@@ -63,7 +67,7 @@ export default function RecentTransactions() {
 
               return (
                 <div
-                  key={transaction.id}
+                  key={`${transaction.id}-${transaction.category_name}`}
                   className="flex items-center justify-between p-4 rounded-full border border-border/50 hover:shadow-sm hover:border-border transition-all duration-200"
                 >
                   <div className="flex items-center gap-4 min-w-0 flex-1">
@@ -71,7 +75,11 @@ export default function RecentTransactions() {
                       <Icon className={`h-5 w-5 ${colorClass}`} />
                     </div>
                     <div className="min-w-0 flex-1">
-                      <p className={cn("font-semibold text-sm truncate", isPrivacyMode && "privacy-blur")}>{transaction.category_name}</p>
+                      {transaction.category_name === "⚡ Analizando..." ? (
+                        <AnalyzingBadge />
+                      ) : (
+                        <p className={cn("font-semibold text-sm truncate", isPrivacyMode && "privacy-blur")}>{transaction.category_name}</p>
+                      )}
                       <p className={cn("text-xs text-muted-foreground", isPrivacyMode && "privacy-blur-light")}>
                         {format(new Date(transaction.date), "d 'de' MMM", {
                           locale: es,
