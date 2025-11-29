@@ -1,151 +1,147 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useRef } from "react";
 import { Button } from "./ui/button";
 import { Input } from "./ui/input";
-import { Label } from "./ui/label";
-import { Card, CardContent, CardHeader, CardTitle } from "./ui/card";
-import { Badge } from "./ui/badge";
-import { TrendingUp, TrendingDown, PiggyBank, X, Webhook } from "lucide-react";
+import { Card, CardContent } from "./ui/card";
+import { Sparkles, Zap } from "lucide-react";
 import { useCategories } from "@/hooks/useCategories";
 import { useTransactions } from "@/hooks/useTransactions";
-import { format } from "date-fns";
-import { categorizeTransaction, debounce } from "@/lib/categorizer";
 import { supabase } from "@/integrations/supabase/client";
-
-const typeConfig = {
-  Ingreso: { icon: TrendingUp, color: "bg-success hover:bg-success/80 text-success-foreground", textColor: "text-success" },
-  Gasto: { icon: TrendingDown, color: "bg-destructive hover:bg-destructive/80 text-destructive-foreground", textColor: "text-destructive" },
-  Inversión: { icon: PiggyBank, color: "bg-blue hover:bg-blue/80 text-white", textColor: "text-blue" },
-};
 
 interface QuickTransactionFormProps {
   onSuccess?: () => void;
   defaultType?: "Ingreso" | "Gasto" | "Inversión";
 }
 
-export default function QuickTransactionForm({ onSuccess, defaultType }: QuickTransactionFormProps = {}) {
+const typeTexts = {
+  "Ingreso": {
+    placeholder: "¿De dónde vino esta plata?",
+    emoji: "💰",
+  },
+  "Gasto": {
+    placeholder: "¿En qué gastaste?",
+    emoji: "💸",
+  },
+  "Inversión": {
+    placeholder: "¿En qué invertiste?",
+    emoji: "📈",
+  },
+};
+
+export default function QuickTransactionForm({ onSuccess, defaultType = "Gasto" }: QuickTransactionFormProps) {
   const [amount, setAmount] = useState("");
-  const [selectedType, setSelectedType] = useState<"Ingreso" | "Gasto" | "Inversión" | null>(defaultType || null);
-  const [selectedCategory, setSelectedCategory] = useState("");
   const [detail, setDetail] = useState("");
-  const [suggestion, setSuggestion] = useState<{
-    category: string;
-    type: "Ingreso" | "Gasto" | "Inversión";
-    confidence: number;
-    reasons: string[];
-  } | null>(null);
-  const [isAnalyzing, setIsAnalyzing] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   const { categories } = useCategories();
   const { addTransaction } = useTransactions();
+  const detailInputRef = useRef<HTMLInputElement>(null);
+  const amountInputRef = useRef<HTMLInputElement>(null);
+  
+  const typeConfig = typeTexts[defaultType];
 
-  // Reset selectedType when defaultType changes
-  useEffect(() => {
-    if (defaultType) {
-      setSelectedType(defaultType);
-    }
-  }, [defaultType]);
-
-  const filteredCategories = categories.filter((cat) => cat.type === selectedType);
-
-  // Función para categorizar con debounce
-  const debouncedCategorize = useCallback(
-    debounce(async (text: string) => {
-      if (!text || text.trim().length < 3) {
-        setSuggestion(null);
-        setIsAnalyzing(false);
+  // Llamar a Edge Function para auto-categorizar
+  const autoCategorizeInBackground = async (transactionId: string, detail: string, userId: string) => {
+    try {
+      const categoryNames = categories.map(c => c.name);
+      
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) {
+        console.error('No hay sesión activa');
         return;
       }
 
-      setIsAnalyzing(true);
+      const payload = {
+        transactionId,
+        detail,
+        userId,
+        existingCategories: categoryNames,
+      };
+
+      console.log('Payload a enviar:', payload);
+
+      // Llamar a Edge Function de forma asíncrona
+      const response = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/auto-categorize`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${session.access_token}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(payload),
+      });
+
+      const result = await response.json();
+      console.log('Respuesta de auto-categorize:', result);
       
-      try {
-        const { data: userData } = await supabase.auth.getUser();
-        if (!userData.user) {
-          setIsAnalyzing(false);
-          return;
-        }
-
-        // Pasar las categorías existentes para priorizar matches
-        const categoryNames = categories.map(c => c.name);
-        const result = await categorizeTransaction(text, userData.user.id, categoryNames);
-        
-        if (result.category && result.confidence > 30) {
-          setSuggestion({
-            category: result.category,
-            type: result.type!,
-            confidence: result.confidence,
-            reasons: result.reasons,
-          });
-        } else {
-          setSuggestion(null);
-        }
-      } catch (error) {
-        console.error("Error categorizando:", error);
-      } finally {
-        setIsAnalyzing(false);
-      }
-    }, 1300),
-    [categories]
-  );
-
-  // Efecto para categorizar cuando cambia el detalle
-  useEffect(() => {
-    if (detail && !selectedCategory) {
-      debouncedCategorize(detail);
-    } else if (!detail || selectedCategory) {
-      // Limpiar sugerencia si se borra el detalle o se selecciona una categoría
-      setSuggestion(null);
+    } catch (error) {
+      console.error('Error en auto-categorización:', error);
     }
-  }, [detail, selectedCategory, debouncedCategorize]);
-
-  // Aplicar sugerencia
-  const applySuggestion = () => {
-    if (suggestion) {
-      // Solo cambiar el tipo si no hay uno seleccionado
-      if (!selectedType) {
-        setSelectedType(suggestion.type);
-      }
-      // Buscar la categoría exacta en las existentes (case-insensitive)
-      const matchingCategory = categories.find(
-        c => c.name.toLowerCase() === suggestion.category.toLowerCase()
-      );
-      setSelectedCategory(matchingCategory?.name || suggestion.category);
-      setSuggestion(null);
-    }
-  };
-
-  // Rechazar sugerencia
-  const dismissSuggestion = () => {
-    setSuggestion(null);
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!selectedType || !selectedCategory || !amount) return;
-
-    // Limpiar el monto de cualquier formato (eliminar $, puntos, comas)
+    
     const cleanAmount = amount.replace(/[$.,\s]/g, "");
     const parsedAmount = parseFloat(cleanAmount);
     
     if (isNaN(parsedAmount) || parsedAmount <= 0) return;
 
-    await addTransaction.mutateAsync({
-      amount: parsedAmount,
-      type: selectedType,
-      category_name: selectedCategory,
-      detail: detail || null,
-      date: new Date().toISOString(),
-    });
+    setIsSubmitting(true);
 
-    // Reset form
-    setAmount("");
-    setSelectedType(null);
-    setSelectedCategory("");
-    setDetail("");
-    setSuggestion(null);
-    
-    // Call onSuccess callback if provided
-    onSuccess?.();
+    try {
+      const { data: userData } = await supabase.auth.getUser();
+      if (!userData.user) return;
+
+      // 1. GUARDAR con estado "Analizando..." si hay detalle, sino "Sin categoría"
+      const willAnalyze = detail && detail.trim().length >= 3;
+      const transaction = await addTransaction.mutateAsync({
+        amount: parsedAmount,
+        type: defaultType,
+        category_name: willAnalyze ? "🤖 Analizando..." : "Sin categoría",
+        detail: detail || null,
+        date: new Date().toISOString(),
+      });
+
+      // 2. Si hay detalle, auto-categorizar en background con Edge Function
+      if (willAnalyze && transaction?.id) {
+        console.log('Llamando auto-categorize con:', { transactionId: transaction.id, detail, userId: userData.user.id });
+        autoCategorizeInBackground(transaction.id, detail, userData.user.id);
+      }
+
+      // Reset form
+      setAmount("");
+      setDetail("");
+      
+      // Focus back to amount for next entry
+      setTimeout(() => amountInputRef.current?.focus(), 100);
+      
+      onSuccess?.();
+    } catch (error) {
+      console.error("Error guardando transacción:", error);
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  // Handle keyboard navigation (solo desktop)
+  const handleAmountKeyDown = (e: React.KeyboardEvent) => {
+    if ((e.key === "Tab" || e.key === "Enter") && !isMobile()) {
+      e.preventDefault();
+      detailInputRef.current?.focus();
+    }
+  };
+
+  const handleDetailKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key === "Enter" && !isMobile()) {
+      e.preventDefault();
+      if (amount) {
+        const form = e.currentTarget.closest("form");
+        form?.requestSubmit();
+      }
+    }
+  };
+
+  const isMobile = () => {
+    return /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
   };
 
   const formatCurrency = (value: string) => {
@@ -155,165 +151,81 @@ export default function QuickTransactionForm({ onSuccess, defaultType }: QuickTr
     return `$${formatted}`;
   };
 
+  const showKeyboardHints = !isMobile();
+
   return (
-    <Card className="rounded-2xl shadow-sm border-border/50 bg-white/50 dark:bg-card/50 backdrop-blur-sm">
-      <CardHeader className="pb-3">
-        <CardTitle className="text-lg font-medium">Nueva Transacción</CardTitle>
-      </CardHeader>
-      <CardContent className="space-y-4">
-        <form onSubmit={handleSubmit} className="space-y-4">
+    <Card className="rounded-3xl shadow-lg border-0 bg-gradient-to-br from-white to-slate-50 dark:from-slate-900 dark:to-slate-800 overflow-hidden">
+      <CardContent className="p-6 sm:p-8">
+        <form onSubmit={handleSubmit} className="space-y-6">
+          {/* Amount Input - MÁS GRANDE */}
           <div className="space-y-2">
             <Input
+              ref={amountInputRef}
               id="amount"
               type="text"
               placeholder="$0"
+              autoFocus
               value={amount}
               onChange={(e) => {
                 const formatted = formatCurrency(e.target.value);
                 setAmount(formatted);
               }}
-              className="text-4xl h-16 text-center font-semibold rounded-2xl border-border/30 focus:border-primary/50 transition-all bg-muted/30"
+              onKeyDown={handleAmountKeyDown}
+              className="text-8xl sm:text-9xl h-32 sm:h-40 text-center font-bold rounded-3xl border-2 border-slate-200 dark:border-slate-700 focus:border-primary focus:ring-4 focus:ring-primary/20 transition-all bg-white dark:bg-slate-900 placeholder:text-slate-300"
             />
-          </div>
-
-          <div className="space-y-2">
-            <div className="grid grid-cols-3 gap-2">
-              {(Object.keys(typeConfig) as Array<keyof typeof typeConfig>).map((type) => {
-                const { icon: Icon, color } = typeConfig[type];
-                const isSelected = selectedType === type;
-                return (
-                  <Button
-                    key={type}
-                    type="button"
-                    variant={isSelected ? "default" : "outline"}
-                    className={`h-16 flex flex-col gap-1 rounded-xl transition-all duration-200 hover:${color} text-gray-600 ${
-                      isSelected 
-                        ? color + " shadow-sm" 
-                        : "border-border/30"
-                    }`}
-                    onClick={() => {
-                      setSelectedType(type);
-                      setSelectedCategory("");
-                    }}
-                  >
-                    <Icon className="h-5 w-5" />
-                    <span className="text-xs font-medium">{type}</span>
-                  </Button>
-                );
-              })}
-            </div>
-          </div>
-
-          {selectedType && (
-            <div className="space-y-2 animate-in fade-in duration-200">
-              <Label className="text-xs font-medium text-muted-foreground">Categoría</Label>
-              <div className="flex flex-wrap gap-2">
-                {filteredCategories.map((category) => (
-                  <Badge
-                    key={category.id}
-                    variant={selectedCategory === category.name ? "default" : "outline"}
-                    className={`cursor-pointer px-4 py-2 text-xs rounded-full transition-all duration-150 ${
-                      selectedCategory === category.name 
-                        ? "shadow-sm scale-105" 
-                        : "border-border/30 hover:bg-muted/30 hover:scale-105"
-                    }`}
-                    style={
-                      selectedCategory === category.name && category.color
-                        ? { backgroundColor: category.color, borderColor: category.color }
-                        : {}
-                    }
-                    onClick={() => setSelectedCategory(category.name)}
-                  >
-                    {category.name}
-                  </Badge>
-                ))}
-              </div>
-            </div>
-          )}
-
-          <div className="space-y-2 animate-in fade-in duration-200">
-            <Label htmlFor="detail" className="text-xs font-medium text-muted-foreground">
-              Detalle (opcional)
-            </Label>
-            <Input
-              id="detail"
-              placeholder="Ej: Almuerzo con amigos..."
-              value={detail}
-              onChange={(e) => setDetail(e.target.value)}
-              className="h-10 rounded-xl px-4 border-border/30 focus:border-primary/50 transition-all text-sm bg-muted/30"
-            />
-            
-            {(isAnalyzing || suggestion) && !selectedCategory && (
-              <div className="relative -mt-2 z-30">
-                <div className="absolute inset-x-0 top-0 animate-in slide-in-from-top-2 fade-in duration-300">
-                  {isAnalyzing && (
-                    <div className="rounded-xl bg-white border border-primary/30 dark:border-purple-700 p-3 shadow-md">
-                      <div className="flex items-center gap-2">
-                        <Webhook className="h-4 w-4 animate-pulse text-blue-600" />
-                        <span className="text-sm font-medium text-blue-900 dark:text-blue-100">
-                          Analizando...
-                        </span>
-                      </div>
-                    </div>
-                  )}
-                  
-                  {suggestion && !isAnalyzing && (
-                    <div className="rounded-xl bg-white border border-purple-300 dark:border-purple-700 p-3 shadow-lg">
-                      <div className="flex items-center justify-between mb-2">
-                        <div className="flex items-center gap-2">
-                          <Webhook className="h-4 w-4 text-purple-600 animate-pulse" />
-                          <span className="text-sm font-semibold text-purple-900 dark:text-purple-100">
-                            Sugerencia
-                          </span>
-                          <Badge variant="outline" className="h-5 text-[10px] px-2 bg-white text-black">
-                            {suggestion.confidence}% confianza
-                          </Badge>
-                        </div>
-                        <Button
-                          type="button"
-                          variant="ghost"
-                          size="sm"
-                          onClick={dismissSuggestion}
-                          className="h-6 w-6 p-0 rounded-full hover:bg-purple-200/50"
-                        >
-                          <X className="h-3.5 w-3.5" />
-                        </Button>
-                      </div>
-                      
-                      <div className="flex items-center gap-2 mb-2.5">
-                        {!selectedType && (
-                          <>
-                            <Badge variant="outline" className="text-xs px-2.5 py-0.5 bg-white border-purple-300 dark:border-purple-700">
-                              {suggestion.type}
-                            </Badge>
-                          </>
-                        )}
-                        <Badge variant="outline" className="text-xs px-2.5 py-0.5 bg-white border-purple-300 dark:border-purple-700">
-                          {suggestion.category}
-                        </Badge>
-                      </div>
-                      
-                      <Button
-                        type="button"
-                        onClick={applySuggestion}
-                        className="w-full h-8 text-xs rounded-full bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 shadow-sm"
-                      >
-                        Aplicar categoría
-                      </Button>
-                    </div>
-                  )}
-                </div>
-              </div>
+            {showKeyboardHints && (
+              <p className="text-center text-sm text-slate-500 flex items-center justify-center gap-1.5">
+                <Zap className="h-3.5 w-3.5" />
+                <span className="font-medium">Tab</span> para continuar
+              </p>
             )}
           </div>
 
+          {/* Detail Input - Texto dinámico según tipo */}
+          <div className="space-y-3">
+            <div className="relative">
+              <Input
+                ref={detailInputRef}
+                id="detail"
+                placeholder={`${typeConfig.emoji} ${typeConfig.placeholder} (opcional)`}
+                value={detail}
+                onChange={(e) => setDetail(e.target.value)}
+                onKeyDown={handleDetailKeyDown}
+                className="h-14 text-lg rounded-2xl px-5 border-2 border-slate-200 dark:border-slate-700 focus:border-primary focus:ring-4 focus:ring-primary/20 transition-all bg-white dark:bg-slate-900 placeholder:text-slate-400"
+              />
+            </div>
+            
+            <p className="text-center text-xs text-slate-500 flex items-center justify-center gap-1.5">
+              <Sparkles className="h-3 w-3" />
+              Lo categorizaremos automáticamente con IA
+            </p>
+          </div>
+
+          {/* Submit Button - Limpio y directo */}
           <Button
             type="submit"
-            className="w-full h-11 text-sm rounded-xl shadow-sm hover:shadow-md transition-all duration-200"
-            disabled={!amount || !selectedType || !selectedCategory || addTransaction.isPending}
+            size="lg"
+            className="w-full h-14 text-base font-semibold rounded-2xl shadow-lg hover:shadow-xl transition-all duration-200 bg-gradient-to-r from-primary to-violet-600 hover:from-primary/90 hover:to-violet-600/90"
+            disabled={!amount || isSubmitting}
           >
-            {addTransaction.isPending ? "Guardando..." : "Agregar"}
+            {isSubmitting ? (
+              <span className="flex items-center gap-2">
+                <Sparkles className="h-4 w-4 animate-spin" />
+                Guardando...
+              </span>
+            ) : (
+              <span className="flex items-center gap-2">
+                <Zap className="h-4 w-4" />
+                Agregar {amount && `${amount}`}
+              </span>
+            )}
           </Button>
+          
+          {showKeyboardHints && (
+            <p className="text-center text-xs text-slate-400">
+              <kbd className="px-2 py-1 bg-slate-100 dark:bg-slate-800 rounded text-[10px] font-mono">Enter</kbd> para guardar rápido
+            </p>
+          )}
         </form>
       </CardContent>
     </Card>

@@ -86,6 +86,7 @@ SELECT name, type, color, id FROM auth.users, (VALUES
   ('Necesidades básicas', 'Gasto', '#e11d48'),
   ('Conciliación', 'Gasto', '#be123c'),
   ('Otros gastos', 'Gasto', '#f43f5e'),
+  ('Sin categoría', 'Gasto', '#94a3b8'),
   ('Inversiones', 'Inversión', '#3b82f6')
 ) AS default_categories(name, type, color)
 ON CONFLICT DO NOTHING;
@@ -114,6 +115,7 @@ BEGIN
     ('Necesidades básicas', 'Gasto', '#e11d48', NEW.id),
     ('Conciliación', 'Gasto', '#be123c', NEW.id),
     ('Otros gastos', 'Gasto', '#f43f5e', NEW.id),
+    ('Sin categoría', 'Gasto', '#94a3b8', NEW.id),
     ('Inversiones', 'Inversión', '#3b82f6', NEW.id);
   RETURN NEW;
 END;
