@@ -1,14 +1,44 @@
+# robots.txt para Rindo
+# https://rindo.cl
+
+User-agent: *
+Allow: /
+Disallow: /api/
+Disallow: /admin/
+Disallow: /*.json$
+Disallow: /dev-dist/
+
+# Crawl-delay para bots específicos
 User-agent: Googlebot
 Allow: /
+Crawl-delay: 0
 
 User-agent: Bingbot
 Allow: /
+Crawl-delay: 0
 
+User-agent: Slurp
+Allow: /
+Crawl-delay: 1
+
+# Bots de redes sociales
 User-agent: Twitterbot
 Allow: /
 
 User-agent: facebookexternalhit
 Allow: /
 
-User-agent: *
+User-agent: LinkedInBot
 Allow: /
+
+User-agent: Pinterestbot
+Allow: /
+
+User-agent: WhatsApp
+Allow: /
+
+# Sitemaps
+Sitemap: https://rindo.cl/sitemap.xml
+
+# Host
+Host: https://rindo.cl

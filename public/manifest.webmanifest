@@ -1,12 +1,15 @@
 {
-  "name": "Finanzas - Gestión Inteligente",
-  "short_name": "Finanzas",
-  "description": "Gestión financiera personal moderna y efectiva. Control total de tus ingresos, gastos e inversiones con análisis inteligentes.",
-  "start_url": "/",
+  "name": "Rindo - Finanzas Personales Inteligentes",
+  "short_name": "Rindo",
+  "description": "Gestión financiera personal moderna y efectiva. Control total de tus ingresos, gastos, presupuesto e inversiones con análisis inteligentes en tiempo real.",
+  "start_url": "/?source=pwa",
+  "scope": "/",
   "display": "standalone",
+  "display_override": ["window-controls-overlay", "standalone"],
   "background_color": "#000000",
   "theme_color": "#3b82f6",
   "orientation": "portrait-primary",
+  "id": "cl.rindo.app",
   "icons": [
     {
       "src": "/icon-192x192.png",
@@ -19,10 +22,56 @@
       "sizes": "512x512",
       "type": "image/png",
       "purpose": "any maskable"
+    },
+    {
+      "src": "/icon-192x192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/icon-512x512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any"
     }
   ],
-  "categories": ["finance", "productivity"],
+  "screenshots": [
+    {
+      "src": "/splash-screen.png",
+      "sizes": "540x720",
+      "type": "image/png",
+      "form_factor": "narrow",
+      "label": "Panel principal de Rindo"
+    }
+  ],
+  "categories": ["finance", "productivity", "business"],
   "lang": "es-CL",
-  "dir": "ltr"
+  "dir": "ltr",
+  "iarc_rating_id": "e84b072d-71b3-4d3e-86ae-31a8ce4e53b7",
+  "prefer_related_applications": false,
+  "shortcuts": [
+    {
+      "name": "Dashboard",
+      "short_name": "Inicio",
+      "description": "Ver resumen financiero",
+      "url": "/dashboard",
+      "icons": [{ "src": "/icon-192x192.png", "sizes": "192x192" }]
+    },
+    {
+      "name": "Transacciones",
+      "short_name": "Movimientos",
+      "description": "Ver todas las transacciones",
+      "url": "/transactions",
+      "icons": [{ "src": "/icon-192x192.png", "sizes": "192x192" }]
+    }
+  ],
+  "related_applications": [],
+  "protocol_handlers": [
+    {
+      "protocol": "web+flux",
+      "url": "/?handler=%s"
+    }
+  ]
 }
 

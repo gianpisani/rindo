@@ -1,0 +1,9 @@
+# Netlify Redirects Configuration for Rindo
+# Force HTTPS
+http://rindo.cl/* https://rindo.cl/:splat 301!
+http://www.rindo.cl/* https://rindo.cl/:splat 301!
+https://www.rindo.cl/* https://rindo.cl/:splat 301!
+
+# SPA Routing - All routes serve index.html
+/*    /index.html   200
+
