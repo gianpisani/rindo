@@ -9,19 +9,19 @@ interface DashboardGridProps {
   children: React.ReactElement[];
 }
 
-// Layout por defecto (12 columnas)
+// Layout por defecto (15 columnas)
 const DEFAULT_LAYOUT: Layout[] = [
   // Balance cards (5 widgets en fila)
-  { i: "income", x: 0, y: 0, w: 2.4, h: 2, minW: 2, minH: 2 },
-  { i: "expenses", x: 2.4, y: 0, w: 2.4, h: 2, minW: 2, minH: 2 },
-  { i: "investments", x: 4.8, y: 0, w: 2.4, h: 2, minW: 2, minH: 2 },
-  { i: "patrimony", x: 7.2, y: 0, w: 2.4, h: 2, minW: 2, minH: 2 },
-  { i: "available", x: 9.6, y: 0, w: 2.4, h: 2, minW: 2, minH: 2 },
+  { i: "income", x: 0, y: 0, w: 3, h: 2, minW: 2, minH: 2 },
+  { i: "expenses", x: 3, y: 0, w: 3, h: 2, minW: 2, minH: 2 },
+  { i: "investments", x: 6, y: 0, w: 3, h: 2, minW: 2, minH: 2 },
+  { i: "patrimony", x: 9, y: 0, w: 3, h: 2, minW: 2, minH: 2 },
+  { i: "available", x: 12, y: 0, w: 3, h: 2, minW: 2, minH: 2 },
   // Charts
-  { i: "projection", x: 0, y: 2, w: 4, h: 4, minW: 3, minH: 3 },
-  { i: "flow", x: 4, y: 2, w: 8, h: 4, minW: 6, minH: 4 },
-  { i: "evolution", x: 0, y: 6, w: 12, h: 3, minW: 6, minH: 3 },
-  { i: "expensesChart", x: 0, y: 9, w: 12, h: 4, minW: 6, minH: 4 },
+  { i: "projection", x: 0, y: 2, w: 6, h: 6, minW: 3, minH: 3 },
+  { i: "flow", x: 6, y: 2, w: 9, h: 6, minW: 6, minH: 4 },
+  { i: "evolution", x: 0, y: 8, w: 15, h: 4, minW: 6, minH: 3 },
+  { i: "expensesChart", x: 0, y: 12, w: 15, h: 5, minW: 6, minH: 4 },
 ];
 
 const STORAGE_KEY = "finanzas-dashboard-layout";
@@ -92,9 +92,9 @@ export function DashboardGrid({ children }: DashboardGridProps) {
       <GridLayout
         className="layout"
         layout={layout}
-        cols={12}
+        cols={15}
         rowHeight={80}
-        width={1200}
+        width={1350}
         onLayoutChange={handleLayoutChange}
         draggableHandle=".drag-handle"
         isDraggable={true}

@@ -1,4 +1,3 @@
-import { Card, CardContent, CardHeader, CardTitle } from "./ui/card";
 import { TrendingUp, TrendingDown, Minus, Info } from "lucide-react";
 import { useTransactions } from "@/hooks/useTransactions";
 import { LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer } from "recharts";
@@ -168,8 +167,8 @@ export default function ProjectionCard() {
   const trendText = trend === "up" ? "Mejorando" : trend === "down" ? "Empeorando" : "Estable";
 
   return (
-    <Card className="rounded-2xl shadow-elevated border-border/50">
-      <CardHeader className="pb-4">
+    <div className="">
+      <div className="pb-4">
         <div className="flex flex-col gap-4">          
           {/* Selector de período de proyección */}
           <div className="flex items-center justify-between gap-4">
@@ -216,8 +215,8 @@ export default function ProjectionCard() {
             </ToggleGroup>
           </div>
         </div>
-      </CardHeader>
-      <CardContent className="space-y-6">
+      </div>
+      <div className="space-y-6">
         {/* Métricas clave */}
         <div className="grid grid-cols-2 lg:grid-cols-3 gap-4">
           <div className="space-y-1">
@@ -346,8 +345,8 @@ export default function ProjectionCard() {
             </p>
           </div>
         )}
-      </CardContent>
-    </Card>
+      </div>
+    </div>
   );
 }
 
