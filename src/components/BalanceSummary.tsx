@@ -82,7 +82,7 @@ export default function BalanceSummary() {
             </div>
           </CardHeader>
           <CardContent className="pt-0">
-            <div className={`text-2xl font-semibold ${card.color} tracking-tight`}>
+            <div className={`text-lg font-semibold ${card.color} tracking-tight inline`}>
               $<NumberFlow 
                 value={card.amount} 
                 format={{ 

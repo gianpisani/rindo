@@ -1,11 +1,12 @@
 import Layout from "@/components/Layout";
 import BalanceSummary from "@/components/BalanceSummary";
 import ProjectionCard from "@/components/ProjectionCard";
+import { MoneyFlowChart } from "@/components/MoneyFlowChart";
 import { GlassCard } from "@/components/GlassCard";
 import { CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { useTransactions } from "@/hooks/useTransactions";
 import { useCategories } from "@/hooks/useCategories";
-import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, Legend, LineChart, Line } from "recharts";
+import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, LineChart, Line, Legend, Cell } from "recharts";
 import { format, startOfMonth, endOfMonth, eachMonthOfInterval, subMonths } from "date-fns";
 import { es } from "date-fns/locale";
 
@@ -220,195 +221,17 @@ export default function Dashboard() {
             </CardContent>
           </GlassCard>
 
-          <GlassCard>
+          <GlassCard className="lg:col-span-2">
             <CardHeader className="pb-4">
               <CardTitle className="text-base font-semibold">
-                Distribución por Tipo y Categoría
+                Flujo de Dinero - {format(new Date(), "MMMM yyyy", { locale: es })}
               </CardTitle>
               <p className="text-sm text-muted-foreground mt-1">
-                Análisis detallado de tus movimientos financieros
+                Visualiza cómo fluye tu dinero desde ingresos hasta gastos e inversiones
               </p>
             </CardHeader>
             <CardContent>
-              <div className="flex flex-col lg:flex-row gap-6">
-                {/* Chart */}
-                <div className="flex-1">
-                  <ResponsiveContainer width="100%" height={320}>
-                    <PieChart>
-                      {/* Outer ring - Categories */}
-                      <Pie
-                        data={chartData}
-                        cx="50%"
-                        cy="50%"
-                        labelLine={false}
-                        label={false}
-                        outerRadius={120}
-                        innerRadius={80}
-                        fill="#8884d8"
-                        dataKey="value"
-                        strokeWidth={2}
-                        stroke="hsl(var(--card))"
-                      >
-                        {chartData.map((entry, index) => (
-                          <Cell
-                            key={`cell-${index}`}
-                            fill={entry.color}
-                          />
-                        ))}
-                      </Pie>
-                      {/* Inner ring - Types */}
-                      <Pie
-                        data={[
-                          { name: "Ingresos", value: typeTotals.Ingreso },
-                          { name: "Gastos", value: typeTotals.Gasto },
-                          { name: "Inversiones", value: typeTotals.Inversión },
-                        ].filter((d) => d.value > 0)}
-                        cx="50%"
-                        cy="50%"
-                        labelLine={false}
-                        outerRadius={75}
-                        innerRadius={45}
-                        fill="#8884d8"
-                        dataKey="value"
-                        strokeWidth={3}
-                        stroke="hsl(var(--card))"
-                      >
-                        <Cell fill={COLORS.Ingreso} />
-                        <Cell fill={COLORS.Gasto} />
-                        <Cell fill={COLORS.Inversión} />
-                      </Pie>
-                      <Tooltip
-                        formatter={(value: number, name: string, props: { payload: { category?: string; type?: string } }) => [
-                          formatCurrency(value),
-                          props.payload.category || name
-                        ]}
-                        contentStyle={{
-                          backgroundColor: "hsl(var(--card))",
-                          border: "1px solid hsl(var(--border))",
-                          borderRadius: "1rem",
-                          boxShadow: "0 4px 6px -1px rgb(0 0 0 / 0.07)",
-                        }}
-                      />
-                    </PieChart>
-                  </ResponsiveContainer>
-                </div>
-
-                {/* Insights */}
-                <div className="lg:w-64 space-y-4">
-                  <div>
-                    <h4 className="text-sm font-medium mb-3 text-muted-foreground">
-                      Principales Categorías
-                    </h4>
-                    <div className="space-y-3">
-                      {topCategoriesByType.Ingreso && (
-                        <div className="space-y-1">
-                          <div className="flex items-center gap-2">
-                            <div
-                              className="w-3 h-3 rounded-full"
-                              style={{
-                                backgroundColor: COLORS.Ingreso,
-                              }}
-                            />
-                            <span className="text-xs font-medium">Ingreso</span>
-                          </div>
-                          <div className="ml-5">
-                            <p className="text-sm font-semibold">
-                              {topCategoriesByType.Ingreso.category}
-                            </p>
-                            <p className="text-xs text-muted-foreground">
-                              {formatCurrency(topCategoriesByType.Ingreso.value)}
-                              {" "}
-                              ({((topCategoriesByType.Ingreso.value / typeTotals.Ingreso) * 100).toFixed(0)}%)
-                            </p>
-                          </div>
-                        </div>
-                      )}
-                      {topCategoriesByType.Gasto && (
-                        <div className="space-y-1">
-                          <div className="flex items-center gap-2">
-                            <div
-                              className="w-3 h-3 rounded-full"
-                              style={{
-                                backgroundColor: COLORS.Gasto,
-                              }}
-                            />
-                            <span className="text-xs font-medium">Gasto</span>
-                          </div>
-                          <div className="ml-5">
-                            <p className="text-sm font-semibold">
-                              {topCategoriesByType.Gasto.category}
-                            </p>
-                            <p className="text-xs text-muted-foreground">
-                              {formatCurrency(topCategoriesByType.Gasto.value)}
-                              {" "}
-                              ({((topCategoriesByType.Gasto.value / typeTotals.Gasto) * 100).toFixed(0)}%)
-                            </p>
-                          </div>
-                        </div>
-                      )}
-                      {topCategoriesByType.Inversión && (
-                        <div className="space-y-1">
-                          <div className="flex items-center gap-2">
-                            <div
-                              className="w-3 h-3 rounded-full"
-                              style={{
-                                backgroundColor: COLORS.Inversión,
-                              }}
-                            />
-                            <span className="text-xs font-medium">Inversión</span>
-                          </div>
-                          <div className="ml-5">
-                            <p className="text-sm font-semibold">
-                              {topCategoriesByType.Inversión.category}
-                            </p>
-                            <p className="text-xs text-muted-foreground">
-                              {formatCurrency(topCategoriesByType.Inversión.value)}
-                              {" "}
-                              ({((topCategoriesByType.Inversión.value / typeTotals.Inversión) * 100).toFixed(0)}%)
-                            </p>
-                          </div>
-                        </div>
-                      )}
-                    </div>
-                  </div>
-
-                  <div className="pt-3 border-t">
-                    <h4 className="text-sm font-medium mb-3 text-muted-foreground">
-                      Resumen Total
-                    </h4>
-                    <div className="space-y-2 text-xs">
-                      <div className="flex justify-between">
-                        <span className="text-muted-foreground">Total movido:</span>
-                        <span className="font-semibold">{formatCurrency(totalAmount)}</span>
-                      </div>
-                      {typeTotals.Ingreso > 0 && (
-                        <div className="flex justify-between">
-                          <span className="text-muted-foreground">Ingresos:</span>
-                          <span className="font-medium text-green-600">
-                            {formatCurrency(typeTotals.Ingreso)}
-                          </span>
-                        </div>
-                      )}
-                      {typeTotals.Gasto > 0 && (
-                        <div className="flex justify-between">
-                          <span className="text-muted-foreground">Gastos:</span>
-                          <span className="font-medium text-red-600">
-                            {formatCurrency(typeTotals.Gasto)}
-                          </span>
-                        </div>
-                      )}
-                      {typeTotals.Inversión > 0 && (
-                        <div className="flex justify-between">
-                          <span className="text-muted-foreground">Inversiones:</span>
-                          <span className="font-medium text-blue-600">
-                            {formatCurrency(typeTotals.Inversión)}
-                          </span>
-                        </div>
-                      )}
-                    </div>
-                  </div>
-                </div>
-              </div>
+              <MoneyFlowChart />
             </CardContent>
           </GlassCard>
 
