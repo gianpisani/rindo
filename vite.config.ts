@@ -17,9 +17,9 @@ export default defineConfig(({ mode }) => ({
       registerType: "autoUpdate",
       includeAssets: ["icon-192x192.png", "icon-512x512.png"],
       manifest: {
-        name: "Gestor Financiero Personal",
-        short_name: "Finanzas",
-        description: "Tu gestor de finanzas personales con análisis inteligente",
+        name: "Rindo",
+        short_name: "Rindo",
+        description: "Finanzas no tan personales",
         theme_color: "#ffffff",
         background_color: "#ffffff",
         display: "standalone",
