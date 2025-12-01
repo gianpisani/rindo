@@ -96,15 +96,18 @@ export default function SharedExpenseDrawer({
 
   return (
     <Drawer open={open} onOpenChange={onOpenChange}>
-      <DrawerContent className="max-h-[90vh] sm:w-[60vw] mx-auto">
-        <DrawerHeader>
-          <DrawerTitle className="flex items-center gap-2">
-            <Users className="h-5 w-5" />
+      <DrawerContent className="sm:w-[60vw] mx-auto">
+        <DrawerHeader className="pb-2">
+          <DrawerTitle className="flex items-center justify-center gap-2 text-xl font-bold bg-gradient-to-r from-purple-400 to-pink-500 bg-clip-text text-transparent">
+            <Users className="h-5 w-5 text-purple-400" />
             Gasto Compartido
           </DrawerTitle>
         </DrawerHeader>
 
-        <div className="px-4 pb-4 space-y-6 overflow-y-auto">
+        <div className="px-4 pb-4 space-y-6 overflow-y-auto flex-1" style={{ 
+          WebkitOverflowScrolling: 'touch',
+          overscrollBehavior: 'contain'
+        }}>
           {/* Total */}
           <div className="bg-primary/10 rounded-lg p-4 text-center">
             <p className="text-sm text-muted-foreground">Total del gasto</p>

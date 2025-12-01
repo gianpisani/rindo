@@ -1,6 +1,16 @@
 import { ReactNode, useEffect, useRef, useState } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
-import { Home, BarChart3, Receipt, FolderOpen, LogOut, Layers, Eye, EyeOff, Users } from "lucide-react";
+import { 
+  Home, 
+  TrendingUp, 
+  ArrowLeftRight, 
+  Tag, 
+  LogOut, 
+  Eye, 
+  EyeOff, 
+  UsersRound,
+  LayoutDashboard 
+} from "lucide-react";
 import { Button } from "./ui/button";
 import { CommandBar } from "./CommandBar";
 import { QuickAddDrawer } from "./QuickAddDrawer";
@@ -21,6 +31,32 @@ export default function Layout({ children }: LayoutProps) {
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [reconciliationOpen, setReconciliationOpen] = useState(false);
   const { isPrivacyMode, togglePrivacyMode } = usePrivacyMode();
+  const [keyboardVisible, setKeyboardVisible] = useState(false);
+  const [viewportHeight, setViewportHeight] = useState(window.innerHeight);
+  
+  // Gestión inteligente del teclado virtual
+  useEffect(() => {
+    const handleResize = () => {
+      if (window.visualViewport) {
+        const currentHeight = window.visualViewport.height;
+        setViewportHeight(currentHeight);
+        // Detectar si el teclado está visible (reducción > 150px)
+        setKeyboardVisible(window.innerHeight - currentHeight > 150);
+      }
+    };
+
+    if (window.visualViewport) {
+      window.visualViewport.addEventListener('resize', handleResize);
+      window.visualViewport.addEventListener('scroll', handleResize);
+    }
+
+    return () => {
+      if (window.visualViewport) {
+        window.visualViewport.removeEventListener('resize', handleResize);
+        window.visualViewport.removeEventListener('scroll', handleResize);
+      }
+    };
+  }, []);
   
   // Prevenir zoom en iOS con double-tap y optimizar scroll
   useEffect(() => {
@@ -62,12 +98,12 @@ export default function Layout({ children }: LayoutProps) {
   };
 
   const navItems = [
-    { path: "/", label: "Inicio", icon: Home },
-    { path: "/dashboard", label: "Dashboard", icon: BarChart3 },
-    { path: "/transactions", label: "Transacciones", icon: Receipt },
-    { path: "/categories", label: "Categorías", icon: FolderOpen },
-    { path: "/pending-debts", label: "Deudas", icon: Users },
-    { path: "/bulk-recategorize", label: "Recategorizar", icon: Layers },
+    { path: "/", label: "Inicio", icon: Home, showInMobile: true },
+    { path: "/dashboard", label: "Análisis", icon: TrendingUp, showInMobile: true },
+    { path: "/transactions", label: "Movimientos", icon: ArrowLeftRight, showInMobile: true },
+    { path: "/categories", label: "Categorías", icon: Tag, showInMobile: true },
+    { path: "/pending-debts", label: "Deudas", icon: UsersRound, showInMobile: true },
+    { path: "/bulk-recategorize", label: "Recategorizar", icon: LayoutDashboard, showInMobile: false },
   ];
 
   const routes = navItems.map(item => item.path);
@@ -112,7 +148,7 @@ export default function Layout({ children }: LayoutProps) {
   }, [navigate, location.pathname, routes]);
 
   return (
-    <div className="min-h-screen bg-background pb-24 md:pb-0">
+    <div className="min-h-screen bg-background pb-20 md:pb-0">
       {/* Command Bar - Global */}
       <CommandBar 
         onAddTransaction={() => setDrawerOpen(true)}
@@ -237,30 +273,53 @@ export default function Layout({ children }: LayoutProps) {
       {/* Main Content */}
       <main className="container mx-auto px-6 py-8" data-scrollable>{children}</main>
 
-      {/* Mobile Bottom Navigation */}
-      <nav className="md:hidden fixed bottom-0 left-0 right-0 z-50 px-4" style={{ paddingBottom: 'max(env(safe-area-inset-bottom, 16px), 16px)' }}>
-        <div className="relative bg-sidebar rounded-full shadow-2xl border border-sidebar-border px-2 backdrop-blur-xl bg-opacity-95">
-          <div className="relative z-10 flex items-center justify-around">
-            {navItems.map((item) => {
-              const Icon = item.icon;
-              const isActive = location.pathname === item.path;
-              return (
-                <Link 
-                  key={item.path} 
-                  to={item.path} 
+      {/* Mobile Bottom Navigation - Strava Style */}
+      <nav 
+        className={cn(
+          "md:hidden fixed left-0 right-0 bottom-0 z-50 transition-all duration-300 ease-out",
+          "bg-sidebar/95 backdrop-blur-xl border-t border-white/10",
+          "shadow-[0_-4px_20px_rgba(0,0,0,0.3)]",
+          keyboardVisible ? "opacity-0 pointer-events-none translate-y-full" : "opacity-100"
+        )}
+        style={{ 
+          paddingBottom: 'env(safe-area-inset-bottom, 0px)'
+        }}
+      >
+        <div className="flex items-center justify-around h-16">
+          {navItems.filter(item => item.showInMobile).map((item) => {
+            const Icon = item.icon;
+            const isActive = location.pathname === item.path;
+            return (
+              <Link 
+                key={item.path} 
+                to={item.path} 
+                className={cn(
+                  "flex-1 flex flex-col items-center justify-center gap-1 h-full",
+                  "transition-all duration-200 active:scale-95",
+                  "touch-manipulation select-none"
+                )}
+                style={{
+                  WebkitTapHighlightColor: 'transparent'
+                }}
+              >
+                <Icon 
                   className={cn(
-                    "flex-1 flex flex-col items-center justify-center gap-1 h-14 rounded-full transition-all duration-200 active:scale-90",
-                    isActive
-                      ? "text-blue scale-105"
-                      : "text-gray-300"
+                    "h-6 w-6 transition-colors duration-200",
+                    isActive ? "text-blue" : "text-gray-400"
+                  )} 
+                  strokeWidth={isActive ? 2.5 : 2}
+                />
+                <span 
+                  className={cn(
+                    "text-[10px] font-semibold transition-colors duration-200",
+                    isActive ? "text-blue" : "text-gray-500"
                   )}
                 >
-                  <Icon className={cn("h-5 w-5 transition-all", isActive && "scale-110")} />
-                  <span className="text-[9px] font-semibold">{item.label}</span>
-                </Link>
-              );
-            })}
-          </div>
+                  {item.label}
+                </span>
+              </Link>
+            );
+          })}
         </div>
       </nav>
     </div>

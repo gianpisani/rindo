@@ -15,15 +15,20 @@ interface ReconciliationDrawerProps {
 export function ReconciliationDrawer({ open, onOpenChange }: ReconciliationDrawerProps) {
   return (
     <Drawer open={open} onOpenChange={onOpenChange}>
-      <DrawerContent className="max-h-[90vh] md:max-w-2xl md:mx-auto">
-        <DrawerHeader className="text-left pb-4">
-          <DrawerTitle className="text-2xl">Conciliar Balance</DrawerTitle>
-          <DrawerDescription className="text-base">
+      <DrawerContent className="md:max-w-2xl md:mx-auto">
+        <DrawerHeader className="text-left pb-3 px-6">
+          <DrawerTitle className="text-2xl">
+            Conciliar Balance
+          </DrawerTitle>
+          <DrawerDescription className="text-base text-muted-foreground">
             Verifica que tu balance real coincida con el de la app
           </DrawerDescription>
         </DrawerHeader>
         
-        <div className="px-6 pb-8 overflow-auto">
+        <div className="px-6 pb-8 overflow-y-auto flex-1" style={{ 
+          WebkitOverflowScrolling: 'touch',
+          overscrollBehavior: 'contain'
+        }}>
           <ReconciliationCard onSuccess={() => onOpenChange(false)} />
         </div>
       </DrawerContent>

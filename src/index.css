@@ -181,6 +181,9 @@ Based on Blue, Cyan, Violet, Fuchsia palette
     -moz-osx-font-smoothing: grayscale;
     overflow-x: hidden;
     max-width: 100vw;
+    /* Uso de visualViewport para mejor manejo de teclado virtual */
+    height: 100vh;
+    height: -webkit-fill-available;
   }
 
   body {
@@ -193,6 +196,14 @@ Based on Blue, Cyan, Violet, Fuchsia palette
     position: relative;
     min-height: 100vh;
     min-height: -webkit-fill-available;
+  }
+  
+  /* Mejor manejo del scroll en mobile */
+  @media (hover: none) and (pointer: coarse) {
+    #root {
+      min-height: 100vh;
+      min-height: -webkit-fill-available;
+    }
   }
 
   /* PWA Splash Screen - Logo centered */
@@ -349,6 +360,38 @@ Based on Blue, Cyan, Violet, Fuchsia palette
     button:active, a:active, [role="button"]:active {
       transform: scale(0.96);
       opacity: 0.85;
+    }
+  }
+  
+  /* Bottom nav glassmorphism */
+  .nav-glass {
+    background: rgba(0, 0, 0, 0.75);
+    backdrop-filter: blur(20px) saturate(180%);
+    -webkit-backdrop-filter: blur(20px) saturate(180%);
+    border: 1px solid rgba(255, 255, 255, 0.05);
+  }
+  
+  /* Smooth indicator slide animation */
+  @keyframes slide-indicator {
+    from {
+      opacity: 0;
+      transform: scale(0.9);
+    }
+    to {
+      opacity: 1;
+      transform: scale(1);
+    }
+  }
+  
+  /* Enhanced glow effect for active items */
+  @keyframes glow-pulse {
+    0%, 100% {
+      opacity: 0.4;
+      transform: scale(1);
+    }
+    50% {
+      opacity: 0.6;
+      transform: scale(1.1);
     }
   }
 
