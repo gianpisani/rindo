@@ -1,10 +1,11 @@
 import React, { useState, useMemo } from "react";
 import Layout from "@/components/Layout";
 import ConfirmDialog from "@/components/ConfirmDialog";
+import { BaseModal } from "@/components/BaseModal";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter } from "@/components/ui/dialog";
+import { Dialog, DialogTrigger } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
@@ -155,75 +156,83 @@ export default function Categories() {
                 <span className="hidden md:inline">Agregar</span>
               </Button>
             </DialogTrigger>
-            <DialogContent className="rounded-2xl">
-              <DialogHeader>
-                <DialogTitle>
-                  {editingCategory ? "Editar" : "Crear"} Categoría
-                </DialogTitle>
-              </DialogHeader>
-              <form onSubmit={handleSubmit} className="space-y-4">
-                <div className="space-y-2">
-                  <Label htmlFor="name" className="text-sm font-medium">Nombre</Label>
-                  <Input
-                    id="name"
-                    placeholder="Nombre de la categoría"
-                    value={formData.name}
-                    onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                    className="h-12 rounded-full px-6"
-                    required
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="type" className="text-sm font-medium">Tipo</Label>
-                  <Select
-                    value={formData.type}
-                    onValueChange={(value: any) => setFormData({ ...formData, type: value })}
-                  >
-                    <SelectTrigger className="h-12 rounded-full px-6">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="Ingreso">Ingreso</SelectItem>
-                      <SelectItem value="Gasto">Gasto</SelectItem>
-                      <SelectItem value="Inversión">Inversión</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div className="space-y-3">
-                  <Label htmlFor="color" className="text-sm font-medium">Color</Label>
-                  <div className="grid grid-cols-8 gap-2">
-                    {defaultColors.map((color) => (
-                      <button
-                        key={color}
-                        type="button"
-                        className={`h-10 w-10 rounded-full border-2 transition-all duration-200 ${
-                          formData.color === color ? "border-foreground scale-110 shadow-sm" : "border-transparent hover:scale-105"
-                        }`}
-                        style={{ backgroundColor: color }}
-                        onClick={() => setFormData({ ...formData, color })}
-                      />
-                    ))}
-                  </div>
-                  <Input
-                    id="color"
-                    type="color"
-                    value={formData.color}
-                    onChange={(e) => setFormData({ ...formData, color: e.target.value })}
-                    className="h-12 rounded-full"
-                  />
-                </div>
-                <DialogFooter>
-                  <Button 
-                    type="submit" 
-                    className="rounded-full h-12"
-                    disabled={addCategory.isPending || updateCategory.isPending}
-                  >
-                    {editingCategory ? "Guardar Cambios" : "Crear Categoría"}
-                  </Button>
-                </DialogFooter>
-              </form>
-            </DialogContent>
           </Dialog>
+
+          <BaseModal
+            open={isDialogOpen}
+            onOpenChange={(open) => {
+              setIsDialogOpen(open);
+              if (!open) {
+                setEditingCategory(null);
+                resetForm();
+              }
+            }}
+            title={`${editingCategory ? "Editar" : "Crear"} Categoría`}
+            maxWidth="md"
+            footer={
+              <Button 
+                type="submit" 
+                form="category-form"
+                className="w-full"
+                disabled={addCategory.isPending || updateCategory.isPending}
+              >
+                {editingCategory ? "Guardar Cambios" : "Crear Categoría"}
+              </Button>
+            }
+          >
+            <form id="category-form" onSubmit={handleSubmit} className="space-y-4">
+              <div className="space-y-2">
+                <Label htmlFor="name" className="text-sm font-medium">Nombre</Label>
+                <Input
+                  id="name"
+                  placeholder="Nombre de la categoría"
+                  value={formData.name}
+                  onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                  className="h-12 rounded-full px-6"
+                  required
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="type" className="text-sm font-medium">Tipo</Label>
+                <Select
+                  value={formData.type}
+                  onValueChange={(value: any) => setFormData({ ...formData, type: value })}
+                >
+                  <SelectTrigger className="h-12 rounded-full px-6">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="Ingreso">Ingreso</SelectItem>
+                    <SelectItem value="Gasto">Gasto</SelectItem>
+                    <SelectItem value="Inversión">Inversión</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-3">
+                <Label htmlFor="color" className="text-sm font-medium">Color</Label>
+                <div className="grid grid-cols-8 gap-2">
+                  {defaultColors.map((color) => (
+                    <button
+                      key={color}
+                      type="button"
+                      className={`h-10 w-10 rounded-full border-2 transition-all duration-200 ${
+                        formData.color === color ? "border-foreground scale-110 shadow-sm" : "border-transparent hover:scale-105"
+                      }`}
+                      style={{ backgroundColor: color }}
+                      onClick={() => setFormData({ ...formData, color })}
+                    />
+                  ))}
+                </div>
+                <Input
+                  id="color"
+                  type="color"
+                  value={formData.color}
+                  onChange={(e) => setFormData({ ...formData, color: e.target.value })}
+                  className="h-12 rounded-full"
+                />
+              </div>
+            </form>
+          </BaseModal>
         </div>
 
         {/* Tablas por tipo */}

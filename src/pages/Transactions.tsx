@@ -1,11 +1,12 @@
 import { useState, useRef, useEffect, useCallback } from "react";
 import Layout from "@/components/Layout";
 import ConfirmDialog from "@/components/ConfirmDialog";
+import { BaseModal } from "@/components/BaseModal";
 import { TransactionsTable } from "@/components/TransactionsTable";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter, DialogDescription } from "@/components/ui/dialog";
+import { Dialog, DialogTrigger } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
@@ -398,13 +399,32 @@ export default function Transactions() {
                 <span className="hidden md:inline">Agregar</span>
               </Button>
             </DialogTrigger>
-            <DialogContent className="rounded-2xl">
-              <DialogHeader>
-                <DialogTitle>
-                  {editingTransaction ? "Editar" : "Agregar"} Transacción
-                </DialogTitle>
-              </DialogHeader>
-              <form onSubmit={handleSubmit} className="space-y-4">
+          </Dialog>
+
+          <BaseModal
+            open={isDialogOpen}
+            onOpenChange={(open) => {
+              setIsDialogOpen(open);
+              if (!open) {
+                setEditingTransaction(null);
+                resetForm();
+                setSuggestion(null);
+              }
+            }}
+            title={`${editingTransaction ? "Editar" : "Agregar"} Transacción`}
+            maxWidth="lg"
+            footer={
+              <Button 
+                type="submit" 
+                form="transaction-form"
+                className="w-full" 
+                disabled={addTransaction.isPending || updateTransaction.isPending}
+              >
+                {editingTransaction ? "Guardar Cambios" : "Agregar"}
+              </Button>
+            }
+          >
+            <form id="transaction-form" onSubmit={handleSubmit} className="space-y-4">
                 <div className="space-y-2">
                   <Label htmlFor="date" className="text-sm font-medium">Fecha</Label>
                   <Input
@@ -566,14 +586,8 @@ export default function Transactions() {
                     </Alert>
                   )}
                 </div>
-                <DialogFooter className="gap-2">
-                  <Button type="submit" className="rounded-full h-12" disabled={addTransaction.isPending || updateTransaction.isPending}>
-                    {editingTransaction ? "Guardar Cambios" : "Agregar"}
-                  </Button>
-                </DialogFooter>
               </form>
-            </DialogContent>
-          </Dialog>
+          </BaseModal>
         </div>
 
         <div className="flex flex-wrap gap-2">
@@ -584,30 +598,35 @@ export default function Transactions() {
                 <span className="hidden sm:inline">Importar</span>
               </Button>
             </DialogTrigger>
-            <DialogContent className="rounded-2xl max-h-[80vh] overflow-y-auto">
-              <DialogHeader>
-                <DialogTitle>Importar Transacciones desde CSV</DialogTitle>
-                <DialogDescription className="space-y-4 pt-4">
-                  <div className="space-y-2">
-                    <p className="font-medium text-sm">Formato requerido:</p>
-                    <div className="bg-muted p-3 rounded-xl text-xs font-mono">
-                      Fecha,Detalle,Categoría,Tipo,Monto
-                    </div>
-                  </div>
-                  
-                  <div className="space-y-2">
-                    <p className="font-medium text-sm">Descripción de columnas:</p>
-                    <ul className="text-xs space-y-1 list-disc list-inside">
-                      <li><strong>Fecha:</strong> formato DD/MM/YYYY</li>
-                      <li><strong>Detalle:</strong> descripción opcional</li>
-                      <li><strong>Categoría:</strong> se creará si no existe</li>
-                      <li><strong>Tipo:</strong> Ingreso, Gasto o Inversión</li>
-                      <li><strong>Monto:</strong> número positivo</li>
-                    </ul>
-                  </div>
-                </DialogDescription>
-              </DialogHeader>
-              <div className="space-y-4">
+          </Dialog>
+
+          <BaseModal
+            open={isImportDialogOpen}
+            onOpenChange={setIsImportDialogOpen}
+            title="Importar Transacciones desde CSV"
+            description="Sube tu archivo CSV con el formato indicado"
+            maxWidth="md"
+          >
+            <div className="space-y-4">
+              <div className="space-y-2">
+                <p className="font-medium text-sm">Formato requerido:</p>
+                <div className="bg-muted p-3 rounded-xl text-xs font-mono">
+                  Fecha,Detalle,Categoría,Tipo,Monto
+                </div>
+              </div>
+              
+              <div className="space-y-2">
+                <p className="font-medium text-sm">Descripción de columnas:</p>
+                <ul className="text-xs space-y-1 list-disc list-inside">
+                  <li><strong>Fecha:</strong> formato DD/MM/YYYY</li>
+                  <li><strong>Detalle:</strong> descripción opcional</li>
+                  <li><strong>Categoría:</strong> se creará si no existe</li>
+                  <li><strong>Tipo:</strong> Ingreso, Gasto o Inversión</li>
+                  <li><strong>Monto:</strong> número positivo</li>
+                </ul>
+              </div>
+
+              <div className="pt-2">
                 <Input
                   ref={fileInputRef}
                   type="file"
@@ -618,15 +637,15 @@ export default function Transactions() {
                       handleImportCSV(file);
                     }
                   }}
-                  className="h-12 rounded-full"
+                  className="h-12"
                   disabled={isImporting}
                 />
                 {isImporting && (
-                  <p className="text-sm text-muted-foreground animate-pulse">Importando...</p>
+                  <p className="text-sm text-muted-foreground animate-pulse mt-2">Importando...</p>
                 )}
               </div>
-            </DialogContent>
-          </Dialog>
+            </div>
+          </BaseModal>
           
           <Button 
             onClick={handleExportCSV} 

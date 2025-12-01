@@ -13,7 +13,11 @@ import {
   BanknotesIcon,
   CheckBadgeIcon,
   CursorArrowRaysIcon,
-  FaceSmileIcon
+  FaceSmileIcon,
+  EnvelopeIcon,
+  PaperAirplaneIcon,
+  SparklesIcon,
+  CheckCircleIcon
 } from "@heroicons/react/24/outline";
 import { CommandIcon } from "lucide-react";
 import Particles, { initParticlesEngine } from "@tsparticles/react";
@@ -31,6 +35,8 @@ export default function Auth() {
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
   const [particlesInit, setParticlesInit] = useState(false);
+  const [emailSent, setEmailSent] = useState(false);
+  const [animationStage, setAnimationStage] = useState(0); // 0: idle, 1: sending, 2: sent, 3: done
   const { toast } = useToast();
 
   useEffect(() => {
@@ -78,6 +84,15 @@ export default function Auth() {
     []
   );
 
+  useEffect(() => {
+    if (emailSent) {
+      // Animation sequence
+      setAnimationStage(1);
+      setTimeout(() => setAnimationStage(2), 1000);
+      setTimeout(() => setAnimationStage(3), 2500);
+    }
+  }, [emailSent]);
+
   const handleAuth = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
@@ -99,10 +114,8 @@ export default function Auth() {
           password,
         });
         if (error) throw error;
-        toast({
-          title: "¡Cuenta creada!",
-          description: "Tu cuenta ha sido creada exitosamente. Verifica tu correo.",
-        });
+        // Trigger email sent animation instead of toast
+        setEmailSent(true);
       }
     } catch (error) {
       toast({
@@ -110,7 +123,6 @@ export default function Auth() {
         description: error instanceof Error ? error.message : "Error desconocido",
         variant: "destructive",
       });
-    } finally {
       setLoading(false);
     }
   };
@@ -213,74 +225,176 @@ export default function Auth() {
           </div>
 
           {/* Form */}
-          <Card className="p-6 lg:p-8 shadow-card">
-            <form onSubmit={handleAuth} className="space-y-5">
-              <div className="space-y-2">
-                <Label htmlFor="email" className="text-sm font-medium">
-                  Correo electrónico
-                </Label>
-                <Input
-                  id="email"
-                  type="email"
-                  placeholder="tu@email.com"
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  className="h-11 transition-all"
-                  required
-                  autoComplete="email"
-                />
-              </div>
+          <Card className="p-6 lg:p-8 shadow-card relative overflow-hidden">
+            {!emailSent ? (
+              <form onSubmit={handleAuth} className="space-y-5">
+                <div className="space-y-2">
+                  <Label htmlFor="email" className="text-sm font-medium">
+                    Correo electrónico
+                  </Label>
+                  <Input
+                    id="email"
+                    type="email"
+                    placeholder="tu@email.com"
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
+                    className="h-11 transition-all"
+                    required
+                    autoComplete="email"
+                  />
+                </div>
 
-              <div className="space-y-2">
-                <Label htmlFor="password" className="text-sm font-medium">
-                  Contraseña
-                </Label>
-                <Input
-                  id="password"
-                  type="password"
-                  placeholder="••••••••"
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  className="h-11 transition-all"
-                  required
-                  autoComplete={isLogin ? "current-password" : "new-password"}
-                  minLength={6}
-                />
-                {!isLogin && (
-                  <p className="text-xs text-muted-foreground">
-                    Mínimo 6 caracteres
-                  </p>
-                )}
-              </div>
+                <div className="space-y-2">
+                  <Label htmlFor="password" className="text-sm font-medium">
+                    Contraseña
+                  </Label>
+                  <Input
+                    id="password"
+                    type="password"
+                    placeholder="••••••••"
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    className="h-11 transition-all"
+                    required
+                    autoComplete={isLogin ? "current-password" : "new-password"}
+                    minLength={6}
+                  />
+                  {!isLogin && (
+                    <p className="text-xs text-muted-foreground">
+                      Mínimo 6 caracteres
+                    </p>
+                  )}
+                </div>
 
-              <Button 
-                type="submit" 
-                className="w-full h-11 font-medium shadow-sm hover:shadow-md transition-all" 
-                disabled={loading}
-              >
-                {loading ? "Cargando..." : isLogin ? "Iniciar Sesión" : "Crear Cuenta"}
-              </Button>
-            </form>
+                <Button 
+                  type="submit" 
+                  className="w-full h-11 font-medium shadow-sm hover:shadow-md transition-all" 
+                  disabled={loading}
+                >
+                  {loading ? "Cargando..." : isLogin ? "Iniciar Sesión" : "Crear Cuenta"}
+                </Button>
+              </form>
+            ) : (
+              <div className="min-h-[320px] flex items-center justify-center">
+                {/* Email Sent Animation */}
+                <div className="text-center space-y-6 py-8">
+                  {/* Animated envelope */}
+                  <div className="relative mx-auto w-32 h-32">
+                    {/* Background glow effect */}
+                    <div className={`absolute inset-0 bg-blue/20 rounded-full blur-2xl transition-all duration-1000 ${animationStage >= 2 ? 'scale-150 opacity-0' : 'scale-100 opacity-100'}`} />
+                    
+                    {/* Envelope container */}
+                    <div className="relative">
+                      {/* Paper plane animation */}
+                      <div className={`absolute inset-0 flex items-center justify-center transition-all duration-1000 ${
+                        animationStage >= 2 
+                          ? 'translate-x-32 -translate-y-32 opacity-0 rotate-45 scale-50' 
+                          : 'translate-x-0 translate-y-0 opacity-0 scale-100'
+                      }`}>
+                        <PaperAirplaneIcon className="h-16 w-16 text-blue" />
+                      </div>
+
+                      {/* Envelope icon */}
+                      <div className={`flex items-center justify-center transition-all duration-700 ${
+                        animationStage === 1 
+                          ? 'scale-110 rotate-12' 
+                          : animationStage >= 2 
+                            ? 'scale-90 opacity-0' 
+                            : 'scale-100'
+                      }`}>
+                        <EnvelopeIcon className="h-20 w-20 text-blue" />
+                      </div>
+
+                      {/* Check circle when done */}
+                      <div className={`absolute inset-0 flex items-center justify-center transition-all duration-500 ${
+                        animationStage >= 3 
+                          ? 'scale-100 opacity-100' 
+                          : 'scale-50 opacity-0'
+                      }`}>
+                        <CheckCircleIcon className="h-24 w-24 text-green-500" />
+                      </div>
+
+                      {/* Sparkles */}
+                      {animationStage >= 2 && (
+                        <>
+                          <SparklesIcon className={`absolute -top-4 -right-4 h-8 w-8 text-yellow-400 transition-all duration-500 ${
+                            animationStage >= 3 ? 'opacity-0 scale-0' : 'opacity-100 scale-100 animate-pulse'
+                          }`} />
+                          <SparklesIcon className={`absolute -bottom-4 -left-4 h-6 w-6 text-blue-400 transition-all duration-700 ${
+                            animationStage >= 3 ? 'opacity-0 scale-0' : 'opacity-100 scale-100 animate-pulse'
+                          }`} style={{ animationDelay: '150ms' }} />
+                          <SparklesIcon className={`absolute top-0 -left-6 h-5 w-5 text-purple-400 transition-all duration-600 ${
+                            animationStage >= 3 ? 'opacity-0 scale-0' : 'opacity-100 scale-100 animate-pulse'
+                          }`} style={{ animationDelay: '300ms' }} />
+                        </>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Text content with transitions */}
+                  <div className="space-y-3">
+                    <h3 className={`text-2xl font-bold transition-all duration-500 ${
+                      animationStage >= 3 ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-4'
+                    }`}>
+                      {animationStage >= 3 ? '¡Revisa tu correo!' : 'Enviando...'}
+                    </h3>
+                    
+                    <div className={`transition-all duration-500 delay-100 ${
+                      animationStage >= 3 ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-4'
+                    }`}>
+                      <p className="text-muted-foreground mb-2">
+                        Te enviamos un link de confirmación a
+                      </p>
+                      <p className="font-semibold text-blue">{email}</p>
+                    </div>
+
+                    <div className={`pt-4 space-y-3 transition-all duration-500 delay-200 ${
+                      animationStage >= 3 ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-4'
+                    }`}>
+                      <div className="flex items-start gap-2 text-xs text-muted-foreground text-left bg-muted/50 p-3 rounded-lg">
+                        <CheckCircleIcon className="h-4 w-4 mt-0.5 flex-shrink-0 text-blue" />
+                        <span>Revisa tu bandeja de entrada (y spam por si acaso)</span>
+                      </div>
+                      
+                      <Button
+                        onClick={() => {
+                          setEmailSent(false);
+                          setAnimationStage(0);
+                          setIsLogin(true);
+                          setLoading(false);
+                        }}
+                        variant="outline"
+                        className="w-full"
+                      >
+                        Volver al inicio de sesión
+                      </Button>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
           </Card>
 
           {/* Toggle Auth Mode */}
-          <div className="text-center">
-            <button
-              type="button"
-              onClick={() => setIsLogin(!isLogin)}
-              className="text-sm text-muted-foreground hover:text-foreground transition-colors font-medium"
-            >
-              {isLogin ? (
-                <>
-                  ¿No tienes cuenta? <span className="text-blue">Regístrate aquí</span>
-                </>
-              ) : (
-                <>
-                  ¿Ya tienes cuenta? <span className="text-blue">Inicia sesión</span>
-                </>
-              )}
-            </button>
-          </div>
+          {!emailSent && (
+            <div className="text-center">
+              <button
+                type="button"
+                onClick={() => setIsLogin(!isLogin)}
+                className="text-sm text-muted-foreground hover:text-foreground transition-colors font-medium"
+              >
+                {isLogin ? (
+                  <>
+                    ¿No tienes cuenta? <span className="text-blue">Regístrate aquí</span>
+                  </>
+                ) : (
+                  <>
+                    ¿Ya tienes cuenta? <span className="text-blue">Inicia sesión</span>
+                  </>
+                )}
+              </button>
+            </div>
+          )}
 
           {/* Mobile Value Props */}
           <div className="lg:hidden pt-8 space-y-4 border-t border-border">

@@ -30,30 +30,30 @@ export default function ConfirmDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="rounded-2xl backdrop-blur-xl bg-card/95 border-border/50 shadow-2xl">
-        <DialogHeader className="gap-3">
+      <DialogContent className="sm:max-w-[400px] w-[92vw] p-0 gap-0">
+        <DialogHeader className="px-6 pt-6 pb-4 gap-3">
           {variant === "destructive" && (
             <div className="flex items-center justify-center w-12 h-12 rounded-full bg-destructive/10 mx-auto">
               <AlertTriangle className="h-6 w-6 text-destructive" />
             </div>
           )}
-          <DialogTitle className="text-xl text-center">{title}</DialogTitle>
+          <DialogTitle className="text-xl text-center font-bold">{title}</DialogTitle>
           <DialogDescription className="text-center text-base">
             {description}
           </DialogDescription>
         </DialogHeader>
-        <DialogFooter className="flex-row gap-2 sm:gap-2">
+        <DialogFooter className="flex-row gap-2 sm:gap-2 px-6 pb-6">
           <Button
             variant="outline"
             onClick={() => onOpenChange(false)}
-            className="flex-1 rounded-xl"
+            className="flex-1"
           >
             {cancelText}
           </Button>
           <Button
             variant={variant}
             onClick={handleConfirm}
-            className="flex-1 rounded-xl"
+            className="flex-1"
           >
             {confirmText}
           </Button>

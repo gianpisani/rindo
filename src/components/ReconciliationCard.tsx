@@ -51,6 +51,11 @@ export function ReconciliationCard({ onSuccess }: ReconciliationCardProps = {}) 
     setter(value);
   };
 
+  const formatNumber = (value: string) => {
+    if (!value) return "";
+    return new Intl.NumberFormat("es-CL").format(Number(value));
+  };
+
   // Persistir en localStorage
   useEffect(() => {
     const saved = localStorage.getItem("reconciliation-data");
@@ -130,7 +135,7 @@ export function ReconciliationCard({ onSuccess }: ReconciliationCardProps = {}) 
               id="cuenta-corriente"
               type="text"
               placeholder="0"
-              value={cuentaCorriente}
+              value={formatNumber(cuentaCorriente)}
               onChange={(e) => handleInputChange(e, setCuentaCorriente)}
               className="pl-7 h-11"
             />
@@ -148,7 +153,7 @@ export function ReconciliationCard({ onSuccess }: ReconciliationCardProps = {}) 
               id="tarjeta-credito"
               type="text"
               placeholder="0"
-              value={tarjetaCredito}
+              value={formatNumber(tarjetaCredito)}
               onChange={(e) => handleInputChange(e, setTarjetaCredito)}
               className="pl-7 h-11"
             />
