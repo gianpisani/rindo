@@ -43,15 +43,19 @@ export default function Layout({ children }: LayoutProps) {
     // Solo en desktop
     if (window.innerWidth < 1024) return;
     
-    // Verificar si ya se mostró en esta sesión
-    const hasShownBefore = sessionStorage.getItem('shortcuts-popover-shown');
+    // Versión del popover - cambiar este número para forzar que se muestre de nuevo
+    const POPOVER_VERSION = 'v1.0';
+    const storageKey = `shortcuts-popover-shown-${POPOVER_VERSION}`;
+    
+    // Verificar si ya se mostró en localStorage
+    const hasShownBefore = localStorage.getItem(storageKey);
     if (hasShownBefore) return;
     
     // Mostrar después de 2 segundos
     const showTimer = setTimeout(() => {
       setShowShortcutsPopover(true);
       setIsFirstTimePopover(true);
-      sessionStorage.setItem('shortcuts-popover-shown', 'true');
+      localStorage.setItem(storageKey, 'true');
       
       // Ocultar después de 4 segundos (desaparece a los 6s en total)
       const hideTimer = setTimeout(() => {
