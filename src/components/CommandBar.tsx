@@ -29,6 +29,7 @@ import { useFuzzySearch } from "@/hooks/useFuzzySearch";
 import { format } from "date-fns";
 import { es } from "date-fns/locale";
 import { Badge } from "@/components/ui/badge";
+import { Kbd } from "@/components/ui/kbd";
 
 interface CommandBarProps {
   onAddTransaction?: () => void;
@@ -90,11 +91,15 @@ export function CommandBar({ onAddTransaction, onConciliate }: CommandBarProps) 
 
   return (
     <CommandDialog open={open} onOpenChange={setOpen}>
-      <CommandInput 
-        placeholder="Busca transacciones o navega..." 
-        value={search}
-        onValueChange={setSearch}
-      />
+      <div className="flex items-center border-b px-3">
+        <Search className="mr-2 h-4 w-4 shrink-0 opacity-50" />
+        <CommandInput 
+          placeholder="Busca transacciones o navega..." 
+          value={search}
+          onValueChange={setSearch}
+          className="border-0 focus:ring-0"
+        />
+      </div>
       <CommandList>
         <CommandEmpty>
           {showTransactions 
@@ -163,12 +168,22 @@ export function CommandBar({ onAddTransaction, onConciliate }: CommandBarProps) 
         <CommandGroup heading="Acciones">
           <CommandItem onSelect={() => runCommand(() => onAddTransaction?.())}>
             <Plus className="mr-2 h-4 w-4" />
-            <span>Agregar Transacción</span>
+            <div className="flex items-center justify-between flex-1">
+              <span>Agregar Transacción</span>
+              <div className="flex gap-1">
+                <Kbd>⌘</Kbd><Kbd>C</Kbd>
+              </div>
+            </div>
           </CommandItem>
           
           <CommandItem onSelect={() => runCommand(() => onConciliate?.())}>
             <Calculator className="mr-2 h-4 w-4" />
-            <span>Conciliar Balance</span>
+            <div className="flex items-center justify-between flex-1">
+              <span>Conciliar Balance</span>
+              <div className="flex gap-1">
+                <Kbd>⌘</Kbd><Kbd>R</Kbd>
+              </div>
+            </div>
           </CommandItem>
         </CommandGroup>
 
@@ -177,22 +192,52 @@ export function CommandBar({ onAddTransaction, onConciliate }: CommandBarProps) 
         <CommandGroup heading="Navegación">
           <CommandItem onSelect={() => runCommand(() => navigate("/"))}>
             <Home className="mr-2 h-4 w-4" />
-            <span>Dashboard</span>
+            <div className="flex items-center justify-between flex-1">
+              <span>Inicio</span>
+              <div className="flex gap-1">
+                <Kbd>⌘</Kbd><Kbd>1</Kbd>
+              </div>
+            </div>
+          </CommandItem>
+          
+          <CommandItem onSelect={() => runCommand(() => navigate("/dashboard"))}>
+            <TrendingUp className="mr-2 h-4 w-4" />
+            <div className="flex items-center justify-between flex-1">
+              <span>Análisis</span>
+              <div className="flex gap-1">
+                <Kbd>⌘</Kbd><Kbd>2</Kbd>
+              </div>
+            </div>
           </CommandItem>
           
           <CommandItem onSelect={() => runCommand(() => navigate("/transactions"))}>
             <DollarSign className="mr-2 h-4 w-4" />
-            <span>Transacciones</span>
+            <div className="flex items-center justify-between flex-1">
+              <span>Movimientos</span>
+              <div className="flex gap-1">
+                <Kbd>⌘</Kbd><Kbd>3</Kbd>
+              </div>
+            </div>
           </CommandItem>
           
           <CommandItem onSelect={() => runCommand(() => navigate("/categories"))}>
             <FolderKanban className="mr-2 h-4 w-4" />
-            <span>Categorías</span>
+            <div className="flex items-center justify-between flex-1">
+              <span>Categorías</span>
+              <div className="flex gap-1">
+                <Kbd>⌘</Kbd><Kbd>4</Kbd>
+              </div>
+            </div>
           </CommandItem>
 
           <CommandItem onSelect={() => runCommand(() => navigate("/pending-debts"))}>
             <Users className="mr-2 h-4 w-4" />
-            <span>Deudas Pendientes</span>
+            <div className="flex items-center justify-between flex-1">
+              <span>Deudas Pendientes</span>
+              <div className="flex gap-1">
+                <Kbd>⌘</Kbd><Kbd>5</Kbd>
+              </div>
+            </div>
           </CommandItem>
           
           <CommandItem onSelect={() => runCommand(() => navigate("/recategorize"))}>

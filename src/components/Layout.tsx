@@ -19,10 +19,14 @@ import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
 import { usePrivacyMode } from "@/hooks/usePrivacyMode";
+import { ShortcutsPopover } from "@/components/ShortcutsPopover";
 
 interface LayoutProps {
   children: ReactNode;
 }
+
+const isMac = typeof navigator !== 'undefined' && /Mac|iPhone|iPad|iPod/.test(navigator.userAgent);
+const cmdKey = isMac ? "⌘" : "Ctrl";
 
 export default function Layout({ children }: LayoutProps) {
   const location = useLocation();
@@ -31,6 +35,49 @@ export default function Layout({ children }: LayoutProps) {
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [reconciliationOpen, setReconciliationOpen] = useState(false);
   const { isPrivacyMode, togglePrivacyMode } = usePrivacyMode();
+  const [showShortcutsPopover, setShowShortcutsPopover] = useState(false);
+  
+  // Auto-show shortcuts popover on desktop
+  useEffect(() => {
+    // Solo en desktop
+    if (window.innerWidth < 1024) return;
+    
+    // Verificar si ya se mostró en esta sesión
+    const hasShownBefore = sessionStorage.getItem('shortcuts-popover-shown');
+    if (hasShownBefore) return;
+    
+    // Mostrar después de 1 segundo
+    const showTimer = setTimeout(() => {
+      setShowShortcutsPopover(true);
+      sessionStorage.setItem('shortcuts-popover-shown', 'true');
+      
+      // Ocultar después de 10 segundos
+      const hideTimer = setTimeout(() => {
+        setShowShortcutsPopover(false);
+      }, 10000);
+      
+      return () => clearTimeout(hideTimer);
+    }, 1000);
+    
+    return () => clearTimeout(showTimer);
+  }, []);
+
+  // Close popover when clicking outside
+  useEffect(() => {
+    if (!showShortcutsPopover) return;
+    
+    const handleClickOutside = (e: MouseEvent) => {
+      const target = e.target as HTMLElement;
+      // No cerrar si se hace click dentro del popover o en el botón
+      if (target.closest('[data-shortcuts-popover]') || target.closest('[data-shortcuts-trigger]')) {
+        return;
+      }
+      setShowShortcutsPopover(false);
+    };
+    
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, [showShortcutsPopover]);
   
   // Prevenir zoom en iOS con double-tap y optimizar scroll
   useEffect(() => {
@@ -92,6 +139,13 @@ export default function Layout({ children }: LayoutProps) {
       if ((e.metaKey || e.ctrlKey) && e.key === "c" && !e.shiftKey && !isInputField) {
         e.preventDefault();
         setDrawerOpen(true);
+        return;
+      }
+
+      // Cmd+R para conciliar
+      if ((e.metaKey || e.ctrlKey) && e.key === "r" && !isInputField) {
+        e.preventDefault();
+        setReconciliationOpen(true);
         return;
       }
 
@@ -186,9 +240,21 @@ export default function Layout({ children }: LayoutProps) {
                   <Eye className="h-4 w-4" />
                 )}
               </Button>
-              <kbd className="hidden lg:inline-flex h-7 select-none items-center gap-1 rounded bg-sidebar-accent px-2 font-mono text-[11px] font-medium text-white border border-sidebar-border">
-                <span className="text-xs">⌘</span>K
-              </kbd>
+              <div className="hidden lg:block relative">
+                <div 
+                  data-shortcuts-trigger
+                  className="h-7 select-none items-center gap-1 rounded bg-sidebar-accent px-2 font-mono text-[11px] font-medium text-white border border-sidebar-border inline-flex cursor-pointer hover:bg-sidebar-accent/80 transition-colors"
+                  onClick={() => setShowShortcutsPopover(!showShortcutsPopover)}
+                >
+                  <span className="text-xs">{isMac ? "⌘" : "Ctrl"}</span>K
+                </div>
+                <div data-shortcuts-popover>
+                  <ShortcutsPopover 
+                    isVisible={showShortcutsPopover} 
+                    onClose={() => setShowShortcutsPopover(false)}
+                  />
+                </div>
+              </div>
               <Button 
                 onClick={handleLogout} 
                 variant="ghost"
