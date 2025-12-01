@@ -2,8 +2,8 @@ import { useState } from "react";
 import { Button } from "./ui/button";
 import { Input } from "./ui/input";
 import { Label } from "./ui/label";
-import { Drawer, DrawerContent, DrawerHeader, DrawerTitle, DrawerFooter, DrawerClose } from "./ui/drawer";
-import { X, Plus, Trash2, Users } from "lucide-react";
+import { BaseModal } from "./BaseModal";
+import { Plus, Trash2, Users } from "lucide-react";
 import { RadioGroup, RadioGroupItem } from "./ui/radio-group";
 import { Checkbox } from "./ui/checkbox";
 
@@ -95,19 +95,31 @@ export default function SharedExpenseDrawer({
     (splitMode === "equal" || (includeMe ? Math.abs(totalSplit + myShare - totalAmount) < 1 : Math.abs(totalSplit - totalAmount) < 1));
 
   return (
-    <Drawer open={open} onOpenChange={onOpenChange}>
-      <DrawerContent className="sm:w-[60vw] mx-auto">
-        <DrawerHeader className="pb-2 flex-shrink-0">
-          <DrawerTitle className="flex items-center justify-center gap-2 text-xl font-bold bg-gradient-to-r from-purple-400 to-pink-500 bg-clip-text text-transparent">
-            <Users className="h-5 w-5 text-purple-400" />
-            Gasto Compartido
-          </DrawerTitle>
-        </DrawerHeader>
-
-        <div className="flex-1 overflow-y-auto overflow-x-hidden px-4 pb-4 space-y-6" style={{ 
-          WebkitOverflowScrolling: 'touch',
-          overscrollBehavior: 'contain'
-        }}>
+    <BaseModal
+      open={open}
+      onOpenChange={onOpenChange}
+      title="Gasto Compartido"
+      maxWidth="md"
+      footer={
+        <div className="flex gap-2">
+          <Button 
+            variant="outline" 
+            className="flex-1"
+            onClick={() => onOpenChange(false)}
+          >
+            Cancelar
+          </Button>
+          <Button 
+            onClick={handleConfirm} 
+            disabled={!isValid}
+            className="flex-1"
+          >
+            Confirmar
+          </Button>
+        </div>
+      }
+    >
+      <div className="space-y-6">
           {/* Total */}
           <div className="bg-primary/10 rounded-lg p-4 text-center">
             <p className="text-sm text-muted-foreground">Total del gasto</p>
@@ -244,24 +256,8 @@ export default function SharedExpenseDrawer({
               )}
             </div>
           )}
-        </div>
-
-        <DrawerFooter className="flex-row gap-2 flex-shrink-0">
-          <DrawerClose asChild>
-            <Button variant="outline" className="flex-1">
-              Cancelar
-            </Button>
-          </DrawerClose>
-          <Button 
-            onClick={handleConfirm} 
-            disabled={!isValid}
-            className="flex-1"
-          >
-            Confirmar
-          </Button>
-        </DrawerFooter>
-      </DrawerContent>
-    </Drawer>
+      </div>
+    </BaseModal>
   );
 }
 
