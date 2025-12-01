@@ -216,7 +216,7 @@ export default function QuickTransactionForm({ onSuccess, defaultType = "Gasto" 
   const showKeyboardHints = !isMobile();
 
   return (
-    <Card className="border-0 shadow-none dark:from-slate-900 dark:to-slate-800 overflow-hidden">
+    <Card className="border-0 shadow-none bg-transparent dark:from-slate-900 dark:to-slate-800 overflow-hidden">
       <CardContent className="p-6 sm:p-8">
         <form onSubmit={handleSubmit} className="space-y-6">
           {/* Amount Input - MÁS GRANDE */}
