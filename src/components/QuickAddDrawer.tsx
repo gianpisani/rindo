@@ -1,10 +1,10 @@
 import {
-  Drawer,
-  DrawerContent,
-  DrawerDescription,
-  DrawerHeader,
-  DrawerTitle,
-} from "./ui/drawer";
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from "./ui/dialog";
 import QuickTransactionForm from "./QuickTransactionForm";
 
 interface QuickAddDrawerProps {
@@ -15,28 +15,25 @@ interface QuickAddDrawerProps {
 
 export function QuickAddDrawer({ open, onOpenChange, defaultType }: QuickAddDrawerProps) {
   return (
-    <Drawer open={open} onOpenChange={onOpenChange}>
-      <DrawerContent className="sm:max-w-[85vw] mx-auto">
-        <DrawerHeader className="text-left pb-2 px-6 flex-shrink-0">
-          <DrawerTitle className="sm:text-2xl text-xl text-center">
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="sm:max-w-[600px] max-w-[calc(100vw-2rem)] max-h-[85vh] flex flex-col p-0 gap-0">
+        <DialogHeader className="px-6 pt-6 pb-4">
+          <DialogTitle className="text-2xl text-center">
             Agregar transacción
-          </DrawerTitle>
-          <DrawerDescription className="text-center text-muted-foreground">
+          </DialogTitle>
+          <DialogDescription className="text-center">
             Completa los detalles de tu transacción
-          </DrawerDescription>
-        </DrawerHeader>
+          </DialogDescription>
+        </DialogHeader>
         
-        <div className="flex-1 overflow-y-auto overflow-x-hidden px-4 pb-6" style={{ 
-          WebkitOverflowScrolling: 'touch',
-          overscrollBehavior: 'contain'
-        }}>
+        <div className="overflow-y-auto px-6 pb-6">
           <QuickTransactionForm 
             onSuccess={() => onOpenChange(false)}
             defaultType={defaultType}
           />
         </div>
-      </DrawerContent>
-    </Drawer>
+      </DialogContent>
+    </Dialog>
   );
 }
 

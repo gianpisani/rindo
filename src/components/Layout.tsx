@@ -31,32 +31,6 @@ export default function Layout({ children }: LayoutProps) {
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [reconciliationOpen, setReconciliationOpen] = useState(false);
   const { isPrivacyMode, togglePrivacyMode } = usePrivacyMode();
-  const [keyboardVisible, setKeyboardVisible] = useState(false);
-  const [viewportHeight, setViewportHeight] = useState(window.innerHeight);
-  
-  // Gestión inteligente del teclado virtual
-  useEffect(() => {
-    const handleResize = () => {
-      if (window.visualViewport) {
-        const currentHeight = window.visualViewport.height;
-        setViewportHeight(currentHeight);
-        // Detectar si el teclado está visible (reducción > 150px)
-        setKeyboardVisible(window.innerHeight - currentHeight > 150);
-      }
-    };
-
-    if (window.visualViewport) {
-      window.visualViewport.addEventListener('resize', handleResize);
-      window.visualViewport.addEventListener('scroll', handleResize);
-    }
-
-    return () => {
-      if (window.visualViewport) {
-        window.visualViewport.removeEventListener('resize', handleResize);
-        window.visualViewport.removeEventListener('scroll', handleResize);
-      }
-    };
-  }, []);
   
   // Prevenir zoom en iOS con double-tap y optimizar scroll
   useEffect(() => {

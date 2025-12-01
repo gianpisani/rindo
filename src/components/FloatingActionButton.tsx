@@ -1,4 +1,3 @@
-import { useState, useEffect } from "react";
 import { Plus } from "lucide-react";
 import { Button } from "./ui/button";
 import { cn } from "@/lib/utils";
@@ -9,33 +8,11 @@ interface FloatingActionButtonProps {
 }
 
 export function FloatingActionButton({ onClick, className }: FloatingActionButtonProps) {
-  const [keyboardVisible, setKeyboardVisible] = useState(false);
-
-  useEffect(() => {
-    const handleResize = () => {
-      if (window.visualViewport) {
-        const currentHeight = window.visualViewport.height;
-        setKeyboardVisible(window.innerHeight - currentHeight > 150);
-      }
-    };
-
-    if (window.visualViewport) {
-      window.visualViewport.addEventListener('resize', handleResize);
-    }
-
-    return () => {
-      if (window.visualViewport) {
-        window.visualViewport.removeEventListener('resize', handleResize);
-      }
-    };
-  }, []);
-
   return (
     <div
       className={cn(
-        "fixed right-5 z-40 transition-all duration-300",
+        "fixed right-5 z-40",
         "md:hidden", // Solo en mobile
-        keyboardVisible ? "opacity-0 pointer-events-none translate-y-10" : "opacity-100",
         className
       )}
       style={{ 

@@ -1,10 +1,10 @@
 import {
-  Drawer,
-  DrawerContent,
-  DrawerDescription,
-  DrawerHeader,
-  DrawerTitle,
-} from "./ui/drawer";
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from "./ui/dialog";
 import { ReconciliationCard } from "./ReconciliationCard";
 
 interface ReconciliationDrawerProps {
@@ -14,25 +14,22 @@ interface ReconciliationDrawerProps {
 
 export function ReconciliationDrawer({ open, onOpenChange }: ReconciliationDrawerProps) {
   return (
-    <Drawer open={open} onOpenChange={onOpenChange}>
-      <DrawerContent className="md:max-w-2xl md:mx-auto">
-        <DrawerHeader className="text-left pb-3 px-6 flex-shrink-0">
-          <DrawerTitle className="text-2xl">
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="sm:max-w-[500px] max-w-[calc(100vw-2rem)] max-h-[85vh] flex flex-col p-0 gap-0">
+        <DialogHeader className="px-6 pt-6 pb-4">
+          <DialogTitle className="text-2xl text-center">
             Conciliar Balance
-          </DrawerTitle>
-          <DrawerDescription className="text-base text-muted-foreground">
+          </DialogTitle>
+          <DialogDescription className="text-center">
             Verifica que tu balance real coincida con el de la app
-          </DrawerDescription>
-        </DrawerHeader>
+          </DialogDescription>
+        </DialogHeader>
         
-        <div className="flex-1 overflow-y-auto overflow-x-hidden px-6 pb-8" style={{ 
-          WebkitOverflowScrolling: 'touch',
-          overscrollBehavior: 'contain'
-        }}>
+        <div className="overflow-y-auto px-6 pb-6">
           <ReconciliationCard onSuccess={() => onOpenChange(false)} />
         </div>
-      </DrawerContent>
-    </Drawer>
+      </DialogContent>
+    </Dialog>
   );
 }
 
