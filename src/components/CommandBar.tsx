@@ -22,6 +22,7 @@ import {
   TrendingDown,
   PiggyBank,
   ArrowRight,
+  Users,
 } from "lucide-react";
 import { useTransactions } from "@/hooks/useTransactions";
 import { useFuzzySearch } from "@/hooks/useFuzzySearch";
@@ -187,6 +188,11 @@ export function CommandBar({ onAddTransaction, onConciliate }: CommandBarProps) 
           <CommandItem onSelect={() => runCommand(() => navigate("/categories"))}>
             <FolderKanban className="mr-2 h-4 w-4" />
             <span>Categorías</span>
+          </CommandItem>
+
+          <CommandItem onSelect={() => runCommand(() => navigate("/pending-debts"))}>
+            <Users className="mr-2 h-4 w-4" />
+            <span>Deudas Pendientes</span>
           </CommandItem>
           
           <CommandItem onSelect={() => runCommand(() => navigate("/recategorize"))}>

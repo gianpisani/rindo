@@ -1,6 +1,6 @@
 import { ReactNode, useEffect, useRef, useState } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
-import { Home, BarChart3, Receipt, FolderOpen, LogOut, Layers, Eye, EyeOff } from "lucide-react";
+import { Home, BarChart3, Receipt, FolderOpen, LogOut, Layers, Eye, EyeOff, Users } from "lucide-react";
 import { Button } from "./ui/button";
 import { CommandBar } from "./CommandBar";
 import { QuickAddDrawer } from "./QuickAddDrawer";
@@ -66,6 +66,7 @@ export default function Layout({ children }: LayoutProps) {
     { path: "/dashboard", label: "Dashboard", icon: BarChart3 },
     { path: "/transactions", label: "Transacciones", icon: Receipt },
     { path: "/categories", label: "Categorías", icon: FolderOpen },
+    { path: "/pending-debts", label: "Deudas", icon: Users },
     { path: "/bulk-recategorize", label: "Recategorizar", icon: Layers },
   ];
 

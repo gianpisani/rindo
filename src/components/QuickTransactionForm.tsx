@@ -2,13 +2,16 @@ import { useState, useRef } from "react";
 import { Button } from "./ui/button";
 import { Input } from "./ui/input";
 import { Card, CardContent } from "./ui/card";
-import { ArrowRightToLine, CornerDownLeft, CornerDownLeftIcon, Cpu, Sparkles, Zap } from "lucide-react";
+import { ArrowRightToLine, CornerDownLeft, CornerDownLeftIcon, Cpu, Sparkles, Zap, Users } from "lucide-react";
 import { useCategories } from "@/hooks/useCategories";
 import { useTransactions } from "@/hooks/useTransactions";
+import { useSharedExpenses } from "@/hooks/useSharedExpenses";
 import { supabase } from "@/integrations/supabase/client";
 import { useQueryClient } from "@tanstack/react-query";
 import { useToast } from "@/hooks/use-toast";
 import { FingerPrintIcon } from "@heroicons/react/24/outline";
+import { Checkbox } from "./ui/checkbox";
+import SharedExpenseDrawer from "./SharedExpenseDrawer";
 
 interface QuickTransactionFormProps {
   onSuccess?: () => void;
@@ -31,11 +34,15 @@ export default function QuickTransactionForm({ onSuccess, defaultType = "Gasto" 
   const [amount, setAmount] = useState("");
   const [detail, setDetail] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isShared, setIsShared] = useState(false);
+  const [sharedDrawerOpen, setSharedDrawerOpen] = useState(false);
+  const [pendingTransaction, setPendingTransaction] = useState<{ id: string; amount: number } | null>(null);
 
   const { categories } = useCategories();
   const queryClient = useQueryClient();
   const { toast } = useToast();
   const { addTransaction } = useTransactions();
+  const { addSharedExpenses } = useSharedExpenses();
   const detailInputRef = useRef<HTMLInputElement>(null);
   const amountInputRef = useRef<HTMLInputElement>(null);
   
@@ -123,9 +130,18 @@ export default function QuickTransactionForm({ onSuccess, defaultType = "Gasto" 
         autoCategorizeInBackground(transaction.id, detail, userData.user.id);
       }
 
+      // 3. Si es gasto compartido, abrir drawer para dividir
+      if (isShared && defaultType === "Gasto" && transaction?.id) {
+        setPendingTransaction({ id: transaction.id, amount: parsedAmount });
+        setSharedDrawerOpen(true);
+        setIsSubmitting(false);
+        return; // No reset aún
+      }
+
       // Reset form
       setAmount("");
       setDetail("");
+      setIsShared(false);
       
       // Focus back to amount for next entry
       setTimeout(() => amountInputRef.current?.focus(), 100);
@@ -135,6 +151,36 @@ export default function QuickTransactionForm({ onSuccess, defaultType = "Gasto" 
       console.error("Error guardando transacción:", error);
     } finally {
       setIsSubmitting(false);
+    }
+  };
+
+  const handleSharedExpenseConfirm = async (debtors: Array<{ name: string; amount: number }>) => {
+    if (!pendingTransaction) return;
+
+    try {
+      await addSharedExpenses.mutateAsync(
+        debtors.map(d => ({
+          transaction_id: pendingTransaction.id,
+          debtor_name: d.name,
+          amount_owed: d.amount,
+        }))
+      );
+
+      toast({
+        title: "Gasto compartido creado",
+        description: `Dividido entre ${debtors.length} personas`,
+      });
+
+      // Reset form
+      setAmount("");
+      setDetail("");
+      setIsShared(false);
+      setPendingTransaction(null);
+      
+      setTimeout(() => amountInputRef.current?.focus(), 100);
+      onSuccess?.();
+    } catch (error) {
+      console.error("Error guardando gastos compartidos:", error);
     }
   };
 
@@ -180,7 +226,6 @@ export default function QuickTransactionForm({ onSuccess, defaultType = "Gasto" 
               id="amount"
               type="text"
               placeholder="$0"
-              autoFocus
               value={amount}
               onChange={(e) => {
                 const formatted = formatCurrency(e.target.value);
@@ -217,6 +262,24 @@ export default function QuickTransactionForm({ onSuccess, defaultType = "Gasto" 
             </p>
           </div>
 
+          {/* Gasto Compartido Checkbox - Solo para Gastos */}
+          {defaultType === "Gasto" && (
+            <div className="flex items-center justify-center gap-2 p-3 rounded-xl border-2 border-dashed border-slate-200 dark:border-slate-700 hover:border-primary/50 transition-colors">
+              <Checkbox 
+                id="shared" 
+                checked={isShared}
+                onCheckedChange={(checked) => setIsShared(checked as boolean)}
+              />
+              <label
+                htmlFor="shared"
+                className="text-sm font-medium leading-none cursor-pointer flex items-center gap-2"
+              >
+                <Users className="h-4 w-4 text-primary" />
+                Gasto compartido con amigos
+              </label>
+            </div>
+          )}
+
           {/* Submit Button - Limpio y directo */}
           <Button
             type="submit"
@@ -245,6 +308,14 @@ export default function QuickTransactionForm({ onSuccess, defaultType = "Gasto" 
           )}
         </form>
       </CardContent>
+
+      {/* Shared Expense Drawer */}
+      <SharedExpenseDrawer
+        open={sharedDrawerOpen}
+        onOpenChange={setSharedDrawerOpen}
+        totalAmount={pendingTransaction?.amount || 0}
+        onConfirm={handleSharedExpenseConfirm}
+      />
     </Card>
   );
 }

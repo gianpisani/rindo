@@ -41,6 +41,57 @@ export type Database = {
         }
         Relationships: []
       }
+      shared_expenses: {
+        Row: {
+          id: string
+          transaction_id: string
+          debtor_name: string
+          amount_owed: number
+          paid: boolean
+          paid_at: string | null
+          paid_transaction_id: string | null
+          user_id: string
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          transaction_id: string
+          debtor_name: string
+          amount_owed: number
+          paid?: boolean
+          paid_at?: string | null
+          paid_transaction_id?: string | null
+          user_id: string
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          transaction_id?: string
+          debtor_name?: string
+          amount_owed?: number
+          paid?: boolean
+          paid_at?: string | null
+          paid_transaction_id?: string | null
+          user_id?: string
+          created_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "shared_expenses_transaction_id_fkey"
+            columns: ["transaction_id"]
+            isOneToOne: false
+            referencedRelation: "transactions"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "shared_expenses_paid_transaction_id_fkey"
+            columns: ["paid_transaction_id"]
+            isOneToOne: false
+            referencedRelation: "transactions"
+            referencedColumns: ["id"]
+          }
+        ]
+      }
       transactions: {
         Row: {
           amount: number

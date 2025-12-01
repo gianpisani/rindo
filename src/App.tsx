@@ -12,6 +12,7 @@ import Transactions from "./pages/Transactions";
 import Categories from "./pages/Categories";
 import RecategorizeTransactions from "./pages/RecategorizeTransactions";
 import BulkRecategorize from "./pages/BulkRecategorize";
+import PendingDebts from "./pages/PendingDebts";
 import NotFound from "./pages/NotFound";
 import Auth from "./components/Auth";
 
@@ -72,6 +73,7 @@ const App = () => {
             <Route path="/categories" element={<Categories />} />
             <Route path="/recategorize" element={<RecategorizeTransactions />} />
             <Route path="/bulk-recategorize" element={<BulkRecategorize />} />
+            <Route path="/pending-debts" element={<PendingDebts />} />
             <Route path="*" element={<NotFound />} />
           </Routes>
         </BrowserRouter>
