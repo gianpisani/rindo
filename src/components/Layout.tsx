@@ -36,6 +36,7 @@ export default function Layout({ children }: LayoutProps) {
   const [reconciliationOpen, setReconciliationOpen] = useState(false);
   const { isPrivacyMode, togglePrivacyMode } = usePrivacyMode();
   const [showShortcutsPopover, setShowShortcutsPopover] = useState(false);
+  const [isFirstTimePopover, setIsFirstTimePopover] = useState(false);
   
   // Auto-show shortcuts popover on desktop
   useEffect(() => {
@@ -46,18 +47,20 @@ export default function Layout({ children }: LayoutProps) {
     const hasShownBefore = sessionStorage.getItem('shortcuts-popover-shown');
     if (hasShownBefore) return;
     
-    // Mostrar después de 1 segundo
+    // Mostrar después de 2 segundos
     const showTimer = setTimeout(() => {
       setShowShortcutsPopover(true);
+      setIsFirstTimePopover(true);
       sessionStorage.setItem('shortcuts-popover-shown', 'true');
       
-      // Ocultar después de 10 segundos
+      // Ocultar después de 4 segundos (desaparece a los 6s en total)
       const hideTimer = setTimeout(() => {
         setShowShortcutsPopover(false);
-      }, 10000);
+        setIsFirstTimePopover(false);
+      }, 4000);
       
       return () => clearTimeout(hideTimer);
-    }, 1000);
+    }, 2000);
     
     return () => clearTimeout(showTimer);
   }, []);
@@ -243,14 +246,23 @@ export default function Layout({ children }: LayoutProps) {
               <div className="hidden lg:block relative">
                 <div 
                   data-shortcuts-trigger
-                  className="h-7 select-none items-center gap-1 rounded bg-sidebar-accent px-2 font-mono text-[11px] font-medium text-white border border-sidebar-border inline-flex cursor-pointer hover:bg-sidebar-accent/80 transition-colors"
-                  onClick={() => setShowShortcutsPopover(!showShortcutsPopover)}
+                  className={cn(
+                    "h-7 select-none items-center gap-1 rounded bg-sidebar-accent px-2 font-mono text-[11px] font-medium text-white border inline-flex cursor-pointer hover:bg-sidebar-accent/80 transition-all",
+                    showShortcutsPopover && isFirstTimePopover
+                      ? "border-primary animate-pulse" 
+                      : "border-sidebar-border"
+                  )}
+                  onClick={() => {
+                    setShowShortcutsPopover(!showShortcutsPopover);
+                    setIsFirstTimePopover(false);
+                  }}
                 >
                   <span className="text-xs">{isMac ? "⌘" : "Ctrl"}</span>K
                 </div>
                 <div data-shortcuts-popover>
                   <ShortcutsPopover 
-                    isVisible={showShortcutsPopover} 
+                    isVisible={showShortcutsPopover}
+                    isFirstTime={isFirstTimePopover}
                     onClose={() => setShowShortcutsPopover(false)}
                   />
                 </div>
@@ -270,7 +282,7 @@ export default function Layout({ children }: LayoutProps) {
       </nav>
 
       {/* Mobile Top Bar - Minimal */}
-      <div className="md:hidden sticky top-0 z-50 bg-sidebar border-b border-sidebar-border shadow-lg backdrop-blur-xl bg-opacity-95">
+      <div className="md:hidden sticky top-0 z-50 bg-sidebar border-b border-sidebar-border backdrop-blur-xl">
         <div className="flex h-14 items-center justify-between px-6" style={{ paddingTop: 'env(safe-area-inset-top, 0)' }}>
           <div className="flex items-center gap-2">
             <Link to="/" className="flex items-center gap-2 active:scale-95 transition-transform">
@@ -311,11 +323,11 @@ export default function Layout({ children }: LayoutProps) {
       </div>
 
       {/* Main Content */}
-      <main className="container mx-auto px-6 py-8 pb-24 md:pb-8" data-scrollable>{children}</main>
+      <main className="container mx-auto px-6 py-8 pb-8" data-scrollable>{children}</main>
 
       {/* Mobile Bottom Navigation - Fijo Siempre */}
       <nav 
-        className="md:hidden fixed left-0 right-0 bottom-0 z-[60] bg-sidebar/98 backdrop-blur-xl border-t border-white/10 shadow-[0_-4px_20px_rgba(0,0,0,0.3)]"
+        className="md:hidden fixed left-0 right-0 bottom-0 z-[60] bg-sidebar backdrop-blur-xl"
         style={{ 
           paddingBottom: 'env(safe-area-inset-bottom, 0px)'
         }}
@@ -340,14 +352,14 @@ export default function Layout({ children }: LayoutProps) {
                 <Icon 
                   className={cn(
                     "h-6 w-6 transition-colors duration-200",
-                    isActive ? "text-blue" : "text-gray-400"
+                    isActive ? "text-blue" : "text-gray-200"
                   )} 
                   strokeWidth={isActive ? 2.5 : 2}
                 />
                 <span 
                   className={cn(
                     "text-[10px] font-semibold transition-colors duration-200",
-                    isActive ? "text-blue" : "text-gray-500"
+                    isActive ? "text-blue" : "text-gray-200"
                   )}
                 >
                   {item.label}

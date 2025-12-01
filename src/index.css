@@ -394,6 +394,32 @@ Based on Blue, Cyan, Violet, Fuchsia palette
       transform: scale(1.1);
     }
   }
+  
+  /* Shimmer/Sparkle effect for shortcuts popover */
+  @keyframes shimmer {
+    0% {
+      box-shadow: 0 0 5px rgba(59, 130, 246, 0.3), 0 0 10px rgba(59, 130, 246, 0.2);
+    }
+    50% {
+      box-shadow: 0 0 20px rgba(59, 130, 246, 0.6), 0 0 30px rgba(59, 130, 246, 0.4), 0 0 40px rgba(59, 130, 246, 0.2);
+    }
+    100% {
+      box-shadow: 0 0 5px rgba(59, 130, 246, 0.3), 0 0 10px rgba(59, 130, 246, 0.2);
+    }
+  }
+  
+  /* Ting/Bell shake effect */
+  @keyframes ting {
+    0%, 100% {
+      transform: rotate(0deg);
+    }
+    10%, 30%, 50%, 70%, 90% {
+      transform: rotate(-2deg);
+    }
+    20%, 40%, 60%, 80% {
+      transform: rotate(2deg);
+    }
+  }
 
   /* Number Flow - Apple-style number animations */
   @keyframes number-flow-slide {

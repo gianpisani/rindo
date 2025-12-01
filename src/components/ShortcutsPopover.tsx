@@ -21,6 +21,7 @@ const cmdKey = isMac ? "⌘" : "Ctrl";
 
 interface ShortcutsPopoverProps {
   isVisible: boolean;
+  isFirstTime?: boolean;
   onClose?: () => void;
 }
 
@@ -96,16 +97,27 @@ const shortcuts = [
   },
 ];
 
-export function ShortcutsPopover({ isVisible, onClose }: ShortcutsPopoverProps) {
+export function ShortcutsPopover({ isVisible, isFirstTime = false, onClose }: ShortcutsPopoverProps) {
   return (
-    <div
-      className={cn(
-        "absolute top-full right-0 mt-2 w-80 bg-card border border-border rounded-xl shadow-2xl overflow-hidden transition-all duration-300 ease-out z-50",
-        isVisible 
-          ? "opacity-100 translate-y-0 pointer-events-auto" 
-          : "opacity-0 -translate-y-2 pointer-events-none"
+    <>
+      {/* Flecha apuntando arriba - Solo primera vez */}
+      {isFirstTime && isVisible && (
+        <div
+          className="absolute top-8 left-1/2 -translate-x-1/2 animate-pulse"
+        >
+          <div className="w-0 h-0 border-l-[10px] border-r-[10px] border-b-[10px] border-l-transparent border-r-transparent border-b-primary drop-shadow-lg"></div>
+        </div>
       )}
-    >
+
+      {/* Popover simple con animación suave */}
+      <div
+        className={cn(
+          "absolute top-full right-0 mt-3 w-80 bg-card/95 backdrop-blur-xl border rounded-xl shadow-2xl overflow-hidden transition-all duration-500 ease-out z-50",
+          isVisible 
+            ? "opacity-100 translate-y-0 pointer-events-auto animate-in slide-in-from-top-1 fade-in" 
+            : "opacity-0 -translate-y-2 pointer-events-none"
+        )}
+      >
       <div className="p-4 space-y-4 max-h-[70vh] overflow-y-auto">
         <div className="flex items-center justify-between border-b border-border pb-3">
           <div className="flex items-center gap-2">
@@ -164,6 +176,7 @@ export function ShortcutsPopover({ isVisible, onClose }: ShortcutsPopoverProps) 
           </div>
         </div>
       </div>
-    </div>
+      </div>
+    </>
   );
 }
