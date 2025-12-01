@@ -20,7 +20,7 @@ const DrawerOverlay = React.forwardRef<
 >(({ className, ...props }, ref) => (
   <DrawerPrimitive.Overlay 
     ref={ref} 
-    className={cn("fixed inset-0 z-50 bg-black/60 backdrop-blur-sm", className)} 
+    className={cn("fixed inset-0 z-[70] bg-black/60 backdrop-blur-sm", className)} 
     {...props} 
   />
 ));
@@ -30,26 +30,36 @@ const DrawerContent = React.forwardRef<
   React.ElementRef<typeof DrawerPrimitive.Content>,
   React.ComponentPropsWithoutRef<typeof DrawerPrimitive.Content>
 >(({ className, children, ...props }, ref) => {
-  const [keyboardHeight, setKeyboardHeight] = React.useState(0);
+  const [viewportHeight, setViewportHeight] = React.useState(
+    typeof window !== 'undefined' ? window.innerHeight : 0
+  );
+  const contentRef = React.useRef<HTMLDivElement>(null);
 
   React.useEffect(() => {
-    const handleResize = () => {
+    const handleViewportChange = () => {
       if (window.visualViewport) {
-        const currentHeight = window.visualViewport.height;
-        const windowHeight = window.innerHeight;
-        const keyboardSpace = windowHeight - currentHeight;
-        setKeyboardHeight(keyboardSpace > 100 ? keyboardSpace : 0);
+        setViewportHeight(window.visualViewport.height);
+        
+        // Scroll al input activo cuando aparece el teclado
+        const activeElement = document.activeElement as HTMLElement;
+        if (activeElement && (activeElement.tagName === 'INPUT' || activeElement.tagName === 'TEXTAREA')) {
+          setTimeout(() => {
+            activeElement.scrollIntoView({ behavior: 'smooth', block: 'center' });
+          }, 100);
+        }
       }
     };
 
     if (window.visualViewport) {
-      window.visualViewport.addEventListener('resize', handleResize);
-      handleResize();
+      window.visualViewport.addEventListener('resize', handleViewportChange);
+      window.visualViewport.addEventListener('scroll', handleViewportChange);
+      handleViewportChange();
     }
 
     return () => {
       if (window.visualViewport) {
-        window.visualViewport.removeEventListener('resize', handleResize);
+        window.visualViewport.removeEventListener('resize', handleViewportChange);
+        window.visualViewport.removeEventListener('scroll', handleViewportChange);
       }
     };
   }, []);
@@ -60,20 +70,19 @@ const DrawerContent = React.forwardRef<
       <DrawerPrimitive.Content
         ref={ref}
         className={cn(
-          "fixed inset-x-0 bottom-0 z-50 flex h-auto flex-col rounded-t-[24px] border border-white/10 bg-background shadow-2xl",
-          "transition-all duration-300 ease-out",
+          "fixed inset-x-0 top-0 z-[80] flex flex-col rounded-b-[24px] border border-white/10 bg-background shadow-2xl",
           className,
         )}
         style={{
-          marginBottom: keyboardHeight > 0 ? `${keyboardHeight}px` : '0px',
-          maxHeight: keyboardHeight > 0 
-            ? `calc(100vh - ${keyboardHeight}px - 20px)` 
-            : 'calc(100vh - 40px)',
+          height: `${viewportHeight}px`,
+          maxHeight: `${viewportHeight}px`,
         }}
         {...props}
       >
-        <div className="mx-auto mt-3 h-1.5 w-12 rounded-full bg-muted-foreground/30 transition-colors hover:bg-muted-foreground/50" />
-        {children}
+        <div className="mx-auto mt-3 h-1.5 w-12 rounded-full bg-muted-foreground/30 transition-colors hover:bg-muted-foreground/50 flex-shrink-0" />
+        <div ref={contentRef} className="flex-1 flex flex-col overflow-hidden">
+          {children}
+        </div>
       </DrawerPrimitive.Content>
     </DrawerPortal>
   );

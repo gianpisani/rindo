@@ -148,7 +148,7 @@ export default function Layout({ children }: LayoutProps) {
   }, [navigate, location.pathname, routes]);
 
   return (
-    <div className="min-h-screen bg-background pb-20 md:pb-0">
+    <div className="min-h-screen bg-background">
       {/* Command Bar - Global */}
       <CommandBar 
         onAddTransaction={() => setDrawerOpen(true)}
@@ -271,16 +271,11 @@ export default function Layout({ children }: LayoutProps) {
       </div>
 
       {/* Main Content */}
-      <main className="container mx-auto px-6 py-8" data-scrollable>{children}</main>
+      <main className="container mx-auto px-6 py-8 pb-24 md:pb-8" data-scrollable>{children}</main>
 
-      {/* Mobile Bottom Navigation - Strava Style */}
+      {/* Mobile Bottom Navigation - Fijo Siempre */}
       <nav 
-        className={cn(
-          "md:hidden fixed left-0 right-0 bottom-0 z-50 transition-all duration-300 ease-out",
-          "bg-sidebar/95 backdrop-blur-xl border-t border-white/10",
-          "shadow-[0_-4px_20px_rgba(0,0,0,0.3)]",
-          keyboardVisible ? "opacity-0 pointer-events-none translate-y-full" : "opacity-100"
-        )}
+        className="md:hidden fixed left-0 right-0 bottom-0 z-[60] bg-sidebar/98 backdrop-blur-xl border-t border-white/10 shadow-[0_-4px_20px_rgba(0,0,0,0.3)]"
         style={{ 
           paddingBottom: 'env(safe-area-inset-bottom, 0px)'
         }}

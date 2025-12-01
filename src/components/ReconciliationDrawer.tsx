@@ -16,7 +16,7 @@ export function ReconciliationDrawer({ open, onOpenChange }: ReconciliationDrawe
   return (
     <Drawer open={open} onOpenChange={onOpenChange}>
       <DrawerContent className="md:max-w-2xl md:mx-auto">
-        <DrawerHeader className="text-left pb-3 px-6">
+        <DrawerHeader className="text-left pb-3 px-6 flex-shrink-0">
           <DrawerTitle className="text-2xl">
             Conciliar Balance
           </DrawerTitle>
@@ -25,7 +25,7 @@ export function ReconciliationDrawer({ open, onOpenChange }: ReconciliationDrawe
           </DrawerDescription>
         </DrawerHeader>
         
-        <div className="px-6 pb-8 overflow-y-auto flex-1" style={{ 
+        <div className="flex-1 overflow-y-auto overflow-x-hidden px-6 pb-8" style={{ 
           WebkitOverflowScrolling: 'touch',
           overscrollBehavior: 'contain'
         }}>

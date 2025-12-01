@@ -17,7 +17,7 @@ export function QuickAddDrawer({ open, onOpenChange, defaultType }: QuickAddDraw
   return (
     <Drawer open={open} onOpenChange={onOpenChange}>
       <DrawerContent className="sm:max-w-[85vw] mx-auto">
-        <DrawerHeader className="text-left pb-2 px-6">
+        <DrawerHeader className="text-left pb-2 px-6 flex-shrink-0">
           <DrawerTitle className="sm:text-2xl text-xl text-center">
             Agregar transacción
           </DrawerTitle>
@@ -26,7 +26,7 @@ export function QuickAddDrawer({ open, onOpenChange, defaultType }: QuickAddDraw
           </DrawerDescription>
         </DrawerHeader>
         
-        <div className="px-4 pb-6 overflow-y-auto flex-1" style={{ 
+        <div className="flex-1 overflow-y-auto overflow-x-hidden px-4 pb-6" style={{ 
           WebkitOverflowScrolling: 'touch',
           overscrollBehavior: 'contain'
         }}>
