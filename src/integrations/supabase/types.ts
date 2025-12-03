@@ -41,6 +41,36 @@ export type Database = {
         }
         Relationships: []
       }
+      category_limits: {
+        Row: {
+          id: string
+          user_id: string
+          category_name: string
+          monthly_limit: number
+          alert_at_percentage: number
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          user_id: string
+          category_name: string
+          monthly_limit: number
+          alert_at_percentage?: number
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          user_id?: string
+          category_name?: string
+          monthly_limit?: number
+          alert_at_percentage?: number
+          created_at?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       shared_expenses: {
         Row: {
           id: string

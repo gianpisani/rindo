@@ -9,7 +9,8 @@ import {
   Eye, 
   EyeOff, 
   UsersRound,
-  LayoutDashboard 
+  LayoutDashboard,
+  BarChart3
 } from "lucide-react";
 import { Button } from "./ui/button";
 import { CommandBar } from "./CommandBar";
@@ -130,6 +131,7 @@ export default function Layout({ children }: LayoutProps) {
     { path: "/dashboard", label: "Análisis", icon: TrendingUp, showInMobile: true },
     { path: "/transactions", label: "Movimientos", icon: ArrowLeftRight, showInMobile: true },
     { path: "/categories", label: "Categorías", icon: Tag, showInMobile: true },
+    { path: "/category-insights", label: "Insights", icon: BarChart3, showInMobile: false },
     { path: "/pending-debts", label: "Deudas", icon: UsersRound, showInMobile: true },
     { path: "/bulk-recategorize", label: "Recategorizar", icon: LayoutDashboard, showInMobile: false },
   ];
@@ -142,15 +144,15 @@ export default function Layout({ children }: LayoutProps) {
       const target = e.target as HTMLElement;
       const isInputField = target.tagName === "INPUT" || target.tagName === "TEXTAREA";
 
-      // Cmd+C para agregar transacción rápida
-      if ((e.metaKey || e.ctrlKey) && e.key === "c" && !e.shiftKey && !isInputField) {
+      // Cmd+K para agregar transacción rápida
+      if ((e.metaKey || e.ctrlKey) && e.key === "k" && !e.shiftKey && !isInputField) {
         e.preventDefault();
         setDrawerOpen(true);
         return;
       }
 
-      // Cmd+R para conciliar
-      if ((e.metaKey || e.ctrlKey) && e.key === "r" && !isInputField) {
+      // Cmd+B para conciliar
+      if ((e.metaKey || e.ctrlKey) && e.key === "b" && !isInputField) {
         e.preventDefault();
         setReconciliationOpen(true);
         return;
@@ -261,7 +263,7 @@ export default function Layout({ children }: LayoutProps) {
                     setIsFirstTimePopover(false);
                   }}
                 >
-                  <span className="text-xs">{isMac ? "⌘" : "Ctrl"}</span>K
+                  <span className="text-xs">{isMac ? "⌘" : "Ctrl"}</span>M
                 </div>
                 <div data-shortcuts-popover>
                   <ShortcutsPopover 

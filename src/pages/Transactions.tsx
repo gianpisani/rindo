@@ -379,9 +379,9 @@ export default function Transactions() {
   return (
     <Layout>
       <div className="space-y-6">
-          <div className="flex items-center justify-between">
-            <div>
-              <h1 className="text-2xl font-semibold mb-1">Transacciones</h1>
+        <div className="flex items-center justify-between">
+          <div>
+            <h1 className="text-2xl font-semibold mb-1">Transacciones</h1>
             <p className="text-sm text-muted-foreground">
               Gestiona todas tus transacciones
             </p>
@@ -432,7 +432,7 @@ export default function Transactions() {
                     type="date"
                     value={formData.date}
                     onChange={(e) => setFormData({ ...formData, date: e.target.value })}
-                    className="h-12 rounded-full px-6"
+                    className="h-10 rounded-xl px-6"
                     required
                   />
                 </div>
@@ -442,7 +442,7 @@ export default function Transactions() {
                     value={formData.type}
                     onValueChange={(value: any) => setFormData({ ...formData, type: value, category_name: "" })}
                   >
-                    <SelectTrigger className="h-12 rounded-full px-6">
+                    <SelectTrigger className="h-10 rounded-xl px-6">
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
@@ -458,7 +458,7 @@ export default function Transactions() {
                     value={formData.category_name}
                     onValueChange={(value) => setFormData({ ...formData, category_name: value })}
                   >
-                    <SelectTrigger className="h-12 rounded-full px-6">
+                    <SelectTrigger className="h-10 rounded-lg px-6">
                       <SelectValue placeholder="Selecciona una categoría" />
                     </SelectTrigger>
                     <SelectContent>
@@ -483,7 +483,7 @@ export default function Transactions() {
                       const number = e.target.value.replace(/\D/g, "");
                       setFormData({ ...formData, amount: number });
                     }}
-                    className="h-12 rounded-full px-6"
+                    className="h-10 rounded-xl px-6"
                     required
                   />
                 </div>
@@ -496,7 +496,7 @@ export default function Transactions() {
                     placeholder="Descripción de la transacción"
                     value={formData.detail}
                     onChange={(e) => setFormData({ ...formData, detail: e.target.value })}
-                    className="h-12 rounded-full px-6"
+                    className="h-10 rounded-xl px-6"
                   />
                   
                   {isAnalyzing && (

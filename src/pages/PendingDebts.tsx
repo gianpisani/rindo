@@ -63,13 +63,15 @@ export default function PendingDebts() {
 
   return (
     <Layout>
-      <div className="container max-w-4xl mx-auto py-8 px-4 space-y-6">
+      <div className="space-y-6">
         {/* Header */}
-        <div>
-          <h1 className="text-3xl font-bold mb-2">Cuentas Pendientes</h1>
-          <p className="text-muted-foreground">
-            Gestiona los gastos compartidos con tus amigos
-          </p>
+        <div className="flex items-center justify-between">
+          <div>
+            <h1 className="text-2xl font-semibold mb-1">Cuentas Pendientes</h1>
+            <p className="text-sm text-muted-foreground">
+              Gestiona los gastos compartidos con tus amigos
+            </p>
+          </div>
         </div>
 
         {/* Summary Cards */}

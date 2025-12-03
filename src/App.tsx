@@ -10,6 +10,7 @@ import Index from "./pages/Index";
 import Dashboard from "./pages/Dashboard";
 import Transactions from "./pages/Transactions";
 import Categories from "./pages/Categories";
+import CategoryInsights from "./pages/CategoryInsights";
 import RecategorizeTransactions from "./pages/RecategorizeTransactions";
 import BulkRecategorize from "./pages/BulkRecategorize";
 import PendingDebts from "./pages/PendingDebts";
@@ -71,6 +72,7 @@ const App = () => {
             <Route path="/dashboard" element={<Dashboard />} />
             <Route path="/transactions" element={<Transactions />} />
             <Route path="/categories" element={<Categories />} />
+            <Route path="/category-insights" element={<CategoryInsights />} />
             <Route path="/recategorize" element={<RecategorizeTransactions />} />
             <Route path="/bulk-recategorize" element={<BulkRecategorize />} />
             <Route path="/pending-debts" element={<PendingDebts />} />

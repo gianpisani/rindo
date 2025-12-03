@@ -60,7 +60,7 @@ export function CommandBar({ onAddTransaction, onConciliate }: CommandBarProps) 
 
   useEffect(() => {
     const down = (e: KeyboardEvent) => {
-      if (e.key === "k" && (e.metaKey || e.ctrlKey)) {
+      if (e.key === "m" && (e.metaKey || e.ctrlKey)) {
         e.preventDefault();
         setOpen((open) => !open);
       }
@@ -171,7 +171,7 @@ export function CommandBar({ onAddTransaction, onConciliate }: CommandBarProps) 
             <div className="flex items-center justify-between flex-1">
               <span>Agregar Transacción</span>
               <div className="flex gap-1">
-                <Kbd>⌘</Kbd><Kbd>C</Kbd>
+                <Kbd>⌘</Kbd><Kbd>K</Kbd>
               </div>
             </div>
           </CommandItem>
@@ -181,7 +181,7 @@ export function CommandBar({ onAddTransaction, onConciliate }: CommandBarProps) 
             <div className="flex items-center justify-between flex-1">
               <span>Conciliar Balance</span>
               <div className="flex gap-1">
-                <Kbd>⌘</Kbd><Kbd>R</Kbd>
+                <Kbd>⌘</Kbd><Kbd>B</Kbd>
               </div>
             </div>
           </CommandItem>

@@ -31,18 +31,18 @@ const shortcuts = [
     color: "text-blue",
     items: [
       {
-        keys: [cmdKey, "C"],
+        keys: [cmdKey, "K"],
         description: "Nueva transacción",
         icon: Plus,
       },
       {
-        keys: [cmdKey, "R"],
+        keys: [cmdKey, "B"],
         description: "Conciliar balance",
         icon: Calculator,
       },
       {
-        keys: [cmdKey, "K"],
-        description: "Abrir barra de comandos",
+        keys: [cmdKey, "M"],
+        description: "Abrir menú de comandos",
         icon: Command,
       }
     ]
@@ -170,8 +170,8 @@ export function ShortcutsPopover({ isVisible, isFirstTime = false, onClose }: Sh
             <Lightbulb className="h-4 w-4 text-muted-foreground" />
             <p className="text-[10px] text-muted-foreground leading-relaxed">
               {isMac 
-                ? "Usa Command (⌘) + K para abrir la barra de comandos" 
-                : "Usa Ctrl + K para abrir la barra de comandos"}
+                ? "Usa Command (⌘) + M para abrir el menú de comandos" 
+                : "Usa Ctrl + M para abrir el menú de comandos"}
             </p>
           </div>
         </div>

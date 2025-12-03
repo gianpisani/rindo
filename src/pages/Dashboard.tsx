@@ -4,6 +4,7 @@ import ProjectionCard from "@/components/ProjectionCard";
 import { MoneyFlowChart } from "@/components/MoneyFlowChart";
 import { DashboardGrid } from "@/components/DashboardGrid";
 import { DashboardWidget } from "@/components/DashboardWidget";
+import { CategoryInsightsWidget } from "@/components/CategoryInsightsWidget";
 import { useTransactions } from "@/hooks/useTransactions";
 import { useCategories } from "@/hooks/useCategories";
 import { TrendingUp, TrendingDown, PiggyBank, Wallet, DollarSign } from "lucide-react";
@@ -169,7 +170,7 @@ export default function Dashboard() {
       <div className="space-y-6">
         <div className="flex items-center justify-between">
           <div>
-            <h1 className="text-3xl font-semibold tracking-tight mb-1">Dashboard</h1>
+            <h1 className="text-2xl font-semibold mb-1">Dashboard</h1>
             <p className="text-sm text-muted-foreground">
               Resumen completo de tus finanzas
             </p>
@@ -216,6 +217,11 @@ export default function Dashboard() {
               color={disponible >= 0 ? "text-success" : "text-destructive"}
               bg={disponible >= 0 ? "bg-success/5" : "bg-destructive/5"}
             />
+          </DashboardWidget>
+
+          {/* Widget - Category Insights */}
+          <DashboardWidget key="insights" title="Insights de Categorías">
+            <CategoryInsightsWidget />
           </DashboardWidget>
 
           {/* Widget - Projection */}
