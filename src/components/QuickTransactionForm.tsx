@@ -232,7 +232,7 @@ export default function QuickTransactionForm({ onSuccess, defaultType = "Gasto" 
                 setAmount(formatted);
               }}
               onKeyDown={handleAmountKeyDown}
-              className="h-32 sm:h-40 md:text-4xl text-center font-bold rounded-3xl border-2 border-slate-200 dark:border-slate-700 focus:border-primary focus:ring-4 focus:ring-primary/20 transition-all bg-white dark:bg-slate-900 placeholder:text-slate-300"
+              className="h-32 sm:h-40 md:text-4xl text-center font-bold rounded-3xl border-2 border-input focus:border-primary focus:ring-4 focus:ring-primary/20 transition-all bg-background placeholder:text-muted-foreground/50"
             />
             {showKeyboardHints && (
               <p className="text-center text-xs text-slate-400 dark:text-slate-500 flex items-center justify-center gap-1.5">
@@ -252,7 +252,7 @@ export default function QuickTransactionForm({ onSuccess, defaultType = "Gasto" 
                 value={detail}
                 onChange={(e) => setDetail(e.target.value)}
                 onKeyDown={handleDetailKeyDown}
-                className="h-14 text-lg rounded-2xl px-5 border-2 border-slate-200 dark:border-slate-700 focus:border-primary focus:ring-4 focus:ring-primary/20 transition-all bg-white dark:bg-slate-900 placeholder:text-slate-400 text-center"
+                className="h-14 text-lg rounded-2xl px-5 border-2 border-input focus:border-primary focus:ring-4 focus:ring-primary/20 transition-all bg-background placeholder:text-muted-foreground text-center"
               />
             </div>
             

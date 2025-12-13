@@ -34,22 +34,22 @@ export function CategoryDetailModal({
   const getTrendIcon = () => {
     switch (category.trend) {
       case "up":
-        return <TrendingUp className="h-4 w-4 text-red-500" />;
+        return <TrendingUp className="h-4 w-4 text-destructive" />;
       case "down":
-        return <TrendingDown className="h-4 w-4 text-green-500" />;
+        return <TrendingDown className="h-4 w-4 text-success" />;
       default:
-        return <Minus className="h-4 w-4 text-gray-500" />;
+        return <Minus className="h-4 w-4 text-muted-foreground" />;
     }
   };
 
   const getTrendColor = () => {
     switch (category.trend) {
       case "up":
-        return "text-red-500";
+        return "text-destructive";
       case "down":
-        return "text-green-500";
+        return "text-success";
       default:
-        return "text-gray-500";
+        return "text-muted-foreground";
     }
   };
 
@@ -178,7 +178,7 @@ export function CategoryDetailModal({
 
         {/* Limit Alert */}
         {category.limit && (
-          <Alert className={`${category.isOverLimit ? "border-red-500 bg-red-50 dark:bg-red-950/20" : category.isNearLimit ? "border-yellow-500 bg-yellow-50 dark:bg-yellow-950/20" : "border-green-500 bg-green-50 dark:bg-green-950/20"}`}>
+          <Alert className={`${category.isOverLimit ? "border-destructive bg-destructive/10" : category.isNearLimit ? "border-warning bg-warning/10" : "border-success bg-success/10"}`}>
             <AlertDescription>
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2">
@@ -189,7 +189,7 @@ export function CategoryDetailModal({
                   ) : (
                     <CheckCircle className="h-4 w-4 flex-shrink-0" />
                   )}
-                  <span className={`font-semibold ${category.isOverLimit ? "text-red-900 dark:text-red-100" : category.isNearLimit ? "text-yellow-900 dark:text-yellow-100" : "text-green-900 dark:text-green-100"}`}>
+                  <span className={`font-semibold ${category.isOverLimit ? "text-destructive" : category.isNearLimit ? "text-warning" : "text-success"}`}>
                     {category.isOverLimit
                       ? `Límite superado: ${formatCurrency(category.amount)} / ${formatCurrency(category.limit)}`
                       : category.isNearLimit
@@ -197,7 +197,7 @@ export function CategoryDetailModal({
                       : `Dentro del presupuesto: ${formatCurrency(category.amount)} / ${formatCurrency(category.limit)}`}
                   </span>
                 </div>
-                <span className={`text-sm ${category.isOverLimit ? "text-red-700 dark:text-red-300" : category.isNearLimit ? "text-yellow-700 dark:text-yellow-300" : "text-green-700 dark:text-green-300"}`}>
+                <span className={`text-sm ${category.isOverLimit ? "text-destructive" : category.isNearLimit ? "text-warning" : "text-success"}`}>
                   {((category.amount / category.limit) * 100).toFixed(0)}%
                 </span>
               </div>

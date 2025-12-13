@@ -57,10 +57,10 @@ export default function Auth() {
       },
       particles: {
         color: {
-          value: "#3b82f6",
+          value: "#e11d48",
         },
         links: {
-          color: "#3b82f6",
+          color: "#e11d48",
           distance: 150,
           enable: true,
           opacity: 0.3,
@@ -128,83 +128,81 @@ export default function Auth() {
   };
 
   return (
-    <div className="min-h-screen bg-black flex flex-col lg:flex-row">
+    <div className="min-h-screen bg-sidebar flex flex-col lg:flex-row">
       {/* Left Panel - Brand & Value Proposition (Hidden on mobile) */}
-      <div className="hidden lg:flex lg:flex-1 bg-gradient-to-br from-black via-gray-950 to-black p-12 flex-col justify-between relative overflow-hidden">
+      <div className="hidden lg:flex lg:flex-1 bg-sidebar p-12 flex-col justify-between relative overflow-hidden">
         {/* tsParticles Background */}
         {particlesInit && <MemoizedParticles options={particlesOptions} />}
 
         <div className="relative z-10">
           {/* Logo */}
           <div className="flex items-center gap-3 mb-16">
-            <img src="/icon-512x512.png" alt="Rindo" className="h-12 w-12" />
             <div>
-              <h1 className="text-3xl font-bold text-white">
-                Rindo<span className="text-blue">.</span>
+              <h1 className="text-3xl font-bold text-sidebar-foreground">
+                Rindo<span className="text-primary">.</span>
               </h1>
-              <p className="text-xs text-gray-400 uppercase tracking-widest">Finanzas Personales</p>
+              <p className="text-xs text-sidebar-foreground/70 uppercase tracking-widest">Finanzas Personales</p>
             </div>
           </div>
 
           {/* Value Props */}
           <div className="space-y-8">
             <div className="flex gap-4">
-              <div className="p-3 rounded-xl bg-blue/10 border border-blue/20 h-fit">
-                <CommandIcon className="h-6 w-6 text-blue" />
+              <div className="p-3 rounded-xl bg-primary/10 border border-primary/20 h-fit">
+                <CommandIcon className="h-6 w-6 text-primary" />
               </div>
               <div>
-                <h3 className="text-white font-semibold mb-1">Atajos de teclado</h3>
-                <p className="text-gray-400 text-sm">Cmd+K para todo. Cero fricción.</p>
+                <h3 className="text-sidebar-foreground font-semibold mb-1">Atajos de teclado</h3>
+                <p className="text-sidebar-foreground/70 text-sm">Cmd+K para todo. Cero fricción.</p>
               </div>
             </div>
             <div className="flex gap-4">
-              <div className="p-3 rounded-xl bg-blue/10 border border-blue/20 h-fit">
-                <BanknotesIcon className="h-6 w-6 text-blue" />
+              <div className="p-3 rounded-xl bg-primary/10 border border-primary/20 h-fit">
+                <BanknotesIcon className="h-6 w-6 text-primary" />
               </div>
               <div>
-                <h3 className="text-white font-semibold mb-1">Análisis en tiempo real</h3>
-                <p className="text-gray-400 text-sm">Proyecciones automáticas basadas en tus patrones de gasto</p>
-              </div>
-            </div>
-
-            <div className="flex gap-4">
-              <div className="p-3 rounded-xl bg-blue/10 border border-blue/20 h-fit">
-                <CheckBadgeIcon className="h-6 w-6 text-blue" />
-              </div>
-              <div>
-                <h3 className="text-white font-semibold mb-1">Reconciliación bancaria</h3>
-                <p className="text-gray-400 text-sm">Compara tus transacciones con extractos reales</p>
+                <h3 className="text-sidebar-foreground font-semibold mb-1">Análisis en tiempo real</h3>
+                <p className="text-sidebar-foreground/70 text-sm">Proyecciones automáticas basadas en tus patrones de gasto</p>
               </div>
             </div>
 
             <div className="flex gap-4">
-              <div className="p-3 rounded-xl bg-blue/10 border border-blue/20 h-fit">
-                <CursorArrowRaysIcon className="h-6 w-6 text-blue" />
+              <div className="p-3 rounded-xl bg-primary/10 border border-primary/20 h-fit">
+                <CheckBadgeIcon className="h-6 w-6 text-primary" />
               </div>
               <div>
-                <h3 className="text-white font-semibold mb-1">Categorización inteligente</h3>
-                <p className="text-gray-400 text-sm">ML que aprende de tus hábitos. Lo configurás una vez y listo.</p>
+                <h3 className="text-sidebar-foreground font-semibold mb-1">Reconciliación bancaria</h3>
+                <p className="text-sidebar-foreground/70 text-sm">Compara tus transacciones con extractos reales</p>
+              </div>
+            </div>
+
+            <div className="flex gap-4">
+              <div className="p-3 rounded-xl bg-primary/10 border border-primary/20 h-fit">
+                <CursorArrowRaysIcon className="h-6 w-6 text-primary" />
+              </div>
+              <div>
+                <h3 className="text-sidebar-foreground font-semibold mb-1">Categorización inteligente</h3>
+                <p className="text-sidebar-foreground/70 text-sm">ML que aprende de tus hábitos. Lo configurás una vez y listo.</p>
               </div>
             </div>
           </div>
         </div>
 
         <div className="relative z-10">
-          <p className="text-gray-500 text-sm">
+          <p className="text-muted-foreground text-sm">
             Hecho para que no sea tan personal
           </p>
         </div>
       </div>
 
       {/* Right Panel - Auth Form */}
-      <div className="flex-1 flex items-center justify-center p-6 lg:p-12 bg-white dark:bg-background">
+      <div className="flex-1 flex items-center justify-center p-6 lg:p-12 bg-background">
         <div className="w-full max-w-md space-y-8">
           {/* Mobile Logo */}
           <div className="lg:hidden text-center space-y-4 mb-8">
-            <img src="/icon-512x512.png" alt="Rindo" className="h-16 w-16 mx-auto rounded-full" />
             <div>
               <h1 className="text-3xl font-bold">
-                Rindo<span className="text-blue">.</span>
+                Rindo<span className="text-primary">.</span>
               </h1>
               <p className="text-xs text-muted-foreground uppercase tracking-widest mt-1">
                 Finanzas Personales
@@ -281,7 +279,7 @@ export default function Auth() {
                   {/* Animated envelope */}
                   <div className="relative mx-auto w-32 h-32">
                     {/* Background glow effect */}
-                    <div className={`absolute inset-0 bg-blue/20 rounded-full blur-2xl transition-all duration-1000 ${animationStage >= 2 ? 'scale-150 opacity-0' : 'scale-100 opacity-100'}`} />
+                    <div className={`absolute inset-0 bg-primary/20 rounded-full blur-2xl transition-all duration-1000 ${animationStage >= 2 ? 'scale-150 opacity-0' : 'scale-100 opacity-100'}`} />
                     
                     {/* Envelope container */}
                     <div className="relative">
@@ -291,7 +289,7 @@ export default function Auth() {
                           ? 'translate-x-32 -translate-y-32 opacity-0 rotate-45 scale-50' 
                           : 'translate-x-0 translate-y-0 opacity-0 scale-100'
                       }`}>
-                        <PaperAirplaneIcon className="h-16 w-16 text-blue" />
+                        <PaperAirplaneIcon className="h-16 w-16 text-primary" />
                       </div>
 
                       {/* Envelope icon */}
@@ -302,7 +300,7 @@ export default function Auth() {
                             ? 'scale-90 opacity-0' 
                             : 'scale-100'
                       }`}>
-                        <EnvelopeIcon className="h-20 w-20 text-blue" />
+                        <EnvelopeIcon className="h-20 w-20 text-primary" />
                       </div>
 
                       {/* Check circle when done */}
@@ -311,19 +309,19 @@ export default function Auth() {
                           ? 'scale-100 opacity-100' 
                           : 'scale-50 opacity-0'
                       }`}>
-                        <CheckCircleIcon className="h-24 w-24 text-green-500" />
+                        <CheckCircleIcon className="h-24 w-24 text-primary" />
                       </div>
 
                       {/* Sparkles */}
                       {animationStage >= 2 && (
                         <>
-                          <SparklesIcon className={`absolute -top-4 -right-4 h-8 w-8 text-yellow-400 transition-all duration-500 ${
+                          <SparklesIcon className={`absolute -top-4 -right-4 h-8 w-8 text-warning transition-all duration-500 ${
                             animationStage >= 3 ? 'opacity-0 scale-0' : 'opacity-100 scale-100 animate-pulse'
                           }`} />
-                          <SparklesIcon className={`absolute -bottom-4 -left-4 h-6 w-6 text-blue-400 transition-all duration-700 ${
+                          <SparklesIcon className={`absolute -bottom-4 -left-4 h-6 w-6 text-primary transition-all duration-700 ${
                             animationStage >= 3 ? 'opacity-0 scale-0' : 'opacity-100 scale-100 animate-pulse'
                           }`} style={{ animationDelay: '150ms' }} />
-                          <SparklesIcon className={`absolute top-0 -left-6 h-5 w-5 text-purple-400 transition-all duration-600 ${
+                          <SparklesIcon className={`absolute top-0 -left-6 h-5 w-5 text-primary transition-all duration-600 ${
                             animationStage >= 3 ? 'opacity-0 scale-0' : 'opacity-100 scale-100 animate-pulse'
                           }`} style={{ animationDelay: '300ms' }} />
                         </>
@@ -345,14 +343,14 @@ export default function Auth() {
                       <p className="text-muted-foreground mb-2">
                         Te enviamos un link de confirmación a
                       </p>
-                      <p className="font-semibold text-blue">{email}</p>
+                      <p className="font-semibold text-primary">{email}</p>
                     </div>
 
                     <div className={`pt-4 space-y-3 transition-all duration-500 delay-200 ${
                       animationStage >= 3 ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-4'
                     }`}>
                       <div className="flex items-start gap-2 text-xs text-muted-foreground text-left bg-muted/50 p-3 rounded-lg">
-                        <CheckCircleIcon className="h-4 w-4 mt-0.5 flex-shrink-0 text-blue" />
+                        <CheckCircleIcon className="h-4 w-4 mt-0.5 flex-shrink-0 text-primary" />
                         <span>Revisa tu bandeja de entrada (y spam por si acaso)</span>
                       </div>
                       
@@ -385,11 +383,11 @@ export default function Auth() {
               >
                 {isLogin ? (
                   <>
-                    ¿No tienes cuenta? <span className="text-blue">Regístrate aquí</span>
+                    ¿No tienes cuenta? <span className="text-primary">Regístrate aquí</span>
                   </>
                 ) : (
                   <>
-                    ¿Ya tienes cuenta? <span className="text-blue">Inicia sesión</span>
+                    ¿Ya tienes cuenta? <span className="text-primary">Inicia sesión</span>
                   </>
                 )}
               </button>
@@ -399,8 +397,8 @@ export default function Auth() {
           {/* Mobile Value Props */}
           <div className="lg:hidden pt-8 space-y-4 border-t border-border">
             <div className="flex items-start gap-3">
-              <div className="p-2 rounded-lg bg-blue/10">
-                <FaceSmileIcon className="h-4 w-4 text-blue" />
+              <div className="p-2 rounded-lg bg-primary/10">
+                <FaceSmileIcon className="h-4 w-4 text-primary" />
               </div>
               <div className="flex-1">
                 <h4 className="text-sm font-semibold mb-0.5">Registra tus gastos en segundos</h4>
@@ -408,8 +406,8 @@ export default function Auth() {
               </div>
             </div>
             <div className="flex items-start gap-3">
-              <div className="p-2 rounded-lg bg-blue/10">
-                <BanknotesIcon className="h-4 w-4 text-blue" />
+              <div className="p-2 rounded-lg bg-primary/10">
+                <BanknotesIcon className="h-4 w-4 text-primary" />
               </div>
               <div className="flex-1">
                 <h4 className="text-sm font-semibold mb-0.5">Categorización automática</h4>
@@ -418,8 +416,8 @@ export default function Auth() {
             </div>
 
             <div className="flex items-start gap-3">
-              <div className="p-2 rounded-lg bg-blue/10">
-                <CheckBadgeIcon className="h-4 w-4 text-blue" />
+              <div className="p-2 rounded-lg bg-primary/10">
+                <CheckBadgeIcon className="h-4 w-4 text-primary" />
               </div>
               <div className="flex-1">
                 <h4 className="text-sm font-semibold mb-0.5">Proyecciones inteligentes</h4>

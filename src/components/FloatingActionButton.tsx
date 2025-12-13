@@ -33,7 +33,7 @@ export function FloatingActionButton({ onClick, className }: FloatingActionButto
           "border-2 border-white/10"
         )}
       >
-        <Plus className="h-6 w-6 text-white drop-shadow-lg" strokeWidth={2.5} />
+        <Plus className="h-6 w-6 text-primary-foreground drop-shadow-lg" strokeWidth={2.5} />
       </Button>
     </div>
   );

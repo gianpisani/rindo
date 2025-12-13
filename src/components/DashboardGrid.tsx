@@ -120,7 +120,7 @@ export function DashboardGrid({ children }: DashboardGridProps) {
           onClick={handleReset}
           variant="ghost"
           size="sm"
-          className="gap-2 text-muted-foreground hover:text-white transition-colors"
+          className="gap-2 text-muted-foreground hover:text-foreground transition-colors"
         >
           <RotateCcw className="h-3.5 w-3.5" />
           <span className="text-xs font-medium">Restaurar diseño original</span>

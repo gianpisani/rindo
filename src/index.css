@@ -37,132 +37,99 @@ Based on Blue, Cyan, Violet, Fuchsia palette
 
 @layer base {
   :root {
-    /* Brand Colors - Vibrant & Professional */
-    --color-blue: 217 91% 60%;      /* #3b82f6 */
-    --color-cyan: 188 86% 43%;      /* #06b6d4 */
-    --color-violet: 258 90% 66%;    /* #8b5cf6 */
-    --color-fuchsia: 292 76% 63%;   /* #d946ef */
-
-    /* Base - Clean whites and pure black */
-    --background: 0 0% 100%;         /* Pure white */
-    --foreground: 0 0% 0%;           /* Pure black */
-
-    --card: 0 0% 100%;
-    --card-foreground: 0 0% 0%;
-
-    --popover: 0 0% 100%;
-    --popover-foreground: 0 0% 0%;
-
-    /* Primary: Blue */
-    --primary: 217 91% 60%;
-    --primary-foreground: 0 0% 100%;
-
-    /* Secondary: Subtle grays */
-    --secondary: 0 0% 96%;
-    --secondary-foreground: 0 0% 0%;
-
-    --muted: 0 0% 96%;
-    --muted-foreground: 0 0% 45%;
-
-    --accent: 217 91% 60%;
-    --accent-foreground: 0 0% 100%;
-
-    /* Semantic colors - Using brand palette */
-    --destructive: 0 84% 60%;
-    --destructive-foreground: 0 0% 100%;
-
+    /* Theme Rose - Elegant OKLCH colors from shadcn */
+    --radius: 0.65rem;
+    --background: oklch(1 0 0);
+    --foreground: oklch(0.141 0.005 285.823);
+    --card: oklch(1 0 0);
+    --card-foreground: oklch(0.141 0.005 285.823);
+    --popover: oklch(1 0 0);
+    --popover-foreground: oklch(0.141 0.005 285.823);
+    --primary: oklch(0.586 0.253 17.585);
+    --primary-foreground: oklch(0.969 0.015 12.422);
+    --secondary: oklch(0.967 0.001 286.375);
+    --secondary-foreground: oklch(0.21 0.006 285.885);
+    --muted: oklch(0.967 0.001 286.375);
+    --muted-foreground: oklch(0.552 0.016 285.938);
+    --accent: oklch(0.967 0.001 286.375);
+    --accent-foreground: oklch(0.21 0.006 285.885);
+    --destructive: oklch(0.577 0.245 27.325);
+    --destructive-foreground: oklch(0.969 0.015 12.422);
+    --border: oklch(0.92 0.004 286.32);
+    --input: oklch(0.92 0.004 286.32);
+    --ring: oklch(0.712 0.194 13.428);
+    
+    /* Additional functional colors (HSL for compatibility) */
     --success: 142 76% 36%;
     --success-foreground: 0 0% 100%;
-
     --warning: 38 92% 50%;
     --warning-foreground: 0 0% 0%;
-
-    --info: 188 86% 43%;  /* Cyan */
+    --info: 188 86% 43%;
     --info-foreground: 0 0% 100%;
-
-    /* Borders - Subtle */
-    --border: 0 0% 90%;
-    --input: 0 0% 90%;
-    --ring: 217 91% 60%;
-
-    /* Standard border radius */
-    --radius: 0.5rem;
-
-    /* Navigation - Black background */
-    --sidebar-background: 0 0% 0%;      /* Pure black */
-    --sidebar-foreground: 0 0% 100%;
-    --sidebar-primary: 217 91% 60%;     /* Blue */
-    --sidebar-primary-foreground: 0 0% 100%;
-    --sidebar-accent: 0 0% 10%;
-    --sidebar-accent-foreground: 0 0% 100%;
-    --sidebar-border: 0 0% 15%;
-    --sidebar-ring: 217 91% 60%;
-
-    /* Charts - Using brand colors */
-    --chart-1: 142 76% 36%;   /* Success/Green */
-    --chart-2: 0 84% 60%;     /* Destructive/Red */
-    --chart-3: 217 91% 60%;   /* Blue */
-    --chart-4: 188 86% 43%;   /* Cyan */
-    --chart-5: 258 90% 66%;   /* Violet */
+    
+    /* Charts - OKLCH for elegance */
+    --chart-1: oklch(0.81 0.117 11.638);
+    --chart-2: oklch(0.645 0.246 16.439);
+    --chart-3: oklch(0.586 0.253 17.585);
+    --chart-4: oklch(0.514 0.222 16.935);
+    --chart-5: oklch(0.455 0.188 13.697);
+    
+    /* Sidebar */
+    --sidebar: oklch(0.985 0 0);
+    --sidebar-foreground: oklch(0.141 0.005 285.823);
+    --sidebar-primary: oklch(0.586 0.253 17.585);
+    --sidebar-primary-foreground: oklch(0.969 0.015 12.422);
+    --sidebar-accent: oklch(0.967 0.001 286.375);
+    --sidebar-accent-foreground: oklch(0.21 0.006 285.885);
+    --sidebar-border: oklch(0.92 0.004 286.32);
+    --sidebar-ring: oklch(0.712 0.194 13.428);
   }
 
   .dark {
-    /* Dark mode - Deep blacks with vibrant accents */
-    --background: 0 0% 5%;           /* Almost black */
-    --foreground: 0 0% 100%;
-
-    --card: 0 0% 8%;
-    --card-foreground: 0 0% 100%;
-
-    --popover: 0 0% 8%;
-    --popover-foreground: 0 0% 100%;
-
-    /* Primary: Blue (brighter for dark) */
-    --primary: 217 91% 65%;
-    --primary-foreground: 0 0% 100%;
-
-    --secondary: 0 0% 12%;
-    --secondary-foreground: 0 0% 100%;
-
-    --muted: 0 0% 15%;
-    --muted-foreground: 0 0% 65%;
-
-    --accent: 217 91% 65%;
-    --accent-foreground: 0 0% 100%;
-
-    /* Semantic - Brighter for dark */
-    --destructive: 0 84% 65%;
-    --destructive-foreground: 0 0% 100%;
-
+    --background: oklch(0.141 0.005 285.823);
+    --foreground: oklch(0.985 0 0);
+    --card: oklch(0.21 0.006 285.885);
+    --card-foreground: oklch(0.985 0 0);
+    --popover: oklch(0.21 0.006 285.885);
+    --popover-foreground: oklch(0.985 0 0);
+    --primary: oklch(0.645 0.246 16.439);
+    --primary-foreground: oklch(0.969 0.015 12.422);
+    --secondary: oklch(0.274 0.006 286.033);
+    --secondary-foreground: oklch(0.985 0 0);
+    --muted: oklch(0.274 0.006 286.033);
+    --muted-foreground: oklch(0.705 0.015 286.067);
+    --accent: oklch(0.274 0.006 286.033);
+    --accent-foreground: oklch(0.985 0 0);
+    --destructive: oklch(0.704 0.191 22.216);
+    --destructive-foreground: oklch(0.969 0.015 12.422);
+    --border: oklch(1 0 0 / 10%);
+    --input: oklch(1 0 0 / 15%);
+    --ring: oklch(0.41 0.159 10.272);
+    
+    /* Additional functional colors (HSL for compatibility) */
     --success: 142 76% 45%;
     --success-foreground: 0 0% 100%;
-
     --warning: 38 92% 55%;
     --warning-foreground: 0 0% 0%;
-
     --info: 188 86% 50%;
     --info-foreground: 0 0% 100%;
-
-    --border: 0 0% 20%;
-    --input: 0 0% 20%;
-    --ring: 217 91% 65%;
-
-    /* Navigation - Pure black */
-    --sidebar-background: 0 0% 0%;
-    --sidebar-foreground: 0 0% 100%;
-    --sidebar-primary: 217 91% 65%;
-    --sidebar-primary-foreground: 0 0% 100%;
-    --sidebar-accent: 0 0% 15%;
-    --sidebar-accent-foreground: 0 0% 100%;
-    --sidebar-border: 0 0% 20%;
-    --sidebar-ring: 217 91% 65%;
-
-    /* Charts - Vibrant for dark */
-    --chart-1: 142 76% 45%;
-    --chart-2: 0 84% 65%;
-    --chart-3: 217 91% 65%;
-    --chart-4: 188 86% 50%;
-    --chart-5: 258 90% 70%;
+    
+    /* Charts - OKLCH for elegance */
+    --chart-1: oklch(0.81 0.117 11.638);
+    --chart-2: oklch(0.645 0.246 16.439);
+    --chart-3: oklch(0.586 0.253 17.585);
+    --chart-4: oklch(0.514 0.222 16.935);
+    --chart-5: oklch(0.455 0.188 13.697);
+    
+    /* Sidebar */
+    --sidebar: oklch(0.21 0.006 285.885);
+    --sidebar-foreground: oklch(0.985 0 0);
+    --sidebar-primary: oklch(0.645 0.246 16.439);
+    --sidebar-primary-foreground: oklch(0.969 0.015 12.422);
+    --sidebar-accent: oklch(0.274 0.006 286.033);
+    --sidebar-accent-foreground: oklch(0.985 0 0);
+    --sidebar-border: oklch(1 0 0 / 10%);
+    --sidebar-ring: oklch(0.41 0.159 10.272);
   }
 }
 
@@ -486,5 +453,16 @@ Based on Blue, Cyan, Violet, Fuchsia palette
 
   .dashboard-widget ::-webkit-scrollbar-thumb:hover {
     background: hsl(var(--muted-foreground));
+  }
+}
+
+
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+  body {
+    @apply bg-background text-foreground;
   }
 }

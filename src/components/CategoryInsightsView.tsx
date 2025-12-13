@@ -91,20 +91,20 @@ export function CategoryInsightsView() {
   const getTrendIcon = (trend: "up" | "down" | "stable") => {
     switch (trend) {
       case "up":
-        return <TrendingUp className="h-4 w-4 text-red-500" />;
+        return <TrendingUp className="h-4 w-4 text-destructive" />;
       case "down":
-        return <TrendingDown className="h-4 w-4 text-green-500" />;
+        return <TrendingDown className="h-4 w-4 text-success" />;
       default:
-        return <Minus className="h-4 w-4 text-gray-500" />;
+        return <Minus className="h-4 w-4 text-muted-foreground" />;
     }
   };
 
   const getInsightIcon = (type: string) => {
     switch (type) {
       case "alert":
-        return <AlertTriangle className="h-5 w-5 text-red-500" />;
+        return <AlertTriangle className="h-5 w-5 text-destructive" />;
       case "achievement":
-        return <CheckCircle className="h-5 w-5 text-green-500" />;
+        return <CheckCircle className="h-5 w-5 text-success" />;
       case "opportunity":
         return <Lightbulb className="h-5 w-5 text-yellow-500" />;
       default:
@@ -324,9 +324,9 @@ export function CategoryInsightsView() {
                     key={idx}
                     className={`p-3 rounded-lg border cursor-pointer hover:shadow-md transition-shadow ${
                       insight.type === "alert"
-                        ? "border-red-200 bg-red-50/50 dark:bg-red-950/10"
+                        ? "border-destructive/50 bg-destructive/10"
                         : insight.type === "achievement"
-                        ? "border-green-200 bg-green-50/50 dark:bg-green-950/10"
+                        ? "border-success/50 bg-success/10"
                         : insight.type === "opportunity"
                         ? "border-yellow-200 bg-yellow-50/50 dark:bg-yellow-950/10"
                         : "border-blue-200 bg-blue-50/50 dark:bg-blue-950/10"
@@ -584,10 +584,10 @@ export function CategoryInsightsView() {
                         <span
                           className={
                             spending.isOverLimit
-                              ? "text-red-600 font-semibold"
+                              ? "text-destructive font-semibold"
                               : spending.isNearLimit
-                              ? "text-yellow-600 font-semibold"
-                              : "text-green-600"
+                              ? "text-warning font-semibold"
+                              : "text-success"
                           }
                         >
                           {usagePercentage.toFixed(0)}%
@@ -597,7 +597,7 @@ export function CategoryInsightsView() {
                         value={Math.min(usagePercentage, 100)}
                         className={
                           spending.isOverLimit
-                            ? "[&>div]:bg-red-500"
+                            ? "[&>div]:bg-destructive"
                             : spending.isNearLimit
                             ? "[&>div]:bg-yellow-500"
                             : "[&>div]:bg-green-500"

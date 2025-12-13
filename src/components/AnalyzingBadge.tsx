@@ -26,7 +26,7 @@ export function AnalyzingBadge() {
         </TooltipTrigger>
         <TooltipContent 
           side="top" 
-          className="max-w-xs bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 shadow-lg"
+          className="max-w-xs bg-card border border-border shadow-lg"
         >
           <div className="space-y-2 p-2">
             <p className="font-semibold text-sm text-slate-900 dark:text-slate-100">
