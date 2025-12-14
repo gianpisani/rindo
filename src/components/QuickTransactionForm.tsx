@@ -235,7 +235,7 @@ export default function QuickTransactionForm({ onSuccess, defaultType = "Gasto" 
               className="h-32 sm:h-40 md:text-4xl text-center font-bold rounded-3xl border-2 border-input focus:border-primary focus:ring-4 focus:ring-primary/20 transition-all bg-background placeholder:text-muted-foreground/50"
             />
             {showKeyboardHints && (
-              <p className="text-center text-xs text-slate-400 dark:text-slate-500 flex items-center justify-center gap-1.5">
+              <p className="text-center text-xs text-muted-foreground flex items-center justify-center gap-1.5">
                 <ArrowRightToLine className="h-3.5 w-3.5" />
                 <span><span className="font-bold">Tab</span> para continuar</span>
               </p>
@@ -256,7 +256,7 @@ export default function QuickTransactionForm({ onSuccess, defaultType = "Gasto" 
               />
             </div>
             
-            <p className="text-center text-xs text-slate-400 dark:text-slate-500 flex items-center justify-center gap-1.5">
+            <p className="text-center text-xs text-muted-foreground flex items-center justify-center gap-1.5">
               <Cpu className="h-3.5 w-3.5" />
               <span>Lo categorizaremos nosotros por ti</span>
             </p>
@@ -264,7 +264,7 @@ export default function QuickTransactionForm({ onSuccess, defaultType = "Gasto" 
 
           {/* Gasto Compartido Checkbox - Solo para Gastos */}
           {defaultType === "Gasto" && (
-            <div className="flex items-center justify-center gap-2 p-3 rounded-xl border-2 border-dashed border-slate-200 dark:border-slate-700 hover:border-primary/50 transition-colors">
+            <div className="flex items-center justify-center gap-2 p-3 rounded-xl border-2 border-dashed border-input hover:border-primary/50 transition-colors">
               <Checkbox 
                 id="shared" 
                 checked={isShared}
@@ -301,7 +301,7 @@ export default function QuickTransactionForm({ onSuccess, defaultType = "Gasto" 
           </Button>
           
           {showKeyboardHints && (
-            <p className="text-center text-xs text-slate-400 dark:text-slate-500 flex items-center justify-center gap-1.5">
+            <p className="text-center text-xs text-muted-foreground flex items-center justify-center gap-1.5">
               <CornerDownLeft className="h-3.5 w-3.5" />
               <span><span className="font-bold">Enter</span> para guardar rápido</span>
             </p>

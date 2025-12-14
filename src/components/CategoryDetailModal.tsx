@@ -113,9 +113,9 @@ export function CategoryDetailModal({
     >
       {!hasTransactions ? (
         <div className="space-y-6">
-          <Alert className="border-yellow-200 bg-yellow-50 dark:bg-yellow-950/20">
-            <AlertTriangle className="h-4 w-4 text-yellow-600" />
-            <AlertDescription className="text-yellow-900 dark:text-yellow-100 flex items-center gap-2">
+          <Alert className="border-warning/50 bg-warning/10">
+            <AlertTriangle className="h-4 w-4 text-warning" />
+            <AlertDescription className="flex items-center gap-2">
               <span>No hay transacciones en esta categoría para {monthName}</span>
             </AlertDescription>
           </Alert>
@@ -257,10 +257,21 @@ export function CategoryDetailModal({
               <h4 className="text-sm font-semibold">Gastos por día de la semana</h4>
               <ResponsiveContainer width="100%" height={200}>
                 <BarChart data={dayOfWeekData}>
-                  <XAxis dataKey="day" fontSize={10} />
-                  <YAxis fontSize={10} tickFormatter={(v) => `$${(v / 1000).toFixed(0)}k`} />
-                  <Tooltip formatter={(v: number) => formatCurrency(v)} />
-                  <Bar dataKey="amount" fill="hsl(var(--primary))" radius={[8, 8, 0, 0]} />
+                  <XAxis dataKey="day" fontSize={10} stroke="#94a3b8" />
+                  <YAxis fontSize={10} tickFormatter={(v) => `$${(v / 1000).toFixed(0)}k`} stroke="#94a3b8" />
+                  <Tooltip 
+                    formatter={(v: number) => formatCurrency(v)}
+                    contentStyle={{
+                      backgroundColor: "rgba(255, 255, 255, 0.98)",
+                      border: "1px solid #e2e8f0",
+                      borderRadius: "0.75rem",
+                      boxShadow: "0 10px 15px -3px rgb(0 0 0 / 0.1)",
+                      padding: "12px",
+                    }}
+                    labelStyle={{ color: "#0f172a", fontWeight: 600 }}
+                    itemStyle={{ color: "#e11d48", fontWeight: 600 }}
+                  />
+                  <Bar dataKey="amount" fill="#e11d48" radius={[8, 8, 0, 0]} />
                 </BarChart>
               </ResponsiveContainer>
             </div>
@@ -271,10 +282,21 @@ export function CategoryDetailModal({
               <h4 className="text-sm font-semibold">Gastos por horario</h4>
               <ResponsiveContainer width="100%" height={200}>
                 <BarChart data={timeOfDayData}>
-                  <XAxis dataKey="time" fontSize={10} />
-                  <YAxis fontSize={10} tickFormatter={(v) => `$${(v / 1000).toFixed(0)}k`} />
-                  <Tooltip formatter={(v: number) => formatCurrency(v)} />
-                  <Bar dataKey="amount" fill="hsl(var(--chart-2))" radius={[8, 8, 0, 0]} />
+                  <XAxis dataKey="time" fontSize={10} stroke="#94a3b8" />
+                  <YAxis fontSize={10} tickFormatter={(v) => `$${(v / 1000).toFixed(0)}k`} stroke="#94a3b8" />
+                  <Tooltip 
+                    formatter={(v: number) => formatCurrency(v)}
+                    contentStyle={{
+                      backgroundColor: "rgba(255, 255, 255, 0.98)",
+                      border: "1px solid #e2e8f0",
+                      borderRadius: "0.75rem",
+                      boxShadow: "0 10px 15px -3px rgb(0 0 0 / 0.1)",
+                      padding: "12px",
+                    }}
+                    labelStyle={{ color: "#0f172a", fontWeight: 600 }}
+                    itemStyle={{ color: "#e11d48", fontWeight: 600 }}
+                  />
+                  <Bar dataKey="amount" fill="#e11d48" radius={[8, 8, 0, 0]} />
                 </BarChart>
               </ResponsiveContainer>
             </div>

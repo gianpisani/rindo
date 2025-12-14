@@ -1,12 +1,34 @@
 import { TrendingUp, TrendingDown, Minus, Info } from "lucide-react";
 import { useTransactions } from "@/hooks/useTransactions";
-import { LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer } from "recharts";
+import { LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer, TooltipProps } from "recharts";
 import { format, startOfMonth, endOfMonth, eachMonthOfInterval, subMonths, addMonths, isBefore } from "date-fns";
 import { es } from "date-fns/locale";
 import { ToggleGroup, ToggleGroupItem } from "./ui/toggle-group";
 import { useState } from "react";
 import { usePrivacyMode } from "@/hooks/usePrivacyMode";
 import { cn } from "@/lib/utils";
+
+const CustomTooltip = ({ active, payload, label }: TooltipProps<number, string>) => {
+  if (!active || !payload || !payload.length) return null;
+
+  const formatCurrencyFull = (value: number) => {
+    return new Intl.NumberFormat("es-CL", {
+      style: "currency",
+      currency: "CLP",
+    }).format(value);
+  };
+
+  return (
+    <div className="bg-card border border-border rounded-xl p-3 shadow-lg">
+      <p className="font-semibold text-sm text-foreground mb-1">{label}</p>
+      {payload.map((entry, index) => (
+        <p key={index} className="text-sm font-semibold text-primary">
+          {formatCurrencyFull(entry.value as number)}
+        </p>
+      ))}
+    </div>
+  );
+};
 
 export default function ProjectionCard() {
   const { transactions } = useTransactions();
@@ -261,53 +283,51 @@ export default function ProjectionCard() {
             <LineChart data={chartData} className={cn(isPrivacyMode && "privacy-blur")}>
               <XAxis 
                 dataKey="month" 
-                stroke="hsl(var(--muted-foreground))" 
+                stroke="#94a3b8" 
                 fontSize={12}
                 tickLine={false}
                 axisLine={false}
               />
               <YAxis 
-                stroke="hsl(var(--muted-foreground))" 
+                stroke="#94a3b8" 
                 tickFormatter={formatCurrency}
                 fontSize={12}
                 tickLine={false}
                 axisLine={false}
               />
-              <Tooltip
-                formatter={(value: number) => formatCurrencyFull(value)}
-                contentStyle={{
-                  backgroundColor: "hsl(var(--card))",
-                  border: "1px solid hsl(var(--border))",
-                  borderRadius: "1rem",
-                  boxShadow: "0 4px 6px -1px rgb(0 0 0 / 0.07)",
-                }}
-                labelStyle={{ color: "hsl(var(--foreground))" }}
-              />
+              <Tooltip content={<CustomTooltip />} />
               {/* Línea Real: Solo patrimonio histórico */}
               <Line
                 type="monotone"
                 dataKey="patrimonio"
-                stroke="hsl(var(--primary))"
+                stroke="#e11d48"
                 strokeWidth={3}
-                dot={(props) => {
-                  const { cx, cy, payload, index } = props;
-                  if (!payload.patrimonio) return null;
-                  return <circle key={`real-${index}`} cx={cx} cy={cy} r={4} fill="hsl(var(--primary))" />;
+                dot={{
+                  fill: "#e11d48",
+                  strokeWidth: 2,
+                  r: 5,
+                  stroke: "#ffffff"
                 }}
+                activeDot={{ r: 8, fill: "#e11d48", stroke: "#ffffff", strokeWidth: 2 }}
                 connectNulls={false}
               />
               {/* Línea Proyectada: Solo desde el último punto real hacia adelante */}
               <Line
                 type="monotone"
                 dataKey="proyeccion"
-                stroke="hsl(var(--primary) / 0.4)"
+                stroke="#e11d48"
                 strokeWidth={3}
-                strokeDasharray="5 5"
-                dot={(props) => {
-                  const { cx, cy, payload, index } = props;
-                  if (!payload.proyeccion || !payload.isProjection) return null;
-                  return <circle key={`proj-${index}`} cx={cx} cy={cy} r={4} fill="hsl(var(--primary) / 0.4)" />;
+                strokeDasharray="8 8"
+                strokeOpacity={0.4}
+                dot={{
+                  fill: "#e11d48",
+                  fillOpacity: 0.4,
+                  strokeWidth: 2,
+                  r: 5,
+                  stroke: "#ffffff",
+                  strokeOpacity: 0.4
                 }}
+                activeDot={{ r: 8, fill: "#e11d48", fillOpacity: 0.4, stroke: "#ffffff", strokeWidth: 2 }}
                 connectNulls={false}
               />
             </LineChart>

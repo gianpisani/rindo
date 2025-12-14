@@ -348,8 +348,8 @@ export default function RecategorizeTransactions() {
                 <div className="flex items-center justify-between gap-4">
                   <div className="flex items-center gap-3 flex-1 min-w-0">
                     <div className="relative flex-shrink-0">
-                      <Webhook className="h-6 w-6 text-purple-600 animate-pulse" />
-                      <div className="absolute inset-0 bg-purple-400 rounded-full animate-ping opacity-20" />
+                      <Webhook className="h-6 w-6 text-primary animate-pulse" />
+                      <div className="absolute inset-0 bg-primary rounded-full animate-ping opacity-20" />
                     </div>
                     <div className="min-w-0">
                       <p className="text-lg font-medium">Analizando...</p>
@@ -381,7 +381,7 @@ export default function RecategorizeTransactions() {
                     value={analysisProgress.total > 0 
                       ? (analysisProgress.current / analysisProgress.total) * 100 
                       : 0} 
-                    className="h-2 text-purple-600" 
+                    className="h-2 text-primary" 
                   />
                 </div>
 
@@ -401,7 +401,7 @@ export default function RecategorizeTransactions() {
                       {streamingSuggestions.map((suggestion, idx) => (
                         <div
                           key={suggestion.id}
-                          className="bg-gradient-to-r from-purple-50/50 to-pink-50/50 dark:from-purple-950/20 dark:to-pink-950/20 rounded-xl p-3 border border-purple-200/50 animate-in slide-in-from-top-2 duration-200"
+                          className="bg-gradient-to-r from-primary/5 to-primary/10 rounded-xl p-3 border border-primary/50 animate-in slide-in-from-top-2 duration-200"
                           style={{ animationDelay: `${idx * 50}ms` }}
                         >
                           <div className="flex items-center justify-between gap-2">
@@ -412,7 +412,7 @@ export default function RecategorizeTransactions() {
                                   {suggestion.oldCategory}
                                 </Badge>
                                 <span className="text-xs text-muted-foreground">→</span>
-                                <Badge variant="default" className="text-xs bg-purple-600">
+                                <Badge variant="default" className="text-xs bg-primary">
                                   {suggestion.suggestedCategory}
                                 </Badge>
                               </div>
@@ -443,7 +443,7 @@ export default function RecategorizeTransactions() {
                     </div>
                     <div className="h-8 w-px bg-border" />
                     <div>
-                      <p className="text-2xl font-bold text-green-600">{acceptedCount}</p>
+                      <p className="text-2xl font-bold text-success">{acceptedCount}</p>
                       <p className="text-xs text-muted-foreground">Aceptadas</p>
                     </div>
                   </div>
@@ -485,7 +485,7 @@ export default function RecategorizeTransactions() {
                     key={suggestion.id}
                     className={`rounded-2xl shadow-sm border transition-all duration-200 ${
                       suggestion.accepted
-                        ? "border-purple-300 bg-purple-50/50 dark:bg-purple-950/10"
+                        ? "border-primary/50 bg-primary/5"
                         : "border-border/50 hover:border-border"
                     }`}
                   >
@@ -496,8 +496,8 @@ export default function RecategorizeTransactions() {
                             onClick={() => toggleAccept(suggestion.id)}
                             className={`h-6 w-6 rounded-full border-2 flex items-center justify-center transition-all ${
                               suggestion.accepted
-                                ? "bg-purple-600 border-purple-600"
-                                : "border-gray-300 hover:border-purple-400"
+                                ? "bg-primary border-primary"
+                                : "border-input hover:border-primary"
                             }`}
                           >
                             {suggestion.accepted && (
@@ -514,13 +514,13 @@ export default function RecategorizeTransactions() {
                                 {suggestion.type}
                               </Badge>
                               {suggestion.confidence < 60 && (
-                                <Badge variant="outline" className="text-xs text-yellow-600 border-yellow-300">
+                                <Badge variant="outline" className="text-xs text-warning border-warning">
                                   <AlertTriangle className="h-3 w-3 mr-1" />
                                   Baja confianza ({suggestion.confidence}%)
                                 </Badge>
                               )}
                               {suggestion.edited && (
-                                <Badge variant="outline" className="text-xs text-blue-600 border-blue-300">
+                                <Badge variant="outline" className="text-xs text-info border-info">
                                   Editado
                                 </Badge>
                               )}
@@ -567,7 +567,7 @@ export default function RecategorizeTransactions() {
                         <div className="flex-shrink-0 pt-1">
                           <button
                             onClick={() => setSuggestions(prev => prev.filter(s => s.id !== suggestion.id))}
-                            className="h-8 w-8 rounded-full hover:bg-red-50 dark:hover:bg-red-950/20 flex items-center justify-center transition-colors text-red-600 hover:text-red-700"
+                            className="h-8 w-8 rounded-full hover:bg-destructive/10 flex items-center justify-center transition-colors text-destructive hover:text-destructive"
                             title="Eliminar sugerencia"
                           >
                             <X className="h-4 w-4" />

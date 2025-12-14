@@ -106,9 +106,9 @@ export function CategoryInsightsView() {
       case "achievement":
         return <CheckCircle className="h-5 w-5 text-success" />;
       case "opportunity":
-        return <Lightbulb className="h-5 w-5 text-yellow-500" />;
+        return <Lightbulb className="h-5 w-5 text-warning" />;
       default:
-        return <Target className="h-5 w-5 text-blue-500" />;
+        return <Target className="h-5 w-5 text-info" />;
     }
   };
 
@@ -275,18 +275,27 @@ export function CategoryInsightsView() {
           <CardContent>
             <ResponsiveContainer width="100%" height={300}>
               <LineChart data={comparisonChartData}>
-                <XAxis dataKey="month" stroke="hsl(var(--muted-foreground))" fontSize={12} />
+                <XAxis dataKey="month" stroke="#94a3b8" fontSize={12} />
                 <YAxis
-                  stroke="hsl(var(--muted-foreground))"
+                  stroke="#94a3b8"
                   fontSize={12}
                   tickFormatter={(v) => formatCurrency(v)}
                 />
                 <Tooltip
                   formatter={(value: number) => formatCurrencyFull(value)}
                   contentStyle={{
-                    backgroundColor: "hsl(var(--card))",
-                    border: "1px solid hsl(var(--border))",
-                    borderRadius: "0.5rem",
+                    backgroundColor: "rgba(255, 255, 255, 0.98)",
+                    border: "1px solid #e2e8f0",
+                    borderRadius: "0.75rem",
+                    boxShadow: "0 10px 15px -3px rgb(0 0 0 / 0.1)",
+                    padding: "12px",
+                  }}
+                  labelStyle={{ 
+                    color: "#0f172a",
+                    fontWeight: 600,
+                  }}
+                  itemStyle={{
+                    fontWeight: 600
                   }}
                 />
                 <Legend wrapperStyle={{ fontSize: "12px" }} />
@@ -328,8 +337,8 @@ export function CategoryInsightsView() {
                         : insight.type === "achievement"
                         ? "border-success/50 bg-success/10"
                         : insight.type === "opportunity"
-                        ? "border-yellow-200 bg-yellow-50/50 dark:bg-yellow-950/10"
-                        : "border-blue-200 bg-blue-50/50 dark:bg-blue-950/10"
+                        ? "border-warning/50 bg-warning/10"
+                        : "border-info/50 bg-info/10"
                     }`}
                     onClick={() => navigate("/category-insights")}
                   >
@@ -401,10 +410,10 @@ export function CategoryInsightsView() {
                             <span
                               className={`text-xs font-bold ${
                                 cat.isOverLimit
-                                  ? "text-red-600"
+                                  ? "text-destructive"
                                   : cat.isNearLimit
-                                  ? "text-yellow-600"
-                                  : "text-green-600"
+                                  ? "text-warning"
+                                  : "text-success"
                               }`}
                             >
                               {usagePercentage.toFixed(0)}%
@@ -414,10 +423,10 @@ export function CategoryInsightsView() {
                             value={Math.min(usagePercentage, 100)}
                             className={`h-1.5 ${
                               cat.isOverLimit
-                                ? "[&>div]:bg-red-500 "
+                                ? "[&>div]:bg-destructive"
                                 : cat.isNearLimit
-                                ? "[&>div]:bg-yellow-500"
-                                : "[&>div]:bg-green-500"
+                                ? "[&>div]:bg-warning"
+                                : "[&>div]:bg-success"
                             }`}
                           />
                           <div className="flex items-center justify-between mt-1">
@@ -526,7 +535,7 @@ export function CategoryInsightsView() {
       </Card>
 
       {/* Categories List */}
-      <div className="grid gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
         {filteredCategories.map((spending) => {
           const usagePercentage = spending.limit
             ? (spending.amount / spending.limit) * 100
@@ -546,7 +555,7 @@ export function CategoryInsightsView() {
                         {hasSpending && spending.trend !== "stable" && (
                           <Badge variant="outline" className="text-xs">
                             {spending.trend === "up" ? "+" : "-"}
-                            {spending.trendPercentage.toFixed(0)}% vs mes anterior
+                            {spending.trendPercentage.toFixed(0)}%
                           </Badge>
                         )}
                         {!hasSpending && (
@@ -599,8 +608,8 @@ export function CategoryInsightsView() {
                           spending.isOverLimit
                             ? "[&>div]:bg-destructive"
                             : spending.isNearLimit
-                            ? "[&>div]:bg-yellow-500"
-                            : "[&>div]:bg-green-500"
+                            ? "[&>div]:bg-warning"
+                            : "[&>div]:bg-success"
                         }
                       />
                     </div>
@@ -636,7 +645,7 @@ export function CategoryInsightsView() {
                         variant="ghost"
                         size="sm"
                         onClick={() => handleDeleteLimit(spending.category)}
-                        className="text-red-500 hover:text-red-600 hover:bg-red-50"
+                        className="text-destructive hover:text-destructive hover:bg-destructive/10"
                       >
                         <X className="h-4 w-4" />
                       </Button>
@@ -682,12 +691,12 @@ export function CategoryInsightsView() {
                   key={idx}
                   className={`${
                     insight.type === "alert"
-                      ? "border-red-200 bg-red-50 dark:bg-red-950/20"
+                      ? "border-destructive/50 bg-destructive/10"
                       : insight.type === "achievement"
-                      ? "border-green-200 bg-green-50 dark:bg-green-950/20"
+                      ? "border-success/50 bg-success/10"
                       : insight.type === "opportunity"
-                      ? "border-yellow-200 bg-yellow-50 dark:bg-yellow-950/20"
-                      : "border-blue-200 bg-blue-50 dark:bg-blue-950/20"
+                      ? "border-warning/50 bg-warning/10"
+                      : "border-info/50 bg-info/10"
                   }`}
                 >
                   <div className="flex items-start gap-3">

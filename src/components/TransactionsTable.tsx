@@ -306,7 +306,7 @@ export function TransactionsTable({
   );
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-4 mx-auto">
       {/* Filters */}
       <div className="flex flex-col sm:flex-row gap-3">
         <div className="relative flex-1">

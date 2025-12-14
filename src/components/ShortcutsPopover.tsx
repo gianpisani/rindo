@@ -28,7 +28,7 @@ interface ShortcutsPopoverProps {
 const shortcuts = [
   {
     category: "Acciones Rápidas",
-    color: "text-blue",
+    color: "text-primary",
     items: [
       {
         keys: [cmdKey, "K"],
@@ -49,7 +49,7 @@ const shortcuts = [
   },
   {
     category: "Navegación",
-    color: "text-purple-500",
+    color: "text-primary",
     items: [
       {
         keys: [cmdKey, "←"],
@@ -66,7 +66,7 @@ const shortcuts = [
   {
     category: "Ir a Sección",
     icon: Home,
-    color: "text-green-500",
+    color: "text-primary",
     items: [
       {
         keys: [cmdKey, "1"],
@@ -166,7 +166,7 @@ export function ShortcutsPopover({ isVisible, isFirstTime = false, onClose }: Sh
         })}
 
         <div className="pt-3 border-t border-border">
-          <div className="flex items-center gap-2 p-2 bg-gradient-to-r from-primary/5 to-blue/5 rounded-lg">
+          <div className="flex items-center gap-2 p-2 bg-gradient-to-r from-primary/5 to-primary/10 rounded-lg">
             <Lightbulb className="h-4 w-4 text-muted-foreground" />
             <p className="text-[10px] text-muted-foreground leading-relaxed">
               {isMac 

@@ -346,15 +346,15 @@ export default function BulkRecategorize() {
           <Button
             onClick={() => navigate("/recategorize")}
             variant="outline"
-            className="rounded-full gap-2 border-purple-300 text-purple-600 hover:text-purple-700 hover:bg-purple-50"
+            className="rounded-full gap-2 border-primary text-primary hover:text-primary hover:bg-primary/10"
           >
             <Wand2 className="h-4 w-4" />
             <span className="hidden sm:inline">IA Auto-Categorizar</span>
           </Button>
         </div>
 
-        <Alert className="rounded-2xl border-blue-200 bg-gradient-to-r from-blue-50/50 to-purple-50/50 dark:from-blue-950/20 dark:to-purple-950/20">
-          <Info className="h-4 w-4 text-blue-600" />
+        <Alert className="rounded-2xl border-info/50 bg-gradient-to-r from-info/5 to-primary/5">
+          <Info className="h-4 w-4 text-info" />
           <AlertDescription className="text-sm">
             <ul className="text-xs space-y-1 list-disc list-inside">
               <li>Usa los filtros y búsqueda para encontrar transacciones</li>
@@ -367,12 +367,12 @@ export default function BulkRecategorize() {
 
         {/* Panel de acción masiva */}
         {selectedCount > 0 && (
-          <Card className="rounded-2xl shadow-sm border-purple-300 bg-gradient-to-r from-purple-50/50 to-pink-50/50 dark:from-purple-950/20 dark:to-pink-950/20 sticky top-20 z-10 backdrop-blur-xl">
+          <Card className="rounded-2xl shadow-sm border-primary/50 bg-gradient-to-r from-primary/5 to-primary/10 sticky top-20 z-10 backdrop-blur-xl">
             <CardContent className="pt-6">
               <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
                 <div className="flex items-center gap-4">
                   <div>
-                    <p className="text-2xl font-bold text-purple-600">{selectedCount}</p>
+                    <p className="text-2xl font-bold text-primary">{selectedCount}</p>
                     <p className="text-xs text-muted-foreground">Seleccionadas</p>
                   </div>
                   <div className="h-8 w-px bg-border" />
@@ -415,9 +415,9 @@ export default function BulkRecategorize() {
                 </Button>
               </div>
               {selectedTypes.size > 1 && (
-                <Alert className="mt-4 rounded-xl border-yellow-300 bg-yellow-50/50 dark:bg-yellow-950/20">
-                  <AlertTriangle className="h-4 w-4 text-yellow-600" />
-                  <AlertDescription className="text-xs text-yellow-800 dark:text-yellow-200">
+                <Alert className="mt-4 rounded-xl border-warning/50 bg-warning/10">
+                  <AlertTriangle className="h-4 w-4 text-warning" />
+                  <AlertDescription className="text-xs">
                     Has seleccionado transacciones de diferentes tipos. Asegúrate de elegir una categoría compatible.
                   </AlertDescription>
                 </Alert>
@@ -509,7 +509,7 @@ export default function BulkRecategorize() {
                           key={row.id}
                           className={cn(
                             "hover:bg-muted/30 transition-colors",
-                            row.getIsSelected() && "bg-purple-50/50 dark:bg-purple-950/10"
+                            row.getIsSelected() && "bg-primary/5"
                           )}
                         >
                           {row.getVisibleCells().map((cell) => (

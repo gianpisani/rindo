@@ -226,7 +226,7 @@ export default function SharedExpenseDrawer({
 
           {/* My Share Display */}
           {includeMe && (
-            <div className="bg-blue-500/10 text-blue-600 dark:text-blue-400 p-3 rounded-lg">
+            <div className="bg-info/10 text-info p-3 rounded-lg">
               <div className="flex justify-between items-center text-sm">
                 <span>Tu parte:</span>
                 <span className="font-bold">
@@ -240,7 +240,7 @@ export default function SharedExpenseDrawer({
           {splitMode === "manual" && (
             <div className={`text-sm p-3 rounded-lg ${
               (includeMe ? Math.abs(totalSplit + myShare - totalAmount) < 1 : Math.abs(totalSplit - totalAmount) < 1)
-                ? "bg-green-500/10 text-green-600 dark:text-green-400" 
+                ? "bg-success/10 text-success" 
                 : "bg-destructive/10 text-destructive"
             }`}>
               <div className="flex justify-between items-center">

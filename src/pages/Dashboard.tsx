@@ -8,16 +8,43 @@ import { CategoryInsightsWidget } from "@/components/CategoryInsightsWidget";
 import { useTransactions } from "@/hooks/useTransactions";
 import { useCategories } from "@/hooks/useCategories";
 import { TrendingUp, TrendingDown, PiggyBank, Wallet, DollarSign } from "lucide-react";
-import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, LineChart, Line, Legend, Cell } from "recharts";
+import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, LineChart, Line, Legend, Cell, TooltipProps } from "recharts";
 import { format, startOfMonth, endOfMonth, eachMonthOfInterval, subMonths } from "date-fns";
 import { es } from "date-fns/locale";
 import { usePrivacyMode } from "@/hooks/usePrivacyMode";
 import { cn } from "@/lib/utils";
 
 const COLORS = {
-  Ingreso: "hsl(var(--chart-1))",
-  Gasto: "hsl(var(--chart-2))",
-  Inversión: "hsl(var(--chart-3))",
+  Ingreso: "#10b981",    // green-500
+  Gasto: "#e11d48",      // rose-600
+  Inversión: "#0ea5e9",  // sky-500
+};
+
+const CustomLineTooltip = ({ active, payload, label }: TooltipProps<number, string>) => {
+  if (!active || !payload || !payload.length) return null;
+
+  const formatCurrency = (value: number) => {
+    return new Intl.NumberFormat("es-CL", {
+      style: "currency",
+      currency: "CLP",
+    }).format(value);
+  };
+
+  return (
+    <div className="bg-card border border-border rounded-xl p-3 shadow-lg">
+      <p className="font-semibold text-sm text-foreground mb-2">{label}</p>
+      <div className="space-y-1">
+        {payload.map((entry, index) => (
+          <div key={index} className="flex items-center justify-between gap-4">
+            <span className="text-xs text-muted-foreground">{entry.name}:</span>
+            <span className="text-sm font-semibold" style={{ color: entry.color }}>
+              {formatCurrency(entry.value as number)}
+            </span>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
 };
 
 export default function Dashboard() {
@@ -245,27 +272,19 @@ export default function Dashboard() {
                 <LineChart data={monthlyData} className={cn(isPrivacyMode && "privacy-blur")}>
                   <XAxis 
                     dataKey="month" 
-                    stroke="hsl(var(--muted-foreground))" 
+                    stroke="#94a3b8" 
                     fontSize={12}
                     tickLine={false}
                     axisLine={false}
                   />
                   <YAxis 
-                    stroke="hsl(var(--muted-foreground))" 
+                    stroke="#94a3b8" 
                     tickFormatter={formatCurrency} 
                     fontSize={12}
                     tickLine={false}
                     axisLine={false}
                   />
-                  <Tooltip
-                    formatter={(value: number) => formatCurrency(value)}
-                    contentStyle={{
-                      backgroundColor: "hsl(var(--card))",
-                      border: "1px solid hsl(var(--border))",
-                      borderRadius: "1rem",
-                      boxShadow: "0 4px 6px -1px rgb(0 0 0 / 0.07)",
-                    }}
-                  />
+                  <Tooltip content={<CustomLineTooltip />} />
                   <Legend 
                     wrapperStyle={{ fontSize: "12px" }}
                   />
@@ -274,24 +293,39 @@ export default function Dashboard() {
                     dataKey="Ingresos"
                     stroke={COLORS.Ingreso}
                     strokeWidth={3}
-                    dot={{ fill: COLORS.Ingreso, r: 4 }}
-                    activeDot={{ r: 6 }}
+                    dot={{ 
+                      fill: COLORS.Ingreso, 
+                      strokeWidth: 2,
+                      r: 5,
+                      stroke: "#ffffff"
+                    }}
+                    activeDot={{ r: 7, fill: COLORS.Ingreso, stroke: "#ffffff", strokeWidth: 2 }}
                   />
                   <Line
                     type="monotone"
                     dataKey="Gastos"
                     stroke={COLORS.Gasto}
                     strokeWidth={3}
-                    dot={{ fill: COLORS.Gasto, r: 4 }}
-                    activeDot={{ r: 6 }}
+                    dot={{ 
+                      fill: COLORS.Gasto, 
+                      strokeWidth: 2,
+                      r: 5,
+                      stroke: "#ffffff"
+                    }}
+                    activeDot={{ r: 7, fill: COLORS.Gasto, stroke: "#ffffff", strokeWidth: 2 }}
                   />
                   <Line
                     type="monotone"
                     dataKey="Inversiones"
                     stroke={COLORS.Inversión}
                     strokeWidth={3}
-                    dot={{ fill: COLORS.Inversión, r: 4 }}
-                    activeDot={{ r: 6 }}
+                    dot={{ 
+                      fill: COLORS.Inversión, 
+                      strokeWidth: 2,
+                      r: 5,
+                      stroke: "#ffffff"
+                    }}
+                    activeDot={{ r: 7, fill: COLORS.Inversión, stroke: "#ffffff", strokeWidth: 2 }}
                   />
                 </LineChart>
               </ResponsiveContainer>
@@ -303,7 +337,7 @@ export default function Dashboard() {
                 <BarChart data={expensesByCategory} layout="vertical" className={cn(isPrivacyMode && "privacy-blur")}>
                   <XAxis 
                     type="number" 
-                    stroke="hsl(var(--muted-foreground))" 
+                    stroke="#94a3b8" 
                     tickFormatter={formatCurrency} 
                     fontSize={12}
                     tickLine={false}
@@ -312,21 +346,13 @@ export default function Dashboard() {
                   <YAxis 
                     dataKey="name" 
                     type="category" 
-                    stroke="hsl(var(--muted-foreground))" 
+                    stroke="#94a3b8" 
                     width={120} 
                     fontSize={12}
                     tickLine={false}
                     axisLine={false}
                   />
-                  <Tooltip
-                    formatter={(value: number) => formatCurrency(value)}
-                    contentStyle={{
-                      backgroundColor: "hsl(var(--card))",
-                      border: "1px solid hsl(var(--border))",
-                      borderRadius: "1rem",
-                      boxShadow: "0 4px 6px -1px rgb(0 0 0 / 0.07)",
-                    }}
-                  />
+                  <Tooltip content={<CustomLineTooltip />} />
                   <Bar 
                     dataKey="value" 
                     radius={[0, 16, 16, 0]} 

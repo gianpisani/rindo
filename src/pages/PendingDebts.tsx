@@ -137,7 +137,7 @@ export default function PendingDebts() {
                 <p className="text-sm mt-1">¡Todos están al día! 🎉</p>
               </div>
             ) : (
-              <div className="space-y-3">
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
                 {pendingByDebtor.map((debtor) => {
                   const isExpanded = expandedDebtor === debtor.debtor_name;
                   const expenses = getExpensesForDebtor(debtor.debtor_name);
@@ -244,9 +244,9 @@ export default function PendingDebts() {
               </CardDescription>
             </CardHeader>
             <CardContent>
-              <div className="space-y-3">
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
                 {paidExpenses.slice(0, 10).map((expense) => (
-                  <div key={expense.id} className="flex items-center justify-between p-3 rounded-lg border bg-muted/30">
+                  <div key={expense.id} className="flex items-center justify-between p-3 rounded-lg border bg-muted/30 hover:shadow-lg transition-shadow">
                     <div>
                       <p className="font-medium">{expense.debtor_name}</p>
                       <p className="text-sm text-muted-foreground">

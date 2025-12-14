@@ -43,9 +43,9 @@ const typeIcons = {
 };
 
 const typeColors = {
-  Ingreso: "bg-green-50 text-green-700 border-green-200",
-  Gasto: "bg-red-50 text-red-700 border-red-200",
-  Inversión: "bg-blue-50 text-blue-700 border-blue-200",
+  Ingreso: "bg-success/10 text-success border-success/50",
+  Gasto: "bg-destructive/10 text-destructive border-destructive/50",
+  Inversión: "bg-info/10 text-info border-info/50",
 };
 
 export function CommandBar({ onAddTransaction, onConciliate }: CommandBarProps) {

@@ -5,11 +5,7 @@ import { Input } from "./ui/input";
 import { Label } from "./ui/label";
 import { Card } from "./ui/card";
 import { useToast } from "@/hooks/use-toast";
-import { 
-  ChartBarIcon, 
-  CurrencyDollarIcon, 
-  ClipboardDocumentCheckIcon, 
-  BoltIcon, 
+import {
   BanknotesIcon,
   CheckBadgeIcon,
   CursorArrowRaysIcon,

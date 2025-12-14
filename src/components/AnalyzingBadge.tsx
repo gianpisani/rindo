@@ -18,7 +18,7 @@ export function AnalyzingBadge() {
               variant="outline" 
             >
               <div className="z-10 flex items-center gap-1.5 animate-pulse">
-                <Cpu className="h-4 w-4 text-violet" />
+                <Cpu className="h-4 w-4 text-primary" />
                 <span className="text-xs font-semibold tracking-wide">Analizando...</span>
               </div>
             </Badge>
@@ -29,10 +29,10 @@ export function AnalyzingBadge() {
           className="max-w-xs bg-card border border-border shadow-lg"
         >
           <div className="space-y-2 p-2">
-            <p className="font-semibold text-sm text-slate-900 dark:text-slate-100">
+            <p className="font-semibold text-sm text-foreground">
               Categorización automática
             </p>
-            <p className="text-xs text-slate-600 dark:text-slate-400 leading-relaxed">
+            <p className="text-xs text-muted-foreground leading-relaxed">
               Estamos analizando tu transacción. Si encontramos una categoría que coincida, la aplicaremos automáticamente.
             </p>
           </div>

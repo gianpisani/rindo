@@ -229,7 +229,7 @@ export default function Layout({ children }: LayoutProps) {
         </header>
 
         {/* Main Content */}
-        <main className="flex flex-1 flex-col gap-4 p-6" data-scrollable>
+        <main className="flex flex-1 flex-col gap-4 p-6 sm:p-6 overflow-x-hidden" data-scrollable>
           {children}
         </main>
       </SidebarInset>

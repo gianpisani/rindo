@@ -33,13 +33,13 @@ export function CategoryInsightsWidget() {
   const getInsightIcon = (type: string) => {
     switch (type) {
       case "alert":
-        return <AlertTriangle className="h-4 w-4 text-red-500" />;
+        return <AlertTriangle className="h-4 w-4 text-destructive" />;
       case "achievement":
-        return <CheckCircle className="h-4 w-4 text-green-500" />;
+        return <CheckCircle className="h-4 w-4 text-success" />;
       case "opportunity":
-        return <Lightbulb className="h-4 w-4 text-yellow-500" />;
+        return <Lightbulb className="h-4 w-4 text-warning" />;
       default:
-        return <Target className="h-4 w-4 text-blue-500" />;
+        return <Target className="h-4 w-4 text-info" />;
     }
   };
 
@@ -85,15 +85,15 @@ export function CategoryInsightsWidget() {
                 <div className="flex items-center gap-2 flex-1 min-w-0">
                   <span className="text-sm font-medium truncate">{cat.category}</span>
                   {cat.trend === "up" ? (
-                    <TrendingUp className="h-3 w-3 text-red-500 flex-shrink-0" />
+                    <TrendingUp className="h-3 w-3 text-destructive flex-shrink-0" />
                   ) : cat.trend === "down" ? (
-                    <TrendingDown className="h-3 w-3 text-green-500 flex-shrink-0" />
+                    <TrendingDown className="h-3 w-3 text-success flex-shrink-0" />
                   ) : null}
                 </div>
                 <div className="flex items-center gap-2">
                   <span className="text-sm font-bold">{formatCurrency(cat.amount)}</span>
                   {cat.isOverLimit && (
-                    <AlertTriangle className="h-3 w-3 text-red-500 flex-shrink-0" />
+                    <AlertTriangle className="h-3 w-3 text-destructive flex-shrink-0" />
                   )}
                 </div>
               </div>
@@ -112,7 +112,7 @@ export function CategoryInsightsWidget() {
               {alertInsights.slice(0, 2).map((insight, idx) => (
                 <Alert
                   key={idx}
-                  className="py-2 px-3 cursor-pointer hover:shadow-md transition-shadow border-red-200 bg-red-50/50 dark:bg-red-950/20"
+                  className="py-2 px-3 cursor-pointer hover:shadow-md transition-shadow border-destructive/50 bg-destructive/10"
                   onClick={() => navigate("/category-insights")}
                 >
                   <div className="flex items-start gap-2">
@@ -129,10 +129,10 @@ export function CategoryInsightsWidget() {
                   key={`other-${idx}`}
                   className={`py-2 px-3 cursor-pointer hover:shadow-md transition-shadow ${
                     insight.type === "achievement"
-                      ? "border-green-200 bg-green-50/50 dark:bg-green-950/20"
+                      ? "border-success/50 bg-success/10"
                       : insight.type === "opportunity"
-                      ? "border-yellow-200 bg-yellow-50/50 dark:bg-yellow-950/20"
-                      : "border-blue-200 bg-blue-50/50 dark:bg-blue-950/20"
+                      ? "border-warning/50 bg-warning/10"
+                      : "border-info/50 bg-info/10"
                   }`}
                   onClick={() => navigate("/category-insights")}
                 >
