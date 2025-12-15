@@ -499,20 +499,20 @@ export default function Transactions() {
                   <Label htmlFor="amount" className="text-sm font-medium">Monto</Label>
                   <div className="relative">
                     <span className="absolute left-4 top-1/2 -translate-y-1/2 text-muted-foreground">$</span>
-                    <Input
-                      id="amount"
-                      type="text"
+                  <Input
+                    id="amount"
+                    type="text"
                       inputMode="numeric"
                       autoComplete="off"
                       placeholder="0"
                       value={formData.amount ? parseInt(formData.amount).toLocaleString("es-CL") : ""}
-                      onChange={(e) => {
-                        const number = e.target.value.replace(/\D/g, "");
-                        setFormData({ ...formData, amount: number });
-                      }}
+                    onChange={(e) => {
+                      const number = e.target.value.replace(/\D/g, "");
+                      setFormData({ ...formData, amount: number });
+                    }}
                       className="h-10 rounded-xl pl-8 pr-6"
-                      required
-                    />
+                    required
+                  />
                   </div>
                 </div>
                 <div className="space-y-2">

@@ -14,6 +14,7 @@ import CategoryInsights from "./pages/CategoryInsights";
 import PendingDebts from "./pages/PendingDebts";
 import NotFound from "./pages/NotFound";
 import Auth from "./components/Auth";
+import { LoadingScreen } from "./components/LoadingScreen";
 
 const queryClient = new QueryClient();
 
@@ -37,14 +38,7 @@ const App = () => {
   }, []);
 
   if (loading) {
-    return (
-      <div className="flex min-h-screen items-center justify-center bg-background">
-        <div className="text-center">
-          <div className="h-8 w-8 animate-spin rounded-full border-4 border-primary border-t-transparent mx-auto" />
-          <p className="mt-4 text-muted-foreground">Cargando...</p>
-        </div>
-      </div>
-    );
+    return <LoadingScreen size="lg" showFunFact={true}/>;
   }
 
   if (!session) {

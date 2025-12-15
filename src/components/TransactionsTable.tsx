@@ -416,14 +416,14 @@ export function TransactionsTable({
             }}
             renderValue={(val) => {
               const TypeIcon = typeIcons[val];
-              return (
-                <Badge
-                  variant="outline"
+        return (
+          <Badge
+            variant="outline"
                   className={cn("gap-1.5 font-medium cursor-pointer", typeColors[val])}
-                >
+          >
                   <TypeIcon className="h-3.5 w-3.5" />
                   {val}
-                </Badge>
+          </Badge>
               );
             }}
           />
@@ -904,15 +904,15 @@ export function TransactionsTable({
               <span className="sr-only">Primera página</span>
               <ChevronDoubleLeftIcon className="h-4 w-4" />
             </Button>
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => table.previousPage()}
-              disabled={!table.getCanPreviousPage()}
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => table.previousPage()}
+            disabled={!table.getCanPreviousPage()}
               className="h-8 px-2"
-            >
+          >
               <ChevronUp className="h-4 w-4 rotate-[-90deg]" />
-            </Button>
+          </Button>
           </div>
 
           {/* Page input */}
@@ -937,11 +937,11 @@ export function TransactionsTable({
           </div>
 
           <div className="flex items-center gap-1">
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => table.nextPage()}
-              disabled={!table.getCanNextPage()}
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => table.nextPage()}
+            disabled={!table.getCanNextPage()}
               className="h-8 px-2"
             >
               <ChevronDown className="h-4 w-4 rotate-[-90deg]" />
@@ -955,7 +955,7 @@ export function TransactionsTable({
             >
               <span className="sr-only">Última página</span>
               <ChevronDoubleRightIcon className="h-4 w-4" />
-            </Button>
+          </Button>
           </div>
         </div>
       </div>

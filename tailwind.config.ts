@@ -137,12 +137,32 @@ export default {
   				'100%': {
   					transform: 'translateX(100%)'
   				}
+  			},
+  			breathe: {
+  				'0%, 100%': {
+  					transform: 'scale(1)',
+  					opacity: '1'
+  				},
+  				'50%': {
+  					transform: 'scale(1.08)',
+  					opacity: '0.85'
+  				}
+  			},
+  			float: {
+  				'0%, 100%': {
+  					transform: 'translateY(0)'
+  				},
+  				'50%': {
+  					transform: 'translateY(-8px)'
+  				}
   			}
   		},
   		animation: {
   			'accordion-down': 'accordion-down 0.2s ease-out',
   			'accordion-up': 'accordion-up 0.2s ease-out',
-  			shimmer: 'shimmer 2s infinite'
+  			shimmer: 'shimmer 2s infinite',
+  			breathe: 'breathe 2s ease-in-out infinite',
+  			float: 'float 3s ease-in-out infinite'
   		},
   		spacing: {
   			'safe-top': 'env(safe-area-inset-top)',

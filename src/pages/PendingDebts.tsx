@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { useSharedExpenses } from "@/hooks/useSharedExpenses";
 import { Users, CheckCircle2, Clock, Trash2, ChevronDown, ChevronUp } from "lucide-react";
+import { LoadingScreen } from "@/components/LoadingScreen";
 import { Separator } from "@/components/ui/separator";
 import {
   AlertDialog,
@@ -55,9 +56,7 @@ export default function PendingDebts() {
   if (isLoading) {
     return (
       <Layout>
-        <div className="flex items-center justify-center min-h-[60vh]">
-          <div className="h-8 w-8 animate-spin rounded-full border-4 border-primary border-t-transparent" />
-        </div>
+        <LoadingScreen fullScreen={false} size="md" />
       </Layout>
     );
   }
