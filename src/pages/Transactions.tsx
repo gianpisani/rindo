@@ -663,7 +663,7 @@ export default function Transactions() {
                 onClick={() => navigate("/bulk-recategorize")}
                 variant="outline" 
                 size="sm" 
-                className="rounded-full gap-2 text-purple-600 hover:text-purple-700 hover:bg-purple-50 border-purple-200"
+                className="rounded-full"
               >
                 <Layers className="h-4 w-4" />
                 <span className="hidden sm:inline">Recategorizar</span>

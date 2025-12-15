@@ -51,15 +51,11 @@ export function CategoryInsightsWidget() {
   const otherInsights = insights.filter((i) => i.type !== "alert");
 
   return (
-    <Card className="h-full flex flex-col">
+    <Card className="h-full flex flex-col border-none shadow-none">
       <CardHeader>
         <div className="flex items-center justify-between">
           <div>
-            <CardTitle className="flex items-center gap-2">
-              <Lightbulb className="h-5 w-5" />
-              Insights de Categorías
-            </CardTitle>
-            <CardDescription>Este mes</CardDescription>
+            <CardTitle>Este mes</CardTitle>
           </div>
           <Button
             variant="ghost"

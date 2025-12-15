@@ -60,7 +60,7 @@ Based on Blue, Cyan, Violet, Fuchsia palette
     --ring: oklch(0.712 0.194 13.428);
     
     /* Additional functional colors (HSL for compatibility) */
-    --success: 142 76% 36%;
+    --success: 158 64% 52%; /* #10b981 - Emerald 500 */
     --success-foreground: 0 0% 100%;
     --warning: 38 92% 50%;
     --warning-foreground: 0 0% 0%;
@@ -107,7 +107,7 @@ Based on Blue, Cyan, Violet, Fuchsia palette
     --ring: oklch(0.41 0.159 10.272);
     
     /* Additional functional colors (HSL for compatibility) */
-    --success: 142 76% 45%;
+    --success: 158 64% 52%; /* #10b981 - Emerald 500 */
     --success-foreground: 0 0% 100%;
     --warning: 38 92% 55%;
     --warning-foreground: 0 0% 0%;

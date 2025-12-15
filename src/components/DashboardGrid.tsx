@@ -10,18 +10,29 @@ interface DashboardGridProps {
 }
 
 // Layout por defecto (15 columnas)
+// IMPORTANTE: El orden DEBE coincidir EXACTAMENTE con el orden de los widgets en Dashboard.tsx
+// Las coordenadas (x,y,w,h) definen DÓNDE va el widget, la posición en el array define QUÉ widget es
 const DEFAULT_LAYOUT: Layout[] = [
-  // Balance cards (5 widgets en fila)
-  { i: "income", x: 0, y: 0, w: 3, h: 2, minW: 2, minH: 2 },
-  { i: "expenses", x: 3, y: 0, w: 3, h: 2, minW: 2, minH: 2 },
-  { i: "investments", x: 6, y: 0, w: 3, h: 2, minW: 2, minH: 2 },
-  { i: "patrimony", x: 9, y: 0, w: 3, h: 2, minW: 2, minH: 2 },
-  { i: "available", x: 12, y: 0, w: 3, h: 2, minW: 2, minH: 2 },
-  // Charts
-  { i: "projection", x: 0, y: 2, w: 6, h: 6, minW: 3, minH: 3 },
-  { i: "flow", x: 6, y: 2, w: 9, h: 6, minW: 6, minH: 4 },
-  { i: "evolution", x: 0, y: 8, w: 15, h: 4, minW: 6, minH: 3 },
-  { i: "expensesChart", x: 0, y: 12, w: 15, h: 5, minW: 6, minH: 4 },
+  // Posición 0: income -> abajo izquierda
+  { i: "income", x: 0, y: 10, w: 3, h: 2, minW: 2, minH: 2 },
+  // Posición 1: expenses -> abajo
+  { i: "expenses", x: 3, y: 10, w: 3, h: 2, minW: 2, minH: 2 },
+  // Posición 2: investments -> abajo
+  { i: "investments", x: 6, y: 10, w: 3, h: 2, minW: 2, minH: 2 },
+  // Posición 3: patrimony -> abajo
+  { i: "patrimony", x: 9, y: 10, w: 3, h: 2, minW: 2, minH: 2 },
+  // Posición 4: available -> abajo derecha
+  { i: "available", x: 12, y: 10, w: 3, h: 2, minW: 2, minH: 2 },
+  // Posición 5: insights -> arriba derecha (x:11, y:0)
+  { i: "insights", x: 11, y: 0, w: 4, h: 6 },
+  // Posición 6: projection -> arriba izquierda (x:0, y:0)
+  { i: "projection", x: 0, y: 0, w: 5, h: 10, minW: 3, minH: 3 },
+  // Posición 7: flow -> abajo completo ancho (x:0, y:12)
+  { i: "flow", x: 0, y: 12, w: 15, h: 6, minW: 6, minH: 4 },
+  // Posición 8: evolution -> centro medio (x:5, y:6)
+  { i: "evolution", x: 5, y: 6, w: 10, h: 4, minW: 6, minH: 3 },
+  // Posición 9: expensesChart -> centro superior (x:5, y:0)
+  { i: "expensesChart", x: 5, y: 0, w: 6, h: 6, minW: 6, minH: 4 },
 ];
 
 const STORAGE_KEY = "finanzas-dashboard-layout";
