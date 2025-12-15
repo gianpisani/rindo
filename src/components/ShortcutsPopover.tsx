@@ -1,20 +1,16 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { Kbd } from "@/components/ui/kbd";
 import { 
-  Home,
-  TrendingUp,
-  ArrowLeftRight,
-  Tag,
-  UsersRound,
   Plus,
   Calculator,
-  Zap,
   ArrowLeft,
   ArrowRight,
   Command,
-  Lightbulb
+  Home,
+  Lightbulb,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { APP_ROUTES } from "@/lib/routes-config";
 
 const isMac = typeof navigator !== 'undefined' && /Mac|iPhone|iPad|iPod/.test(navigator.userAgent);
 const cmdKey = isMac ? "⌘" : "Ctrl";
@@ -25,79 +21,60 @@ interface ShortcutsPopoverProps {
   onClose?: () => void;
 }
 
-const shortcuts = [
-  {
-    category: "Acciones Rápidas",
-    color: "text-primary",
-    items: [
-      {
-        keys: [cmdKey, "K"],
-        description: "Nueva transacción",
-        icon: Plus,
-      },
-      {
-        keys: [cmdKey, "B"],
-        description: "Conciliar balance",
-        icon: Calculator,
-      },
-      {
-        keys: [cmdKey, "M"],
-        description: "Abrir menú de comandos",
-        icon: Command,
-      }
-    ]
-  },
-  {
-    category: "Navegación",
-    color: "text-primary",
-    items: [
-      {
-        keys: [cmdKey, "←"],
-        description: "Pestaña anterior",
-        icon: ArrowLeft,
-      },
-      {
-        keys: [cmdKey, "→"],
-        description: "Pestaña siguiente",
-        icon: ArrowRight,
-      },
-    ]
-  },
-  {
-    category: "Ir a Sección",
-    icon: Home,
-    color: "text-primary",
-    items: [
-      {
-        keys: [cmdKey, "1"],
-        description: "Inicio",
-        icon: Home,
-      },
-      {
-        keys: [cmdKey, "2"],
-        description: "Análisis",
-        icon: TrendingUp,
-      },
-      {
-        keys: [cmdKey, "3"],
-        description: "Movimientos",
-        icon: ArrowLeftRight,
-      },
-      {
-        keys: [cmdKey, "4"],
-        description: "Categorías",
-        icon: Tag,
-      },
-      {
-        keys: [cmdKey, "5"],
-        description: "Deudas",
-        icon: UsersRound,
-      },
-    ]
-  },
-];
+const useShortcuts = () => {
+  return useMemo(() => [
+    {
+      category: "Acciones Rápidas",
+      color: "text-primary",
+      items: [
+        {
+          keys: [cmdKey, "K"],
+          description: "Nueva transacción",
+          icon: Plus,
+        },
+        {
+          keys: [cmdKey, "B"],
+          description: "Conciliar balance",
+          icon: Calculator,
+        },
+        {
+          keys: [cmdKey, "M"],
+          description: "Abrir menú de comandos",
+          icon: Command,
+        }
+      ]
+    },
+    {
+      category: "Navegación",
+      color: "text-primary",
+      items: [
+        {
+          keys: [cmdKey, "←"],
+          description: "Pestaña anterior",
+          icon: ArrowLeft,
+        },
+        {
+          keys: [cmdKey, "→"],
+          description: "Pestaña siguiente",
+          icon: ArrowRight,
+        },
+      ]
+    },
+    {
+      category: "Ir a Sección",
+      icon: Home,
+      color: "text-primary",
+      items: APP_ROUTES.filter(route => route.shortcut).map(route => ({
+        keys: [cmdKey, route.shortcut!],
+        description: route.title,
+        icon: route.icon,
+      }))
+    },
+  ], []);
+};
 
 export function ShortcutsPopover({ isVisible, isFirstTime = false, onClose }: ShortcutsPopoverProps) {
+  const shortcuts = useShortcuts();
   return (
     <>
       {/* Flecha apuntando arriba - Solo primera vez */}

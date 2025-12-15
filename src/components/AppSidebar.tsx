@@ -1,11 +1,4 @@
 import { 
-  Home, 
-  TrendingUp, 
-  ArrowLeftRight, 
-  Tag, 
-  UsersRound,
-  LayoutDashboard,
-  BarChart3,
   ChevronsUpDown,
   LogOut,
   User2,
@@ -15,7 +8,8 @@ import {
   Sun,
   Monitor,
   Plus,
-  Calculator
+  Calculator,
+  Variable
 } from "lucide-react";
 import { Link, useLocation } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
@@ -45,54 +39,10 @@ import {
 import { Button } from "@/components/ui/button";
 import { Kbd } from "@/components/ui/kbd";
 import { useIsMobile } from "@/hooks/use-mobile";
+import { getMainRoutes, getToolRoutes } from "@/lib/routes-config";
 
-// Menu items
-const mainNavItems = [
-  {
-    title: "Inicio",
-    url: "/",
-    icon: Home,
-    shortcut: ["⌘", "1"],
-  },
-  {
-    title: "Análisis",
-    url: "/dashboard",
-    icon: TrendingUp,
-    shortcut: ["⌘", "2"],
-  },
-  {
-    title: "Movimientos",
-    url: "/transactions",
-    icon: ArrowLeftRight,
-    shortcut: ["⌘", "3"],
-  },
-  {
-    title: "Categorías",
-    url: "/categories",
-    icon: Tag,
-    shortcut: ["⌘", "4"],
-  },
-];
-
-const secondaryNavItems = [
-  {
-    title: "Deudas",
-    url: "/pending-debts",
-    icon: UsersRound,
-    shortcut: ["⌘", "5"],
-  },
-  {
-    title: "Insights",
-    url: "/category-insights",
-    icon: BarChart3,
-    shortcut: ["⌘", "6"],
-  },
-  {
-    title: "Recategorizar",
-    url: "/bulk-recategorize",
-    icon: LayoutDashboard,
-  },
-];
+const isMac = typeof navigator !== 'undefined' && /Mac|iPhone|iPad|iPod/.test(navigator.userAgent);
+const cmdKey = isMac ? "⌘" : "Ctrl";
 
 interface AppSidebarProps {
   onAddTransaction?: () => void;
@@ -105,6 +55,9 @@ export function AppSidebar({ onAddTransaction, onConciliate }: AppSidebarProps =
   const { isPrivacyMode, togglePrivacyMode } = usePrivacyMode();
   const { theme, setTheme } = useTheme();
   const isMobile = useIsMobile();
+  
+  const mainNavItems = getMainRoutes();
+  const secondaryNavItems = getToolRoutes();
 
   const handleLogout = async () => {
     await supabase.auth.signOut();
@@ -193,9 +146,8 @@ export function AppSidebar({ onAddTransaction, onConciliate }: AppSidebarProps =
                         </div>
                         {!isMobile && item.shortcut && (
                           <div className="flex gap-0.5 opacity-50 group-data-[state=collapsed]:hidden">
-                            {item.shortcut.map((key, i) => (
-                              <Kbd key={i} className="text-[10px] px-1 py-0.5">{key}</Kbd>
-                            ))}
+                            <Kbd className="text-[10px] px-1 py-0.5">{cmdKey}</Kbd>
+                            <Kbd className="text-[10px] px-1 py-0.5">{item.shortcut}</Kbd>
                           </div>
                         )}
                       </Link>
@@ -223,9 +175,8 @@ export function AppSidebar({ onAddTransaction, onConciliate }: AppSidebarProps =
                         </div>
                         {!isMobile && item.shortcut && (
                           <div className="flex gap-0.5 opacity-50 group-data-[state=collapsed]:hidden">
-                            {item.shortcut.map((key, i) => (
-                              <Kbd key={i} className="text-[10px] px-1 py-0.5">{key}</Kbd>
-                            ))}
+                            <Kbd className="text-[10px] px-1 py-0.5">{cmdKey}</Kbd>
+                            <Kbd className="text-[10px] px-1 py-0.5">{item.shortcut}</Kbd>
                           </div>
                         )}
                       </Link>
@@ -247,7 +198,7 @@ export function AppSidebar({ onAddTransaction, onConciliate }: AppSidebarProps =
                   <span>Agregar Transacción</span>
                   {!isMobile && (
                     <div className="flex gap-0.5 opacity-50 ml-auto group-data-[state=collapsed]:hidden">
-                      <Kbd className="text-[10px] px-1 py-0.5">⌘</Kbd>
+                      <Kbd className="text-[10px] px-1 py-0.5">{cmdKey}</Kbd>
                       <Kbd className="text-[10px] px-1 py-0.5">K</Kbd>
                     </div>
                   )}
@@ -255,11 +206,11 @@ export function AppSidebar({ onAddTransaction, onConciliate }: AppSidebarProps =
               </SidebarMenuItem>
               <SidebarMenuItem>
                 <SidebarMenuButton onClick={onConciliate}>
-                  <Calculator className="size-4" />
+                  <Variable className="size-4" />
                   <span>Conciliar Balance</span>
                   {!isMobile && (
                     <div className="flex gap-0.5 opacity-50 ml-auto group-data-[state=collapsed]:hidden">
-                      <Kbd className="text-[10px] px-1 py-0.5">⌘</Kbd>
+                      <Kbd className="text-[10px] px-1 py-0.5">{cmdKey}</Kbd>
                       <Kbd className="text-[10px] px-1 py-0.5">B</Kbd>
                     </div>
                   )}
@@ -277,7 +228,7 @@ export function AppSidebar({ onAddTransaction, onConciliate }: AppSidebarProps =
               <DropdownMenuTrigger asChild>
                 <SidebarMenuButton
                   size="lg"
-                  className="data-[state=open]:bg-sidebar-accent data-[state=open]:text-sidebar-accent-foreground"
+                  className="data-[state=open]:bg-sidebar-accent data-[state=open]:text-sidebar-accent-foreground sm:mb-0 mb-4"
                 >
                   <div className="flex aspect-square size-8 items-center justify-center rounded-lg bg-sidebar-primary text-sidebar-primary-foreground">
                     <User2 className="size-4" />

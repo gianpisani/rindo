@@ -10,21 +10,14 @@ import {
   CommandSeparator,
 } from "@/components/ui/command";
 import {
-  Home,
-  TrendingUp,
-  FolderKanban,
   Plus,
   Calculator,
   Search,
-  DollarSign,
-  BarChart3,
   Receipt,
   TrendingDown,
   PiggyBank,
   ArrowRight,
-  Users,
-  BarChart2,
-  ListChecks,
+  TrendingUp,
 } from "lucide-react";
 import { useTransactions } from "@/hooks/useTransactions";
 import { useFuzzySearch } from "@/hooks/useFuzzySearch";
@@ -32,6 +25,10 @@ import { format } from "date-fns";
 import { es } from "date-fns/locale";
 import { Badge } from "@/components/ui/badge";
 import { Kbd } from "@/components/ui/kbd";
+import { APP_ROUTES } from "@/lib/routes-config";
+
+const isMac = typeof navigator !== 'undefined' && /Mac|iPhone|iPad|iPod/.test(navigator.userAgent);
+const cmdKey = isMac ? "⌘" : "Ctrl";
 
 interface CommandBarProps {
   onAddTransaction?: () => void;
@@ -192,75 +189,19 @@ export function CommandBar({ onAddTransaction, onConciliate }: CommandBarProps) 
         <CommandSeparator />
 
         <CommandGroup heading="Navegación">
-          <CommandItem onSelect={() => runCommand(() => navigate("/"))}>
-            <Home className="mr-2 h-4 w-4" />
-            <div className="flex items-center justify-between flex-1">
-              <span>Inicio</span>
-              <div className="flex gap-1">
-                <Kbd>⌘</Kbd><Kbd>1</Kbd>
+          {APP_ROUTES.map((route) => (
+            <CommandItem key={route.url} onSelect={() => runCommand(() => navigate(route.url))}>
+              <route.icon className="mr-2 h-4 w-4" />
+              <div className="flex items-center justify-between flex-1">
+                <span>{route.title}</span>
+                {route.shortcut && (
+                  <div className="flex gap-1">
+                    <Kbd>{cmdKey}</Kbd><Kbd>{route.shortcut}</Kbd>
+                  </div>
+                )}
               </div>
-            </div>
-          </CommandItem>
-          
-          <CommandItem onSelect={() => runCommand(() => navigate("/dashboard"))}>
-            <TrendingUp className="mr-2 h-4 w-4" />
-            <div className="flex items-center justify-between flex-1">
-              <span>Análisis</span>
-              <div className="flex gap-1">
-                <Kbd>⌘</Kbd><Kbd>2</Kbd>
-              </div>
-            </div>
-          </CommandItem>
-          
-          <CommandItem onSelect={() => runCommand(() => navigate("/transactions"))}>
-            <DollarSign className="mr-2 h-4 w-4" />
-            <div className="flex items-center justify-between flex-1">
-              <span>Movimientos</span>
-              <div className="flex gap-1">
-                <Kbd>⌘</Kbd><Kbd>3</Kbd>
-              </div>
-            </div>
-          </CommandItem>
-          
-          <CommandItem onSelect={() => runCommand(() => navigate("/categories"))}>
-            <FolderKanban className="mr-2 h-4 w-4" />
-            <div className="flex items-center justify-between flex-1">
-              <span>Categorías</span>
-              <div className="flex gap-1">
-                <Kbd>⌘</Kbd><Kbd>4</Kbd>
-              </div>
-            </div>
-          </CommandItem>
-
-          <CommandItem onSelect={() => runCommand(() => navigate("/pending-debts"))}>
-            <Users className="mr-2 h-4 w-4" />
-            <div className="flex items-center justify-between flex-1">
-              <span>Deudas Pendientes</span>
-              <div className="flex gap-1">
-                <Kbd>⌘</Kbd><Kbd>5</Kbd>
-              </div>
-            </div>
-          </CommandItem>
-          
-          <CommandItem onSelect={() => runCommand(() => navigate("/category-insights"))}>
-            <BarChart2 className="mr-2 h-4 w-4" />
-            <div className="flex items-center justify-between flex-1">
-              <span>Insights de Categorías</span>
-              <div className="flex gap-1">
-                <Kbd>⌘</Kbd><Kbd>6</Kbd>
-              </div>
-            </div>
-          </CommandItem>
-          
-          <CommandItem onSelect={() => runCommand(() => navigate("/recategorize"))}>
-            <BarChart3 className="mr-2 h-4 w-4" />
-            <span>Recategorizar</span>
-          </CommandItem>
-
-          <CommandItem onSelect={() => runCommand(() => navigate("/bulk-recategorize"))}>
-            <ListChecks className="mr-2 h-4 w-4" />
-            <span>Recategorizar Masivo</span>
-          </CommandItem>
+            </CommandItem>
+          ))}
         </CommandGroup>
       </CommandList>
     </CommandDialog>

@@ -10,6 +10,7 @@ import { Eye, EyeOff } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { usePrivacyMode } from "@/hooks/usePrivacyMode";
 import { ShortcutsPopover } from "@/components/ShortcutsPopover";
+import { getAllRoutePaths, getMaxShortcutNumber } from "@/lib/routes-config";
 
 interface LayoutProps {
   children: ReactNode;
@@ -106,7 +107,8 @@ export default function Layout({ children }: LayoutProps) {
     };
   }, []);
 
-  const routes = ["/", "/dashboard", "/transactions", "/categories", "/category-insights", "/pending-debts", "/bulk-recategorize"];
+  const routes = getAllRoutePaths();
+  const maxShortcut = getMaxShortcutNumber();
 
   // Keyboard shortcuts
   useEffect(() => {
@@ -140,8 +142,8 @@ export default function Layout({ children }: LayoutProps) {
         }
       }
 
-      // Cmd + 1-6 para navegar directo
-      if ((e.metaKey || e.ctrlKey) && e.key >= "1" && e.key <= "6") {
+      // Cmd + 1-N para navegar directo (basado en shortcuts configurados)
+      if ((e.metaKey || e.ctrlKey) && e.key >= "1" && e.key <= maxShortcut.toString()) {
         e.preventDefault();
         const index = parseInt(e.key) - 1;
         if (routes[index]) {
@@ -152,7 +154,7 @@ export default function Layout({ children }: LayoutProps) {
 
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [navigate, location.pathname, routes]);
+  }, [navigate, location.pathname, routes, maxShortcut]);
 
   return (
     <SidebarProvider>
