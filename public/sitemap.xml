@@ -37,21 +37,5 @@
     <priority>0.7</priority>
   </url>
   
-  <!-- Recategorize -->
-  <url>
-    <loc>https://rindo.cl/recategorize</loc>
-    <lastmod>2025-11-29</lastmod>
-    <changefreq>weekly</changefreq>
-    <priority>0.6</priority>
-  </url>
-  
-  <!-- Bulk Recategorize -->
-  <url>
-    <loc>https://rindo.cl/bulk-recategorize</loc>
-    <lastmod>2025-11-29</lastmod>
-    <changefreq>weekly</changefreq>
-    <priority>0.6</priority>
-  </url>
-  
 </urlset>
 

@@ -1,13 +1,10 @@
 import { 
   Home, 
-  ArrowLeftRight, 
   Tag, 
   UsersRound,
-  LayoutDashboard,
   LucideIcon,
   Brain,
   ChartNoAxesCombined,
-  SendToBack,
   Coins,
 } from "lucide-react";
 
@@ -65,12 +62,6 @@ export const APP_ROUTES: RouteConfig[] = [
     url: "/category-insights",
     icon: Brain,
     shortcut: "6",
-    group: "tools",
-  },
-  {
-    title: "Recategorizar",
-    url: "/bulk-recategorize",
-    icon: SendToBack,
     group: "tools",
   },
 ];

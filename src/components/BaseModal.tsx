@@ -6,6 +6,7 @@ import {
   DialogTitle,
 } from "./ui/dialog";
 import { ReactNode } from "react";
+import { cn } from "@/lib/utils";
 
 interface BaseModalProps {
   open: boolean;
@@ -15,6 +16,7 @@ interface BaseModalProps {
   children: ReactNode;
   footer?: ReactNode;
   maxWidth?: "sm" | "md" | "lg" | "xl";
+  variant?: "default" | "income" | "expense" | "investment";
 }
 
 const maxWidthClasses = {
@@ -24,6 +26,29 @@ const maxWidthClasses = {
   xl: "sm:max-w-[700px]",
 };
 
+const variantStyles = {
+  default: {
+    border: "border-white/10",
+    header: "",
+    accent: "",
+  },
+  income: {
+    border: "border-success/30",
+    header: "bg-gradient-to-b from-success/10 to-transparent",
+    accent: "text-success",
+  },
+  expense: {
+    border: "border-destructive/30",
+    header: "bg-gradient-to-b from-destructive/10 to-transparent",
+    accent: "text-destructive",
+  },
+  investment: {
+    border: "border-blue-500/30",
+    header: "bg-gradient-to-b from-blue-500/10 to-transparent",
+    accent: "text-blue-500",
+  },
+};
+
 export function BaseModal({ 
   open, 
   onOpenChange, 
@@ -31,23 +56,28 @@ export function BaseModal({
   description, 
   children,
   footer,
-  maxWidth = "lg"
+  maxWidth = "lg",
+  variant = "default"
 }: BaseModalProps) {
+  const styles = variantStyles[variant];
+  
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent 
-        className={`
-          ${maxWidthClasses[maxWidth]}
-          w-[92vw]
-          max-h-[90vh]
-          flex flex-col 
-          p-0 gap-0
-          rounded-2xl
-          border-white/10
-        `}
+        className={cn(
+          maxWidthClasses[maxWidth],
+          "w-[92vw] max-h-[90vh] flex flex-col p-0 gap-0 rounded-2xl",
+          styles.border
+        )}
       >
-        <DialogHeader className="px-6 pt-6 pb-4 flex-shrink-0">
-          <DialogTitle className="text-2xl text-center font-bold">
+        <DialogHeader className={cn(
+          "px-6 pt-6 pb-4 flex-shrink-0 rounded-t-2xl",
+          styles.header
+        )}>
+          <DialogTitle className={cn(
+            "text-2xl text-center font-bold",
+            styles.accent
+          )}>
             {title}
           </DialogTitle>
           {description && (

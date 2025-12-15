@@ -168,7 +168,7 @@ export function CommandBar({ onAddTransaction, onConciliate }: CommandBarProps) 
           <CommandItem onSelect={() => runCommand(() => onAddTransaction?.())}>
             <Plus className="mr-2 h-4 w-4" />
             <div className="flex items-center justify-between flex-1">
-              <span>Agregar Transacción</span>
+              <span>Agregar Gasto</span>
               <div className="flex gap-1">
                 <Kbd>⌘</Kbd><Kbd>K</Kbd>
               </div>

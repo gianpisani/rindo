@@ -7,14 +7,25 @@ interface QuickAddDrawerProps {
   defaultType?: "Ingreso" | "Gasto" | "Inversión";
 }
 
-export function QuickAddDrawer({ open, onOpenChange, defaultType }: QuickAddDrawerProps) {
+const typeVariants = {
+  "Ingreso": "income",
+  "Gasto": "expense",
+  "Inversión": "investment",
+} as const;
+
+export function QuickAddDrawer({ open, onOpenChange, defaultType = "Gasto" }: QuickAddDrawerProps) {
+  const typeText = defaultType === "Ingreso" ? "Ingreso" : defaultType === "Gasto" ? "Gasto" : "Inversión";
+  const typeTextLower = typeText.toLowerCase();
+  const variant = typeVariants[defaultType];
+  
   return (
     <BaseModal
       open={open}
       onOpenChange={onOpenChange}
-      title="Agregar transacción"
-      description="Completa los detalles de tu transacción"
+      title={`Agregar ${typeText}`}
+      description={`Completa los detalles de tu ${typeTextLower}`}
       maxWidth="lg"
+      variant={variant}
     >
       <QuickTransactionForm 
         onSuccess={() => onOpenChange(false)}

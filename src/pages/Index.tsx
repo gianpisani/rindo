@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { QuickAddDrawer } from "@/components/QuickAddDrawer";
 import { ReconciliationDrawer } from "@/components/ReconciliationDrawer";
 import { useTransactions } from "@/hooks/useTransactions";
-import { TrendingUp, TrendingDown, PiggyBank, Receipt, Calculator, Eye } from "lucide-react";
+import { TrendingUp, TrendingDown, PiggyBank, Receipt, Calculator, Eye, Variable } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { format, startOfMonth, endOfMonth, subMonths } from "date-fns";
 import { es } from "date-fns/locale";
@@ -240,7 +240,7 @@ const Index = () => {
             variant="outline"
             className="h-20 md:h-24 flex-col gap-2 border-2 hover:bg-gray-600"
           >
-            <Calculator className="h-6 w-6" />
+            <Variable className="h-6 w-6" />
             <span className="text-sm font-semibold">Conciliar</span>
           </Button>
         </div>

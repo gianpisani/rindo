@@ -1,26 +1,24 @@
-import { useState, useRef, useEffect, useCallback } from "react";
+import { useState, useRef, useCallback, useEffect } from "react";
 import Layout from "@/components/Layout";
 import ConfirmDialog from "@/components/ConfirmDialog";
 import { BaseModal } from "@/components/BaseModal";
 import { TransactionsTable } from "@/components/TransactionsTable";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Dialog, DialogTrigger } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { Plus, Download, Pencil, Trash2, TrendingUp, TrendingDown, PiggyBank, Upload, X, Sparkles, Info, AlertTriangle, Layers } from "lucide-react";
-import { useTransactions } from "@/hooks/useTransactions";
+import { Plus, Download, TrendingUp, TrendingDown, PiggyBank, Upload, X, Sparkles, Info, Trash2 } from "lucide-react";
+import { useTransactions, Transaction } from "@/hooks/useTransactions";
 import { useCategories } from "@/hooks/useCategories";
 import { format, parse } from "date-fns";
-import { es } from "date-fns/locale";
 import Papa from "papaparse";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { categorizeTransaction, debounce } from "@/lib/categorizer";
-import { useNavigate } from "react-router-dom";
+import { DateTimePicker } from "@/components/ui/date-time-picker";
 
 const typeIcons = {
   Ingreso: TrendingUp,
@@ -41,21 +39,32 @@ const typeBg = {
 };
 
 export default function Transactions() {
-  const { transactions, addTransaction, updateTransaction, deleteTransaction, deleteAllTransactions } = useTransactions();
+  const { 
+    transactions, 
+    addTransaction, 
+    updateTransaction, 
+    updateTransactionSilent,
+    deleteTransaction, 
+    deleteMultipleTransactions,
+    updateMultipleTransactions,
+    duplicateTransactions,
+  } = useTransactions();
   const { categories } = useCategories();
   const { toast } = useToast();
-  const navigate = useNavigate();
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [isImportDialogOpen, setIsImportDialogOpen] = useState(false);
-  const [editingTransaction, setEditingTransaction] = useState<any>(null);
+  const [editingTransaction, setEditingTransaction] = useState<Transaction | null>(null);
   const [isImporting, setIsImporting] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState<{ open: boolean; id: string | null }>({
     open: false,
     id: null,
   });
-  const [confirmDeleteAll, setConfirmDeleteAll] = useState(false);
+  const [confirmDeleteMultiple, setConfirmDeleteMultiple] = useState<{ open: boolean; ids: string[] }>({
+    open: false,
+    ids: [],
+  });
   const [suggestion, setSuggestion] = useState<{
     category: string;
     type: "Ingreso" | "Gasto" | "Inversión";
@@ -65,7 +74,7 @@ export default function Transactions() {
   const [isAnalyzing, setIsAnalyzing] = useState(false);
 
   const [formData, setFormData] = useState({
-    date: format(new Date(), "yyyy-MM-dd"),
+    date: new Date(),
     detail: "",
     category_name: "",
     type: "Gasto" as "Ingreso" | "Gasto" | "Inversión",
@@ -153,22 +162,17 @@ export default function Transactions() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    // Convert date string (yyyy-MM-dd) to ISO timestamp with current time
-    const dateObj = parse(formData.date, "yyyy-MM-dd", new Date());
-    const now = new Date();
-    dateObj.setHours(now.getHours(), now.getMinutes(), now.getSeconds());
-    
     if (editingTransaction) {
       await updateTransaction.mutateAsync({
         id: editingTransaction.id,
         ...formData,
-        date: dateObj.toISOString(),
+        date: formData.date.toISOString(),
         amount: parseFloat(formData.amount.replace(/\D/g, "")),
       });
     } else {
       await addTransaction.mutateAsync({
         ...formData,
-        date: dateObj.toISOString(),
+        date: formData.date.toISOString(),
         amount: parseFloat(formData.amount.replace(/\D/g, "")),
       });
     }
@@ -180,7 +184,7 @@ export default function Transactions() {
 
   const resetForm = () => {
     setFormData({
-      date: format(new Date(), "yyyy-MM-dd"),
+      date: new Date(),
       detail: "",
       category_name: "",
       type: "Gasto",
@@ -190,14 +194,12 @@ export default function Transactions() {
     setIsAnalyzing(false);
   };
 
-  const handleEdit = (transaction: any) => {
+  const handleEdit = (transaction: Transaction) => {
     setEditingTransaction(transaction);
-    // Parse the date from ISO string to yyyy-MM-dd format for the date input
     const dateObj = new Date(transaction.date);
-    const formattedDate = format(dateObj, "yyyy-MM-dd");
     
     setFormData({
-      date: formattedDate,
+      date: dateObj,
       detail: transaction.detail || "",
       category_name: transaction.category_name,
       type: transaction.type,
@@ -216,9 +218,32 @@ export default function Transactions() {
     }
   };
 
-  const confirmDeleteAllAction = async () => {
-    await deleteAllTransactions.mutateAsync();
+  // Inline update handler (silent, no modal)
+  const handleUpdateSilent = useCallback(async (id: string, updates: Partial<Transaction>) => {
+    await updateTransactionSilent.mutateAsync({ id, ...updates });
+  }, [updateTransactionSilent]);
+
+  // Delete multiple handler
+  const handleDeleteMultiple = useCallback(async (ids: string[]) => {
+    setConfirmDeleteMultiple({ open: true, ids });
+  }, []);
+
+  const confirmDeleteMultipleAction = async () => {
+    if (confirmDeleteMultiple.ids.length > 0) {
+      await deleteMultipleTransactions.mutateAsync(confirmDeleteMultiple.ids);
+      setConfirmDeleteMultiple({ open: false, ids: [] });
+    }
   };
+
+  // Update multiple handler
+  const handleUpdateMultiple = useCallback(async (ids: string[], updates: Partial<Pick<Transaction, "category_name" | "type">>) => {
+    await updateMultipleTransactions.mutateAsync({ ids, updates });
+  }, [updateMultipleTransactions]);
+
+  // Duplicate handler
+  const handleDuplicate = useCallback(async (ids: string[]) => {
+    await duplicateTransactions.mutateAsync(ids);
+  }, [duplicateTransactions]);
 
   const handleExportCSV = () => {
     const csvData = transactions.map((t) => ({
@@ -297,7 +322,7 @@ export default function Transactions() {
                 continue;
               }
 
-              let categoryExists = categories.find(
+              const categoryExists = categories.find(
                 cat => cat.name === row.Categoría && cat.type === row.Tipo
               );
 
@@ -426,21 +451,19 @@ export default function Transactions() {
           >
             <form id="transaction-form" onSubmit={handleSubmit} className="space-y-4">
                 <div className="space-y-2">
-                  <Label htmlFor="date" className="text-sm font-medium">Fecha</Label>
-                  <Input
-                    id="date"
-                    type="date"
+                  <Label className="text-sm font-medium">Fecha y Hora</Label>
+                  <DateTimePicker
                     value={formData.date}
-                    onChange={(e) => setFormData({ ...formData, date: e.target.value })}
-                    className="h-10 rounded-xl px-6"
-                    required
+                    onChange={(date) => date && setFormData({ ...formData, date })}
+                    showTime={true}
+                    className="w-full h-10 rounded-xl"
                   />
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="type" className="text-sm font-medium">Tipo</Label>
                   <Select
                     value={formData.type}
-                    onValueChange={(value: any) => setFormData({ ...formData, type: value, category_name: "" })}
+                    onValueChange={(value: "Ingreso" | "Gasto" | "Inversión") => setFormData({ ...formData, type: value, category_name: "" })}
                   >
                     <SelectTrigger className="h-10 rounded-xl px-6">
                       <SelectValue />
@@ -474,18 +497,24 @@ export default function Transactions() {
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="amount" className="text-sm font-medium">Monto</Label>
-                  <Input
-                    id="amount"
-                    type="text"
-                    placeholder="$0"
-                    value={formData.amount}
-                    onChange={(e) => {
-                      const number = e.target.value.replace(/\D/g, "");
-                      setFormData({ ...formData, amount: number });
-                    }}
-                    className="h-10 rounded-xl px-6"
-                    required
-                  />
+                  <div className="relative">
+                    <span className="absolute left-4 top-1/2 -translate-y-1/2 text-muted-foreground">$</span>
+                    <Input
+                      id="amount"
+                      type="text"
+                      inputMode="numeric"
+                      pattern="[0-9]*"
+                      autoComplete="off"
+                      placeholder="0"
+                      value={formData.amount ? parseInt(formData.amount).toLocaleString("es-CL") : ""}
+                      onChange={(e) => {
+                        const number = e.target.value.replace(/\D/g, "");
+                        setFormData({ ...formData, amount: number });
+                      }}
+                      className="h-10 rounded-xl pl-8 pr-6"
+                      required
+                    />
+                  </div>
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="detail" className="text-sm font-medium">
@@ -657,29 +686,6 @@ export default function Transactions() {
             <span className="hidden sm:inline">Exportar</span>
           </Button>
 
-          {transactions.length > 0 && (
-            <>
-              <Button 
-                onClick={() => navigate("/bulk-recategorize")}
-                variant="outline" 
-                size="sm" 
-                className="rounded-full"
-              >
-                <Layers className="h-4 w-4" />
-                <span className="hidden sm:inline">Recategorizar</span>
-              </Button>
-
-              <Button 
-                onClick={() => setConfirmDeleteAll(true)}
-                variant="outline" 
-                size="sm" 
-                className="rounded-full gap-2 text-destructive hover:text-destructive hover:bg-destructive/10 border-destructive/20"
-              >
-                <Trash2 className="h-4 w-4" />
-                <span className="hidden sm:inline">Borrar Todo</span>
-              </Button>
-            </>
-          )}
         </div>
 
         <TransactionsTable
@@ -687,6 +693,11 @@ export default function Transactions() {
           categories={categories}
           onEdit={handleEdit}
           onDelete={handleDelete}
+          onUpdateSilent={handleUpdateSilent}
+          onDeleteMultiple={handleDeleteMultiple}
+          onUpdateMultiple={handleUpdateMultiple}
+          onDuplicate={handleDuplicate}
+          isUpdating={updateTransactionSilent.isPending}
         />
       </div>
 
@@ -701,12 +712,12 @@ export default function Transactions() {
       />
 
       <ConfirmDialog
-        open={confirmDeleteAll}
-        onOpenChange={setConfirmDeleteAll}
-        onConfirm={confirmDeleteAllAction}
-        title="⚠️ ¿Eliminar TODAS las transacciones?"
-        description={`Esta acción eliminará permanentemente las ${transactions.length} transacciones. Esta acción NO se puede deshacer.`}
-        confirmText="Sí, eliminar todas"
+        open={confirmDeleteMultiple.open}
+        onOpenChange={(open) => setConfirmDeleteMultiple({ open, ids: open ? confirmDeleteMultiple.ids : [] })}
+        onConfirm={confirmDeleteMultipleAction}
+        title={`¿Eliminar ${confirmDeleteMultiple.ids.length} transacciones?`}
+        description="Esta acción eliminará las transacciones seleccionadas. Podrás deshacerlo desde el toast de confirmación."
+        confirmText={`Eliminar ${confirmDeleteMultiple.ids.length}`}
         cancelText="Cancelar"
         variant="destructive"
       />

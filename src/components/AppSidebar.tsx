@@ -195,7 +195,7 @@ export function AppSidebar({ onAddTransaction, onConciliate }: AppSidebarProps =
               <SidebarMenuItem>
                 <SidebarMenuButton onClick={onAddTransaction}>
                   <Plus className="size-4" />
-                  <span>Agregar Transacción</span>
+                  <span>Agregar Gasto</span>
                   {!isMobile && (
                     <div className="flex gap-0.5 opacity-50 ml-auto group-data-[state=collapsed]:hidden">
                       <Kbd className="text-[10px] px-1 py-0.5">{cmdKey}</Kbd>
