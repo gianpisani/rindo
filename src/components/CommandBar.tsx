@@ -23,6 +23,8 @@ import {
   PiggyBank,
   ArrowRight,
   Users,
+  BarChart2,
+  ListChecks,
 } from "lucide-react";
 import { useTransactions } from "@/hooks/useTransactions";
 import { useFuzzySearch } from "@/hooks/useFuzzySearch";
@@ -240,9 +242,24 @@ export function CommandBar({ onAddTransaction, onConciliate }: CommandBarProps) 
             </div>
           </CommandItem>
           
+          <CommandItem onSelect={() => runCommand(() => navigate("/category-insights"))}>
+            <BarChart2 className="mr-2 h-4 w-4" />
+            <div className="flex items-center justify-between flex-1">
+              <span>Insights de Categorías</span>
+              <div className="flex gap-1">
+                <Kbd>⌘</Kbd><Kbd>6</Kbd>
+              </div>
+            </div>
+          </CommandItem>
+          
           <CommandItem onSelect={() => runCommand(() => navigate("/recategorize"))}>
             <BarChart3 className="mr-2 h-4 w-4" />
             <span>Recategorizar</span>
+          </CommandItem>
+
+          <CommandItem onSelect={() => runCommand(() => navigate("/bulk-recategorize"))}>
+            <ListChecks className="mr-2 h-4 w-4" />
+            <span>Recategorizar Masivo</span>
           </CommandItem>
         </CommandGroup>
       </CommandList>

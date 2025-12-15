@@ -13,7 +13,9 @@ import {
   EyeOff,
   Moon,
   Sun,
-  Monitor
+  Monitor,
+  Plus,
+  Calculator
 } from "lucide-react";
 import { Link, useLocation } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
@@ -41,6 +43,8 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Button } from "@/components/ui/button";
+import { Kbd } from "@/components/ui/kbd";
+import { useIsMobile } from "@/hooks/use-mobile";
 
 // Menu items
 const mainNavItems = [
@@ -48,21 +52,25 @@ const mainNavItems = [
     title: "Inicio",
     url: "/",
     icon: Home,
+    shortcut: ["⌘", "1"],
   },
   {
     title: "Análisis",
     url: "/dashboard",
     icon: TrendingUp,
+    shortcut: ["⌘", "2"],
   },
   {
     title: "Movimientos",
     url: "/transactions",
     icon: ArrowLeftRight,
+    shortcut: ["⌘", "3"],
   },
   {
     title: "Categorías",
     url: "/categories",
     icon: Tag,
+    shortcut: ["⌘", "4"],
   },
 ];
 
@@ -71,11 +79,13 @@ const secondaryNavItems = [
     title: "Insights",
     url: "/category-insights",
     icon: BarChart3,
+    shortcut: ["⌘", "6"],
   },
   {
     title: "Deudas",
     url: "/pending-debts",
     icon: UsersRound,
+    shortcut: ["⌘", "5"],
   },
   {
     title: "Recategorizar",
@@ -84,11 +94,17 @@ const secondaryNavItems = [
   },
 ];
 
-export function AppSidebar() {
+interface AppSidebarProps {
+  onAddTransaction?: () => void;
+  onConciliate?: () => void;
+}
+
+export function AppSidebar({ onAddTransaction, onConciliate }: AppSidebarProps = {}) {
   const location = useLocation();
   const { toast } = useToast();
   const { isPrivacyMode, togglePrivacyMode } = usePrivacyMode();
   const { theme, setTheme } = useTheme();
+  const isMobile = useIsMobile();
 
   const handleLogout = async () => {
     await supabase.auth.signOut();
@@ -118,9 +134,7 @@ export function AppSidebar() {
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <SidebarMenuButton size="lg" className="data-[state=open]:bg-sidebar-accent data-[state=open]:text-sidebar-accent-foreground">
-                  <div className="flex aspect-square size-8 items-center justify-center rounded-lg bg-sidebar-primary text-sidebar-primary-foreground">
-                    <span className="text-xl font-bold">R<span className="text-black">.</span></span>
-                  </div>
+                  <img src="/icon-512x512-removebg-preview.png" alt="Rindo" className="size-8 rounded-full" />
                   <div className="grid flex-1 text-left text-sm leading-tight">
                     <span className="truncate font-semibold">Rindo<span className="text-primary">.</span></span>
                     <span className="truncate text-xs text-sidebar-foreground/70">Finanzas Personales</span>
@@ -172,9 +186,18 @@ export function AppSidebar() {
                 return (
                   <SidebarMenuItem key={item.title}>
                     <SidebarMenuButton asChild isActive={isActive}>
-                      <Link to={item.url}>
-                        <item.icon />
-                        <span>{item.title}</span>
+                      <Link to={item.url} className="flex items-center justify-between w-full">
+                        <div className="flex items-center gap-2">
+                          <item.icon className="size-4" />
+                          <span>{item.title}</span>
+                        </div>
+                        {!isMobile && item.shortcut && (
+                          <div className="flex gap-0.5 opacity-50 group-data-[state=collapsed]:hidden">
+                            {item.shortcut.map((key, i) => (
+                              <Kbd key={i} className="text-[10px] px-1 py-0.5">{key}</Kbd>
+                            ))}
+                          </div>
+                        )}
                       </Link>
                     </SidebarMenuButton>
                   </SidebarMenuItem>
@@ -193,14 +216,55 @@ export function AppSidebar() {
                 return (
                   <SidebarMenuItem key={item.title}>
                     <SidebarMenuButton asChild isActive={isActive}>
-                      <Link to={item.url}>
-                        <item.icon />
-                        <span>{item.title}</span>
+                      <Link to={item.url} className="flex items-center justify-between w-full">
+                        <div className="flex items-center gap-2">
+                          <item.icon className="size-4" />
+                          <span>{item.title}</span>
+                        </div>
+                        {!isMobile && item.shortcut && (
+                          <div className="flex gap-0.5 opacity-50 group-data-[state=collapsed]:hidden">
+                            {item.shortcut.map((key, i) => (
+                              <Kbd key={i} className="text-[10px] px-1 py-0.5">{key}</Kbd>
+                            ))}
+                          </div>
+                        )}
                       </Link>
                     </SidebarMenuButton>
                   </SidebarMenuItem>
                 );
               })}
+            </SidebarMenu>
+          </SidebarGroupContent>
+        </SidebarGroup>
+
+        <SidebarGroup>
+          <SidebarGroupLabel>Acciones Rápidas</SidebarGroupLabel>
+          <SidebarGroupContent>
+            <SidebarMenu>
+              <SidebarMenuItem>
+                <SidebarMenuButton onClick={onAddTransaction}>
+                  <Plus className="size-4" />
+                  <span>Agregar Transacción</span>
+                  {!isMobile && (
+                    <div className="flex gap-0.5 opacity-50 ml-auto group-data-[state=collapsed]:hidden">
+                      <Kbd className="text-[10px] px-1 py-0.5">⌘</Kbd>
+                      <Kbd className="text-[10px] px-1 py-0.5">K</Kbd>
+                    </div>
+                  )}
+                </SidebarMenuButton>
+              </SidebarMenuItem>
+              <SidebarMenuItem>
+                <SidebarMenuButton onClick={onConciliate}>
+                  <Calculator className="size-4" />
+                  <span>Conciliar Balance</span>
+                  {!isMobile && (
+                    <div className="flex gap-0.5 opacity-50 ml-auto group-data-[state=collapsed]:hidden">
+                      <Kbd className="text-[10px] px-1 py-0.5">⌘</Kbd>
+                      <Kbd className="text-[10px] px-1 py-0.5">B</Kbd>
+                    </div>
+                  )}
+                </SidebarMenuButton>
+              </SidebarMenuItem>
             </SidebarMenu>
           </SidebarGroupContent>
         </SidebarGroup>

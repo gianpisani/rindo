@@ -133,11 +133,14 @@ export default function Auth() {
         <div className="relative z-10">
           {/* Logo */}
           <div className="flex items-center gap-3 mb-16">
-            <div>
-              <h1 className="text-3xl font-bold text-sidebar-foreground">
-                Rindo<span className="text-primary">.</span>
-              </h1>
-              <p className="text-xs text-sidebar-foreground/70 uppercase tracking-widest">Finanzas Personales</p>
+            <div className="flex items-center gap-3">
+              <img src="/icon-512x512-removebg-preview.png" alt="Rindo" className="size-12 rounded-full" />
+              <div className="flex flex-col">
+                <h1 className="text-3xl font-bold text-sidebar-foreground">
+                  Rindo<span className="text-primary">.</span>
+                </h1>
+                <p className="text-xs text-sidebar-foreground/70 uppercase tracking-widest">Finanzas Personales</p>
+              </div>
             </div>
           </div>
 
@@ -186,7 +189,7 @@ export default function Auth() {
 
         <div className="relative z-10">
           <p className="text-muted-foreground text-sm">
-            Hecho para que no sea tan personal
+            Hecho para trackear tus finanzas
           </p>
         </div>
       </div>
@@ -195,14 +198,17 @@ export default function Auth() {
       <div className="flex-1 flex items-center justify-center p-6 lg:p-12 bg-background">
         <div className="w-full max-w-md space-y-8">
           {/* Mobile Logo */}
-          <div className="lg:hidden text-center space-y-4 mb-8">
-            <div>
-              <h1 className="text-3xl font-bold">
-                Rindo<span className="text-primary">.</span>
-              </h1>
-              <p className="text-xs text-muted-foreground uppercase tracking-widest mt-1">
-                Finanzas Personales
-              </p>
+          <div className="lg:hidden text-left space-y-4 mb-8">
+            <div className="flex items-center justify-center gap-3">
+              <img src="/icon-512x512-removebg-preview.png" alt="Rindo" className="size-12 rounded-full" />
+              <div className="flex flex-col">
+                <h1 className="text-3xl font-bold">
+                  Rindo<span className="text-primary">.</span>
+                </h1>
+                <p className="text-xs text-muted-foreground uppercase tracking-widest mt-1">
+                  Finanzas Personales
+                </p>
+              </div>
             </div>
           </div>
 
@@ -213,8 +219,8 @@ export default function Auth() {
             </h2>
             <p className="text-muted-foreground">
               {isLogin
-                ? "Registra. Analiza. Optimiza."
-                : "Finanzas personales pero no tan personales"}
+                ? "A ver cómo va la cosa"
+                : "Para que no andes volando bajo"}
             </p>
           </div>
 

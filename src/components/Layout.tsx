@@ -140,8 +140,8 @@ export default function Layout({ children }: LayoutProps) {
         }
       }
 
-      // Cmd + 1-5 para navegar directo
-      if ((e.metaKey || e.ctrlKey) && e.key >= "1" && e.key <= "5") {
+      // Cmd + 1-6 para navegar directo
+      if ((e.metaKey || e.ctrlKey) && e.key >= "1" && e.key <= "6") {
         e.preventDefault();
         const index = parseInt(e.key) - 1;
         if (routes[index]) {
@@ -169,7 +169,10 @@ export default function Layout({ children }: LayoutProps) {
       <ReconciliationDrawer open={reconciliationOpen} onOpenChange={setReconciliationOpen} />
 
       {/* Desktop Sidebar */}
-      <AppSidebar />
+      <AppSidebar 
+        onAddTransaction={() => setDrawerOpen(true)}
+        onConciliate={() => setReconciliationOpen(true)}
+      />
 
       <SidebarInset>
         {/* Top Bar with Trigger and Actions */}
