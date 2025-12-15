@@ -226,7 +226,6 @@ export default function QuickTransactionForm({ onSuccess, defaultType = "Gasto" 
               id="amount"
               type="text"
               inputMode="numeric"
-              pattern="[0-9]*"
               autoComplete="off"
               placeholder="$0"
               value={amount}

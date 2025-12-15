@@ -503,7 +503,6 @@ export default function Transactions() {
                       id="amount"
                       type="text"
                       inputMode="numeric"
-                      pattern="[0-9]*"
                       autoComplete="off"
                       placeholder="0"
                       value={formData.amount ? parseInt(formData.amount).toLocaleString("es-CL") : ""}

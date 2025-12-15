@@ -111,23 +111,31 @@ export function useSharedExpenses() {
     mutationFn: async ({ 
       sharedExpenseId, 
       debtorName, 
-      amount 
+      amount,
+      transactionDetail,
     }: { 
       sharedExpenseId: string; 
       debtorName: string; 
       amount: number;
+      transactionDetail?: string;
     }) => {
       const { data: userData } = await supabase.auth.getUser();
       if (!userData.user) throw new Error("No user found");
+
+      // Construir detalle descriptivo
+      const detail = transactionDetail 
+        ? `${debtorName} pagó: ${transactionDetail}`
+        : `Pago de ${debtorName}`;
 
       // 1. Crear transacción de ingreso
       const { data: ingresoTransaction, error: transactionError } = await supabase
         .from("transactions")
         .insert({
+          date: new Date().toISOString(),
           amount,
           type: "Ingreso",
           category_name: "Pagos recibidos",
-          detail: `Pago de ${debtorName}`,
+          detail,
           user_id: userData.user.id,
         })
         .select()

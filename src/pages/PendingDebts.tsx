@@ -27,7 +27,7 @@ export default function PendingDebts() {
   } = useSharedExpenses();
 
   const [expandedDebtor, setExpandedDebtor] = useState<string | null>(null);
-  const [confirmPaid, setConfirmPaid] = useState<{ id: string; name: string; amount: number } | null>(null);
+  const [confirmPaid, setConfirmPaid] = useState<{ id: string; name: string; amount: number; detail?: string } | null>(null);
 
   const toggleDebtor = (name: string) => {
     setExpandedDebtor(expandedDebtor === name ? null : name);
@@ -39,6 +39,7 @@ export default function PendingDebts() {
       sharedExpenseId: confirmPaid.id,
       debtorName: confirmPaid.name,
       amount: confirmPaid.amount,
+      transactionDetail: confirmPaid.detail,
     });
     setConfirmPaid(null);
   };
@@ -204,6 +205,7 @@ export default function PendingDebts() {
                                         id: expense.id,
                                         name: expense.debtor_name,
                                         amount: expense.amount_owed,
+                                        detail: expense.transaction_detail || undefined,
                                       })
                                     }
                                   >
