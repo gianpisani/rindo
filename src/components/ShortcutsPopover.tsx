@@ -118,13 +118,13 @@ export function ShortcutsPopover({ isVisible, isFirstTime = false, onClose }: Sh
             : "opacity-0 -translate-y-2 pointer-events-none"
         )}
       >
-      <div className="p-4 space-y-4 max-h-[70vh] overflow-y-auto">
+      <div className="p-4 space-y-4 max-h-[70vh] overflow-y-auto bg-background">
         <div className="flex items-center justify-between border-b border-border pb-3">
           <div className="flex items-center gap-2">
             <div className="p-1.5 rounded-lg bg-primary/10">
               <Command className="h-4 w-4" />
             </div>
-            <h3 className="font-bold text-sm">Atajos de Teclado</h3>
+            <h3 className="font-bold text-sm">Atajos del teclado</h3>
           </div>
         </div>
 

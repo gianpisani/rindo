@@ -76,16 +76,16 @@ const mainNavItems = [
 
 const secondaryNavItems = [
   {
-    title: "Insights",
-    url: "/category-insights",
-    icon: BarChart3,
-    shortcut: ["⌘", "6"],
-  },
-  {
     title: "Deudas",
     url: "/pending-debts",
     icon: UsersRound,
     shortcut: ["⌘", "5"],
+  },
+  {
+    title: "Insights",
+    url: "/category-insights",
+    icon: BarChart3,
+    shortcut: ["⌘", "6"],
   },
   {
     title: "Recategorizar",

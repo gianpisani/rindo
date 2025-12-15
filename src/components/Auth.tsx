@@ -124,7 +124,14 @@ export default function Auth() {
   };
 
   return (
-    <div className="min-h-screen bg-sidebar flex flex-col lg:flex-row">
+    <div className="min-h-screen bg-sidebar flex flex-col lg:flex-row relative overflow-hidden">
+      {/* tsParticles Background - Mobile (full screen) */}
+      {particlesInit && (
+        <div className=" absolute inset-0 pointer-events-none">
+          <MemoizedParticles options={particlesOptions} />
+        </div>
+      )}
+      
       {/* Left Panel - Brand & Value Proposition (Hidden on mobile) */}
       <div className="hidden lg:flex lg:flex-1 bg-sidebar p-12 flex-col justify-between relative overflow-hidden">
         {/* tsParticles Background */}
