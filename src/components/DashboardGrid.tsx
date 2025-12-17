@@ -14,15 +14,15 @@ interface DashboardGridProps {
 // Las coordenadas (x,y,w,h) definen DÓNDE va el widget, la posición en el array define QUÉ widget es
 const DEFAULT_LAYOUT: Layout[] = [
   // Posición 0: income -> abajo izquierda
-  { i: "income", x: 0, y: 10, w: 3, h: 2, minW: 2, minH: 2 },
+  { i: "income", x: 0, y: 10, w: 2, h: 2, minW: 2, minH: 1 },
   // Posición 1: expenses -> abajo
-  { i: "expenses", x: 3, y: 10, w: 3, h: 2, minW: 2, minH: 2 },
+  { i: "expenses", x: 2, y: 10, w: 2, h: 2, minW: 2, minH: 1 },
   // Posición 2: investments -> abajo
-  { i: "investments", x: 6, y: 10, w: 3, h: 2, minW: 2, minH: 2 },
+  { i: "investments", x: 4, y: 10, w: 2, h: 2, minW: 2, minH: 1 },
   // Posición 3: patrimony -> abajo
-  { i: "patrimony", x: 9, y: 10, w: 3, h: 2, minW: 2, minH: 2 },
+  { i: "patrimony", x: 6, y: 10, w: 2, h: 2, minW: 2, minH: 1 },
   // Posición 4: available -> abajo derecha
-  { i: "available", x: 12, y: 10, w: 3, h: 2, minW: 2, minH: 2 },
+  { i: "available", x: 8, y: 10, w: 2, h: 2, minW: 2, minH: 1 },
   // Posición 5: insights -> arriba derecha (x:11, y:0)
   { i: "insights", x: 11, y: 0, w: 4, h: 6 },
   // Posición 6: projection -> arriba izquierda (x:0, y:0)
