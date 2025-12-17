@@ -8,6 +8,7 @@ import {
   Link as LinkIcon, 
   Unlink, 
   Loader2,
+  Clock,
   TrendingUp,
   TrendingDown,
   Calendar,
@@ -230,6 +231,15 @@ export default function Fintual() {
             </Button>
           </div>
         </div>
+
+        {/* Info de sincronización automática */}
+        <Alert className="border-blue-500/20 bg-blue-500/5">
+          <Clock className="h-4 w-4 text-blue-500" />
+          <AlertDescription className="text-sm">
+            Tus inversiones se sincronizan automáticamente todos los días a las <strong>19:30 hrs (Chile)</strong>. 
+            Puedes sincronizar manualmente en cualquier momento si lo necesitas.
+          </AlertDescription>
+        </Alert>
 
         {/* Resumen general */}
         <div className="grid gap-4 md:grid-cols-3">
