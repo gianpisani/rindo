@@ -191,6 +191,16 @@ export default function Auth() {
                 <p className="text-sidebar-foreground/70 text-sm">ML que aprende de tus hábitos. Lo configurás una vez y listo.</p>
               </div>
             </div>
+
+            <div className="flex gap-4">
+              <div className="p-3 rounded-xl bg-primary/10 border border-primary/20 h-fit">
+                <img src="/isotipo-fintual.png" alt="Fintual" className="h-6 w-6" />
+              </div>
+              <div>
+                <h3 className="text-sidebar-foreground font-semibold mb-1">Integración con Fintual</h3>
+                <p className="text-sidebar-foreground/70 text-sm">Sincroniza tus inversiones y ten todo centralizado</p>
+              </div>
+            </div>
           </div>
         </div>
 
@@ -431,6 +441,16 @@ export default function Auth() {
               <div className="flex-1">
                 <h4 className="text-sm font-semibold mb-0.5">Proyecciones inteligentes</h4>
                 <p className="text-xs text-muted-foreground">Predicciones basadas en tu comportamiento histórico</p>
+              </div>
+            </div>
+
+            <div className="flex items-start gap-3">
+              <div className="p-2 rounded-lg bg-primary/10">
+                <img src="/isotipo-fintual.png" alt="Fintual" className="h-4 w-4" />
+              </div>
+              <div className="flex-1">
+                <h4 className="text-sm font-semibold mb-0.5">Conecta tus inversiones Fintual</h4>
+                <p className="text-xs text-muted-foreground">Sincroniza automáticamente tus objetivos de inversión</p>
               </div>
             </div>
           </div>

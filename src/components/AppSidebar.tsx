@@ -136,12 +136,17 @@ export function AppSidebar({ onAddTransaction, onConciliate }: AppSidebarProps =
             <SidebarMenu>
               {mainNavItems.map((item) => {
                 const isActive = location.pathname === item.url;
+                const Icon = item.icon;
                 return (
                   <SidebarMenuItem key={item.title}>
                     <SidebarMenuButton asChild isActive={isActive}>
                       <Link to={item.url} className="flex items-center justify-between w-full">
                         <div className="flex items-center gap-2">
-                          <item.icon className="size-4" />
+                          {item.customIcon ? (
+                            <img src={Icon as string} alt={item.title} className="size-4" />
+                          ) : (
+                            <Icon className="size-4" />
+                          )}
                           <span>{item.title}</span>
                         </div>
                         {!isMobile && item.shortcut && (
@@ -165,12 +170,17 @@ export function AppSidebar({ onAddTransaction, onConciliate }: AppSidebarProps =
             <SidebarMenu>
               {secondaryNavItems.map((item) => {
                 const isActive = location.pathname === item.url;
+                const Icon = item.icon;
                 return (
                   <SidebarMenuItem key={item.title}>
                     <SidebarMenuButton asChild isActive={isActive}>
                       <Link to={item.url} className="flex items-center justify-between w-full">
                         <div className="flex items-center gap-2">
-                          <item.icon className="size-4" />
+                          {item.customIcon ? (
+                            <img src={Icon as string} alt={item.title} className="size-4" />
+                          ) : (
+                            <Icon className="size-4" />
+                          )}
                           <span>{item.title}</span>
                         </div>
                         {!isMobile && item.shortcut && (

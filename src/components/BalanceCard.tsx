@@ -13,7 +13,7 @@ export function BalanceCard({ amount, color, bg }: BalanceCardProps) {
   
   return (
     <div className="h-full flex flex-col items-center justify-center">
-      <div className={cn("text-2xl font-semibold tracking-tight", color, isPrivacyMode && "privacy-blur")}>
+      <div className={cn("text-xl font-semibold tracking-tight", color, isPrivacyMode && "privacy-blur")}>
         $<NumberFlow 
           value={amount} 
           format={{ 

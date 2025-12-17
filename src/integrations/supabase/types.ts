@@ -71,6 +71,75 @@ export type Database = {
         }
         Relationships: []
       }
+      fintual_tokens: {
+        Row: {
+          id: string
+          user_id: string
+          token: string
+          email: string
+          created_at: string
+          last_synced_at: string | null
+        }
+        Insert: {
+          id?: string
+          user_id: string
+          token: string
+          email: string
+          created_at?: string
+          last_synced_at?: string | null
+        }
+        Update: {
+          id?: string
+          user_id?: string
+          token?: string
+          email?: string
+          created_at?: string
+          last_synced_at?: string | null
+        }
+        Relationships: []
+      }
+      fintual_investments: {
+        Row: {
+          id: string
+          user_id: string
+          goal_id: string
+          goal_name: string
+          nav: number
+          deposited: number
+          profit: number
+          profit_percentage: number | null
+          fund_name: string | null
+          snapshot_date: string
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          user_id: string
+          goal_id: string
+          goal_name: string
+          nav: number
+          deposited: number
+          profit: number
+          profit_percentage?: number | null
+          fund_name?: string | null
+          snapshot_date?: string
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          user_id?: string
+          goal_id?: string
+          goal_name?: string
+          nav?: number
+          deposited?: number
+          profit?: number
+          profit_percentage?: number | null
+          fund_name?: string | null
+          snapshot_date?: string
+          created_at?: string
+        }
+        Relationships: []
+      }
       shared_expenses: {
         Row: {
           id: string

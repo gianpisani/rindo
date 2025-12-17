@@ -189,19 +189,26 @@ export function CommandBar({ onAddTransaction, onConciliate }: CommandBarProps) 
         <CommandSeparator />
 
         <CommandGroup heading="Navegación">
-          {APP_ROUTES.map((route) => (
-            <CommandItem key={route.url} onSelect={() => runCommand(() => navigate(route.url))}>
-              <route.icon className="mr-2 h-4 w-4" />
-              <div className="flex items-center justify-between flex-1">
-                <span>{route.title}</span>
-                {route.shortcut && (
-                  <div className="flex gap-1">
-                    <Kbd>{cmdKey}</Kbd><Kbd>{route.shortcut}</Kbd>
-                  </div>
+          {APP_ROUTES.map((route) => {
+            const Icon = route.icon;
+            return (
+              <CommandItem key={route.url} onSelect={() => runCommand(() => navigate(route.url))}>
+                {route.customIcon ? (
+                  <img src={Icon as string} alt={route.title} className="mr-2 h-4 w-4" />
+                ) : (
+                  <Icon className="mr-2 h-4 w-4" />
                 )}
-              </div>
-            </CommandItem>
-          ))}
+                <div className="flex items-center justify-between flex-1">
+                  <span>{route.title}</span>
+                  {route.shortcut && (
+                    <div className="flex gap-1">
+                      <Kbd>{cmdKey}</Kbd><Kbd>{route.shortcut}</Kbd>
+                    </div>
+                  )}
+                </div>
+              </CommandItem>
+            );
+          })}
         </CommandGroup>
       </CommandList>
     </CommandDialog>

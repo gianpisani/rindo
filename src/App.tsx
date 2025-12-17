@@ -10,6 +10,7 @@ import Index from "./pages/Index";
 import Dashboard from "./pages/Dashboard";
 import Transactions from "./pages/Transactions";
 import Categories from "./pages/Categories";
+import Fintual from "./pages/Fintual";
 import CategoryInsights from "./pages/CategoryInsights";
 import PendingDebts from "./pages/PendingDebts";
 import NotFound from "./pages/NotFound";
@@ -64,6 +65,7 @@ const App = () => {
             <Route path="/dashboard" element={<Dashboard />} />
             <Route path="/transactions" element={<Transactions />} />
             <Route path="/categories" element={<Categories />} />
+            <Route path="/fintual" element={<Fintual />} />
             <Route path="/category-insights" element={<CategoryInsights />} />
             <Route path="/pending-debts" element={<PendingDebts />} />
             <Route path="*" element={<NotFound />} />
