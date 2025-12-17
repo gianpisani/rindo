@@ -185,7 +185,7 @@ Based on Blue, Cyan, Violet, Fuchsia palette
   /* PWA Splash Screen - Logo centered */
   html {
     background-color: #000000;
-    background-image: url('/splash-screen.svg');
+    background-image: url('/splash-screen.png');
     background-size: contain;
     background-position: center;
     background-repeat: no-repeat;
