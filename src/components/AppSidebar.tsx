@@ -9,12 +9,20 @@ import {
   Monitor,
   Plus,
   Calculator,
-  Variable
+  Variable,
+  Bell,
+  BellOff,
+  DollarSign,
+  TrendingUp,
+  Calendar,
+  CheckCircle
 } from "lucide-react";
 import { Link, useLocation } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
-import { useToast } from "@/hooks/use-toast";
+import { toast } from "sonner";
 import { usePrivacyMode } from "@/hooks/usePrivacyMode";
+import { usePushNotifications } from "@/hooks/usePushNotifications";
+import { sendPushNotification, NotificationTemplates } from "@/lib/notifications";
 import { useTheme } from "next-themes";
 import { cn } from "@/lib/utils";
 import {
@@ -51,8 +59,8 @@ interface AppSidebarProps {
 
 export function AppSidebar({ onAddTransaction, onConciliate }: AppSidebarProps = {}) {
   const location = useLocation();
-  const { toast } = useToast();
   const { isPrivacyMode, togglePrivacyMode } = usePrivacyMode();
+  const { isSupported, isSubscribed, isLoading, subscribe, unsubscribe } = usePushNotifications();
   const { theme, setTheme } = useTheme();
   const isMobile = useIsMobile();
   
@@ -61,10 +69,16 @@ export function AppSidebar({ onAddTransaction, onConciliate }: AppSidebarProps =
 
   const handleLogout = async () => {
     await supabase.auth.signOut();
-    toast({
-      title: "Sesión cerrada",
-      description: "Has cerrado sesión exitosamente",
-    });
+    toast.success("Sesión cerrada exitosamente");
+  };
+
+  const handleTestNotification = async (template: ReturnType<typeof NotificationTemplates[keyof typeof NotificationTemplates]>, name: string) => {
+    const result = await sendPushNotification(template);
+    if (result.success) {
+      toast.success(`${name} enviada`);
+    } else {
+      toast.error("No se pudo enviar la notificación");
+    }
   };
 
   const getThemeIcon = () => {
@@ -256,6 +270,68 @@ export function AppSidebar({ onAddTransaction, onConciliate }: AppSidebarProps =
                 align="end"
                 sideOffset={4}
               >
+                {isSupported && (
+                  <>
+                    <DropdownMenuItem
+                      onClick={isSubscribed ? unsubscribe : subscribe}
+                      disabled={isLoading}
+                      className="gap-2 p-2 cursor-pointer"
+                    >
+                      {isSubscribed ? (
+                        <BellOff className="size-4" />
+                      ) : (
+                        <Bell className="size-4" />
+                      )}
+                      <div className="font-medium">
+                        {isLoading ? "Procesando..." : isSubscribed ? "Desactivar notificaciones" : "Activar notificaciones"}
+                      </div>
+                    </DropdownMenuItem>
+                    {isSubscribed && (
+                      <>
+                        <DropdownMenuItem
+                          onClick={() => handleTestNotification(
+                            NotificationTemplates.newTransaction(50000, 'Comida', 'Gasto'),
+                            'Nueva transacción'
+                          )}
+                          className="gap-2 p-2 cursor-pointer"
+                        >
+                          <DollarSign className="size-4" />
+                          <div className="font-medium">Nueva transacción</div>
+                        </DropdownMenuItem>
+                        <DropdownMenuItem
+                          onClick={() => handleTestNotification(
+                            NotificationTemplates.categoryLimitReached('Comida', 90),
+                            'Límite alcanzado'
+                          )}
+                          className="gap-2 p-2 cursor-pointer"
+                        >
+                          <TrendingUp className="size-4" />
+                          <div className="font-medium">Límite alcanzado</div>
+                        </DropdownMenuItem>
+                        <DropdownMenuItem
+                          onClick={() => handleTestNotification(
+                            NotificationTemplates.fintualSyncComplete(1500000),
+                            'Sync Fintual'
+                          )}
+                          className="gap-2 p-2 cursor-pointer"
+                        >
+                          <CheckCircle className="size-4" />
+                          <div className="font-medium">Sync Fintual</div>
+                        </DropdownMenuItem>
+                        <DropdownMenuItem
+                          onClick={() => handleTestNotification(
+                            NotificationTemplates.weeklyReport(500000, 300000),
+                            'Resumen semanal'
+                          )}
+                          className="gap-2 p-2 cursor-pointer"
+                        >
+                          <Calendar className="size-4" />
+                          <div className="font-medium">Resumen semanal</div>
+                        </DropdownMenuItem>
+                      </>
+                    )}
+                  </>
+                )}
                 <DropdownMenuItem
                   onClick={handleLogout}
                   className="gap-2 p-2 text-destructive focus:text-destructive cursor-pointer"
