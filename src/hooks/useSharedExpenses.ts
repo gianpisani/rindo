@@ -1,6 +1,6 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
-import { useToast } from "./use-toast";
+import { toast } from "sonner";
 
 export interface SharedExpense {
   id: string;
@@ -28,7 +28,6 @@ export interface DebtorSummary {
 }
 
 export function useSharedExpenses() {
-  const { toast } = useToast();
   const queryClient = useQueryClient();
 
   // Obtener todos los gastos compartidos
@@ -163,17 +162,10 @@ export function useSharedExpenses() {
       queryClient.invalidateQueries({ queryKey: ["pending_by_debtor"] });
       queryClient.invalidateQueries({ queryKey: ["transactions"] });
       
-      toast({
-        title: "Pago registrado",
-        description: "Se ha creado el ingreso automáticamente",
-      });
+      toast.success("Pago registrado. Se ha creado el ingreso automáticamente");
     },
     onError: (error: any) => {
-      toast({
-        title: "Error",
-        description: error.message,
-        variant: "destructive",
-      });
+      toast.error(error.message);
     },
   });
 

@@ -4,7 +4,7 @@ import { Button } from "./ui/button";
 import { Input } from "./ui/input";
 import { Label } from "./ui/label";
 import { Card } from "./ui/card";
-import { useToast } from "@/hooks/use-toast";
+import { toast } from "sonner";
 import {
   BanknotesIcon,
   CheckBadgeIcon,
@@ -33,7 +33,6 @@ export default function Auth() {
   const [particlesInit, setParticlesInit] = useState(false);
   const [emailSent, setEmailSent] = useState(false);
   const [animationStage, setAnimationStage] = useState(0); // 0: idle, 1: sending, 2: sent, 3: done
-  const { toast } = useToast();
 
   useEffect(() => {
     initParticlesEngine(async (engine: Engine) => {
@@ -100,10 +99,7 @@ export default function Auth() {
           password,
         });
         if (error) throw error;
-        toast({
-          title: "¡Bienvenido de vuelta!",
-          description: "Has iniciado sesión correctamente",
-        });
+        toast.success("Has iniciado sesión correctamente");
       } else {
         const { error } = await supabase.auth.signUp({
           email,
@@ -114,11 +110,7 @@ export default function Auth() {
         setEmailSent(true);
       }
     } catch (error) {
-      toast({
-        title: "Error",
-        description: error instanceof Error ? error.message : "Error desconocido",
-        variant: "destructive",
-      });
+      toast.error(error instanceof Error ? error.message : "Error desconocido");
       setLoading(false);
     }
   };

@@ -1,6 +1,6 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
-import { useToast } from "./use-toast";
+import { toast } from "sonner";
 import { useCallback, useRef } from "react";
 
 export interface Transaction {
@@ -15,7 +15,6 @@ export interface Transaction {
 }
 
 export function useTransactions() {
-  const { toast } = useToast();
   const queryClient = useQueryClient();
   const lastDeletedRef = useRef<Transaction[]>([]);
 
@@ -55,17 +54,10 @@ export function useTransactions() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["transactions"] });
-      toast({
-        title: "Transacción agregada",
-        description: "La transacción se ha guardado correctamente",
-      });
+      toast.success("Transacción agregada");
     },
-    onError: (error: any) => {
-      toast({
-        title: "Error",
-        description: error.message,
-        variant: "destructive",
-      });
+    onError: (error: Error) => {
+      toast.error(error.message);
     },
   });
 
@@ -108,12 +100,8 @@ export function useTransactions() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["transactions"] });
     },
-    onError: (error: any) => {
-      toast({
-        title: "Error al guardar",
-        description: error.message,
-        variant: "destructive",
-      });
+    onError: (error: Error) => {
+      toast.error(error.message);
     },
   });
 
@@ -124,10 +112,7 @@ export function useTransactions() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["transactions"] });
-      toast({
-        title: "Transacción eliminada",
-        description: "La transacción se ha eliminado correctamente",
-      });
+      toast.success("Transacción eliminada");
     },
   });
 
@@ -148,17 +133,10 @@ export function useTransactions() {
     },
     onSuccess: (count) => {
       queryClient.invalidateQueries({ queryKey: ["transactions"] });
-      toast({
-        title: `${count} transacciones eliminadas`,
-        description: "Las transacciones seleccionadas han sido eliminadas. Puedes deshacer esta acción.",
-      });
+      toast.success(`${count} transacciones eliminadas`);
     },
-    onError: (error: any) => {
-      toast({
-        title: "Error",
-        description: error.message,
-        variant: "destructive",
-      });
+    onError: (error: Error) => {
+      toast.error(error.message);
     },
   });
 
@@ -181,17 +159,10 @@ export function useTransactions() {
     },
     onSuccess: (count) => {
       queryClient.invalidateQueries({ queryKey: ["transactions"] });
-      toast({
-        title: `${count} transacciones actualizadas`,
-        description: "Los cambios se han aplicado correctamente",
-      });
+      toast.success(`${count} transacciones actualizadas`);
     },
-    onError: (error: any) => {
-      toast({
-        title: "Error",
-        description: error.message,
-        variant: "destructive",
-      });
+    onError: (error: Error) => {
+      toast.error(error.message);
     },
   });
 
@@ -220,17 +191,10 @@ export function useTransactions() {
     },
     onSuccess: (count) => {
       queryClient.invalidateQueries({ queryKey: ["transactions"] });
-      toast({
-        title: `${count} transacciones duplicadas`,
-        description: "Las copias se han creado correctamente",
-      });
+      toast.success(`${count} transacciones duplicadas`);
     },
-    onError: (error: any) => {
-      toast({
-        title: "Error",
-        description: error.message,
-        variant: "destructive",
-      });
+    onError: (error: Error) => {
+      toast.error(error.message);
     },
   });
 
@@ -248,17 +212,10 @@ export function useTransactions() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["transactions"] });
-      toast({
-        title: "Todas las transacciones eliminadas",
-        description: "Se han eliminado todas tus transacciones correctamente",
-      });
+      toast.success("Todas las transacciones eliminadas");
     },
-    onError: (error: any) => {
-      toast({
-        title: "Error",
-        description: error.message,
-        variant: "destructive",
-      });
+    onError: (error: Error) => {
+      toast.error(error.message);
     },
   });
 
@@ -288,18 +245,15 @@ export function useTransactions() {
       lastDeletedRef.current = [];
       queryClient.invalidateQueries({ queryKey: ["transactions"] });
       
-      toast({
-        title: "Transacciones restauradas",
-        description: `Se han restaurado ${toRestore.length} transacciones`,
-      });
-    } catch (error: any) {
-      toast({
-        title: "Error al restaurar",
-        description: error.message,
-        variant: "destructive",
-      });
+      toast.success(`Se han restaurado ${toRestore.length} transacciones`);
+    } catch (error: unknown) {
+      if (error instanceof Error) {
+        toast.error(`Error al restaurar transacciones: ${error.message}`);
+      } else {
+        toast.error("Error al restaurar transacciones: error desconocido");
+      }
     }
-  }, [queryClient, toast]);
+  }, [queryClient]);
 
   return {
     transactions,

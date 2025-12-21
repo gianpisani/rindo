@@ -16,7 +16,7 @@ import { useCategories } from "@/hooks/useCategories";
 import { format, parse } from "date-fns";
 import Papa from "papaparse";
 import { supabase } from "@/integrations/supabase/client";
-import { useToast } from "@/hooks/use-toast";
+import { toast } from "sonner";
 import { categorizeTransaction, debounce } from "@/lib/categorizer";
 import { DateTimePicker } from "@/components/ui/date-time-picker";
 
@@ -50,7 +50,6 @@ export default function Transactions() {
     duplicateTransactions,
   } = useTransactions();
   const { categories } = useCategories();
-  const { toast } = useToast();
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const [isDialogOpen, setIsDialogOpen] = useState(false);
@@ -372,29 +371,18 @@ export default function Transactions() {
             }
           }
 
-          toast({
-            title: "Importación completada",
-            description: `${successCount} transacciones importadas. ${errorCount > 0 ? `${errorCount} errores.` : ""}`,
-          });
+          toast.success(`${successCount} transacciones importadas${errorCount > 0 ? `. ${errorCount} errores` : ""}`);
 
           setIsImportDialogOpen(false);
           window.location.reload();
         } catch (error: any) {
-          toast({
-            title: "Error en la importación",
-            description: error.message,
-            variant: "destructive",
-          });
+          toast.error(`Error en la importación: ${error.message}`);
         } finally {
           setIsImporting(false);
         }
       },
       error: (error) => {
-        toast({
-          title: "Error leyendo el archivo",
-          description: error.message,
-          variant: "destructive",
-        });
+        toast.error(`Error leyendo el archivo: ${error.message}`);
         setIsImporting(false);
       },
     });

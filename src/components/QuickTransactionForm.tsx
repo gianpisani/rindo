@@ -8,7 +8,7 @@ import { useTransactions } from "@/hooks/useTransactions";
 import { useSharedExpenses } from "@/hooks/useSharedExpenses";
 import { supabase } from "@/integrations/supabase/client";
 import { useQueryClient } from "@tanstack/react-query";
-import { useToast } from "@/hooks/use-toast";
+import { toast } from "sonner";
 import { FingerPrintIcon } from "@heroicons/react/24/outline";
 import { Checkbox } from "./ui/checkbox";
 import SharedExpenseDrawer from "./SharedExpenseDrawer";
@@ -40,7 +40,6 @@ export default function QuickTransactionForm({ onSuccess, defaultType = "Gasto" 
 
   const { categories } = useCategories();
   const queryClient = useQueryClient();
-  const { toast } = useToast();
   const { addTransaction } = useTransactions();
   const { addSharedExpenses } = useSharedExpenses();
   const detailInputRef = useRef<HTMLInputElement>(null);
@@ -88,10 +87,7 @@ export default function QuickTransactionForm({ onSuccess, defaultType = "Gasto" 
         
         // Mostrar toast con el resultado
         if (result.category !== "Sin categoría") {
-          toast({
-            title: "Categorizado automáticamente",
-            description: `${result.category} · ${result.confidence}% de confianza`,
-          });
+          toast.success(`Categorizado: ${result.category} (${result.confidence}% confianza)`);
         }
       }
       
@@ -166,10 +162,7 @@ export default function QuickTransactionForm({ onSuccess, defaultType = "Gasto" 
         }))
       );
 
-      toast({
-        title: "Gasto compartido creado",
-        description: `Dividido entre ${debtors.length} personas`,
-      });
+      toast.success(`Gasto compartido dividido entre ${debtors.length} personas`);
 
       // Reset form
       setAmount("");

@@ -1,6 +1,6 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
-import { useToast } from "./use-toast";
+import { toast } from "sonner";
 
 export interface CategoryLimit {
   id: string;
@@ -13,7 +13,6 @@ export interface CategoryLimit {
 }
 
 export function useCategoryLimits() {
-  const { toast } = useToast();
   const queryClient = useQueryClient();
 
   const { data: limits = [], isLoading } = useQuery({
@@ -50,17 +49,10 @@ export function useCategoryLimits() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["category_limits"] });
-      toast({
-        title: "Límite actualizado",
-        description: "El límite de categoría se ha guardado correctamente",
-      });
+      toast.success("Límite actualizado");
     },
-    onError: (error: any) => {
-      toast({
-        title: "Error",
-        description: error.message,
-        variant: "destructive",
-      });
+    onError: (error: Error) => {
+      toast.error(error.message);
     },
   });
 
@@ -75,10 +67,7 @@ export function useCategoryLimits() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["category_limits"] });
-      toast({
-        title: "Límite eliminado",
-        description: "El límite de categoría se ha eliminado",
-      });
+      toast.success("Límite eliminado");
     },
   });
 

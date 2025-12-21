@@ -1,6 +1,6 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
-import { useToast } from "./use-toast";
+import { toast } from "sonner";
 
 export interface Category {
   id: string;
@@ -12,7 +12,6 @@ export interface Category {
 }
 
 export function useCategories() {
-  const { toast } = useToast();
   const queryClient = useQueryClient();
 
   const { data: categories = [], isLoading } = useQuery({
@@ -48,17 +47,10 @@ export function useCategories() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["categories"] });
-      toast({
-        title: "Categoría agregada",
-        description: "La categoría se ha creado correctamente",
-      });
+      toast.success("Categoría agregada");
     },
-    onError: (error: any) => {
-      toast({
-        title: "Error",
-        description: error.message,
-        variant: "destructive",
-      });
+    onError: (error: Error) => {
+      toast.error(error.message);
     },
   });
 
@@ -76,10 +68,7 @@ export function useCategories() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["categories"] });
-      toast({
-        title: "Categoría actualizada",
-        description: "Los cambios se han guardado correctamente",
-      });
+      toast.success("Categoría actualizada");
     },
   });
 
@@ -90,10 +79,7 @@ export function useCategories() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["categories"] });
-      toast({
-        title: "Categoría eliminada",
-        description: "La categoría se ha eliminado correctamente",
-      });
+      toast.success("Categoría eliminada");
     },
   });
 

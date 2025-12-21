@@ -3,7 +3,7 @@ import GridLayout, { Layout } from "react-grid-layout";
 import "react-grid-layout/css/styles.css";
 import { Button } from "./ui/button";
 import { RotateCcw } from "lucide-react";
-import { toast } from "@/hooks/use-toast";
+import { toast } from "sonner";
 
 interface DashboardGridProps {
   children: React.ReactElement[];
@@ -73,10 +73,7 @@ export function DashboardGrid({ children }: DashboardGridProps) {
   const handleReset = () => {
     setLayout(DEFAULT_LAYOUT);
     localStorage.setItem(STORAGE_KEY, JSON.stringify(DEFAULT_LAYOUT));
-    toast({
-      title: "Dashboard restaurado",
-      description: "El diseño se ha restaurado a su configuración original",
-    });
+    toast.success("Dashboard restaurado");
   };
 
   // No renderizar hasta que esté montado (evita SSR issues)

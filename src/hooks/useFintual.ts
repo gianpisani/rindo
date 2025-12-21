@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { supabase } from '@/integrations/supabase/client'
-import { useToast } from '@/hooks/use-toast'
+import { toast } from 'sonner'
 
 export interface FintualInvestment {
   id: string
@@ -37,7 +37,6 @@ export function useFintual() {
   const [investments, setInvestments] = useState<FintualInvestment[]>([])
   const [historicalData, setHistoricalData] = useState<FintualInvestment[]>([])
   const [lastSyncedAt, setLastSyncedAt] = useState<string | null>(null)
-  const { toast } = useToast()
 
   // Verificar si hay conexión activa
   useEffect(() => {
@@ -146,10 +145,7 @@ export function useFintual() {
         throw new Error(result.error || 'Error conectando con Fintual')
       }
 
-      toast({
-        title: '¡Conectado!',
-        description: 'Tu cuenta de Fintual se ha conectado exitosamente',
-      })
+      toast.success('Tu cuenta de Fintual se ha conectado exitosamente')
 
       setIsConnected(true)
       
@@ -159,11 +155,7 @@ export function useFintual() {
       return true
     } catch (error: any) {
       console.error('Error connecting to Fintual:', error)
-      toast({
-        title: 'Error',
-        description: error.message || 'No se pudo conectar con Fintual',
-        variant: 'destructive',
-      })
+      toast.error(error.message || 'No se pudo conectar con Fintual')
       return false
     } finally {
       setIsLoading(false)
@@ -203,20 +195,13 @@ export function useFintual() {
       if (!result.success) {
         if (result.tokenExpired) {
           setIsConnected(false)
-          toast({
-            title: 'Token expirado',
-            description: 'Reconecta tu cuenta de Fintual',
-            variant: 'destructive',
-          })
+          toast.error('Token expirado. Reconecta tu cuenta de Fintual')
           return false
         }
         throw new Error(result.error || 'Error sincronizando con Fintual')
       }
 
-      toast({
-        title: 'Sincronizado',
-        description: result.message || 'Datos actualizados exitosamente',
-      })
+      toast.success(result.message || 'Datos actualizados exitosamente')
 
       setLastSyncedAt(new Date().toISOString())
       await loadInvestments()
@@ -224,11 +209,7 @@ export function useFintual() {
       return true
     } catch (error: any) {
       console.error('Error syncing with Fintual:', error)
-      toast({
-        title: 'Error',
-        description: error.message || 'No se pudo sincronizar con Fintual',
-        variant: 'destructive',
-      })
+      toast.error(error.message || 'No se pudo sincronizar con Fintual')
       return false
     } finally {
       setIsSyncing(false)
@@ -247,21 +228,14 @@ export function useFintual() {
 
       if (error) throw error
 
-      toast({
-        title: 'Desconectado',
-        description: 'Tu cuenta de Fintual ha sido desconectada',
-      })
+      toast.success('Tu cuenta de Fintual ha sido desconectada')
 
       setIsConnected(false)
       setInvestments([])
       setLastSyncedAt(null)
     } catch (error) {
       console.error('Error disconnecting from Fintual:', error)
-      toast({
-        title: 'Error',
-        description: 'No se pudo desconectar de Fintual',
-        variant: 'destructive',
-      })
+      toast.error('No se pudo desconectar de Fintual')
     }
   }
 
