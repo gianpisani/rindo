@@ -1,10 +1,22 @@
-import { TrendingUp, TrendingDown, Minus, Info, Settings, TrendingUpIcon } from "lucide-react";
+import { TrendingUp, TrendingDown, Minus, Info, Settings, TrendingUpIcon, RotateCcw } from "lucide-react";
 import { useTransactions } from "@/hooks/useTransactions";
-import { LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer, TooltipProps } from "recharts";
+import { 
+  ComposedChart, 
+  Line, 
+  Area,
+  XAxis, 
+  YAxis, 
+  Tooltip, 
+  ResponsiveContainer, 
+  TooltipProps,
+  Brush,
+  CartesianGrid,
+  ReferenceArea
+} from "recharts";
 import { format, startOfMonth, endOfMonth, eachMonthOfInterval, subMonths, addMonths, isBefore } from "date-fns";
 import { es } from "date-fns/locale";
 import { ToggleGroup, ToggleGroupItem } from "./ui/toggle-group";
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo, useCallback } from "react";
 import { usePrivacyMode } from "@/hooks/usePrivacyMode";
 import { cn } from "@/lib/utils";
 import { Input } from "./ui/input";
@@ -31,12 +43,15 @@ const CustomTooltip = ({ active, payload, label }: TooltipProps<number, string>)
   const proyeccionSinInteres = payload.find(p => p.dataKey === 'proyeccionLineal')?.value as number | undefined;
 
   return (
-    <div className="bg-card border border-border rounded-xl p-3 shadow-lg min-w-[200px]">
-      <p className="font-semibold text-sm text-foreground mb-2">{label}</p>
-      <div className="space-y-1.5">
+    <div className="bg-card/95 backdrop-blur-sm border border-border rounded-xl p-4 shadow-xl min-w-[220px]">
+      <p className="font-semibold text-sm text-foreground mb-3 pb-2 border-b border-border">{label}</p>
+      <div className="space-y-2">
         {patrimonioReal !== undefined && (
           <div className="flex items-center justify-between gap-3">
-            <span className="text-xs text-muted-foreground">Real:</span>
+            <div className="flex items-center gap-2">
+              <div className="w-3 h-3 rounded-full bg-[#e11d48]" />
+              <span className="text-xs text-muted-foreground">Patrimonio Real:</span>
+            </div>
             <span className="text-sm font-bold text-[#e11d48]">
               {formatCurrencyFull(patrimonioReal)}
             </span>
@@ -44,15 +59,21 @@ const CustomTooltip = ({ active, payload, label }: TooltipProps<number, string>)
         )}
         {proyeccionConInteres !== undefined && (
           <div className="flex items-center justify-between gap-3">
-            <span className="text-xs text-muted-foreground">Con interés:</span>
-            <span className="text-sm font-bold text-[#e11d48]">
+            <div className="flex items-center gap-2">
+              <div className="w-3 h-3 rounded-full bg-[#e11d48] opacity-50" />
+              <span className="text-xs text-muted-foreground">Con interés:</span>
+            </div>
+            <span className="text-sm font-bold text-[#e11d48]/70">
               {formatCurrencyFull(proyeccionConInteres)}
             </span>
           </div>
         )}
         {proyeccionSinInteres !== undefined && (
           <div className="flex items-center justify-between gap-3">
-            <span className="text-xs text-muted-foreground">Sin interés:</span>
+            <div className="flex items-center gap-2">
+              <div className="w-3 h-3 rounded-full bg-[#94a3b8]" />
+              <span className="text-xs text-muted-foreground">Sin interés:</span>
+            </div>
             <span className="text-sm font-bold text-[#94a3b8]">
               {formatCurrencyFull(proyeccionSinInteres)}
             </span>
@@ -61,7 +82,7 @@ const CustomTooltip = ({ active, payload, label }: TooltipProps<number, string>)
         {proyeccionConInteres !== undefined && proyeccionSinInteres !== undefined && (
           <div className="mt-2 pt-2 border-t border-border">
             <div className="flex items-center justify-between gap-3">
-              <span className="text-xs text-muted-foreground">Diferencia:</span>
+              <span className="text-xs text-muted-foreground font-medium">Ganancia por interés:</span>
               <span className="text-sm font-bold text-success">
                 +{formatCurrencyFull(proyeccionConInteres - proyeccionSinInteres)}
               </span>
@@ -105,6 +126,10 @@ export default function ProjectionCard() {
   const [riskMapping, setRiskMapping] = useState<RiskMapping>({});
   const [isLoaded, setIsLoaded] = useState<boolean>(false);
   const { isPrivacyMode } = usePrivacyMode();
+  
+  // Estado para zoom
+  const [isSelecting, setIsSelecting] = useState(false);
+  const [zoomDomain, setZoomDomain] = useState<{ start: number; end: number } | null>(null);
 
   // Cargar desde localStorage solo una vez al montar
   useEffect(() => {
@@ -397,6 +422,70 @@ export default function ProjectionCard() {
     ? manualSalary && Number(manualSalary) > 0 
     : recentCompleteMonths.length >= 2;
 
+  // Agregar índice a chartData para zoom
+  const chartDataWithIndex = useMemo(() => {
+    return chartData.map((item, idx) => ({ ...item, index: idx }));
+  }, [chartData]);
+
+  // Estado para índices de selección (más robusto que usar labels)
+  const [selectStartIdx, setSelectStartIdx] = useState<number | null>(null);
+  const [selectEndIdx, setSelectEndIdx] = useState<number | null>(null);
+
+  // Handlers para zoom - usando índices directamente
+  const handleMouseDown = useCallback((e: { activeTooltipIndex?: number }) => {
+    if (e.activeTooltipIndex !== undefined) {
+      setSelectStartIdx(e.activeTooltipIndex);
+      setSelectEndIdx(e.activeTooltipIndex);
+      setIsSelecting(true);
+    }
+  }, []);
+
+  const handleMouseMove = useCallback((e: { activeTooltipIndex?: number }) => {
+    if (isSelecting && e.activeTooltipIndex !== undefined) {
+      setSelectEndIdx(e.activeTooltipIndex);
+    }
+  }, [isSelecting]);
+
+  const handleMouseUp = useCallback(() => {
+    if (selectStartIdx !== null && selectEndIdx !== null) {
+      const start = Math.min(selectStartIdx, selectEndIdx);
+      const end = Math.max(selectStartIdx, selectEndIdx);
+      
+      if (end - start >= 1) {
+        // Convertir índices visibles a índices reales
+        const realStart = zoomDomain ? zoomDomain.start + start : start;
+        const realEnd = zoomDomain ? zoomDomain.start + end : end;
+        setZoomDomain({ start: realStart, end: realEnd });
+      }
+    }
+    
+    setSelectStartIdx(null);
+    setSelectEndIdx(null);
+    setIsSelecting(false);
+  }, [selectStartIdx, selectEndIdx, zoomDomain]);
+
+  const handleZoomOut = useCallback(() => {
+    setZoomDomain(null);
+  }, []);
+
+  const handleBrushChange = useCallback((brushData: { startIndex?: number; endIndex?: number }) => {
+    if (brushData.startIndex !== undefined && brushData.endIndex !== undefined) {
+      if (brushData.endIndex - brushData.startIndex >= 1) {
+        setZoomDomain({ start: brushData.startIndex, end: brushData.endIndex });
+      }
+    }
+  }, []);
+
+  // Datos visibles según zoom - re-indexar para que el XAxis funcione
+  const visibleChartData = useMemo(() => {
+    const data = !zoomDomain 
+      ? chartDataWithIndex 
+      : chartDataWithIndex.slice(zoomDomain.start, zoomDomain.end + 1);
+    
+    // Re-asignar índices consecutivos para los datos visibles
+    return data.map((item, idx) => ({ ...item, index: idx }));
+  }, [chartDataWithIndex, zoomDomain]);
+
   return (
     <div className="space-y-4">
       {/* Header con configuración de inteligencia */}
@@ -651,89 +740,213 @@ export default function ProjectionCard() {
       <div className="p-3 rounded-2xl bg-muted/20 border border-border/50 space-y-3">
         <div className="flex items-center justify-between">
           <p className="text-sm font-semibold text-foreground">Evolución & Proyección</p>
-          <div className="flex items-center gap-2 text-xs flex-wrap">
-            <div className="flex items-center gap-1.5">
-              <div className="h-2.5 w-2.5 rounded-full bg-[#e11d48]" />
-              <span className="text-muted-foreground font-medium">Real</span>
-            </div>
-            <div className="flex items-center gap-1.5">
-              <div className="h-2.5 w-2.5 rounded-full bg-[#e11d48] opacity-40" />
-              <span className="text-muted-foreground font-medium">Con interés</span>
-            </div>
-            {portfolioReturn > 0 && (
-              <div className="flex items-center gap-1.5">
-                <div className="h-2.5 w-2.5 rounded-full bg-[#94a3b8]" />
-                <span className="text-muted-foreground font-medium">Sin interés</span>
-              </div>
+          <div className="flex items-center gap-2">
+            {zoomDomain && (
+              <Button 
+                variant="outline" 
+                size="sm" 
+                onClick={handleZoomOut}
+                className="h-6 text-[10px] gap-1 px-2"
+              >
+                <RotateCcw className="w-3 h-3" />
+                Reiniciar
+              </Button>
             )}
           </div>
         </div>
-        <ResponsiveContainer width="100%" height={240}>
-            <LineChart data={chartData} className={cn(isPrivacyMode && "privacy-blur")}>
-              <XAxis 
-                dataKey="month" 
-                stroke="#94a3b8" 
-                fontSize={12}
-                tickLine={false}
-                axisLine={false}
-              />
-              <YAxis 
-                stroke="#94a3b8" 
-                tickFormatter={formatCurrency}
-                fontSize={12}
-                tickLine={false}
-                axisLine={false}
-              />
-              <Tooltip content={<CustomTooltip />} />
-              {/* Línea Real: Solo patrimonio histórico */}
+        
+        {/* Leyenda */}
+        <div className="flex items-center gap-3 text-xs flex-wrap">
+          <div className="flex items-center gap-1.5">
+            <div className="h-2.5 w-2.5 rounded-full bg-[#e11d48]" />
+            <span className="text-muted-foreground font-medium">Real</span>
+          </div>
+          <div className="flex items-center gap-1.5">
+            <div className="h-2.5 w-2.5 rounded-full bg-[#e11d48] opacity-40" />
+            <span className="text-muted-foreground font-medium">Con interés</span>
+          </div>
+          {portfolioReturn > 0 && (
+            <div className="flex items-center gap-1.5">
+              <div className="h-2.5 w-2.5 rounded-full bg-[#94a3b8]" />
+              <span className="text-muted-foreground font-medium">Sin interés</span>
+            </div>
+          )}
+        </div>
+
+        <div className="select-none cursor-crosshair">
+          <ResponsiveContainer width="100%" height={260}>
+            <ComposedChart 
+              data={visibleChartData} 
+              className={cn(isPrivacyMode && "privacy-blur")}
+              onMouseDown={handleMouseDown}
+              onMouseMove={handleMouseMove}
+              onMouseUp={handleMouseUp}
+              onMouseLeave={handleMouseUp}
+            >
+            <defs>
+              <linearGradient id="gradientPatrimonio" x1="0" y1="0" x2="0" y2="1">
+                <stop offset="5%" stopColor="#e11d48" stopOpacity={0.3}/>
+                <stop offset="95%" stopColor="#e11d48" stopOpacity={0}/>
+              </linearGradient>
+              <linearGradient id="gradientProyeccion" x1="0" y1="0" x2="0" y2="1">
+                <stop offset="5%" stopColor="#e11d48" stopOpacity={0.15}/>
+                <stop offset="95%" stopColor="#e11d48" stopOpacity={0}/>
+              </linearGradient>
+            </defs>
+
+            <CartesianGrid 
+              strokeDasharray="3 3" 
+              stroke="#374151" 
+              opacity={0.2}
+              vertical={false}
+            />
+            
+            <XAxis 
+              dataKey="index" 
+              type="number"
+              domain={[0, visibleChartData.length - 1]}
+              stroke="#94a3b8" 
+              fontSize={11}
+              tickLine={false}
+              axisLine={false}
+              tickMargin={8}
+              tickFormatter={(idx) => {
+                const item = visibleChartData.find(d => d.index === idx);
+                return item?.month || '';
+              }}
+              ticks={visibleChartData.map(d => d.index)}
+            />
+            <YAxis 
+              stroke="#94a3b8" 
+              tickFormatter={formatCurrency}
+              fontSize={11}
+              tickLine={false}
+              axisLine={false}
+              tickMargin={8}
+            />
+            <Tooltip 
+              content={<CustomTooltip />} 
+              cursor={{ stroke: '#94a3b8', strokeWidth: 1, strokeDasharray: '4 4' }}
+            />
+            
+            {/* Área para patrimonio real */}
+            <Area
+              type="monotone"
+              dataKey="patrimonio"
+              stroke="none"
+              fill="url(#gradientPatrimonio)"
+              fillOpacity={1}
+              connectNulls={false}
+              animationDuration={1000}
+            />
+            
+            {/* Área para proyección */}
+            <Area
+              type="monotone"
+              dataKey="proyeccion"
+              stroke="none"
+              fill="url(#gradientProyeccion)"
+              fillOpacity={1}
+              connectNulls={false}
+              animationDuration={1000}
+            />
+            
+            {/* Línea Proyectada SIN INTERÉS */}
+            {portfolioReturn > 0 && (
               <Line
                 type="monotone"
-                dataKey="patrimonio"
-                stroke="#e11d48"
-                strokeWidth={3}
-                dot={{
-                  fill: "#e11d48",
-                  strokeWidth: 2,
-                  r: 5,
-                  stroke: "#ffffff"
-                }}
-                activeDot={{ r: 8, fill: "#e11d48", stroke: "#ffffff", strokeWidth: 2 }}
+                dataKey="proyeccionLineal"
+                stroke="#94a3b8"
+                strokeWidth={2}
+                strokeDasharray="6 6"
+                dot={false}
+                activeDot={{ r: 5, fill: "#94a3b8", stroke: "#ffffff", strokeWidth: 2 }}
                 connectNulls={false}
+                animationDuration={1200}
               />
-              {/* Línea Proyectada SIN INTERÉS: Dibujar primero para que quede atrás */}
-              {portfolioReturn > 0 && (
-                <Line
-                  type="monotone"
-                  dataKey="proyeccionLineal"
-                  stroke="#94a3b8"
-                  strokeWidth={2.5}
-                  strokeDasharray="6 6"
-                  dot={false}
-                  activeDot={{ r: 6, fill: "#94a3b8", stroke: "#ffffff", strokeWidth: 2 }}
-                  connectNulls={false}
-                />
-              )}
-              {/* Línea Proyectada CON INTERÉS: Encima de la sin interés */}
-              <Line
-                type="monotone"
-                dataKey="proyeccion"
-                stroke="#e11d48"
-                strokeWidth={3}
-                strokeDasharray="8 8"
-                strokeOpacity={0.5}
-                dot={{
-                  fill: "#e11d48",
-                  fillOpacity: 0.5,
-                  strokeWidth: 2,
-                  r: 5,
-                  stroke: "#ffffff",
-                  strokeOpacity: 0.5
-                }}
-                activeDot={{ r: 8, fill: "#e11d48", fillOpacity: 0.5, stroke: "#ffffff", strokeWidth: 2 }}
-                connectNulls={false}
+            )}
+            
+            {/* Línea Proyectada CON INTERÉS */}
+            <Line
+              type="monotone"
+              dataKey="proyeccion"
+              stroke="#e11d48"
+              strokeWidth={2.5}
+              strokeDasharray="8 8"
+              strokeOpacity={0.6}
+              dot={false}
+              activeDot={{ r: 6, fill: "#e11d48", fillOpacity: 0.6, stroke: "#ffffff", strokeWidth: 2 }}
+              connectNulls={false}
+              animationDuration={1000}
+            />
+            
+            {/* Línea Real: Solo patrimonio histórico */}
+            <Line
+              type="monotone"
+              dataKey="patrimonio"
+              stroke="#e11d48"
+              strokeWidth={2.5}
+              dot={{ fill: "#e11d48", strokeWidth: 2, r: 4, stroke: "#ffffff" }}
+              activeDot={{ r: 6, fill: "#e11d48", stroke: "#ffffff", strokeWidth: 2 }}
+              connectNulls={false}
+              animationDuration={1000}
+            />
+
+            {/* Área de selección para zoom */}
+            {isSelecting && selectStartIdx !== null && selectEndIdx !== null && (
+              <ReferenceArea
+                x1={Math.min(selectStartIdx, selectEndIdx)}
+                x2={Math.max(selectStartIdx, selectEndIdx)}
+                strokeOpacity={0.3}
+                fill="#6b7280"
+                fillOpacity={0.3}
               />
-            </LineChart>
+            )}
+            </ComposedChart>
           </ResponsiveContainer>
+        </div>
+
+        {/* Brush para navegación */}
+        {chartDataWithIndex.length > 4 && (
+          <div className="px-2">
+            <ResponsiveContainer width="100%" height={35}>
+              <ComposedChart data={chartDataWithIndex}>
+                <XAxis dataKey="month" hide />
+                <YAxis hide />
+                <Area
+                  type="monotone"
+                  dataKey="patrimonio"
+                  stroke="#e11d48"
+                  fill="#e11d48"
+                  fillOpacity={0.2}
+                  strokeWidth={1}
+                />
+                <Area
+                  type="monotone"
+                  dataKey="proyeccion"
+                  stroke="#e11d48"
+                  fill="#e11d48"
+                  fillOpacity={0.1}
+                  strokeWidth={1}
+                />
+                <Brush
+                  dataKey="month"
+                  height={25}
+                  stroke="#3b82f6"
+                  fill="transparent"
+                  travellerWidth={8}
+                  startIndex={zoomDomain?.start ?? 0}
+                  endIndex={zoomDomain?.end ?? chartDataWithIndex.length - 1}
+                  onChange={handleBrushChange}
+                />
+              </ComposedChart>
+            </ResponsiveContainer>
+          </div>
+        )}
+        
+        <p className="text-[10px] text-muted-foreground text-center">
+          Arrastra en el gráfico para hacer zoom • Usa el selector para navegar
+        </p>
       </div>
 
       {/* Insight adicional */}

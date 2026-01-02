@@ -5,10 +5,11 @@ import { MoneyFlowChart } from "@/components/MoneyFlowChart";
 import { DashboardGrid } from "@/components/DashboardGrid";
 import { DashboardWidget } from "@/components/DashboardWidget";
 import { CategoryInsightsWidget } from "@/components/CategoryInsightsWidget";
+import { MonthlyEvolutionChart } from "@/components/MonthlyEvolutionChart";
 import { useTransactions } from "@/hooks/useTransactions";
 import { useCategories } from "@/hooks/useCategories";
 import { TrendingUp, TrendingDown, PiggyBank, Wallet, DollarSign } from "lucide-react";
-import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, LineChart, Line, Legend, Cell, TooltipProps } from "recharts";
+import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell, TooltipProps } from "recharts";
 import { format, startOfMonth, endOfMonth, eachMonthOfInterval, subMonths } from "date-fns";
 import { es } from "date-fns/locale";
 import { usePrivacyMode } from "@/hooks/usePrivacyMode";
@@ -268,67 +269,7 @@ export default function Dashboard() {
 
           {/* Widget 4 - Evolution Chart */}
           <DashboardWidget key="evolution" title="Evolución Mensual">
-            <ResponsiveContainer width="100%" height="100%" minHeight={250}>
-                <LineChart data={monthlyData} className={cn(isPrivacyMode && "privacy-blur")}>
-                  <XAxis 
-                    dataKey="month" 
-                    stroke="#94a3b8" 
-                    fontSize={12}
-                    tickLine={false}
-                    axisLine={false}
-                  />
-                  <YAxis 
-                    stroke="#94a3b8" 
-                    tickFormatter={formatCurrency} 
-                    fontSize={12}
-                    tickLine={false}
-                    axisLine={false}
-                  />
-                  <Tooltip content={<CustomLineTooltip />} />
-                  <Legend 
-                    wrapperStyle={{ fontSize: "12px" }}
-                  />
-                  <Line
-                    type="monotone"
-                    dataKey="Ingresos"
-                    stroke={COLORS.Ingreso}
-                    strokeWidth={3}
-                    dot={{ 
-                      fill: COLORS.Ingreso, 
-                      strokeWidth: 2,
-                      r: 5,
-                      stroke: "#ffffff"
-                    }}
-                    activeDot={{ r: 7, fill: COLORS.Ingreso, stroke: "#ffffff", strokeWidth: 2 }}
-                  />
-                  <Line
-                    type="monotone"
-                    dataKey="Gastos"
-                    stroke={COLORS.Gasto}
-                    strokeWidth={3}
-                    dot={{ 
-                      fill: COLORS.Gasto, 
-                      strokeWidth: 2,
-                      r: 5,
-                      stroke: "#ffffff"
-                    }}
-                    activeDot={{ r: 7, fill: COLORS.Gasto, stroke: "#ffffff", strokeWidth: 2 }}
-                  />
-                  <Line
-                    type="monotone"
-                    dataKey="Inversiones"
-                    stroke={COLORS.Inversión}
-                    strokeWidth={3}
-                    dot={{ 
-                      fill: COLORS.Inversión, 
-                      strokeWidth: 2,
-                      r: 5,
-                      stroke: "#ffffff"
-                    }}
-                    activeDot={{ r: 7, fill: COLORS.Inversión, stroke: "#ffffff", strokeWidth: 2 }}
-                  />
-                </LineChart>
-              </ResponsiveContainer>
+            <MonthlyEvolutionChart data={monthlyData} />
           </DashboardWidget>
 
           {/* Widget - Expenses Bar Chart */}
