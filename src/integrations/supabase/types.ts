@@ -14,6 +14,164 @@ export type Database = {
   }
   public: {
     Tables: {
+      credit_cards: {
+        Row: {
+          id: string
+          user_id: string
+          name: string
+          credit_limit: number
+          billing_day: number
+          payment_day: number
+          color: string | null
+          is_active: boolean
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          user_id: string
+          name: string
+          credit_limit?: number
+          billing_day: number
+          payment_day: number
+          color?: string | null
+          is_active?: boolean
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          user_id?: string
+          name?: string
+          credit_limit?: number
+          billing_day?: number
+          payment_day?: number
+          color?: string | null
+          is_active?: boolean
+          created_at?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      installment_purchases: {
+        Row: {
+          id: string
+          user_id: string
+          card_id: string
+          description: string
+          total_amount: number
+          total_installments: number
+          installment_amount: number
+          paid_installments: number
+          purchase_date: string
+          first_installment_date: string
+          category_name: string | null
+          notes: string | null
+          is_active: boolean
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          user_id: string
+          card_id: string
+          description: string
+          total_amount: number
+          total_installments: number
+          installment_amount: number
+          paid_installments?: number
+          purchase_date?: string
+          first_installment_date: string
+          category_name?: string | null
+          notes?: string | null
+          is_active?: boolean
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          user_id?: string
+          card_id?: string
+          description?: string
+          total_amount?: number
+          total_installments?: number
+          installment_amount?: number
+          paid_installments?: number
+          purchase_date?: string
+          first_installment_date?: string
+          category_name?: string | null
+          notes?: string | null
+          is_active?: boolean
+          created_at?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "installment_purchases_card_id_fkey"
+            columns: ["card_id"]
+            isOneToOne: false
+            referencedRelation: "credit_cards"
+            referencedColumns: ["id"]
+          }
+        ]
+      }
+      card_transactions: {
+        Row: {
+          id: string
+          user_id: string
+          card_id: string
+          transaction_id: string | null
+          amount: number
+          description: string | null
+          transaction_date: string
+          billing_date: string | null
+          is_billed: boolean
+          is_paid: boolean
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          user_id: string
+          card_id: string
+          transaction_id?: string | null
+          amount: number
+          description?: string | null
+          transaction_date?: string
+          billing_date?: string | null
+          is_billed?: boolean
+          is_paid?: boolean
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          user_id?: string
+          card_id?: string
+          transaction_id?: string | null
+          amount?: number
+          description?: string | null
+          transaction_date?: string
+          billing_date?: string | null
+          is_billed?: boolean
+          is_paid?: boolean
+          created_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "card_transactions_card_id_fkey"
+            columns: ["card_id"]
+            isOneToOne: false
+            referencedRelation: "credit_cards"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "card_transactions_transaction_id_fkey"
+            columns: ["transaction_id"]
+            isOneToOne: false
+            referencedRelation: "transactions"
+            referencedColumns: ["id"]
+          }
+        ]
+      }
       categories: {
         Row: {
           color: string | null
@@ -201,6 +359,7 @@ export type Database = {
           id: string
           type: string
           user_id: string
+          card_id: string | null
         }
         Insert: {
           amount: number
@@ -211,6 +370,7 @@ export type Database = {
           id?: string
           type: string
           user_id: string
+          card_id?: string | null
         }
         Update: {
           amount?: number
@@ -221,8 +381,17 @@ export type Database = {
           id?: string
           type?: string
           user_id?: string
+          card_id?: string | null
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "transactions_card_id_fkey"
+            columns: ["card_id"]
+            isOneToOne: false
+            referencedRelation: "credit_cards"
+            referencedColumns: ["id"]
+          }
+        ]
       }
     }
     Views: {

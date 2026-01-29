@@ -44,9 +44,11 @@ import {
   Check,
   Tag,
   ArrowRightLeft,
+  CreditCard,
 } from "lucide-react";
 import { Transaction } from "@/hooks/useTransactions";
 import { useFuzzySearch } from "@/hooks/useFuzzySearch";
+import { useCreditCards } from "@/hooks/useCreditCards";
 import { format } from "date-fns";
 import { es } from "date-fns/locale";
 import { cn } from "@/lib/utils";
@@ -291,6 +293,7 @@ export function TransactionsTable({
   const [categoryFilter, setCategoryFilter] = useState<string>("all");
   const [rowSelection, setRowSelection] = useState<RowSelectionState>({});
   const { isPrivacyMode } = usePrivacyMode();
+  const { creditCards } = useCreditCards();
   
   useEffect(() => {
     const searchFromUrl = searchParams.get("search");
@@ -500,6 +503,67 @@ export function TransactionsTable({
         );
       },
     },
+    // Credit Card column - only for Gastos
+    ...(creditCards.length > 0 ? [{
+      id: "card",
+      size: 120,
+      minSize: 100,
+      maxSize: 140,
+      header: () => (
+        <div className="flex items-center gap-1 text-xs font-semibold">
+          <CreditCard className="h-3.5 w-3.5" />
+          Tarjeta
+        </div>
+      ),
+      cell: ({ row }: { row: { original: Transaction } }) => {
+        const type = row.original.type;
+        const cardId = row.original.card_id;
+        
+        // Mostrar para Gastos e Ingresos (reembolsos)
+        // No mostrar para Inversión
+        if (type === "Inversión") {
+          return <span className="text-xs text-muted-foreground/50">—</span>;
+        }
+
+        const selectedCard = creditCards.find(c => c.id === cardId);
+        
+        const cardOptions = [
+          { value: "", label: "Cuenta", color: null },
+          ...creditCards.map(c => ({ value: c.id, label: c.name, color: c.color })),
+        ];
+
+        return (
+          <SelectableCell
+            value={cardId || ""}
+            options={cardOptions.map(c => ({ value: c.value, label: c.label }))}
+            onSave={(newCardId) => handleInlineUpdate(row.original.id, "card_id", newCardId || null)}
+            renderValue={() => {
+              if (!selectedCard) {
+                return (
+                  <span className="text-xs text-muted-foreground/70 flex items-center gap-1">
+                    <CreditCard className="h-3 w-3" />
+                    <span className="hidden sm:inline">Cuenta</span>
+                  </span>
+                );
+              }
+              return (
+                <Badge 
+                  variant="outline" 
+                  className="text-xs gap-1 cursor-pointer"
+                  style={{ borderColor: selectedCard.color || undefined }}
+                >
+                  <div 
+                    className="w-2 h-2 rounded-full" 
+                    style={{ backgroundColor: selectedCard.color || "#6366f1" }}
+                  />
+                  <span className="truncate max-w-[60px]">{selectedCard.name}</span>
+                </Badge>
+              );
+            }}
+          />
+        );
+      },
+    }] : []),
     {
       accessorKey: "amount",
       size: 150,
@@ -576,7 +640,7 @@ export function TransactionsTable({
       },
     },
   ];
-  }, [onEdit, onDelete, onDuplicate, categories, isPrivacyMode, handleInlineUpdate]);
+  }, [onEdit, onDelete, onDuplicate, categories, creditCards, isPrivacyMode, handleInlineUpdate]);
 
   // Fuzzy search + filters
   const fuzzyResults = useFuzzySearch(transactions, globalFilter);

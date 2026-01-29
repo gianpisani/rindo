@@ -6,9 +6,11 @@ import { DashboardGrid } from "@/components/DashboardGrid";
 import { DashboardWidget } from "@/components/DashboardWidget";
 import { CategoryInsightsWidget } from "@/components/CategoryInsightsWidget";
 import { MonthlyEvolutionChart } from "@/components/MonthlyEvolutionChart";
+import { CreditCardWidget } from "@/components/CreditCardWidget";
 import { useTransactions } from "@/hooks/useTransactions";
 import { useCategories } from "@/hooks/useCategories";
-import { TrendingUp, TrendingDown, PiggyBank, Wallet, DollarSign } from "lucide-react";
+import { useCreditCards } from "@/hooks/useCreditCards";
+import { TrendingUp, TrendingDown, PiggyBank, Wallet, DollarSign, CreditCard } from "lucide-react";
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell, TooltipProps } from "recharts";
 import { format, startOfMonth, endOfMonth, eachMonthOfInterval, subMonths } from "date-fns";
 import { es } from "date-fns/locale";
@@ -52,6 +54,7 @@ export default function Dashboard() {
   const { transactions } = useTransactions();
   const { categories } = useCategories();
   const { isPrivacyMode } = usePrivacyMode();
+  const { totals: cardTotals } = useCreditCards();
 
   // Calculate totals for balance cards
   const totals = transactions.reduce(
@@ -68,7 +71,16 @@ export default function Dashboard() {
     { income: 0, expenses: 0, investments: 0 }
   );
 
+  // CÁLCULO SIMPLE Y DIRECTO:
+  // Los gastos con TC YA están en totals.expenses (se registran como Gasto)
+  // Por lo tanto, NO hay que restar la deuda TC de nuevo (sería doble conteo)
+  
+  // DISPONIBLE = Ingresos - Gastos - Inversiones
+  // Es lo que tienes disponible después de todos los gastos registrados
   const disponible = totals.income - totals.expenses - totals.investments;
+
+  // PATRIMONIO = Ingresos - Gastos (incluye inversiones como activo)
+  // Es tu riqueza neta = activos - pasivos
   const patrimonio = totals.income - totals.expenses;
 
   // Monthly summary
@@ -245,6 +257,11 @@ export default function Dashboard() {
               color={disponible >= 0 ? "text-success" : "text-destructive"}
               bg={disponible >= 0 ? "bg-success/5" : "bg-destructive/5"}
             />
+          </DashboardWidget>
+
+          {/* Widget - Credit Cards */}
+          <DashboardWidget key="cards" title="Tarjetas de Crédito" icon={CreditCard}>
+            <CreditCardWidget />
           </DashboardWidget>
 
           {/* Widget - Category Insights */}

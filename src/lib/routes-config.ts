@@ -7,6 +7,7 @@ import {
   ChartNoAxesCombined,
   Coins,
   TrendingUp,
+  CreditCard,
 } from "lucide-react";
 import { ComponentType } from "react";
 
@@ -62,17 +63,24 @@ export const APP_ROUTES: RouteConfig[] = [
   
   // Herramientas
   {
+    title: "Tarjetas",
+    url: "/credit-cards",
+    icon: CreditCard,
+    shortcut: "6",
+    group: "tools",
+  },
+  {
     title: "Deudas",
     url: "/pending-debts",
     icon: UsersRound,
-    shortcut: "6",
+    shortcut: "7",
     group: "tools",
   },
   {
     title: "Insights",
     url: "/category-insights",
     icon: Brain,
-    shortcut: "7",
+    shortcut: "8",
     group: "tools",
   },
 ];

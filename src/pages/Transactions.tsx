@@ -41,6 +41,7 @@ const typeBg = {
 export default function Transactions() {
   const { 
     transactions, 
+    futureTransactions,
     addTransaction, 
     updateTransaction, 
     updateTransactionSilent,
@@ -51,6 +52,7 @@ export default function Transactions() {
   } = useTransactions();
   const { categories } = useCategories();
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const [showFuture, setShowFuture] = useState(false);
 
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [isImportDialogOpen, setIsImportDialogOpen] = useState(false);
@@ -675,8 +677,30 @@ export default function Transactions() {
 
         </div>
 
+        {/* Future transactions toggle */}
+        {futureTransactions.length > 0 && (
+          <div className="flex items-center justify-between p-3 bg-muted/50 rounded-lg border border-dashed">
+            <div className="flex items-center gap-2">
+              <Badge variant="outline" className="text-xs">
+                {futureTransactions.length} cuota{futureTransactions.length > 1 ? "s" : ""} futura{futureTransactions.length > 1 ? "s" : ""}
+              </Badge>
+              <span className="text-sm text-muted-foreground">
+                Transacciones programadas que aún no han facturado
+              </span>
+            </div>
+            <Button
+              variant={showFuture ? "secondary" : "outline"}
+              size="sm"
+              onClick={() => setShowFuture(!showFuture)}
+              className="text-xs"
+            >
+              {showFuture ? "Ocultar" : "Mostrar"}
+            </Button>
+          </div>
+        )}
+
         <TransactionsTable
-          transactions={transactions}
+          transactions={showFuture ? [...transactions, ...futureTransactions] : transactions}
           categories={categories}
           onEdit={handleEdit}
           onDelete={handleDelete}

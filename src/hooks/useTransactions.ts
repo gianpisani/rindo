@@ -12,13 +12,15 @@ export interface Transaction {
   amount: number;
   user_id: string;
   created_at: string;
+  card_id: string | null;
 }
 
 export function useTransactions() {
   const queryClient = useQueryClient();
   const lastDeletedRef = useRef<Transaction[]>([]);
 
-  const { data: transactions = [], isLoading } = useQuery({
+  // Fetch ALL transactions (including future)
+  const { data: allTransactions = [], isLoading } = useQuery({
     queryKey: ["transactions"],
     queryFn: async () => {
       console.log("🔍 Fetching transactions...");
@@ -34,6 +36,13 @@ export function useTransactions() {
     refetchOnWindowFocus: true,
     staleTime: 0,
   });
+
+  // Split into past/present and future transactions
+  const today = new Date();
+  today.setHours(23, 59, 59, 999); // End of today
+  
+  const transactions = allTransactions.filter(t => new Date(t.date) <= today);
+  const futureTransactions = allTransactions.filter(t => new Date(t.date) > today);
 
   const addTransaction = useMutation({
     mutationFn: async (transaction: Omit<Transaction, "id" | "user_id" | "created_at">) => {
@@ -256,7 +265,9 @@ export function useTransactions() {
   }, [queryClient]);
 
   return {
-    transactions,
+    transactions,        // Only past/present (for balance, tables by default)
+    futureTransactions,  // Future installments (for projections)
+    allTransactions,     // Everything (if needed)
     isLoading,
     addTransaction,
     updateTransaction,
