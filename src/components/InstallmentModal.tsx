@@ -140,7 +140,7 @@ export function InstallmentModal({
     >
       <form onSubmit={handleSubmit} className="space-y-5">
         {/* Summary Card */}
-        <div className="bg-gradient-to-r from-destructive/10 to-destructive/5 border border-destructive/20 rounded-xl p-4">
+        <div className="bg-destructive/5 border border-destructive/20 rounded-xl p-4">
           <div className="flex items-center gap-3 mb-3">
             <div
               className="w-10 h-10 rounded-lg flex items-center justify-center"
@@ -158,15 +158,15 @@ export function InstallmentModal({
           <div className="grid grid-cols-3 gap-3 text-center">
             <div>
               <p className="text-xs text-muted-foreground">Total</p>
-              <p className="font-bold text-lg">{formatCurrency(totalAmount)}</p>
+              <p className="font-bold text-lg font-mono tabular-nums">{formatCurrency(totalAmount)}</p>
             </div>
             <div>
               <p className="text-xs text-muted-foreground">Cuotas</p>
-              <p className="font-bold text-lg">{totalInstallments}x</p>
+              <p className="font-bold text-lg font-mono tabular-nums">{totalInstallments}x</p>
             </div>
             <div>
               <p className="text-xs text-muted-foreground">Cuota</p>
-              <p className="font-bold text-lg text-destructive">{formatCurrency(installmentAmount)}</p>
+              <p className="font-bold text-lg text-destructive font-mono tabular-nums">{formatCurrency(installmentAmount)}</p>
             </div>
           </div>
         </div>
@@ -323,7 +323,7 @@ export function InstallmentModal({
         {/* Submit */}
         <Button
           type="submit"
-          className="w-full h-12 text-base font-semibold bg-gradient-to-r from-destructive to-red-600"
+          className="w-full h-12 text-base font-semibold bg-destructive hover:bg-destructive/90"
           disabled={!description || !totalAmount || !cardId || isSubmitting}
         >
           <Receipt className="mr-2 h-4 w-4" />

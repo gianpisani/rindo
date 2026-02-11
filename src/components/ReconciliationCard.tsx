@@ -166,13 +166,13 @@ export function ReconciliationCard({ onSuccess }: ReconciliationCardProps = {}) 
         <div className="space-y-3 pt-4 border-t">
           <div className="flex justify-between items-center">
             <span className="text-sm text-muted-foreground">Balance Real</span>
-            <span className={`text-lg font-semibold ${balanceReal >= 0 ? "text-success" : "text-destructive"}`}>
+            <span className={`text-lg font-semibold font-mono tabular-nums ${balanceReal >= 0 ? "text-success" : "text-destructive"}`}>
               {formatCurrency(balanceReal)}
             </span>
           </div>
           <div className="flex justify-between items-center">
             <span className="text-sm text-muted-foreground">Balance App</span>
-            <span className={`text-lg font-semibold ${balanceApp >= 0 ? "text-success" : "text-destructive"}`}>
+            <span className={`text-lg font-semibold font-mono tabular-nums ${balanceApp >= 0 ? "text-success" : "text-destructive"}`}>
               {formatCurrency(balanceApp)}
             </span>
           </div>
@@ -194,7 +194,7 @@ export function ReconciliationCard({ onSuccess }: ReconciliationCardProps = {}) 
                   {!needsReconciliation ? "Balances Conciliados ✓" : "Diferencia Detectada"}
                 </span>
               </div>
-              <span className={`text-xl font-bold ${diferenciaColor}`}>
+              <span className={`text-xl font-bold font-mono tabular-nums ${diferenciaColor}`}>
                 {formatCurrency(Math.abs(diferencia))}
               </span>
             </div>

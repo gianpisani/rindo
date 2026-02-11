@@ -44,7 +44,7 @@ const CustomTooltip = ({ active, payload, label }: TooltipProps<number, string>)
   const proyeccionSinInteres = payload.find(p => p.dataKey === 'proyeccionLineal')?.value as number | undefined;
 
   return (
-    <div className="bg-card/95 backdrop-blur-sm border border-border rounded-xl p-4 shadow-xl min-w-[220px]">
+    <div className="bg-card/95 backdrop-blur-sm border border-border/50 rounded-xl p-4 shadow-xl min-w-[220px]">
       <p className="font-semibold text-sm text-foreground mb-3 pb-2 border-b border-border">{label}</p>
       <div className="space-y-2">
         {patrimonioReal !== undefined && (
@@ -53,7 +53,7 @@ const CustomTooltip = ({ active, payload, label }: TooltipProps<number, string>)
               <div className="w-3 h-3 rounded-full bg-destructive" />
               <span className="text-xs text-muted-foreground">Patrimonio Real:</span>
             </div>
-            <span className="text-sm font-bold text-destructive">
+            <span className="text-sm font-bold text-destructive font-mono tabular-nums">
               {formatCurrencyFull(patrimonioReal)}
             </span>
           </div>
@@ -64,7 +64,7 @@ const CustomTooltip = ({ active, payload, label }: TooltipProps<number, string>)
               <div className="w-3 h-3 rounded-full bg-destructive opacity-50" />
               <span className="text-xs text-muted-foreground">Con interés:</span>
             </div>
-            <span className="text-sm font-bold text-destructive/70">
+            <span className="text-sm font-bold text-destructive/70 font-mono tabular-nums">
               {formatCurrencyFull(proyeccionConInteres)}
             </span>
           </div>
@@ -75,7 +75,7 @@ const CustomTooltip = ({ active, payload, label }: TooltipProps<number, string>)
               <div className="w-3 h-3 rounded-full bg-muted-foreground" />
               <span className="text-xs text-muted-foreground">Sin interés:</span>
             </div>
-            <span className="text-sm font-bold text-muted-foreground">
+            <span className="text-sm font-bold text-muted-foreground font-mono tabular-nums">
               {formatCurrencyFull(proyeccionSinInteres)}
             </span>
           </div>
@@ -84,7 +84,7 @@ const CustomTooltip = ({ active, payload, label }: TooltipProps<number, string>)
           <div className="mt-2 pt-2 border-t border-border">
             <div className="flex items-center justify-between gap-3">
               <span className="text-xs text-muted-foreground font-medium">Ganancia por interés:</span>
-              <span className="text-sm font-bold text-success">
+              <span className="text-sm font-bold text-success font-mono tabular-nums">
                 +{formatCurrencyFull(proyeccionConInteres - proyeccionSinInteres)}
               </span>
             </div>
@@ -513,7 +513,7 @@ export default function ProjectionCard() {
       {/* Panel de configuración de riesgo */}
       <Collapsible open={showRiskConfig} onOpenChange={setShowRiskConfig}>
         <CollapsibleContent className="space-y-3">
-          <Card className="border-primary/20 bg-gradient-to-br from-primary/5 to-primary/10">
+          <Card className="border-primary/20 bg-primary/5">
             <CardContent className="pt-6 space-y-4">
               <div className="space-y-2">
                 <div className="flex items-start gap-2">
@@ -544,7 +544,7 @@ export default function ProjectionCard() {
                           <p className="text-sm font-medium text-foreground truncate">
                             {category}
                           </p>
-                          <p className="text-xs text-muted-foreground">
+                          <p className="text-xs text-muted-foreground font-mono tabular-nums">
                             {percentage}% del portafolio
                           </p>
                         </div>
@@ -576,10 +576,10 @@ export default function ProjectionCard() {
               {portfolioReturn > 0 && (
                 <div className="p-3 rounded-xl bg-success/10 border border-success/20">
                   <p className="text-sm font-semibold text-success">
-                    Tu portafolio rinde un {(portfolioReturn * 100).toFixed(2)}% anual estimado
+                    Tu portafolio rinde un <span className="font-mono tabular-nums">{(portfolioReturn * 100).toFixed(2)}%</span> anual estimado
                   </p>
                   <p className="text-xs text-muted-foreground mt-1">
-                    Tasa mensual efectiva: {(monthlyReturn * 100).toFixed(3)}%
+                    Tasa mensual efectiva: <span className="font-mono tabular-nums">{(monthlyReturn * 100).toFixed(3)}%</span>
                   </p>
                 </div>
               )}
@@ -635,7 +635,7 @@ export default function ProjectionCard() {
               />
               {avgMonthlyExpenses > 0 && (
                 <p className="text-xs text-muted-foreground">
-                  Gastos mensuales promedio: <span className="font-semibold text-foreground">{formatCurrencyFull(avgMonthlyExpenses)}</span>
+                  Gastos mensuales promedio: <span className="font-semibold text-foreground font-mono tabular-nums">{formatCurrencyFull(avgMonthlyExpenses)}</span>
                 </p>
               )}
             </div>
@@ -719,19 +719,19 @@ export default function ProjectionCard() {
       <div className="grid grid-cols-2 gap-2.5">
         <div className="p-3 rounded-2xl bg-muted/20 border border-border/50 space-y-0.5">
           <p className="text-xs text-muted-foreground font-medium">Crecimiento/Mes</p>
-          <p className={cn("text-xl sm:text-2xl font-bold", avgMonthlyGrowth >= 0 ? "text-success" : "text-destructive", isPrivacyMode && "privacy-blur")}>
+          <p className={cn("text-xl sm:text-2xl font-bold font-mono tabular-nums", avgMonthlyGrowth >= 0 ? "text-success" : "text-destructive", isPrivacyMode && "privacy-blur")}>
             {formatCurrency(avgMonthlyGrowth)}
           </p>
         </div>
         <div className="p-3 rounded-2xl bg-muted/20 border border-border/50 space-y-0.5">
           <p className="text-xs text-muted-foreground font-medium">Patrimonio Actual</p>
-          <p className={cn("text-xl sm:text-2xl font-bold text-foreground", isPrivacyMode && "privacy-blur")}>
+          <p className={cn("text-xl sm:text-2xl font-bold text-foreground font-mono tabular-nums", isPrivacyMode && "privacy-blur")}>
             {formatCurrency(currentPatrimonio)}
           </p>
         </div>
         <div className="p-3 rounded-2xl bg-primary/10 border border-primary/20 space-y-0.5 col-span-2">
           <p className="text-xs text-primary font-semibold">Proyección a {projectionLabel}</p>
-          <p className={cn("text-2xl sm:text-3xl font-bold", projectedValue >= currentPatrimonio ? "text-success" : "text-destructive", isPrivacyMode && "privacy-blur")}>
+          <p className={cn("text-2xl sm:text-3xl font-bold font-mono tabular-nums", projectedValue >= currentPatrimonio ? "text-success" : "text-destructive", isPrivacyMode && "privacy-blur")}>
             {formatCurrency(projectedValue)}
           </p>
         </div>
@@ -952,30 +952,30 @@ export default function ProjectionCard() {
 
       {/* Insight adicional */}
       {isDataSufficient ? (
-        <div className="p-3 rounded-2xl bg-gradient-to-br from-primary/5 to-primary/10 border border-primary/20">
+        <div className="p-3 rounded-2xl bg-primary/5 border border-primary/20">
           <p className="text-sm text-foreground leading-relaxed">
             {calculationMode === "manual" ? (
               <>
-                Con un sueldo de <strong className="text-primary">{formatCurrencyFull(Number(manualSalary))}</strong> y 
-                gastos promedio de <strong className="text-foreground">{formatCurrencyFull(avgMonthlyExpenses)}</strong>,
+                Con un sueldo de <strong className="text-primary font-mono tabular-nums">{formatCurrencyFull(Number(manualSalary))}</strong> y
+                gastos promedio de <strong className="text-foreground font-mono tabular-nums">{formatCurrencyFull(avgMonthlyExpenses)}</strong>,
                 {avgMonthlyGrowth >= 0 ? (
                   <>
-                    {" "}tu patrimonio crecería <strong className="text-success">{formatCurrencyFull(avgMonthlyGrowth)}</strong> por mes{portfolioReturn > 0 && ` con ${(portfolioReturn * 100).toFixed(1)}% de retorno anual`}.
+                    {" "}tu patrimonio crecería <strong className="text-success font-mono tabular-nums">{formatCurrencyFull(avgMonthlyGrowth)}</strong> por mes{portfolioReturn > 0 && <> con <span className="font-mono tabular-nums">{(portfolioReturn * 100).toFixed(1)}%</span> de retorno anual</>}.
                     En <strong className="text-foreground">{projectionLabel}</strong> proyectamos{" "}
-                    <strong className="text-success">{formatCurrencyFull(projectedValue)}</strong> de patrimonio{portfolioReturn > 0 && " (con interés compuesto)"}.
+                    <strong className="text-success font-mono tabular-nums">{formatCurrencyFull(projectedValue)}</strong> de patrimonio{portfolioReturn > 0 && " (con interés compuesto)"}.
                   </>
                 ) : (
                   <>
-                    {" "}estarías gastando <strong className="text-destructive">{formatCurrencyFull(Math.abs(avgMonthlyGrowth))}</strong> más 
+                    {" "}estarías gastando <strong className="text-destructive font-mono tabular-nums">{formatCurrencyFull(Math.abs(avgMonthlyGrowth))}</strong> más
                     de lo que ganas por mes. Considera ajustar tus gastos.
                   </>
                 )}
               </>
             ) : avgMonthlyGrowth >= 0 ? (
               <>
-                Tu patrimonio crece <strong className="text-success">{formatCurrencyFull(avgMonthlyGrowth)}</strong> por mes en promedio{portfolioReturn > 0 && ` con ${(portfolioReturn * 100).toFixed(1)}% de retorno anual`}.
+                Tu patrimonio crece <strong className="text-success font-mono tabular-nums">{formatCurrencyFull(avgMonthlyGrowth)}</strong> por mes en promedio{portfolioReturn > 0 && <> con <span className="font-mono tabular-nums">{(portfolioReturn * 100).toFixed(1)}%</span> de retorno anual</>}.
                 En <strong className="text-primary">{projectionLabel}</strong> proyectamos{" "}
-                <strong className="text-success">{formatCurrencyFull(projectedValue)}</strong> de patrimonio{portfolioReturn > 0 && " (con interés compuesto)"}.
+                <strong className="text-success font-mono tabular-nums">{formatCurrencyFull(projectedValue)}</strong> de patrimonio{portfolioReturn > 0 && " (con interés compuesto)"}.
                 {excludingCurrentMonth && (
                   <span className="block mt-2 text-xs opacity-75">
                     La proyección se actualizará cuando registres tus ingresos de este mes.
@@ -984,7 +984,7 @@ export default function ProjectionCard() {
               </>
             ) : (
               <>
-                Tu patrimonio está disminuyendo <strong className="text-destructive">{formatCurrencyFull(Math.abs(avgMonthlyGrowth))}</strong> por mes.
+                Tu patrimonio está disminuyendo <strong className="text-destructive font-mono tabular-nums">{formatCurrencyFull(Math.abs(avgMonthlyGrowth))}</strong> por mes.
                 Considera revisar tus gastos e inversiones.
               </>
             )}
@@ -995,7 +995,7 @@ export default function ProjectionCard() {
               <p className="text-xs text-muted-foreground">
                 <strong>Magia del interés compuesto:</strong> Tu dinero trabaja para ti. 
                 {projectedValue > currentPatrimonio + (avgMonthlyGrowth * effectiveProjectionMonths) && (
-                  <> Ganarías <strong className="text-success">
+                  <> Ganarías <strong className="text-success font-mono tabular-nums">
                     {formatCurrencyFull(projectedValue - currentPatrimonio - (avgMonthlyGrowth * effectiveProjectionMonths))}
                   </strong> extra gracias a los rendimientos.</>
                 )}

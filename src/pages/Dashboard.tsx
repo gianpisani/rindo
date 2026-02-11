@@ -35,13 +35,13 @@ const CustomLineTooltip = ({ active, payload, label }: TooltipProps<number, stri
   };
 
   return (
-    <div className="bg-card border border-border rounded-xl p-3 shadow-lg">
+    <div className="bg-card border border-border/50 rounded-xl p-3 shadow-lg">
       <p className="font-semibold text-sm text-foreground mb-2">{label}</p>
       <div className="space-y-1">
         {payload.map((entry, index) => (
           <div key={index} className="flex items-center justify-between gap-4">
             <span className="text-xs text-muted-foreground">{entry.name}:</span>
-            <span className="text-sm font-semibold" style={{ color: entry.color }}>
+            <span className="text-sm font-semibold font-mono tabular-nums" style={{ color: entry.color }}>
               {formatCurrency(entry.value as number)}
             </span>
           </div>
@@ -211,7 +211,7 @@ export default function Dashboard() {
       <div className="space-y-6">
         <div className="flex items-center justify-between">
           <div>
-            <h1 className="text-2xl font-semibold mb-1">Dashboard</h1>
+            <h1 className="text-2xl font-bold tracking-tight mb-1">Dashboard</h1>
             <p className="text-sm text-muted-foreground">
               Resumen completo de tus finanzas
             </p>

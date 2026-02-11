@@ -109,7 +109,7 @@ export default function Fintual() {
                 className="h-12 w-12"
               />
               <div>
-                <h1 className="text-2xl font-semibold mb-1">Fintual</h1>
+                <h1 className="text-2xl font-bold tracking-tight mb-1">Fintual</h1>
                 <p className="text-sm text-muted-foreground">
                   Conecta tu cuenta para sincronizar tus inversiones
                 </p>
@@ -203,7 +203,7 @@ export default function Fintual() {
               className="h-12 w-12"
             />
             <div>
-              <h1 className="text-2xl font-semibold mb-1">Mis inversiones en Fintual</h1>
+              <h1 className="text-2xl font-bold tracking-tight mb-1">Mis inversiones en Fintual</h1>
               {lastSyncedAt && (
                 <p className="text-sm text-muted-foreground flex items-center gap-2">
                   <Calendar className="h-3 w-3" />
@@ -247,7 +247,7 @@ export default function Fintual() {
             <div className="flex items-start justify-between">
               <div>
                 <p className="text-sm text-muted-foreground mb-1">Saldo Total</p>
-                <p className={cn("text-3xl font-bold", isPrivacyMode && "privacy-blur")}>
+                <p className={cn("text-3xl font-bold font-mono tabular-nums", isPrivacyMode && "privacy-blur")}>
                   {formatCurrency(totals.totalNav)}
                 </p>
               </div>
@@ -258,7 +258,7 @@ export default function Fintual() {
             <div className="flex items-start justify-between">
               <div>
                 <p className="text-sm text-muted-foreground mb-1">Total Depositado</p>
-                <p className={cn("text-3xl font-bold text-gray-400", isPrivacyMode && "privacy-blur")}>
+                <p className={cn("text-3xl font-bold font-mono tabular-nums text-gray-400", isPrivacyMode && "privacy-blur")}>
                   {formatCurrency(totals.totalDeposited)}
                 </p>
               </div>
@@ -270,7 +270,7 @@ export default function Fintual() {
               <div>
                 <p className="text-sm text-muted-foreground mb-1">Rentabilidad</p>
                 <p className={cn(
-                  "text-3xl font-bold",
+                  "text-3xl font-bold font-mono tabular-nums",
                   profitIsPositive ? "text-success" : "text-destructive",
                   isPrivacyMode && "privacy-blur"
                 )}>
@@ -278,7 +278,7 @@ export default function Fintual() {
                   {formatCurrency(totals.totalProfit)}
                 </p>
                 <p className={cn(
-                  "text-sm mt-1",
+                  "text-sm mt-1 font-mono tabular-nums",
                   profitIsPositive ? "text-success" : "text-destructive"
                 )}>
                   {totals.totalProfitPercentage.toFixed(2)}%
@@ -335,7 +335,7 @@ export default function Fintual() {
                           )}
                         </div>
                         <div className="text-right">
-                          <p className={cn("text-2xl font-bold", isPrivacyMode && "privacy-blur")}>
+                          <p className={cn("text-2xl font-bold font-mono tabular-nums", isPrivacyMode && "privacy-blur")}>
                             {formatCurrency(investment.nav)}
                           </p>
                           <p className="text-sm text-muted-foreground">Saldo actual</p>
@@ -348,14 +348,14 @@ export default function Fintual() {
                       <div className="grid grid-cols-3 gap-4">
                         <div>
                           <p className="text-sm text-muted-foreground mb-1">Depositado</p>
-                          <p className={cn("font-semibold", isPrivacyMode && "privacy-blur")}>
+                          <p className={cn("font-semibold font-mono tabular-nums", isPrivacyMode && "privacy-blur")}>
                             {formatCurrency(investment.deposited)}
                           </p>
                         </div>
                         <div>
                           <p className="text-sm text-muted-foreground mb-1">Ganancia/Pérdida</p>
                           <p className={cn(
-                            "font-semibold",
+                            "font-semibold font-mono tabular-nums",
                             invProfitIsPositive ? "text-success" : "text-destructive",
                             isPrivacyMode && "privacy-blur"
                           )}>
@@ -372,7 +372,7 @@ export default function Fintual() {
                               <TrendingDown className="h-4 w-4 text-destructive" />
                             )}
                             <p className={cn(
-                              "font-semibold",
+                              "font-semibold font-mono tabular-nums",
                               invProfitIsPositive ? "text-success" : "text-destructive"
                             )}>
                               {investment.profit_percentage.toFixed(2)}%

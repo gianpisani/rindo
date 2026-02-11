@@ -66,7 +66,7 @@ export function CreditCardWidget() {
             <Wallet className="h-4 w-4 text-muted-foreground" />
             <span className="text-xs text-muted-foreground">Disponible</span>
           </div>
-          <p className={cn("font-bold text-lg text-success", isPrivacyMode && "privacy-blur")}>
+          <p className={cn("font-bold text-lg text-success font-mono tabular-nums", isPrivacyMode && "privacy-blur")}>
             {formatCompact(cardTotals.totalAvailable)}
           </p>
         </div>
@@ -75,7 +75,7 @@ export function CreditCardWidget() {
             <Calendar className="h-4 w-4 text-muted-foreground" />
             <span className="text-xs text-muted-foreground">Pago mensual</span>
           </div>
-          <p className={cn("font-bold text-lg text-orange-500", isPrivacyMode && "privacy-blur")}>
+          <p className={cn("font-bold text-lg text-orange-500 font-mono tabular-nums", isPrivacyMode && "privacy-blur")}>
             {formatCompact(installmentTotals.monthlyPayment)}
           </p>
         </div>
@@ -137,7 +137,7 @@ export function CreditCardWidget() {
           <p className="text-xs text-muted-foreground mb-2">
             {installments.length} compra{installments.length > 1 ? "s" : ""} en cuotas
           </p>
-          <div className={cn("text-sm font-semibold", isPrivacyMode && "privacy-blur")}>
+          <div className={cn("text-sm font-semibold font-mono tabular-nums", isPrivacyMode && "privacy-blur")}>
             Total: {formatCurrency(installmentTotals.totalAmount)}
           </div>
         </div>

@@ -34,17 +34,17 @@ const variantStyles = {
   },
   income: {
     border: "border-success/30",
-    header: "bg-gradient-to-b from-success/10 to-transparent",
+    header: "bg-success/5",
     accent: "text-success",
   },
   expense: {
     border: "border-destructive/30",
-    header: "bg-gradient-to-b from-destructive/10 to-transparent",
+    header: "bg-destructive/5",
     accent: "text-destructive",
   },
   investment: {
     border: "border-blue-500/30",
-    header: "bg-gradient-to-b from-blue-500/10 to-transparent",
+    header: "bg-blue-500/5",
     accent: "text-blue-500",
   },
 };

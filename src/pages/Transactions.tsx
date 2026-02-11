@@ -396,7 +396,7 @@ export default function Transactions() {
       <div className="space-y-6">
         <div className="flex items-center justify-between">
           <div>
-            <h1 className="text-2xl font-semibold mb-1">Transacciones</h1>
+            <h1 className="text-2xl font-bold tracking-tight mb-1">Transacciones</h1>
             <p className="text-sm text-muted-foreground">
               Gestiona todas tus transacciones
             </p>
@@ -409,7 +409,7 @@ export default function Transactions() {
             }
           }}>
             <DialogTrigger asChild>
-              <Button className="rounded-full h-12 w-12 p-0 shadow-elevated md:w-auto md:px-6">
+              <Button className="rounded-full h-12 w-12 p-0 md:w-auto md:px-6">
                 <Plus className="h-5 w-5 md:mr-2" />
                 <span className="hidden md:inline">Agregar</span>
               </Button>

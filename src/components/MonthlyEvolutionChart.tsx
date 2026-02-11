@@ -57,7 +57,7 @@ const CustomTooltip = ({ active, payload, label }: TooltipProps<number, string>)
   const ahorro = ingresos - gastos
 
   return (
-    <div className="bg-card/95 backdrop-blur-sm border border-border rounded-xl p-4 shadow-xl min-w-[220px]">
+    <div className="bg-card/95 backdrop-blur-sm border border-border/50 rounded-xl p-4 shadow-xl min-w-[220px]">
       <p className="font-semibold text-sm text-foreground mb-3 pb-2 border-b border-border">{label}</p>
       <div className="space-y-2">
         <div className="flex items-center justify-between gap-4">
@@ -65,7 +65,7 @@ const CustomTooltip = ({ active, payload, label }: TooltipProps<number, string>)
             <div className="w-3 h-3 rounded-full" style={{ backgroundColor: COLORS.Ingresos }} />
             <span className="text-xs text-muted-foreground">Ingresos:</span>
           </div>
-          <span className="text-sm font-semibold" style={{ color: COLORS.Ingresos }}>
+          <span className="text-sm font-semibold font-mono tabular-nums" style={{ color: COLORS.Ingresos }}>
             {formatCurrencyFull(ingresos)}
           </span>
         </div>
@@ -74,7 +74,7 @@ const CustomTooltip = ({ active, payload, label }: TooltipProps<number, string>)
             <div className="w-3 h-3 rounded-full" style={{ backgroundColor: COLORS.Gastos }} />
             <span className="text-xs text-muted-foreground">Gastos:</span>
           </div>
-          <span className="text-sm font-semibold" style={{ color: COLORS.Gastos }}>
+          <span className="text-sm font-semibold font-mono tabular-nums" style={{ color: COLORS.Gastos }}>
             {formatCurrencyFull(gastos)}
           </span>
         </div>
@@ -83,7 +83,7 @@ const CustomTooltip = ({ active, payload, label }: TooltipProps<number, string>)
             <div className="w-3 h-3 rounded-full" style={{ backgroundColor: COLORS.Inversiones }} />
             <span className="text-xs text-muted-foreground">Inversiones:</span>
           </div>
-          <span className="text-sm font-semibold" style={{ color: COLORS.Inversiones }}>
+          <span className="text-sm font-semibold font-mono tabular-nums" style={{ color: COLORS.Inversiones }}>
             {formatCurrencyFull(inversiones)}
           </span>
         </div>
@@ -95,7 +95,7 @@ const CustomTooltip = ({ active, payload, label }: TooltipProps<number, string>)
             <span className="text-xs text-muted-foreground">Ahorro:</span>
           </div>
           <span className={cn(
-            "text-sm font-bold",
+            "text-sm font-bold font-mono tabular-nums",
             ahorro >= 0 ? "text-success" : "text-destructive"
           )}>
             {ahorro >= 0 ? "+" : ""}{formatCurrencyFull(ahorro)}
@@ -248,16 +248,16 @@ export function MonthlyEvolutionChart({ data }: MonthlyEvolutionChartProps) {
         <div className="grid grid-cols-2 md:grid-cols-3 gap-2">
           <div className="bg-success/10 rounded-lg p-2.5 text-center">
             <p className="text-[10px] text-success font-medium">Total Ingresos</p>
-            <p className="text-sm font-bold text-success">{formatCurrency(stats.totalIngresos)}</p>
+            <p className="text-sm font-bold font-mono tabular-nums text-success">{formatCurrency(stats.totalIngresos)}</p>
           </div>
           <div className="bg-destructive/10 rounded-lg p-2.5 text-center">
             <p className="text-[10px] text-destructive font-medium">Total Gastos</p>
-            <p className="text-sm font-bold text-destructive">{formatCurrency(stats.totalGastos)}</p>
+            <p className="text-sm font-bold font-mono tabular-nums text-destructive">{formatCurrency(stats.totalGastos)}</p>
           </div>
           <div className="bg-blue-500/10 rounded-lg p-2.5 text-center">
             <p className={`text-[10px] ${stats.tasaAhorro >= 35 ? "text-success" : stats.tasaAhorro >= 10 ? "text-amber-500" : "text-destructive"} font-medium`}>Tasa Ahorro</p>
             <p className={cn(
-              "text-sm font-bold",
+              "text-sm font-bold font-mono tabular-nums",
               stats.tasaAhorro >= 35 ? "text-success" : stats.tasaAhorro >= 10 ? "text-amber-500" : "text-destructive"
             )}>
               {stats.tasaAhorro.toFixed(1)}%

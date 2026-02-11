@@ -47,10 +47,10 @@ const typeColors = {
   Inversión: "text-info bg-info/10",
 };
 
-const typeBgGradient = {
-  Ingreso: "from-success/5 to-success/10",
-  Gasto: "from-destructive/5 to-destructive/10",
-  Inversión: "from-info/5 to-info/10",
+const typeBgFlat = {
+  Ingreso: "bg-success/5",
+  Gasto: "bg-destructive/5",
+  Inversión: "bg-info/5",
 };
 
 const defaultColors = [
@@ -138,7 +138,7 @@ export default function Categories() {
       <div className="space-y-6">
         <div className="flex items-center justify-between">
           <div>
-            <h1 className="text-2xl font-semibold mb-1">Categorías</h1>
+            <h1 className="text-2xl font-bold tracking-tight mb-1">Categorías</h1>
             <p className="text-sm text-muted-foreground">
               Gestiona tus categorías de transacciones
             </p>
@@ -151,7 +151,7 @@ export default function Categories() {
             }
           }}>
             <DialogTrigger asChild>
-              <Button className="rounded-full h-12 w-12 p-0 shadow-elevated md:w-auto md:px-6">
+              <Button className="rounded-full h-12 w-12 p-0 md:w-auto md:px-6">
                 <Plus className="h-5 w-5 md:mr-2" />
                 <span className="hidden md:inline">Agregar</span>
               </Button>
@@ -272,7 +272,7 @@ function CategoryTable({ type, categories, onEdit, onDelete }: CategoryTableProp
 
   const Icon = typeIcons[type];
   const colorClass = typeColors[type];
-  const bgGradient = typeBgGradient[type];
+  const bgFlat = typeBgFlat[type];
 
   const columns = useMemo<ColumnDef<Category>[]>(() => [
     {
@@ -366,7 +366,7 @@ function CategoryTable({ type, categories, onEdit, onDelete }: CategoryTableProp
 
   return (
     <Card className="rounded-2xl shadow-sm border-border/50 overflow-hidden">
-      <CardHeader className={cn("pb-4 bg-gradient-to-r", bgGradient)}>
+      <CardHeader className={cn("pb-4", bgFlat)}>
         <CardTitle className="flex items-center gap-3 text-lg">
           <div className={cn("p-2 rounded-full", colorClass.split(" ")[1])}>
             <Icon className={cn("h-5 w-5", colorClass.split(" ")[0])} />

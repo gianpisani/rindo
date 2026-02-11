@@ -125,9 +125,9 @@ export function CategoryDetailModal({
             <div className="space-y-2">
               <h3 className="text-sm font-semibold text-muted-foreground">Límite configurado</h3>
               <div className="p-4 bg-muted/50 rounded-lg">
-                <div className="text-2xl font-bold">{formatCurrency(category.limit)}</div>
+                <div className="text-2xl font-bold font-mono tabular-nums">{formatCurrency(category.limit)}</div>
                 <div className="text-sm text-muted-foreground mt-1">
-                  Alerta configurada al {category.alertPercentage}%
+                  Alerta configurada al <span className="font-mono tabular-nums">{category.alertPercentage}%</span>
                 </div>
               </div>
             </div>
@@ -146,7 +146,7 @@ export function CategoryDetailModal({
               <DollarSign className="h-4 w-4" />
               Total
             </div>
-            <div className="text-2xl font-bold">{formatCurrency(category.amount)}</div>
+            <div className="text-2xl font-bold font-mono tabular-nums">{formatCurrency(category.amount)}</div>
           </div>
 
           <div className="space-y-1">
@@ -154,7 +154,7 @@ export function CategoryDetailModal({
               <Hash className="h-4 w-4" />
               Transacciones
             </div>
-            <div className="text-2xl font-bold">{category.count}</div>
+            <div className="text-2xl font-bold font-mono tabular-nums">{category.count}</div>
           </div>
 
           <div className="space-y-1">
@@ -162,7 +162,7 @@ export function CategoryDetailModal({
               <Receipt className="h-4 w-4" />
               Promedio
             </div>
-            <div className="text-2xl font-bold">{formatCurrency(averagePerTransaction)}</div>
+            <div className="text-2xl font-bold font-mono tabular-nums">{formatCurrency(averagePerTransaction)}</div>
           </div>
 
           <div className="space-y-1">
@@ -170,7 +170,7 @@ export function CategoryDetailModal({
               {getTrendIcon()}
               Tendencia
             </div>
-            <div className={`text-2xl font-bold ${getTrendColor()}`}>
+            <div className={`text-2xl font-bold font-mono tabular-nums ${getTrendColor()}`}>
               {category.trend === "up" ? "+" : category.trend === "down" ? "-" : ""}
               {category.trendPercentage.toFixed(0)}%
             </div>
@@ -190,7 +190,7 @@ export function CategoryDetailModal({
                   ) : (
                     <CheckCircle className="h-4 w-4 flex-shrink-0" />
                   )}
-                  <span className={`font-semibold ${category.isOverLimit ? "text-destructive" : category.isNearLimit ? "text-warning" : "text-success"}`}>
+                  <span className={`font-semibold font-mono tabular-nums ${category.isOverLimit ? "text-destructive" : category.isNearLimit ? "text-warning" : "text-success"}`}>
                     {category.isOverLimit
                       ? `Límite superado: ${formatCurrency(category.amount)} / ${formatCurrency(category.limit)}`
                       : category.isNearLimit
@@ -198,7 +198,7 @@ export function CategoryDetailModal({
                       : `Dentro del presupuesto: ${formatCurrency(category.amount)} / ${formatCurrency(category.limit)}`}
                   </span>
                 </div>
-                <span className={`text-sm ${category.isOverLimit ? "text-destructive" : category.isNearLimit ? "text-warning" : "text-success"}`}>
+                <span className={`text-sm font-mono tabular-nums ${category.isOverLimit ? "text-destructive" : category.isNearLimit ? "text-warning" : "text-success"}`}>
                   {((category.amount / category.limit) * 100).toFixed(0)}%
                 </span>
               </div>
@@ -219,8 +219,8 @@ export function CategoryDetailModal({
               <div className="p-3 bg-muted/50 rounded-lg">
                 <span className="font-medium">Días que más gastas: </span>
                 <span className="text-muted-foreground">
-                  {dayOfWeekData[0].day} ({formatCurrency(dayOfWeekData[0].amount)})
-                  {dayOfWeekData[1] && ` y ${dayOfWeekData[1].day} (${formatCurrency(dayOfWeekData[1].amount)})`}
+                  {dayOfWeekData[0].day} (<span className="font-mono tabular-nums">{formatCurrency(dayOfWeekData[0].amount)}</span>)
+                  {dayOfWeekData[1] && <> y {dayOfWeekData[1].day} (<span className="font-mono tabular-nums">{formatCurrency(dayOfWeekData[1].amount)}</span>)</>}
                 </span>
               </div>
             )}
@@ -228,21 +228,21 @@ export function CategoryDetailModal({
               <div className="p-3 bg-muted/50 rounded-lg">
                 <span className="font-medium">Horario peak: </span>
                 <span className="text-muted-foreground">
-                  {timeOfDayData[0].time} ({formatCurrency(timeOfDayData[0].amount)})
+                  {timeOfDayData[0].time} (<span className="font-mono tabular-nums">{formatCurrency(timeOfDayData[0].amount)}</span>)
                 </span>
               </div>
             )}
             <div className="p-3 bg-muted/50 rounded-lg">
               <span className="font-medium">Frecuencia: </span>
               <span className="text-muted-foreground">
-                {category.count} veces este mes (promedio {formatCurrency(averagePerTransaction)} por transacción)
+                <span className="font-mono tabular-nums">{category.count}</span> veces este mes (promedio <span className="font-mono tabular-nums">{formatCurrency(averagePerTransaction)}</span> por transacción)
               </span>
             </div>
             {category.trend !== "stable" && (
               <div className="p-3 bg-muted/50 rounded-lg">
                 <span className="font-medium">Comparación: </span>
                 <span className="text-muted-foreground">
-                  {category.trend === "up" ? "Aumentó" : "Disminuyó"} {category.trendPercentage.toFixed(0)}% vs mes anterior
+                  {category.trend === "up" ? "Aumentó" : "Disminuyó"} <span className="font-mono tabular-nums">{category.trendPercentage.toFixed(0)}%</span> vs mes anterior
                 </span>
               </div>
             )}
@@ -310,7 +310,7 @@ export function CategoryDetailModal({
                   <div key={date} className="space-y-2">
                     <div className="flex items-center justify-between sticky top-0 bg-muted/50 backdrop-blur py-2 border-b">
                       <span className="text-sm font-semibold">{date}</span>
-                      <span className="text-sm font-bold">{formatCurrency(dayTotal)}</span>
+                      <span className="text-sm font-bold font-mono tabular-nums">{formatCurrency(dayTotal)}</span>
                     </div>
                     <div className="space-y-2 pl-4">
                       {dayTransactions.map((t) => (
@@ -321,7 +321,7 @@ export function CategoryDetailModal({
                               {format(new Date(t.date), "HH:mm", { locale: es })}
                             </div>
                           </div>
-                          <div className="font-semibold">{formatCurrency(Number(t.amount))}</div>
+                          <div className="font-semibold font-mono tabular-nums">{formatCurrency(Number(t.amount))}</div>
                         </div>
                       ))}
                     </div>

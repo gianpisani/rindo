@@ -85,7 +85,7 @@ export default function BalanceSummary() {
             </div>
           </CardHeader>
           <CardContent className="pt-0">
-            <div className={cn("text-lg font-semibold tracking-tight inline", card.color, isPrivacyMode && "privacy-blur")}>
+            <div className={cn("text-lg font-semibold tracking-tight inline font-mono tabular-nums", card.color, isPrivacyMode && "privacy-blur")}>
               $<NumberFlow 
                 value={card.amount} 
                 format={{ 

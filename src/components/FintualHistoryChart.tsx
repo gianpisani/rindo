@@ -85,7 +85,7 @@ const CustomTooltip = ({ active, payload, label, activeGoals, goalColors }: Cust
   const totalProfitPercent = totalDeposited > 0 ? (totalProfit / totalDeposited) * 100 : 0
 
   return (
-    <div className="bg-card/95 backdrop-blur-sm border border-border rounded-xl p-4 shadow-xl min-w-[240px]">
+    <div className="bg-card/95 backdrop-blur-sm border border-border/50 rounded-xl p-4 shadow-xl min-w-[240px]">
       <p className="font-semibold text-sm text-foreground mb-3 pb-2 border-b border-border">{label}</p>
       
       <div className="space-y-3">
@@ -107,20 +107,20 @@ const CustomTooltip = ({ active, payload, label, activeGoals, goalColors }: Cust
               <div className="pl-5 space-y-1 text-xs">
                 <div className="flex justify-between">
                   <span className="text-muted-foreground">Valor:</span>
-                  <span className="font-semibold" style={{ color }}>
+                  <span className="font-mono tabular-nums font-semibold" style={{ color }}>
                     {formatCurrencyExact(data.nav)}
                   </span>
                 </div>
                 <div className="flex justify-between">
                   <span className="text-muted-foreground">Depositado:</span>
-                  <span className="text-muted-foreground">
+                  <span className="font-mono tabular-nums text-muted-foreground">
                     {formatCurrencyExact(data.deposited)}
                   </span>
                 </div>
                 <div className="flex justify-between">
                   <span className="text-muted-foreground">Ganancia:</span>
                   <span className={cn(
-                    "font-semibold",
+                    "font-mono tabular-nums font-semibold",
                     profit >= 0 ? "text-success" : "text-destructive"
                   )}>
                     {profit >= 0 ? "+" : ""}{formatCurrencyExact(profit)}
@@ -141,7 +141,7 @@ const CustomTooltip = ({ active, payload, label, activeGoals, goalColors }: Cust
           <div className="flex justify-between text-xs">
             <span className="font-medium text-foreground">Total:</span>
             <span className={cn(
-              "font-bold",
+              "font-mono tabular-nums font-bold",
               totalProfit >= 0 ? "text-success" : "text-destructive"
             )}>
               {totalProfit >= 0 ? "+" : ""}{formatCurrencyExact(totalProfit)}
@@ -172,7 +172,7 @@ export function FintualHistoryChart({ investments }: FintualHistoryChartProps) {
       '#10b981', // green-500
       '#f59e0b', // amber-500
       '#ef4444', // red-500
-      '#8b5cf6', // violet-500
+      '#6366f1', // indigo-500
       '#ec4899', // pink-500
     ]
     
@@ -407,12 +407,12 @@ export function FintualHistoryChart({ investments }: FintualHistoryChartProps) {
         <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
           <div className="bg-muted/50 rounded-lg p-3 text-center">
             <p className="text-xs text-muted-foreground">Valor Total</p>
-            <p className="text-lg font-bold">{formatCurrencyExact(stats.totalNav)}</p>
+            <p className="text-lg font-bold font-mono tabular-nums">{formatCurrencyExact(stats.totalNav)}</p>
           </div>
           <div className="bg-muted/50 rounded-lg p-3 text-center">
             <p className="text-xs text-muted-foreground">Ganancia</p>
             <p className={cn(
-              "text-lg font-bold",
+              "text-lg font-bold font-mono tabular-nums",
               stats.totalProfit >= 0 ? "text-success" : "text-destructive"
             )}>
               {stats.totalProfit >= 0 ? "+" : ""}{formatCurrencyExact(stats.totalProfit)}
@@ -421,7 +421,7 @@ export function FintualHistoryChart({ investments }: FintualHistoryChartProps) {
           <div className="bg-muted/50 rounded-lg p-3 text-center">
             <p className="text-xs text-muted-foreground">Rentabilidad</p>
             <p className={cn(
-              "text-lg font-bold",
+              "text-lg font-bold font-mono tabular-nums",
               stats.profitPercent >= 0 ? "text-success" : "text-destructive"
             )}>
               {stats.profitPercent >= 0 ? "+" : ""}{stats.profitPercent.toFixed(2)}%
@@ -429,7 +429,7 @@ export function FintualHistoryChart({ investments }: FintualHistoryChartProps) {
           </div>
           <div className="bg-muted/50 rounded-lg p-3 text-center">
             <p className="text-xs text-muted-foreground">Máximo histórico</p>
-            <p className="text-lg font-bold text-amber-500">{formatCurrencyExact(stats.maxNav)}</p>
+            <p className="text-lg font-bold font-mono tabular-nums text-amber-500">{formatCurrencyExact(stats.maxNav)}</p>
           </div>
         </div>
       )}

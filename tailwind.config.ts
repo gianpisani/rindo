@@ -17,15 +17,11 @@ export default {
   			sans: [
   				'Plus Jakarta Sans',
   				'sans-serif'
+  			],
+  			mono: [
+  				'JetBrains Mono',
+  				'monospace'
   			]
-  		},
-  		fontWeight: {
-  			light: '300',
-  			normal: '400',
-  			medium: '500',
-  			semibold: '600',
-  			bold: '700',
-  			extrabold: '800'
   		},
 		colors: {
 			blue: {

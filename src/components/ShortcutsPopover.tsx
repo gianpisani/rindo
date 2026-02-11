@@ -142,7 +142,7 @@ export function ShortcutsPopover({ isVisible, onClose }: ShortcutsPopoverProps) 
         })}
 
         <div className="pt-3 border-t border-border">
-          <div className="flex items-center gap-2 p-2 bg-gradient-to-r from-primary/5 to-primary/10 rounded-lg">
+          <div className="flex items-center gap-2 p-2 bg-primary/5 rounded-lg">
             <Lightbulb className="h-4 w-4 text-muted-foreground" />
             <p className="text-[10px] text-muted-foreground leading-relaxed">
               Presiona <Kbd className="text-[9px] px-1 py-0">?</Kbd> para mostrar/ocultar este panel

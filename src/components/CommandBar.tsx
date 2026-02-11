@@ -123,7 +123,7 @@ export function CommandBar({ open, onOpenChange, onAddTransaction, onConciliate 
                         <span>&bull;</span>
                         <span className="truncate">{transaction.category_name}</span>
                         <span>&bull;</span>
-                        <span className="font-semibold text-foreground">
+                        <span className="font-semibold text-foreground font-mono tabular-nums">
                           {formatCurrency(transaction.amount)}
                         </span>
                       </div>

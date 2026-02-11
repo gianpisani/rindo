@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import GridLayout, { Layout } from "react-grid-layout";
 import "react-grid-layout/css/styles.css";
 import { Button } from "./ui/button";
@@ -9,45 +9,65 @@ interface DashboardGridProps {
   children: React.ReactElement[];
 }
 
-// Layout por defecto (15 columnas)
+// Bento Grid Layout (15 columnas)
 // IMPORTANTE: El orden DEBE coincidir EXACTAMENTE con el orden de los widgets en Dashboard.tsx
-// Las coordenadas (x,y,w,h) definen DÓNDE va el widget, la posición en el array define QUÉ widget es
+// Dashboard.tsx order: income, expenses, investments, patrimony, available, cards, insights, projection, flow, evolution, expensesChart
 const DEFAULT_LAYOUT: Layout[] = [
-  // Posición 0: income -> abajo izquierda
-  { i: "income", x: 0, y: 10, w: 2, h: 2, minW: 2, minH: 1 },
-  // Posición 1: expenses -> abajo
-  { i: "expenses", x: 2, y: 10, w: 2, h: 2, minW: 2, minH: 1 },
-  // Posición 2: investments -> abajo
-  { i: "investments", x: 4, y: 10, w: 2, h: 2, minW: 2, minH: 1 },
-  // Posición 3: patrimony -> abajo
-  { i: "patrimony", x: 6, y: 10, w: 2, h: 2, minW: 2, minH: 1 },
-  // Posición 4: available -> abajo derecha
-  { i: "available", x: 8, y: 10, w: 2, h: 2, minW: 2, minH: 1 },
-  // Posición 5: insights -> arriba derecha (x:11, y:0)
-  { i: "insights", x: 11, y: 0, w: 4, h: 6 },
-  // Posición 6: projection -> arriba izquierda (x:0, y:0)
-  { i: "projection", x: 0, y: 0, w: 5, h: 10, minW: 3, minH: 3 },
-  // Posición 7: flow -> abajo completo ancho (x:0, y:12)
-  { i: "flow", x: 0, y: 12, w: 15, h: 6, minW: 6, minH: 4 },
-  // Posición 8: evolution -> centro medio (x:5, y:6)
-  { i: "evolution", x: 5, y: 6, w: 10, h: 4, minW: 6, minH: 3 },
-  // Posición 9: expensesChart -> centro superior (x:5, y:0)
-  { i: "expensesChart", x: 5, y: 0, w: 6, h: 6, minW: 6, minH: 4 },
+  // Row 0-8: Hero section
+  // Projection: dominant left (10w × 9h)
+  // Cards + Insights: stacked right sidebar
+
+  // Balance cards: compact info strip (3w × 2h each = 15w total)
+  { i: "income",      x: 0,  y: 9,  w: 3, h: 2, minW: 2, minH: 1 },
+  { i: "expenses",    x: 3,  y: 9,  w: 3, h: 2, minW: 2, minH: 1 },
+  { i: "investments", x: 6,  y: 9,  w: 3, h: 2, minW: 2, minH: 1 },
+  { i: "patrimony",   x: 9,  y: 9,  w: 3, h: 2, minW: 2, minH: 1 },
+  { i: "available",   x: 12, y: 9,  w: 3, h: 2, minW: 2, minH: 1 },
+
+  // Credit Cards widget: top-right (5w × 4h)
+  { i: "cards",       x: 10, y: 0,  w: 5, h: 4, minW: 3, minH: 3 },
+  // Category Insights: below cards (5w × 5h)
+  { i: "insights",    x: 10, y: 4,  w: 5, h: 5 },
+  // Projection: hero card (10w × 9h)
+  { i: "projection",  x: 0,  y: 0,  w: 10, h: 9, minW: 4, minH: 4 },
+
+  // Bottom section: charts
+  // Money Flow: full width (15w × 5h)
+  { i: "flow",        x: 0,  y: 17, w: 15, h: 5, minW: 6, minH: 3 },
+  // Evolution: right half (8w × 6h)
+  { i: "evolution",   x: 7,  y: 11, w: 8,  h: 6, minW: 5, minH: 3 },
+  // Expenses by category: left half (7w × 6h)
+  { i: "expensesChart", x: 0, y: 11, w: 7, h: 6, minW: 5, minH: 4 },
 ];
 
-const STORAGE_KEY = "finanzas-dashboard-layout";
+const STORAGE_KEY = "finanzas-dashboard-layout-v4";
 
 export function DashboardGrid({ children }: DashboardGridProps) {
   const [layout, setLayout] = useState<Layout[]>(DEFAULT_LAYOUT);
   const [mounted, setMounted] = useState(false);
   const [isMobile, setIsMobile] = useState(false);
+  const [containerWidth, setContainerWidth] = useState(0);
+  const containerRef = useRef<HTMLDivElement>(null);
 
-  // Detectar mobile
+  // Medir el ancho real del contenedor (respeta sidebar)
   useEffect(() => {
-    const checkMobile = () => setIsMobile(window.innerWidth < 768);
-    checkMobile();
-    window.addEventListener("resize", checkMobile);
-    return () => window.removeEventListener("resize", checkMobile);
+    const el = containerRef.current;
+    if (!el) return;
+
+    const observer = new ResizeObserver((entries) => {
+      for (const entry of entries) {
+        const width = entry.contentRect.width;
+        setContainerWidth(width);
+        setIsMobile(width < 768);
+      }
+    });
+
+    observer.observe(el);
+    // Initial measurement
+    setContainerWidth(el.clientWidth);
+    setIsMobile(el.clientWidth < 768);
+
+    return () => observer.disconnect();
   }, []);
 
   // Cargar layout desde localStorage
@@ -77,9 +97,9 @@ export function DashboardGrid({ children }: DashboardGridProps) {
   };
 
   // No renderizar hasta que esté montado (evita SSR issues)
-  if (!mounted) {
+  if (!mounted || containerWidth === 0) {
     return (
-      <div className="space-y-6">
+      <div ref={containerRef} className="space-y-6">
         {children}
       </div>
     );
@@ -88,21 +108,21 @@ export function DashboardGrid({ children }: DashboardGridProps) {
   // En mobile, layout fijo (columna única)
   if (isMobile) {
     return (
-      <div className="space-y-6">
+      <div ref={containerRef} className="space-y-6">
         {children}
       </div>
     );
   }
 
   return (
-    <div className="space-y-6">
+    <div ref={containerRef} className="space-y-6">
       {/* Grid Layout */}
       <GridLayout
         className="layout"
         layout={layout}
         cols={15}
         rowHeight={80}
-        width={1350}
+        width={containerWidth}
         onLayoutChange={handleLayoutChange}
         draggableHandle=".drag-handle"
         isDraggable={true}

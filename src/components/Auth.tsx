@@ -52,10 +52,10 @@ export default function Auth() {
       },
       particles: {
         color: {
-          value: "#e11d48",
+          value: "#4f46e5",
         },
         links: {
-          color: "#e11d48",
+          color: "#4f46e5",
           distance: 150,
           enable: true,
           opacity: 0.3,
@@ -234,7 +234,7 @@ export default function Auth() {
           </div>
 
           {/* Form */}
-          <Card className="p-6 lg:p-8 shadow-card relative overflow-hidden">
+          <Card className="p-6 lg:p-8 relative overflow-hidden">
             {!emailSent ? (
               <form onSubmit={handleAuth} className="space-y-5">
                 <div className="space-y-2">

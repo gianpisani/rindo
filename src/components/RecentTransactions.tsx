@@ -43,7 +43,7 @@ export default function RecentTransactions() {
   };
 
   return (
-    <Card className="rounded-2xl shadow-elevated border-border/50">
+    <Card className="rounded-2xl border-border/50">
       <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-4">
         <CardTitle className="text-xl font-semibold">Últimas Transacciones</CardTitle>
         <Link to="/transactions">
@@ -92,7 +92,7 @@ export default function RecentTransactions() {
                       )}
                     </div>
                   </div>
-                  <div className={cn("font-semibold text-sm ml-2 flex-shrink-0", colorClass, isPrivacyMode && "privacy-blur")}>
+                  <div className={cn("font-semibold text-sm ml-2 flex-shrink-0 font-mono tabular-nums", colorClass, isPrivacyMode && "privacy-blur")}>
                     {formatCurrency(Number(transaction.amount))}
                   </div>
                 </div>

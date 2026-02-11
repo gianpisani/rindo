@@ -228,7 +228,7 @@ export default function QuickTransactionForm({ onSuccess, defaultType = "Gasto" 
               }}
               onKeyDown={handleAmountKeyDown}
               style={{ fontSize: "clamp(2rem, 6vw, 3rem)" }}
-              className={`h-32 sm:h-40 text-center font-bold rounded-3xl border-2 transition-all bg-background placeholder:text-muted-foreground/50 focus-visible:ring-transparent bg-transparent ${
+              className={`h-32 sm:h-40 text-center font-bold font-mono rounded-3xl border-2 transition-all bg-background placeholder:text-muted-foreground/50 focus-visible:ring-transparent bg-transparent ${
                 defaultType === "Ingreso"
                   ? "border-success/30 focus:border-success focus:ring-4 focus:ring-success/20"
                   : defaultType === "Inversión"
@@ -286,12 +286,12 @@ export default function QuickTransactionForm({ onSuccess, defaultType = "Gasto" 
           <Button
             type="submit"
             size="lg"
-            className={`w-full h-14 text-base font-semibold rounded-2xl shadow-lg hover:shadow-xl transition-all duration-200 ${
-              defaultType === "Ingreso" 
-                ? "bg-gradient-to-r from-success to-emerald-600 hover:from-success/90 hover:to-emerald-600/90" 
+            className={`w-full h-14 text-base font-semibold rounded-2xl transition-all duration-200 ${
+              defaultType === "Ingreso"
+                ? "bg-success hover:bg-success/90"
                 : defaultType === "Inversión"
-                  ? "bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-500/90 hover:to-blue-600/90"
-                  : "bg-gradient-to-r from-destructive to-red-600 hover:from-destructive/90 hover:to-red-600/90"
+                  ? "bg-blue-500 hover:bg-blue-500/90"
+                  : "bg-destructive hover:bg-destructive/90"
             }`}
             disabled={!amount || isSubmitting}
           >

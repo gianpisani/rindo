@@ -67,7 +67,7 @@ export default function PendingDebts() {
         {/* Header */}
         <div className="flex items-center justify-between">
           <div>
-            <h1 className="text-2xl font-semibold mb-1">Cuentas Pendientes</h1>
+            <h1 className="text-2xl font-bold tracking-tight mb-1">Cuentas Pendientes</h1>
             <p className="text-sm text-muted-foreground">
               Gestiona los gastos compartidos con tus amigos
             </p>

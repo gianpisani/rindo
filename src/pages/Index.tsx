@@ -95,15 +95,15 @@ const Index = () => {
     <Layout>
       <div className="space-y-6">
         {/* Hero Balance Card */}
-        <Card className="p-6">
+        <Card className="p-6 md:p-8 border-border/50">
           <div className="space-y-4">
             <div className="flex items-center justify-between">
-              <span className="text-sm text-muted-foreground font-medium">Balance Total</span>
-              <span className="text-xs text-muted-foreground">
+              <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Balance Total</span>
+              <span className="text-xs text-muted-foreground font-mono tabular-nums">
                 {format(now, "MMMM yyyy", { locale: es })}
               </span>
             </div>
-            <div className={cn("text-4xl md:text-5xl font-bold", isPrivacyMode && "privacy-blur")}>
+            <div className={cn("text-4xl md:text-5xl font-bold font-mono tabular-nums tracking-tight", isPrivacyMode && "privacy-blur")}>
               $<NumberFlow
                 value={totalBalance}
                 format={{
@@ -122,7 +122,7 @@ const Index = () => {
                     <TrendingUp className="h-3.5 w-3.5" />
                     <span className="text-xs font-medium">Ingresos</span>
                   </div>
-                  <p className={cn("text-sm font-semibold", isPrivacyMode && "privacy-blur")}>
+                  <p className={cn("text-sm font-semibold font-mono tabular-nums", isPrivacyMode && "privacy-blur")}>
                     $<NumberFlow
                       value={currentIncome}
                       format={{
@@ -156,7 +156,7 @@ const Index = () => {
                     <TrendingDown className="h-3.5 w-3.5" />
                     <span className="text-xs font-medium">Gastos</span>
                   </div>
-                  <p className={cn("text-sm font-semibold", isPrivacyMode && "privacy-blur")}>
+                  <p className={cn("text-sm font-semibold font-mono tabular-nums", isPrivacyMode && "privacy-blur")}>
                     $<NumberFlow
                       value={currentExpenses}
                       format={{
@@ -190,7 +190,7 @@ const Index = () => {
                     <PiggyBank className="h-3.5 w-3.5" />
                     <span className="text-xs font-medium">Inversiones</span>
                   </div>
-                  <p className={cn("text-sm font-semibold", isPrivacyMode && "privacy-blur")}>
+                  <p className={cn("text-sm font-semibold font-mono tabular-nums", isPrivacyMode && "privacy-blur")}>
                     $<NumberFlow
                       value={currentInvestments}
                       format={{
@@ -211,21 +211,21 @@ const Index = () => {
         <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
           <Button
             onClick={() => handleQuickAdd("Ingreso")}
-            className="h-20 md:h-24 flex-col gap-2 bg-success hover:bg-success/90 text-white shadow-lg"
+            className="h-20 md:h-24 flex-col gap-2 border-2 border-success/30 text-success hover:bg-success/10 bg-transparent"
           >
             <TrendingUp className="h-6 w-6" />
             <span className="text-sm font-semibold">Ingreso</span>
           </Button>
           <Button
             onClick={() => handleQuickAdd("Gasto")}
-            className="h-20 md:h-24 flex-col gap-2 bg-destructive hover:bg-destructive/90 text-white shadow-lg"
+            className="h-20 md:h-24 flex-col gap-2 border-2 border-destructive/30 text-destructive hover:bg-destructive/10 bg-transparent"
           >
             <TrendingDown className="h-6 w-6" />
             <span className="text-sm font-semibold">Gasto</span>
           </Button>
           <Button
             onClick={() => handleQuickAdd("Inversión")}
-            className="h-20 md:h-24 flex-col gap-2 bg-blue hover:bg-blue/90 text-white shadow-lg"
+            className="h-20 md:h-24 flex-col gap-2 border-2 border-blue/30 text-blue hover:bg-blue/10 bg-transparent"
           >
             <PiggyBank className="h-6 w-6" />
             <span className="text-sm font-semibold">Inversión</span>
@@ -233,7 +233,7 @@ const Index = () => {
           <Button
             onClick={() => openReconciliation()}
             variant="outline"
-            className="h-20 md:h-24 flex-col gap-2 border-2 hover:bg-muted"
+            className="h-20 md:h-24 flex-col gap-2 hover:bg-muted"
           >
             <Variable className="h-6 w-6" />
             <span className="text-sm font-semibold">Conciliar</span>
@@ -294,7 +294,7 @@ const Index = () => {
                       </div>
                     </div>
                     <div className={cn(
-                      "text-sm font-semibold whitespace-nowrap ml-3",
+                      "text-sm font-semibold whitespace-nowrap ml-3 font-mono tabular-nums",
                       transaction.type === "Ingreso" && "text-success",
                       transaction.type === "Gasto" && "text-destructive",
                       transaction.type === "Inversión" && "text-blue",

@@ -209,7 +209,7 @@ function EditableAmountCell({ value, onSave, className }: { value: number; onSav
       onClick={() => setIsEditing(true)}
       className={cn(
         "px-2 py-1 rounded-md cursor-pointer transition-all text-right",
-        "hover:bg-muted/80 group flex items-center justify-end gap-1 font-semibold",
+        "hover:bg-muted/80 group flex items-center justify-end gap-1 font-semibold font-mono tabular-nums",
         className
       )}
     >
@@ -865,7 +865,7 @@ export function TransactionsTable({
       )}
 
       {/* Table */}
-      <div className="border border-border rounded-lg overflow-hidden shadow-card">
+      <div className="border border-border/50 rounded-lg overflow-hidden">
         <div className="overflow-x-auto">
           <table className="w-full table-fixed">
             <thead className="bg-muted/50 border-b border-border">

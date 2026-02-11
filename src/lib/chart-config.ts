@@ -31,7 +31,7 @@ export const TYPE_COLORS = {
 export const CHART_TOOLTIP_STYLE: React.CSSProperties = {
   backgroundColor: "var(--card, #ffffff)",
   border: "1px solid var(--border, #e2e8f0)",
-  borderRadius: "0.75rem",
+  borderRadius: "0.5rem",
   boxShadow: "0 10px 15px -3px rgb(0 0 0 / 0.1)",
   padding: "12px",
   color: "var(--foreground, #0f172a)",

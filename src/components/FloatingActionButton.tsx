@@ -24,10 +24,10 @@ export function FloatingActionButton({ onClick, className }: FloatingActionButto
         size="lg"
         className={cn(
           "h-14 w-14 rounded-full",
-          "bg-gradient-to-br from-blue to-blue-600",
-          "hover:from-blue-600 hover:to-blue-700",
-          "shadow-[0_8px_30px_rgb(59,130,246,0.5)]",
-          "hover:shadow-[0_12px_40px_rgb(59,130,246,0.6)]",
+          "bg-primary",
+          "hover:bg-primary/90",
+          "shadow-[0_8px_30px_rgb(79,70,229,0.5)]",
+          "hover:shadow-[0_12px_40px_rgb(79,70,229,0.6)]",
           "transition-all duration-300",
           "active:scale-95",
           "border-2 border-white/10"

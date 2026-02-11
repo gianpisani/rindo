@@ -87,7 +87,7 @@ export function CategoryInsightsWidget() {
                   ) : null}
                 </div>
                 <div className="flex items-center gap-2">
-                  <span className="text-sm font-bold">{formatCurrency(cat.amount)}</span>
+                  <span className="text-sm font-bold font-mono tabular-nums">{formatCurrency(cat.amount)}</span>
                   {cat.isOverLimit && (
                     <AlertTriangle className="h-3 w-3 text-destructive flex-shrink-0" />
                   )}

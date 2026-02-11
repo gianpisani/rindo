@@ -230,7 +230,7 @@ export default function CreditCards() {
         {/* Header */}
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
           <div>
-            <h1 className="text-2xl font-semibold mb-1">Tarjetas de Crédito</h1>
+            <h1 className="text-2xl font-bold tracking-tight mb-1">Tarjetas de Crédito</h1>
             <p className="text-sm text-muted-foreground">
               Gestiona tus tarjetas y compras en cuotas
             </p>
@@ -269,7 +269,7 @@ export default function CreditCards() {
                 </div>
                 <div>
                   <p className="text-sm text-muted-foreground">Cupo Total</p>
-                  <p className={cn("text-xl font-bold", isPrivacyMode && "privacy-blur")}>
+                  <p className={cn("text-xl font-bold font-mono tabular-nums", isPrivacyMode && "privacy-blur")}>
                     {formatCurrency(cardTotals.totalLimit)}
                   </p>
                 </div>
@@ -285,7 +285,7 @@ export default function CreditCards() {
                 </div>
                 <div>
                   <p className="text-sm text-muted-foreground">Cupo Usado</p>
-                  <p className={cn("text-xl font-bold text-destructive", isPrivacyMode && "privacy-blur")}>
+                  <p className={cn("text-xl font-bold font-mono tabular-nums text-destructive", isPrivacyMode && "privacy-blur")}>
                     {formatCurrency(cardTotals.totalUsed)}
                   </p>
                 </div>
@@ -301,7 +301,7 @@ export default function CreditCards() {
                 </div>
                 <div>
                   <p className="text-sm text-muted-foreground">Disponible</p>
-                  <p className={cn("text-xl font-bold text-success", isPrivacyMode && "privacy-blur")}>
+                  <p className={cn("text-xl font-bold font-mono tabular-nums text-success", isPrivacyMode && "privacy-blur")}>
                     {formatCurrency(cardTotals.totalAvailable)}
                   </p>
                 </div>
@@ -317,7 +317,7 @@ export default function CreditCards() {
                 </div>
                 <div>
                   <p className="text-sm text-muted-foreground">Pago Mensual</p>
-                  <p className={cn("text-xl font-bold text-orange-500", isPrivacyMode && "privacy-blur")}>
+                  <p className={cn("text-xl font-bold font-mono tabular-nums text-orange-500", isPrivacyMode && "privacy-blur")}>
                     {formatCurrency(installmentTotals.monthlyPayment)}
                   </p>
                 </div>
@@ -465,19 +465,19 @@ export default function CreditCards() {
                 <div className="flex flex-wrap gap-4 text-sm">
                   <div>
                     <span className="text-muted-foreground">Cargos: </span>
-                    <span className={cn("font-semibold text-destructive", isPrivacyMode && "privacy-blur")}>
+                    <span className={cn("font-semibold font-mono tabular-nums text-destructive", isPrivacyMode && "privacy-blur")}>
                       {formatCurrency(billingTotals.gastos)}
                     </span>
                   </div>
                   <div>
                     <span className="text-muted-foreground">Abonos: </span>
-                    <span className={cn("font-semibold text-success", isPrivacyMode && "privacy-blur")}>
+                    <span className={cn("font-semibold font-mono tabular-nums text-success", isPrivacyMode && "privacy-blur")}>
                       {formatCurrency(billingTotals.abonos)}
                     </span>
                   </div>
                   <div className="sm:ml-auto">
                     <span className="text-muted-foreground">Total: </span>
-                    <span className={cn("font-bold text-lg", isPrivacyMode && "privacy-blur")}>
+                    <span className={cn("font-bold font-mono tabular-nums text-lg", isPrivacyMode && "privacy-blur")}>
                       {formatCurrency(billingTotals.gastos - billingTotals.abonos)}
                     </span>
                   </div>
@@ -509,7 +509,7 @@ export default function CreditCards() {
                               {tx.detail || tx.category_name}
                             </td>
                             <td className={cn(
-                              "px-3 py-2 text-right font-medium whitespace-nowrap",
+                              "px-3 py-2 text-right font-medium font-mono tabular-nums whitespace-nowrap",
                               tx.type === "Ingreso" ? "text-success" : "",
                               isPrivacyMode && "privacy-blur"
                             )}>
@@ -523,7 +523,7 @@ export default function CreditCards() {
                           <td colSpan={2} className="px-3 py-2 text-right">
                             Total:
                           </td>
-                          <td className={cn("px-3 py-2 text-right", isPrivacyMode && "privacy-blur")}>
+                          <td className={cn("px-3 py-2 text-right font-mono tabular-nums", isPrivacyMode && "privacy-blur")}>
                             {formatCurrency(billingTotals.gastos - billingTotals.abonos)}
                           </td>
                         </tr>
@@ -694,7 +694,7 @@ function CreditCardItem({
         <div>
           <div className="flex justify-between text-sm mb-2">
             <span className="text-muted-foreground">Cupo usado</span>
-            <span className={cn("font-semibold", isHighUsage && "text-destructive", isPrivacyMode && "privacy-blur")}>
+            <span className={cn("font-semibold font-mono tabular-nums", isHighUsage && "text-destructive", isPrivacyMode && "privacy-blur")}>
               {formatCurrency(card.total_used_credit)} / {formatCurrency(card.credit_limit)}
             </span>
           </div>
@@ -714,13 +714,13 @@ function CreditCardItem({
         <div className="grid grid-cols-2 gap-3 text-center">
           <div className="p-2 bg-success/10 rounded-lg">
             <p className="text-xs text-muted-foreground">Disponible</p>
-            <p className={cn("font-bold text-success", isPrivacyMode && "privacy-blur")}>
+            <p className={cn("font-bold font-mono tabular-nums text-success", isPrivacyMode && "privacy-blur")}>
               {formatCurrency(card.available_credit)}
             </p>
           </div>
           <div className="p-2 bg-orange-500/10 rounded-lg">
             <p className="text-xs text-muted-foreground">Próximo pago</p>
-            <p className={cn("font-bold text-orange-500", isPrivacyMode && "privacy-blur")}>
+            <p className={cn("font-bold font-mono tabular-nums text-orange-500", isPrivacyMode && "privacy-blur")}>
               {formatCurrency(card.next_payment_installments)}
             </p>
           </div>
@@ -817,7 +817,7 @@ function InstallmentItemSimple({
             <div className="mt-3 grid grid-cols-3 gap-2 text-center">
               <div className="p-2 bg-muted/50 rounded-lg">
                 <p className="text-xs text-muted-foreground">Total</p>
-                <p className={cn("font-bold text-sm", isPrivacyMode && "privacy-blur")}>
+                <p className={cn("font-bold font-mono tabular-nums text-sm", isPrivacyMode && "privacy-blur")}>
                   {formatCurrency(installment.total_amount)}
                 </p>
               </div>
@@ -827,7 +827,7 @@ function InstallmentItemSimple({
               </div>
               <div className="p-2 bg-destructive/10 rounded-lg">
                 <p className="text-xs text-muted-foreground">Mensual</p>
-                <p className={cn("font-bold text-sm text-destructive", isPrivacyMode && "privacy-blur")}>
+                <p className={cn("font-bold font-mono tabular-nums text-sm text-destructive", isPrivacyMode && "privacy-blur")}>
                   {formatCurrency(installment.installment_amount)}
                 </p>
               </div>

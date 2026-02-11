@@ -256,7 +256,7 @@ export function CategoryInsightsView() {
           <div className="flex items-center justify-between">
             <div>
               <div className="text-sm text-muted-foreground">Total gastado</div>
-              <div className="text-3xl font-bold">{formatCurrencyFull(totalSpending)}</div>
+              <div className="text-3xl font-bold font-mono tabular-nums">{formatCurrencyFull(totalSpending)}</div>
             </div>
             <div className="text-right">
               <div className="text-sm text-muted-foreground">Categorías activas</div>
@@ -409,7 +409,7 @@ export function CategoryInsightsView() {
                           <div className="flex items-center justify-between mb-2">
                             <span className="text-sm font-semibold">{cat.category}</span>
                             <span
-                              className={`text-xs font-bold ${
+                              className={`text-xs font-bold font-mono tabular-nums ${
                                 cat.isOverLimit
                                   ? "text-destructive"
                                   : cat.isNearLimit
@@ -431,7 +431,7 @@ export function CategoryInsightsView() {
                             }`}
                           />
                           <div className="flex items-center justify-between mt-1">
-                            <span className="text-xs text-muted-foreground">
+                            <span className="text-xs text-muted-foreground font-mono tabular-nums">
                               {formatCurrency(cat.amount)} / {formatCurrency(cat.limit!)}
                             </span>
                           </div>
@@ -554,7 +554,7 @@ export function CategoryInsightsView() {
                         <h3 className="text-lg font-semibold">{spending.category}</h3>
                         {hasSpending && getTrendIcon(spending.trend)}
                         {hasSpending && spending.trend !== "stable" && (
-                          <Badge variant="outline" className="text-xs">
+                          <Badge variant="outline" className="text-xs font-mono tabular-nums">
                             {spending.trend === "up" ? "+" : "-"}
                             {spending.trendPercentage.toFixed(0)}%
                           </Badge>
@@ -568,16 +568,16 @@ export function CategoryInsightsView() {
                       {hasSpending && (
                         <div className="text-sm text-muted-foreground mt-1">
                           {spending.count} transacciones • Promedio{" "}
-                          {formatCurrency(spending.amount / spending.count)}
+                          <span className="font-mono tabular-nums">{formatCurrency(spending.amount / spending.count)}</span>
                         </div>
                       )}
                     </div>
                     <div className="text-right">
-                      <div className={`text-2xl font-bold ${!hasSpending && 'text-muted-foreground'}`}>
+                      <div className={`text-2xl font-bold font-mono tabular-nums ${!hasSpending && 'text-muted-foreground'}`}>
                         {formatCurrencyFull(spending.amount)}
                       </div>
                       {hasSpending && (
-                        <div className="text-sm text-muted-foreground">
+                        <div className="text-sm text-muted-foreground font-mono tabular-nums">
                           {spending.percentage.toFixed(1)}% del total
                         </div>
                       )}
@@ -588,17 +588,17 @@ export function CategoryInsightsView() {
                   {spending.limit && (
                     <div className="space-y-2">
                       <div className="flex items-center justify-between text-sm">
-                        <span className="text-muted-foreground">
+                        <span className="text-muted-foreground font-mono tabular-nums">
                           Límite: {formatCurrencyFull(spending.limit)}
                         </span>
                         <span
-                          className={
+                          className={`font-mono tabular-nums ${
                             spending.isOverLimit
                               ? "text-destructive font-semibold"
                               : spending.isNearLimit
                               ? "text-warning font-semibold"
                               : "text-success"
-                          }
+                          }`}
                         >
                           {usagePercentage.toFixed(0)}%
                         </span>
@@ -797,11 +797,11 @@ export function CategoryInsightsView() {
                   Porcentaje de alerta
                 </Label>
                 <div className="text-right">
-                  <div className="text-lg font-bold text-primary">
+                  <div className="text-lg font-bold text-primary font-mono tabular-nums">
                     {limitFormData.alertPercentage}%
                   </div>
                   {limitFormData.limit && (
-                    <div className="text-xs text-muted-foreground">
+                    <div className="text-xs text-muted-foreground font-mono tabular-nums">
                       = {formatCurrency(Number(limitFormData.limit) * (limitFormData.alertPercentage / 100))}
                     </div>
                   )}
@@ -836,11 +836,11 @@ export function CategoryInsightsView() {
                   <Info className="h-4 w-4 flex-shrink-0 mt-0.5" />
                   <div>
                     Te avisaremos cuando gastes{" "}
-                    <span className="font-semibold text-foreground">
+                    <span className="font-semibold text-foreground font-mono tabular-nums">
                       {formatCurrency(Number(limitFormData.limit) * (limitFormData.alertPercentage / 100))}
                     </span>
                     {" "}(te quedarían{" "}
-                    <span className="font-semibold text-foreground">
+                    <span className="font-semibold text-foreground font-mono tabular-nums">
                       {formatCurrency(Number(limitFormData.limit) * ((100 - limitFormData.alertPercentage) / 100))}
                     </span>
                     {" "}para el resto del mes)
