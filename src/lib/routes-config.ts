@@ -1,6 +1,6 @@
-import { 
-  Home, 
-  Tag, 
+import {
+  Home,
+  Tag,
   UsersRound,
   LucideIcon,
   Brain,
@@ -8,6 +8,7 @@ import {
   Coins,
   TrendingUp,
   CreditCard,
+  CalendarDays,
 } from "lucide-react";
 import { ComponentType } from "react";
 
@@ -60,27 +61,34 @@ export const APP_ROUTES: RouteConfig[] = [
     group: "main",
     customIcon: true,
   },
-  
+  {
+    title: "Resumen",
+    url: "/monthly-summary",
+    icon: CalendarDays,
+    shortcut: "6",
+    group: "main",
+  },
+
   // Herramientas
   {
     title: "Tarjetas",
     url: "/credit-cards",
     icon: CreditCard,
-    shortcut: "6",
+    shortcut: "7",
     group: "tools",
   },
   {
     title: "Deudas",
     url: "/pending-debts",
     icon: UsersRound,
-    shortcut: "7",
+    shortcut: "8",
     group: "tools",
   },
   {
     title: "Insights",
     url: "/category-insights",
     icon: Brain,
-    shortcut: "8",
+    shortcut: "9",
     group: "tools",
   },
 ];
