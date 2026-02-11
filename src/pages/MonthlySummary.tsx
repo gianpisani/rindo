@@ -555,8 +555,8 @@ export default function MonthlySummary() {
               {/* Donut Chart */}
               <div className="lg:col-span-7">
                 <SectionCard
-                  title="Gastos por Categor\u00eda"
-                  tooltip="Distribuci\u00f3n de gastos del mes por categor\u00eda"
+                  title="Gastos por Categoría"
+                  tooltip="Distribución de gastos del mes por categoría"
                 >
                   {categoryBreakdown.length === 0 ? (
                     <p className="text-sm text-muted-foreground text-center py-8">
@@ -639,7 +639,7 @@ export default function MonthlySummary() {
                 <SectionCard
                   title="vs Mes Anterior"
                   icon={ArrowRight}
-                  tooltip={`Comparaci\u00f3n con ${prevMonthLabel}`}
+                  tooltip={`Comparación con ${prevMonthLabel}`}
                 >
                   <div className="space-y-5">
                     {comparisonData.map((item) => {
@@ -744,7 +744,7 @@ export default function MonthlySummary() {
               >
                 <SectionCard
                   title="Gasto Diario"
-                  tooltip="Gasto por d\u00eda del mes. La l\u00ednea punteada es el promedio diario"
+                  tooltip="Gasto por día del mes. La línea punteada es el promedio diario"
                 >
                   {dailySpending.length > 0 ? (
                     <div>
@@ -811,7 +811,7 @@ export default function MonthlySummary() {
                                 isPrivacyMode && "privacy-blur"
                               )}
                             >
-                              {formatCompact(dailyStats.avgDaily)}/d\u00eda
+                              {formatCompact(dailyStats.avgDaily)}/día
                             </span>
                           </span>
                         </div>
@@ -833,7 +833,7 @@ export default function MonthlySummary() {
                         )}
                         <div>
                           {dailyStats.daysWithSpending} de{" "}
-                          {dailyStats.totalDays} d\u00edas con gasto
+                          {dailyStats.totalDays} días con gasto
                         </div>
                       </div>
                     </div>
@@ -895,7 +895,7 @@ export default function MonthlySummary() {
                                 isPrivacyMode && "privacy-blur"
                               )}
                             >
-                              {usage.toFixed(0)}% del l\u00edmite (
+                              {usage.toFixed(0)}% del límite (
                               {formatCompact(card.credit_limit)})
                             </p>
                           </div>
@@ -909,13 +909,13 @@ export default function MonthlySummary() {
 
             {/* ─── Category Detail Table ─────────────── */}
             {categoryBreakdown.length > 0 && (
-              <SectionCard title="Detalle por Categor\u00eda">
+              <SectionCard title="Detalle por Categoría">
                 <div className="overflow-x-auto -mx-6 px-6">
                   <table className="w-full">
                     <thead>
                       <tr className="border-b border-border/50">
                         <th className="text-left text-[10px] font-semibold text-muted-foreground uppercase tracking-wider py-3 pr-4">
-                          Categor\u00eda
+                          Categoría
                         </th>
                         <th className="text-right text-[10px] font-semibold text-muted-foreground uppercase tracking-wider py-3 px-4">
                           Monto
@@ -930,7 +930,7 @@ export default function MonthlySummary() {
                           vs Anterior
                         </th>
                         <th className="text-right text-[10px] font-semibold text-muted-foreground uppercase tracking-wider py-3 pl-4 hidden sm:table-cell">
-                          L\u00edmite
+                          Límite
                         </th>
                       </tr>
                     </thead>
