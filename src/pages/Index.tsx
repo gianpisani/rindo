@@ -1,11 +1,9 @@
-import { useState } from "react";
 import Layout from "@/components/Layout";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { QuickAddDrawer } from "@/components/QuickAddDrawer";
-import { ReconciliationDrawer } from "@/components/ReconciliationDrawer";
 import { useTransactions } from "@/hooks/useTransactions";
-import { TrendingUp, TrendingDown, PiggyBank, Receipt, Calculator, Eye, Variable } from "lucide-react";
+import { useGlobalDrawers } from "@/hooks/useGlobalDrawers";
+import { TrendingUp, TrendingDown, PiggyBank, Receipt, Eye, Variable } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { format, startOfMonth, endOfMonth, subMonths } from "date-fns";
 import { es } from "date-fns/locale";
@@ -16,14 +14,11 @@ import { usePrivacyMode } from "@/hooks/usePrivacyMode";
 const Index = () => {
   const { transactions } = useTransactions();
   const navigate = useNavigate();
-  const [drawerOpen, setDrawerOpen] = useState(false);
-  const [reconciliationOpen, setReconciliationOpen] = useState(false);
-  const [preselectedType, setPreselectedType] = useState<"Ingreso" | "Gasto" | "Inversión" | undefined>();
+  const { openQuickAdd, openReconciliation } = useGlobalDrawers();
   const { isPrivacyMode } = usePrivacyMode();
 
-  const handleQuickAdd = (type: "Ingreso" | "Gasto" | "Inversión") => {
-    setPreselectedType(type);
-    setDrawerOpen(true);
+  const handleQuickAdd = (type: "Ingreso" | "Gasto" | "Inversi\u00f3n") => {
+    openQuickAdd(type);
   };
 
   // Calcular stats del mes actual
@@ -52,7 +47,7 @@ const Index = () => {
     .reduce((sum, t) => sum + Number(t.amount), 0);
 
   const currentInvestments = currentMonthTransactions
-    .filter((t) => t.type === "Inversión")
+    .filter((t) => t.type === "Inversi\u00f3n")
     .reduce((sum, t) => sum + Number(t.amount), 0);
 
   const lastMonthExpenses = lastMonthTransactions
@@ -66,18 +61,18 @@ const Index = () => {
   // Balance total real (todas las transacciones)
   const totalBalance = transactions.reduce((acc, t) => {
     if (t.type === "Ingreso") return acc + Number(t.amount);
-    if (t.type === "Gasto" || t.type === "Inversión") return acc - Number(t.amount);
+    if (t.type === "Gasto" || t.type === "Inversi\u00f3n") return acc - Number(t.amount);
     return acc;
   }, 0);
 
-  const expenseChange = lastMonthExpenses > 0 
-    ? ((currentExpenses - lastMonthExpenses) / lastMonthExpenses) * 100 
+  const expenseChange = lastMonthExpenses > 0
+    ? ((currentExpenses - lastMonthExpenses) / lastMonthExpenses) * 100
     : 0;
-  const incomeChange = lastMonthIncome > 0 
-    ? ((currentIncome - lastMonthIncome) / lastMonthIncome) * 100 
+  const incomeChange = lastMonthIncome > 0
+    ? ((currentIncome - lastMonthIncome) / lastMonthIncome) * 100
     : 0;
 
-  // Últimas 5 transacciones
+  // \u00daltimas 5 transacciones
   const recentTransactions = [...transactions]
     .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
     .slice(0, 5);
@@ -93,7 +88,7 @@ const Index = () => {
   const typeIcons = {
     Ingreso: TrendingUp,
     Gasto: TrendingDown,
-    Inversión: PiggyBank,
+    Inversi\u00f3n: PiggyBank,
   };
 
   return (
@@ -109,9 +104,9 @@ const Index = () => {
               </span>
             </div>
             <div className={cn("text-4xl md:text-5xl font-bold", isPrivacyMode && "privacy-blur")}>
-              $<NumberFlow 
-                value={totalBalance} 
-                format={{ 
+              $<NumberFlow
+                value={totalBalance}
+                format={{
                   style: "decimal",
                   minimumFractionDigits: 0,
                   maximumFractionDigits: 0
@@ -128,9 +123,9 @@ const Index = () => {
                     <span className="text-xs font-medium">Ingresos</span>
                   </div>
                   <p className={cn("text-sm font-semibold", isPrivacyMode && "privacy-blur")}>
-                    $<NumberFlow 
-                      value={currentIncome} 
-                      format={{ 
+                    $<NumberFlow
+                      value={currentIncome}
+                      format={{
                         style: "decimal",
                         minimumFractionDigits: 0,
                         maximumFractionDigits: 0
@@ -145,9 +140,9 @@ const Index = () => {
                       isPrivacyMode && "privacy-blur"
                     )}>
                       {incomeChange > 0 ? "+" : ""}
-                      <NumberFlow 
-                        value={incomeChange} 
-                        format={{ 
+                      <NumberFlow
+                        value={incomeChange}
+                        format={{
                           style: "decimal",
                           minimumFractionDigits: 0,
                           maximumFractionDigits: 0
@@ -162,9 +157,9 @@ const Index = () => {
                     <span className="text-xs font-medium">Gastos</span>
                   </div>
                   <p className={cn("text-sm font-semibold", isPrivacyMode && "privacy-blur")}>
-                    $<NumberFlow 
-                      value={currentExpenses} 
-                      format={{ 
+                    $<NumberFlow
+                      value={currentExpenses}
+                      format={{
                         style: "decimal",
                         minimumFractionDigits: 0,
                         maximumFractionDigits: 0
@@ -179,9 +174,9 @@ const Index = () => {
                       isPrivacyMode && "privacy-blur"
                     )}>
                       {expenseChange > 0 ? "+" : ""}
-                      <NumberFlow 
-                        value={expenseChange} 
-                        format={{ 
+                      <NumberFlow
+                        value={expenseChange}
+                        format={{
                           style: "decimal",
                           minimumFractionDigits: 0,
                           maximumFractionDigits: 0
@@ -196,9 +191,9 @@ const Index = () => {
                     <span className="text-xs font-medium">Inversiones</span>
                   </div>
                   <p className={cn("text-sm font-semibold", isPrivacyMode && "privacy-blur")}>
-                    $<NumberFlow 
-                      value={currentInvestments} 
-                      format={{ 
+                    $<NumberFlow
+                      value={currentInvestments}
+                      format={{
                         style: "decimal",
                         minimumFractionDigits: 0,
                         maximumFractionDigits: 0
@@ -229,34 +224,21 @@ const Index = () => {
             <span className="text-sm font-semibold">Gasto</span>
           </Button>
           <Button
-            onClick={() => handleQuickAdd("Inversión")}
+            onClick={() => handleQuickAdd("Inversi\u00f3n")}
             className="h-20 md:h-24 flex-col gap-2 bg-blue hover:bg-blue/90 text-white shadow-lg"
           >
             <PiggyBank className="h-6 w-6" />
-            <span className="text-sm font-semibold">Inversión</span>
+            <span className="text-sm font-semibold">Inversi\u00f3n</span>
           </Button>
           <Button
-            onClick={() => setReconciliationOpen(true)}
+            onClick={() => openReconciliation()}
             variant="outline"
-            className="h-20 md:h-24 flex-col gap-2 border-2 hover:bg-gray-600"
+            className="h-20 md:h-24 flex-col gap-2 border-2 hover:bg-muted"
           >
             <Variable className="h-6 w-6" />
             <span className="text-sm font-semibold">Conciliar</span>
           </Button>
         </div>
-
-        {/* Quick Add Drawer */}
-        <QuickAddDrawer 
-          open={drawerOpen} 
-          onOpenChange={setDrawerOpen}
-          defaultType={preselectedType}
-        />
-
-        {/* Reconciliation Drawer */}
-        <ReconciliationDrawer 
-          open={reconciliationOpen} 
-          onOpenChange={setReconciliationOpen}
-        />
 
         {/* Recent Transactions */}
         <Card className="p-6">
@@ -276,8 +258,8 @@ const Index = () => {
             {recentTransactions.length === 0 ? (
               <div className="py-12 text-center text-muted-foreground">
                 <Receipt className="h-12 w-12 mx-auto mb-3 opacity-20" />
-                <p className="text-sm">No hay transacciones aún</p>
-                <p className="text-xs mt-1">Agrega tu primera transacción arriba</p>
+                <p className="text-sm">No hay transacciones a\u00fan</p>
+                <p className="text-xs mt-1">Agrega tu primera transacci\u00f3n arriba</p>
               </div>
             ) : (
               recentTransactions.map((transaction) => {
@@ -292,13 +274,13 @@ const Index = () => {
                         "p-2 rounded-full",
                         transaction.type === "Ingreso" && "bg-success/10",
                         transaction.type === "Gasto" && "bg-destructive/10",
-                        transaction.type === "Inversión" && "bg-blue/10"
+                        transaction.type === "Inversi\u00f3n" && "bg-blue/10"
                       )}>
                         <Icon className={cn(
                           "h-4 w-4",
                           transaction.type === "Ingreso" && "text-success",
                           transaction.type === "Gasto" && "text-destructive",
-                          transaction.type === "Inversión" && "text-blue"
+                          transaction.type === "Inversi\u00f3n" && "text-blue"
                         )} />
                       </div>
                       <div className="min-w-0 flex-1">
@@ -307,7 +289,7 @@ const Index = () => {
                         </p>
                         <p className={cn("text-xs text-muted-foreground", isPrivacyMode && "privacy-blur-light")}>
                           {format(new Date(transaction.date), "d MMM", { locale: es })}
-                          {transaction.detail && ` • ${transaction.detail}`}
+                          {transaction.detail && ` \u2022 ${transaction.detail}`}
                         </p>
                       </div>
                     </div>
@@ -315,7 +297,7 @@ const Index = () => {
                       "text-sm font-semibold whitespace-nowrap ml-3",
                       transaction.type === "Ingreso" && "text-success",
                       transaction.type === "Gasto" && "text-destructive",
-                      transaction.type === "Inversión" && "text-blue",
+                      transaction.type === "Inversi\u00f3n" && "text-blue",
                       isPrivacyMode && "privacy-blur"
                     )}>
                       {formatCurrency(Number(transaction.amount))}

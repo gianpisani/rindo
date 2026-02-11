@@ -243,7 +243,7 @@ export default function Dashboard() {
             />
           </DashboardWidget>
 
-          <DashboardWidget key="patrimony" title="Patrimonio" icon={DollarSign}>
+          <DashboardWidget key="patrimony" title="Patrimonio" icon={DollarSign} tooltip="Ingresos - Gastos. Incluye inversiones como activo (tu riqueza neta)">
             <BalanceCard
               amount={patrimonio}
               color={patrimonio >= 0 ? "text-success" : "text-destructive"}
@@ -251,7 +251,7 @@ export default function Dashboard() {
             />
           </DashboardWidget>
 
-          <DashboardWidget key="available" title="Disponible" icon={Wallet}>
+          <DashboardWidget key="available" title="Disponible" icon={Wallet} tooltip="Ingresos - Gastos - Inversiones. Lo que tienes libre para gastar">
             <BalanceCard
               amount={disponible}
               color={disponible >= 0 ? "text-success" : "text-destructive"}

@@ -1,4 +1,4 @@
-import { 
+import {
   ChevronsUpDown,
   LogOut,
   User2,
@@ -8,23 +8,16 @@ import {
   Sun,
   Monitor,
   Plus,
-  Calculator,
   Variable,
   Bell,
   BellOff,
-  DollarSign,
-  TrendingUp,
-  Calendar,
-  CheckCircle
 } from "lucide-react";
 import { Link, useLocation } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { usePrivacyMode } from "@/hooks/usePrivacyMode";
 import { usePushNotifications } from "@/hooks/usePushNotifications";
-import { sendPushNotification, NotificationTemplates } from "@/lib/notifications";
 import { useTheme } from "next-themes";
-import { cn } from "@/lib/utils";
 import {
   Sidebar,
   SidebarContent,
@@ -44,13 +37,9 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { Button } from "@/components/ui/button";
 import { Kbd } from "@/components/ui/kbd";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { getMainRoutes, getToolRoutes } from "@/lib/routes-config";
-
-const isMac = typeof navigator !== 'undefined' && /Mac|iPhone|iPad|iPod/.test(navigator.userAgent);
-const cmdKey = isMac ? "⌘" : "Ctrl";
 
 interface AppSidebarProps {
   onAddTransaction?: () => void;
@@ -63,22 +52,13 @@ export function AppSidebar({ onAddTransaction, onConciliate }: AppSidebarProps =
   const { isSupported, isSubscribed, isLoading, subscribe, unsubscribe } = usePushNotifications();
   const { theme, setTheme } = useTheme();
   const isMobile = useIsMobile();
-  
+
   const mainNavItems = getMainRoutes();
   const secondaryNavItems = getToolRoutes();
 
   const handleLogout = async () => {
     await supabase.auth.signOut();
-    toast.success("Sesión cerrada exitosamente");
-  };
-
-  const handleTestNotification = async (template: ReturnType<typeof NotificationTemplates[keyof typeof NotificationTemplates]>, name: string) => {
-    const result = await sendPushNotification(template);
-    if (result.success) {
-      toast.success(`${name} enviada`);
-    } else {
-      toast.error("No se pudo enviar la notificación");
-    }
+    toast.success("Sesi\u00f3n cerrada exitosamente");
   };
 
   const getThemeIcon = () => {
@@ -142,7 +122,7 @@ export function AppSidebar({ onAddTransaction, onConciliate }: AppSidebarProps =
           </SidebarMenuItem>
         </SidebarMenu>
       </SidebarHeader>
-      
+
       <SidebarContent>
         <SidebarGroup>
           <SidebarGroupLabel>Principal</SidebarGroupLabel>
@@ -165,7 +145,6 @@ export function AppSidebar({ onAddTransaction, onConciliate }: AppSidebarProps =
                         </div>
                         {!isMobile && item.shortcut && (
                           <div className="flex gap-0.5 opacity-50 group-data-[state=collapsed]:hidden">
-                            <Kbd className="text-[10px] px-1 py-0.5">{cmdKey}</Kbd>
                             <Kbd className="text-[10px] px-1 py-0.5">{item.shortcut}</Kbd>
                           </div>
                         )}
@@ -177,7 +156,7 @@ export function AppSidebar({ onAddTransaction, onConciliate }: AppSidebarProps =
             </SidebarMenu>
           </SidebarGroupContent>
         </SidebarGroup>
-        
+
         <SidebarGroup>
           <SidebarGroupLabel>Herramientas</SidebarGroupLabel>
           <SidebarGroupContent>
@@ -199,7 +178,6 @@ export function AppSidebar({ onAddTransaction, onConciliate }: AppSidebarProps =
                         </div>
                         {!isMobile && item.shortcut && (
                           <div className="flex gap-0.5 opacity-50 group-data-[state=collapsed]:hidden">
-                            <Kbd className="text-[10px] px-1 py-0.5">{cmdKey}</Kbd>
                             <Kbd className="text-[10px] px-1 py-0.5">{item.shortcut}</Kbd>
                           </div>
                         )}
@@ -213,7 +191,7 @@ export function AppSidebar({ onAddTransaction, onConciliate }: AppSidebarProps =
         </SidebarGroup>
 
         <SidebarGroup>
-          <SidebarGroupLabel>Acciones Rápidas</SidebarGroupLabel>
+          <SidebarGroupLabel>Acciones R\u00e1pidas</SidebarGroupLabel>
           <SidebarGroupContent>
             <SidebarMenu>
               <SidebarMenuItem>
@@ -222,8 +200,7 @@ export function AppSidebar({ onAddTransaction, onConciliate }: AppSidebarProps =
                   <span>Agregar Gasto</span>
                   {!isMobile && (
                     <div className="flex gap-0.5 opacity-50 ml-auto group-data-[state=collapsed]:hidden">
-                      <Kbd className="text-[10px] px-1 py-0.5">{cmdKey}</Kbd>
-                      <Kbd className="text-[10px] px-1 py-0.5">K</Kbd>
+                      <Kbd className="text-[10px] px-1 py-0.5">N</Kbd>
                     </div>
                   )}
                 </SidebarMenuButton>
@@ -234,8 +211,7 @@ export function AppSidebar({ onAddTransaction, onConciliate }: AppSidebarProps =
                   <span>Conciliar Balance</span>
                   {!isMobile && (
                     <div className="flex gap-0.5 opacity-50 ml-auto group-data-[state=collapsed]:hidden">
-                      <Kbd className="text-[10px] px-1 py-0.5">{cmdKey}</Kbd>
-                      <Kbd className="text-[10px] px-1 py-0.5">B</Kbd>
+                      <Kbd className="text-[10px] px-1 py-0.5">R</Kbd>
                     </div>
                   )}
                 </SidebarMenuButton>
@@ -244,7 +220,7 @@ export function AppSidebar({ onAddTransaction, onConciliate }: AppSidebarProps =
           </SidebarGroupContent>
         </SidebarGroup>
       </SidebarContent>
-      
+
       <SidebarFooter>
         <SidebarMenu>
           <SidebarMenuItem>
@@ -271,80 +247,34 @@ export function AppSidebar({ onAddTransaction, onConciliate }: AppSidebarProps =
                 sideOffset={4}
               >
                 {isSupported && (
-                  <>
-                    <DropdownMenuItem
-                      onClick={isSubscribed ? unsubscribe : subscribe}
-                      disabled={isLoading}
-                      className="gap-2 p-2 cursor-pointer"
-                    >
-                      {isSubscribed ? (
-                        <BellOff className="size-4" />
-                      ) : (
-                        <Bell className="size-4" />
-                      )}
-                      <div className="font-medium">
-                        {isLoading ? "Procesando..." : isSubscribed ? "Desactivar notificaciones" : "Activar notificaciones"}
-                      </div>
-                    </DropdownMenuItem>
-                    {isSubscribed && (
-                      <>
-                        <DropdownMenuItem
-                          onClick={() => handleTestNotification(
-                            NotificationTemplates.newTransaction(50000, 'Comida', 'Gasto'),
-                            'Nueva transacción'
-                          )}
-                          className="gap-2 p-2 cursor-pointer"
-                        >
-                          <DollarSign className="size-4" />
-                          <div className="font-medium">Nueva transacción</div>
-                        </DropdownMenuItem>
-                        <DropdownMenuItem
-                          onClick={() => handleTestNotification(
-                            NotificationTemplates.categoryLimitReached('Comida', 90),
-                            'Límite alcanzado'
-                          )}
-                          className="gap-2 p-2 cursor-pointer"
-                        >
-                          <TrendingUp className="size-4" />
-                          <div className="font-medium">Límite alcanzado</div>
-                        </DropdownMenuItem>
-                        <DropdownMenuItem
-                          onClick={() => handleTestNotification(
-                            NotificationTemplates.fintualSyncComplete(1500000),
-                            'Sync Fintual'
-                          )}
-                          className="gap-2 p-2 cursor-pointer"
-                        >
-                          <CheckCircle className="size-4" />
-                          <div className="font-medium">Sync Fintual</div>
-                        </DropdownMenuItem>
-                        <DropdownMenuItem
-                          onClick={() => handleTestNotification(
-                            NotificationTemplates.weeklyReport(500000, 300000),
-                            'Resumen semanal'
-                          )}
-                          className="gap-2 p-2 cursor-pointer"
-                        >
-                          <Calendar className="size-4" />
-                          <div className="font-medium">Resumen semanal</div>
-                        </DropdownMenuItem>
-                      </>
+                  <DropdownMenuItem
+                    onClick={isSubscribed ? unsubscribe : subscribe}
+                    disabled={isLoading}
+                    className="gap-2 p-2 cursor-pointer"
+                  >
+                    {isSubscribed ? (
+                      <BellOff className="size-4" />
+                    ) : (
+                      <Bell className="size-4" />
                     )}
-                  </>
+                    <div className="font-medium">
+                      {isLoading ? "Procesando..." : isSubscribed ? "Desactivar notificaciones" : "Activar notificaciones"}
+                    </div>
+                  </DropdownMenuItem>
                 )}
                 <DropdownMenuItem
                   onClick={handleLogout}
                   className="gap-2 p-2 text-destructive focus:text-destructive cursor-pointer"
                 >
                   <LogOut className="size-4" />
-                  <div className="font-medium">Cerrar sesión</div>
+                  <div className="font-medium">Cerrar sesi\u00f3n</div>
                 </DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>
           </SidebarMenuItem>
         </SidebarMenu>
       </SidebarFooter>
-      
+
       <SidebarRail />
     </Sidebar>
   );

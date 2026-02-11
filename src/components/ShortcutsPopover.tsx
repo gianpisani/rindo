@@ -1,6 +1,6 @@
-import { useState, useEffect, useMemo } from "react";
+import { useMemo } from "react";
 import { Kbd } from "@/components/ui/kbd";
-import { 
+import {
   Plus,
   Calculator,
   ArrowLeft,
@@ -8,64 +8,69 @@ import {
   Command,
   Home,
   Lightbulb,
+  EyeOff,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { APP_ROUTES } from "@/lib/routes-config";
 
 const isMac = typeof navigator !== 'undefined' && /Mac|iPhone|iPad|iPod/.test(navigator.userAgent);
-const cmdKey = isMac ? "⌘" : "Ctrl";
+const cmdKey = isMac ? "\u2318" : "Ctrl";
 
 interface ShortcutsPopoverProps {
   isVisible: boolean;
-  isFirstTime?: boolean;
   onClose?: () => void;
 }
 
 const useShortcuts = () => {
   return useMemo(() => [
     {
-      category: "Acciones Rápidas",
+      category: "Acciones R\u00e1pidas",
       color: "text-primary",
       items: [
         {
           keys: [cmdKey, "K"],
-          description: "Nueva transacción",
+          description: "Paleta de comandos",
+          icon: Command,
+        },
+        {
+          keys: ["N"],
+          description: "Nueva transacci\u00f3n",
           icon: Plus,
         },
         {
-          keys: [cmdKey, "B"],
+          keys: ["R"],
           description: "Conciliar balance",
           icon: Calculator,
         },
         {
-          keys: [cmdKey, "M"],
-          description: "Abrir menú de comandos",
-          icon: Command,
-        }
+          keys: ["P"],
+          description: "Toggle privacidad",
+          icon: EyeOff,
+        },
       ]
     },
     {
-      category: "Navegación",
+      category: "Navegaci\u00f3n",
       color: "text-primary",
       items: [
         {
-          keys: [cmdKey, "←"],
-          description: "Pestaña anterior",
+          keys: ["\u2190"],
+          description: "Pesta\u00f1a anterior",
           icon: ArrowLeft,
         },
         {
-          keys: [cmdKey, "→"],
-          description: "Pestaña siguiente",
+          keys: ["\u2192"],
+          description: "Pesta\u00f1a siguiente",
           icon: ArrowRight,
         },
       ]
     },
     {
-      category: "Ir a Sección",
+      category: "Ir a Secci\u00f3n",
       icon: Home,
       color: "text-primary",
       items: APP_ROUTES.filter(route => route.shortcut).map(route => ({
-        keys: [cmdKey, route.shortcut!],
+        keys: [route.shortcut!],
         description: route.title,
         icon: route.icon,
       }))
@@ -73,28 +78,17 @@ const useShortcuts = () => {
   ], []);
 };
 
-export function ShortcutsPopover({ isVisible, isFirstTime = false, onClose }: ShortcutsPopoverProps) {
+export function ShortcutsPopover({ isVisible, onClose }: ShortcutsPopoverProps) {
   const shortcuts = useShortcuts();
   return (
-    <>
-      {/* Flecha apuntando arriba - Solo primera vez */}
-      {isFirstTime && isVisible && (
-        <div
-          className="absolute top-8 left-1/2 -translate-x-1/2 animate-pulse"
-        >
-          <div className="w-0 h-0 border-l-[10px] border-r-[10px] border-b-[10px] border-l-transparent border-r-transparent border-b-primary drop-shadow-lg"></div>
-        </div>
+    <div
+      className={cn(
+        "absolute top-full right-0 mt-3 w-80 bg-card/95 backdrop-blur-xl border rounded-xl shadow-2xl overflow-hidden transition-all duration-500 ease-out z-50",
+        isVisible
+          ? "opacity-100 translate-y-0 pointer-events-auto animate-in slide-in-from-top-1 fade-in"
+          : "opacity-0 -translate-y-2 pointer-events-none"
       )}
-
-      {/* Popover simple con animación suave */}
-      <div
-        className={cn(
-          "absolute top-full right-0 mt-3 w-80 bg-card/95 backdrop-blur-xl border rounded-xl shadow-2xl overflow-hidden transition-all duration-500 ease-out z-50",
-          isVisible 
-            ? "opacity-100 translate-y-0 pointer-events-auto animate-in slide-in-from-top-1 fade-in" 
-            : "opacity-0 -translate-y-2 pointer-events-none"
-        )}
-      >
+    >
       <div className="p-4 space-y-4 max-h-[70vh] overflow-y-auto bg-background">
         <div className="flex items-center justify-between border-b border-border pb-3">
           <div className="flex items-center gap-2">
@@ -151,14 +145,11 @@ export function ShortcutsPopover({ isVisible, isFirstTime = false, onClose }: Sh
           <div className="flex items-center gap-2 p-2 bg-gradient-to-r from-primary/5 to-primary/10 rounded-lg">
             <Lightbulb className="h-4 w-4 text-muted-foreground" />
             <p className="text-[10px] text-muted-foreground leading-relaxed">
-              {isMac 
-                ? "Usa Command (⌘) + M para abrir el menú de comandos" 
-                : "Usa Ctrl + M para abrir el menú de comandos"}
+              Presiona <Kbd className="text-[9px] px-1 py-0">?</Kbd> para mostrar/ocultar este panel
             </p>
           </div>
         </div>
       </div>
-      </div>
-    </>
+    </div>
   );
 }
