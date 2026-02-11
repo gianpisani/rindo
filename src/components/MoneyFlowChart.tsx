@@ -4,6 +4,7 @@ import { useCategories } from "@/hooks/useCategories";
 import { startOfMonth, endOfMonth } from "date-fns";
 import { usePrivacyMode } from "@/hooks/usePrivacyMode";
 import { cn } from "@/lib/utils";
+import { ArrowRightLeft } from "lucide-react";
 
 export function MoneyFlowChart() {
   const { transactions } = useTransactions();
@@ -55,6 +56,7 @@ export function MoneyFlowChart() {
     return (
       <div className="h-[400px] flex items-center justify-center text-muted-foreground">
         <div className="text-center">
+          <ArrowRightLeft className="h-10 w-10 mx-auto mb-3 opacity-20" />
           <p className="text-sm">No hay transacciones este mes</p>
           <p className="text-xs mt-1">Agrega ingresos y gastos para ver el flujo</p>
         </div>

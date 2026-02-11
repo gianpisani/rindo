@@ -48,6 +48,7 @@ import {
   SelectValue,
 } from "./ui/select";
 import { LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer, Legend } from "recharts";
+import { CHART_COLORS } from "@/lib/chart-config";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "./ui/tabs";
 
 export function CategoryInsightsView() {
@@ -275,9 +276,9 @@ export function CategoryInsightsView() {
           <CardContent>
             <ResponsiveContainer width="100%" height={300}>
               <LineChart data={comparisonChartData}>
-                <XAxis dataKey="month" stroke="#94a3b8" fontSize={12} />
+                <XAxis dataKey="month" stroke={CHART_COLORS.mutedAxis} fontSize={12} />
                 <YAxis
-                  stroke="#94a3b8"
+                  stroke={CHART_COLORS.mutedAxis}
                   fontSize={12}
                   tickFormatter={(v) => formatCurrency(v)}
                 />

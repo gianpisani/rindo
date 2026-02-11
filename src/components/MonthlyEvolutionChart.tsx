@@ -1,3 +1,4 @@
+import { CHART_COLORS } from "@/lib/chart-config"
 import { useMemo, useState, useCallback } from 'react'
 import { 
   XAxis, 
@@ -31,11 +32,11 @@ interface MonthlyEvolutionChartProps {
 }
 
 const COLORS = {
-  Ingresos: "#10b981",
-  Gastos: "#e11d48",
-  Inversiones: "#0ea5e9",
-  Balance: "#f59e0b",
-}
+  get Ingresos() { return CHART_COLORS.income; },
+  get Gastos() { return CHART_COLORS.expense; },
+  get Inversiones() { return CHART_COLORS.investment; },
+  get Balance() { return CHART_COLORS.balance; },
+};
 
 const formatCurrencyFull = (value: number) => {
   return new Intl.NumberFormat("es-CL", {
@@ -307,22 +308,22 @@ export function MonthlyEvolutionChart({ data }: MonthlyEvolutionChartProps) {
 
           <CartesianGrid 
             strokeDasharray="3 3" 
-            stroke="#374151" 
+            stroke={CHART_COLORS.grid}
             opacity={0.2}
             vertical={false}
           />
           
-          <XAxis 
-            dataKey="month" 
-            stroke="#94a3b8" 
+          <XAxis
+            dataKey="month"
+            stroke={CHART_COLORS.mutedAxis}
             fontSize={11}
             tickLine={false}
             axisLine={false}
             tickMargin={8}
           />
           
-          <YAxis 
-            stroke="#94a3b8"
+          <YAxis
+            stroke={CHART_COLORS.mutedAxis}
             tickFormatter={formatCurrency} 
             fontSize={11}
             tickLine={false}
@@ -333,7 +334,7 @@ export function MonthlyEvolutionChart({ data }: MonthlyEvolutionChartProps) {
           
           <Tooltip 
             content={<CustomTooltip />}
-            cursor={{ stroke: '#94a3b8', strokeWidth: 1, strokeDasharray: '4 4' }}
+            cursor={{ stroke: CHART_COLORS.mutedAxis, strokeWidth: 1, strokeDasharray: '4 4' }}
           />
           
           <Legend 
@@ -435,7 +436,7 @@ export function MonthlyEvolutionChart({ data }: MonthlyEvolutionChartProps) {
               <Brush
                 dataKey="month"
                 height={30}
-                stroke="#3b82f6"
+                stroke={CHART_COLORS.income}
                 fill="transparent"
                 travellerWidth={8}
                 startIndex={zoomDomain?.start ?? 0}

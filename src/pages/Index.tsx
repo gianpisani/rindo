@@ -17,7 +17,7 @@ const Index = () => {
   const { openQuickAdd, openReconciliation } = useGlobalDrawers();
   const { isPrivacyMode } = usePrivacyMode();
 
-  const handleQuickAdd = (type: "Ingreso" | "Gasto" | "Inversi\u00f3n") => {
+  const handleQuickAdd = (type: "Ingreso" | "Gasto" | "Inversión") => {
     openQuickAdd(type);
   };
 
@@ -47,7 +47,7 @@ const Index = () => {
     .reduce((sum, t) => sum + Number(t.amount), 0);
 
   const currentInvestments = currentMonthTransactions
-    .filter((t) => t.type === "Inversi\u00f3n")
+    .filter((t) => t.type === "Inversión")
     .reduce((sum, t) => sum + Number(t.amount), 0);
 
   const lastMonthExpenses = lastMonthTransactions
@@ -61,7 +61,7 @@ const Index = () => {
   // Balance total real (todas las transacciones)
   const totalBalance = transactions.reduce((acc, t) => {
     if (t.type === "Ingreso") return acc + Number(t.amount);
-    if (t.type === "Gasto" || t.type === "Inversi\u00f3n") return acc - Number(t.amount);
+    if (t.type === "Gasto" || t.type === "Inversión") return acc - Number(t.amount);
     return acc;
   }, 0);
 
@@ -72,7 +72,7 @@ const Index = () => {
     ? ((currentIncome - lastMonthIncome) / lastMonthIncome) * 100
     : 0;
 
-  // \u00daltimas 5 transacciones
+  // Últimas 5 transacciones
   const recentTransactions = [...transactions]
     .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
     .slice(0, 5);
@@ -88,7 +88,7 @@ const Index = () => {
   const typeIcons = {
     Ingreso: TrendingUp,
     Gasto: TrendingDown,
-    Inversi\u00f3n: PiggyBank,
+    Inversión: PiggyBank,
   };
 
   return (
@@ -224,11 +224,11 @@ const Index = () => {
             <span className="text-sm font-semibold">Gasto</span>
           </Button>
           <Button
-            onClick={() => handleQuickAdd("Inversi\u00f3n")}
+            onClick={() => handleQuickAdd("Inversión")}
             className="h-20 md:h-24 flex-col gap-2 bg-blue hover:bg-blue/90 text-white shadow-lg"
           >
             <PiggyBank className="h-6 w-6" />
-            <span className="text-sm font-semibold">Inversi\u00f3n</span>
+            <span className="text-sm font-semibold">Inversión</span>
           </Button>
           <Button
             onClick={() => openReconciliation()}
@@ -258,8 +258,8 @@ const Index = () => {
             {recentTransactions.length === 0 ? (
               <div className="py-12 text-center text-muted-foreground">
                 <Receipt className="h-12 w-12 mx-auto mb-3 opacity-20" />
-                <p className="text-sm">No hay transacciones a\u00fan</p>
-                <p className="text-xs mt-1">Agrega tu primera transacci\u00f3n arriba</p>
+                <p className="text-sm">No hay transacciones aún</p>
+                <p className="text-xs mt-1">Agrega tu primera transacción arriba</p>
               </div>
             ) : (
               recentTransactions.map((transaction) => {
@@ -274,13 +274,13 @@ const Index = () => {
                         "p-2 rounded-full",
                         transaction.type === "Ingreso" && "bg-success/10",
                         transaction.type === "Gasto" && "bg-destructive/10",
-                        transaction.type === "Inversi\u00f3n" && "bg-blue/10"
+                        transaction.type === "Inversión" && "bg-blue/10"
                       )}>
                         <Icon className={cn(
                           "h-4 w-4",
                           transaction.type === "Ingreso" && "text-success",
                           transaction.type === "Gasto" && "text-destructive",
-                          transaction.type === "Inversi\u00f3n" && "text-blue"
+                          transaction.type === "Inversión" && "text-blue"
                         )} />
                       </div>
                       <div className="min-w-0 flex-1">
@@ -289,7 +289,7 @@ const Index = () => {
                         </p>
                         <p className={cn("text-xs text-muted-foreground", isPrivacyMode && "privacy-blur-light")}>
                           {format(new Date(transaction.date), "d MMM", { locale: es })}
-                          {transaction.detail && ` \u2022 ${transaction.detail}`}
+                          {transaction.detail && ` •${transaction.detail}`}
                         </p>
                       </div>
                     </div>
@@ -297,7 +297,7 @@ const Index = () => {
                       "text-sm font-semibold whitespace-nowrap ml-3",
                       transaction.type === "Ingreso" && "text-success",
                       transaction.type === "Gasto" && "text-destructive",
-                      transaction.type === "Inversi\u00f3n" && "text-blue",
+                      transaction.type === "Inversión" && "text-blue",
                       isPrivacyMode && "privacy-blur"
                     )}>
                       {formatCurrency(Number(transaction.amount))}

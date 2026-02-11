@@ -8,6 +8,7 @@ import { LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer, BarChart, 
 import { Separator } from "./ui/separator";
 import { ScrollArea } from "./ui/scroll-area";
 import { Alert, AlertDescription } from "./ui/alert";
+import { CHART_COLORS, CHART_TOOLTIP_STYLE } from "@/lib/chart-config";
 
 interface CategoryDetailModalProps {
   open: boolean;
@@ -257,21 +258,15 @@ export function CategoryDetailModal({
               <h4 className="text-sm font-semibold">Gastos por día de la semana</h4>
               <ResponsiveContainer width="100%" height={200}>
                 <BarChart data={dayOfWeekData}>
-                  <XAxis dataKey="day" fontSize={10} stroke="#94a3b8" />
-                  <YAxis fontSize={10} tickFormatter={(v) => `$${(v / 1000).toFixed(0)}k`} stroke="#94a3b8" />
-                  <Tooltip 
+                  <XAxis dataKey="day" fontSize={10} stroke={CHART_COLORS.mutedAxis} />
+                  <YAxis fontSize={10} tickFormatter={(v) => `$${(v / 1000).toFixed(0)}k`} stroke={CHART_COLORS.mutedAxis} />
+                  <Tooltip
                     formatter={(v: number) => formatCurrency(v)}
-                    contentStyle={{
-                      backgroundColor: "rgba(255, 255, 255, 0.98)",
-                      border: "1px solid #e2e8f0",
-                      borderRadius: "0.75rem",
-                      boxShadow: "0 10px 15px -3px rgb(0 0 0 / 0.1)",
-                      padding: "12px",
-                    }}
-                    labelStyle={{ color: "#0f172a", fontWeight: 600 }}
-                    itemStyle={{ color: "#e11d48", fontWeight: 600 }}
+                    contentStyle={CHART_TOOLTIP_STYLE}
+                    labelStyle={{ color: "var(--foreground)", fontWeight: 600 }}
+                    itemStyle={{ color: CHART_COLORS.expense, fontWeight: 600 }}
                   />
-                  <Bar dataKey="amount" fill="#e11d48" radius={[8, 8, 0, 0]} />
+                  <Bar dataKey="amount" fill={CHART_COLORS.expense} radius={[8, 8, 0, 0]} />
                 </BarChart>
               </ResponsiveContainer>
             </div>
@@ -282,21 +277,15 @@ export function CategoryDetailModal({
               <h4 className="text-sm font-semibold">Gastos por horario</h4>
               <ResponsiveContainer width="100%" height={200}>
                 <BarChart data={timeOfDayData}>
-                  <XAxis dataKey="time" fontSize={10} stroke="#94a3b8" />
-                  <YAxis fontSize={10} tickFormatter={(v) => `$${(v / 1000).toFixed(0)}k`} stroke="#94a3b8" />
-                  <Tooltip 
+                  <XAxis dataKey="time" fontSize={10} stroke={CHART_COLORS.mutedAxis} />
+                  <YAxis fontSize={10} tickFormatter={(v) => `$${(v / 1000).toFixed(0)}k`} stroke={CHART_COLORS.mutedAxis} />
+                  <Tooltip
                     formatter={(v: number) => formatCurrency(v)}
-                    contentStyle={{
-                      backgroundColor: "rgba(255, 255, 255, 0.98)",
-                      border: "1px solid #e2e8f0",
-                      borderRadius: "0.75rem",
-                      boxShadow: "0 10px 15px -3px rgb(0 0 0 / 0.1)",
-                      padding: "12px",
-                    }}
-                    labelStyle={{ color: "#0f172a", fontWeight: 600 }}
-                    itemStyle={{ color: "#e11d48", fontWeight: 600 }}
+                    contentStyle={CHART_TOOLTIP_STYLE}
+                    labelStyle={{ color: "var(--foreground)", fontWeight: 600 }}
+                    itemStyle={{ color: CHART_COLORS.expense, fontWeight: 600 }}
                   />
-                  <Bar dataKey="amount" fill="#e11d48" radius={[8, 8, 0, 0]} />
+                  <Bar dataKey="amount" fill={CHART_COLORS.expense} radius={[8, 8, 0, 0]} />
                 </BarChart>
               </ResponsiveContainer>
             </div>

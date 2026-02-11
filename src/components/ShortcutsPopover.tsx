@@ -14,7 +14,7 @@ import { cn } from "@/lib/utils";
 import { APP_ROUTES } from "@/lib/routes-config";
 
 const isMac = typeof navigator !== 'undefined' && /Mac|iPhone|iPad|iPod/.test(navigator.userAgent);
-const cmdKey = isMac ? "\u2318" : "Ctrl";
+const cmdKey = isMac ? "⌘" : "Ctrl";
 
 interface ShortcutsPopoverProps {
   isVisible: boolean;
@@ -24,7 +24,7 @@ interface ShortcutsPopoverProps {
 const useShortcuts = () => {
   return useMemo(() => [
     {
-      category: "Acciones R\u00e1pidas",
+      category: "Acciones Rápidas",
       color: "text-primary",
       items: [
         {
@@ -34,7 +34,7 @@ const useShortcuts = () => {
         },
         {
           keys: ["N"],
-          description: "Nueva transacci\u00f3n",
+          description: "Nueva transacción",
           icon: Plus,
         },
         {
@@ -50,23 +50,23 @@ const useShortcuts = () => {
       ]
     },
     {
-      category: "Navegaci\u00f3n",
+      category: "Navegación",
       color: "text-primary",
       items: [
         {
-          keys: ["\u2190"],
-          description: "Pesta\u00f1a anterior",
+          keys: ["←"],
+          description: "Pestaña anterior",
           icon: ArrowLeft,
         },
         {
-          keys: ["\u2192"],
-          description: "Pesta\u00f1a siguiente",
+          keys: ["→"],
+          description: "Pestaña siguiente",
           icon: ArrowRight,
         },
       ]
     },
     {
-      category: "Ir a Secci\u00f3n",
+      category: "Ir a Sección",
       icon: Home,
       color: "text-primary",
       items: APP_ROUTES.filter(route => route.shortcut).map(route => ({

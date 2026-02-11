@@ -380,7 +380,8 @@ function CategoryTable({ type, categories, onEdit, onDelete }: CategoryTableProp
       <CardContent className="p-0">
         {categories.length === 0 ? (
           <div className="text-center text-muted-foreground py-12">
-            No hay categorías de tipo {type}
+            <p className="text-sm">No hay categorías de tipo {type}</p>
+            <p className="text-xs mt-1">Crea una nueva categoría para empezar</p>
           </div>
         ) : (
           <div className="overflow-x-auto">

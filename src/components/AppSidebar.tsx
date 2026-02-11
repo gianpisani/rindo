@@ -58,7 +58,7 @@ export function AppSidebar({ onAddTransaction, onConciliate }: AppSidebarProps =
 
   const handleLogout = async () => {
     await supabase.auth.signOut();
-    toast.success("Sesi\u00f3n cerrada exitosamente");
+    toast.success("Sesión cerrada exitosamente");
   };
 
   const getThemeIcon = () => {
@@ -191,7 +191,7 @@ export function AppSidebar({ onAddTransaction, onConciliate }: AppSidebarProps =
         </SidebarGroup>
 
         <SidebarGroup>
-          <SidebarGroupLabel>Acciones R\u00e1pidas</SidebarGroupLabel>
+          <SidebarGroupLabel>Acciones Rápidas</SidebarGroupLabel>
           <SidebarGroupContent>
             <SidebarMenu>
               <SidebarMenuItem>
@@ -267,7 +267,7 @@ export function AppSidebar({ onAddTransaction, onConciliate }: AppSidebarProps =
                   className="gap-2 p-2 text-destructive focus:text-destructive cursor-pointer"
                 >
                   <LogOut className="size-4" />
-                  <div className="font-medium">Cerrar sesi\u00f3n</div>
+                  <div className="font-medium">Cerrar sesión</div>
                 </DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>

@@ -37,13 +37,13 @@ interface CommandBarProps {
 const typeIcons = {
   Ingreso: TrendingUp,
   Gasto: TrendingDown,
-  Inversi\u00f3n: PiggyBank,
+  Inversión: PiggyBank,
 };
 
 const typeColors = {
   Ingreso: "bg-success/10 text-success border-success/50",
   Gasto: "bg-destructive/10 text-destructive border-destructive/50",
-  Inversi\u00f3n: "bg-info/10 text-info border-info/50",
+  Inversión: "bg-info/10 text-info border-info/50",
 };
 
 export function CommandBar({ open, onOpenChange, onAddTransaction, onConciliate }: CommandBarProps) {
@@ -88,14 +88,14 @@ export function CommandBar({ open, onOpenChange, onAddTransaction, onConciliate 
       <CommandList>
         <CommandEmpty>
           {showTransactions
-            ? "No se encontraron transacciones con ese t\u00e9rmino"
+            ? "No se encontraron transacciones con ese término"
             : "Escribe para buscar transacciones..."}
         </CommandEmpty>
 
-        {/* Resultados de b\u00fasqueda de transacciones */}
+        {/* Resultados de búsqueda de transacciones */}
         {showTransactions && searchResults.length > 0 && (
           <>
-            <CommandGroup heading={`\uD83D\uDD0D Transacciones (${searchResults.length} encontradas)`}>
+            <CommandGroup heading={`🔍 Transacciones (${searchResults.length} encontradas)`}>
               {searchResults.slice(0, 8).map((transaction) => {
                 const TypeIcon = typeIcons[transaction.type];
                 return (
@@ -149,7 +149,7 @@ export function CommandBar({ open, onOpenChange, onAddTransaction, onConciliate 
           </>
         )}
 
-        {/* Acciones y navegaci\u00f3n (siempre visible) */}
+        {/* Acciones y navegación (siempre visible) */}
         <CommandGroup heading="Acciones">
           <CommandItem onSelect={() => runCommand(() => onAddTransaction?.())}>
             <Plus className="mr-2 h-4 w-4" />
@@ -170,7 +170,7 @@ export function CommandBar({ open, onOpenChange, onAddTransaction, onConciliate 
 
         <CommandSeparator />
 
-        <CommandGroup heading="Navegaci\u00f3n">
+        <CommandGroup heading="Navegación">
           {APP_ROUTES.map((route) => {
             const Icon = route.icon;
             return (

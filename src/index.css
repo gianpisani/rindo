@@ -66,14 +66,22 @@ Based on Blue, Cyan, Violet, Fuchsia palette
     --warning-foreground: 0 0% 0%;
     --info: 188 86% 43%;
     --info-foreground: 0 0% 100%;
-    
+
+    /* Semantic chart colors (hex for Recharts compatibility) */
+    --color-income: #10b981;
+    --color-expense: #e11d48;
+    --color-investment: #0ea5e9;
+    --color-balance: #f59e0b;
+    --color-muted-axis: #94a3b8;
+    --color-grid: #e2e8f0;
+
     /* Charts - OKLCH for elegance */
     --chart-1: oklch(0.81 0.117 11.638);
     --chart-2: oklch(0.645 0.246 16.439);
     --chart-3: oklch(0.586 0.253 17.585);
     --chart-4: oklch(0.514 0.222 16.935);
     --chart-5: oklch(0.455 0.188 13.697);
-    
+
     /* Sidebar */
     --sidebar: oklch(0.985 0 0);
     --sidebar-foreground: oklch(0.141 0.005 285.823);
@@ -113,14 +121,22 @@ Based on Blue, Cyan, Violet, Fuchsia palette
     --warning-foreground: 0 0% 0%;
     --info: 188 86% 50%;
     --info-foreground: 0 0% 100%;
-    
+
+    /* Semantic chart colors (hex for Recharts compatibility) */
+    --color-income: #34d399;
+    --color-expense: #fb7185;
+    --color-investment: #38bdf8;
+    --color-balance: #fbbf24;
+    --color-muted-axis: #64748b;
+    --color-grid: #374151;
+
     /* Charts - OKLCH for elegance */
     --chart-1: oklch(0.81 0.117 11.638);
     --chart-2: oklch(0.645 0.246 16.439);
     --chart-3: oklch(0.586 0.253 17.585);
     --chart-4: oklch(0.514 0.222 16.935);
     --chart-5: oklch(0.455 0.188 13.697);
-    
+
     /* Sidebar */
     --sidebar: oklch(0.21 0.006 285.885);
     --sidebar-foreground: oklch(0.985 0 0);

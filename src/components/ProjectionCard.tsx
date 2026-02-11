@@ -26,6 +26,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from ".
 import { Badge } from "./ui/badge";
 import { Card, CardContent } from "./ui/card";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "./ui/collapsible";
+import { CHART_COLORS } from "@/lib/chart-config";
 
 const CustomTooltip = ({ active, payload, label }: TooltipProps<number, string>) => {
   if (!active || !payload || !payload.length) return null;
@@ -49,10 +50,10 @@ const CustomTooltip = ({ active, payload, label }: TooltipProps<number, string>)
         {patrimonioReal !== undefined && (
           <div className="flex items-center justify-between gap-3">
             <div className="flex items-center gap-2">
-              <div className="w-3 h-3 rounded-full bg-[#e11d48]" />
+              <div className="w-3 h-3 rounded-full bg-destructive" />
               <span className="text-xs text-muted-foreground">Patrimonio Real:</span>
             </div>
-            <span className="text-sm font-bold text-[#e11d48]">
+            <span className="text-sm font-bold text-destructive">
               {formatCurrencyFull(patrimonioReal)}
             </span>
           </div>
@@ -60,10 +61,10 @@ const CustomTooltip = ({ active, payload, label }: TooltipProps<number, string>)
         {proyeccionConInteres !== undefined && (
           <div className="flex items-center justify-between gap-3">
             <div className="flex items-center gap-2">
-              <div className="w-3 h-3 rounded-full bg-[#e11d48] opacity-50" />
+              <div className="w-3 h-3 rounded-full bg-destructive opacity-50" />
               <span className="text-xs text-muted-foreground">Con interés:</span>
             </div>
-            <span className="text-sm font-bold text-[#e11d48]/70">
+            <span className="text-sm font-bold text-destructive/70">
               {formatCurrencyFull(proyeccionConInteres)}
             </span>
           </div>
@@ -71,10 +72,10 @@ const CustomTooltip = ({ active, payload, label }: TooltipProps<number, string>)
         {proyeccionSinInteres !== undefined && (
           <div className="flex items-center justify-between gap-3">
             <div className="flex items-center gap-2">
-              <div className="w-3 h-3 rounded-full bg-[#94a3b8]" />
+              <div className="w-3 h-3 rounded-full bg-muted-foreground" />
               <span className="text-xs text-muted-foreground">Sin interés:</span>
             </div>
-            <span className="text-sm font-bold text-[#94a3b8]">
+            <span className="text-sm font-bold text-muted-foreground">
               {formatCurrencyFull(proyeccionSinInteres)}
             </span>
           </div>
@@ -758,16 +759,16 @@ export default function ProjectionCard() {
         {/* Leyenda */}
         <div className="flex items-center gap-3 text-xs flex-wrap">
           <div className="flex items-center gap-1.5">
-            <div className="h-2.5 w-2.5 rounded-full bg-[#e11d48]" />
+            <div className="h-2.5 w-2.5 rounded-full bg-destructive" />
             <span className="text-muted-foreground font-medium">Real</span>
           </div>
           <div className="flex items-center gap-1.5">
-            <div className="h-2.5 w-2.5 rounded-full bg-[#e11d48] opacity-40" />
+            <div className="h-2.5 w-2.5 rounded-full bg-destructive opacity-40" />
             <span className="text-muted-foreground font-medium">Con interés</span>
           </div>
           {portfolioReturn > 0 && (
             <div className="flex items-center gap-1.5">
-              <div className="h-2.5 w-2.5 rounded-full bg-[#94a3b8]" />
+              <div className="h-2.5 w-2.5 rounded-full bg-muted-foreground" />
               <span className="text-muted-foreground font-medium">Sin interés</span>
             </div>
           )}
@@ -785,27 +786,27 @@ export default function ProjectionCard() {
             >
             <defs>
               <linearGradient id="gradientPatrimonio" x1="0" y1="0" x2="0" y2="1">
-                <stop offset="5%" stopColor="#e11d48" stopOpacity={0.3}/>
-                <stop offset="95%" stopColor="#e11d48" stopOpacity={0}/>
+                <stop offset="5%" stopColor={CHART_COLORS.expense} stopOpacity={0.3}/>
+                <stop offset="95%" stopColor={CHART_COLORS.expense} stopOpacity={0}/>
               </linearGradient>
               <linearGradient id="gradientProyeccion" x1="0" y1="0" x2="0" y2="1">
-                <stop offset="5%" stopColor="#e11d48" stopOpacity={0.15}/>
-                <stop offset="95%" stopColor="#e11d48" stopOpacity={0}/>
+                <stop offset="5%" stopColor={CHART_COLORS.expense} stopOpacity={0.15}/>
+                <stop offset="95%" stopColor={CHART_COLORS.expense} stopOpacity={0}/>
               </linearGradient>
             </defs>
 
-            <CartesianGrid 
-              strokeDasharray="3 3" 
-              stroke="#374151" 
+            <CartesianGrid
+              strokeDasharray="3 3"
+              stroke={CHART_COLORS.grid}
               opacity={0.2}
               vertical={false}
             />
             
-            <XAxis 
-              dataKey="index" 
+            <XAxis
+              dataKey="index"
               type="number"
               domain={[0, visibleChartData.length - 1]}
-              stroke="#94a3b8" 
+              stroke={CHART_COLORS.mutedAxis}
               fontSize={11}
               tickLine={false}
               axisLine={false}
@@ -816,8 +817,8 @@ export default function ProjectionCard() {
               }}
               ticks={visibleChartData.map(d => d.index)}
             />
-            <YAxis 
-              stroke="#94a3b8" 
+            <YAxis
+              stroke={CHART_COLORS.mutedAxis}
               tickFormatter={formatCurrency}
               fontSize={11}
               tickLine={false}
@@ -826,7 +827,7 @@ export default function ProjectionCard() {
             />
             <Tooltip 
               content={<CustomTooltip />} 
-              cursor={{ stroke: '#94a3b8', strokeWidth: 1, strokeDasharray: '4 4' }}
+              cursor={{ stroke: CHART_COLORS.mutedAxis, strokeWidth: 1, strokeDasharray: '4 4' }}
             />
             
             {/* Área para patrimonio real */}
@@ -856,11 +857,11 @@ export default function ProjectionCard() {
               <Line
                 type="monotone"
                 dataKey="proyeccionLineal"
-                stroke="#94a3b8"
+                stroke={CHART_COLORS.mutedAxis}
                 strokeWidth={2}
                 strokeDasharray="6 6"
                 dot={false}
-                activeDot={{ r: 5, fill: "#94a3b8", stroke: "#ffffff", strokeWidth: 2 }}
+                activeDot={{ r: 5, fill: CHART_COLORS.mutedAxis, stroke: "#ffffff", strokeWidth: 2 }}
                 connectNulls={false}
                 animationDuration={1200}
               />
@@ -870,12 +871,12 @@ export default function ProjectionCard() {
             <Line
               type="monotone"
               dataKey="proyeccion"
-              stroke="#e11d48"
+              stroke={CHART_COLORS.expense}
               strokeWidth={2.5}
               strokeDasharray="8 8"
               strokeOpacity={0.6}
               dot={false}
-              activeDot={{ r: 6, fill: "#e11d48", fillOpacity: 0.6, stroke: "#ffffff", strokeWidth: 2 }}
+              activeDot={{ r: 6, fill: CHART_COLORS.expense, fillOpacity: 0.6, stroke: "#ffffff", strokeWidth: 2 }}
               connectNulls={false}
               animationDuration={1000}
             />
@@ -884,10 +885,10 @@ export default function ProjectionCard() {
             <Line
               type="monotone"
               dataKey="patrimonio"
-              stroke="#e11d48"
+              stroke={CHART_COLORS.expense}
               strokeWidth={2.5}
-              dot={{ fill: "#e11d48", strokeWidth: 2, r: 4, stroke: "#ffffff" }}
-              activeDot={{ r: 6, fill: "#e11d48", stroke: "#ffffff", strokeWidth: 2 }}
+              dot={{ fill: CHART_COLORS.expense, strokeWidth: 2, r: 4, stroke: "#ffffff" }}
+              activeDot={{ r: 6, fill: CHART_COLORS.expense, stroke: "#ffffff", strokeWidth: 2 }}
               connectNulls={false}
               animationDuration={1000}
             />
@@ -898,7 +899,7 @@ export default function ProjectionCard() {
                 x1={Math.min(selectStartIdx, selectEndIdx)}
                 x2={Math.max(selectStartIdx, selectEndIdx)}
                 strokeOpacity={0.3}
-                fill="#6b7280"
+                fill={CHART_COLORS.mutedAxis}
                 fillOpacity={0.3}
               />
             )}
@@ -916,23 +917,23 @@ export default function ProjectionCard() {
                 <Area
                   type="monotone"
                   dataKey="patrimonio"
-                  stroke="#e11d48"
-                  fill="#e11d48"
+                  stroke={CHART_COLORS.expense}
+                  fill={CHART_COLORS.expense}
                   fillOpacity={0.2}
                   strokeWidth={1}
                 />
                 <Area
                   type="monotone"
                   dataKey="proyeccion"
-                  stroke="#e11d48"
-                  fill="#e11d48"
+                  stroke={CHART_COLORS.expense}
+                  fill={CHART_COLORS.expense}
                   fillOpacity={0.1}
                   strokeWidth={1}
                 />
                 <Brush
                   dataKey="month"
                   height={25}
-                  stroke="#3b82f6"
+                  stroke={CHART_COLORS.investment}
                   fill="transparent"
                   travellerWidth={8}
                   startIndex={zoomDomain?.start ?? 0}

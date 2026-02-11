@@ -389,7 +389,9 @@ export default function Fintual() {
         ) : (
           <GlassCard className="p-12">
             <div className="text-center text-muted-foreground">
-              <p>No hay inversiones registradas en Fintual</p>
+              <PiggyBank className="h-12 w-12 mx-auto mb-3 opacity-20" />
+              <p className="text-sm font-medium">No hay inversiones registradas en Fintual</p>
+              <p className="text-xs mt-1">Conecta tu cuenta para ver tus inversiones</p>
             </div>
           </GlassCard>
         )}

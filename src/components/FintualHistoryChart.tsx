@@ -17,7 +17,8 @@ import { format, parseISO } from 'date-fns'
 import { es } from 'date-fns/locale'
 import { usePrivacyMode } from '@/hooks/usePrivacyMode'
 import { cn } from '@/lib/utils'
-import { ZoomIn, ZoomOut, RotateCcw } from 'lucide-react'
+import { CHART_COLORS } from '@/lib/chart-config'
+import { ZoomIn, ZoomOut, RotateCcw, BarChart3 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 
 interface FintualInvestment {
@@ -390,7 +391,11 @@ export function FintualHistoryChart({ investments }: FintualHistoryChartProps) {
   if (chartData.length === 0) {
     return (
       <div className="flex items-center justify-center py-12 text-muted-foreground">
-        <p>No hay datos históricos suficientes para mostrar</p>
+        <div className="text-center">
+          <BarChart3 className="h-10 w-10 mx-auto mb-3 opacity-20" />
+          <p className="text-sm">No hay datos históricos suficientes para mostrar</p>
+          <p className="text-xs mt-1">Los datos aparecerán cuando haya más registros</p>
+        </div>
       </div>
     )
   }
@@ -480,25 +485,25 @@ export function FintualHistoryChart({ investments }: FintualHistoryChartProps) {
             ))}
           </defs>
 
-          <CartesianGrid 
-            strokeDasharray="3 3" 
-            stroke="#374151" 
+          <CartesianGrid
+            strokeDasharray="3 3"
+            stroke={CHART_COLORS.grid}
             opacity={0.2}
             vertical={false}
           />
           
-          <XAxis 
-            dataKey="displayDate" 
-            stroke="#94a3b8" 
+          <XAxis
+            dataKey="displayDate"
+            stroke={CHART_COLORS.mutedAxis}
             fontSize={11}
             tickLine={false}
             axisLine={false}
             tickMargin={8}
           />
           
-          <YAxis 
-            stroke="#94a3b8"
-            tickFormatter={formatCurrency} 
+          <YAxis
+            stroke={CHART_COLORS.mutedAxis}
+            tickFormatter={formatCurrency}
             fontSize={11}
             tickLine={false}
             axisLine={false}
@@ -513,7 +518,7 @@ export function FintualHistoryChart({ investments }: FintualHistoryChartProps) {
                 goalColors={goalColors}
               />
             }
-            cursor={{ stroke: '#94a3b8', strokeWidth: 1, strokeDasharray: '4 4' }}
+            cursor={{ stroke: CHART_COLORS.mutedAxis, strokeWidth: 1, strokeDasharray: '4 4' }}
           />
           
           {/* Área de ganancia con gradiente */}

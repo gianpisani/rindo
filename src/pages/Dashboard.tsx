@@ -16,11 +16,12 @@ import { format, startOfMonth, endOfMonth, eachMonthOfInterval, subMonths } from
 import { es } from "date-fns/locale";
 import { usePrivacyMode } from "@/hooks/usePrivacyMode";
 import { cn } from "@/lib/utils";
+import { CHART_COLORS } from "@/lib/chart-config";
 
 const COLORS = {
-  Ingreso: "#10b981",    // green-500
-  Gasto: "#e11d48",      // rose-600
-  Inversión: "#0ea5e9",  // sky-500
+  get Ingreso() { return CHART_COLORS.income; },
+  get Gasto() { return CHART_COLORS.expense; },
+  get "Inversión"() { return CHART_COLORS.investment; },
 };
 
 const CustomLineTooltip = ({ active, payload, label }: TooltipProps<number, string>) => {
@@ -51,7 +52,7 @@ const CustomLineTooltip = ({ active, payload, label }: TooltipProps<number, stri
 };
 
 export default function Dashboard() {
-  const { transactions } = useTransactions();
+  const { transactions, isLoading } = useTransactions();
   const { categories } = useCategories();
   const { isPrivacyMode } = usePrivacyMode();
   const { totals: cardTotals } = useCreditCards();
@@ -219,7 +220,7 @@ export default function Dashboard() {
 
         <DashboardGrid>
           {/* Balance Cards - Individual widgets */}
-          <DashboardWidget key="income" title="Ingresos" icon={TrendingUp}>
+          <DashboardWidget key="income" title="Ingresos" icon={TrendingUp} loading={isLoading}>
             <BalanceCard
               amount={totals.income}
               color="text-success"
@@ -227,7 +228,7 @@ export default function Dashboard() {
             />
           </DashboardWidget>
 
-          <DashboardWidget key="expenses" title="Gastos" icon={TrendingDown}>
+          <DashboardWidget key="expenses" title="Gastos" icon={TrendingDown} loading={isLoading}>
             <BalanceCard
               amount={totals.expenses}
               color="text-destructive"
@@ -235,7 +236,7 @@ export default function Dashboard() {
             />
           </DashboardWidget>
 
-          <DashboardWidget key="investments" title="Inversiones" icon={PiggyBank}>
+          <DashboardWidget key="investments" title="Inversiones" icon={PiggyBank} loading={isLoading}>
             <BalanceCard
               amount={totals.investments}
               color="text-blue"
@@ -243,7 +244,7 @@ export default function Dashboard() {
             />
           </DashboardWidget>
 
-          <DashboardWidget key="patrimony" title="Patrimonio" icon={DollarSign} tooltip="Ingresos - Gastos. Incluye inversiones como activo (tu riqueza neta)">
+          <DashboardWidget key="patrimony" title="Patrimonio" icon={DollarSign} tooltip="Ingresos - Gastos. Incluye inversiones como activo (tu riqueza neta)" loading={isLoading}>
             <BalanceCard
               amount={patrimonio}
               color={patrimonio >= 0 ? "text-success" : "text-destructive"}
@@ -251,7 +252,7 @@ export default function Dashboard() {
             />
           </DashboardWidget>
 
-          <DashboardWidget key="available" title="Disponible" icon={Wallet} tooltip="Ingresos - Gastos - Inversiones. Lo que tienes libre para gastar">
+          <DashboardWidget key="available" title="Disponible" icon={Wallet} tooltip="Ingresos - Gastos - Inversiones. Lo que tienes libre para gastar" loading={isLoading}>
             <BalanceCard
               amount={disponible}
               color={disponible >= 0 ? "text-success" : "text-destructive"}
@@ -293,18 +294,18 @@ export default function Dashboard() {
           <DashboardWidget key="expensesChart" title="Gastos por Categoría">
             <ResponsiveContainer width="100%" height="100%" minHeight={300}>
                 <BarChart data={expensesByCategory} layout="vertical" className={cn(isPrivacyMode && "privacy-blur")}>
-                  <XAxis 
-                    type="number" 
-                    stroke="#94a3b8" 
+                  <XAxis
+                    type="number"
+                    stroke={CHART_COLORS.mutedAxis}
                     tickFormatter={formatCurrency} 
                     fontSize={12}
                     tickLine={false}
                     axisLine={false}
                   />
-                  <YAxis 
-                    dataKey="name" 
-                    type="category" 
-                    stroke="#94a3b8" 
+                  <YAxis
+                    dataKey="name"
+                    type="category"
+                    stroke={CHART_COLORS.mutedAxis}
                     width={120} 
                     fontSize={12}
                     tickLine={false}
