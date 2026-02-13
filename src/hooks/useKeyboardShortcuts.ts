@@ -7,11 +7,13 @@ import { useGlobalDrawers } from "@/hooks/useGlobalDrawers";
 interface UseKeyboardShortcutsOptions {
   onToggleCommandBar: () => void;
   onToggleShortcutsPopover: () => void;
+  onToggleWhisper: () => void;
 }
 
 export function useKeyboardShortcuts({
   onToggleCommandBar,
   onToggleShortcutsPopover,
+  onToggleWhisper,
 }: UseKeyboardShortcutsOptions) {
   const navigate = useNavigate();
   const location = useLocation();
@@ -53,6 +55,12 @@ export function useKeyboardShortcuts({
         case "R":
           e.preventDefault();
           openReconciliation();
+          break;
+
+        case "w":
+        case "W":
+          e.preventDefault();
+          onToggleWhisper();
           break;
 
         case "p":
@@ -106,6 +114,7 @@ export function useKeyboardShortcuts({
     maxShortcut,
     onToggleCommandBar,
     onToggleShortcutsPopover,
+    onToggleWhisper,
     togglePrivacyMode,
     openQuickAdd,
     openReconciliation,

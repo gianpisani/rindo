@@ -464,6 +464,46 @@ Based on Indigo, Blue, Cyan palette
 
 
 
+/* ─── Atmospheric UI - Subliminal mood system ─── */
+:root {
+  --atmosphere-hue: 0;
+  --atmosphere-saturation: 1;
+  --atmosphere-warmth: 0.5;
+  --atmosphere-softness: 0;
+}
+
+.atmospheric-glow {
+  position: fixed;
+  top: -50%;
+  left: -50%;
+  width: 200%;
+  height: 200%;
+  pointer-events: none;
+  z-index: 0;
+  opacity: 0;
+  transition: opacity 3s ease, background 3s ease;
+  background: radial-gradient(
+    ellipse at 30% 20%,
+    oklch(0.95 0.015 80) 0%,
+    transparent 50%
+  );
+}
+
+.atmospheric-glow.active {
+  opacity: calc(var(--atmosphere-warmth) * 0.04);
+}
+
+.dark .atmospheric-glow.active {
+  opacity: calc(var(--atmosphere-warmth) * 0.06);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .atmospheric-glow {
+    transition: none;
+    opacity: 0 !important;
+  }
+}
+
 @layer base {
   * {
     @apply border-border;
