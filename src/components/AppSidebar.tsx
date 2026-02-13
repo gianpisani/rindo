@@ -1,7 +1,6 @@
 import {
   ChevronsUpDown,
   LogOut,
-  User2,
   Eye,
   EyeOff,
   Moon,
@@ -14,11 +13,13 @@ import {
   MessageSquare,
 } from "lucide-react";
 import { Link, useLocation } from "react-router-dom";
+import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { usePrivacyMode } from "@/hooks/usePrivacyMode";
 import { usePushNotifications } from "@/hooks/usePushNotifications";
 import { useTheme } from "next-themes";
+import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import {
   Sidebar,
   SidebarContent,
@@ -36,6 +37,8 @@ import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Kbd } from "@/components/ui/kbd";
@@ -54,6 +57,18 @@ export function AppSidebar({ onAddTransaction, onConciliate, onWhisper }: AppSid
   const { isSupported, isSubscribed, isLoading, subscribe, unsubscribe } = usePushNotifications();
   const { theme, setTheme } = useTheme();
   const isMobile = useIsMobile();
+
+  const [userEmail, setUserEmail] = useState<string | null>(null);
+
+  useEffect(() => {
+    supabase.auth.getUser().then(({ data }) => {
+      setUserEmail(data.user?.email ?? null);
+    });
+  }, []);
+
+  const userInitials = userEmail
+    ? userEmail.slice(0, 2).toUpperCase()
+    : "U";
 
   const mainNavItems = getMainRoutes();
   const secondaryNavItems = getToolRoutes();
@@ -243,44 +258,65 @@ export function AppSidebar({ onAddTransaction, onConciliate, onWhisper }: AppSid
                   size="lg"
                   className="data-[state=open]:bg-sidebar-accent data-[state=open]:text-sidebar-accent-foreground sm:mb-0 mb-4"
                 >
-                  <div className="flex aspect-square size-8 items-center justify-center rounded-lg bg-sidebar-primary text-sidebar-primary-foreground">
-                    <User2 className="size-4" />
-                  </div>
+                  <Avatar className="size-8 rounded-lg">
+                    <AvatarFallback className="rounded-lg bg-primary/10 text-primary text-xs font-semibold">
+                      {userInitials}
+                    </AvatarFallback>
+                  </Avatar>
                   <div className="grid flex-1 text-left text-sm leading-tight">
                     <span className="truncate font-semibold">Mi Cuenta</span>
-                    <span className="truncate text-xs text-sidebar-foreground/70">Ver opciones</span>
+                    <span className="truncate text-xs text-muted-foreground">
+                      {userEmail ?? "Cargando..."}
+                    </span>
                   </div>
-                  <ChevronsUpDown className="ml-auto size-4" />
+                  <ChevronsUpDown className="ml-auto size-4 text-muted-foreground/50" />
                 </SidebarMenuButton>
               </DropdownMenuTrigger>
               <DropdownMenuContent
-                className="w-[--radix-dropdown-menu-trigger-width] min-w-56 rounded-lg"
-                side="bottom"
+                className="w-[--radix-dropdown-menu-trigger-width] min-w-56 rounded-xl"
+                side="top"
                 align="end"
                 sideOffset={4}
               >
-                {isSupported && (
-                  <DropdownMenuItem
-                    onClick={isSubscribed ? unsubscribe : subscribe}
-                    disabled={isLoading}
-                    className="gap-2 p-2 cursor-pointer"
-                  >
-                    {isSubscribed ? (
-                      <BellOff className="size-4" />
-                    ) : (
-                      <Bell className="size-4" />
-                    )}
-                    <div className="font-medium">
-                      {isLoading ? "Procesando..." : isSubscribed ? "Desactivar notificaciones" : "Activar notificaciones"}
+                <DropdownMenuLabel className="p-0 font-normal">
+                  <div className="flex items-center gap-3 px-3 py-3">
+                    <Avatar className="size-9 rounded-lg">
+                      <AvatarFallback className="rounded-lg bg-primary/10 text-primary text-sm font-semibold">
+                        {userInitials}
+                      </AvatarFallback>
+                    </Avatar>
+                    <div className="grid flex-1 text-left text-sm leading-tight">
+                      <span className="truncate font-semibold">Mi Cuenta</span>
+                      <span className="truncate text-xs text-muted-foreground">
+                        {userEmail ?? ""}
+                      </span>
                     </div>
-                  </DropdownMenuItem>
+                  </div>
+                </DropdownMenuLabel>
+                <DropdownMenuSeparator />
+                {isSupported && (
+                  <>
+                    <DropdownMenuItem
+                      onClick={isSubscribed ? unsubscribe : subscribe}
+                      disabled={isLoading}
+                      className="gap-2 px-3 py-2 cursor-pointer"
+                    >
+                      {isSubscribed ? (
+                        <BellOff className="size-4 text-muted-foreground" />
+                      ) : (
+                        <Bell className="size-4 text-muted-foreground" />
+                      )}
+                      {isLoading ? "Procesando..." : isSubscribed ? "Desactivar notificaciones" : "Activar notificaciones"}
+                    </DropdownMenuItem>
+                    <DropdownMenuSeparator />
+                  </>
                 )}
                 <DropdownMenuItem
                   onClick={handleLogout}
-                  className="gap-2 p-2 text-destructive focus:text-destructive cursor-pointer"
+                  className="gap-2 px-3 py-2 text-destructive focus:text-destructive cursor-pointer"
                 >
                   <LogOut className="size-4" />
-                  <div className="font-medium">Cerrar sesión</div>
+                  Cerrar sesión
                 </DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>
