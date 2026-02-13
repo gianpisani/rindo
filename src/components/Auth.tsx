@@ -1,29 +1,56 @@
-import { useState, useEffect, useMemo, memo } from "react";
+import { useState, useEffect, useMemo, useRef, useCallback, memo } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "./ui/button";
 import { Input } from "./ui/input";
 import { Label } from "./ui/label";
-import { Card } from "./ui/card";
 import { toast } from "sonner";
 import {
-  BanknotesIcon,
-  CheckBadgeIcon,
-  CursorArrowRaysIcon,
-  FaceSmileIcon,
   EnvelopeIcon,
   PaperAirplaneIcon,
   SparklesIcon,
-  CheckCircleIcon
+  CheckCircleIcon,
 } from "@heroicons/react/24/outline";
-import { CommandIcon } from "lucide-react";
 import Particles, { initParticlesEngine } from "@tsparticles/react";
 import { loadLinksPreset } from "@tsparticles/preset-links";
 import type { Engine } from "@tsparticles/engine";
+import { AnimatePresence, motion } from "framer-motion";
 
-// Memoizar las partículas para evitar re-renders
+const EMAIL_DOMAINS = [
+  "gmail.com",
+  "hotmail.com",
+  "outlook.com",
+  "icloud.com",
+  "yahoo.com",
+  "live.com",
+];
+
+function getDomainSuggestion(email: string): string | null {
+  const atIndex = email.indexOf("@");
+  if (atIndex === -1 || atIndex === 0) return null;
+  const partial = email.slice(atIndex + 1);
+  if (!partial) return EMAIL_DOMAINS[0]; // default: gmail.com
+  const match = EMAIL_DOMAINS.find((d) => d.startsWith(partial.toLowerCase()));
+  if (match && match !== partial.toLowerCase()) return match;
+  return null;
+}
+
+function getVisibleDomains(email: string): string[] {
+  const atIndex = email.indexOf("@");
+  if (atIndex === -1 || atIndex === 0) return [];
+  const partial = email.slice(atIndex + 1).toLowerCase();
+  if (!partial) return EMAIL_DOMAINS.slice(0, 4);
+  return EMAIL_DOMAINS.filter((d) => d.startsWith(partial) && d !== partial).slice(0, 4);
+}
+
 const MemoizedParticles = memo(({ options }: { options: any }) => (
   <Particles className="absolute inset-0" options={options} />
 ));
+
+const formVariants = {
+  enter: { opacity: 0, y: 20 },
+  center: { opacity: 1, y: 0 },
+  exit: { opacity: 0, y: -20 },
+};
 
 export default function Auth() {
   const [isLogin, setIsLogin] = useState(true);
@@ -32,7 +59,8 @@ export default function Auth() {
   const [loading, setLoading] = useState(false);
   const [particlesInit, setParticlesInit] = useState(false);
   const [emailSent, setEmailSent] = useState(false);
-  const [animationStage, setAnimationStage] = useState(0); // 0: idle, 1: sending, 2: sent, 3: done
+  const [animationStage, setAnimationStage] = useState(0);
+  const emailInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     initParticlesEngine(async (engine: Engine) => {
@@ -45,35 +73,20 @@ export default function Auth() {
   const particlesOptions = useMemo(
     () => ({
       preset: "links",
-      background: {
-        color: {
-          value: "transparent",
-        },
-      },
+      background: { color: { value: "transparent" } },
       particles: {
-        color: {
-          value: "#4f46e5",
-        },
+        color: { value: "#4f46e5" },
         links: {
           color: "#4f46e5",
-          distance: 150,
+          distance: 180,
           enable: true,
-          opacity: 0.3,
-          width: 1,
+          opacity: 0.15,
+          width: 0.8,
         },
-        move: {
-          enable: true,
-          speed: 1,
-        },
-        number: {
-          value: 80,
-        },
-        opacity: {
-          value: 0.5,
-        },
-        size: {
-          value: { min: 1, max: 3 },
-        },
+        move: { enable: true, speed: 0.4 },
+        number: { value: 40 },
+        opacity: { value: 0.25 },
+        size: { value: { min: 0.8, max: 2 } },
       },
     }),
     []
@@ -81,7 +94,6 @@ export default function Auth() {
 
   useEffect(() => {
     if (emailSent) {
-      // Animation sequence
       setAnimationStage(1);
       setTimeout(() => setAnimationStage(2), 1000);
       setTimeout(() => setAnimationStage(3), 2500);
@@ -94,19 +106,12 @@ export default function Auth() {
 
     try {
       if (isLogin) {
-        const { error } = await supabase.auth.signInWithPassword({
-          email,
-          password,
-        });
+        const { error } = await supabase.auth.signInWithPassword({ email, password });
         if (error) throw error;
         toast.success("Has iniciado sesión correctamente");
       } else {
-        const { error } = await supabase.auth.signUp({
-          email,
-          password,
-        });
+        const { error } = await supabase.auth.signUp({ email, password });
         if (error) throw error;
-        // Trigger email sent animation instead of toast
         setEmailSent(true);
       }
     } catch (error) {
@@ -115,146 +120,191 @@ export default function Auth() {
     }
   };
 
+  const domainSuggestion = getDomainSuggestion(email);
+  const visibleDomains = getVisibleDomains(email);
+  const showDomainUI = email.includes("@") && email.indexOf("@") > 0;
+
+  const acceptSuggestion = useCallback(() => {
+    if (!domainSuggestion) return;
+    const atIndex = email.indexOf("@");
+    setEmail(email.slice(0, atIndex + 1) + domainSuggestion);
+  }, [email, domainSuggestion]);
+
+  const handleEmailKeyDown = useCallback(
+    (e: React.KeyboardEvent<HTMLInputElement>) => {
+      if ((e.key === "Tab" || e.key === "ArrowRight") && domainSuggestion && showDomainUI) {
+        e.preventDefault();
+        acceptSuggestion();
+      }
+    },
+    [domainSuggestion, showDomainUI, acceptSuggestion]
+  );
+
+  const handleDomainChipClick = useCallback(
+    (domain: string) => {
+      const atIndex = email.indexOf("@");
+      setEmail(email.slice(0, atIndex + 1) + domain);
+      // Focus password next
+      const pwInput = document.getElementById("password") as HTMLInputElement | null;
+      pwInput?.focus();
+    },
+    [email]
+  );
+
+  // Ghost text for desktop: the part the user hasn't typed yet
+  const ghostText = useMemo(() => {
+    if (!showDomainUI || !domainSuggestion) return "";
+    const partial = email.slice(email.indexOf("@") + 1);
+    return domainSuggestion.slice(partial.length);
+  }, [email, showDomainUI, domainSuggestion]);
+
   return (
-    <div className="min-h-screen bg-sidebar flex flex-col lg:flex-row relative overflow-hidden">
-      {/* tsParticles Background - Mobile (full screen) */}
-      {particlesInit && (
-        <div className=" absolute inset-0 pointer-events-none">
-          <MemoizedParticles options={particlesOptions} />
-        </div>
-      )}
-      
-      {/* Left Panel - Brand & Value Proposition (Hidden on mobile) */}
-      <div className="hidden lg:flex lg:flex-1 bg-sidebar p-12 flex-col justify-between relative overflow-hidden">
-        {/* tsParticles Background */}
-        {particlesInit && <MemoizedParticles options={particlesOptions} />}
-
-        <div className="relative z-10">
-          {/* Logo */}
-          <div className="flex items-center gap-3 mb-16">
-            <div className="flex items-center gap-3">
-              <img src="/icon-512x512-removebg-preview.png" alt="Rindo" className="size-12 rounded-full" />
-              <div className="flex flex-col">
-                <h1 className="text-3xl font-bold text-sidebar-foreground">
-                  Rindo<span className="text-primary">.</span>
-                </h1>
-                <p className="text-xs text-sidebar-foreground/70 uppercase tracking-widest">Finanzas Personales</p>
-              </div>
-            </div>
+    <div className="min-h-screen bg-[#0a0a0f] flex flex-col lg:flex-row relative overflow-hidden">
+      {/* Left Panel - Brand (Desktop) */}
+      <div className="hidden lg:flex lg:flex-1 flex-col justify-center items-center relative overflow-hidden">
+        {/* Particles */}
+        {particlesInit && (
+          <div className="absolute inset-0 pointer-events-none opacity-60">
+            <MemoizedParticles options={particlesOptions} />
           </div>
+        )}
 
-          {/* Value Props */}
-          <div className="space-y-8">
-            <div className="flex gap-4">
-              <div className="p-3 rounded-xl bg-primary/10 border border-primary/20 h-fit">
-                <CommandIcon className="h-6 w-6 text-primary" />
-              </div>
-              <div>
-                <h3 className="text-sidebar-foreground font-semibold mb-1">Atajos de teclado</h3>
-                <p className="text-sidebar-foreground/70 text-sm">Cmd+K para todo. Cero fricción.</p>
-              </div>
-            </div>
-            <div className="flex gap-4">
-              <div className="p-3 rounded-xl bg-primary/10 border border-primary/20 h-fit">
-                <BanknotesIcon className="h-6 w-6 text-primary" />
-              </div>
-              <div>
-                <h3 className="text-sidebar-foreground font-semibold mb-1">Análisis en tiempo real</h3>
-                <p className="text-sidebar-foreground/70 text-sm">Proyecciones automáticas basadas en tus patrones de gasto</p>
-              </div>
-            </div>
+        {/* Gradient overlay for depth */}
+        <div className="absolute inset-0 bg-gradient-to-br from-[#0a0a0f] via-[#0d0d1a] to-[#0a0a0f]" />
 
-            <div className="flex gap-4">
-              <div className="p-3 rounded-xl bg-primary/10 border border-primary/20 h-fit">
-                <CheckBadgeIcon className="h-6 w-6 text-primary" />
-              </div>
-              <div>
-                <h3 className="text-sidebar-foreground font-semibold mb-1">Reconciliación bancaria</h3>
-                <p className="text-sidebar-foreground/70 text-sm">Compara tus transacciones con extractos reales</p>
-              </div>
-            </div>
-
-            <div className="flex gap-4">
-              <div className="p-3 rounded-xl bg-primary/10 border border-primary/20 h-fit">
-                <CursorArrowRaysIcon className="h-6 w-6 text-primary" />
-              </div>
-              <div>
-                <h3 className="text-sidebar-foreground font-semibold mb-1">Categorización inteligente</h3>
-                <p className="text-sidebar-foreground/70 text-sm">ML que aprende de tus hábitos. Lo configurás una vez y listo.</p>
-              </div>
-            </div>
-
-            <div className="flex gap-4">
-              <div className="p-3 rounded-xl bg-primary/10 border border-primary/20 h-fit">
-                <img src="/isotipo-fintual.png" alt="Fintual" className="h-6 w-6" />
-              </div>
-              <div>
-                <h3 className="text-sidebar-foreground font-semibold mb-1">Integración con Fintual</h3>
-                <p className="text-sidebar-foreground/70 text-sm">Sincroniza tus inversiones y ten todo centralizado</p>
-              </div>
-            </div>
+        <div className="relative z-10 text-center space-y-6 px-12">
+          <img
+            src="/icon-512x512-removebg-preview.png"
+            alt="Rindo"
+            className="size-20 rounded-full mx-auto"
+          />
+          <div>
+            <h1 className="text-5xl font-bold text-white tracking-tight">
+              Rindo<span className="text-primary">.</span>
+            </h1>
+            <p className="text-lg text-white/40 mt-3 font-light">
+              Tus finanzas. Sin ruido.
+            </p>
           </div>
-        </div>
-
-        <div className="relative z-10">
-          <p className="text-muted-foreground text-sm">
-            Hecho para trackear tus finanzas
-          </p>
         </div>
       </div>
 
       {/* Right Panel - Auth Form */}
-      <div className="flex-1 flex items-center justify-center p-6 lg:p-12 bg-background">
-        <div className="w-full max-w-md space-y-8">
+      <div className="flex-1 flex items-center justify-center p-6 lg:p-12 bg-[#0e0e16] relative">
+        {/* Mobile particles */}
+        {particlesInit && (
+          <div className="lg:hidden absolute inset-0 pointer-events-none opacity-40">
+            <MemoizedParticles options={particlesOptions} />
+          </div>
+        )}
+
+        {/* Subtle border left on desktop */}
+        <div className="hidden lg:block absolute left-0 top-[15%] bottom-[15%] w-px bg-gradient-to-b from-transparent via-primary/20 to-transparent" />
+
+        <div className="w-full max-w-sm relative z-10 space-y-8">
           {/* Mobile Logo */}
-          <div className="lg:hidden text-left space-y-4 mb-8">
-            <div className="flex items-center justify-center gap-3">
-              <img src="/icon-512x512-removebg-preview.png" alt="Rindo" className="size-12 rounded-full" />
-              <div className="flex flex-col">
-                <h1 className="text-3xl font-bold">
-                  Rindo<span className="text-primary">.</span>
-                </h1>
-                <p className="text-xs text-muted-foreground uppercase tracking-widest mt-1">
-                  Finanzas Personales
-                </p>
-              </div>
+          <div className="lg:hidden flex flex-col items-center gap-3 mb-4">
+            <img
+              src="/icon-512x512-removebg-preview.png"
+              alt="Rindo"
+              className="size-14 rounded-full"
+            />
+            <div className="text-center">
+              <h1 className="text-3xl font-bold text-white">
+                Rindo<span className="text-primary">.</span>
+              </h1>
+              <p className="text-xs text-white/40 mt-1 font-light">
+                Tus finanzas. Sin ruido.
+              </p>
             </div>
           </div>
 
-          {/* Header */}
-          <div className="text-center lg:text-left space-y-2">
-            <h2 className="text-3xl lg:text-4xl font-bold tracking-tight">
-              {isLogin ? "Bienvenido de vuelta" : "Empecemos"}
-            </h2>
-            <p className="text-muted-foreground">
-              {isLogin
-                ? "A ver cómo va la cosa"
-                : "Para que no andes volando bajo"}
-            </p>
-          </div>
+          {/* Animated header */}
+          <AnimatePresence mode="wait">
+            {!emailSent && (
+              <motion.div
+                key={isLogin ? "login-header" : "signup-header"}
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -10 }}
+                transition={{ duration: 0.25 }}
+                className="space-y-1"
+              >
+                <h2 className="text-2xl font-semibold text-white tracking-tight">
+                  {isLogin ? "Bienvenido" : "Crear cuenta"}
+                </h2>
+                <p className="text-sm text-white/40">
+                  {isLogin ? "Ingresá para continuar" : "Empecemos en segundos"}
+                </p>
+              </motion.div>
+            )}
+          </AnimatePresence>
 
-          {/* Form */}
-          <Card className="p-6 lg:p-8 relative overflow-hidden">
+          {/* Form / Email Sent */}
+          <AnimatePresence mode="wait">
             {!emailSent ? (
-              <form onSubmit={handleAuth} className="space-y-5">
+              <motion.form
+                key={isLogin ? "login" : "signup"}
+                variants={formVariants}
+                initial="enter"
+                animate="center"
+                exit="exit"
+                transition={{ duration: 0.3, ease: "easeInOut" }}
+                onSubmit={handleAuth}
+                className="space-y-5"
+              >
+                {/* Email field with autocomplete */}
                 <div className="space-y-2">
-                  <Label htmlFor="email" className="text-sm font-medium">
+                  <Label htmlFor="email" className="text-sm font-medium text-white/70">
                     Correo electrónico
                   </Label>
-                  <Input
-                    id="email"
-                    type="email"
-                    placeholder="tu@email.com"
-                    value={email}
-                    onChange={(e) => setEmail(e.target.value)}
-                    className="h-11 transition-all"
-                    required
-                    autoComplete="email"
-                  />
+                  <div className="relative">
+                    <Input
+                      ref={emailInputRef}
+                      id="email"
+                      type="email"
+                      placeholder="tu@email.com"
+                      value={email}
+                      onChange={(e) => setEmail(e.target.value)}
+                      onKeyDown={handleEmailKeyDown}
+                      className="h-11 bg-white/5 border-white/10 text-white placeholder:text-white/20 focus-visible:ring-primary/50 focus-visible:border-primary/30 transition-all"
+                      required
+                      autoComplete="email"
+                    />
+                    {/* Ghost suggestion (desktop) */}
+                    {showDomainUI && ghostText && (
+                      <div className="hidden lg:flex absolute inset-0 pointer-events-none items-center px-3">
+                        <span className="text-transparent text-sm">{email}</span>
+                        <span className="text-white/20 text-sm">{ghostText}</span>
+                      </div>
+                    )}
+                  </div>
+                  {/* Domain hint (desktop) */}
+                  {showDomainUI && ghostText && (
+                    <p className="hidden lg:block text-xs text-white/25 mt-1">
+                      Tab para completar
+                    </p>
+                  )}
+                  {/* Domain chips (mobile) */}
+                  {showDomainUI && visibleDomains.length > 0 && (
+                    <div className="lg:hidden flex flex-wrap gap-1.5 mt-2">
+                      {visibleDomains.map((domain) => (
+                        <button
+                          key={domain}
+                          type="button"
+                          onClick={() => handleDomainChipClick(domain)}
+                          className="px-2.5 py-1 text-xs rounded-full bg-white/5 border border-white/10 text-white/50 hover:text-white/80 hover:border-primary/30 transition-colors"
+                        >
+                          @{domain}
+                        </button>
+                      ))}
+                    </div>
+                  )}
                 </div>
 
+                {/* Password field */}
                 <div className="space-y-2">
-                  <Label htmlFor="password" className="text-sm font-medium">
+                  <Label htmlFor="password" className="text-sm font-medium text-white/70">
                     Contraseña
                   </Label>
                   <Input
@@ -263,108 +313,136 @@ export default function Auth() {
                     placeholder="••••••••"
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
-                    className="h-11 transition-all"
+                    className="h-11 bg-white/5 border-white/10 text-white placeholder:text-white/20 focus-visible:ring-primary/50 focus-visible:border-primary/30 transition-all"
                     required
                     autoComplete={isLogin ? "current-password" : "new-password"}
                     minLength={6}
                   />
                   {!isLogin && (
-                    <p className="text-xs text-muted-foreground">
-                      Mínimo 6 caracteres
-                    </p>
+                    <p className="text-xs text-white/25">Mínimo 6 caracteres</p>
                   )}
                 </div>
 
-                <Button 
-                  type="submit" 
-                  className="w-full h-11 font-medium shadow-sm hover:shadow-md transition-all" 
+                {/* Submit button with glow */}
+                <Button
+                  type="submit"
+                  className="w-full h-11 font-medium transition-all hover:shadow-[0_0_20px_rgba(79,70,229,0.3)] hover:brightness-110"
                   disabled={loading}
                 >
-                  {loading ? "Cargando..." : isLogin ? "Iniciar Sesión" : "Crear Cuenta"}
+                  {loading
+                    ? "Cargando..."
+                    : isLogin
+                      ? "Iniciar Sesión"
+                      : "Crear Cuenta"}
                 </Button>
-              </form>
+              </motion.form>
             ) : (
-              <div className="min-h-[320px] flex items-center justify-center">
-                {/* Email Sent Animation */}
+              <motion.div
+                key="email-sent"
+                initial={{ opacity: 0, scale: 0.95 }}
+                animate={{ opacity: 1, scale: 1 }}
+                transition={{ duration: 0.4, ease: "easeOut" }}
+                className="min-h-[300px] flex items-center justify-center"
+              >
                 <div className="text-center space-y-6 py-8">
                   {/* Animated envelope */}
                   <div className="relative mx-auto w-32 h-32">
-                    {/* Background glow effect */}
-                    <div className={`absolute inset-0 bg-primary/20 rounded-full blur-2xl transition-all duration-1000 ${animationStage >= 2 ? 'scale-150 opacity-0' : 'scale-100 opacity-100'}`} />
-                    
-                    {/* Envelope container */}
+                    <div
+                      className={`absolute inset-0 bg-primary/20 rounded-full blur-2xl transition-all duration-1000 ${animationStage >= 2 ? "scale-150 opacity-0" : "scale-100 opacity-100"}`}
+                    />
                     <div className="relative">
-                      {/* Paper plane animation */}
-                      <div className={`absolute inset-0 flex items-center justify-center transition-all duration-1000 ${
-                        animationStage >= 2 
-                          ? 'translate-x-32 -translate-y-32 opacity-0 rotate-45 scale-50' 
-                          : 'translate-x-0 translate-y-0 opacity-0 scale-100'
-                      }`}>
+                      <div
+                        className={`absolute inset-0 flex items-center justify-center transition-all duration-1000 ${
+                          animationStage >= 2
+                            ? "translate-x-32 -translate-y-32 opacity-0 rotate-45 scale-50"
+                            : "translate-x-0 translate-y-0 opacity-0 scale-100"
+                        }`}
+                      >
                         <PaperAirplaneIcon className="h-16 w-16 text-primary" />
                       </div>
-
-                      {/* Envelope icon */}
-                      <div className={`flex items-center justify-center transition-all duration-700 ${
-                        animationStage === 1 
-                          ? 'scale-110 rotate-12' 
-                          : animationStage >= 2 
-                            ? 'scale-90 opacity-0' 
-                            : 'scale-100'
-                      }`}>
+                      <div
+                        className={`flex items-center justify-center transition-all duration-700 ${
+                          animationStage === 1
+                            ? "scale-110 rotate-12"
+                            : animationStage >= 2
+                              ? "scale-90 opacity-0"
+                              : "scale-100"
+                        }`}
+                      >
                         <EnvelopeIcon className="h-20 w-20 text-primary" />
                       </div>
-
-                      {/* Check circle when done */}
-                      <div className={`absolute inset-0 flex items-center justify-center transition-all duration-500 ${
-                        animationStage >= 3 
-                          ? 'scale-100 opacity-100' 
-                          : 'scale-50 opacity-0'
-                      }`}>
+                      <div
+                        className={`absolute inset-0 flex items-center justify-center transition-all duration-500 ${
+                          animationStage >= 3
+                            ? "scale-100 opacity-100"
+                            : "scale-50 opacity-0"
+                        }`}
+                      >
                         <CheckCircleIcon className="h-24 w-24 text-primary" />
                       </div>
-
-                      {/* Sparkles */}
                       {animationStage >= 2 && (
                         <>
-                          <SparklesIcon className={`absolute -top-4 -right-4 h-8 w-8 text-warning transition-all duration-500 ${
-                            animationStage >= 3 ? 'opacity-0 scale-0' : 'opacity-100 scale-100 animate-pulse'
-                          }`} />
-                          <SparklesIcon className={`absolute -bottom-4 -left-4 h-6 w-6 text-primary transition-all duration-700 ${
-                            animationStage >= 3 ? 'opacity-0 scale-0' : 'opacity-100 scale-100 animate-pulse'
-                          }`} style={{ animationDelay: '150ms' }} />
-                          <SparklesIcon className={`absolute top-0 -left-6 h-5 w-5 text-primary transition-all duration-600 ${
-                            animationStage >= 3 ? 'opacity-0 scale-0' : 'opacity-100 scale-100 animate-pulse'
-                          }`} style={{ animationDelay: '300ms' }} />
+                          <SparklesIcon
+                            className={`absolute -top-4 -right-4 h-8 w-8 text-yellow-500 transition-all duration-500 ${
+                              animationStage >= 3
+                                ? "opacity-0 scale-0"
+                                : "opacity-100 scale-100 animate-pulse"
+                            }`}
+                          />
+                          <SparklesIcon
+                            className={`absolute -bottom-4 -left-4 h-6 w-6 text-primary transition-all duration-700 ${
+                              animationStage >= 3
+                                ? "opacity-0 scale-0"
+                                : "opacity-100 scale-100 animate-pulse"
+                            }`}
+                            style={{ animationDelay: "150ms" }}
+                          />
+                          <SparklesIcon
+                            className={`absolute top-0 -left-6 h-5 w-5 text-primary transition-all duration-500 ${
+                              animationStage >= 3
+                                ? "opacity-0 scale-0"
+                                : "opacity-100 scale-100 animate-pulse"
+                            }`}
+                            style={{ animationDelay: "300ms" }}
+                          />
                         </>
                       )}
                     </div>
                   </div>
 
-                  {/* Text content with transitions */}
                   <div className="space-y-3">
-                    <h3 className={`text-2xl font-bold transition-all duration-500 ${
-                      animationStage >= 3 ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-4'
-                    }`}>
-                      {animationStage >= 3 ? '¡Revisa tu correo!' : 'Enviando...'}
+                    <h3
+                      className={`text-2xl font-bold text-white transition-all duration-500 ${
+                        animationStage >= 3
+                          ? "opacity-100 translate-y-0"
+                          : "opacity-0 translate-y-4"
+                      }`}
+                    >
+                      {animationStage >= 3 ? "¡Revisa tu correo!" : "Enviando..."}
                     </h3>
-                    
-                    <div className={`transition-all duration-500 delay-100 ${
-                      animationStage >= 3 ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-4'
-                    }`}>
-                      <p className="text-muted-foreground mb-2">
+                    <div
+                      className={`transition-all duration-500 delay-100 ${
+                        animationStage >= 3
+                          ? "opacity-100 translate-y-0"
+                          : "opacity-0 translate-y-4"
+                      }`}
+                    >
+                      <p className="text-white/40 mb-2">
                         Te enviamos un link de confirmación a
                       </p>
                       <p className="font-semibold text-primary">{email}</p>
                     </div>
-
-                    <div className={`pt-4 space-y-3 transition-all duration-500 delay-200 ${
-                      animationStage >= 3 ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-4'
-                    }`}>
-                      <div className="flex items-start gap-2 text-xs text-muted-foreground text-left bg-muted/50 p-3 rounded-lg">
+                    <div
+                      className={`pt-4 space-y-3 transition-all duration-500 delay-200 ${
+                        animationStage >= 3
+                          ? "opacity-100 translate-y-0"
+                          : "opacity-0 translate-y-4"
+                      }`}
+                    >
+                      <div className="flex items-start gap-2 text-xs text-white/40 text-left bg-white/5 p-3 rounded-lg">
                         <CheckCircleIcon className="h-4 w-4 mt-0.5 flex-shrink-0 text-primary" />
                         <span>Revisa tu bandeja de entrada (y spam por si acaso)</span>
                       </div>
-                      
                       <Button
                         onClick={() => {
                           setEmailSent(false);
@@ -373,16 +451,16 @@ export default function Auth() {
                           setLoading(false);
                         }}
                         variant="outline"
-                        className="w-full"
+                        className="w-full border-white/10 text-white/60 hover:text-white hover:border-white/20 bg-transparent"
                       >
                         Volver al inicio de sesión
                       </Button>
                     </div>
                   </div>
                 </div>
-              </div>
+              </motion.div>
             )}
-          </Card>
+          </AnimatePresence>
 
           {/* Toggle Auth Mode */}
           {!emailSent && (
@@ -390,62 +468,22 @@ export default function Auth() {
               <button
                 type="button"
                 onClick={() => setIsLogin(!isLogin)}
-                className="text-sm text-muted-foreground hover:text-foreground transition-colors font-medium"
+                className="text-sm text-white/30 hover:text-white/60 transition-colors font-medium"
               >
                 {isLogin ? (
                   <>
-                    ¿No tienes cuenta? <span className="text-primary">Regístrate aquí</span>
+                    ¿No tienes cuenta?{" "}
+                    <span className="text-primary/70 hover:text-primary">Regístrate</span>
                   </>
                 ) : (
                   <>
-                    ¿Ya tienes cuenta? <span className="text-primary">Inicia sesión</span>
+                    ¿Ya tienes cuenta?{" "}
+                    <span className="text-primary/70 hover:text-primary">Inicia sesión</span>
                   </>
                 )}
               </button>
             </div>
           )}
-
-          {/* Mobile Value Props */}
-          <div className="lg:hidden pt-8 space-y-4 border-t border-border">
-            <div className="flex items-start gap-3">
-              <div className="p-2 rounded-lg bg-primary/10">
-                <FaceSmileIcon className="h-4 w-4 text-primary" />
-              </div>
-              <div className="flex-1">
-                <h4 className="text-sm font-semibold mb-0.5">Registra tus gastos en segundos</h4>
-                <p className="text-xs text-muted-foreground">Toca, escribe, listo. Sin fricciones.</p>
-              </div>
-            </div>
-            <div className="flex items-start gap-3">
-              <div className="p-2 rounded-lg bg-primary/10">
-                <BanknotesIcon className="h-4 w-4 text-primary" />
-              </div>
-              <div className="flex-1">
-                <h4 className="text-sm font-semibold mb-0.5">Categorización automática</h4>
-                <p className="text-xs text-muted-foreground">Aprendizaje automático que mejora con el uso</p>
-              </div>
-            </div>
-
-            <div className="flex items-start gap-3">
-              <div className="p-2 rounded-lg bg-primary/10">
-                <CheckBadgeIcon className="h-4 w-4 text-primary" />
-              </div>
-              <div className="flex-1">
-                <h4 className="text-sm font-semibold mb-0.5">Proyecciones inteligentes</h4>
-                <p className="text-xs text-muted-foreground">Predicciones basadas en tu comportamiento histórico</p>
-              </div>
-            </div>
-
-            <div className="flex items-start gap-3">
-              <div className="p-2 rounded-lg bg-primary/10">
-                <img src="/isotipo-fintual.png" alt="Fintual" className="h-4 w-4" />
-              </div>
-              <div className="flex-1">
-                <h4 className="text-sm font-semibold mb-0.5">Conecta tus inversiones Fintual</h4>
-                <p className="text-xs text-muted-foreground">Sincroniza automáticamente tus objetivos de inversión</p>
-              </div>
-            </div>
-          </div>
         </div>
       </div>
     </div>
