@@ -360,6 +360,7 @@ export type Database = {
           type: string
           user_id: string
           card_id: string | null
+          installment_id: string | null
         }
         Insert: {
           amount: number
@@ -371,6 +372,7 @@ export type Database = {
           type: string
           user_id: string
           card_id?: string | null
+          installment_id?: string | null
         }
         Update: {
           amount?: number
@@ -382,6 +384,7 @@ export type Database = {
           type?: string
           user_id?: string
           card_id?: string | null
+          installment_id?: string | null
         }
         Relationships: [
           {
@@ -389,6 +392,13 @@ export type Database = {
             columns: ["card_id"]
             isOneToOne: false
             referencedRelation: "credit_cards"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "transactions_installment_id_fkey"
+            columns: ["installment_id"]
+            isOneToOne: false
+            referencedRelation: "installment_purchases"
             referencedColumns: ["id"]
           }
         ]

@@ -13,6 +13,7 @@ export interface Transaction {
   user_id: string;
   created_at: string;
   card_id: string | null;
+  installment_id: string | null;
 }
 
 export function useTransactions() {

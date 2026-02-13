@@ -44,7 +44,7 @@ export function useInstallments() {
         .order("created_at", { ascending: false });
 
       if (error) throw error;
-      
+
       return (data || []).map(row => ({
         ...row,
         card_name: row.credit_cards?.name,
@@ -67,23 +67,22 @@ export function useInstallments() {
         .insert({
           ...purchase,
           user_id: userData.user.id,
-          // Mark all as paid since we're creating transactions
           paid_installments: purchase.total_installments,
-          is_active: false, // All transactions created = "paid"
+          is_active: false,
         })
         .select()
         .single();
 
       if (error) throw error;
 
-      // 2. Create ALL transactions for each installment
+      // 2. Create ALL transactions linked by installment_id
       const firstDate = new Date(purchase.first_installment_date);
       const transactionsToCreate = [];
 
       for (let i = 0; i < purchase.total_installments; i++) {
         const installmentDate = addMonths(firstDate, i);
         const monthName = format(installmentDate, "MMMM yyyy", { locale: es });
-        
+
         transactionsToCreate.push({
           user_id: userData.user.id,
           amount: purchase.installment_amount,
@@ -91,6 +90,7 @@ export function useInstallments() {
           category_name: purchase.category_name || "Otros gastos",
           detail: `${purchase.description} - Cuota ${i + 1}/${purchase.total_installments} (${monthName})`,
           card_id: purchase.card_id,
+          installment_id: data.id,
           date: installmentDate.toISOString(),
         });
       }
@@ -101,7 +101,6 @@ export function useInstallments() {
 
       if (txError) {
         console.error("Error creating transactions:", txError);
-        // Don't throw - purchase was created
       }
 
       return data as InstallmentPurchase;
@@ -117,12 +116,16 @@ export function useInstallments() {
     },
   });
 
-  // Update installment purchase
+  // Update installment purchase AND regenerate transactions
   const updateInstallment = useMutation({
     mutationFn: async ({
       id,
       ...purchase
     }: Partial<InstallmentPurchase> & { id: string }) => {
+      const { data: userData } = await supabase.auth.getUser();
+      if (!userData.user) throw new Error("No user found");
+
+      // 1. Update the installment record
       const { data, error } = await supabase
         .from("installment_purchases")
         .update({ ...purchase, updated_at: new Date().toISOString() })
@@ -131,33 +134,70 @@ export function useInstallments() {
         .single();
 
       if (error) throw error;
+
+      // 2. Delete old transactions linked to this installment
+      const { error: deleteError } = await supabase
+        .from("transactions")
+        .delete()
+        .eq("installment_id", id);
+
+      if (deleteError) {
+        console.error("Error deleting old transactions:", deleteError);
+      }
+
+      // 3. Regenerate transactions with updated data
+      const updatedPurchase = data as InstallmentPurchase;
+      const firstDate = new Date(updatedPurchase.first_installment_date);
+      const transactionsToCreate = [];
+
+      for (let i = 0; i < updatedPurchase.total_installments; i++) {
+        const installmentDate = addMonths(firstDate, i);
+        const monthName = format(installmentDate, "MMMM yyyy", { locale: es });
+
+        transactionsToCreate.push({
+          user_id: userData.user.id,
+          amount: updatedPurchase.installment_amount,
+          type: "Gasto",
+          category_name: updatedPurchase.category_name || "Otros gastos",
+          detail: `${updatedPurchase.description} - Cuota ${i + 1}/${updatedPurchase.total_installments} (${monthName})`,
+          card_id: updatedPurchase.card_id,
+          installment_id: id,
+          date: installmentDate.toISOString(),
+        });
+      }
+
+      const { error: txError } = await supabase
+        .from("transactions")
+        .insert(transactionsToCreate);
+
+      if (txError) {
+        console.error("Error recreating transactions:", txError);
+      }
+
       return data;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["installment_purchases"] });
       queryClient.invalidateQueries({ queryKey: ["credit_card_summaries"] });
-      toast.success("Compra actualizada");
+      queryClient.invalidateQueries({ queryKey: ["transactions"] });
+      toast.success("Compra y cuotas actualizadas");
     },
     onError: (error: Error) => {
       toast.error(error.message);
     },
   });
 
-  // Delete installment purchase (also deletes associated transactions)
+  // Delete installment purchase and associated transactions
   const deleteInstallment = useMutation({
     mutationFn: async (id: string) => {
-      const purchase = installments.find(i => i.id === id);
-      
-      // Delete associated transactions by matching detail pattern
-      if (purchase) {
-        const { error: txError } = await supabase
-          .from("transactions")
-          .delete()
-          .like("detail", `${purchase.description} - Cuota %`);
-        
-        if (txError) {
-          console.error("Error deleting associated transactions:", txError);
-        }
+      // Delete associated transactions by installment_id (safe, exact match)
+      const { error: txError } = await supabase
+        .from("transactions")
+        .delete()
+        .eq("installment_id", id);
+
+      if (txError) {
+        console.error("Error deleting associated transactions:", txError);
       }
 
       const { error } = await supabase.from("installment_purchases").delete().eq("id", id);
@@ -195,13 +235,13 @@ export function useInstallments() {
     const schedule = [];
     const firstDate = new Date(purchase.first_installment_date);
     const today = new Date();
-    
+
     for (let i = 0; i < purchase.total_installments; i++) {
       const date = addMonths(firstDate, i);
       const isPaid = i < purchase.paid_installments;
       const isPastDue = !isPaid && date <= today;
       const isCurrent = i === purchase.paid_installments && !isPastDue;
-      
+
       schedule.push({
         number: i + 1,
         date,
@@ -212,15 +252,23 @@ export function useInstallments() {
         isPastDue,
       });
     }
-    
+
     return schedule;
   };
 
-  // Totals
+  // Helper: Check if installment still has pending months
+  const isInstallmentActive = (purchase: InstallmentPurchase) => {
+    const firstDate = new Date(purchase.first_installment_date);
+    const lastInstallmentDate = addMonths(firstDate, purchase.total_installments - 1);
+    return lastInstallmentDate >= new Date();
+  };
+
+  // Totals - only count active installments for monthly payment
+  const activeInstallments = installments.filter(isInstallmentActive);
   const totals = {
     totalPurchases: installments.length,
     totalAmount: installments.reduce((acc, i) => acc + i.total_amount, 0),
-    monthlyPayment: installments.reduce((acc, i) => acc + i.installment_amount, 0),
+    monthlyPayment: activeInstallments.reduce((acc, i) => acc + i.installment_amount, 0),
   };
 
   return {
@@ -235,5 +283,6 @@ export function useInstallments() {
     getRemainingAmount,
     getNextInstallmentDate,
     getInstallmentSchedule,
+    isInstallmentActive,
   };
 }
