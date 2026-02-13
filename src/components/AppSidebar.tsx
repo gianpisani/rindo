@@ -11,6 +11,7 @@ import {
   Variable,
   Bell,
   BellOff,
+  MessageSquare,
 } from "lucide-react";
 import { Link, useLocation } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
@@ -44,9 +45,10 @@ import { getMainRoutes, getToolRoutes } from "@/lib/routes-config";
 interface AppSidebarProps {
   onAddTransaction?: () => void;
   onConciliate?: () => void;
+  onWhisper?: () => void;
 }
 
-export function AppSidebar({ onAddTransaction, onConciliate }: AppSidebarProps = {}) {
+export function AppSidebar({ onAddTransaction, onConciliate, onWhisper }: AppSidebarProps = {}) {
   const location = useLocation();
   const { isPrivacyMode, togglePrivacyMode } = usePrivacyMode();
   const { isSupported, isSubscribed, isLoading, subscribe, unsubscribe } = usePushNotifications();
@@ -212,6 +214,17 @@ export function AppSidebar({ onAddTransaction, onConciliate }: AppSidebarProps =
                   {!isMobile && (
                     <div className="flex gap-0.5 opacity-50 ml-auto group-data-[state=collapsed]:hidden">
                       <Kbd className="text-[10px] px-1 py-0.5">R</Kbd>
+                    </div>
+                  )}
+                </SidebarMenuButton>
+              </SidebarMenuItem>
+              <SidebarMenuItem>
+                <SidebarMenuButton onClick={onWhisper}>
+                  <MessageSquare className="size-4" />
+                  <span>Whisper</span>
+                  {!isMobile && (
+                    <div className="flex gap-0.5 opacity-50 ml-auto group-data-[state=collapsed]:hidden">
+                      <Kbd className="text-[10px] px-1 py-0.5">W</Kbd>
                     </div>
                   )}
                 </SidebarMenuButton>

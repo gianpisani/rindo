@@ -41,7 +41,7 @@ export default function Layout({ children }: LayoutProps) {
   const [whisperOpen, setWhisperOpen] = useState(false);
 
   // Atmospheric UI - subliminal mood system
-  useAtmosphere();
+  const atmosphere = useAtmosphere();
 
   const toggleCommandBar = useCallback(() => {
     setCommandBarOpen((prev) => !prev);
@@ -147,6 +147,7 @@ export default function Layout({ children }: LayoutProps) {
         <AppSidebar
           onAddTransaction={() => openQuickAdd()}
           onConciliate={() => openReconciliation()}
+          onWhisper={toggleWhisper}
         />
 
         <SidebarInset>
@@ -192,6 +193,43 @@ export default function Layout({ children }: LayoutProps) {
                     {isPrivacyMode
                       ? "Desactivar modo privado (P)"
                       : "Activar modo privado (P)"}
+                  </TooltipContent>
+                </Tooltip>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <div className="relative cursor-default">
+                      <div
+                        className="h-2.5 w-2.5 rounded-full transition-all duration-[3s] ease-in-out ring-2 ring-background"
+                        style={{
+                          backgroundColor: `hsl(${Math.round(atmosphere.mood * 120)}, ${Math.round(40 + atmosphere.mood * 30)}%, ${Math.round(45 + atmosphere.mood * 15)}%)`,
+                        }}
+                      />
+                      <div
+                        className="absolute inset-0 rounded-full animate-ping"
+                        style={{
+                          backgroundColor: `hsl(${Math.round(atmosphere.mood * 120)}, ${Math.round(40 + atmosphere.mood * 30)}%, ${Math.round(45 + atmosphere.mood * 15)}%)`,
+                          opacity: 0.2,
+                          animationDuration: '3s',
+                        }}
+                      />
+                    </div>
+                  </TooltipTrigger>
+                  <TooltipContent side="bottom" className="max-w-[260px] p-3 space-y-2">
+                    <div className="flex items-center gap-2">
+                      <div
+                        className="h-2 w-2 rounded-full shrink-0"
+                        style={{
+                          backgroundColor: `hsl(${Math.round(atmosphere.mood * 120)}, ${Math.round(40 + atmosphere.mood * 30)}%, ${Math.round(45 + atmosphere.mood * 15)}%)`,
+                        }}
+                      />
+                      <p className="text-xs font-semibold">Atmósfera: {atmosphere.label}</p>
+                    </div>
+                    <p className="text-[11px] text-muted-foreground leading-relaxed">
+                      {atmosphere.description}
+                    </p>
+                    <p className="text-[10px] text-muted-foreground/60 leading-relaxed border-t border-border/50 pt-1.5">
+                      El color de fondo de la app cambia sutilmente según tu salud financiera del mes. Verde = ingresos superan gastos, rojo = gastos superan ingresos.
+                    </p>
                   </TooltipContent>
                 </Tooltip>
                 <div className="hidden lg:block relative">

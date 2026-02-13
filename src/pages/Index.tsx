@@ -1,21 +1,29 @@
+import { useState } from "react";
 import Layout from "@/components/Layout";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { useTransactions } from "@/hooks/useTransactions";
+import { useCategories } from "@/hooks/useCategories";
+import { useCategoryLimits } from "@/hooks/useCategoryLimits";
+import { useMonthlySummary } from "@/hooks/useMonthlySummary";
 import { useGlobalDrawers } from "@/hooks/useGlobalDrawers";
-import { TrendingUp, TrendingDown, PiggyBank, Receipt, Eye, Variable } from "lucide-react";
+import { TrendingUp, TrendingDown, PiggyBank, Receipt, Eye, Variable, Play } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { format, startOfMonth, endOfMonth, subMonths } from "date-fns";
 import { es } from "date-fns/locale";
 import { cn } from "@/lib/utils";
 import NumberFlow from "@number-flow/react";
 import { usePrivacyMode } from "@/hooks/usePrivacyMode";
+import { MonthlyStory } from "@/components/MonthlyStory";
 
 const Index = () => {
   const { transactions } = useTransactions();
+  const { categories } = useCategories();
+  const { limits } = useCategoryLimits();
   const navigate = useNavigate();
   const { openQuickAdd, openReconciliation } = useGlobalDrawers();
   const { isPrivacyMode } = usePrivacyMode();
+  const [storyOpen, setStoryOpen] = useState(false);
 
   const handleQuickAdd = (type: "Ingreso" | "Gasto" | "Inversión") => {
     openQuickAdd(type);
@@ -71,6 +79,11 @@ const Index = () => {
   const incomeChange = lastMonthIncome > 0
     ? ((currentIncome - lastMonthIncome) / lastMonthIncome) * 100
     : 0;
+
+  // Last month data for Monthly Story
+  const lastMonth = subMonths(now, 1);
+  const lastMonthSummary = useMonthlySummary(transactions, categories, limits, lastMonth);
+  const hasLastMonthData = lastMonthSummary.transactionCount > 0;
 
   // Últimas 5 transacciones
   const recentTransactions = [...transactions]
@@ -308,7 +321,41 @@ const Index = () => {
             )}
           </div>
         </Card>
+
+        {/* Monthly Story - Last month review */}
+        {hasLastMonthData && (
+          <button
+            onClick={() => setStoryOpen(true)}
+            className="w-full group relative overflow-hidden rounded-xl border border-border/50 p-5 text-left transition-all hover:border-primary/30 hover:shadow-lg hover:shadow-primary/5"
+          >
+            <div className="absolute inset-0 bg-gradient-to-r from-primary/5 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
+            <div className="relative flex items-center justify-between">
+              <div className="space-y-1">
+                <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Tu resumen de</p>
+                <p className="text-lg font-bold capitalize">
+                  {format(lastMonth, "MMMM yyyy", { locale: es })}
+                </p>
+                <p className="text-xs text-muted-foreground">
+                  {lastMonthSummary.transactionCount} transacciones &middot; Toca para ver
+                </p>
+              </div>
+              <div className="flex items-center justify-center w-10 h-10 rounded-full bg-primary/10 text-primary group-hover:bg-primary/20 transition-colors">
+                <Play className="h-4 w-4 ml-0.5" />
+              </div>
+            </div>
+          </button>
+        )}
       </div>
+
+      <MonthlyStory
+        open={storyOpen}
+        onClose={() => setStoryOpen(false)}
+        month={lastMonth}
+        kpis={lastMonthSummary.kpis}
+        categoryBreakdown={lastMonthSummary.categoryBreakdown}
+        dailyStats={lastMonthSummary.dailyStats}
+        transactionCount={lastMonthSummary.transactionCount}
+      />
     </Layout>
   );
 };

@@ -474,27 +474,29 @@ Based on Indigo, Blue, Cyan palette
 
 .atmospheric-glow {
   position: fixed;
-  top: -50%;
-  left: -50%;
-  width: 200%;
-  height: 200%;
+  top: -40%;
+  left: -30%;
+  width: 160%;
+  height: 160%;
   pointer-events: none;
   z-index: 0;
   opacity: 0;
-  transition: opacity 3s ease, background 3s ease;
+  transition: opacity 4s ease, background 4s ease;
   background: radial-gradient(
-    ellipse at 30% 20%,
-    oklch(0.95 0.015 80) 0%,
-    transparent 50%
+    ellipse at 25% 15%,
+    hsl(calc(120 * var(--atmosphere-warmth) + 0 * (1 - var(--atmosphere-warmth))),
+        calc(50% * var(--atmosphere-saturation)),
+        85%) 0%,
+    transparent 55%
   );
 }
 
 .atmospheric-glow.active {
-  opacity: calc(var(--atmosphere-warmth) * 0.04);
+  opacity: calc(0.04 + var(--atmosphere-warmth) * 0.11);
 }
 
 .dark .atmospheric-glow.active {
-  opacity: calc(var(--atmosphere-warmth) * 0.06);
+  opacity: calc(0.03 + var(--atmosphere-warmth) * 0.14);
 }
 
 @media (prefers-reduced-motion: reduce) {
