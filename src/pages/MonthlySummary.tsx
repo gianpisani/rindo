@@ -35,7 +35,9 @@ import {
   Target,
   CreditCard,
   ArrowRight,
+  Play,
 } from "lucide-react";
+import { MonthlyStory } from "@/components/MonthlyStory";
 import {
   PieChart,
   Pie,
@@ -277,6 +279,7 @@ function makeComparison(
 
 export default function MonthlySummary() {
   const [selectedMonth, setSelectedMonth] = useState(new Date());
+  const [storyOpen, setStoryOpen] = useState(false);
   const { transactions, isLoading } = useTransactions();
   const { categories } = useCategories();
   const { limits } = useCategoryLimits();
@@ -417,7 +420,18 @@ export default function MonthlySummary() {
             </p>
           </div>
 
-          {/* Month Navigator */}
+          {/* Play Story + Month Navigator */}
+          <div className="flex items-center gap-2">
+            <Button
+              variant="ghost"
+              size="icon"
+              className="h-8 w-8 rounded-full bg-primary/10 text-primary hover:bg-primary/20"
+              onClick={() => setStoryOpen(true)}
+              disabled={transactionCount === 0}
+            >
+              <Play className="h-3.5 w-3.5 ml-0.5" />
+            </Button>
+          </div>
           <div className="flex items-center gap-1">
             <Button
               variant="ghost"
@@ -1039,6 +1053,17 @@ export default function MonthlySummary() {
           </>
         )}
       </div>
+
+      {/* Monthly Story - Cinematic experience */}
+      <MonthlyStory
+        open={storyOpen}
+        onClose={() => setStoryOpen(false)}
+        month={selectedMonth}
+        kpis={kpis}
+        categoryBreakdown={categoryBreakdown}
+        dailyStats={dailyStats}
+        transactionCount={transactionCount}
+      />
     </Layout>
   );
 }

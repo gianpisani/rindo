@@ -2,6 +2,7 @@ import { ReactNode, useCallback, useEffect, useState } from "react";
 import { CommandBar } from "./CommandBar";
 import { QuickAddDrawer } from "./QuickAddDrawer";
 import { ReconciliationDrawer } from "./ReconciliationDrawer";
+import { WhisperInput } from "./WhisperInput";
 import { SidebarProvider, SidebarTrigger, SidebarInset } from "@/components/ui/sidebar";
 import { AppSidebar } from "@/components/AppSidebar";
 import { Button } from "./ui/button";
@@ -10,6 +11,7 @@ import { cn } from "@/lib/utils";
 import { usePrivacyMode } from "@/hooks/usePrivacyMode";
 import { useGlobalDrawers } from "@/hooks/useGlobalDrawers";
 import { useKeyboardShortcuts } from "@/hooks/useKeyboardShortcuts";
+import { useAtmosphere } from "@/hooks/useAtmosphere";
 import { ShortcutsPopover } from "@/components/ShortcutsPopover";
 import {
   Tooltip,
@@ -36,6 +38,10 @@ export default function Layout({ children }: LayoutProps) {
 
   const [commandBarOpen, setCommandBarOpen] = useState(false);
   const [showShortcutsPopover, setShowShortcutsPopover] = useState(false);
+  const [whisperOpen, setWhisperOpen] = useState(false);
+
+  // Atmospheric UI - subliminal mood system
+  useAtmosphere();
 
   const toggleCommandBar = useCallback(() => {
     setCommandBarOpen((prev) => !prev);
@@ -45,10 +51,15 @@ export default function Layout({ children }: LayoutProps) {
     setShowShortcutsPopover((prev) => !prev);
   }, []);
 
+  const toggleWhisper = useCallback(() => {
+    setWhisperOpen((prev) => !prev);
+  }, []);
+
   // Register all keyboard shortcuts
   useKeyboardShortcuts({
     onToggleCommandBar: toggleCommandBar,
     onToggleShortcutsPopover: toggleShortcutsPopover,
+    onToggleWhisper: toggleWhisper,
   });
 
   // Close popover when clicking outside
@@ -126,6 +137,12 @@ export default function Layout({ children }: LayoutProps) {
           onOpenChange={setReconciliationOpen}
         />
 
+        {/* Whisper Mode - Ultra-minimal transaction input */}
+        <WhisperInput
+          open={whisperOpen}
+          onOpenChange={setWhisperOpen}
+        />
+
         {/* Desktop Sidebar */}
         <AppSidebar
           onAddTransaction={() => openQuickAdd()}
@@ -133,6 +150,9 @@ export default function Layout({ children }: LayoutProps) {
         />
 
         <SidebarInset>
+          {/* Atmospheric glow - subliminal mood indicator */}
+          <div className="atmospheric-glow active" />
+
           {/* Top Bar with Trigger and Actions */}
           <header className="sticky top-0 z-40 flex h-14 shrink-0 items-center gap-2 border-b border-border/40 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 px-4">
             <Tooltip>
