@@ -53,8 +53,8 @@ Based on Indigo, Blue, Cyan palette
     --muted-foreground: oklch(0.552 0.016 240);
     --accent: oklch(0.967 0.001 240);
     --accent-foreground: oklch(0.21 0.006 240);
-    --destructive: oklch(0.577 0.245 27.325);
-    --destructive-foreground: oklch(0.969 0.015 12.422);
+    --destructive: 0 72% 51%;
+    --destructive-foreground: 0 0% 98%;
     --border: oklch(0.918 0.002 240);
     --input: oklch(0.918 0.002 240);
     --ring: oklch(0.585 0.233 277.117);
@@ -108,8 +108,8 @@ Based on Indigo, Blue, Cyan palette
     --muted-foreground: oklch(0.705 0.015 240);
     --accent: oklch(0.274 0.006 240);
     --accent-foreground: oklch(0.985 0 0);
-    --destructive: oklch(0.704 0.191 22.216);
-    --destructive-foreground: oklch(0.969 0.015 12.422);
+    --destructive: 0 84% 60%;
+    --destructive-foreground: 0 0% 98%;
     --border: oklch(1 0 0 / 8%);
     --input: oklch(1 0 0 / 12%);
     --ring: oklch(0.585 0.233 277.117);
