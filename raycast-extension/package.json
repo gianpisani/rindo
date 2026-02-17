@@ -1,0 +1,94 @@
+{
+  "$schema": "https://www.raycast.com/schemas/extension.json",
+  "name": "rindo-quick-add",
+  "title": "Rindo",
+  "description": "Agrega gastos e ingresos rápidamente a Rindo",
+  "icon": "icon.png",
+  "author": "gianfrancopisani",
+  "categories": ["Finance", "Productivity"],
+  "license": "MIT",
+  "preferences": [
+    {
+      "name": "supabaseUrl",
+      "title": "Supabase URL",
+      "description": "URL de tu proyecto Supabase (ej: https://xxx.supabase.co)",
+      "type": "textfield",
+      "required": true,
+      "placeholder": "https://xxx.supabase.co"
+    },
+    {
+      "name": "supabaseAnonKey",
+      "title": "Supabase Anon Key",
+      "description": "La anon/public key de tu proyecto Supabase",
+      "type": "password",
+      "required": true
+    }
+  ],
+  "commands": [
+    {
+      "name": "quick-add",
+      "title": "Agregar Gasto",
+      "description": "Agrega un gasto rápidamente. Escribe monto y detalle: 45000 sushi",
+      "mode": "no-view",
+      "arguments": [
+        {
+          "name": "text",
+          "placeholder": "45000 sushi",
+          "type": "text",
+          "required": true
+        }
+      ],
+      "keywords": ["gasto", "rindo", "transaccion", "expense"]
+    },
+    {
+      "name": "quick-add-income",
+      "title": "Agregar Ingreso",
+      "description": "Agrega un ingreso rápidamente. Escribe monto y detalle: 1500000 sueldo",
+      "mode": "no-view",
+      "arguments": [
+        {
+          "name": "text",
+          "placeholder": "1500000 sueldo",
+          "type": "text",
+          "required": true
+        }
+      ],
+      "keywords": ["ingreso", "rindo", "income", "sueldo"]
+    },
+    {
+      "name": "login",
+      "title": "Iniciar Sesión",
+      "description": "Inicia sesión con tu cuenta de Rindo para poder agregar transacciones",
+      "mode": "view",
+      "keywords": ["login", "sesion", "cuenta"]
+    },
+    {
+      "name": "recent",
+      "title": "Últimas Transacciones",
+      "description": "Ver las últimas transacciones registradas en Rindo",
+      "mode": "view",
+      "keywords": ["transacciones", "recientes", "historial"]
+    }
+  ],
+  "dependencies": {
+    "@raycast/api": "^1.93.0",
+    "@raycast/utils": "^1.19.0",
+    "@supabase/supabase-js": "^2.49.0",
+    "node-fetch": "^3.3.2"
+  },
+  "devDependencies": {
+    "@raycast/eslint-config": "^1.0.11",
+    "@types/node": "22.13.4",
+    "eslint": "^9.20.0",
+    "prettier": "^3.5.1",
+    "typescript": "^5.7.3"
+  },
+  "scripts": {
+    "build": "ray build --skip-types -e dist -o dist",
+    "dev": "ray develop",
+    "fix-lint": "ray lint --fix",
+    "lint": "ray lint",
+    "prepublishOnly": "echo \"Error: no publish\" && exit 1",
+    "publish": "npx @raycast/api@latest publish"
+  }
+}
