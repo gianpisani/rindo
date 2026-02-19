@@ -87,7 +87,13 @@ export default function QuickTransactionForm({ onSuccess, defaultType = "Gasto" 
         
         // Mostrar toast con el resultado
         if (result.category !== "Sin categoría") {
-          toast.success(`Categorizado: ${result.category} (${result.confidence}% confianza)`);
+          const methodLabels: Record<string, string> = {
+            'exact_history': 'historial exacto',
+            'fuzzy_history': 'historial similar',
+            'keywords': 'keywords',
+          };
+          const methodLabel = methodLabels[result.method] || result.method;
+          toast.success(`Categorizado: ${result.category} (${result.confidence}% · ${methodLabel})`);
         }
       }
       

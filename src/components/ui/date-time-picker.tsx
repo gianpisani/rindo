@@ -195,7 +195,7 @@ export function InlineDateTimePicker({
             "inline-flex items-center gap-1.5 px-2 py-1 rounded-md text-sm font-medium",
             "hover:bg-muted/80 transition-colors cursor-pointer",
             "focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-1",
-            "group"
+            "group whitespace-nowrap"
           )}
         >
           <span>{format(value, "dd MMM yyyy", { locale: es })}</span>

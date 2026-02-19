@@ -138,7 +138,7 @@ function EditableTextCell({ value, onSave, className, placeholder }: EditableCel
         className
       )}
     >
-      <span className="truncate">{value || <span className="text-muted-foreground italic">{placeholder || "Sin detalle"}</span>}</span>
+      <span className="truncate" title={value || undefined}>{value || <span className="text-muted-foreground italic">{placeholder || "Sin detalle"}</span>}</span>
       <Pencil className="h-3 w-3 opacity-0 group-hover:opacity-50 transition-opacity flex-shrink-0" />
     </div>
   );
@@ -469,14 +469,15 @@ export function TransactionsTable({
         const filteredCats = categories.filter(c => c.type === type);
         
         return (
-          <div className={cn(isPrivacyMode && "privacy-blur")}>
+          <div className={cn("overflow-hidden", isPrivacyMode && "privacy-blur")}>
             <SelectableCell
               value={categoryName}
               options={filteredCats.map(c => ({ value: c.name, label: c.name }))}
               onSave={(newCategory) => handleInlineUpdate(row.original.id, "category_name", newCategory)}
               renderValue={(val) => (
-                <span className="font-medium text-sm">{val}</span>
+                <span className="font-medium text-sm truncate" title={val}>{val}</span>
               )}
+              className="max-w-full overflow-hidden"
             />
           </div>
         );
@@ -556,7 +557,7 @@ export function TransactionsTable({
                     className="w-2 h-2 rounded-full" 
                     style={{ backgroundColor: selectedCard.color || "#6366f1" }}
                   />
-                  <span className="truncate max-w-[60px]">{selectedCard.name}</span>
+                  <span className="truncate max-w-[60px]" title={selectedCard.name}>{selectedCard.name}</span>
                 </Badge>
               );
             }}
@@ -913,7 +914,7 @@ export function TransactionsTable({
                     )}
                   >
                     {row.getVisibleCells().map((cell) => (
-                      <td key={cell.id} className="px-4 py-2">
+                      <td key={cell.id} className="px-4 py-2 overflow-hidden">
                         {flexRender(
                           cell.column.columnDef.cell,
                           cell.getContext()
