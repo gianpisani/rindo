@@ -1,3 +1,4 @@
+import { useState, useRef, useEffect, useMemo } from "react";
 import Layout from "@/components/Layout";
 import { BichoCreature } from "@/components/bicho/BichoCreature";
 import { useBicho } from "@/hooks/useBicho";
@@ -8,8 +9,6 @@ import {
   startOfYear,
   eachWeekOfInterval,
   addDays,
-  getDay,
-  isSameDay,
 } from "date-fns";
 import { es } from "date-fns/locale";
 import {
@@ -19,108 +18,133 @@ import {
   Sparkles,
   Loader2,
   RefreshCw,
+  Info,
+  ChevronDown,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 
-// Annual heatmap (GitHub-style)
+// SVG-based annual heatmap
 function AnnualHeatmap({ yearDays }: { yearDays: ReturnType<typeof useBicho>["yearDays"] }) {
   const now = new Date();
   const yearStart = startOfYear(now);
 
-  // Build a date → score map
   const scoreMap: Record<string, (typeof yearDays)[0]> = {};
   for (const d of yearDays) {
     scoreMap[d.date] = d;
   }
 
-  // Build weeks (Sunday-start)
   const weeks = eachWeekOfInterval(
     { start: yearStart, end: now },
-    { weekStartsOn: 0 }
+    { weekStartsOn: 1 } // Monday start
   );
 
-  const cellSize = 11;
-  const cellGap = 2;
-  const monthLabels: { label: string; x: number }[] = [];
-  let lastMonth = -1;
+  const cell = 11;
+  const gap = 2;
+  const step = cell + gap;
+  const labelW = 20; // space for day labels
+  const labelH = 14; // space for month labels
+
+  const dayLabels = ["L", "", "M", "", "V", "", "D"];
+
+  // Precompute month label positions
+  const monthPositions = useMemo(() => {
+    const positions: { label: string; x: number }[] = [];
+    let lastMonth = -1;
+    weeks.forEach((weekStart, wi) => {
+      const month = weekStart.getMonth();
+      if (month !== lastMonth) {
+        lastMonth = month;
+        positions.push({
+          label: format(weekStart, "MMM", { locale: es }),
+          x: labelW + wi * step,
+        });
+      }
+    });
+    return positions;
+  }, [weeks]);
+
+  const svgW = labelW + weeks.length * step;
+  const svgH = labelH + 7 * step;
 
   return (
-    <div className="overflow-x-auto pb-2">
-      <div className="min-w-fit">
+    <div className="overflow-x-auto pb-1 -mx-1 px-1">
+      <svg width={svgW} height={svgH} className="block">
         {/* Month labels */}
-        <div className="flex mb-1 ml-0" style={{ gap: cellGap }}>
-          {weeks.map((weekStart, wi) => {
-            const month = weekStart.getMonth();
-            if (month !== lastMonth) {
-              lastMonth = month;
-              return (
-                <div
-                  key={wi}
-                  style={{ width: cellSize, minWidth: cellSize }}
-                  className="text-[9px] text-muted-foreground/50 text-center"
-                >
-                  {format(weekStart, "MMM", { locale: es })}
-                </div>
-              );
-            }
-            return (
-              <div
-                key={wi}
-                style={{ width: cellSize, minWidth: cellSize }}
-              />
-            );
-          })}
-        </div>
-
-        {/* Grid: 7 rows × N weeks */}
-        {[0, 1, 2, 3, 4, 5, 6].map((dayOfWeek) => (
-          <div key={dayOfWeek} className="flex" style={{ gap: cellGap }}>
-            {weeks.map((weekStart, wi) => {
-              const cellDate = addDays(weekStart, dayOfWeek);
-              const dateStr = format(cellDate, "yyyy-MM-dd");
-              const dayData = scoreMap[dateStr];
-              const isFuture = cellDate > now;
-              const isBeforeYear = cellDate < yearStart;
-
-              let bg = "bg-zinc-900";
-              let title = "";
-
-              if (isBeforeYear || isFuture) {
-                bg = "bg-transparent";
-              } else if (dayData) {
-                bg = "";
-                title = `${dayData.label} · Score ${dayData.score}`;
-              }
-
-              return (
-                <div
-                  key={wi}
-                  className={cn("rounded-[2px] transition-colors", bg)}
-                  style={{
-                    width: cellSize,
-                    height: cellSize,
-                    minWidth: cellSize,
-                    backgroundColor:
-                      !isBeforeYear && !isFuture && dayData
-                        ? dayData.color
-                        : undefined,
-                    opacity:
-                      isBeforeYear || isFuture ? 0 : dayData ? 1 : 0.15,
-                  }}
-                  title={title}
-                />
-              );
-            })}
-          </div>
+        {monthPositions.map((m, i) => (
+          <text
+            key={i}
+            x={m.x + cell / 2}
+            y={10}
+            textAnchor="middle"
+            className="fill-muted-foreground/40"
+            fontSize={9}
+            fontFamily="inherit"
+          >
+            {m.label}
+          </text>
         ))}
-      </div>
+
+        {/* Day labels */}
+        {dayLabels.map((label, i) =>
+          label ? (
+            <text
+              key={i}
+              x={labelW - 5}
+              y={labelH + i * step + cell * 0.75}
+              textAnchor="end"
+              className="fill-muted-foreground/30"
+              fontSize={9}
+              fontFamily="inherit"
+            >
+              {label}
+            </text>
+          ) : null
+        )}
+
+        {/* Cells */}
+        {weeks.map((weekStart, wi) =>
+          [0, 1, 2, 3, 4, 5, 6].map((dow) => {
+            const cellDate = addDays(weekStart, dow);
+            const dateStr = format(cellDate, "yyyy-MM-dd");
+            const dayData = scoreMap[dateStr];
+            const isFuture = cellDate > now;
+            const isBeforeYear = cellDate < yearStart;
+
+            if (isBeforeYear || isFuture) return null;
+
+            const x = labelW + wi * step;
+            const y = labelH + dow * step;
+            const fill = dayData ? dayData.color : "#27272a";
+            const opacity = dayData ? 1 : 0.15;
+
+            return (
+              <rect
+                key={`${wi}-${dow}`}
+                x={x}
+                y={y}
+                width={cell}
+                height={cell}
+                rx={2}
+                fill={fill}
+                opacity={opacity}
+                className="transition-all duration-300 hover:opacity-80 hover:brightness-125"
+              >
+                {dayData && (
+                  <title>{dayData.label} · Score {dayData.score} · ${Math.round(dayData.spent).toLocaleString("es-CL")} gastado</title>
+                )}
+              </rect>
+            );
+          })
+        )}
+      </svg>
     </div>
   );
 }
 
 export default function Bicho() {
   const bicho = useBicho();
+  const [infoOpen, setInfoOpen] = useState(false);
   const now = new Date();
   const daysInMonth = getDaysInMonth(now);
   const glowColor = getScoreColor(bicho.monthlyScore);
@@ -197,28 +221,50 @@ export default function Bicho() {
           </div>
         </div>
 
-        {/* Metric explainers */}
-        <div className="rounded-2xl border border-border/50 bg-card/50 backdrop-blur-sm p-5 space-y-3">
-          <div className="grid gap-2.5 text-sm">
-            <div className="flex items-start gap-2.5">
-              <Zap className="h-4 w-4 text-yellow-500 mt-0.5 shrink-0" />
-              <div>
-                <span className="font-medium text-foreground">Salud mensual</span>
-                <span className="text-muted-foreground"> — promedio de tu score diario. Cada día se evalúa cuánto gastaste vs tu promedio de 90 días. Menos gastas, más sube.</span>
-              </div>
+        {/* Collapsible info banner */}
+        <div className="rounded-2xl border border-border/50 bg-card/50 backdrop-blur-sm overflow-hidden transition-all duration-300">
+          <button
+            onClick={() => setInfoOpen((v) => !v)}
+            className="w-full flex items-center justify-between px-5 py-3 text-sm text-muted-foreground hover:text-foreground transition-colors cursor-pointer"
+          >
+            <div className="flex items-center gap-2">
+              <Info className="h-3.5 w-3.5" />
+              <span>Cómo funciona</span>
             </div>
-            <div className="flex items-start gap-2.5">
-              <Flame className="h-4 w-4 text-orange-500 mt-0.5 shrink-0" />
-              <div>
-                <span className="font-medium text-foreground">Racha de ahorro</span>
-                <span className="text-muted-foreground"> — días consecutivos gastando bajo tu promedio diario. Tu récord es {bicho.bestSavingStreak} días.</span>
-              </div>
-            </div>
-            <div className="flex items-start gap-2.5">
-              <span className="text-[15px] mt-0.5 shrink-0">🐜</span>
-              <div>
-                <span className="font-medium text-foreground">Gastos hormiga</span>
-                <span className="text-muted-foreground"> — compras bajo $5.000 que no duelen pero suman. Este mes: {bicho.monthHormigaCount} compras por {formatCLP(bicho.monthHormigaTotal)}.</span>
+            <ChevronDown
+              className={cn(
+                "h-3.5 w-3.5 transition-transform duration-300",
+                infoOpen && "rotate-180"
+              )}
+            />
+          </button>
+          <div
+            className="grid transition-all duration-300 ease-out"
+            style={{ gridTemplateRows: infoOpen ? "1fr" : "0fr" }}
+          >
+            <div className="overflow-hidden">
+              <div className="px-5 pb-4 pt-1 grid gap-3 text-sm border-t border-border/30">
+                <div className="flex items-start gap-2.5">
+                  <Zap className="h-4 w-4 text-yellow-500 mt-0.5 shrink-0" />
+                  <div>
+                    <span className="font-medium text-foreground">Salud mensual</span>
+                    <span className="text-muted-foreground"> — promedio de tu score diario. Cada día se mide cuánto gastaste vs tu promedio de 90 días. Menos gastas, más sube.</span>
+                  </div>
+                </div>
+                <div className="flex items-start gap-2.5">
+                  <Flame className="h-4 w-4 text-orange-500 mt-0.5 shrink-0" />
+                  <div>
+                    <span className="font-medium text-foreground">Racha de ahorro</span>
+                    <span className="text-muted-foreground"> — días consecutivos gastando bajo tu promedio diario. Tu récord es {bicho.bestSavingStreak} días.</span>
+                  </div>
+                </div>
+                <div className="flex items-start gap-2.5">
+                  <span className="text-[15px] mt-0.5 shrink-0">🐜</span>
+                  <div>
+                    <span className="font-medium text-foreground">Gastos hormiga</span>
+                    <span className="text-muted-foreground"> — compras bajo $5.000 que no duelen pero suman. Este mes: {bicho.monthHormigaCount} compras por {formatCLP(bicho.monthHormigaTotal)}.</span>
+                  </div>
+                </div>
               </div>
             </div>
           </div>
@@ -302,25 +348,26 @@ export default function Bicho() {
 
         {/* Annual Heatmap */}
         <div className="space-y-3">
-          <h2 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider">
-            Tu año {now.getFullYear()}
-          </h2>
-          <div className="rounded-2xl border border-border/50 bg-card/50 p-4">
-            <AnnualHeatmap yearDays={bicho.yearDays} />
-            {/* Legend */}
-            <div className="flex items-center justify-end gap-1.5 mt-3 text-[10px] text-muted-foreground/60">
-              <span>Menos</span>
+          <div className="flex items-center justify-between">
+            <h2 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider">
+              Tu año {now.getFullYear()}
+            </h2>
+            <div className="flex items-center gap-1.5 text-[10px] text-muted-foreground/40">
+              <span>Peor</span>
               {["#ef4444", "#f97316", "#facc15", "#a3e635", "#4ade80", "#22c55e"].map(
                 (color) => (
                   <div
                     key={color}
-                    className="w-2.5 h-2.5 rounded-[2px]"
+                    className="w-2 h-2 rounded-[2px]"
                     style={{ backgroundColor: color }}
                   />
                 )
               )}
-              <span>Más</span>
+              <span>Mejor</span>
             </div>
+          </div>
+          <div className="rounded-2xl border border-border/50 bg-card/50 p-4">
+            <AnnualHeatmap yearDays={bicho.yearDays} />
           </div>
         </div>
 
