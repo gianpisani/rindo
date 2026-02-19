@@ -203,7 +203,7 @@ export default function Layout({ children }: LayoutProps) {
                   </TooltipTrigger>
                   <TooltipContent side="bottom">
                     <p className="font-medium">{bicho.shape.emoji} {bicho.shape.name}</p>
-                    <p className="text-xs text-muted-foreground">Score {bicho.monthlyScore} · Racha {bicho.currentStreak}</p>
+                    <p className="text-xs text-muted-foreground">Score {bicho.monthlyScore} · Racha {bicho.savingStreak}d</p>
                   </TooltipContent>
                 </Tooltip>
 

@@ -16,7 +16,6 @@ import {
   Flame,
   Zap,
   Trophy,
-  TrendingDown,
   Sparkles,
   Loader2,
   RefreshCw,
@@ -133,11 +132,6 @@ export default function Bicho() {
       minimumFractionDigits: 0,
     }).format(n);
 
-  // Find worst and best days this month
-  const sortedDays = [...bicho.monthDays].sort((a, b) => a.score - b.score);
-  const worstDay = sortedDays[0];
-  const bestDay = sortedDays[sortedDays.length - 1];
-
   // Evolution timeline
   const levels = [1, 2, 3, 4];
 
@@ -173,33 +167,59 @@ export default function Bicho() {
 
           {/* Stats row */}
           <div className="flex items-center gap-6 text-sm">
-            <div className="flex items-center gap-1.5 text-muted-foreground">
-              <Zap className="h-4 w-4 text-yellow-500" />
-              <span>
-                Score{" "}
+            <div className="flex flex-col items-center gap-0.5">
+              <div className="flex items-center gap-1.5 text-muted-foreground">
+                <Zap className="h-4 w-4 text-yellow-500" />
                 <span className="font-bold text-foreground">
                   {bicho.monthlyScore}
                 </span>
-              </span>
+              </div>
+              <span className="text-[10px] text-muted-foreground/60">Salud mensual</span>
             </div>
-            <div className="flex items-center gap-1.5 text-muted-foreground">
-              <Flame className="h-4 w-4 text-orange-500" />
-              <span>
-                Racha{" "}
+            <div className="flex flex-col items-center gap-0.5">
+              <div className="flex items-center gap-1.5 text-muted-foreground">
+                <Flame className="h-4 w-4 text-orange-500" />
                 <span className="font-bold text-foreground">
-                  {bicho.currentStreak}
-                </span>{" "}
-                días
-              </span>
-            </div>
-            <div className="flex items-center gap-1.5 text-muted-foreground">
-              <Trophy className="h-4 w-4 text-amber-500" />
-              <span>
-                Mejor{" "}
-                <span className="font-bold text-foreground">
-                  {bicho.bestStreak}
+                  {bicho.savingStreak}d
                 </span>
-              </span>
+              </div>
+              <span className="text-[10px] text-muted-foreground/60">Racha ahorro</span>
+            </div>
+            <div className="flex flex-col items-center gap-0.5">
+              <div className="flex items-center gap-1.5 text-muted-foreground">
+                <Trophy className="h-4 w-4 text-amber-500" />
+                <span className="font-bold text-foreground">
+                  {bicho.bestSavingStreak}d
+                </span>
+              </div>
+              <span className="text-[10px] text-muted-foreground/60">Mejor racha</span>
+            </div>
+          </div>
+        </div>
+
+        {/* Metric explainers */}
+        <div className="rounded-2xl border border-border/50 bg-card/50 backdrop-blur-sm p-5 space-y-3">
+          <div className="grid gap-2.5 text-sm">
+            <div className="flex items-start gap-2.5">
+              <Zap className="h-4 w-4 text-yellow-500 mt-0.5 shrink-0" />
+              <div>
+                <span className="font-medium text-foreground">Salud mensual</span>
+                <span className="text-muted-foreground"> — promedio de tu score diario. Cada día se evalúa cuánto gastaste vs tu promedio de 90 días. Menos gastas, más sube.</span>
+              </div>
+            </div>
+            <div className="flex items-start gap-2.5">
+              <Flame className="h-4 w-4 text-orange-500 mt-0.5 shrink-0" />
+              <div>
+                <span className="font-medium text-foreground">Racha de ahorro</span>
+                <span className="text-muted-foreground"> — días consecutivos gastando bajo tu promedio diario. Tu récord es {bicho.bestSavingStreak} días.</span>
+              </div>
+            </div>
+            <div className="flex items-start gap-2.5">
+              <span className="text-[15px] mt-0.5 shrink-0">🐜</span>
+              <div>
+                <span className="font-medium text-foreground">Gastos hormiga</span>
+                <span className="text-muted-foreground"> — compras bajo $5.000 que no duelen pero suman. Este mes: {bicho.monthHormigaCount} compras por {formatCLP(bicho.monthHormigaTotal)}.</span>
+              </div>
             </div>
           </div>
         </div>
@@ -209,7 +229,7 @@ export default function Bicho() {
           <div className="flex items-center justify-between mb-3">
             <div className="flex items-center gap-2 text-sm font-medium text-muted-foreground">
               <Sparkles className="h-4 w-4 text-purple-400" />
-              <span>Tu bicho dice...</span>
+              <span>Tu {bicho.shape.name.toLowerCase()} dice...</span>
             </div>
             <Button
               variant="ghost"
@@ -230,7 +250,7 @@ export default function Bicho() {
           {bicho.isLoadingAI ? (
             <div className="flex items-center gap-2 text-muted-foreground text-sm py-2">
               <Loader2 className="h-4 w-4 animate-spin" />
-              Tu bicho está pensando...
+              Tu {bicho.shape.name.toLowerCase()} está pensando...
             </div>
           ) : bicho.aiMessage ? (
             <p className="text-foreground/80 leading-relaxed italic">
@@ -238,7 +258,7 @@ export default function Bicho() {
             </p>
           ) : (
             <p className="text-muted-foreground/60 text-sm">
-              Presiona "Generar" para que tu bicho te cuente cómo va el mes.
+              Presiona "Generar" para que tu {bicho.shape.name.toLowerCase()} te cuente cómo va el mes.
             </p>
           )}
         </div>
@@ -329,19 +349,15 @@ export default function Bicho() {
               </p>
             </div>
             <div className="rounded-xl border border-border/50 bg-card/50 p-4 space-y-1">
-              <p className="text-xs text-muted-foreground">Peor día</p>
-              {worstDay ? (
-                <p className="text-sm font-medium">
-                  <span className="text-destructive">
-                    {formatCLP(worstDay.spent)}
-                  </span>{" "}
-                  <span className="text-muted-foreground text-xs">
-                    · {worstDay.label}
-                  </span>
-                </p>
-              ) : (
-                <p className="text-muted-foreground text-sm">—</p>
-              )}
+              <p className="text-xs text-muted-foreground flex items-center gap-1">
+                🐜 Gastos hormiga
+              </p>
+              <p className="text-lg font-bold font-mono">
+                {bicho.monthHormigaCount}
+              </p>
+              <p className="text-[11px] text-muted-foreground">
+                {formatCLP(bicho.monthHormigaTotal)} en compras &lt;$5k
+              </p>
             </div>
           </div>
         </div>

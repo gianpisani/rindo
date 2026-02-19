@@ -12,9 +12,9 @@ export interface BichoShape {
 
 export const BICHO_SHAPES: Record<number, BichoShape> = {
   1: {
-    name: "Semilla",
-    emoji: "🌱",
-    description: "Tu bicho está en su forma más básica. ¡Mejora tus hábitos para que evolucione!",
+    name: "Papa",
+    emoji: "🥔",
+    description: "Eres una papa. Literal. Gasta menos para evolucionar.",
     grid: [
       "...#...",
       "..###..",
@@ -27,9 +27,9 @@ export const BICHO_SHAPES: Record<number, BichoShape> = {
     eyes: [],
   },
   2: {
-    name: "Bichito",
-    emoji: "🐛",
-    description: "Tu bicho está tomando forma. Sigue así y pronto evolucionará.",
+    name: "Sapo",
+    emoji: "🐸",
+    description: "Al menos ya tienes ojos para ver en qué se va la plata.",
     grid: [
       ".#...#.",
       "..#.#..",
@@ -43,9 +43,9 @@ export const BICHO_SHAPES: Record<number, BichoShape> = {
     eyes: [[3, 2], [3, 4]],
   },
   3: {
-    name: "Zorrito",
+    name: "Zorro",
     emoji: "🦊",
-    description: "Tu bicho evolucionó a Zorrito. Tus finanzas van en buen camino.",
+    description: "Astuto con la plata. Ya no caes en gastos tontos.",
     grid: [
       "#.....#",
       "##...##",
@@ -59,9 +59,9 @@ export const BICHO_SHAPES: Record<number, BichoShape> = {
     eyes: [[4, 1], [4, 5]],
   },
   4: {
-    name: "Fénix",
-    emoji: "🔥",
-    description: "¡Tu bicho es un Fénix! Tus finanzas brillan con fuerza.",
+    name: "Dragón",
+    emoji: "🐉",
+    description: "Guardián del oro. Nadie te saca un peso de más.",
     grid: [
       "...#...",
       "..###..",

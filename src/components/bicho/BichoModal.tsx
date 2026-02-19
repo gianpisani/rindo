@@ -89,23 +89,33 @@ export function BichoModal({ open, onClose, bicho }: BichoModalProps) {
 
         {/* Stats */}
         <div className="flex items-center gap-6 text-white/70 text-sm">
-          <div className="flex items-center gap-1.5">
-            <Zap className="h-3.5 w-3.5 text-yellow-400" />
-            <span>
-              Score{" "}
+          <div className="flex flex-col items-center gap-0.5">
+            <div className="flex items-center gap-1.5">
+              <Zap className="h-3.5 w-3.5 text-yellow-400" />
               <span className="font-bold text-white">{bicho.monthlyScore}</span>
-            </span>
+            </div>
+            <span className="text-[10px] text-white/40">Salud mensual</span>
           </div>
-          <div className="flex items-center gap-1.5">
-            <Flame className="h-3.5 w-3.5 text-orange-400" />
-            <span>
-              Racha{" "}
+          <div className="flex flex-col items-center gap-0.5">
+            <div className="flex items-center gap-1.5">
+              <Flame className="h-3.5 w-3.5 text-orange-400" />
               <span className="font-bold text-white">
-                {bicho.currentStreak}
-              </span>{" "}
-              días
-            </span>
+                {bicho.savingStreak}d
+              </span>
+            </div>
+            <span className="text-[10px] text-white/40">Racha ahorro</span>
           </div>
+          {bicho.monthHormigaCount > 0 && (
+            <div className="flex flex-col items-center gap-0.5">
+              <div className="flex items-center gap-1.5">
+                <span className="text-[13px]">🐜</span>
+                <span className="font-bold text-white">
+                  {bicho.monthHormigaCount}
+                </span>
+              </div>
+              <span className="text-[10px] text-white/40">Gastos hormiga</span>
+            </div>
+          )}
         </div>
 
         {/* AI Message */}

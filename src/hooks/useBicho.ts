@@ -12,12 +12,17 @@ import {
 import { es } from "date-fns/locale";
 import { supabase } from "@/integrations/supabase/client";
 
+// Gastos hormiga: transacciones chicas que no duelen pero suman
+const HORMIGA_THRESHOLD = 5000; // $5.000 CLP
+
 export interface DayScore {
   date: string;
   score: number;
   spent: number;
   income: number;
   txCount: number;
+  hormigaCount: number; // small impulse purchases
+  hormigaTotal: number;
   color: string;
   label: string;
 }
@@ -26,13 +31,17 @@ export interface BichoState {
   level: number;
   shape: BichoShape;
   monthlyScore: number;
-  currentStreak: number;
-  bestStreak: number;
+  // Racha = días consecutivos gastando BAJO tu promedio (incentiva ahorrar)
+  savingStreak: number;
+  bestSavingStreak: number;
   monthDays: DayScore[];
   yearDays: DayScore[];
   avgDailyExpense: number;
   totalMonthExpense: number;
   totalMonthIncome: number;
+  // Gastos hormiga del mes
+  monthHormigaCount: number;
+  monthHormigaTotal: number;
   daysElapsed: number;
   aiMessage: string | null;
   isLoadingAI: boolean;
@@ -57,7 +66,7 @@ export function useBicho(): BichoState {
       txByDate[dateStr].push(t);
     }
 
-    // Compute average daily expense over last 90 days
+    // Average daily expense (last 90 days)
     const ninetyDaysAgo = new Date(now);
     ninetyDaysAgo.setDate(ninetyDaysAgo.getDate() - 90);
 
@@ -71,20 +80,28 @@ export function useBicho(): BichoState {
     const daysInRange = Math.max(1, differenceInDays(now, ninetyDaysAgo));
     const avgDailyExpense = totalRecentExpenses / daysInRange;
 
-    // Build daily scores for the year (up to today)
+    // Daily scores for the year
     const yearInterval = eachDayOfInterval({ start: yearStart, end: now });
 
     const allDayScores: DayScore[] = yearInterval.map((day) => {
       const dateStr = format(day, "yyyy-MM-dd");
       const dayTxs = txByDate[dateStr] || [];
 
-      const spent = dayTxs
-        .filter((t) => t.type === "Gasto")
-        .reduce((sum, t) => sum + Number(t.amount), 0);
-
+      const expenses = dayTxs.filter((t) => t.type === "Gasto");
+      const spent = expenses.reduce((sum, t) => sum + Number(t.amount), 0);
       const income = dayTxs
         .filter((t) => t.type === "Ingreso")
         .reduce((sum, t) => sum + Number(t.amount), 0);
+
+      // Gastos hormiga: compras chicas bajo $5.000
+      const hormigaTxs = expenses.filter(
+        (t) => Number(t.amount) <= HORMIGA_THRESHOLD
+      );
+      const hormigaCount = hormigaTxs.length;
+      const hormigaTotal = hormigaTxs.reduce(
+        (sum, t) => sum + Number(t.amount),
+        0
+      );
 
       const hasUncategorized = dayTxs.some(
         (t) =>
@@ -92,11 +109,12 @@ export function useBicho(): BichoState {
           t.category_name === "⚡ Analizando..."
       );
 
+      // Score: cuánto ahorraste hoy vs tu promedio
       let score: number;
       if (dayTxs.length === 0) {
-        score = 60;
+        score = 60; // neutral, no data
       } else if (spent === 0 && income > 0) {
-        score = 90;
+        score = 90; // solo ingreso
       } else if (avgDailyExpense === 0) {
         score = spent === 0 ? 70 : 45;
       } else {
@@ -111,6 +129,10 @@ export function useBicho(): BichoState {
         if (income > 0) score = Math.min(100, score + 10);
       }
 
+      // Penalización por gastos hormiga (muchas compras chicas)
+      if (hormigaCount >= 3) score = Math.max(0, score - 10);
+      else if (hormigaCount >= 2) score = Math.max(0, score - 5);
+
       if (hasUncategorized) score = Math.max(0, score - 5);
 
       return {
@@ -119,6 +141,8 @@ export function useBicho(): BichoState {
         spent,
         income,
         txCount: dayTxs.length,
+        hormigaCount,
+        hormigaTotal,
         color: getScoreColor(score),
         label: format(day, "EEE d MMM", { locale: es }),
       };
@@ -130,7 +154,6 @@ export function useBicho(): BichoState {
       return date >= monthStart && date <= endOfMonth(now);
     });
 
-    // Monthly score
     const monthlyScore =
       monthDays.length > 0
         ? Math.round(
@@ -138,31 +161,43 @@ export function useBicho(): BichoState {
           )
         : 50;
 
-    // Streak: count backwards from today
-    let currentStreak = 0;
+    // Racha de ahorro: días consecutivos gastando BAJO tu promedio
+    // (incentiva ahorrar, no gastar)
+    let savingStreak = 0;
     for (let i = allDayScores.length - 1; i >= 0; i--) {
-      if (allDayScores[i].score >= 50) {
-        currentStreak++;
+      const d = allDayScores[i];
+      // Día sin gastos o bajo promedio → racha sigue
+      if (d.spent <= avgDailyExpense) {
+        savingStreak++;
       } else {
         break;
       }
     }
 
-    // Best streak: longest run in the year
-    let bestStreak = 0;
+    let bestSavingStreak = 0;
     let tempStreak = 0;
-    for (const day of allDayScores) {
-      if (day.score >= 50) {
+    for (const d of allDayScores) {
+      if (d.spent <= avgDailyExpense) {
         tempStreak++;
-        bestStreak = Math.max(bestStreak, tempStreak);
+        bestSavingStreak = Math.max(bestSavingStreak, tempStreak);
       } else {
         tempStreak = 0;
       }
     }
 
+    // Gastos hormiga del mes
+    const monthHormigaCount = monthDays.reduce(
+      (s, d) => s + d.hormigaCount,
+      0
+    );
+    const monthHormigaTotal = monthDays.reduce(
+      (s, d) => s + d.hormigaTotal,
+      0
+    );
+
     // Evolution level
     const effectiveScore =
-      monthlyScore + Math.min(10, Math.floor(currentStreak / 3));
+      monthlyScore + Math.min(10, Math.floor(savingStreak / 3));
     let level: number;
     if (effectiveScore >= 75) level = 4;
     else if (effectiveScore >= 60) level = 3;
@@ -176,13 +211,15 @@ export function useBicho(): BichoState {
       level,
       shape: BICHO_SHAPES[level],
       monthlyScore,
-      currentStreak,
-      bestStreak,
+      savingStreak,
+      bestSavingStreak,
       monthDays,
       yearDays: allDayScores,
       avgDailyExpense,
       totalMonthExpense,
       totalMonthIncome,
+      monthHormigaCount,
+      monthHormigaTotal,
       daysElapsed: monthDays.length,
     };
   }, [transactions]);
@@ -209,11 +246,13 @@ export function useBicho(): BichoState {
             level: computed.level,
             levelName: computed.shape.name,
             monthlyScore: computed.monthlyScore,
-            currentStreak: computed.currentStreak,
-            bestStreak: computed.bestStreak,
+            savingStreak: computed.savingStreak,
+            bestSavingStreak: computed.bestSavingStreak,
             avgDailyExpense: computed.avgDailyExpense,
             totalMonthExpense: computed.totalMonthExpense,
             totalMonthIncome: computed.totalMonthIncome,
+            monthHormigaCount: computed.monthHormigaCount,
+            monthHormigaTotal: computed.monthHormigaTotal,
             daysElapsed: computed.daysElapsed,
           }),
         }
