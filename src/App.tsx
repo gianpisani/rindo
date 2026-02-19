@@ -15,6 +15,7 @@ import CategoryInsights from "./pages/CategoryInsights";
 import PendingDebts from "./pages/PendingDebts";
 import CreditCards from "./pages/CreditCards";
 import MonthlySummary from "./pages/MonthlySummary";
+import Bicho from "./pages/Bicho";
 import NotFound from "./pages/NotFound";
 import Auth from "./components/Auth";
 import { LoadingScreen } from "./components/LoadingScreen";
@@ -72,6 +73,7 @@ const App = () => {
             <Route path="/pending-debts" element={<PendingDebts />} />
             <Route path="/monthly-summary" element={<MonthlySummary />} />
             <Route path="/credit-cards" element={<CreditCards />} />
+            <Route path="/bicho" element={<Bicho />} />
             <Route path="*" element={<NotFound />} />
           </Routes>
         </BrowserRouter>

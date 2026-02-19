@@ -12,7 +12,11 @@ import { usePrivacyMode } from "@/hooks/usePrivacyMode";
 import { useGlobalDrawers } from "@/hooks/useGlobalDrawers";
 import { useKeyboardShortcuts } from "@/hooks/useKeyboardShortcuts";
 import { useAtmosphere } from "@/hooks/useAtmosphere";
+import { useBicho } from "@/hooks/useBicho";
 import { ShortcutsPopover } from "@/components/ShortcutsPopover";
+import { BichoCreature } from "@/components/bicho/BichoCreature";
+import { BichoModal } from "@/components/bicho/BichoModal";
+import { getDaysInMonth } from "date-fns";
 import {
   Tooltip,
   TooltipContent,
@@ -39,6 +43,10 @@ export default function Layout({ children }: LayoutProps) {
   const [commandBarOpen, setCommandBarOpen] = useState(false);
   const [showShortcutsPopover, setShowShortcutsPopover] = useState(false);
   const [whisperOpen, setWhisperOpen] = useState(false);
+  const [bichoModalOpen, setBichoModalOpen] = useState(false);
+
+  // Bicho - financial creature
+  const bicho = useBicho();
 
   // Atmospheric UI - subliminal mood system
   const atmosphere = useAtmosphere();
@@ -143,6 +151,13 @@ export default function Layout({ children }: LayoutProps) {
           onOpenChange={setWhisperOpen}
         />
 
+        {/* Bicho Modal */}
+        <BichoModal
+          open={bichoModalOpen}
+          onClose={() => setBichoModalOpen(false)}
+          bicho={bicho}
+        />
+
         {/* Desktop Sidebar */}
         <AppSidebar
           onAddTransaction={() => openQuickAdd()}
@@ -169,6 +184,29 @@ export default function Layout({ children }: LayoutProps) {
                 </span>
               </div>
               <div className="flex items-center gap-3">
+                {/* Bicho creature - clickable */}
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <button
+                      onClick={() => setBichoModalOpen(true)}
+                      className="rounded-lg p-1 hover:bg-muted/80 transition-all cursor-pointer focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-1"
+                    >
+                      <BichoCreature
+                        shape={bicho.shape}
+                        dayScores={bicho.monthDays}
+                        daysInMonth={getDaysInMonth(new Date())}
+                        pixelSize={3}
+                        gap={1}
+                        animated={false}
+                      />
+                    </button>
+                  </TooltipTrigger>
+                  <TooltipContent side="bottom">
+                    <p className="font-medium">{bicho.shape.emoji} {bicho.shape.name}</p>
+                    <p className="text-xs text-muted-foreground">Score {bicho.monthlyScore} · Racha {bicho.currentStreak}</p>
+                  </TooltipContent>
+                </Tooltip>
+
                 <Tooltip>
                   <TooltipTrigger asChild>
                     <Button

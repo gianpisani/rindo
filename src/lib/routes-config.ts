@@ -9,6 +9,7 @@ import {
   TrendingUp,
   CreditCard,
   CalendarDays,
+  Bug,
 } from "lucide-react";
 import { ComponentType } from "react";
 
@@ -89,6 +90,13 @@ export const APP_ROUTES: RouteConfig[] = [
     url: "/category-insights",
     icon: Brain,
     shortcut: "9",
+    group: "tools",
+  },
+  {
+    title: "Bicho",
+    url: "/bicho",
+    icon: Bug,
+    shortcut: "0",
     group: "tools",
   },
 ];
