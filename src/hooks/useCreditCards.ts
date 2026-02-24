@@ -62,6 +62,7 @@ export function useCreditCards() {
         billing_day: row.billing_day,
         payment_day: row.payment_day,
         color: row.color,
+        last_4_digits: row.last_4_digits ?? null,
         is_active: row.is_active,
         used_credit_installments: Number(row.used_credit_installments),
         used_credit_transactions: Number(row.used_credit_transactions),

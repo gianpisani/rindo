@@ -76,6 +76,7 @@ SELECT
   cc.billing_day,
   cc.payment_day,
   cc.color,
+  cc.last_4_digits,
   cc.is_active,
   COALESCE(ist.remaining_debt, 0) AS used_credit_installments,
   COALESCE(ts.current_month_spending, 0) AS used_credit_transactions,

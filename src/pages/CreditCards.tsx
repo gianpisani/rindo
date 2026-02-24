@@ -585,7 +585,14 @@ function CreditCardItem({
           {/* Header: name + menu */}
           <div className="flex items-start justify-between">
             <div>
-              <h3 className="font-semibold text-sm">{card.name}</h3>
+              <div className="flex items-center gap-2">
+                <h3 className="font-semibold text-sm">{card.name}</h3>
+                {card.last_4_digits && (
+                  <span className="text-[11px] font-mono text-muted-foreground/60 tracking-wider">
+                    ····{card.last_4_digits}
+                  </span>
+                )}
+              </div>
               <p className="text-[11px] text-muted-foreground">
                 Cierre: {card.billing_day} · Pago: {card.payment_day}
               </p>

@@ -118,7 +118,14 @@ export function CreditCardWidget() {
                 <CreditCard className="h-4 w-4 text-white" />
               </div>
               <div className="flex-1 min-w-0">
-                <p className="text-sm font-medium truncate">{card.name}</p>
+                <div className="flex items-center gap-1.5">
+                  <p className="text-sm font-medium truncate">{card.name}</p>
+                  {card.last_4_digits && (
+                    <span className="text-[10px] font-mono text-muted-foreground/50 tracking-wider flex-shrink-0">
+                      ····{card.last_4_digits}
+                    </span>
+                  )}
+                </div>
                 <div className="flex items-center gap-2">
                   <Progress value={usedPercent} className="h-1 flex-1" />
                   <span className={cn("text-xs text-muted-foreground", isPrivacyMode && "privacy-blur")}>
