@@ -16,6 +16,7 @@ interface ParsedTransaction {
   type: 'Gasto' | 'Ingreso'
   detail: string
   bank: string
+  cardLastFour?: string
 }
 
 // ── Text normalization ──────────────────────────────────────────────
@@ -94,6 +95,7 @@ function parseCompraTarjeta(text: string): ParsedTransaction | null {
       type: 'Gasto',
       detail: `${comercio} (****${tarjeta})`,
       bank: 'Banco de Chile',
+      cardLastFour: tarjeta,
     }
   }
 
@@ -395,6 +397,27 @@ Deno.serve(async (req) => {
       console.error('⚠️ Auto-categorize error:', e)
     }
 
+    // Match credit card by last 4 digits
+    let cardId: string | null = null
+    if (parsed.cardLastFour) {
+      try {
+        const { data: card } = await supabase
+          .from('credit_cards')
+          .select('id')
+          .eq('user_id', USER_ID)
+          .eq('last_4_digits', parsed.cardLastFour)
+          .eq('is_active', true)
+          .maybeSingle()
+
+        if (card) {
+          cardId = card.id
+          console.log(`💳 Tarjeta matched: ****${parsed.cardLastFour} → ${card.id}`)
+        }
+      } catch (e) {
+        console.error('⚠️ Card match error:', e)
+      }
+    }
+
     const { data, error } = await supabase
       .from('transactions')
       .insert({
@@ -404,6 +427,7 @@ Deno.serve(async (req) => {
         category_name: categoryName,
         type: parsed.type,
         amount: parsed.amount,
+        card_id: cardId,
       })
       .select()
       .single()

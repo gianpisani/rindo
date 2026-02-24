@@ -23,6 +23,7 @@ export type Database = {
           billing_day: number
           payment_day: number
           color: string | null
+          last_4_digits: string | null
           is_active: boolean
           created_at: string
           updated_at: string
@@ -35,6 +36,7 @@ export type Database = {
           billing_day: number
           payment_day: number
           color?: string | null
+          last_4_digits?: string | null
           is_active?: boolean
           created_at?: string
           updated_at?: string
@@ -47,6 +49,7 @@ export type Database = {
           billing_day?: number
           payment_day?: number
           color?: string | null
+          last_4_digits?: string | null
           is_active?: boolean
           created_at?: string
           updated_at?: string

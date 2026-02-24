@@ -34,6 +34,7 @@ export function CreditCardModal({ open, onOpenChange, card, onSave }: CreditCard
   const [billingDay, setBillingDay] = useState("15");
   const [paymentDay, setPaymentDay] = useState("5");
   const [color, setColor] = useState(CARD_COLORS[0]);
+  const [lastFourDigits, setLastFourDigits] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const isEditing = !!card;
@@ -45,12 +46,14 @@ export function CreditCardModal({ open, onOpenChange, card, onSave }: CreditCard
       setBillingDay(card.billing_day.toString());
       setPaymentDay(card.payment_day.toString());
       setColor(card.color || CARD_COLORS[0]);
+      setLastFourDigits(card.last_4_digits || "");
     } else {
       setName("");
       setCreditLimit("");
       setBillingDay("15");
       setPaymentDay("5");
       setColor(CARD_COLORS[0]);
+      setLastFourDigits("");
     }
   }, [card, open]);
 
@@ -73,6 +76,7 @@ export function CreditCardModal({ open, onOpenChange, card, onSave }: CreditCard
         billing_day: parseInt(billingDay),
         payment_day: parseInt(paymentDay),
         color,
+        last_4_digits: lastFourDigits || null,
         is_active: true,
       });
       onOpenChange(false);
@@ -100,7 +104,11 @@ export function CreditCardModal({ open, onOpenChange, card, onSave }: CreditCard
               <CreditCardIcon className="h-8 w-8 opacity-80" />
               <span className="text-xs opacity-70">Crédito</span>
             </div>
-            
+
+            <p className="font-mono text-base tracking-[0.25em] opacity-60">
+              •••• •••• •••• {lastFourDigits || "••••"}
+            </p>
+
             <div>
               <p className="text-lg font-bold truncate">{name || "Nombre de tarjeta"}</p>
               <p className="text-2xl font-bold mt-1">
@@ -124,6 +132,21 @@ export function CreditCardModal({ open, onOpenChange, card, onSave }: CreditCard
             onChange={(e) => setName(e.target.value)}
             className="h-12"
           />
+        </div>
+
+        {/* Last 4 Digits */}
+        <div className="space-y-2">
+          <Label htmlFor="last4">Últimos 4 dígitos</Label>
+          <Input
+            id="last4"
+            placeholder="Ej: 1939"
+            value={lastFourDigits}
+            onChange={(e) => setLastFourDigits(e.target.value.replace(/\D/g, "").slice(0, 4))}
+            className="h-12 font-mono tracking-widest"
+            maxLength={4}
+            inputMode="numeric"
+          />
+          <p className="text-xs text-muted-foreground">Para asociar automáticamente compras desde emails bancarios</p>
         </div>
 
         {/* Credit Limit */}
