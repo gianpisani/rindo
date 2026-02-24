@@ -1,7 +1,8 @@
-import { useState, useRef, useEffect, useMemo } from "react";
+import { useState, useMemo } from "react";
 import Layout from "@/components/Layout";
 import { BichoCreature } from "@/components/bicho/BichoCreature";
 import { useBicho } from "@/hooks/useBicho";
+import { type DayScore } from "@/hooks/useBicho";
 import { getScoreColor, BICHO_SHAPES } from "@/lib/bicho-shapes";
 import {
   getDaysInMonth,
@@ -9,6 +10,9 @@ import {
   startOfYear,
   eachWeekOfInterval,
   addDays,
+  subDays,
+  startOfMonth,
+  subMonths,
 } from "date-fns";
 import { es } from "date-fns/locale";
 import {
@@ -20,34 +24,96 @@ import {
   RefreshCw,
   Info,
   ChevronDown,
+  TrendingUp,
+  TrendingDown,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
+import {
+  Tooltip,
+  TooltipTrigger,
+  TooltipContent,
+  TooltipProvider,
+} from "@/components/ui/tooltip";
+import {
+  BarChart,
+  Bar,
+  XAxis,
+  YAxis,
+  ResponsiveContainer,
+  Tooltip as RechartsTooltip,
+  Cell,
+} from "recharts";
 
-// SVG-based annual heatmap
-function AnnualHeatmap({ yearDays }: { yearDays: ReturnType<typeof useBicho>["yearDays"] }) {
+// --- Heatmap tooltip content ---
+function HeatmapTooltipContent({ day }: { day: DayScore }) {
+  const formatCLP = (n: number) =>
+    new Intl.NumberFormat("es-CL", {
+      style: "currency",
+      currency: "CLP",
+      minimumFractionDigits: 0,
+    }).format(n);
+
+  const scoreColor = getScoreColor(day.score);
+
+  return (
+    <div className="p-3 min-w-[200px] space-y-2">
+      <div className="flex items-center justify-between gap-4">
+        <span className="text-xs text-muted-foreground capitalize">{day.label}</span>
+        <span className="text-xs font-bold font-mono" style={{ color: scoreColor }}>
+          {day.score} pts
+        </span>
+      </div>
+      <div className="border-t border-border/50" />
+      <div className="grid gap-1 text-xs">
+        <div className="flex justify-between">
+          <span className="text-muted-foreground">Gasto</span>
+          <span className="font-mono font-medium">{formatCLP(day.spent)}</span>
+        </div>
+        <div className="flex justify-between">
+          <span className="text-muted-foreground">Ingreso</span>
+          <span className="font-mono font-medium">{formatCLP(day.income)}</span>
+        </div>
+        <div className="flex justify-between">
+          <span className="text-muted-foreground">Transacciones</span>
+          <span className="font-mono font-medium">{day.txCount}</span>
+        </div>
+        {day.hormigaCount > 0 && (
+          <div className="flex justify-between">
+            <span className="text-muted-foreground">🐜 Hormiga</span>
+            <span className="font-mono font-medium">
+              {day.hormigaCount} ({formatCLP(day.hormigaTotal)})
+            </span>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+// --- SVG-based annual heatmap ---
+function AnnualHeatmap({ yearDays }: { yearDays: DayScore[] }) {
   const now = new Date();
   const yearStart = startOfYear(now);
 
-  const scoreMap: Record<string, (typeof yearDays)[0]> = {};
+  const scoreMap: Record<string, DayScore> = {};
   for (const d of yearDays) {
     scoreMap[d.date] = d;
   }
 
   const weeks = eachWeekOfInterval(
     { start: yearStart, end: now },
-    { weekStartsOn: 1 } // Monday start
+    { weekStartsOn: 1 }
   );
 
-  const cell = 11;
+  const cell = 12;
   const gap = 2;
   const step = cell + gap;
-  const labelW = 20; // space for day labels
-  const labelH = 14; // space for month labels
+  const labelW = 20;
+  const labelH = 14;
 
   const dayLabels = ["L", "", "M", "", "V", "", "D"];
 
-  // Precompute month label positions
   const monthPositions = useMemo(() => {
     const positions: { label: string; x: number }[] = [];
     let lastMonth = -1;
@@ -68,83 +134,256 @@ function AnnualHeatmap({ yearDays }: { yearDays: ReturnType<typeof useBicho>["ye
   const svgH = labelH + 7 * step;
 
   return (
-    <div className="overflow-x-auto pb-1 -mx-1 px-1">
-      <svg width={svgW} height={svgH} className="block">
-        {/* Month labels */}
-        {monthPositions.map((m, i) => (
-          <text
-            key={i}
-            x={m.x + cell / 2}
-            y={10}
-            textAnchor="middle"
-            className="fill-muted-foreground/40"
-            fontSize={9}
-            fontFamily="inherit"
-          >
-            {m.label}
-          </text>
-        ))}
-
-        {/* Day labels */}
-        {dayLabels.map((label, i) =>
-          label ? (
+    <TooltipProvider delayDuration={100}>
+      <div className="overflow-x-auto pb-1 -mx-1 px-1">
+        <svg width={svgW} height={svgH} className="block">
+          {/* Month labels */}
+          {monthPositions.map((m, i) => (
             <text
               key={i}
-              x={labelW - 5}
-              y={labelH + i * step + cell * 0.75}
-              textAnchor="end"
-              className="fill-muted-foreground/30"
+              x={m.x + cell / 2}
+              y={10}
+              textAnchor="middle"
+              className="fill-muted-foreground/70"
               fontSize={9}
               fontFamily="inherit"
             >
-              {label}
+              {m.label}
             </text>
-          ) : null
-        )}
+          ))}
 
-        {/* Cells */}
-        {weeks.map((weekStart, wi) =>
-          [0, 1, 2, 3, 4, 5, 6].map((dow) => {
-            const cellDate = addDays(weekStart, dow);
-            const dateStr = format(cellDate, "yyyy-MM-dd");
-            const dayData = scoreMap[dateStr];
-            const isFuture = cellDate > now;
-            const isBeforeYear = cellDate < yearStart;
-
-            if (isBeforeYear || isFuture) return null;
-
-            const x = labelW + wi * step;
-            const y = labelH + dow * step;
-            const fill = dayData ? dayData.color : "#27272a";
-            const opacity = dayData ? 1 : 0.15;
-
-            return (
-              <rect
-                key={`${wi}-${dow}`}
-                x={x}
-                y={y}
-                width={cell}
-                height={cell}
-                rx={2}
-                fill={fill}
-                opacity={opacity}
-                className="transition-all duration-300 hover:opacity-80 hover:brightness-125"
+          {/* Day labels */}
+          {dayLabels.map((label, i) =>
+            label ? (
+              <text
+                key={i}
+                x={labelW - 5}
+                y={labelH + i * step + cell * 0.75}
+                textAnchor="end"
+                className="fill-muted-foreground/60"
+                fontSize={9}
+                fontFamily="inherit"
               >
-                {dayData && (
-                  <title>{dayData.label} · Score {dayData.score} · ${Math.round(dayData.spent).toLocaleString("es-CL")} gastado</title>
-                )}
-              </rect>
-            );
-          })
-        )}
-      </svg>
+                {label}
+              </text>
+            ) : null
+          )}
+
+          {/* Cells */}
+          {weeks.map((weekStart, wi) =>
+            [0, 1, 2, 3, 4, 5, 6].map((dow) => {
+              const cellDate = addDays(weekStart, dow);
+              const dateStr = format(cellDate, "yyyy-MM-dd");
+              const dayData = scoreMap[dateStr];
+              const isFuture = cellDate > now;
+              const isBeforeYear = cellDate < yearStart;
+
+              if (isBeforeYear || isFuture) return null;
+
+              const x = labelW + wi * step;
+              const y = labelH + dow * step;
+              const fill = dayData ? dayData.color : "#27272a";
+              const opacity = dayData ? 1 : 0.3;
+
+              if (dayData) {
+                return (
+                  <Tooltip key={`${wi}-${dow}`}>
+                    <TooltipTrigger asChild>
+                      <rect
+                        x={x}
+                        y={y}
+                        width={cell}
+                        height={cell}
+                        rx={2.5}
+                        fill={fill}
+                        opacity={opacity}
+                        className="cursor-pointer transition-all duration-200 hover:brightness-125"
+                      />
+                    </TooltipTrigger>
+                    <TooltipContent side="top" className="p-0">
+                      <HeatmapTooltipContent day={dayData} />
+                    </TooltipContent>
+                  </Tooltip>
+                );
+              }
+
+              return (
+                <rect
+                  key={`${wi}-${dow}`}
+                  x={x}
+                  y={y}
+                  width={cell}
+                  height={cell}
+                  rx={2.5}
+                  fill={fill}
+                  opacity={opacity}
+                  className="transition-all duration-200"
+                />
+              );
+            })
+          )}
+        </svg>
+      </div>
+    </TooltipProvider>
+  );
+}
+
+// --- Monthly trend chart ---
+const MONTH_LABELS_ES = [
+  "Ene", "Feb", "Mar", "Abr", "May", "Jun",
+  "Jul", "Ago", "Sep", "Oct", "Nov", "Dic",
+];
+
+function MonthlyTrendChart({ yearDays }: { yearDays: DayScore[] }) {
+  const monthlyScores = useMemo(() => {
+    const byMonth: Record<number, number[]> = {};
+    for (const d of yearDays) {
+      const month = new Date(d.date).getMonth();
+      if (!byMonth[month]) byMonth[month] = [];
+      byMonth[month].push(d.score);
+    }
+
+    const now = new Date();
+    const currentMonth = now.getMonth();
+
+    return Array.from({ length: currentMonth + 1 }, (_, i) => {
+      const scores = byMonth[i] || [];
+      const avg = scores.length > 0
+        ? Math.round(scores.reduce((s, v) => s + v, 0) / scores.length)
+        : 0;
+      return {
+        month: MONTH_LABELS_ES[i],
+        score: avg,
+        fill: getScoreColor(avg),
+      };
+    });
+  }, [yearDays]);
+
+  if (monthlyScores.length === 0) return null;
+
+  return (
+    <div className="space-y-3">
+      <h2 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider">
+        Tendencia mensual
+      </h2>
+      <div className="rounded-2xl border border-border/50 bg-card/50 p-4">
+        <ResponsiveContainer width="100%" height={100}>
+          <BarChart data={monthlyScores} margin={{ top: 4, right: 4, bottom: 0, left: 4 }}>
+            <XAxis
+              dataKey="month"
+              tick={{ fontSize: 10, fill: "hsl(var(--muted-foreground))" }}
+              axisLine={false}
+              tickLine={false}
+            />
+            <YAxis hide domain={[0, 100]} />
+            <RechartsTooltip
+              cursor={false}
+              content={({ active, payload }) => {
+                if (!active || !payload?.length) return null;
+                const data = payload[0].payload;
+                return (
+                  <div className="rounded-md border bg-popover px-3 py-1.5 text-sm text-popover-foreground shadow-md">
+                    <span className="font-medium">{data.month}:</span>{" "}
+                    <span className="font-mono font-bold" style={{ color: data.fill }}>
+                      {data.score} pts
+                    </span>
+                  </div>
+                );
+              }}
+            />
+            <Bar dataKey="score" barSize={16} radius={[4, 4, 0, 0]}>
+              {monthlyScores.map((entry, index) => (
+                <Cell key={index} fill={entry.fill} />
+              ))}
+            </Bar>
+          </BarChart>
+        </ResponsiveContainer>
+      </div>
     </div>
   );
 }
 
+// --- Period selector types ---
+type Period = "7d" | "30d" | "month" | "year";
+
+const PERIOD_OPTIONS: { value: Period; label: string }[] = [
+  { value: "7d", label: "7 días" },
+  { value: "30d", label: "30 días" },
+  { value: "month", label: "Este mes" },
+  { value: "year", label: "Anual" },
+];
+
+interface PeriodMetrics {
+  totalExpense: number;
+  totalIncome: number;
+  avgDaily: number;
+  hormigaCount: number;
+  hormigaTotal: number;
+  avgScore: number;
+}
+
+function computePeriodMetrics(days: DayScore[]): PeriodMetrics {
+  if (days.length === 0) {
+    return { totalExpense: 0, totalIncome: 0, avgDaily: 0, hormigaCount: 0, hormigaTotal: 0, avgScore: 0 };
+  }
+  const totalExpense = days.reduce((s, d) => s + d.spent, 0);
+  const totalIncome = days.reduce((s, d) => s + d.income, 0);
+  const avgDaily = totalExpense / days.length;
+  const hormigaCount = days.reduce((s, d) => s + d.hormigaCount, 0);
+  const hormigaTotal = days.reduce((s, d) => s + d.hormigaTotal, 0);
+  const avgScore = Math.round(days.reduce((s, d) => s + d.score, 0) / days.length);
+  return { totalExpense, totalIncome, avgDaily, hormigaCount, hormigaTotal, avgScore };
+}
+
+function getPeriodHeading(period: Period, year: number): string {
+  switch (period) {
+    case "7d": return "Últimos 7 días";
+    case "30d": return "Últimos 30 días";
+    case "month": return "Este mes";
+    case "year": return `Año ${year}`;
+  }
+}
+
+// --- Delta indicator ---
+function Delta({
+  current,
+  previous,
+  inverted = false,
+  formatFn,
+  suffix,
+}: {
+  current: number;
+  previous: number;
+  inverted?: boolean; // true = lower is better (expenses)
+  formatFn: (n: number) => string;
+  suffix?: string;
+}) {
+  if (previous === 0) return null;
+  const diff = current - previous;
+  if (diff === 0) return null;
+
+  const isUp = diff > 0;
+  // For expenses: going down is good (green). For income/score: going up is good.
+  const isGood = inverted ? !isUp : isUp;
+
+  return (
+    <div className={cn(
+      "flex items-center gap-1 text-[11px] font-medium",
+      isGood ? "text-emerald-500" : "text-red-400"
+    )}>
+      {isUp ? <TrendingUp className="h-3 w-3" /> : <TrendingDown className="h-3 w-3" />}
+      <span>{formatFn(Math.abs(diff))}{suffix} vs anterior</span>
+    </div>
+  );
+}
+
+// =============================================================
+// Main page
+// =============================================================
 export default function Bicho() {
   const bicho = useBicho();
   const [infoOpen, setInfoOpen] = useState(false);
+  const [period, setPeriod] = useState<Period>("month");
   const now = new Date();
   const daysInMonth = getDaysInMonth(now);
   const glowColor = getScoreColor(bicho.monthlyScore);
@@ -155,6 +394,72 @@ export default function Bicho() {
       currency: "CLP",
       minimumFractionDigits: 0,
     }).format(n);
+
+  // --- Period metrics ---
+  const { current: periodCurrent, previous: periodPrevious } = useMemo(() => {
+    const today = new Date();
+    const todayStr = format(today, "yyyy-MM-dd");
+
+    const dayMap: Record<string, DayScore> = {};
+    for (const d of bicho.yearDays) {
+      dayMap[d.date] = d;
+    }
+
+    const getDaysInRange = (start: Date, end: Date): DayScore[] => {
+      const result: DayScore[] = [];
+      const d = new Date(start);
+      while (d <= end) {
+        const key = format(d, "yyyy-MM-dd");
+        if (dayMap[key]) result.push(dayMap[key]);
+        d.setDate(d.getDate() + 1);
+      }
+      return result;
+    };
+
+    let currentDays: DayScore[] = [];
+    let previousDays: DayScore[] = [];
+
+    switch (period) {
+      case "7d": {
+        const start = subDays(today, 6);
+        const prevStart = subDays(today, 13);
+        const prevEnd = subDays(today, 7);
+        currentDays = getDaysInRange(start, today);
+        previousDays = getDaysInRange(prevStart, prevEnd);
+        break;
+      }
+      case "30d": {
+        const start = subDays(today, 29);
+        const prevStart = subDays(today, 59);
+        const prevEnd = subDays(today, 30);
+        currentDays = getDaysInRange(start, today);
+        previousDays = getDaysInRange(prevStart, prevEnd);
+        break;
+      }
+      case "month": {
+        const monthStart = startOfMonth(today);
+        const prevMonth = subMonths(today, 1);
+        const prevMonthStart = startOfMonth(prevMonth);
+        // For previous month, use same number of days elapsed
+        const daysElapsed = today.getDate();
+        const prevEnd = new Date(prevMonthStart);
+        prevEnd.setDate(prevEnd.getDate() + daysElapsed - 1);
+        currentDays = getDaysInRange(monthStart, today);
+        previousDays = getDaysInRange(prevMonthStart, prevEnd);
+        break;
+      }
+      case "year": {
+        currentDays = bicho.yearDays;
+        previousDays = [];
+        break;
+      }
+    }
+
+    return {
+      current: computePeriodMetrics(currentDays),
+      previous: computePeriodMetrics(previousDays),
+    };
+  }, [bicho.yearDays, period]);
 
   // Evolution timeline
   const levels = [1, 2, 3, 4];
@@ -352,7 +657,7 @@ export default function Bicho() {
             <h2 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider">
               Tu año {now.getFullYear()}
             </h2>
-            <div className="flex items-center gap-1.5 text-[10px] text-muted-foreground/40">
+            <div className="flex items-center gap-1.5 text-[10px] text-muted-foreground/70">
               <span>Peor</span>
               {["#ef4444", "#f97316", "#facc15", "#a3e635", "#4ade80", "#22c55e"].map(
                 (color) => (
@@ -371,42 +676,120 @@ export default function Bicho() {
           </div>
         </div>
 
-        {/* Month insights */}
+        {/* Monthly Trend Chart */}
+        <MonthlyTrendChart yearDays={bicho.yearDays} />
+
+        {/* Period insights */}
         <div className="space-y-3">
           <h2 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider">
-            Este mes
+            {getPeriodHeading(period, now.getFullYear())}
           </h2>
+
+          {/* Period chips */}
+          <div className="flex gap-2">
+            {PERIOD_OPTIONS.map((opt) => (
+              <button
+                key={opt.value}
+                onClick={() => setPeriod(opt.value)}
+                className={cn(
+                  "px-3 py-1 rounded-full text-xs font-medium transition-colors cursor-pointer",
+                  period === opt.value
+                    ? "bg-primary text-primary-foreground"
+                    : "bg-muted/50 text-muted-foreground hover:bg-muted"
+                )}
+              >
+                {opt.label}
+              </button>
+            ))}
+          </div>
+
+          {/* Metric cards */}
           <div className="grid grid-cols-2 gap-3">
             <div className="rounded-xl border border-border/50 bg-card/50 p-4 space-y-1">
               <p className="text-xs text-muted-foreground">Gasto total</p>
               <p className="text-lg font-bold font-mono">
-                {formatCLP(bicho.totalMonthExpense)}
+                {formatCLP(periodCurrent.totalExpense)}
               </p>
+              {period !== "year" && (
+                <Delta
+                  current={periodCurrent.totalExpense}
+                  previous={periodPrevious.totalExpense}
+                  inverted
+                  formatFn={formatCLP}
+                />
+              )}
             </div>
             <div className="rounded-xl border border-border/50 bg-card/50 p-4 space-y-1">
               <p className="text-xs text-muted-foreground">Ingreso total</p>
               <p className="text-lg font-bold font-mono">
-                {formatCLP(bicho.totalMonthIncome)}
+                {formatCLP(periodCurrent.totalIncome)}
               </p>
+              {period !== "year" && (
+                <Delta
+                  current={periodCurrent.totalIncome}
+                  previous={periodPrevious.totalIncome}
+                  formatFn={formatCLP}
+                />
+              )}
             </div>
             <div className="rounded-xl border border-border/50 bg-card/50 p-4 space-y-1">
               <p className="text-xs text-muted-foreground">Promedio diario</p>
               <p className="text-lg font-bold font-mono">
-                {formatCLP(bicho.avgDailyExpense)}
+                {formatCLP(periodCurrent.avgDaily)}
               </p>
+              {period !== "year" && (
+                <Delta
+                  current={periodCurrent.avgDaily}
+                  previous={periodPrevious.avgDaily}
+                  inverted
+                  formatFn={formatCLP}
+                />
+              )}
             </div>
             <div className="rounded-xl border border-border/50 bg-card/50 p-4 space-y-1">
               <p className="text-xs text-muted-foreground flex items-center gap-1">
                 🐜 Gastos hormiga
               </p>
               <p className="text-lg font-bold font-mono">
-                {bicho.monthHormigaCount}
+                {periodCurrent.hormigaCount}
               </p>
               <p className="text-[11px] text-muted-foreground">
-                {formatCLP(bicho.monthHormigaTotal)} en compras &lt;$5k
+                {formatCLP(periodCurrent.hormigaTotal)} en compras &lt;$5k
               </p>
+              {period !== "year" && (
+                <Delta
+                  current={periodCurrent.hormigaCount}
+                  previous={periodPrevious.hormigaCount}
+                  inverted
+                  formatFn={(n) => String(n)}
+                  suffix=" compras"
+                />
+              )}
             </div>
           </div>
+
+          {/* Score card - full width */}
+          {periodCurrent.avgScore > 0 && (
+            <div className="rounded-xl border border-border/50 bg-card/50 p-4 space-y-1">
+              <p className="text-xs text-muted-foreground">Score promedio</p>
+              <div className="flex items-center gap-2">
+                <p
+                  className="text-lg font-bold font-mono"
+                  style={{ color: getScoreColor(periodCurrent.avgScore) }}
+                >
+                  {periodCurrent.avgScore} pts
+                </p>
+                {period !== "year" && (
+                  <Delta
+                    current={periodCurrent.avgScore}
+                    previous={periodPrevious.avgScore}
+                    formatFn={(n) => String(n)}
+                    suffix=" pts"
+                  />
+                )}
+              </div>
+            </div>
+          )}
         </div>
 
         {/* Bottom spacing */}
