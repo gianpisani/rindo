@@ -8,7 +8,6 @@ interface EmailPayload {
   content: string
   from: string
   date?: string
-  // Timestamp exacto del email (ISO string o epoch ms)
   timestamp?: string
 }
 
@@ -19,88 +18,157 @@ interface ParsedTransaction {
   bank: string
 }
 
+// ── Text normalization ──────────────────────────────────────────────
+// Gmail's getPlainBody() wraps lines and injects invisible chars.
+// Normalize to a single continuous line so regexes work reliably.
+
+function normalizeEmailText(text: string): string {
+  return text
+    .replace(/[\u200B-\u200F\u2028\u2029\uFEFF\u00AD\u034F\u061C\u180E]/g, '')
+    .replace(/\s+/g, ' ')
+    .trim()
+}
+
+function stripBankFooter(text: string): string {
+  const markers = [
+    'revisa saldos y movimientos',
+    'sigue estos consejos para evitar fraudes',
+    'nunca te llamaremos solicitando',
+    'realiza todo de forma',
+    'este e-mail fue generado automaticamente',
+    'importante: este e-mail fue generado',
+    'mi banco mi pass',
+  ]
+
+  const lower = text.toLowerCase()
+  let cutIndex = text.length
+
+  for (const marker of markers) {
+    const idx = lower.indexOf(marker)
+    if (idx > 0 && idx < cutIndex) {
+      cutIndex = idx
+    }
+  }
+
+  return text.substring(0, cutIndex).trim()
+}
+
+function cleanMerchantName(raw: string): string {
+  let name = raw.trim()
+
+  // Remove trailing "Ciudad CL" patterns
+  name = name
+    .replace(/\s+(?:SANTIAGO|LAS CONDES|PROVIDENCIA|VITACURA|LO BARNECHEA|[ÑN]U[ÑN]OA|MACUL|LA FLORIDA|MAIPU|MAIP[UÚ]|RECOLETA|SAN MIGUEL|PE[ÑN]ALOL[EÉ]N|LA REINA|HUECHURABA|QUILICURA|CONCHAL[IÍ]|PUENTE ALTO|SAN BERNARDO|RENCA|CERRILLOS|TEMUCO|VALPARAISO|VI[ÑN]A DEL MAR|CONCEPCION|ANTOFAGASTA|TALCA|CHILLAN|OSORNO|VALDIVIA|PUERTO MONTT|IQUIQUE|ARICA|RANCAGUA|COQUIMBO|LA SERENA)\s+CL$/i, '')
+    .replace(/\s+CL$/i, '')
+
+  // Common payment platform prefixes
+  name = name.replace(/^MERCADOPAGO\*\s*/i, '')
+  name = name.replace(/^SQ\s*\*\s*/i, '')
+  name = name.replace(/^PAY\s*\*\s*/i, '')
+
+  name = name.replace(/\s+/g, ' ').trim()
+
+  // Title case
+  name = name.split(' ').map(w =>
+    w.length <= 2 ? w.toLowerCase() : w.charAt(0).toUpperCase() + w.slice(1).toLowerCase()
+  ).join(' ')
+
+  return name || raw.trim()
+}
+
 // ── Parsers por tipo de email ──────────────────────────────────────
 
+function parseCompraTarjeta(text: string): ParsedTransaction | null {
+  // "compra por $5.000 con Tarjeta de Crédito ****1939 en MERCADOPAGO*KRISPYKREME Las Condes CL el 22/02/2026 12:30"
+  const match = text.match(
+    /compra por \$\s*([0-9]{1,3}(?:[.,][0-9]{3})*)\s+con\s+Tarjeta de (?:Cr[eé]dito|D[eé]bito)\s+\*{2,4}(\d+)\s+en\s+(.+?)\s+el\s+\d{1,2}\/\d{2}\/\d{4}/i
+  )
+
+  if (match) {
+    const amount = parseInt(match[1].replace(/[.,]/g, ''), 10)
+    const tarjeta = match[2]
+    const comercio = cleanMerchantName(match[3])
+
+    return {
+      amount,
+      type: 'Gasto',
+      detail: `${comercio} (****${tarjeta})`,
+      bank: 'Banco de Chile',
+    }
+  }
+
+  return null
+}
+
 function parseTransferenciaTerceros(text: string): ParsedTransaction | null {
-  // "Transferencia a terceros" → Gasto
-  if (!/transferencia a terceros/i.test(text)) return null
+  // Banco de Chile: "Transferencia a terceros"
+  // Itaú/otros: "comprobante electronico de transferencia de fondos realizada"
+  const isOutgoing = /transferencia a terceros|comprobante\s+(?:electr[oó]nico\s+)?de\s+transferencia\s+de\s+fondos\s+realizada/i.test(text)
+  if (!isOutgoing) return null
 
   const amount = extractAmount(text)
   if (!amount) return null
 
-  // Extraer destinatario: "Nombre y Apellido  Gianfranco Carniglia"
-  const destinatario = text.match(/Nombre y Apellido\s+([A-ZÁÉÍÓÚÑa-záéíóúñ\s]+?)(?:\s+Rut|\s+Tipo|\s+Nº|\s+Banco|$)/i)?.[1]?.trim()
-    ?? text.match(/Destinatario[:\s]+([A-ZÁÉÍÓÚÑa-záéíóúñ\s]+?)(?:\s+Rut|\s+Tipo|$)/i)?.[1]?.trim()
+  // Recipient name: "Nombre y Apellido  X" or "Nombre  X"
+  const destinatario =
+    text.match(/Nombre(?:\s+y\s+Apellido)?\s+([A-ZÁÉÍÓÚÑa-záéíóúñ\s]+?)(?:\s+Rut|\s+Tipo|\s+N[º°]|\s+Banco|\s+E-?mail|$)/i)?.[1]?.trim()
 
-  // Extraer banco destino: "Banco Banco Santander" → "Banco Santander"
-  const bancoDestinoMatch = text.match(/Banco\s+(Banco\s+\w+|\w+)\s+(?:Email|Monto|Mensaje)/i)
-  const bancoDestino = bancoDestinoMatch?.[1]?.trim()
+  // Destination bank: "Banco  Banco BCI/MACHBANK" or "Banco  Scotiabank Sud Americano"
+  const bancoDestino =
+    text.match(/Banco\s+(.+?)(?:\s+Email|\s+Monto|\s+Mensaje|\s+Cuenta\s+de\s+destino|\s+Tipo\s+de\s+Cuenta|\s+Comentario)/i)?.[1]?.trim()
 
   const parts = [destinatario, bancoDestino].filter(Boolean)
   const detail = parts.length > 0
     ? `Transferencia a ${parts.join(' · ')}`
     : 'Transferencia a terceros'
 
-  return { amount, type: 'Gasto', detail, bank: 'Banco de Chile' }
+  const bank = detectBank('', text)
+
+  return { amount, type: 'Gasto', detail, bank: bank !== 'Banco' ? bank : 'Banco de Chile' }
 }
 
 function parseTransferenciaRecibida(text: string): ParsedTransaction | null {
-  if (!/transferencia recibida|te han transferido|abono por transferencia/i.test(text)) return null
+  // Banco de Chile:  "nuestro(a) cliente X ha efectuado una transferencia de fondos a tu cuenta"
+  // BCI/Mach:        "Has recibido una transferencia de fondos de X hacia tu cuenta"
+  // BancoEstado:     "Has recibido una Transferencia Electrónica de nuestro(a) cliente X"
+  const isIncoming =
+    /has\s+recibido\s+una\s+transferencia|transferencia\s+(?:de\s+fondos\s+)?a\s+tu\s+cuenta|transferencia\s+electr[oó]nica|abono\s+por\s+transferencia|te\s+han\s+transferido/i.test(text)
+  if (!isIncoming) return null
 
   const amount = extractAmount(text)
   if (!amount) return null
 
-  const remitente = text.match(/(?:Remitente|Nombre)[:\s]+([^\n\r]+)/i)?.[1]?.trim()
+  let remitente: string | null = null
 
-  const detail = remitente
-    ? `Transferencia de ${remitente}`
-    : 'Transferencia recibida'
-
-  return { amount, type: 'Ingreso', detail, bank: 'Banco de Chile' }
-}
-
-function parseCompraTarjeta(text: string): ParsedTransaction | null {
-  // "compra por $3.600 con Tarjeta de Crédito ****1939 en THINK COFFEE BAR"
-  const compraMatch = text.match(
-    /compra por \$\s*([0-9]{1,3}(?:[.,][0-9]{3})*)\s+con\s+Tarjeta de (?:Crédito|Débito)\s+\*{2,4}(\d+)\s+en\s+([^\n\r]+?)(?:\s+el\s+|\s*$)/i
-  )
-
-  if (compraMatch) {
-    const amount = parseInt(compraMatch[1].replace(/[.,]/g, ''), 10)
-    const tarjeta = compraMatch[2]
-    let comercio = compraMatch[3].trim()
-      .replace(/\s+SANTIAGO\s+CL$/i, '')
-      .replace(/\s+CL$/i, '')
-      .replace(/\s+/g, ' ')
-      .trim()
-
-    // Title case para el comercio
-    comercio = comercio.split(' ').map(w =>
-      w.length <= 2 ? w.toLowerCase() : w.charAt(0).toUpperCase() + w.slice(1).toLowerCase()
-    ).join(' ')
-
-    return {
-      amount,
-      type: 'Gasto',
-      detail: `${comercio} (TC ****${tarjeta})`,
-      bank: 'Banco de Chile',
-    }
+  // "nuestro(a) cliente NOMBRE ha efectuado" (Banco de Chile, BancoEstado)
+  if (!remitente) {
+    const m = text.match(/nuestr[oa]\(?a?\)?\s+cliente\s+([A-ZÁÉÍÓÚÑa-záéíóúñ\s]+?)\s+(?:ha\s+efectuado|Datos)/i)
+    if (m) remitente = m[1].trim()
   }
 
-  // Fallback genérico para compras con tarjeta
-  if (!/compra.*tarjeta/i.test(text)) return null
+  // "transferencia de fondos de NOMBRE hacia tu cuenta" (BCI/Mach)
+  if (!remitente) {
+    const m = text.match(/transferencia\s+(?:de\s+fondos\s+)?de\s+([A-ZÁÉÍÓÚÑa-záéíóúñ\s]+?)\s+(?:hacia|a)\s+tu\s+cuenta/i)
+    if (m) remitente = m[1].trim()
+  }
 
-  const amount = extractAmount(text)
-  if (!amount) return null
+  // Source bank: "Banco de origen  Banco Bci / Mach"
+  const bancoOrigen =
+    text.match(/Banco\s+de\s+origen\s+(.+?)(?:\s+Fecha|\s+Mensaje|\s+N[úu]mero|\s+Monto)/i)?.[1]?.trim()
 
-  const comercioMatch = text.match(/en\s+([A-Z][A-Z\s]+?)(?:\s+el\s|\s+SANTIAGO|\s+CL|\n)/i)
-  const comercio = comercioMatch?.[1]?.trim() ?? 'Compra con tarjeta'
+  let detail = 'Transferencia recibida'
+  if (remitente) {
+    detail = `Transferencia de ${remitente}`
+    if (bancoOrigen) detail += ` (${bancoOrigen})`
+  }
 
-  return { amount, type: 'Gasto', detail: comercio, bank: 'Banco de Chile' }
+  const bank = detectBank('', text)
+
+  return { amount, type: 'Ingreso', detail, bank: bank !== 'Banco' ? bank : 'Banco de Chile' }
 }
 
 function parsePagoTarjeta(text: string): ParsedTransaction | null {
-  if (!/pago de tarjeta|pago tarjeta de crédito/i.test(text)) return null
+  if (!/pago de tarjeta|pago tarjeta de cr[eé]dito/i.test(text)) return null
 
   const amount = extractAmount(text)
   if (!amount) return null
@@ -109,7 +177,7 @@ function parsePagoTarjeta(text: string): ParsedTransaction | null {
 }
 
 function parseCargoAutomatico(text: string): ParsedTransaction | null {
-  if (!/cargo automático|pago automático|pac\b/i.test(text)) return null
+  if (!/cargo autom[aá]tico|pago autom[aá]tico|pac\b/i.test(text)) return null
 
   const amount = extractAmount(text)
   if (!amount) return null
@@ -155,8 +223,8 @@ function extractAmount(text: string): number | null {
 
 function detectBank(from: string, text: string): string {
   const combined = `${from} ${text}`.toLowerCase()
-  if (combined.includes('bancochile') || combined.includes('banco de chile')) return 'Banco de Chile'
-  if (combined.includes('bci')) return 'BCI'
+  if (combined.includes('bancochile') || combined.includes('banco de chile') || combined.includes('banco chile')) return 'Banco de Chile'
+  if (combined.includes('bci') || combined.includes('mach')) return 'BCI'
   if (combined.includes('santander')) return 'Santander'
   if (combined.includes('bancoestado') || combined.includes('banco estado')) return 'BancoEstado'
   if (combined.includes('itau') || combined.includes('itaú')) return 'Itaú'
@@ -189,14 +257,14 @@ function isPromotionalEmail(subject: string, text: string): boolean {
     /pago\s+(?:de\s+tarjeta|exitoso|realizado)/i,
     /retiro|giro|abono\s+por/i,
     /has\s+realizado|se\s+ha\s+realizado/i,
+    /has\s+recibido\s+una\s+transferencia/i,
+    /transferencia\s+electr[oó]nica/i,
   ]
 
-  // If it matches a transactional pattern, it's NOT promo
   for (const pattern of transactionalPatterns) {
     if (pattern.test(subject) || pattern.test(text)) return false
   }
 
-  // If it matches promo patterns, skip it
   for (const pattern of promoPatterns) {
     if (pattern.test(subject) || pattern.test(text)) return true
   }
@@ -225,9 +293,10 @@ Deno.serve(async (req) => {
 
     console.log('📧 Email recibido:', { subject, from, date, timestamp })
 
-    const text = `${subject || ''} ${content || ''}`
+    // Normalize: collapse whitespace, strip invisible chars, remove footer
+    const rawText = `${subject || ''} ${content || ''}`
+    const text = stripBankFooter(normalizeEmailText(rawText))
 
-    // Filter out promotional emails
     if (isPromotionalEmail(subject || '', text)) {
       console.log('🚫 Email promocional, ignorando:', subject)
       return new Response(
@@ -256,8 +325,6 @@ Deno.serve(async (req) => {
     }
 
     if (!parsed) {
-      // No parser matched — only create transaction if we can extract a real amount
-      // from a clearly transactional context
       const amount = extractAmount(text)
       if (!amount) {
         console.log('⚠️ No se pudo parsear el email, ignorando')
@@ -267,7 +334,6 @@ Deno.serve(async (req) => {
         )
       }
 
-      // Double-check: does this look like a real transaction email?
       const looksTransactional = /comprobante|has realizado|se ha realizado|exitosa|cargo|abono/i.test(text)
       if (!looksTransactional) {
         console.log('🚫 Email no parece transaccional, ignorando:', subject)
@@ -286,12 +352,10 @@ Deno.serve(async (req) => {
       }
     }
 
-    // Override bank if parser didn't detect it
     if (parsed.bank === 'Banco de Chile' && bank !== 'Banco') {
       parsed.bank = bank
     }
 
-    // Prefix with 🤖
     parsed.detail = `🤖 ${parsed.detail}`
 
     console.log('💰 Parseado:', parsed)
@@ -304,23 +368,28 @@ Deno.serve(async (req) => {
     // Auto-categorize: check user's history for similar details
     let categoryName = 'Sin categoría'
     try {
-      const { data: similar } = await supabase
-        .from('transactions')
-        .select('category_name')
-        .eq('user_id', USER_ID)
-        .neq('category_name', 'Sin categoría')
-        .neq('category_name', '⚡ Analizando...')
-        .ilike('detail', `%${parsed.detail.split(' ')[0]}%`)
-        .limit(5)
+      // Use first meaningful word (skip the 🤖 prefix)
+      const searchDetail = parsed.detail.replace(/^🤖\s*/, '')
+      const searchTerm = searchDetail.split(/[\s(]/)[0]
 
-      if (similar && similar.length > 0) {
-        // Use the most common category
-        const counts: Record<string, number> = {}
-        for (const tx of similar) {
-          counts[tx.category_name] = (counts[tx.category_name] || 0) + 1
+      if (searchTerm && searchTerm.length > 2 && !/^transferencia$/i.test(searchTerm)) {
+        const { data: similar } = await supabase
+          .from('transactions')
+          .select('category_name')
+          .eq('user_id', USER_ID)
+          .neq('category_name', 'Sin categoría')
+          .neq('category_name', '⚡ Analizando...')
+          .ilike('detail', `%${searchTerm}%`)
+          .limit(5)
+
+        if (similar && similar.length > 0) {
+          const counts: Record<string, number> = {}
+          for (const tx of similar) {
+            counts[tx.category_name] = (counts[tx.category_name] || 0) + 1
+          }
+          const best = Object.entries(counts).sort((a, b) => b[1] - a[1])[0]
+          if (best) categoryName = best[0]
         }
-        const best = Object.entries(counts).sort((a, b) => b[1] - a[1])[0]
-        if (best) categoryName = best[0]
       }
     } catch (e) {
       console.error('⚠️ Auto-categorize error:', e)
