@@ -5,9 +5,9 @@ import {
   format,
   startOfMonth,
   endOfMonth,
-  startOfYear,
   eachDayOfInterval,
   differenceInDays,
+  subDays,
 } from "date-fns";
 import { es } from "date-fns/locale";
 import { supabase } from "@/integrations/supabase/client";
@@ -56,7 +56,7 @@ export function useBicho(): BichoState {
   const computed = useMemo(() => {
     const now = new Date();
     const monthStart = startOfMonth(now);
-    const yearStart = startOfYear(now);
+    const rollingStart = subDays(now, 364); // last 365 days (rolling 12 months)
 
     // Pre-build date → transactions map
     const txByDate: Record<string, typeof transactions> = {};
@@ -80,8 +80,8 @@ export function useBicho(): BichoState {
     const daysInRange = Math.max(1, differenceInDays(now, ninetyDaysAgo));
     const avgDailyExpense = totalRecentExpenses / daysInRange;
 
-    // Daily scores for the year
-    const yearInterval = eachDayOfInterval({ start: yearStart, end: now });
+    // Daily scores for the last 365 days (rolling, like GitHub)
+    const yearInterval = eachDayOfInterval({ start: rollingStart, end: now });
 
     const allDayScores: DayScore[] = yearInterval.map((day) => {
       const dateStr = format(day, "yyyy-MM-dd");

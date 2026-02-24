@@ -7,11 +7,11 @@ import { getScoreColor, BICHO_SHAPES } from "@/lib/bicho-shapes";
 import {
   getDaysInMonth,
   format,
-  startOfYear,
   eachWeekOfInterval,
   addDays,
   subDays,
   startOfMonth,
+  startOfWeek,
   subMonths,
 } from "date-fns";
 import { es } from "date-fns/locale";
@@ -91,10 +91,12 @@ function HeatmapTooltipContent({ day }: { day: DayScore }) {
   );
 }
 
-// --- SVG-based annual heatmap ---
+// --- SVG-based annual heatmap (rolling 12 months) ---
 function AnnualHeatmap({ yearDays }: { yearDays: DayScore[] }) {
   const now = new Date();
-  const yearStart = startOfYear(now);
+  const rollingStart = subDays(now, 364);
+  // Align to Monday so the grid starts clean
+  const gridStart = startOfWeek(rollingStart, { weekStartsOn: 1 });
 
   const scoreMap: Record<string, DayScore> = {};
   for (const d of yearDays) {
@@ -102,7 +104,7 @@ function AnnualHeatmap({ yearDays }: { yearDays: DayScore[] }) {
   }
 
   const weeks = eachWeekOfInterval(
-    { start: yearStart, end: now },
+    { start: gridStart, end: now },
     { weekStartsOn: 1 }
   );
 
@@ -116,11 +118,11 @@ function AnnualHeatmap({ yearDays }: { yearDays: DayScore[] }) {
 
   const monthPositions = useMemo(() => {
     const positions: { label: string; x: number }[] = [];
-    let lastMonth = -1;
+    let lastKey = "";
     weeks.forEach((weekStart, wi) => {
-      const month = weekStart.getMonth();
-      if (month !== lastMonth) {
-        lastMonth = month;
+      const key = format(weekStart, "yyyy-MM");
+      if (key !== lastKey) {
+        lastKey = key;
         positions.push({
           label: format(weekStart, "MMM", { locale: es }),
           x: labelW + wi * step,
@@ -176,9 +178,9 @@ function AnnualHeatmap({ yearDays }: { yearDays: DayScore[] }) {
               const dateStr = format(cellDate, "yyyy-MM-dd");
               const dayData = scoreMap[dateStr];
               const isFuture = cellDate > now;
-              const isBeforeYear = cellDate < yearStart;
+              const isBeforeGrid = cellDate < gridStart;
 
-              if (isBeforeYear || isFuture) return null;
+              if (isBeforeGrid || isFuture) return null;
 
               const x = labelW + wi * step;
               const y = labelH + dow * step;
@@ -236,23 +238,26 @@ const MONTH_LABELS_ES = [
 
 function MonthlyTrendChart({ yearDays }: { yearDays: DayScore[] }) {
   const monthlyScores = useMemo(() => {
-    const byMonth: Record<number, number[]> = {};
+    // Group by YYYY-MM key to handle rolling across year boundaries
+    const byKey: Record<string, number[]> = {};
+    const orderedKeys: string[] = [];
+
     for (const d of yearDays) {
-      const month = new Date(d.date).getMonth();
-      if (!byMonth[month]) byMonth[month] = [];
-      byMonth[month].push(d.score);
+      const date = new Date(d.date);
+      const key = format(date, "yyyy-MM");
+      if (!byKey[key]) {
+        byKey[key] = [];
+        orderedKeys.push(key);
+      }
+      byKey[key].push(d.score);
     }
 
-    const now = new Date();
-    const currentMonth = now.getMonth();
-
-    return Array.from({ length: currentMonth + 1 }, (_, i) => {
-      const scores = byMonth[i] || [];
-      const avg = scores.length > 0
-        ? Math.round(scores.reduce((s, v) => s + v, 0) / scores.length)
-        : 0;
+    return orderedKeys.map((key) => {
+      const scores = byKey[key];
+      const avg = Math.round(scores.reduce((s, v) => s + v, 0) / scores.length);
+      const monthIdx = parseInt(key.split("-")[1], 10) - 1;
       return {
-        month: MONTH_LABELS_ES[i],
+        month: MONTH_LABELS_ES[monthIdx],
         score: avg,
         fill: getScoreColor(avg),
       };
@@ -655,7 +660,7 @@ export default function Bicho() {
         <div className="space-y-3">
           <div className="flex items-center justify-between">
             <h2 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider">
-              Tu año {now.getFullYear()}
+              Últimos 12 meses
             </h2>
             <div className="flex items-center gap-1.5 text-[10px] text-muted-foreground/70">
               <span>Peor</span>
