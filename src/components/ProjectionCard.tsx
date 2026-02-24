@@ -1,22 +1,13 @@
-import { TrendingUp, TrendingDown, Minus, Info, Settings, TrendingUpIcon, RotateCcw } from "lucide-react";
+import { TrendingUp, Settings, Info } from "lucide-react";
 import { useTransactions } from "@/hooks/useTransactions";
-import { 
-  ComposedChart, 
-  Line, 
-  Area,
-  XAxis, 
-  YAxis, 
-  Tooltip, 
-  ResponsiveContainer, 
-  TooltipProps,
-  Brush,
-  CartesianGrid,
-  ReferenceArea
+import {
+  ComposedChart, Line, Area, XAxis, YAxis, Tooltip,
+  ResponsiveContainer, TooltipProps, Brush, CartesianGrid,
 } from "recharts";
 import { format, startOfMonth, endOfMonth, eachMonthOfInterval, subMonths, addMonths, isBefore } from "date-fns";
 import { es } from "date-fns/locale";
 import { ToggleGroup, ToggleGroupItem } from "./ui/toggle-group";
-import { useState, useEffect, useMemo, useCallback } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { usePrivacyMode } from "@/hooks/usePrivacyMode";
 import { cn } from "@/lib/utils";
 import { Input } from "./ui/input";
@@ -24,994 +15,580 @@ import { Label } from "./ui/label";
 import { Button } from "./ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "./ui/select";
 import { Badge } from "./ui/badge";
-import { Card, CardContent } from "./ui/card";
-import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "./ui/collapsible";
+import { Collapsible, CollapsibleContent } from "./ui/collapsible";
 import { CHART_COLORS } from "@/lib/chart-config";
 
-const CustomTooltip = ({ active, payload, label }: TooltipProps<number, string>) => {
-  if (!active || !payload || !payload.length) return null;
+// --- Types & Constants ---
 
-  const formatCurrencyFull = (value: number) => {
-    return new Intl.NumberFormat("es-CL", {
-      style: "currency",
-      currency: "CLP",
-    }).format(value);
-  };
-
-  // Extraer los diferentes valores del punto
-  const patrimonioReal = payload.find(p => p.dataKey === 'patrimonio')?.value as number | undefined;
-  const proyeccionConInteres = payload.find(p => p.dataKey === 'proyeccion')?.value as number | undefined;
-  const proyeccionSinInteres = payload.find(p => p.dataKey === 'proyeccionLineal')?.value as number | undefined;
-
-  return (
-    <div className="bg-card/95 backdrop-blur-sm border border-border/50 rounded-xl p-4 shadow-xl min-w-[220px]">
-      <p className="font-semibold text-sm text-foreground mb-3 pb-2 border-b border-border">{label}</p>
-      <div className="space-y-2">
-        {patrimonioReal !== undefined && (
-          <div className="flex items-center justify-between gap-3">
-            <div className="flex items-center gap-2">
-              <div className="w-3 h-3 rounded-full bg-destructive" />
-              <span className="text-xs text-muted-foreground">Patrimonio Real:</span>
-            </div>
-            <span className="text-sm font-bold text-destructive font-mono tabular-nums">
-              {formatCurrencyFull(patrimonioReal)}
-            </span>
-          </div>
-        )}
-        {proyeccionConInteres !== undefined && (
-          <div className="flex items-center justify-between gap-3">
-            <div className="flex items-center gap-2">
-              <div className="w-3 h-3 rounded-full bg-destructive opacity-50" />
-              <span className="text-xs text-muted-foreground">Con interés:</span>
-            </div>
-            <span className="text-sm font-bold text-destructive/70 font-mono tabular-nums">
-              {formatCurrencyFull(proyeccionConInteres)}
-            </span>
-          </div>
-        )}
-        {proyeccionSinInteres !== undefined && (
-          <div className="flex items-center justify-between gap-3">
-            <div className="flex items-center gap-2">
-              <div className="w-3 h-3 rounded-full bg-muted-foreground" />
-              <span className="text-xs text-muted-foreground">Sin interés:</span>
-            </div>
-            <span className="text-sm font-bold text-muted-foreground font-mono tabular-nums">
-              {formatCurrencyFull(proyeccionSinInteres)}
-            </span>
-          </div>
-        )}
-        {proyeccionConInteres !== undefined && proyeccionSinInteres !== undefined && (
-          <div className="mt-2 pt-2 border-t border-border">
-            <div className="flex items-center justify-between gap-3">
-              <span className="text-xs text-muted-foreground font-medium">Ganancia por interés:</span>
-              <span className="text-sm font-bold text-success font-mono tabular-nums">
-                +{formatCurrencyFull(proyeccionConInteres - proyeccionSinInteres)}
-              </span>
-            </div>
-          </div>
-        )}
-      </div>
-    </div>
-  );
-};
-
-// Perfiles de riesgo disponibles
 type RiskProfile = "aggressive" | "moderate" | "conservative" | "none";
 
-interface RiskMapping {
-  [category: string]: RiskProfile;
-}
+const DEFAULT_INFLATION = 4; // 4% anual (Chile promedio)
 
 const RISK_RETURNS: Record<RiskProfile, number> = {
-  aggressive: 0.10,    // 10% anual
-  moderate: 0.07,      // 7% anual
-  conservative: 0.05,  // 5% anual
-  none: 0.00,          // Sin rentabilidad
+  aggressive: 0.10, moderate: 0.07, conservative: 0.05, none: 0.00,
+};
+
+const RISK_VOLATILITY: Record<RiskProfile, number> = {
+  aggressive: 0.18, moderate: 0.11, conservative: 0.04, none: 0.00,
 };
 
 const RISK_LABELS: Record<RiskProfile, string> = {
   aggressive: "Agresivo (10%)",
   moderate: "Moderado (7%)",
   conservative: "Conservador (5%)",
-  none: "Sin Rentabilidad (0%)",
+  none: "Sin Rentabilidad",
 };
+
+// --- Helpers ---
+
+const fmtCompact = (value: number) =>
+  new Intl.NumberFormat("es-CL", { style: "currency", currency: "CLP", notation: "compact", maximumFractionDigits: 1 }).format(value);
+
+const fmtFull = (value: number) =>
+  new Intl.NumberFormat("es-CL", { style: "currency", currency: "CLP" }).format(value);
+
+// --- Tooltip ---
+
+const CustomTooltip = ({ active, payload, label }: TooltipProps<number, string>) => {
+  if (!active || !payload?.length) return null;
+
+  const get = (key: string) => payload.find(p => p.dataKey === key)?.value as number | undefined;
+  const patrimonio = get("patrimonio");
+  const proyeccion = get("proyeccion");
+  const valorReal = get("valorReal");
+  const sinInversion = get("sinInversion");
+  const bandaLower = get("bandaLower");
+  const bandWidthVal = get("bandWidth");
+  const bandaUpper = (bandaLower != null && bandWidthVal != null) ? bandaLower + bandWidthVal : undefined;
+
+  return (
+    <div className="bg-card/95 backdrop-blur-sm border border-border/50 rounded-xl p-3 shadow-xl min-w-[220px]">
+      <p className="font-semibold text-xs text-foreground mb-2 pb-1.5 border-b border-border">{label}</p>
+      <div className="space-y-1.5 text-xs">
+        {patrimonio != null && (
+          <TooltipRow color={CHART_COLORS.expense} label="Patrimonio" value={fmtFull(patrimonio)} bold />
+        )}
+        {proyeccion != null && (
+          <TooltipRow color={CHART_COLORS.investment} label="Proyección" value={fmtFull(proyeccion)} bold />
+        )}
+        {valorReal != null && (
+          <TooltipRow color={CHART_COLORS.balance} label="Valor real" value={fmtFull(valorReal)} />
+        )}
+        {sinInversion != null && proyeccion != null && Math.abs(sinInversion - proyeccion) > 1000 && (
+          <TooltipRow color={CHART_COLORS.mutedAxis} label="Sin inversión" value={fmtFull(sinInversion)} />
+        )}
+        {bandaUpper != null && bandaLower != null && (
+          <div className="pt-1.5 mt-1.5 border-t border-border/50">
+            <p className="text-[10px] text-muted-foreground">
+              Rango 80%: {fmtCompact(bandaLower)} — {fmtCompact(bandaUpper)}
+            </p>
+          </div>
+        )}
+        {proyeccion != null && valorReal != null && proyeccion - valorReal > 1000 && (
+          <p className="text-[10px] text-amber-500/80">
+            Inflación erosiona {fmtCompact(proyeccion - valorReal)}
+          </p>
+        )}
+      </div>
+    </div>
+  );
+};
+
+function TooltipRow({ color, label, value, bold }: { color: string; label: string; value: string; bold?: boolean }) {
+  return (
+    <div className="flex items-center justify-between gap-3">
+      <div className="flex items-center gap-1.5">
+        <div className="w-2 h-2 rounded-full flex-shrink-0" style={{ backgroundColor: color }} />
+        <span className="text-muted-foreground">{label}</span>
+      </div>
+      <span className={cn("font-mono tabular-nums", bold ? "font-bold" : "font-medium")}>{value}</span>
+    </div>
+  );
+}
+
+// --- Main Component ---
 
 export default function ProjectionCard() {
   const { transactions } = useTransactions();
-  const [projectionMonths, setProjectionMonths] = useState<number>(3);
-  const [calculationMode, setCalculationMode] = useState<"3months" | "6months" | "manual">("3months");
-  const [manualSalary, setManualSalary] = useState<string>("");
-  const [customYears, setCustomYears] = useState<string>("");
-  const [useCustomYears, setUseCustomYears] = useState<boolean>(false);
-  const [showRiskConfig, setShowRiskConfig] = useState<boolean>(false);
-  const [riskMapping, setRiskMapping] = useState<RiskMapping>({});
-  const [isLoaded, setIsLoaded] = useState<boolean>(false);
   const { isPrivacyMode } = usePrivacyMode();
-  
-  // Estado para zoom
-  const [isSelecting, setIsSelecting] = useState(false);
-  const [zoomDomain, setZoomDomain] = useState<{ start: number; end: number } | null>(null);
 
-  // Cargar desde localStorage solo una vez al montar
+  const [projectionMonths, setProjectionMonths] = useState(3);
+  const [calculationMode, setCalculationMode] = useState<"3months" | "6months" | "manual">("3months");
+  const [manualSalary, setManualSalary] = useState("");
+  const [customYears, setCustomYears] = useState("");
+  const [useCustomYears, setUseCustomYears] = useState(false);
+  const [showSettings, setShowSettings] = useState(false);
+  const [riskMapping, setRiskMapping] = useState<Record<string, RiskProfile>>({});
+  const [inflationRate, setInflationRate] = useState(DEFAULT_INFLATION);
+  const [isLoaded, setIsLoaded] = useState(false);
+
+  // localStorage persistence
   useEffect(() => {
     const saved = localStorage.getItem("projection-settings");
     if (saved) {
       try {
-        const { mode, salary, months, customYears: savedYears, useCustom, riskMapping: savedRiskMapping } = JSON.parse(saved);
-        if (mode) setCalculationMode(mode);
-        if (salary) setManualSalary(salary);
-        if (months) setProjectionMonths(months);
-        if (savedYears) setCustomYears(savedYears);
-        if (useCustom !== undefined) setUseCustomYears(useCustom);
-        if (savedRiskMapping) setRiskMapping(savedRiskMapping);
-      } catch (e) {
-        console.error("Error loading projection settings:", e);
-      }
+        const s = JSON.parse(saved);
+        if (s.mode) setCalculationMode(s.mode);
+        if (s.salary) setManualSalary(s.salary);
+        if (s.months) setProjectionMonths(s.months);
+        if (s.customYears) setCustomYears(s.customYears);
+        if (s.useCustom !== undefined) setUseCustomYears(s.useCustom);
+        if (s.riskMapping) setRiskMapping(s.riskMapping);
+        if (s.inflationRate !== undefined) setInflationRate(s.inflationRate);
+      } catch { /* ignore */ }
     }
     setIsLoaded(true);
   }, []);
 
-  // Guardar en localStorage solo después de cargar
   useEffect(() => {
-    if (!isLoaded) return; // No guardar hasta que hayamos cargado
-    
+    if (!isLoaded) return;
     localStorage.setItem("projection-settings", JSON.stringify({
-      mode: calculationMode,
-      salary: manualSalary,
-      months: projectionMonths,
-      customYears,
-      useCustom: useCustomYears,
-      riskMapping,
+      mode: calculationMode, salary: manualSalary, months: projectionMonths,
+      customYears, useCustom: useCustomYears, riskMapping, inflationRate,
     }));
-  }, [calculationMode, manualSalary, projectionMonths, customYears, useCustomYears, riskMapping, isLoaded]);
+  }, [calculationMode, manualSalary, projectionMonths, customYears, useCustomYears, riskMapping, inflationRate, isLoaded]);
 
-  // Extraer SOLO categorías de tipo Inversión
+  // --- Data Calculations ---
+
   const uniqueCategories = useMemo(() => {
-    const categories = new Set<string>();
-    transactions.forEach((t) => {
-      if (t.category_name && t.type === "Inversión") {
-        categories.add(t.category_name);
-      }
-    });
-    return Array.from(categories).sort();
+    const cats = new Set<string>();
+    transactions.forEach(t => { if (t.type === "Inversión" && t.category_name) cats.add(t.category_name); });
+    return Array.from(cats).sort();
   }, [transactions]);
 
-  // Calcular distribución de dinero por categoría (solo Inversiones)
   const categoryWeights = useMemo(() => {
-    const totalByCategory: Record<string, number> = {};
-    let totalAmount = 0;
-
-    transactions.forEach((t) => {
-      if (t.category_name && t.type === "Inversión") {
-        const amount = Number(t.amount);
-        totalByCategory[t.category_name] = (totalByCategory[t.category_name] || 0) + amount;
-        totalAmount += amount;
+    const byCategory: Record<string, number> = {};
+    let total = 0;
+    transactions.forEach(t => {
+      if (t.type === "Inversión" && t.category_name) {
+        const amt = Number(t.amount);
+        byCategory[t.category_name] = (byCategory[t.category_name] || 0) + amt;
+        total += amt;
       }
     });
-
-    // Calcular porcentajes
     const weights: Record<string, number> = {};
-    Object.entries(totalByCategory).forEach(([category, amount]) => {
-      weights[category] = totalAmount > 0 ? amount / totalAmount : 0;
-    });
-
+    Object.entries(byCategory).forEach(([cat, amt]) => { weights[cat] = total > 0 ? amt / total : 0; });
     return weights;
   }, [transactions]);
 
-  // Calcular tasa de retorno ponderada del portafolio
-  const portfolioReturn = useMemo(() => {
-    let weightedReturn = 0;
+  const totalInvested = useMemo(() =>
+    transactions.filter(t => t.type === "Inversión").reduce((sum, t) => sum + Number(t.amount), 0),
+    [transactions]
+  );
 
-    Object.entries(categoryWeights).forEach(([category, weight]) => {
-      const riskProfile = riskMapping[category] || "none";
-      const annualReturn = RISK_RETURNS[riskProfile];
-      weightedReturn += weight * annualReturn;
+  const { portfolioReturn, portfolioVolatility } = useMemo(() => {
+    let ret = 0, vol = 0;
+    Object.entries(categoryWeights).forEach(([cat, w]) => {
+      const risk = riskMapping[cat] || "none";
+      ret += w * RISK_RETURNS[risk];
+      vol += w * RISK_VOLATILITY[risk];
     });
-
-    return weightedReturn;
+    return { portfolioReturn: ret, portfolioVolatility: vol };
   }, [categoryWeights, riskMapping]);
 
-  // Convertir tasa anual a mensual efectiva: (1 + r_anual)^(1/12) - 1
-  const monthlyReturn = useMemo(() => {
-    return Math.pow(1 + portfolioReturn, 1 / 12) - 1;
-  }, [portfolioReturn]);
+  const monthlyReturn = Math.pow(1 + portfolioReturn, 1 / 12) - 1;
+  const monthlyInflation = Math.pow(1 + inflationRate / 100, 1 / 12) - 1;
 
-  // Calcular patrimonio acumulado mes a mes (solo meses completos)
-  const last12Months = eachMonthOfInterval({
-    start: subMonths(new Date(), 11),
-    end: new Date(),
-  });
-
-  // Filtrar solo meses que tienen tanto ingresos como gastos (meses "completos")
-  const monthlyPatrimonio = last12Months.map((month) => {
-    const monthStart = startOfMonth(month);
-    const monthEnd = endOfMonth(month);
-
-    // Calcular patrimonio acumulado hasta este mes
-    const transactionsUntilMonth = transactions.filter((t) => {
-      const date = new Date(t.date);
-      return isBefore(date, monthEnd) || date.getTime() === monthEnd.getTime();
+  // Historical patrimonio (last 12 months)
+  const monthlyPatrimonio = useMemo(() => {
+    const months = eachMonthOfInterval({ start: subMonths(new Date(), 11), end: new Date() });
+    return months.map(month => {
+      const monthStart = startOfMonth(month);
+      const monthEnd = endOfMonth(month);
+      const txUntil = transactions.filter(t => {
+        const d = new Date(t.date);
+        return isBefore(d, monthEnd) || d.getTime() === monthEnd.getTime();
+      });
+      const income = txUntil.filter(t => t.type === "Ingreso").reduce((s, t) => s + Number(t.amount), 0);
+      const expenses = txUntil.filter(t => t.type === "Gasto").reduce((s, t) => s + Number(t.amount), 0);
+      const monthTx = transactions.filter(t => { const d = new Date(t.date); return d >= monthStart && d <= monthEnd; });
+      const hasIncome = monthTx.some(t => t.type === "Ingreso");
+      return { fullDate: month, patrimonio: income - expenses, hasIncome };
     });
+  }, [transactions]);
 
-    const income = transactionsUntilMonth
-      .filter((t) => t.type === "Ingreso")
-      .reduce((sum, t) => sum + Number(t.amount), 0);
+  const completeMonths = monthlyPatrimonio.filter(m => m.hasIncome);
+  const excludingCurrentMonth = !monthlyPatrimonio[monthlyPatrimonio.length - 1]?.hasIncome;
 
-    const expenses = transactionsUntilMonth
-      .filter((t) => t.type === "Gasto")
-      .reduce((sum, t) => sum + Number(t.amount), 0);
-
-    const patrimonio = income - expenses;
-
-    // Verificar si el mes tiene actividad de ingresos
-    const monthTransactions = transactions.filter((t) => {
-      const date = new Date(t.date);
-      return date >= monthStart && date <= monthEnd;
-    });
-    
-    const hasIncome = monthTransactions.some((t) => t.type === "Ingreso");
-
-    return {
-      month: format(month, "MMM", { locale: es }),
-      fullDate: month,
-      patrimonio,
-      hasIncome,
-      isProjection: false,
-    };
-  });
-
-  // Filtrar solo meses con ingresos (meses completos)
-  const currentMonth = new Date().getMonth();
-  const currentYear = new Date().getFullYear();
-  
-  const completeMonths = monthlyPatrimonio.filter(m => {
-    const monthDate = new Date(m.fullDate);
-    const isCurrentMonth = monthDate.getMonth() === currentMonth && monthDate.getFullYear() === currentYear;
-    
-    if (isCurrentMonth) {
-      return m.hasIncome;
-    }
-    
-    return m.hasIncome;
-  });
-  
-  // Calcular gastos promedio mensual para modo manual
-  const recentMonthsForExpenses = completeMonths.slice(-6);
-  const avgMonthlyExpenses = recentMonthsForExpenses.length > 0
-    ? recentMonthsForExpenses.reduce((sum, month) => {
-        const monthStart = startOfMonth(new Date(month.fullDate));
-        const monthEnd = endOfMonth(new Date(month.fullDate));
-        const monthExpenses = transactions
-          .filter((t) => {
-            const date = new Date(t.date);
-            return t.type === "Gasto" && date >= monthStart && date <= monthEnd;
-          })
-          .reduce((expSum, t) => expSum + Number(t.amount), 0);
-        return sum + monthExpenses;
-      }, 0) / recentMonthsForExpenses.length
-    : 0;
-  
-  // Usar últimos 3 o 6 meses según el modo seleccionado
   const monthsToUse = calculationMode === "3months" ? 3 : calculationMode === "6months" ? 6 : 0;
-  const recentCompleteMonths = calculationMode !== "manual" 
+  const recentCompleteMonths = calculationMode !== "manual"
     ? completeMonths.slice(-Math.min(monthsToUse, completeMonths.length))
     : [];
-  
-  const excludingCurrentMonth = !monthlyPatrimonio[monthlyPatrimonio.length - 1]?.hasIncome;
-  
-  // Calcular crecimiento promedio mensual del patrimonio
+
+  // Average monthly expenses (for manual mode)
+  const avgMonthlyExpenses = useMemo(() => {
+    const months = completeMonths.slice(-6);
+    if (months.length === 0) return 0;
+    return months.reduce((sum, m) => {
+      const ms = startOfMonth(new Date(m.fullDate)), me = endOfMonth(new Date(m.fullDate));
+      return sum + transactions
+        .filter(t => { const d = new Date(t.date); return t.type === "Gasto" && d >= ms && d <= me; })
+        .reduce((s, t) => s + Number(t.amount), 0);
+    }, 0) / months.length;
+  }, [transactions, completeMonths]);
+
+  // Average monthly growth (patrimonio change per month)
   let avgMonthlyGrowth = 0;
-  
   if (calculationMode === "manual") {
-    // Modo manual: sueldo ingresado - gastos promedio
-    const salary = Number(manualSalary) || 0;
-    avgMonthlyGrowth = salary - avgMonthlyExpenses;
-  } else {
-    // Modo histórico: calcular basado en últimos N meses
-    if (recentCompleteMonths.length >= 2) {
-      const growths = [];
-      for (let i = 1; i < recentCompleteMonths.length; i++) {
-        const growth = recentCompleteMonths[i].patrimonio - recentCompleteMonths[i - 1].patrimonio;
-        growths.push(growth);
-      }
-      avgMonthlyGrowth = growths.reduce((sum, g) => sum + g, 0) / growths.length;
+    avgMonthlyGrowth = (Number(manualSalary) || 0) - avgMonthlyExpenses;
+  } else if (recentCompleteMonths.length >= 2) {
+    const growths = [];
+    for (let i = 1; i < recentCompleteMonths.length; i++) {
+      growths.push(recentCompleteMonths[i].patrimonio - recentCompleteMonths[i - 1].patrimonio);
     }
+    avgMonthlyGrowth = growths.reduce((s, g) => s + g, 0) / growths.length;
   }
 
-  // Patrimonio actual
+  // Average monthly investment contribution
+  const avgMonthlyInvestment = useMemo(() => {
+    const months = calculationMode === "manual" ? completeMonths.slice(-6) : recentCompleteMonths;
+    if (months.length === 0) return 0;
+    return months.reduce((sum, m) => {
+      const ms = startOfMonth(new Date(m.fullDate)), me = endOfMonth(new Date(m.fullDate));
+      return sum + transactions
+        .filter(t => { const d = new Date(t.date); return t.type === "Inversión" && d >= ms && d <= me; })
+        .reduce((s, t) => s + Number(t.amount), 0);
+    }, 0) / months.length;
+  }, [transactions, recentCompleteMonths, completeMonths, calculationMode]);
+
   const currentPatrimonio = monthlyPatrimonio[monthlyPatrimonio.length - 1]?.patrimonio || 0;
 
-  // Calcular meses de proyección: usar custom si está activo, sino usar el selector normal
-  const effectiveProjectionMonths = useCustomYears && customYears 
-    ? Number(customYears) * 12 
-    : projectionMonths;
+  // --- Projection ---
 
-  // Generar proyecciones dinámicas según el selector
-  const nextMonths = eachMonthOfInterval({
-    start: addMonths(new Date(), 1),
-    end: addMonths(new Date(), effectiveProjectionMonths),
-  });
+  const effectiveMonths = Math.max(1, useCustomYears && customYears ? Number(customYears) * 12 : projectionMonths);
+  const nextMonths = eachMonthOfInterval({ start: addMonths(new Date(), 1), end: addMonths(new Date(), effectiveMonths) });
 
-  // Proyección con interés compuesto
-  // Fórmula: Saldo_siguiente = (Saldo_actual * (1 + tasa_mensual)) + aporte_mensual
-  let tempProjectedValue = currentPatrimonio;
-  let tempLinearValue = currentPatrimonio;
-  
-  const projectionData = nextMonths.map((month) => {
-    // Aplicar interés compuesto + aporte mensual
-    tempProjectedValue = (tempProjectedValue * (1 + monthlyReturn)) + avgMonthlyGrowth;
-    // Proyección lineal (sin interés) para comparación
-    tempLinearValue += avgMonthlyGrowth;
-    
+  // Compound interest ONLY on invested portion, cash grows linearly
+  let investedValue = totalInvested;
+  let cashValue = currentPatrimonio - totalInvested;
+
+  const projectionData = nextMonths.map((month, idx) => {
+    const t = idx + 1;
+
+    // Invested: compound returns + new monthly contributions
+    investedValue = investedValue * (1 + monthlyReturn) + avgMonthlyInvestment;
+    // Cash: net savings minus what goes to investments
+    cashValue += avgMonthlyGrowth - avgMonthlyInvestment;
+
+    const nominal = investedValue + cashValue;
+    const linear = currentPatrimonio + avgMonthlyGrowth * t;
+    const real = nominal / Math.pow(1 + monthlyInflation, t);
+
+    // Confidence band based on portfolio volatility
+    const annTime = t / 12;
+    const stdDev = investedValue > 0 ? investedValue * portfolioVolatility * Math.sqrt(annTime) : 0;
+    const upper = nominal + 1.28 * stdDev;
+    const lower = nominal - 1.28 * stdDev;
+
     return {
-      month: format(month, "MMM", { locale: es }),
-      fullDate: month,
-      proyeccion: tempProjectedValue,
-      proyeccionLineal: tempLinearValue, // Sin interés compuesto
+      month: format(month, "MMM yy", { locale: es }),
+      patrimonio: null as number | null,
+      proyeccion: Math.round(nominal),
+      valorReal: Math.round(real),
+      sinInversion: Math.round(linear),
+      bandaLower: Math.round(Math.max(0, lower)),
+      bandWidth: Math.round(upper - Math.max(0, lower)),
       isProjection: true,
     };
   });
 
-  // Datos históricos: usar según el método de cálculo seleccionado
-  const historicalMonthsToShow = calculationMode === "3months" ? 3 : calculationMode === "6months" ? 6 : 6;
-  
+  // --- Chart Data Assembly ---
+
+  const historicalCount = calculationMode === "3months" ? 3 : 6;
   const historicalData = monthlyPatrimonio
     .filter(m => m.hasIncome)
-    .slice(-historicalMonthsToShow)
+    .slice(-historicalCount)
     .map(m => ({
-      ...m,
+      month: format(new Date(m.fullDate), "MMM yy", { locale: es }),
       patrimonio: m.patrimonio,
-      proyeccion: null,
-      proyeccionLineal: null,
+      proyeccion: null as number | null,
+      valorReal: null as number | null,
+      sinInversion: null as number | null,
+      bandaLower: null as number | null,
+      bandWidth: null as number | null,
+      isProjection: false,
     }));
 
-  // Punto de conexión: último mes real con ambos valores
-  const lastHistorical = historicalData[historicalData.length - 1];
-  const connectionPoint = lastHistorical ? {
-    ...lastHistorical,
-    proyeccion: lastHistorical.patrimonio, // Conectar con el mismo valor
-    proyeccionLineal: lastHistorical.patrimonio, // Conectar ambas líneas
+  // Connection point: bridges historical → projection
+  const lastH = historicalData[historicalData.length - 1];
+  const connectionPoint = lastH ? {
+    ...lastH,
+    proyeccion: lastH.patrimonio,
+    valorReal: lastH.patrimonio,
+    sinInversion: lastH.patrimonio,
+    bandaLower: lastH.patrimonio,
+    bandWidth: 0,
   } : null;
 
-  // Combinar datos reales y proyectados para el gráfico
   const chartData = [
-    ...historicalData.slice(0, -1), // Todos menos el último
-    ...(connectionPoint ? [connectionPoint] : []), // Punto de conexión
-    ...projectionData, // Proyecciones
+    ...historicalData.slice(0, -1),
+    ...(connectionPoint ? [connectionPoint] : []),
+    ...projectionData,
   ];
 
-  // Calcular tendencia basada en crecimiento del patrimonio
-  let trend: "up" | "down" | "stable" = "stable";
-  if (avgMonthlyGrowth > 50000) trend = "up"; // Creciendo más de 50k/mes
-  else if (avgMonthlyGrowth < -50000) trend = "down"; // Decreciendo
-  else trend = "stable";
+  // --- Derived Values ---
 
-  const projectedValue = projectionData.length > 0 
-    ? projectionData[projectionData.length - 1].proyeccion 
-    : currentPatrimonio;
+  const projectedValue = projectionData.length > 0 ? projectionData[projectionData.length - 1].proyeccion! : currentPatrimonio;
+  const projectedReal = projectionData.length > 0 ? projectionData[projectionData.length - 1].valorReal! : currentPatrimonio;
 
   const projectionLabel = useCustomYears && customYears
-    ? `${customYears} año${Number(customYears) !== 1 ? 's' : ''}`
-    : projectionMonths === 12 
-    ? "1 año" 
-    : projectionMonths === 24 
-    ? "2 años" 
-    : `${projectionMonths} meses`;
+    ? `${customYears} año${Number(customYears) !== 1 ? "s" : ""}`
+    : projectionMonths === 12 ? "1 año" : projectionMonths === 24 ? "2 años" : `${projectionMonths} meses`;
 
-  const formatCurrency = (value: number) => {
-    return new Intl.NumberFormat("es-CL", {
-      style: "currency",
-      currency: "CLP",
-      notation: "compact",
-      maximumFractionDigits: 1,
-    }).format(value);
-  };
-
-  const formatCurrencyFull = (value: number) => {
-    return new Intl.NumberFormat("es-CL", {
-      style: "currency",
-      currency: "CLP",
-    }).format(value);
-  };
-
-  const TrendIcon = trend === "up" ? TrendingUp : trend === "down" ? TrendingDown : Minus;
-  const trendColor = trend === "up" ? "text-success" : trend === "down" ? "text-destructive" : "text-muted-foreground";
-  const trendBg = trend === "up" ? "bg-success/5" : trend === "down" ? "bg-destructive/5" : "bg-muted/5";
-  const trendText = trend === "up" ? "Mejorando" : trend === "down" ? "Empeorando" : "Estable";
-
-  const isDataSufficient = calculationMode === "manual" 
-    ? manualSalary && Number(manualSalary) > 0 
+  const isDataSufficient = calculationMode === "manual"
+    ? manualSalary && Number(manualSalary) > 0
     : recentCompleteMonths.length >= 2;
 
-  // Agregar índice a chartData para zoom
-  const chartDataWithIndex = useMemo(() => {
-    return chartData.map((item, idx) => ({ ...item, index: idx }));
-  }, [chartData]);
+  const hasReturns = portfolioReturn > 0;
+  const hasVolatility = portfolioVolatility > 0;
 
-  // Estado para índices de selección (más robusto que usar labels)
-  const [selectStartIdx, setSelectStartIdx] = useState<number | null>(null);
-  const [selectEndIdx, setSelectEndIdx] = useState<number | null>(null);
+  const tickInterval = Math.max(0, Math.ceil(chartData.length / 12) - 1);
 
-  // Handlers para zoom - usando índices directamente
-  const handleMouseDown = useCallback((e: { activeTooltipIndex?: number }) => {
-    if (e.activeTooltipIndex !== undefined) {
-      setSelectStartIdx(e.activeTooltipIndex);
-      setSelectEndIdx(e.activeTooltipIndex);
-      setIsSelecting(true);
-    }
-  }, []);
-
-  const handleMouseMove = useCallback((e: { activeTooltipIndex?: number }) => {
-    if (isSelecting && e.activeTooltipIndex !== undefined) {
-      setSelectEndIdx(e.activeTooltipIndex);
-    }
-  }, [isSelecting]);
-
-  const handleMouseUp = useCallback(() => {
-    if (selectStartIdx !== null && selectEndIdx !== null) {
-      const start = Math.min(selectStartIdx, selectEndIdx);
-      const end = Math.max(selectStartIdx, selectEndIdx);
-      
-      if (end - start >= 1) {
-        // Convertir índices visibles a índices reales
-        const realStart = zoomDomain ? zoomDomain.start + start : start;
-        const realEnd = zoomDomain ? zoomDomain.start + end : end;
-        setZoomDomain({ start: realStart, end: realEnd });
-      }
-    }
-    
-    setSelectStartIdx(null);
-    setSelectEndIdx(null);
-    setIsSelecting(false);
-  }, [selectStartIdx, selectEndIdx, zoomDomain]);
-
-  const handleZoomOut = useCallback(() => {
-    setZoomDomain(null);
-  }, []);
-
-  const handleBrushChange = useCallback((brushData: { startIndex?: number; endIndex?: number }) => {
-    if (brushData.startIndex !== undefined && brushData.endIndex !== undefined) {
-      if (brushData.endIndex - brushData.startIndex >= 1) {
-        setZoomDomain({ start: brushData.startIndex, end: brushData.endIndex });
-      }
-    }
-  }, []);
-
-  // Datos visibles según zoom - re-indexar para que el XAxis funcione
-  const visibleChartData = useMemo(() => {
-    const data = !zoomDomain 
-      ? chartDataWithIndex 
-      : chartDataWithIndex.slice(zoomDomain.start, zoomDomain.end + 1);
-    
-    // Re-asignar índices consecutivos para los datos visibles
-    return data.map((item, idx) => ({ ...item, index: idx }));
-  }, [chartDataWithIndex, zoomDomain]);
+  // --- Render ---
 
   return (
-    <div className="space-y-4">
-      {/* Header con configuración de inteligencia */}
+    <div className="space-y-3">
+      {/* Header */}
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2">
-          <h3 className="text-lg font-bold text-foreground">Proyección Inteligente</h3>
-          {portfolioReturn > 0 && (
-            <Badge variant="default" className="flex items-center gap-1 bg-success/10 text-success border-success/20">
-              <TrendingUpIcon className="h-3 w-3" />
-              Con interés compuesto
+          <h3 className="text-lg font-bold text-foreground">Proyección</h3>
+          {hasReturns && (
+            <Badge variant="outline" className="text-[10px] font-mono tabular-nums gap-1 h-5">
+              <TrendingUp className="h-3 w-3" />
+              {(portfolioReturn * 100).toFixed(1)}% anual
             </Badge>
           )}
         </div>
-        <Button
-          variant="ghost"
-          size="icon"
-          onClick={() => setShowRiskConfig(!showRiskConfig)}
-          className="h-9 w-9"
-        >
-          <Settings className={cn("h-4 w-4 transition-transform", showRiskConfig && "rotate-90")} />
+        <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => setShowSettings(!showSettings)}>
+          <Settings className={cn("h-4 w-4 transition-transform", showSettings && "rotate-90")} />
         </Button>
       </div>
 
-      {/* Panel de configuración de riesgo */}
-      <Collapsible open={showRiskConfig} onOpenChange={setShowRiskConfig}>
-        <CollapsibleContent className="space-y-3">
-          <Card className="border-primary/20 bg-primary/5">
-            <CardContent className="pt-6 space-y-4">
-              <div className="space-y-2">
-                <div className="flex items-start gap-2">
-                  <Info className="h-4 w-4 text-primary mt-0.5 flex-shrink-0" />
-                  <p className="text-xs text-muted-foreground leading-relaxed">
-                    Asigna perfiles de riesgo a tus categorías para calcular la rentabilidad esperada de tu portafolio.
-                    La proyección usará interés compuesto basado en la distribución histórica de tu dinero.
-                  </p>
-                </div>
+      {/* Horizon selector — always visible */}
+      {!useCustomYears ? (
+        <div className="flex items-center gap-1.5">
+          <ToggleGroup
+            type="single"
+            value={projectionMonths.toString()}
+            onValueChange={v => v && setProjectionMonths(Number(v))}
+            className="flex gap-1.5"
+          >
+            {[["3", "3M"], ["6", "6M"], ["12", "1A"], ["24", "2A"]].map(([v, lbl]) => (
+              <ToggleGroupItem key={v} value={v} className="h-7 px-3 text-xs font-medium data-[state=on]:bg-primary data-[state=on]:text-primary-foreground">
+                {lbl}
+              </ToggleGroupItem>
+            ))}
+          </ToggleGroup>
+          <button onClick={() => setUseCustomYears(true)} className="h-7 px-2 text-xs text-primary font-medium hover:bg-muted rounded-md transition-colors">
+            Otro
+          </button>
+        </div>
+      ) : (
+        <div className="flex items-center gap-2">
+          <Input type="number" placeholder="Años" value={customYears} onChange={e => setCustomYears(e.target.value)}
+            className="h-7 text-xs w-20" min="1" max="30" />
+          <span className="text-xs text-muted-foreground">años</span>
+          <button onClick={() => setUseCustomYears(false)} className="text-xs text-primary hover:underline ml-auto">
+            ← Volver
+          </button>
+        </div>
+      )}
+
+      {/* Settings panel — collapsed by default */}
+      <Collapsible open={showSettings} onOpenChange={setShowSettings}>
+        <CollapsibleContent className="space-y-2.5 pt-1">
+          {/* Calculation method */}
+          <div className="p-2.5 rounded-xl bg-muted/20 border border-border/50 space-y-2">
+            <Label className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">Método de cálculo</Label>
+            <ToggleGroup type="single" value={calculationMode}
+              onValueChange={v => v && setCalculationMode(v as typeof calculationMode)}
+              className="flex gap-1.5">
+              <ToggleGroupItem value="3months" className="h-7 px-3 text-xs data-[state=on]:bg-primary data-[state=on]:text-primary-foreground">3 meses</ToggleGroupItem>
+              <ToggleGroupItem value="6months" className="h-7 px-3 text-xs data-[state=on]:bg-primary data-[state=on]:text-primary-foreground">6 meses</ToggleGroupItem>
+              <ToggleGroupItem value="manual" className="h-7 px-3 text-xs data-[state=on]:bg-primary data-[state=on]:text-primary-foreground">Manual</ToggleGroupItem>
+            </ToggleGroup>
+            {calculationMode === "manual" && (
+              <div className="space-y-1">
+                <Label className="text-[10px] text-muted-foreground">Sueldo mensual</Label>
+                <Input type="text" placeholder="$1.500.000"
+                  value={manualSalary ? `$${Number(manualSalary).toLocaleString("es-CL")}` : ""}
+                  onChange={e => setManualSalary(e.target.value.replace(/\D/g, ""))}
+                  className="h-7 text-xs" />
               </div>
+            )}
+            <p className="text-[10px] text-muted-foreground">
+              {calculationMode === "manual"
+                ? avgMonthlyExpenses > 0 ? `Gastos promedio: ${fmtFull(avgMonthlyExpenses)}` : ""
+                : recentCompleteMonths.length > 0
+                  ? `Basado en ${recentCompleteMonths.length} mes${recentCompleteMonths.length !== 1 ? "es" : ""} completo${recentCompleteMonths.length !== 1 ? "s" : ""}${excludingCurrentMonth ? " · Excluyendo mes actual" : ""}`
+                  : "Sin datos suficientes"}
+            </p>
+          </div>
 
-              {uniqueCategories.length === 0 ? (
-                <p className="text-sm text-muted-foreground text-center py-4">
-                  No hay categorías disponibles. Registra transacciones para comenzar.
-                </p>
-              ) : (
-                <div className="space-y-2 max-h-[400px] overflow-y-auto pr-2">
-                  {uniqueCategories.map((category) => {
-                    const weight = categoryWeights[category] || 0;
-                    const percentage = (weight * 100).toFixed(1);
-                    
-                    return (
-                      <div
-                        key={category}
-                        className="flex items-center justify-between gap-3 p-3 rounded-xl bg-card border border-border/50"
-                      >
-                        <div className="flex-1 min-w-0">
-                          <p className="text-sm font-medium text-foreground truncate">
-                            {category}
-                          </p>
-                          <p className="text-xs text-muted-foreground font-mono tabular-nums">
-                            {percentage}% del portafolio
-                          </p>
-                        </div>
-                        <Select
-                          value={riskMapping[category] || "none"}
-                          onValueChange={(value: RiskProfile) => {
-                            setRiskMapping((prev) => ({
-                              ...prev,
-                              [category]: value,
-                            }));
-                          }}
-                        >
-                          <SelectTrigger className="w-[180px] h-9">
-                            <SelectValue placeholder="Sin rentabilidad" />
-                          </SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="aggressive">{RISK_LABELS.aggressive}</SelectItem>
-                            <SelectItem value="moderate">{RISK_LABELS.moderate}</SelectItem>
-                            <SelectItem value="conservative">{RISK_LABELS.conservative}</SelectItem>
-                            <SelectItem value="none">{RISK_LABELS.none}</SelectItem>
-                          </SelectContent>
-                        </Select>
-                      </div>
-                    );
-                  })}
-                </div>
-              )}
+          {/* Inflation */}
+          <div className="p-2.5 rounded-xl bg-muted/20 border border-border/50 space-y-1.5">
+            <Label className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">Inflación anual</Label>
+            <div className="flex items-center gap-2">
+              <Input type="number" value={inflationRate} onChange={e => setInflationRate(Number(e.target.value))}
+                className="h-7 text-xs w-16" min="0" max="30" step="0.5" />
+              <span className="text-[10px] text-muted-foreground">% — muestra el poder adquisitivo real</span>
+            </div>
+          </div>
 
-              {portfolioReturn > 0 && (
-                <div className="p-3 rounded-xl bg-success/10 border border-success/20">
-                  <p className="text-sm font-semibold text-success">
-                    Tu portafolio rinde un <span className="font-mono tabular-nums">{(portfolioReturn * 100).toFixed(2)}%</span> anual estimado
-                  </p>
-                  <p className="text-xs text-muted-foreground mt-1">
-                    Tasa mensual efectiva: <span className="font-mono tabular-nums">{(monthlyReturn * 100).toFixed(3)}%</span>
-                  </p>
-                </div>
-              )}
-            </CardContent>
-          </Card>
+          {/* Risk config */}
+          <div className="p-2.5 rounded-xl bg-muted/20 border border-border/50 space-y-1.5">
+            <Label className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">Riesgo por inversión</Label>
+            <p className="text-[10px] text-muted-foreground leading-relaxed">
+              Más riesgo = más retorno a largo plazo, pero más volatilidad a corto plazo. La banda en el gráfico refleja esta incertidumbre.
+            </p>
+            {uniqueCategories.length === 0 ? (
+              <p className="text-xs text-muted-foreground py-2 text-center">Sin categorías de inversión</p>
+            ) : (
+              <div className="space-y-1 max-h-[200px] overflow-y-auto">
+                {uniqueCategories.map(cat => (
+                  <div key={cat} className="flex items-center justify-between gap-2 p-1.5 rounded-lg bg-card border border-border/30">
+                    <div className="min-w-0">
+                      <p className="text-xs font-medium truncate">{cat}</p>
+                      <p className="text-[10px] text-muted-foreground font-mono">{((categoryWeights[cat] || 0) * 100).toFixed(0)}%</p>
+                    </div>
+                    <Select value={riskMapping[cat] || "none"}
+                      onValueChange={(v: RiskProfile) => setRiskMapping(prev => ({ ...prev, [cat]: v }))}>
+                      <SelectTrigger className="w-[150px] h-7 text-[11px]"><SelectValue /></SelectTrigger>
+                      <SelectContent>
+                        {(Object.keys(RISK_LABELS) as RiskProfile[]).map(r => (
+                          <SelectItem key={r} value={r} className="text-xs">{RISK_LABELS[r]}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                ))}
+              </div>
+            )}
+            {hasReturns && (
+              <p className="text-[10px] text-success font-medium mt-1">
+                Retorno ponderado: {(portfolioReturn * 100).toFixed(2)}% anual · Volatilidad: {(portfolioVolatility * 100).toFixed(1)}%
+              </p>
+            )}
+          </div>
         </CollapsibleContent>
       </Collapsible>
 
-      {/* Configuración */}
-      <div className="space-y-3">
-        {/* Método de cálculo */}
-        <div className="p-3 rounded-2xl bg-muted/20 border border-border/50 space-y-2.5">
-          <Label className="text-xs font-semibold text-foreground">Método de cálculo</Label>
-          <ToggleGroup 
-            type="single" 
-            value={calculationMode} 
-            onValueChange={(value) => value && setCalculationMode(value as typeof calculationMode)}
-            className="grid grid-cols-3 gap-2 w-full"
-          >
-            <ToggleGroupItem 
-              value="3months" 
-              className="h-10 text-xs font-medium data-[state=on]:bg-primary data-[state=on]:text-primary-foreground"
-            >
-              3 meses
-            </ToggleGroupItem>
-            <ToggleGroupItem 
-              value="6months" 
-              className="h-10 text-xs font-medium data-[state=on]:bg-primary data-[state=on]:text-primary-foreground"
-            >
-              6 meses
-            </ToggleGroupItem>
-            <ToggleGroupItem 
-              value="manual" 
-              className="h-10 text-xs font-medium data-[state=on]:bg-primary data-[state=on]:text-primary-foreground"
-            >
-              Manual
-            </ToggleGroupItem>
-          </ToggleGroup>
-
-          {calculationMode === "manual" && (
-            <div className="space-y-1.5">
-              <Label htmlFor="manual-salary" className="text-xs text-muted-foreground">Tu sueldo mensual</Label>
-              <Input
-                id="manual-salary"
-                type="text"
-                placeholder="$1.500.000"
-                value={manualSalary ? `$${Number(manualSalary).toLocaleString("es-CL")}` : ""}
-                onChange={(e) => {
-                  const value = e.target.value.replace(/\D/g, "");
-                  setManualSalary(value);
-                }}
-                className="h-10 text-base"
-              />
-              {avgMonthlyExpenses > 0 && (
-                <p className="text-xs text-muted-foreground">
-                  Gastos mensuales promedio: <span className="font-semibold text-foreground font-mono tabular-nums">{formatCurrencyFull(avgMonthlyExpenses)}</span>
-                </p>
-              )}
-            </div>
-          )}
-
-          {calculationMode !== "manual" && (
-            <p className="text-xs text-muted-foreground">
-              {recentCompleteMonths.length > 0 ? (
-                <>
-                  Basado en {recentCompleteMonths.length} mes{recentCompleteMonths.length !== 1 ? 'es' : ''} completo{recentCompleteMonths.length !== 1 ? 's' : ''}
-                  {excludingCurrentMonth && " · Excluyendo mes actual"}
-                </>
-              ) : (
-                "Sin datos suficientes"
-              )}
-            </p>
-          )}
-        </div>
-
-        {/* Horizonte de proyección */}
-        <div className="p-3 rounded-2xl bg-muted/20 border border-border/50 space-y-2.5">
-          <Label className="text-xs font-semibold text-foreground">Proyectar a futuro</Label>
-          
-          {!useCustomYears ? (
-            <ToggleGroup 
-              type="single" 
-              value={projectionMonths.toString()} 
-              onValueChange={(value) => value && setProjectionMonths(Number(value))}
-              className="grid grid-cols-4 gap-2 w-full"
-            >
-              <ToggleGroupItem 
-                value="3" 
-                className="h-10 text-xs font-medium data-[state=on]:bg-primary data-[state=on]:text-primary-foreground"
-              >
-                3M
-              </ToggleGroupItem>
-              <ToggleGroupItem 
-                value="6" 
-                className="h-10 text-xs font-medium data-[state=on]:bg-primary data-[state=on]:text-primary-foreground"
-              >
-                6M
-              </ToggleGroupItem>
-              <ToggleGroupItem 
-                value="12" 
-                className="h-10 text-xs font-medium data-[state=on]:bg-primary data-[state=on]:text-primary-foreground"
-              >
-                1A
-              </ToggleGroupItem>
-              <ToggleGroupItem 
-                value="24" 
-                className="h-10 text-xs font-medium data-[state=on]:bg-primary data-[state=on]:text-primary-foreground"
-              >
-                2A
-              </ToggleGroupItem>
-            </ToggleGroup>
-          ) : (
-            <div className="space-y-1.5">
-              <Label htmlFor="custom-years" className="text-xs text-muted-foreground">Número de años</Label>
-              <Input
-                id="custom-years"
-                type="number"
-                placeholder="Ej: 5"
-                value={customYears}
-                onChange={(e) => setCustomYears(e.target.value)}
-                className="h-10 text-base"
-                min="1"
-                max="30"
-              />
-            </div>
-          )}
-
-          <button
-            onClick={() => setUseCustomYears(!useCustomYears)}
-            className="text-xs text-primary hover:underline font-medium"
-          >
-            {useCustomYears ? "← Volver a opciones rápidas" : "Personalizar años →"}
-          </button>
-        </div>
-      </div>
-      {/* Métricas clave */}
-      <div className="grid grid-cols-2 gap-2.5">
-        <div className="p-3 rounded-2xl bg-muted/20 border border-border/50 space-y-0.5">
-          <p className="text-xs text-muted-foreground font-medium">Crecimiento/Mes</p>
-          <p className={cn("text-xl sm:text-2xl font-bold font-mono tabular-nums", avgMonthlyGrowth >= 0 ? "text-success" : "text-destructive", isPrivacyMode && "privacy-blur")}>
-            {formatCurrency(avgMonthlyGrowth)}
-          </p>
-        </div>
-        <div className="p-3 rounded-2xl bg-muted/20 border border-border/50 space-y-0.5">
-          <p className="text-xs text-muted-foreground font-medium">Patrimonio Actual</p>
-          <p className={cn("text-xl sm:text-2xl font-bold text-foreground font-mono tabular-nums", isPrivacyMode && "privacy-blur")}>
-            {formatCurrency(currentPatrimonio)}
-          </p>
-        </div>
-        <div className="p-3 rounded-2xl bg-primary/10 border border-primary/20 space-y-0.5 col-span-2">
-          <p className="text-xs text-primary font-semibold">Proyección a {projectionLabel}</p>
-          <p className={cn("text-2xl sm:text-3xl font-bold font-mono tabular-nums", projectedValue >= currentPatrimonio ? "text-success" : "text-destructive", isPrivacyMode && "privacy-blur")}>
-            {formatCurrency(projectedValue)}
-          </p>
-        </div>
-      </div>
-
-      {/* Gráfico de proyección */}
-      <div className="p-3 rounded-2xl bg-muted/20 border border-border/50 space-y-3">
-        <div className="flex items-center justify-between">
-          <p className="text-sm font-semibold text-foreground">Evolución & Proyección</p>
-          <div className="flex items-center gap-2">
-            {zoomDomain && (
-              <Button 
-                variant="outline" 
-                size="sm" 
-                onClick={handleZoomOut}
-                className="h-6 text-[10px] gap-1 px-2"
-              >
-                <RotateCcw className="w-3 h-3" />
-                Reiniciar
-              </Button>
-            )}
-          </div>
-        </div>
-        
-        {/* Leyenda */}
-        <div className="flex items-center gap-3 text-xs flex-wrap">
-          <div className="flex items-center gap-1.5">
-            <div className="h-2.5 w-2.5 rounded-full bg-destructive" />
-            <span className="text-muted-foreground font-medium">Real</span>
-          </div>
-          <div className="flex items-center gap-1.5">
-            <div className="h-2.5 w-2.5 rounded-full bg-destructive opacity-40" />
-            <span className="text-muted-foreground font-medium">Con interés</span>
-          </div>
-          {portfolioReturn > 0 && (
-            <div className="flex items-center gap-1.5">
-              <div className="h-2.5 w-2.5 rounded-full bg-muted-foreground" />
-              <span className="text-muted-foreground font-medium">Sin interés</span>
-            </div>
-          )}
-        </div>
-
-        <div className="select-none cursor-crosshair">
-          <ResponsiveContainer width="100%" height={260}>
-            <ComposedChart 
-              data={visibleChartData} 
-              className={cn(isPrivacyMode && "privacy-blur")}
-              onMouseDown={handleMouseDown}
-              onMouseMove={handleMouseMove}
-              onMouseUp={handleMouseUp}
-              onMouseLeave={handleMouseUp}
-            >
-            <defs>
-              <linearGradient id="gradientPatrimonio" x1="0" y1="0" x2="0" y2="1">
-                <stop offset="5%" stopColor={CHART_COLORS.expense} stopOpacity={0.3}/>
-                <stop offset="95%" stopColor={CHART_COLORS.expense} stopOpacity={0}/>
-              </linearGradient>
-              <linearGradient id="gradientProyeccion" x1="0" y1="0" x2="0" y2="1">
-                <stop offset="5%" stopColor={CHART_COLORS.expense} stopOpacity={0.15}/>
-                <stop offset="95%" stopColor={CHART_COLORS.expense} stopOpacity={0}/>
-              </linearGradient>
-            </defs>
-
-            <CartesianGrid
-              strokeDasharray="3 3"
-              stroke={CHART_COLORS.grid}
-              opacity={0.2}
-              vertical={false}
-            />
-            
-            <XAxis
-              dataKey="index"
-              type="number"
-              domain={[0, visibleChartData.length - 1]}
-              stroke={CHART_COLORS.mutedAxis}
-              fontSize={11}
-              tickLine={false}
-              axisLine={false}
-              tickMargin={8}
-              tickFormatter={(idx) => {
-                const item = visibleChartData.find(d => d.index === idx);
-                return item?.month || '';
-              }}
-              ticks={visibleChartData.map(d => d.index)}
-            />
-            <YAxis
-              stroke={CHART_COLORS.mutedAxis}
-              tickFormatter={formatCurrency}
-              fontSize={11}
-              tickLine={false}
-              axisLine={false}
-              tickMargin={8}
-            />
-            <Tooltip 
-              content={<CustomTooltip />} 
-              cursor={{ stroke: CHART_COLORS.mutedAxis, strokeWidth: 1, strokeDasharray: '4 4' }}
-            />
-            
-            {/* Área para patrimonio real */}
-            <Area
-              type="monotone"
-              dataKey="patrimonio"
-              stroke="none"
-              fill="url(#gradientPatrimonio)"
-              fillOpacity={1}
-              connectNulls={false}
-              animationDuration={1000}
-            />
-            
-            {/* Área para proyección */}
-            <Area
-              type="monotone"
-              dataKey="proyeccion"
-              stroke="none"
-              fill="url(#gradientProyeccion)"
-              fillOpacity={1}
-              connectNulls={false}
-              animationDuration={1000}
-            />
-            
-            {/* Línea Proyectada SIN INTERÉS */}
-            {portfolioReturn > 0 && (
-              <Line
-                type="monotone"
-                dataKey="proyeccionLineal"
-                stroke={CHART_COLORS.mutedAxis}
-                strokeWidth={2}
-                strokeDasharray="6 6"
-                dot={false}
-                activeDot={{ r: 5, fill: CHART_COLORS.mutedAxis, stroke: "#ffffff", strokeWidth: 2 }}
-                connectNulls={false}
-                animationDuration={1200}
-              />
-            )}
-            
-            {/* Línea Proyectada CON INTERÉS */}
-            <Line
-              type="monotone"
-              dataKey="proyeccion"
-              stroke={CHART_COLORS.expense}
-              strokeWidth={2.5}
-              strokeDasharray="8 8"
-              strokeOpacity={0.6}
-              dot={false}
-              activeDot={{ r: 6, fill: CHART_COLORS.expense, fillOpacity: 0.6, stroke: "#ffffff", strokeWidth: 2 }}
-              connectNulls={false}
-              animationDuration={1000}
-            />
-            
-            {/* Línea Real: Solo patrimonio histórico */}
-            <Line
-              type="monotone"
-              dataKey="patrimonio"
-              stroke={CHART_COLORS.expense}
-              strokeWidth={2.5}
-              dot={{ fill: CHART_COLORS.expense, strokeWidth: 2, r: 4, stroke: "#ffffff" }}
-              activeDot={{ r: 6, fill: CHART_COLORS.expense, stroke: "#ffffff", strokeWidth: 2 }}
-              connectNulls={false}
-              animationDuration={1000}
-            />
-
-            {/* Área de selección para zoom */}
-            {isSelecting && selectStartIdx !== null && selectEndIdx !== null && (
-              <ReferenceArea
-                x1={Math.min(selectStartIdx, selectEndIdx)}
-                x2={Math.max(selectStartIdx, selectEndIdx)}
-                strokeOpacity={0.3}
-                fill={CHART_COLORS.mutedAxis}
-                fillOpacity={0.3}
-              />
-            )}
-            </ComposedChart>
-          </ResponsiveContainer>
-        </div>
-
-        {/* Brush para navegación */}
-        {chartDataWithIndex.length > 4 && (
-          <div className="px-2">
-            <ResponsiveContainer width="100%" height={35}>
-              <ComposedChart data={chartDataWithIndex}>
-                <XAxis dataKey="month" hide />
-                <YAxis hide />
-                <Area
-                  type="monotone"
-                  dataKey="patrimonio"
-                  stroke={CHART_COLORS.expense}
-                  fill={CHART_COLORS.expense}
-                  fillOpacity={0.2}
-                  strokeWidth={1}
-                />
-                <Area
-                  type="monotone"
-                  dataKey="proyeccion"
-                  stroke={CHART_COLORS.expense}
-                  fill={CHART_COLORS.expense}
-                  fillOpacity={0.1}
-                  strokeWidth={1}
-                />
-                <Brush
-                  dataKey="month"
-                  height={25}
-                  stroke={CHART_COLORS.investment}
-                  fill="transparent"
-                  travellerWidth={8}
-                  startIndex={zoomDomain?.start ?? 0}
-                  endIndex={zoomDomain?.end ?? chartDataWithIndex.length - 1}
-                  onChange={handleBrushChange}
-                />
-              </ComposedChart>
-            </ResponsiveContainer>
-          </div>
-        )}
-        
-        <p className="text-[10px] text-muted-foreground text-center">
-          Arrastra en el gráfico para hacer zoom • Usa el selector para navegar
-        </p>
-      </div>
-
-      {/* Insight adicional */}
+      {/* Chart + metrics */}
       {isDataSufficient ? (
-        <div className="p-3 rounded-2xl bg-primary/5 border border-primary/20">
-          <p className="text-sm text-foreground leading-relaxed">
-            {calculationMode === "manual" ? (
+        <>
+          <div className={cn("rounded-xl bg-muted/10 border border-border/30 p-2 pb-1")}>
+            <div className={cn(isPrivacyMode && "privacy-blur")}>
+              <ResponsiveContainer width="100%" height={240}>
+                <ComposedChart data={chartData}>
+                  <defs>
+                    <linearGradient id="gradHist" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="5%" stopColor={CHART_COLORS.expense} stopOpacity={0.2} />
+                      <stop offset="95%" stopColor={CHART_COLORS.expense} stopOpacity={0} />
+                    </linearGradient>
+                  </defs>
+
+                  <CartesianGrid strokeDasharray="3 3" stroke={CHART_COLORS.grid} opacity={0.15} vertical={false} />
+
+                  <XAxis dataKey="month" fontSize={10} tickLine={false} axisLine={false} tickMargin={6}
+                    stroke={CHART_COLORS.mutedAxis} interval={tickInterval} />
+                  <YAxis tickFormatter={fmtCompact} fontSize={10} tickLine={false} axisLine={false}
+                    tickMargin={4} width={55} stroke={CHART_COLORS.mutedAxis} />
+
+                  <Tooltip content={<CustomTooltip />} cursor={{ stroke: CHART_COLORS.mutedAxis, strokeWidth: 1, strokeDasharray: "4 4" }} />
+
+                  {/* Confidence band (stacked: transparent base + colored width) */}
+                  {hasVolatility && (
+                    <>
+                      <Area dataKey="bandaLower" stackId="band" type="monotone" fill="transparent" stroke="none" connectNulls={false} />
+                      <Area dataKey="bandWidth" stackId="band" type="monotone"
+                        fill={CHART_COLORS.investment} fillOpacity={0.08} stroke="none" connectNulls={false} />
+                    </>
+                  )}
+
+                  {/* Historical area fill */}
+                  <Area type="monotone" dataKey="patrimonio" stroke="none" fill="url(#gradHist)" connectNulls={false} />
+
+                  {/* Sin inversión (subtle baseline) */}
+                  {hasReturns && (
+                    <Line type="monotone" dataKey="sinInversion" stroke={CHART_COLORS.mutedAxis}
+                      strokeWidth={1.5} strokeDasharray="4 4" dot={false} connectNulls={false} />
+                  )}
+
+                  {/* Valor real (inflation-adjusted) */}
+                  <Line type="monotone" dataKey="valorReal" stroke={CHART_COLORS.balance}
+                    strokeWidth={2} strokeDasharray="6 3" dot={false} connectNulls={false} />
+
+                  {/* Projection (nominal) */}
+                  <Line type="monotone" dataKey="proyeccion" stroke={CHART_COLORS.investment}
+                    strokeWidth={2.5} strokeDasharray="8 4" dot={false}
+                    activeDot={{ r: 4, fill: CHART_COLORS.investment, stroke: "#fff", strokeWidth: 2 }}
+                    connectNulls={false} />
+
+                  {/* Historical patrimonio */}
+                  <Line type="monotone" dataKey="patrimonio" stroke={CHART_COLORS.expense} strokeWidth={2.5}
+                    dot={{ fill: CHART_COLORS.expense, strokeWidth: 2, r: 3, stroke: "#fff" }}
+                    activeDot={{ r: 5, fill: CHART_COLORS.expense, stroke: "#fff", strokeWidth: 2 }}
+                    connectNulls={false} />
+
+                  {chartData.length > 15 && (
+                    <Brush dataKey="month" height={20} stroke={CHART_COLORS.investment}
+                      fill="transparent" travellerWidth={6} />
+                  )}
+                </ComposedChart>
+              </ResponsiveContainer>
+            </div>
+
+            {/* Legend */}
+            <div className="flex flex-wrap items-center gap-x-3 gap-y-0.5 px-1 pt-1 pb-0.5">
+              <LegendItem color={CHART_COLORS.expense} label="Real" />
+              <LegendItem color={CHART_COLORS.investment} label="Proyección" dashed />
+              <LegendItem color={CHART_COLORS.balance} label="Valor real" dashed />
+              {hasReturns && <LegendItem color={CHART_COLORS.mutedAxis} label="Sin inversión" dashed />}
+              {hasVolatility && <LegendItem color={CHART_COLORS.investment} label="Rango 80%" band />}
+            </div>
+          </div>
+
+          {/* Compact metrics */}
+          <div className="grid grid-cols-3 gap-2">
+            <MetricCard label="Actual" value={currentPatrimonio} />
+            <MetricCard label={`En ${projectionLabel}`} value={projectedValue} highlight />
+            <MetricCard label="Valor real" value={projectedReal} sublabel={`con ${inflationRate}% inflación`} amber />
+          </div>
+
+          {/* Brief insight */}
+          <p className="text-xs text-muted-foreground leading-relaxed px-0.5">
+            {avgMonthlyGrowth >= 0 ? (
               <>
-                Con un sueldo de <strong className="text-primary font-mono tabular-nums">{formatCurrencyFull(Number(manualSalary))}</strong> y
-                gastos promedio de <strong className="text-foreground font-mono tabular-nums">{formatCurrencyFull(avgMonthlyExpenses)}</strong>,
-                {avgMonthlyGrowth >= 0 ? (
-                  <>
-                    {" "}tu patrimonio crecería <strong className="text-success font-mono tabular-nums">{formatCurrencyFull(avgMonthlyGrowth)}</strong> por mes{portfolioReturn > 0 && <> con <span className="font-mono tabular-nums">{(portfolioReturn * 100).toFixed(1)}%</span> de retorno anual</>}.
-                    En <strong className="text-foreground">{projectionLabel}</strong> proyectamos{" "}
-                    <strong className="text-success font-mono tabular-nums">{formatCurrencyFull(projectedValue)}</strong> de patrimonio{portfolioReturn > 0 && " (con interés compuesto)"}.
-                  </>
+                Creces <strong className="text-success font-mono">{fmtCompact(avgMonthlyGrowth)}</strong>/mes.
+                {hasReturns ? (
+                  <> Inversiones al <span className="font-mono">{(portfolioReturn * 100).toFixed(1)}%</span> anual llevarían tu patrimonio a{" "}
+                  <strong className="text-foreground font-mono">{fmtCompact(projectedValue)}</strong> en {projectionLabel},
+                  pero en poder adquisitivo real son <strong className="text-amber-600 dark:text-amber-400 font-mono">{fmtCompact(projectedReal)}</strong>.
+                  {hasVolatility && <> La banda muestra que a corto plazo hay más incertidumbre.</>}</>
                 ) : (
-                  <>
-                    {" "}estarías gastando <strong className="text-destructive font-mono tabular-nums">{formatCurrencyFull(Math.abs(avgMonthlyGrowth))}</strong> más
-                    de lo que ganas por mes. Considera ajustar tus gastos.
-                  </>
+                  <> En {projectionLabel} tendrías <strong className="text-foreground font-mono">{fmtCompact(projectedValue)}</strong>,
+                  pero ajustado por inflación serían <strong className="text-amber-600 dark:text-amber-400 font-mono">{fmtCompact(projectedReal)}</strong> reales.</>
                 )}
-              </>
-            ) : avgMonthlyGrowth >= 0 ? (
-              <>
-                Tu patrimonio crece <strong className="text-success font-mono tabular-nums">{formatCurrencyFull(avgMonthlyGrowth)}</strong> por mes en promedio{portfolioReturn > 0 && <> con <span className="font-mono tabular-nums">{(portfolioReturn * 100).toFixed(1)}%</span> de retorno anual</>}.
-                En <strong className="text-primary">{projectionLabel}</strong> proyectamos{" "}
-                <strong className="text-success font-mono tabular-nums">{formatCurrencyFull(projectedValue)}</strong> de patrimonio{portfolioReturn > 0 && " (con interés compuesto)"}.
                 {excludingCurrentMonth && (
-                  <span className="block mt-2 text-xs opacity-75">
-                    La proyección se actualizará cuando registres tus ingresos de este mes.
-                  </span>
+                  <span className="opacity-60"> Se actualizará al registrar ingresos de este mes.</span>
                 )}
               </>
             ) : (
               <>
-                Tu patrimonio está disminuyendo <strong className="text-destructive font-mono tabular-nums">{formatCurrencyFull(Math.abs(avgMonthlyGrowth))}</strong> por mes.
-                Considera revisar tus gastos e inversiones.
+                Tu patrimonio baja <strong className="text-destructive font-mono">{fmtCompact(Math.abs(avgMonthlyGrowth))}</strong>/mes.
+                Considera revisar tus gastos.
               </>
             )}
           </p>
-          
-          {portfolioReturn > 0 && (
-            <div className="mt-3 pt-3 border-t border-primary/20">
-              <p className="text-xs text-muted-foreground">
-                <strong>Magia del interés compuesto:</strong> Tu dinero trabaja para ti. 
-                {projectedValue > currentPatrimonio + (avgMonthlyGrowth * effectiveProjectionMonths) && (
-                  <> Ganarías <strong className="text-success font-mono tabular-nums">
-                    {formatCurrencyFull(projectedValue - currentPatrimonio - (avgMonthlyGrowth * effectiveProjectionMonths))}
-                  </strong> extra gracias a los rendimientos.</>
-                )}
-              </p>
-            </div>
-          )}
-        </div>
+        </>
       ) : (
-        <div className="p-3 rounded-2xl bg-muted/30 border border-border/50">
-          <div className="flex items-start gap-2.5">
-            <Info className="h-5 w-5 text-muted-foreground flex-shrink-0 mt-0.5" />
-            <p className="text-sm text-muted-foreground leading-relaxed">
-              {calculationMode === "manual" 
+        <div className="p-3 rounded-xl bg-muted/20 border border-border/30">
+          <div className="flex items-start gap-2">
+            <Info className="h-4 w-4 text-muted-foreground flex-shrink-0 mt-0.5" />
+            <p className="text-xs text-muted-foreground">
+              {calculationMode === "manual"
                 ? "Ingresa tu sueldo mensual para generar una proyección."
-                : `Necesitas al menos 2 meses con ingresos registrados para generar una proyección precisa.${excludingCurrentMonth ? " Registra tus ingresos de este mes para mejorar los datos." : ""}`
-              }
+                : "Necesitas al menos 2 meses con ingresos registrados para proyectar."}
             </p>
           </div>
         </div>
@@ -1020,3 +597,39 @@ export default function ProjectionCard() {
   );
 }
 
+// --- Sub-components ---
+
+function LegendItem({ color, label, dashed, band }: { color: string; label: string; dashed?: boolean; band?: boolean }) {
+  return (
+    <div className="flex items-center gap-1">
+      {band ? (
+        <div className="w-3 h-2 rounded-sm opacity-30" style={{ backgroundColor: color }} />
+      ) : (
+        <div className={cn("w-2 h-2 rounded-full", dashed && "opacity-60")} style={{ backgroundColor: color }} />
+      )}
+      <span className="text-[10px] text-muted-foreground">{label}</span>
+    </div>
+  );
+}
+
+function MetricCard({ label, value, sublabel, highlight, amber }: {
+  label: string; value: number; sublabel?: string; highlight?: boolean; amber?: boolean;
+}) {
+  const { isPrivacyMode } = usePrivacyMode();
+  return (
+    <div className={cn(
+      "p-2 rounded-xl border space-y-0.5",
+      highlight ? "bg-primary/5 border-primary/20" : amber ? "bg-amber-500/5 border-amber-500/20" : "bg-muted/20 border-border/30"
+    )}>
+      <p className={cn("text-[10px] font-medium", highlight ? "text-primary" : amber ? "text-amber-600 dark:text-amber-400" : "text-muted-foreground")}>{label}</p>
+      <p className={cn(
+        "text-base sm:text-lg font-bold font-mono tabular-nums leading-tight",
+        highlight ? (value >= 0 ? "text-success" : "text-destructive") : amber ? "text-amber-600 dark:text-amber-400" : "text-foreground",
+        isPrivacyMode && "privacy-blur"
+      )}>
+        {fmtCompact(value)}
+      </p>
+      {sublabel && <p className="text-[9px] text-muted-foreground leading-tight">{sublabel}</p>}
+    </div>
+  );
+}
