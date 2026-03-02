@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { useTransactions } from "@/hooks/useTransactions";
-import { startOfMonth, endOfMonth } from "date-fns";
+import { subDays } from "date-fns";
 
 export interface AtmosphereData {
   mood: number; // 0-1
@@ -9,18 +9,20 @@ export interface AtmosphereData {
 }
 
 function getMoodInfo(mood: number): { label: string; description: string } {
-  if (mood >= 0.7) return { label: "Excelente", description: "Tus ingresos superan ampliamente tus gastos este mes." };
-  if (mood >= 0.55) return { label: "Positivo", description: "Buen balance entre ingresos y gastos este mes." };
-  if (mood >= 0.45) return { label: "Neutro", description: "Ingresos y gastos están parejos este mes." };
+  if (mood >= 0.7) return { label: "Excelente", description: "Tus ingresos superan ampliamente tus gastos." };
+  if (mood >= 0.55) return { label: "Positivo", description: "Buen balance entre ingresos y gastos." };
+  if (mood >= 0.45) return { label: "Neutro", description: "Ingresos y gastos están parejos." };
   if (mood >= 0.3) return { label: "Ajustado", description: "Los gastos están acercándose a tus ingresos." };
-  return { label: "Negativo", description: "Los gastos superan tus ingresos este mes." };
+  return { label: "Negativo", description: "Los gastos superan tus ingresos." };
 }
 
 /**
  * Atmospheric UI - Subliminal mood system
  *
- * Shifts the app's visual atmosphere based on financial health.
- * The glow color and intensity change based on your income/expense ratio.
+ * Uses normalized daily rates to avoid salary-cycle distortion:
+ * - dailyIncome = total income over 90 days / 90 (smooth baseline)
+ * - dailyExpense = total expenses over 30 days / 30 (recent behavior)
+ * - mood = dailyIncome / (dailyIncome + dailyExpense)
  */
 export function useAtmosphere(): AtmosphereData {
   const { transactions } = useTransactions();
@@ -34,27 +36,32 @@ export function useAtmosphere(): AtmosphereData {
 
   useEffect(() => {
     const now = new Date();
-    const monthStart = startOfMonth(now);
-    const monthEnd = endOfMonth(now);
+    const thirtyDaysAgo = subDays(now, 30);
+    const ninetyDaysAgo = subDays(now, 90);
 
-    const currentMonth = transactions.filter((t) => {
-      const d = new Date(t.date);
-      return d >= monthStart && d <= monthEnd;
-    });
-
-    const income = currentMonth
-      .filter((t) => t.type === "Ingreso")
+    // Income over 90 days → normalized to daily rate (smooths salary timing)
+    const income90 = transactions
+      .filter((t) => {
+        const d = new Date(t.date);
+        return t.type === "Ingreso" && d >= ninetyDaysAgo && d <= now;
+      })
       .reduce((s, t) => s + Number(t.amount), 0);
+    const dailyIncome = income90 / 90;
 
-    const expenses = currentMonth
-      .filter((t) => t.type === "Gasto")
+    // Expenses over 30 days → normalized to daily rate (recent behavior)
+    const expenses30 = transactions
+      .filter((t) => {
+        const d = new Date(t.date);
+        return t.type === "Gasto" && d >= thirtyDaysAgo && d <= now;
+      })
       .reduce((s, t) => s + Number(t.amount), 0);
+    const dailyExpense = expenses30 / 30;
 
-    // Calculate mood: 0 = very bad, 0.5 = neutral, 1 = very good
+    // Mood: ratio of earning capacity vs spending rate
     let mood = 0.5;
-    const total = income + expenses;
+    const total = dailyIncome + dailyExpense;
     if (total > 0) {
-      mood = income / total;
+      mood = dailyIncome / total;
       mood = Math.max(0.15, Math.min(0.85, mood));
     }
 

@@ -3,8 +3,6 @@ import { useTransactions } from "./useTransactions";
 import { BICHO_SHAPES, getScoreColor, type BichoShape } from "@/lib/bicho-shapes";
 import {
   format,
-  startOfMonth,
-  endOfMonth,
   eachDayOfInterval,
   differenceInDays,
   subDays,
@@ -55,7 +53,7 @@ export function useBicho(): BichoState {
 
   const computed = useMemo(() => {
     const now = new Date();
-    const monthStart = startOfMonth(now);
+    const thirtyDaysAgo = subDays(now, 29); // rolling 30 days (today inclusive)
     const rollingStart = subDays(now, 364); // last 365 days (rolling 12 months)
 
     // Pre-build date → transactions map
@@ -148,10 +146,10 @@ export function useBicho(): BichoState {
       };
     });
 
-    // Month days
+    // Rolling 30 days (instead of calendar month — avoids salary-cycle distortion)
     const monthDays = allDayScores.filter((d) => {
       const date = new Date(d.date);
-      return date >= monthStart && date <= endOfMonth(now);
+      return date >= thirtyDaysAgo && date <= now;
     });
 
     const monthlyScore =

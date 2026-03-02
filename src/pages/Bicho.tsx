@@ -572,7 +572,7 @@ export default function Bicho() {
                   <span className="text-[15px] mt-0.5 shrink-0">🐜</span>
                   <div>
                     <span className="font-medium text-foreground">Gastos hormiga</span>
-                    <span className="text-muted-foreground"> — compras bajo $5.000 que no duelen pero suman. Este mes: {bicho.monthHormigaCount} compras por {formatCLP(bicho.monthHormigaTotal)}.</span>
+                    <span className="text-muted-foreground"> — compras bajo $5.000 que no duelen pero suman. Últimos 30 días: {bicho.monthHormigaCount} compras por {formatCLP(bicho.monthHormigaTotal)}.</span>
                   </div>
                 </div>
               </div>
