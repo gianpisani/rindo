@@ -21,6 +21,7 @@ import {
 } from "lucide-react";
 import { useTransactions } from "@/hooks/useTransactions";
 import { useFuzzySearch } from "@/hooks/useFuzzySearch";
+import { useSoundFX } from "@/hooks/useSoundFX";
 import { format } from "date-fns";
 import { es } from "date-fns/locale";
 import { Badge } from "@/components/ui/badge";
@@ -50,6 +51,7 @@ export function CommandBar({ open, onOpenChange, onAddTransaction, onConciliate 
   const [search, setSearch] = useState("");
   const navigate = useNavigate();
   const { transactions } = useTransactions();
+  const { playSelect } = useSoundFX();
 
   // Fuzzy search
   const searchResults = useFuzzySearch(transactions, search);
@@ -62,6 +64,7 @@ export function CommandBar({ open, onOpenChange, onAddTransaction, onConciliate 
   }, [open]);
 
   const runCommand = (command: () => void) => {
+    playSelect();
     onOpenChange(false);
     command();
   };

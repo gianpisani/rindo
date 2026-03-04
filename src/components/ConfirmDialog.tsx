@@ -1,6 +1,7 @@
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "./ui/dialog";
 import { Button } from "./ui/button";
 import { AlertTriangle } from "lucide-react";
+import { useSoundFX } from "@/hooks/useSoundFX";
 
 interface ConfirmDialogProps {
   open: boolean;
@@ -23,7 +24,10 @@ export default function ConfirmDialog({
   cancelText = "Cancelar",
   variant = "destructive",
 }: ConfirmDialogProps) {
+  const { playCaution } = useSoundFX();
+
   const handleConfirm = () => {
+    playCaution();
     onConfirm();
     onOpenChange(false);
   };

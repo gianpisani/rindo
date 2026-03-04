@@ -2,6 +2,7 @@ import { useState, useRef, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useTransactions } from "@/hooks/useTransactions";
 import { useCategories } from "@/hooks/useCategories";
+import { useSoundFX } from "@/hooks/useSoundFX";
 import { supabase } from "@/integrations/supabase/client";
 import { useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
@@ -18,6 +19,7 @@ export function WhisperInput({ open, onOpenChange }: WhisperInputProps) {
   const inputRef = useRef<HTMLInputElement>(null);
   const { addTransaction } = useTransactions();
   const { categories } = useCategories();
+  const { playCelebration } = useSoundFX();
   const queryClient = useQueryClient();
 
   useEffect(() => {
@@ -114,6 +116,7 @@ export function WhisperInput({ open, onOpenChange }: WhisperInputProps) {
       }
 
       setStatus("success");
+      playCelebration();
 
       setTimeout(() => {
         onOpenChange(false);

@@ -6,6 +6,7 @@ import { ArrowRightToLine, CornerDownLeft, CornerDownLeftIcon, Cpu, Sparkles, Za
 import { useCategories } from "@/hooks/useCategories";
 import { useTransactions } from "@/hooks/useTransactions";
 import { useSharedExpenses } from "@/hooks/useSharedExpenses";
+import { useSoundFX } from "@/hooks/useSoundFX";
 import { supabase } from "@/integrations/supabase/client";
 import { useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
@@ -41,6 +42,7 @@ export default function QuickTransactionForm({ onSuccess, defaultType = "Gasto" 
   const { categories } = useCategories();
   const queryClient = useQueryClient();
   const { addTransaction } = useTransactions();
+  const { playCelebration } = useSoundFX();
   const { addSharedExpenses } = useSharedExpenses();
   const detailInputRef = useRef<HTMLInputElement>(null);
   const amountInputRef = useRef<HTMLInputElement>(null);
@@ -147,7 +149,8 @@ export default function QuickTransactionForm({ onSuccess, defaultType = "Gasto" 
       
       // Focus back to amount for next entry
       setTimeout(() => amountInputRef.current?.focus(), 100);
-      
+
+      playCelebration();
       onSuccess?.();
     } catch (error) {
       console.error("Error guardando transacción:", error);

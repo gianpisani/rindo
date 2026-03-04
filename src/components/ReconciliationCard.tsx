@@ -5,6 +5,7 @@ import { Button } from "./ui/button";
 import { CreditCard, Wallet, AlertTriangle, CheckCircle2, PencilRuler } from "lucide-react";
 import { useTransactions } from "@/hooks/useTransactions";
 import { useCategories } from "@/hooks/useCategories";
+import { useSoundFX } from "@/hooks/useSoundFX";
 
 interface ReconciliationCardProps {
   onSuccess?: () => void;
@@ -13,6 +14,7 @@ interface ReconciliationCardProps {
 export function ReconciliationCard({ onSuccess }: ReconciliationCardProps = {}) {
   const { transactions, addTransaction } = useTransactions();
   const { categories } = useCategories();
+  const { playCelebration } = useSoundFX();
   const [cuentaCorriente, setCuentaCorriente] = useState<string>("");
   const [tarjetaCredito, setTarjetaCredito] = useState<string>("");
   const [isCreating, setIsCreating] = useState(false);
@@ -108,7 +110,9 @@ export function ReconciliationCard({ onSuccess }: ReconciliationCardProps = {}) 
       // Limpiar inputs después de conciliar
       setCuentaCorriente("");
       setTarjetaCredito("");
-      
+
+      playCelebration();
+
       // Llamar callback si existe
       if (onSuccess) {
         onSuccess();

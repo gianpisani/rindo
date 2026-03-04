@@ -11,12 +11,16 @@ import {
   Bell,
   BellOff,
   MessageSquare,
+  Volume2,
+  VolumeOff,
 } from "lucide-react";
 import { Link, useLocation } from "react-router-dom";
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { usePrivacyMode } from "@/hooks/usePrivacyMode";
+import { useSoundPreferences } from "@/hooks/useSoundPreferences";
+import { useSoundFX } from "@/hooks/useSoundFX";
 import { usePushNotifications } from "@/hooks/usePushNotifications";
 import { useTheme } from "next-themes";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
@@ -54,6 +58,8 @@ interface AppSidebarProps {
 export function AppSidebar({ onAddTransaction, onConciliate, onWhisper }: AppSidebarProps = {}) {
   const location = useLocation();
   const { isPrivacyMode, togglePrivacyMode } = usePrivacyMode();
+  const { soundEnabled, toggleSound } = useSoundPreferences();
+  const { playToggleOn, playToggleOff } = useSoundFX();
   const { isSupported, isSubscribed, isLoading, subscribe, unsubscribe } = usePushNotifications();
   const { theme, setTheme } = useTheme();
   const isMobile = useIsMobile();
@@ -132,6 +138,22 @@ export function AppSidebar({ onAddTransaction, onConciliate, onWhisper }: AppSid
                   {getThemeIcon()}
                   <div className="font-medium flex-1">
                     {getThemeLabel()}
+                  </div>
+                </DropdownMenuItem>
+                <DropdownMenuItem
+                  onClick={() => {
+                    toggleSound();
+                    if (soundEnabled) playToggleOff(); else playToggleOn();
+                  }}
+                  className="gap-2 p-2 cursor-pointer"
+                >
+                  {soundEnabled ? (
+                    <Volume2 className="size-4" />
+                  ) : (
+                    <VolumeOff className="size-4" />
+                  )}
+                  <div className="font-medium">
+                    {soundEnabled ? "Desactivar" : "Activar"} sonidos
                   </div>
                 </DropdownMenuItem>
               </DropdownMenuContent>

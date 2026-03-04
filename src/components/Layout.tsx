@@ -6,13 +6,16 @@ import { WhisperInput } from "./WhisperInput";
 import { SidebarProvider, SidebarTrigger, SidebarInset } from "@/components/ui/sidebar";
 import { AppSidebar } from "@/components/AppSidebar";
 import { Button } from "./ui/button";
-import { Eye, EyeOff, Keyboard } from "lucide-react";
+import { Eye, EyeOff, Keyboard, Volume2, VolumeOff } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { usePrivacyMode } from "@/hooks/usePrivacyMode";
 import { useGlobalDrawers } from "@/hooks/useGlobalDrawers";
 import { useKeyboardShortcuts } from "@/hooks/useKeyboardShortcuts";
 import { useAtmosphere } from "@/hooks/useAtmosphere";
 import { useBicho } from "@/hooks/useBicho";
+import { useSoundPreferences } from "@/hooks/useSoundPreferences";
+import { useSoundFX } from "@/hooks/useSoundFX";
+import { initSounds } from "@/lib/snd";
 import { ShortcutsPopover } from "@/components/ShortcutsPopover";
 import { BichoCreature } from "@/components/bicho/BichoCreature";
 import { BichoModal } from "@/components/bicho/BichoModal";
@@ -30,6 +33,8 @@ interface LayoutProps {
 
 export default function Layout({ children }: LayoutProps) {
   const { isPrivacyMode, togglePrivacyMode } = usePrivacyMode();
+  const { soundEnabled, toggleSound } = useSoundPreferences();
+  const { playToggleOn, playToggleOff, playTransitionUp, playTransitionDown } = useSoundFX();
   const {
     quickAddOpen,
     setQuickAddOpen,
@@ -44,6 +49,11 @@ export default function Layout({ children }: LayoutProps) {
   const [showShortcutsPopover, setShowShortcutsPopover] = useState(false);
   const [whisperOpen, setWhisperOpen] = useState(false);
   const [bichoModalOpen, setBichoModalOpen] = useState(false);
+
+  // Initialize sound system once
+  useEffect(() => {
+    initSounds().catch(() => {});
+  }, []);
 
   // Bicho - financial creature
   const bicho = useBicho();
@@ -135,20 +145,29 @@ export default function Layout({ children }: LayoutProps) {
         {/* Quick Add Drawer - Global */}
         <QuickAddDrawer
           open={quickAddOpen}
-          onOpenChange={setQuickAddOpen}
+          onOpenChange={(open) => {
+            if (open) playTransitionUp(); else playTransitionDown();
+            setQuickAddOpen(open);
+          }}
           defaultType={quickAddDefaultType}
         />
 
         {/* Reconciliation Drawer - Global */}
         <ReconciliationDrawer
           open={reconciliationOpen}
-          onOpenChange={setReconciliationOpen}
+          onOpenChange={(open) => {
+            if (open) playTransitionUp(); else playTransitionDown();
+            setReconciliationOpen(open);
+          }}
         />
 
         {/* Whisper Mode - Ultra-minimal transaction input */}
         <WhisperInput
           open={whisperOpen}
-          onOpenChange={setWhisperOpen}
+          onOpenChange={(open) => {
+            if (open) playTransitionUp(); else playTransitionDown();
+            setWhisperOpen(open);
+          }}
         />
 
         {/* Bicho Modal */}
@@ -207,6 +226,35 @@ export default function Layout({ children }: LayoutProps) {
                   </TooltipContent>
                 </Tooltip>
 
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Button
+                      onClick={() => {
+                        toggleSound();
+                        if (soundEnabled) playToggleOff(); else playToggleOn();
+                      }}
+                      variant="ghost"
+                      size="sm"
+                      className={cn(
+                        "rounded-full h-8 w-8 p-0 transition-all duration-200",
+                        soundEnabled
+                          ? "bg-muted/10 text-muted-foreground hover:bg-muted hover:text-foreground"
+                          : "bg-primary/20 text-primary hover:bg-primary/30"
+                      )}
+                    >
+                      {soundEnabled ? (
+                        <Volume2 className="h-4 w-4" />
+                      ) : (
+                        <VolumeOff className="h-4 w-4" />
+                      )}
+                    </Button>
+                  </TooltipTrigger>
+                  <TooltipContent>
+                    {soundEnabled
+                      ? "Desactivar sonidos"
+                      : "Activar sonidos"}
+                  </TooltipContent>
+                </Tooltip>
                 <Tooltip>
                   <TooltipTrigger asChild>
                     <Button
