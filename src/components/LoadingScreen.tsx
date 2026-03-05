@@ -1,18 +1,111 @@
 import { cn } from "@/lib/utils";
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useRef } from "react";
 
-const funFacts = [
-  "Guardando $1.000 al día juntas más de $365.000 en un año",
-  "El café de la mañana te puede costar $500.000 al año",
-  "La regla 50-30-20: la mitad a lo esencial, un poco para gustos, y el resto a ahorrar",
-  "Tus suscripciones olvidadas probablemente te cuestan más de $15.000 al mes",
-  "Pedir delivery 3 veces a la semana son casi $780.000 al año",
-  "Ahorrar aunque sea el 10% de tu sueldo hace toda la diferencia a largo plazo",
-  "El interés de la tarjeta puede duplicar tu deuda en menos de 2 años",
-  "Un carrete de $30.000 cada finde son más de $1.500.000 al año",
-  "El mejor momento para ordenar tus finanzas fue ayer, el segundo mejor es hoy",
+/* ─── types ─── */
+type LineType = "cmd" | "info" | "warn" | "ok" | "fail";
+
+interface TLine {
+  type: LineType;
+  text: string;
+}
+
+/* ─── data ─── */
+const commands = [
+  "rindo --sync --modo-honesto",
+  "rindo --revisar-gastos --sin-juzgar",
+  "rindo --analizar-finanzas --sin-llorar",
+  "rindo --cargar-datos --con-fe",
+  "rindo --init --preparar-pañuelos",
 ];
 
+const pool: TLine[] = [
+  { type: "info", text: "Sincronizando pedidos de Rappi del último mes..." },
+  { type: "warn", text: "Se detectaron 23 pedidos de sushi a las 2am" },
+  { type: "fail", text: "Tu Rappi Pro se pagó solo. Ah no, lo pagaste tú." },
+  { type: "info", text: "Consultando al Tío René sobre tu situación financiera..." },
+  { type: "ok", text: '"Compadre, estái más pelao que rodilla de cabro chico"' },
+  { type: "info", text: "Convirtiendo deuda total a empanadas de pino..." },
+  { type: "fail", text: "Resultado: 847 empanadas. Preocupante." },
+  { type: "info", text: "Analizando compras en cuotas sin interés..." },
+  { type: "warn", text: "Spoiler: sí tenían interés" },
+  { type: "info", text: "Buscando suscripciones que olvidaste cancelar..." },
+  { type: "fail", text: "Encontradas 12. ¿De verdad usas Paramount+?" },
+  { type: "warn", text: '"Una chelita" se convirtió en $52.000 anoche' },
+  { type: "ok", text: "Schop a luca detectado cerca. Prioridades claras." },
+  { type: "info", text: "Conectando con BancoEstado..." },
+  { type: "fail", text: "Timeout. Como siempre." },
+  { type: "info", text: "Escaneando ofertas del CyberDay..." },
+  { type: "warn", text: "El 90% no son ofertas reales y tú lo sabes" },
+  { type: "info", text: "Rastreando paquetes de Aliexpress..." },
+  { type: "ok", text: "3 en camino. Pedidos en marzo... del año pasado." },
+  { type: "info", text: "Cargando excusas para no ahorrar este mes..." },
+  { type: "ok", text: "Buffer de excusas lleno. Capacidad máxima." },
+  { type: "fail", text: "Error: saldo insuficiente para calcular saldo insuficiente" },
+  { type: "warn", text: "Tu yo del futuro te juzga desde 2035" },
+  { type: "info", text: "Recalibrando expectativas financieras..." },
+  { type: "ok", text: "Listo. Ahora son más realistas. Y más tristes." },
+  { type: "warn", text: "Tu tarjeta de crédito pidió licencia médica" },
+  { type: "info", text: "Calculando meses pagando Netflix sin ver nada..." },
+  { type: "ok", text: "14 meses corridos. Nuevo récord personal." },
+  { type: "info", text: "Analizando historial de Uber..." },
+  { type: "warn", text: "El 60% de los viajes eran de menos de 8 cuadras" },
+  { type: "info", text: "Consultando a Don Francisco sobre inversiones..." },
+  { type: "ok", text: '"Siga participando... siga participando..."' },
+  { type: "info", text: "Revisando historial de Mercado Libre..." },
+  { type: "warn", text: '"Lo necesitaba" aparece 34 veces. Mentira 34 veces.' },
+  { type: "ok", text: "No compraste crypto esta vez. Bien ahí." },
+  { type: "fail", text: "Inflación detectada. Tu sueldo no." },
+  { type: "warn", text: 'Completos italianos clasificados como "inversión nutricional"' },
+  { type: "info", text: "Buscando dónde se fue tu aguinaldo..." },
+  { type: "fail", text: "Desapareció. Sin rastro. Como siempre." },
+  { type: "warn", text: "Llevas 3 días sin comprar algo innecesario. Sospechoso." },
+  { type: "info", text: "Verificando si el cajero te cobró de más..." },
+  { type: "ok", text: "No. Gastaste todo eso tú solito." },
+  { type: "info", text: "Descargando paciencia del Servipag..." },
+  { type: "fail", text: "Cola virtual: 2.847 personas delante de ti." },
+  { type: "warn", text: "Tu cuenta RUT acaba de suspirar" },
+  { type: "info", text: "Calculando cuántos completos son tu arriendo..." },
+  { type: "ok", text: "412 completos con mayo extra. De nada." },
+  { type: "fail", text: 'Categoría "gastos hormiga" reclasificada a "gastos elefante"' },
+  { type: "info", text: "Revisando si el gas natural subió de nuevo..." },
+  { type: "warn", text: "Sí. Subió. ¿Te sorprende?" },
+];
+
+/* ─── helpers ─── */
+function shuffle<T>(arr: T[]): T[] {
+  const a = [...arr];
+  for (let i = a.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [a[i], a[j]] = [a[j], a[i]];
+  }
+  return a;
+}
+
+const prefixes: Record<LineType, string> = {
+  cmd: "$ ",
+  info: "[INFO] ",
+  warn: "[WARN] ",
+  ok: "[ OK ] ",
+  fail: "[FAIL] ",
+};
+
+const textColors: Record<LineType, string> = {
+  cmd: "text-green-400",
+  info: "text-zinc-400",
+  warn: "text-amber-400",
+  ok: "text-emerald-400",
+  fail: "text-red-400",
+};
+
+const dimColors: Record<LineType, string> = {
+  cmd: "text-green-400/50",
+  info: "text-zinc-600",
+  warn: "text-amber-400/50",
+  ok: "text-emerald-400/50",
+  fail: "text-red-400/50",
+};
+
+/* ─── component ─── */
 interface LoadingScreenProps {
   fullScreen?: boolean;
   message?: string;
@@ -20,106 +113,188 @@ interface LoadingScreenProps {
   showFunFact?: boolean;
 }
 
-export function LoadingScreen({ 
-  fullScreen = true, 
+export function LoadingScreen({
+  fullScreen = true,
   message,
   size = "md",
   showFunFact = true,
 }: LoadingScreenProps) {
-  const [currentIndex, setCurrentIndex] = useState(() => 
-    Math.floor(Math.random() * funFacts.length)
-  );
-  const [isVisible, setIsVisible] = useState(true);
+  const [done, setDone] = useState<TLine[]>([]);
+  const [cur, setCur] = useState<{ type: LineType; text: string } | null>(null);
+  const [blink, setBlink] = useState(true);
+  const [visible, setVisible] = useState(false);
+  const bodyRef = useRef<HTMLDivElement>(null);
 
-  const getNextIndex = useCallback(() => {
-    setCurrentIndex((prev) => (prev + 1) % funFacts.length);
+  // entrance animation
+  useEffect(() => {
+    const raf = requestAnimationFrame(() => setVisible(true));
+    return () => cancelAnimationFrame(raf);
   }, []);
 
+  // cursor blink
   useEffect(() => {
-    if (!showFunFact || message) return;
+    const id = setInterval(() => setBlink((v) => !v), 530);
+    return () => clearInterval(id);
+  }, []);
 
-    const interval = setInterval(() => {
-      // Fade out
-      setIsVisible(false);
-      
-      // Cambiar mensaje y fade in después de 400ms
-      setTimeout(() => {
-        getNextIndex();
-        setIsVisible(true);
-      }, 400);
-    }, 5000);
+  // typing engine
+  useEffect(() => {
+    if (message) return;
 
-    return () => clearInterval(interval);
-  }, [showFunFact, message, getNextIndex]);
+    let stop = false;
+    let timer: ReturnType<typeof setTimeout>;
 
-  const displayMessage = message ?? (showFunFact ? funFacts[currentIndex] : undefined);
+    const cmd = commands[Math.floor(Math.random() * commands.length)];
+    const script: TLine[] = [
+      { type: "cmd", text: cmd },
+      ...(showFunFact
+        ? shuffle(pool)
+        : [{ type: "info" as LineType, text: "Cargando datos..." }]),
+    ];
 
-  const sizes = {
-    sm: "h-8 w-8",
-    md: "h-16 w-16",
-    lg: "h-24 w-24",
-  };
+    let li = 0;
+    let ci = 0;
+
+    function tick() {
+      if (stop || li >= script.length) return;
+      const line = script[li];
+
+      if (ci <= line.text.length) {
+        setCur({ type: line.type, text: line.text.slice(0, ci) });
+        ci++;
+        const speed =
+          line.type === "cmd"
+            ? 20 + Math.random() * 25
+            : 8 + Math.random() * 16;
+        timer = setTimeout(tick, speed);
+      } else {
+        setDone((p) => [...p, line]);
+        setCur(null);
+        li++;
+        ci = 0;
+        timer = setTimeout(tick, 250 + Math.random() * 350);
+      }
+    }
+
+    tick();
+    return () => {
+      stop = true;
+      clearTimeout(timer);
+    };
+  }, [showFunFact, message]);
+
+  // auto-scroll
+  useEffect(() => {
+    const el = bodyRef.current;
+    if (el) el.scrollTop = el.scrollHeight;
+  }, [done, cur]);
+
+  // simple message mode
+  if (message) {
+    return (
+      <div
+        className={cn(
+          "flex items-center justify-center gap-3",
+          fullScreen && "min-h-screen bg-background"
+        )}
+      >
+        <span className="h-1.5 w-1.5 rounded-full bg-primary animate-pulse" />
+        <p className="text-sm text-muted-foreground font-mono">{message}</p>
+      </div>
+    );
+  }
 
   return (
     <div
       className={cn(
-        "flex flex-col items-center justify-center gap-6",
+        "flex flex-col items-center justify-center p-4",
         fullScreen && "min-h-screen bg-background"
       )}
     >
-      {/* Logo container con animaciones */}
-      <div className="relative">
-        {/* Glow effect pulsante */}
-        <div 
-          className={cn(
-            "absolute inset-0 rounded-full bg-primary/20 blur-xl animate-pulse",
-            sizes[size]
-          )} 
-        />
-        
-        {/* Anillo giratorio exterior */}
-        <div 
-          className={cn(
-            "absolute -inset-2 rounded-full border-2 border-transparent border-t-primary/40 animate-spin",
-            "[animation-duration:3s]"
-          )} 
-        />
-        
-        {/* Logo con efecto de respiración */}
-        <img
-          src="/icon-512x512-removebg-preview.png"
-          alt="Rindo"
-          className={cn(
-            "relative z-10 animate-breathe drop-shadow-lg",
-            sizes[size]
-          )}
-        />
-        
-        {/* Puntos orbitando */}
-        <div className="absolute inset-0 animate-spin [animation-duration:2s]">
-          <div className="absolute -top-1 left-1/2 -translate-x-1/2 h-1.5 w-1.5 rounded-full bg-primary" />
+      {/* terminal */}
+      <div
+        className={cn(
+          "w-full rounded-xl border border-zinc-800/80 bg-zinc-950 shadow-2xl shadow-black/50 overflow-hidden transition-all duration-700 ease-out",
+          visible
+            ? "opacity-100 translate-y-0 scale-100"
+            : "opacity-0 translate-y-6 scale-[0.97]",
+          size === "sm" && "max-w-sm",
+          size === "md" && "max-w-md",
+          size === "lg" && "max-w-lg"
+        )}
+      >
+        {/* title bar */}
+        <div className="flex items-center gap-2 px-4 py-2.5 bg-zinc-900/90 border-b border-zinc-800/50 select-none">
+          <div className="flex gap-[6px]">
+            <div className="h-[11px] w-[11px] rounded-full bg-[#ff5f57]" />
+            <div className="h-[11px] w-[11px] rounded-full bg-[#febc2e]" />
+            <div className="h-[11px] w-[11px] rounded-full bg-[#28c840]" />
+          </div>
+          <span className="ml-2 text-[11px] text-zinc-500 font-mono tracking-wide">
+            rindo — finanzas.sh
+          </span>
         </div>
-        <div className="absolute inset-0 animate-spin [animation-duration:2.5s] [animation-direction:reverse]">
-          <div className="absolute -bottom-1 left-1/2 -translate-x-1/2 h-1 w-1 rounded-full bg-primary/60" />
+
+        {/* body */}
+        <div
+          ref={bodyRef}
+          className={cn(
+            "p-4 font-mono text-[13px] leading-relaxed space-y-0.5 overflow-y-auto",
+            size === "sm" && "max-h-40 text-xs",
+            size === "md" && "max-h-56",
+            size === "lg" && "max-h-72"
+          )}
+        >
+          {done.map((l, i) => (
+            <div key={i}>
+              <span className={dimColors[l.type]}>{prefixes[l.type]}</span>
+              <span className={textColors[l.type]}>{l.text}</span>
+            </div>
+          ))}
+          {cur && (
+            <div>
+              <span className={dimColors[cur.type]}>{prefixes[cur.type]}</span>
+              <span className={textColors[cur.type]}>{cur.text}</span>
+              <span
+                className={cn(
+                  "inline-block w-[7px] h-[14px] ml-[1px] translate-y-[3px] bg-green-400 transition-opacity duration-75",
+                  blink ? "opacity-80" : "opacity-0"
+                )}
+              />
+            </div>
+          )}
+        </div>
+
+        {/* progress bar */}
+        <div className="h-[2px] bg-zinc-900/80">
+          <div
+            className="h-full bg-gradient-to-r from-green-500/50 to-emerald-400/50 transition-all duration-1000 ease-out"
+            style={{ width: `${Math.min(92, done.length * 12)}%` }}
+          />
         </div>
       </div>
 
-      {/* Mensaje o fun fact con transición */}
-      {displayMessage && (
-        <p 
-          className={cn(
-            "text-sm text-muted-foreground text-center max-w-xs px-4 transition-opacity duration-500 ease-in-out",
-            isVisible ? "opacity-100" : "opacity-0"
-          )}
-        >
-          {displayMessage}
-        </p>
-      )}
+      {/* branding */}
+      <div
+        className={cn(
+          "mt-5 flex items-center gap-2 transition-opacity duration-1000 delay-500",
+          visible ? "opacity-30" : "opacity-0"
+        )}
+      >
+        <img
+          src="/icon-512x512-removebg-preview.png"
+          alt=""
+          className="h-4 w-4"
+        />
+        <span className="text-[11px] font-mono text-zinc-500 tracking-[0.2em] uppercase">
+          rindo
+        </span>
+      </div>
     </div>
   );
 }
 
-// Versión inline más pequeña para usar dentro de componentes
+// Inline spinner — unchanged
 export function LoadingSpinner({ className }: { className?: string }) {
   return (
     <div className={cn("relative", className)}>
@@ -131,4 +306,3 @@ export function LoadingSpinner({ className }: { className?: string }) {
     </div>
   );
 }
-
