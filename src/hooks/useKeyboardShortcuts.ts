@@ -74,7 +74,7 @@ export function useKeyboardShortcuts({
           onToggleShortcutsPopover();
           break;
 
-        case "ArrowLeft": {
+        case "ArrowUp": {
           e.preventDefault();
           const currentIndex = routes.indexOf(location.pathname);
           if (currentIndex > 0) {
@@ -83,7 +83,7 @@ export function useKeyboardShortcuts({
           break;
         }
 
-        case "ArrowRight": {
+        case "ArrowDown": {
           e.preventDefault();
           const currentIndex = routes.indexOf(location.pathname);
           if (currentIndex < routes.length - 1) {

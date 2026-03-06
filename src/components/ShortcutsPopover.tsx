@@ -3,8 +3,8 @@ import { Kbd } from "@/components/ui/kbd";
 import {
   Plus,
   Calculator,
-  ArrowLeft,
-  ArrowRight,
+  ArrowUp,
+  ArrowDown,
   Command,
   Home,
   Lightbulb,
@@ -54,14 +54,14 @@ const useShortcuts = () => {
       color: "text-primary",
       items: [
         {
-          keys: ["←"],
+          keys: ["↑"],
           description: "Pestaña anterior",
-          icon: ArrowLeft,
+          icon: ArrowUp,
         },
         {
-          keys: ["→"],
+          keys: ["↓"],
           description: "Pestaña siguiente",
-          icon: ArrowRight,
+          icon: ArrowDown,
         },
       ]
     },
