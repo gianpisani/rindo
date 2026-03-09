@@ -253,12 +253,6 @@ export default function Auth() {
               transition={{ duration: 0.2 }}
               className="text-center mb-7"
             >
-              <h2 className="text-xl font-medium text-white/80">
-                {isLogin ? "Bienvenido" : "Crear cuenta"}
-              </h2>
-              <p className="text-xs text-white/30 mt-1">
-                {isLogin ? "Ingresá para continuar" : "Empecemos en segundos"}
-              </p>
             </motion.div>
           )}
         </AnimatePresence>
