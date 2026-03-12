@@ -17,7 +17,7 @@ export function useSoundFX() {
 
   const playToggleOn = useCallback(() => play("playToggleOn", 0.5), [play]);
   const playToggleOff = useCallback(() => play("playToggleOff", 0.5), [play]);
-  const playTap = useCallback(() => play("playToggleOn", 0.5), [play]);
+  const playTap = useCallback(() => play("playTap", 0.5), [play]);
   const playCelebration = useCallback(() => play("playToggleOn", 0.5), [play]);
   const playTransitionUp = useCallback(() => play("playToggleOn", 0.5), [play]);
   const playTransitionDown = useCallback(() => play("playToggleOff", 0.5), [play]);
