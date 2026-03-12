@@ -85,10 +85,10 @@ const Index = () => {
   const lastMonthSummary = useMonthlySummary(transactions, categories, limits, lastMonth);
   const hasLastMonthData = lastMonthSummary.transactionCount > 0;
 
-  // Últimas 5 transacciones
+  // Últimas 20 transacciones
   const recentTransactions = [...transactions]
     .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
-    .slice(0, 5);
+    .slice(0, 20);
 
   const formatCurrency = (value: number) => {
     return new Intl.NumberFormat("es-CL", {
@@ -267,47 +267,46 @@ const Index = () => {
               <Eye className="h-4 w-4" />
             </Button>
           </div>
-          <div className="space-y-3">
-            {recentTransactions.length === 0 ? (
-              <div className="py-12 text-center text-muted-foreground">
-                <Receipt className="h-12 w-12 mx-auto mb-3 opacity-20" />
-                <p className="text-sm">No hay transacciones aún</p>
-                <p className="text-xs mt-1">Agrega tu primera transacción arriba</p>
-              </div>
-            ) : (
-              recentTransactions.map((transaction) => {
+          {recentTransactions.length === 0 ? (
+            <div className="py-12 text-center text-muted-foreground">
+              <Receipt className="h-12 w-12 mx-auto mb-3 opacity-20" />
+              <p className="text-sm">No hay transacciones aún</p>
+              <p className="text-xs mt-1">Agrega tu primera transacción arriba</p>
+            </div>
+          ) : (
+            <div className="overflow-y-auto max-h-[420px] -mx-2 px-2">
+              {recentTransactions.map((transaction, index) => {
                 const Icon = typeIcons[transaction.type];
+                const isLast = index === recentTransactions.length - 1;
                 return (
                   <div
                     key={transaction.id}
-                    className="flex items-center justify-between p-3 rounded-lg hover:bg-muted/50 transition-colors"
+                    className={cn(
+                      "flex items-center justify-between py-2.5 px-2 hover:bg-muted/40 rounded-md transition-colors cursor-default",
+                      !isLast && "border-b border-border/30"
+                    )}
                   >
-                    <div className="flex items-center gap-3 min-w-0 flex-1">
+                    <div className="flex items-center gap-2.5 min-w-0 flex-1">
                       <div className={cn(
-                        "p-2 rounded-full",
-                        transaction.type === "Ingreso" && "bg-success/10",
-                        transaction.type === "Gasto" && "bg-destructive/10",
-                        transaction.type === "Inversión" && "bg-blue/10"
-                      )}>
-                        <Icon className={cn(
-                          "h-4 w-4",
-                          transaction.type === "Ingreso" && "text-success",
-                          transaction.type === "Gasto" && "text-destructive",
-                          transaction.type === "Inversión" && "text-blue"
-                        )} />
-                      </div>
+                        "w-1.5 h-1.5 rounded-full flex-shrink-0",
+                        transaction.type === "Ingreso" && "bg-success",
+                        transaction.type === "Gasto" && "bg-destructive",
+                        transaction.type === "Inversión" && "bg-blue"
+                      )} />
                       <div className="min-w-0 flex-1">
-                        <p className={cn("text-sm font-medium truncate", isPrivacyMode && "privacy-blur")}>
+                        <p className={cn("text-sm font-medium truncate leading-tight", isPrivacyMode && "privacy-blur")}>
                           {transaction.category_name}
+                          {transaction.detail && (
+                            <span className="text-muted-foreground font-normal"> · {transaction.detail}</span>
+                          )}
                         </p>
-                        <p className={cn("text-xs text-muted-foreground", isPrivacyMode && "privacy-blur-light")}>
+                        <p className={cn("text-xs text-muted-foreground leading-tight", isPrivacyMode && "privacy-blur-light")}>
                           {format(new Date(transaction.date), "d MMM", { locale: es })}
-                          {transaction.detail && ` •${transaction.detail}`}
                         </p>
                       </div>
                     </div>
                     <div className={cn(
-                      "text-sm font-semibold whitespace-nowrap ml-3 font-mono tabular-nums",
+                      "text-sm font-semibold whitespace-nowrap ml-3 flex-shrink-0 font-mono tabular-nums",
                       transaction.type === "Ingreso" && "text-success",
                       transaction.type === "Gasto" && "text-destructive",
                       transaction.type === "Inversión" && "text-blue",
@@ -317,9 +316,9 @@ const Index = () => {
                     </div>
                   </div>
                 );
-              })
-            )}
-          </div>
+              })}
+            </div>
+          )}
         </Card>
 
         {/* Monthly Story - Last month review */}
