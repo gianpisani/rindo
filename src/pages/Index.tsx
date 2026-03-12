@@ -9,7 +9,7 @@ import { useMonthlySummary } from "@/hooks/useMonthlySummary";
 import { useGlobalDrawers } from "@/hooks/useGlobalDrawers";
 import { TrendingUp, TrendingDown, PiggyBank, Receipt, Eye, Variable, Play } from "lucide-react";
 import { useNavigate } from "react-router-dom";
-import { format, startOfMonth, endOfMonth, subMonths } from "date-fns";
+import { format, startOfMonth, endOfMonth, subMonths, isToday, isYesterday } from "date-fns";
 import { es } from "date-fns/locale";
 import { cn } from "@/lib/utils";
 import NumberFlow from "@number-flow/react";
@@ -85,10 +85,28 @@ const Index = () => {
   const lastMonthSummary = useMonthlySummary(transactions, categories, limits, lastMonth);
   const hasLastMonthData = lastMonthSummary.transactionCount > 0;
 
-  // Últimas 20 transacciones
+  // Últimas 40 transacciones agrupadas por fecha
   const recentTransactions = [...transactions]
     .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
-    .slice(0, 20);
+    .slice(0, 40);
+
+  const groupedTransactions = recentTransactions.reduce((acc, t) => {
+    const key = format(new Date(t.date), "yyyy-MM-dd");
+    if (!acc[key]) acc[key] = [];
+    acc[key].push(t);
+    return acc;
+  }, {} as Record<string, typeof recentTransactions>);
+
+  const sortedDateKeys = Object.keys(groupedTransactions).sort(
+    (a, b) => new Date(b).getTime() - new Date(a).getTime()
+  );
+
+  const getDateLabel = (dateStr: string) => {
+    const d = new Date(dateStr + "T12:00:00");
+    if (isToday(d)) return "Hoy";
+    if (isYesterday(d)) return "Ayer";
+    return format(d, "d MMM", { locale: es });
+  };
 
   const formatCurrency = (value: number) => {
     return new Intl.NumberFormat("es-CL", {
@@ -254,69 +272,85 @@ const Index = () => {
         </div>
 
         {/* Recent Transactions */}
-        <Card className="p-6">
-          <div className="flex items-center justify-between mb-4">
-            <h2 className="text-lg font-semibold">Recientes</h2>
+        <Card className="overflow-hidden">
+          <div className="flex items-center justify-between px-5 pt-5 pb-3">
+            <div className="flex items-center gap-2.5">
+              <h2 className="text-base font-semibold">Recientes</h2>
+              {recentTransactions.length > 0 && (
+                <span className="text-[10px] font-semibold bg-muted text-muted-foreground rounded-full px-2 py-0.5 tabular-nums">
+                  {recentTransactions.length}
+                </span>
+              )}
+            </div>
             <Button
               onClick={() => navigate("/transactions")}
               variant="ghost"
               size="sm"
-              className="gap-2"
+              className="gap-1.5 text-xs h-7 px-2.5 -mr-1"
             >
               Ver todo
-              <Eye className="h-4 w-4" />
+              <Eye className="h-3.5 w-3.5" />
             </Button>
           </div>
+
           {recentTransactions.length === 0 ? (
-            <div className="py-12 text-center text-muted-foreground">
+            <div className="py-12 text-center text-muted-foreground px-5 pb-5">
               <Receipt className="h-12 w-12 mx-auto mb-3 opacity-20" />
               <p className="text-sm">No hay transacciones aún</p>
               <p className="text-xs mt-1">Agrega tu primera transacción arriba</p>
             </div>
           ) : (
-            <div className="overflow-y-auto max-h-[420px] -mx-2 px-2">
-              {recentTransactions.map((transaction, index) => {
-                const Icon = typeIcons[transaction.type];
-                const isLast = index === recentTransactions.length - 1;
-                return (
-                  <div
-                    key={transaction.id}
-                    className={cn(
-                      "flex items-center justify-between py-2.5 px-2 hover:bg-muted/40 rounded-md transition-colors cursor-default",
-                      !isLast && "border-b border-border/30"
-                    )}
-                  >
-                    <div className="flex items-center gap-2.5 min-w-0 flex-1">
-                      <div className={cn(
-                        "w-1.5 h-1.5 rounded-full flex-shrink-0",
-                        transaction.type === "Ingreso" && "bg-success",
-                        transaction.type === "Gasto" && "bg-destructive",
-                        transaction.type === "Inversión" && "bg-blue"
-                      )} />
-                      <div className="min-w-0 flex-1">
-                        <p className={cn("text-sm font-medium truncate leading-tight", isPrivacyMode && "privacy-blur")}>
-                          {transaction.category_name}
-                          {transaction.detail && (
-                            <span className="text-muted-foreground font-normal"> · {transaction.detail}</span>
-                          )}
-                        </p>
-                        <p className={cn("text-xs text-muted-foreground leading-tight", isPrivacyMode && "privacy-blur-light")}>
-                          {format(new Date(transaction.date), "d MMM", { locale: es })}
-                        </p>
-                      </div>
-                    </div>
-                    <div className={cn(
-                      "text-sm font-semibold whitespace-nowrap ml-3 flex-shrink-0 font-mono tabular-nums",
-                      transaction.type === "Ingreso" && "text-success",
-                      transaction.type === "Gasto" && "text-destructive",
-                      transaction.type === "Inversión" && "text-blue",
-                      isPrivacyMode && "privacy-blur"
-                    )}>
-                      {formatCurrency(Number(transaction.amount))}
-                    </div>
+            <div className="overflow-y-auto max-h-[360px] pb-2">
+              {sortedDateKeys.map((dateKey) => (
+                <div key={dateKey}>
+                  {/* Sticky date header */}
+                  <div className="flex items-center gap-3 px-5 py-1.5 sticky top-0 bg-card z-10">
+                    <span className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground whitespace-nowrap">
+                      {getDateLabel(dateKey)}
+                    </span>
+                    <div className="h-px bg-border/40 flex-1" />
+                    <span className="text-[10px] text-muted-foreground/50 tabular-nums">
+                      {groupedTransactions[dateKey].length}
+                    </span>
                   </div>
-                );
-              })}
+
+                  {/* Transactions for this date */}
+                  {groupedTransactions[dateKey].map((t) => (
+                    <div
+                      key={t.id}
+                      className="flex items-center justify-between py-1.5 pl-5 pr-4 hover:bg-muted/40 transition-colors"
+                    >
+                      <div className="flex items-center gap-3 min-w-0 flex-1">
+                        <div className={cn(
+                          "w-[3px] h-[28px] rounded-full flex-shrink-0",
+                          t.type === "Ingreso" && "bg-success",
+                          t.type === "Gasto" && "bg-destructive",
+                          t.type === "Inversión" && "bg-blue"
+                        )} />
+                        <div className="min-w-0 flex-1">
+                          <p className={cn("text-sm font-medium truncate leading-snug", isPrivacyMode && "privacy-blur")}>
+                            {t.category_name}
+                          </p>
+                          {t.detail && (
+                            <p className={cn("text-xs text-muted-foreground truncate leading-snug", isPrivacyMode && "privacy-blur")}>
+                              {t.detail}
+                            </p>
+                          )}
+                        </div>
+                      </div>
+                      <span className={cn(
+                        "text-sm font-semibold font-mono tabular-nums ml-4 flex-shrink-0",
+                        t.type === "Ingreso" && "text-success",
+                        t.type === "Gasto" && "text-destructive",
+                        t.type === "Inversión" && "text-blue",
+                        isPrivacyMode && "privacy-blur"
+                      )}>
+                        {t.type === "Ingreso" ? "+" : "−"}{formatCurrency(Number(t.amount))}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              ))}
             </div>
           )}
         </Card>
