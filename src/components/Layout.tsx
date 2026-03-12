@@ -34,7 +34,7 @@ interface LayoutProps {
 export default function Layout({ children }: LayoutProps) {
   const { isPrivacyMode, togglePrivacyMode } = usePrivacyMode();
   const { soundEnabled, toggleSound } = useSoundPreferences();
-  const { playToggleOn, playToggleOff, playTransitionUp, playTransitionDown } = useSoundFX();
+  const { playToggleOn, playToggleOff } = useSoundFX();
   const {
     quickAddOpen,
     setQuickAddOpen,
@@ -146,7 +146,7 @@ export default function Layout({ children }: LayoutProps) {
         <QuickAddDrawer
           open={quickAddOpen}
           onOpenChange={(open) => {
-            if (open) playTransitionUp(); else playTransitionDown();
+            if (open) playToggleOn(); else playToggleOff();
             setQuickAddOpen(open);
           }}
           defaultType={quickAddDefaultType}
@@ -156,7 +156,7 @@ export default function Layout({ children }: LayoutProps) {
         <ReconciliationDrawer
           open={reconciliationOpen}
           onOpenChange={(open) => {
-            if (open) playTransitionUp(); else playTransitionDown();
+            if (open) playToggleOn(); else playToggleOff();
             setReconciliationOpen(open);
           }}
         />
@@ -165,7 +165,7 @@ export default function Layout({ children }: LayoutProps) {
         <WhisperInput
           open={whisperOpen}
           onOpenChange={(open) => {
-            if (open) playTransitionUp(); else playTransitionDown();
+            if (open) playToggleOn(); else playToggleOff();
             setWhisperOpen(open);
           }}
         />

@@ -42,7 +42,7 @@ export default function QuickTransactionForm({ onSuccess, defaultType = "Gasto" 
   const { categories } = useCategories();
   const queryClient = useQueryClient();
   const { addTransaction } = useTransactions();
-  const { playCelebration } = useSoundFX();
+  const { playToggleOff, playTap } = useSoundFX();
   const { addSharedExpenses } = useSharedExpenses();
   const detailInputRef = useRef<HTMLInputElement>(null);
   const amountInputRef = useRef<HTMLInputElement>(null);
@@ -150,7 +150,7 @@ export default function QuickTransactionForm({ onSuccess, defaultType = "Gasto" 
       // Focus back to amount for next entry
       setTimeout(() => amountInputRef.current?.focus(), 100);
 
-      playCelebration();
+      playToggleOff();
       onSuccess?.();
     } catch (error) {
       console.error("Error guardando transacción:", error);
@@ -234,6 +234,7 @@ export default function QuickTransactionForm({ onSuccess, defaultType = "Gasto" 
               onChange={(e) => {
                 const formatted = formatCurrency(e.target.value);
                 setAmount(formatted);
+                playTap();
               }}
               onKeyDown={handleAmountKeyDown}
               style={{ fontSize: "clamp(2rem, 6vw, 3rem)" }}
@@ -261,7 +262,7 @@ export default function QuickTransactionForm({ onSuccess, defaultType = "Gasto" 
                 id="detail"
                 placeholder={`${typeConfig.placeholder} (opcional)`}
                 value={detail}
-                onChange={(e) => setDetail(e.target.value)}
+                onChange={(e) => { setDetail(e.target.value); playTap(); }}
                 onKeyDown={handleDetailKeyDown}
                 className="h-14 text-lg rounded-2xl px-5 border-2 border-input focus:border-primary focus:ring-4 focus:ring-primary/20 transition-all bg-background placeholder:text-muted-foreground text-center"
               />
