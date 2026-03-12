@@ -7,7 +7,7 @@ import { useCategories } from "@/hooks/useCategories";
 import { useCategoryLimits } from "@/hooks/useCategoryLimits";
 import { useMonthlySummary } from "@/hooks/useMonthlySummary";
 import { useGlobalDrawers } from "@/hooks/useGlobalDrawers";
-import { TrendingUp, TrendingDown, PiggyBank, Receipt, Eye, Variable, Play } from "lucide-react";
+import { TrendingUp, TrendingDown, PiggyBank, Receipt, Eye, Variable, Play, Volume2 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { format, startOfMonth, endOfMonth, subMonths, isToday, isYesterday } from "date-fns";
 import { es } from "date-fns/locale";
@@ -15,6 +15,7 @@ import { cn } from "@/lib/utils";
 import NumberFlow from "@number-flow/react";
 import { usePrivacyMode } from "@/hooks/usePrivacyMode";
 import { MonthlyStory } from "@/components/MonthlyStory";
+import { getSnd } from "@/lib/snd";
 
 const Index = () => {
   const { transactions } = useTransactions();
@@ -353,6 +354,31 @@ const Index = () => {
               ))}
             </div>
           )}
+        </Card>
+
+        {/* 🔊 TEMP: Sound tester — eliminar */}
+        <Card className="p-4">
+          <div className="flex items-center gap-2 mb-3">
+            <Volume2 className="h-4 w-4 text-muted-foreground" />
+            <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Sound tester</span>
+          </div>
+          <div className="flex flex-wrap gap-2">
+            {[
+              "playTap", "playSwipe", "playType", "playButton", "playCaution",
+              "playCelebration", "playDisabled", "playNotification", "playSelect",
+              "playTransitionUp", "playTransitionDown", "playToggleOn", "playToggleOff",
+            ].map((name) => (
+              <Button
+                key={name}
+                size="sm"
+                variant="outline"
+                className="text-xs h-7 px-2.5"
+                onClick={() => getSnd()?.[name]({ volume: 0.5 })}
+              >
+                {name.replace("play", "")}
+              </Button>
+            ))}
+          </div>
         </Card>
 
         {/* Monthly Story - Last month review */}
