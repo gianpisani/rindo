@@ -27,8 +27,10 @@ const App = () => {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    supabase.auth.getSession().then(({ data: { session } }) => {
+    const minDelay = new Promise((r) => setTimeout(r, 2500));
+    supabase.auth.getSession().then(async ({ data: { session } }) => {
       setSession(session);
+      await minDelay;
       setLoading(false);
     });
 

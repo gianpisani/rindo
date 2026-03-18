@@ -69,6 +69,8 @@ const pool: TLine[] = [
   { type: "fail", text: 'Categoría "gastos hormiga" reclasificada a "gastos elefante"' },
   { type: "info", text: "Revisando si el gas natural subió de nuevo..." },
   { type: "warn", text: "Sí. Subió. ¿Te sorprende?" },
+  { type: "info", text: "Preguntándole a tu vieja si te puede prestar..." },
+  { type: "fail", text: "Visto a las 14:32." },
 ];
 
 /* ─── helpers ─── */
