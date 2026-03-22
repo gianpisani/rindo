@@ -1,10 +1,5 @@
-// @deprecated — Usar process-email-v2 que recibe user_id en el body.
-// Se mantiene para no romper la integración existente de gianpisani.
-
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.39.3'
 import { corsHeaders } from '../_shared/cors.ts'
-
-const USER_ID = "42f87eb6-3bb8-4a8d-83b0-8dc8f2680879"
 
 interface EmailPayload {
   subject: string
@@ -12,6 +7,7 @@ interface EmailPayload {
   from: string
   date?: string
   timestamp?: string
+  user_id: string
 }
 
 interface ParsedTransaction {
@@ -294,9 +290,16 @@ Deno.serve(async (req) => {
   }
 
   try {
-    const { subject, content, from, date, timestamp } = await req.json() as EmailPayload
+    const { subject, content, from, date, timestamp, user_id } = await req.json() as EmailPayload
 
-    console.log('📧 Email recibido:', { subject, from, date, timestamp })
+    if (!user_id) {
+      return new Response(
+        JSON.stringify({ success: false, error: 'user_id es requerido' }),
+        { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 400 }
+      )
+    }
+
+    console.log('📧 Email recibido:', { subject, from, date, timestamp, user_id })
 
     // Normalize: collapse whitespace, strip invisible chars, remove footer
     const rawText = `${subject || ''} ${content || ''}`
@@ -381,7 +384,7 @@ Deno.serve(async (req) => {
         const { data: similar } = await supabase
           .from('transactions')
           .select('category_name')
-          .eq('user_id', USER_ID)
+          .eq('user_id', user_id)
           .neq('category_name', 'Sin categoría')
           .neq('category_name', '⚡ Analizando...')
           .ilike('detail', `%${searchTerm}%`)
@@ -407,7 +410,7 @@ Deno.serve(async (req) => {
         const { data: card } = await supabase
           .from('credit_cards')
           .select('id')
-          .eq('user_id', USER_ID)
+          .eq('user_id', user_id)
           .eq('last_4_digits', parsed.cardLastFour)
           .eq('is_active', true)
           .maybeSingle()
@@ -424,7 +427,7 @@ Deno.serve(async (req) => {
     const { data, error } = await supabase
       .from('transactions')
       .insert({
-        user_id: USER_ID,
+        user_id: user_id,
         date: transactionDate,
         detail: parsed.detail,
         category_name: categoryName,
@@ -461,7 +464,7 @@ Deno.serve(async (req) => {
           'Authorization': `Bearer ${supabaseKey}`,
         },
         body: JSON.stringify({
-          userId: USER_ID,
+          userId: user_id,
           notification: {
             title: `${emoji} ${parsed.type}: ${formatted}`,
             body: parsed.detail,

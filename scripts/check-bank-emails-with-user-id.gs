@@ -1,14 +1,15 @@
 /**
- * @deprecated — Usar check-bank-emails-with-user-id.gs que envía user_id a process-email-v2.
- * Se mantiene para no romper la integración existente de gianpisani.
- *
  * Rindo — Lee emails bancarios y crea transacciones automáticamente.
- * Configurar como trigger de Google Apps Script (cada 2-5 min).
+ * Configurar como trigger de Google Apps Script (cada 5-15 min).
  *
  * Bancos soportados: Banco de Chile, BCI, Santander, BancoEstado, Itaú
+ *
+ * ⚠️ Configurar USER_ID con tu ID de usuario de Rindo antes de usar.
  */
 
-var SUPABASE_ENDPOINT = 'https://fxlztcwqmlmhqwzbrebo.supabase.co/functions/v1/process-email';
+var USER_ID = 'TU_USER_ID_AQUI';
+
+var SUPABASE_ENDPOINT = 'https://fxlztcwqmlmhqwzbrebo.supabase.co/functions/v1/process-email-v2';
 
 var GMAIL_QUERY = 'is:unread newer_than:2h from:(bancochile.cl OR bci.cl OR santander.cl OR bancoestado.cl OR itau.cl)';
 
@@ -28,7 +29,8 @@ function checkBankEmails() {
         subject: msg.getSubject(),
         content: body.substring(0, 2000),
         from: msg.getFrom(),
-        timestamp: msg.getDate().toISOString()
+        timestamp: msg.getDate().toISOString(),
+        user_id: USER_ID
       };
 
       var options = {
