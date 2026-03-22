@@ -1,3 +1,6 @@
+// @deprecated — Usar process-email-v2 que recibe user_id en el body.
+// Se mantiene para no romper la integración existente de gianpisani.
+
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.39.3'
 import { corsHeaders } from '../_shared/cors.ts'
 
