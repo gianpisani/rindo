@@ -199,7 +199,7 @@ export default function Layout({ children }: LayoutProps) {
             <div className="flex flex-1 items-center justify-between">
               <div className="flex items-center gap-2">
                 <span className="text-lg font-bold tracking-tight">
-                  Rindo<span className="text-primary">.</span>
+                  rindo<span className="text-primary">.</span>
                 </span>
               </div>
               <div className="flex items-center gap-3">

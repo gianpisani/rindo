@@ -17,8 +17,8 @@ export default defineConfig(({ mode }) => ({
       registerType: "autoUpdate",
       includeAssets: ["icon-192x192.png", "icon-512x512.png"],
       manifest: {
-        name: "Rindo",
-        short_name: "Rindo",
+        name: "rindo",
+        short_name: "rindo",
         description: "Finanzas no tan personales",
         theme_color: "#ffffff",
         background_color: "#ffffff",

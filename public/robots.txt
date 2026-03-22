@@ -1,4 +1,4 @@
-# robots.txt para Rindo
+# robots.txt para rindo
 # https://rindo.cl
 
 User-agent: *

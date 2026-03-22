@@ -1,6 +1,6 @@
-# Rindo - Raycast Extension
+# rindo - Raycast Extension
 
-Agrega gastos e ingresos a Rindo directamente desde Raycast. Sin abrir el navegador.
+Agrega gastos e ingresos a rindo directamente desde Raycast. Sin abrir el navegador.
 
 ## Comandos
 
@@ -8,7 +8,7 @@ Agrega gastos e ingresos a Rindo directamente desde Raycast. Sin abrir el navega
 |---------|-------------|---------|
 | **Agregar Gasto** | Registra un gasto rápidamente | `45000 sushi`, `$12000 uber` |
 | **Agregar Ingreso** | Registra un ingreso | `1500000 sueldo` |
-| **Iniciar Sesión** | Login con tu cuenta de Rindo | Email + contraseña |
+| **Iniciar Sesión** | Login con tu cuenta de rindo | Email + contraseña |
 | **Últimas Transacciones** | Ver las últimas 20 transacciones | - |
 
 ## Setup
@@ -37,7 +37,7 @@ La primera vez que abras cualquier comando, Raycast te pedirá las preferencias:
 
 ### 4. Iniciar sesión
 
-Busca "Iniciar Sesión" en Raycast y entra con tu email y contraseña de Rindo. Solo necesitas hacerlo una vez; la sesión se guarda y refresca automáticamente.
+Busca "Iniciar Sesión" en Raycast y entra con tu email y contraseña de rindo. Solo necesitas hacerlo una vez; la sesión se guarda y refresca automáticamente.
 
 ### 5. ¡Listo!
 

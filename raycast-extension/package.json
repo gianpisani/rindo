@@ -1,8 +1,8 @@
 {
   "$schema": "https://www.raycast.com/schemas/extension.json",
   "name": "rindo-quick-add",
-  "title": "Rindo",
-  "description": "Agrega gastos e ingresos rápidamente a Rindo",
+  "title": "rindo",
+  "description": "Agrega gastos e ingresos rápidamente a rindo",
   "icon": "icon.png",
   "author": "gianfrancopisani",
   "categories": ["Finance", "Productivity"],
@@ -58,14 +58,14 @@
     {
       "name": "login",
       "title": "Iniciar Sesión",
-      "description": "Inicia sesión con tu cuenta de Rindo para poder agregar transacciones",
+      "description": "Inicia sesión con tu cuenta de rindo para poder agregar transacciones",
       "mode": "view",
       "keywords": ["login", "sesion", "cuenta"]
     },
     {
       "name": "recent",
       "title": "Últimas Transacciones",
-      "description": "Ver las últimas transacciones registradas en Rindo",
+      "description": "Ver las últimas transacciones registradas en rindo",
       "mode": "view",
       "keywords": ["transacciones", "recientes", "historial"]
     }

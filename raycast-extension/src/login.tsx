@@ -96,8 +96,8 @@ export default function Command() {
       }
     >
       <Form.Description
-        title="🟢 Rindo"
-        text="Inicia sesión con tu cuenta de Rindo para poder agregar transacciones desde Raycast."
+        title="🟢 rindo"
+        text="Inicia sesión con tu cuenta de rindo para poder agregar transacciones desde Raycast."
       />
       <Form.TextField
         id="email"

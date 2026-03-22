@@ -1,6 +1,6 @@
 {
-  "name": "Rindo - Finanzas Personales Inteligentes",
-  "short_name": "Rindo",
+  "name": "rindo - Finanzas Personales Inteligentes",
+  "short_name": "rindo",
   "description": "Gestión financiera personal moderna y efectiva. Control total de tus ingresos, gastos, presupuesto e inversiones con análisis inteligentes en tiempo real.",
   "start_url": "/?source=pwa",
   "scope": "/",
@@ -42,7 +42,7 @@
       "sizes": "540x720",
       "type": "image/png",
       "form_factor": "narrow",
-      "label": "Panel principal de Rindo"
+      "label": "Panel principal de rindo"
     }
   ],
   "categories": ["finance", "productivity", "business"],

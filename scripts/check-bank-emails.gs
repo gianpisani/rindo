@@ -2,7 +2,7 @@
  * @deprecated — Usar check-bank-emails-with-user-id.gs que envía user_id a process-email-v2.
  * Se mantiene para no romper la integración existente de gianpisani.
  *
- * Rindo — Lee emails bancarios y crea transacciones automáticamente.
+ * rindo — Lee emails bancarios y crea transacciones automáticamente.
  * Configurar como trigger de Google Apps Script (cada 2-5 min).
  *
  * Bancos soportados: Banco de Chile, BCI, Santander, BancoEstado, Itaú

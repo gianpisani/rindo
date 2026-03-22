@@ -230,12 +230,12 @@ export default function Auth() {
             <div className="absolute inset-0 scale-150 bg-primary/10 rounded-full blur-2xl" />
             <img
               src="/icon-512x512-removebg-preview.png"
-              alt="Rindo"
+              alt="rindo"
               className="relative size-16 rounded-full"
             />
           </div>
           <h1 className="text-4xl font-bold text-white tracking-tight">
-            Rindo<span className="text-primary">.</span>
+            rindo<span className="text-primary">.</span>
           </h1>
           <p className="text-sm text-white/25 mt-2 font-light tracking-wide">
             Tus finanzas. Sin ruido.

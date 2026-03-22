@@ -1,4 +1,4 @@
-# Netlify Redirects Configuration for Rindo
+# Netlify Redirects Configuration for rindo
 # Force HTTPS
 http://rindo.cl/* https://rindo.cl/:splat 301!
 http://www.rindo.cl/* https://rindo.cl/:splat 301!

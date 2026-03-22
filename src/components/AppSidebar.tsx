@@ -104,9 +104,9 @@ export function AppSidebar({ onAddTransaction, onConciliate, onWhisper }: AppSid
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <SidebarMenuButton size="lg" className="data-[state=open]:bg-sidebar-accent data-[state=open]:text-sidebar-accent-foreground">
-                  <img src="/icon-512x512-removebg-preview.png" alt="Rindo" className="size-8 rounded-full" />
+                  <img src="/icon-512x512-removebg-preview.png" alt="rindo" className="size-8 rounded-full" />
                   <div className="grid flex-1 text-left text-sm leading-tight">
-                    <span className="truncate font-semibold">Rindo<span className="text-primary">.</span></span>
+                    <span className="truncate font-semibold">rindo<span className="text-primary">.</span></span>
                     <span className="truncate text-xs text-sidebar-foreground/70">Finanzas Personales</span>
                   </div>
                   <ChevronsUpDown className="ml-auto" />

@@ -1,10 +1,10 @@
 /**
- * Rindo — Lee emails bancarios y crea transacciones automáticamente.
+ * rindo — Lee emails bancarios y crea transacciones automáticamente.
  * Configurar como trigger de Google Apps Script (cada 5-15 min).
  *
  * Bancos soportados: Banco de Chile, BCI, Santander, BancoEstado, Itaú
  *
- * ⚠️ Configurar USER_ID con tu ID de usuario de Rindo antes de usar.
+ * ⚠️ Configurar USER_ID con tu ID de usuario de rindo antes de usar.
  */
 
 var USER_ID = 'TU_USER_ID_AQUI';
