@@ -746,7 +746,7 @@ export function TransactionsTable({
     onSortingChange: setSorting,
     onRowSelectionChange: setRowSelection,
     state: { sorting, rowSelection },
-    initialState: { pagination: { pageSize: 10 } },
+    initialState: { pagination: { pageSize: 100 } },
     enableRowSelection: true,
     autoResetPageIndex: false,
     getRowId: (row) => row.id,
@@ -929,7 +929,7 @@ export function TransactionsTable({
       <div className="border border-border/50 rounded-lg overflow-hidden">
         <div className="overflow-x-auto overflow-y-auto max-h-[calc(100vh-320px)] min-h-[300px]">
           <table className="w-full table-fixed">
-            <thead className="bg-muted/50 border-b border-border sticky top-0 z-10">
+            <thead className="bg-card border-b border-border sticky top-0 z-10 shadow-sm">
               {table.getHeaderGroups().map((headerGroup) => (
                 <tr key={headerGroup.id}>
                   {headerGroup.headers.map((header) => (
