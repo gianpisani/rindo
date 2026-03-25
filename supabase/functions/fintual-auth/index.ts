@@ -97,6 +97,12 @@ Deno.serve(async (req) => {
       )
     }
 
+    console.log('Respuesta de Fintual:', JSON.stringify({
+      dataId: fintualData.data?.id ? '[present]' : '[missing]',
+      dataType: fintualData.data?.type,
+      attributeKeys: fintualData.data?.attributes ? Object.keys(fintualData.data.attributes) : [],
+      hasAttributeToken: !!fintualData.data?.attributes?.token,
+    }))
     console.log('Token obtenido exitosamente')
 
     // Guardar token en DB (reemplazar si ya existe)
