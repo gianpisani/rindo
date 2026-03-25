@@ -143,7 +143,7 @@ const CATEGORY_ICONS: Record<string, string> = {
   transferencia: "↔️",
 };
 
-function getCategoryIcon(name: string): string {
+export function getCategoryIcon(name: string): string {
   if (!name) return "🏷️";
   const lower = name.toLowerCase();
   if (CATEGORY_ICONS[lower]) return CATEGORY_ICONS[lower];
@@ -372,6 +372,13 @@ interface TransactionsTableProps {
   onDuplicate: (ids: string[]) => Promise<void>;
   categories: Array<{ id?: string; name: string; type: string; color?: string | null }>;
   isUpdating?: boolean;
+  // Controlled filters (lifted to parent)
+  searchValue?: string;
+  onSearchChange?: (v: string) => void;
+  typeFilter?: string;
+  onTypeFilterChange?: (v: string) => void;
+  categoryFilter?: string;
+  onCategoryFilterChange?: (v: string) => void;
 }
 
 // ── Main component ─────────────────────────────────────────────────────────
@@ -386,19 +393,33 @@ export function TransactionsTable({
   onDuplicate,
   categories,
   isUpdating = false,
+  searchValue: externalSearch,
+  onSearchChange,
+  typeFilter: externalTypeFilter,
+  onTypeFilterChange,
+  categoryFilter: externalCategoryFilter,
+  onCategoryFilterChange,
 }: TransactionsTableProps) {
   const [searchParams] = useSearchParams();
   const [sorting, setSorting] = useState<SortingState>([{ id: "date", desc: true }]);
-  const [globalFilter, setGlobalFilter] = useState(searchParams.get("search") || "");
-  const [typeFilter, setTypeFilter] = useState<string>("all");
-  const [categoryFilter, setCategoryFilter] = useState<string>("all");
+  const [internalSearch, setInternalSearch] = useState(searchParams.get("search") || "");
+  const [internalTypeFilter, setInternalTypeFilter] = useState<string>("all");
+  const [internalCategoryFilter, setInternalCategoryFilter] = useState<string>("all");
   const [rowSelection, setRowSelection] = useState<RowSelectionState>({});
   const { isPrivacyMode } = usePrivacyMode();
   const { creditCards } = useCreditCards();
 
+  const isControlled = externalSearch !== undefined;
+  const globalFilter = isControlled ? externalSearch! : internalSearch;
+  const setGlobalFilter = isControlled ? onSearchChange! : setInternalSearch;
+  const typeFilter = isControlled ? externalTypeFilter! : internalTypeFilter;
+  const setTypeFilter = isControlled ? onTypeFilterChange! : setInternalTypeFilter;
+  const categoryFilter = isControlled ? externalCategoryFilter! : internalCategoryFilter;
+  const setCategoryFilter = isControlled ? onCategoryFilterChange! : setInternalCategoryFilter;
+
   useEffect(() => {
     const searchFromUrl = searchParams.get("search");
-    if (searchFromUrl) setGlobalFilter(searchFromUrl);
+    if (searchFromUrl && !isControlled) setInternalSearch(searchFromUrl);
   }, [searchParams]);
 
   useEffect(() => {
@@ -806,56 +827,58 @@ export function TransactionsTable({
 
   return (
     <div className="space-y-4 mx-auto">
-      {/* Filters */}
-      <div className="flex flex-col sm:flex-row gap-3">
-        <div className="relative flex-1">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-          <Input
-            placeholder="Buscar transacciones..."
-            value={globalFilter}
-            onChange={(e) => setGlobalFilter(e.target.value)}
-            className="pl-9"
-          />
-          {globalFilter && (
-            <Button
-              variant="ghost"
-              size="sm"
-              className="absolute right-1 top-1/2 -translate-y-1/2 h-7 w-7 p-0"
-              onClick={() => setGlobalFilter("")}
-            >
-              <X className="h-4 w-4" />
-            </Button>
-          )}
+      {/* Filters — solo se renderizan si no están controlados externamente */}
+      {!isControlled && (
+        <div className="flex flex-col sm:flex-row gap-3">
+          <div className="relative flex-1">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+            <Input
+              placeholder="Buscar transacciones..."
+              value={globalFilter}
+              onChange={(e) => setGlobalFilter(e.target.value)}
+              className="pl-9"
+            />
+            {globalFilter && (
+              <Button
+                variant="ghost"
+                size="sm"
+                className="absolute right-1 top-1/2 -translate-y-1/2 h-7 w-7 p-0"
+                onClick={() => setGlobalFilter("")}
+              >
+                <X className="h-4 w-4" />
+              </Button>
+            )}
+          </div>
+
+          <Select value={typeFilter} onValueChange={setTypeFilter}>
+            <SelectTrigger className="w-full sm:w-[180px]">
+              <SelectValue placeholder="Tipo" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">Todos los tipos</SelectItem>
+              <SelectItem value="Ingreso">Ingresos</SelectItem>
+              <SelectItem value="Gasto">Gastos</SelectItem>
+              <SelectItem value="Inversión">Inversiones</SelectItem>
+            </SelectContent>
+          </Select>
+
+          <Select value={categoryFilter} onValueChange={setCategoryFilter}>
+            <SelectTrigger className="w-full sm:w-[200px]">
+              <SelectValue placeholder="Categoría" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">Todas las categorías</SelectItem>
+              {uniqueCategories
+                .filter((cat) => cat && cat.trim().length > 0)
+                .map((cat) => (
+                  <SelectItem key={cat} value={cat}>
+                    {getCategoryIcon(cat)} {cat}
+                  </SelectItem>
+                ))}
+            </SelectContent>
+          </Select>
         </div>
-
-        <Select value={typeFilter} onValueChange={setTypeFilter}>
-          <SelectTrigger className="w-full sm:w-[180px]">
-            <SelectValue placeholder="Tipo" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">Todos los tipos</SelectItem>
-            <SelectItem value="Ingreso">Ingresos</SelectItem>
-            <SelectItem value="Gasto">Gastos</SelectItem>
-            <SelectItem value="Inversión">Inversiones</SelectItem>
-          </SelectContent>
-        </Select>
-
-        <Select value={categoryFilter} onValueChange={setCategoryFilter}>
-          <SelectTrigger className="w-full sm:w-[200px]">
-            <SelectValue placeholder="Categoría" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">Todas las categorías</SelectItem>
-            {uniqueCategories
-              .filter((cat) => cat && cat.trim().length > 0)
-              .map((cat) => (
-                <SelectItem key={cat} value={cat}>
-                  {getCategoryIcon(cat)} {cat}
-                </SelectItem>
-              ))}
-          </SelectContent>
-        </Select>
-      </div>
+      )}
 
       {/* Selection Toolbar */}
       {hasSelection && (

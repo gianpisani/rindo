@@ -2,7 +2,7 @@ import { useState, useRef, useCallback, useEffect } from "react";
 import Layout from "@/components/Layout";
 import ConfirmDialog from "@/components/ConfirmDialog";
 import { BaseModal } from "@/components/BaseModal";
-import { TransactionsTable } from "@/components/TransactionsTable";
+import { TransactionsTable, getCategoryIcon } from "@/components/TransactionsTable";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Dialog, DialogTrigger } from "@/components/ui/dialog";
@@ -10,7 +10,7 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { Plus, Download, TrendingUp, TrendingDown, PiggyBank, Upload, X, Sparkles, Info, Trash2 } from "lucide-react";
+import { Plus, Download, TrendingUp, TrendingDown, PiggyBank, Upload, X, Sparkles, Info, Trash2, Search, CalendarClock } from "lucide-react";
 import { useTransactions, Transaction } from "@/hooks/useTransactions";
 import { useCategories } from "@/hooks/useCategories";
 import { format, parse } from "date-fns";
@@ -58,6 +58,9 @@ export default function Transactions() {
   const [isImportDialogOpen, setIsImportDialogOpen] = useState(false);
   const [editingTransaction, setEditingTransaction] = useState<Transaction | null>(null);
   const [isImporting, setIsImporting] = useState(false);
+  const [searchValue, setSearchValue] = useState("");
+  const [typeFilter, setTypeFilter] = useState("all");
+  const [categoryFilter, setCategoryFilter] = useState("all");
   const [confirmDelete, setConfirmDelete] = useState<{ open: boolean; id: string | null }>({
     open: false,
     id: null,
@@ -608,7 +611,9 @@ export default function Transactions() {
           </BaseModal>
         </div>
 
-        <div className="flex flex-wrap gap-2">
+        {/* Toolbar unificada */}
+        <div className="flex flex-wrap items-center gap-2">
+          {/* Acciones izq */}
           <Dialog open={isImportDialogOpen} onOpenChange={setIsImportDialogOpen}>
             <DialogTrigger asChild>
               <Button variant="outline" size="sm" className="rounded-full gap-2">
@@ -632,7 +637,6 @@ export default function Transactions() {
                   Fecha,Detalle,Categoría,Tipo,Monto
                 </div>
               </div>
-              
               <div className="space-y-2">
                 <p className="font-medium text-sm">Descripción de columnas:</p>
                 <ul className="text-xs space-y-1 list-disc list-inside">
@@ -643,61 +647,94 @@ export default function Transactions() {
                   <li><strong>Monto:</strong> número positivo</li>
                 </ul>
               </div>
-
               <div className="pt-2">
                 <Input
                   ref={fileInputRef}
                   type="file"
                   accept=".csv"
-                  onChange={(e) => {
-                    const file = e.target.files?.[0];
-                    if (file) {
-                      handleImportCSV(file);
-                    }
-                  }}
+                  onChange={(e) => { const file = e.target.files?.[0]; if (file) handleImportCSV(file); }}
                   className="h-12"
                   disabled={isImporting}
                 />
-                {isImporting && (
-                  <p className="text-sm text-muted-foreground animate-pulse mt-2">Importando...</p>
-                )}
+                {isImporting && <p className="text-sm text-muted-foreground animate-pulse mt-2">Importando...</p>}
               </div>
             </div>
           </BaseModal>
-          
-          <Button 
-            onClick={handleExportCSV} 
-            variant="outline" 
-            size="sm" 
-            className="rounded-full gap-2"
-          >
+
+          <Button onClick={handleExportCSV} variant="outline" size="sm" className="rounded-full gap-2">
             <Download className="h-4 w-4" />
             <span className="hidden sm:inline">Exportar</span>
           </Button>
 
-        </div>
-
-        {/* Future transactions toggle */}
-        {futureTransactions.length > 0 && (
-          <div className="flex items-center justify-between p-3 bg-muted/50 rounded-lg border border-dashed">
-            <div className="flex items-center gap-2">
-              <Badge variant="outline" className="text-xs">
-                {futureTransactions.length} cuota{futureTransactions.length > 1 ? "s" : ""} futura{futureTransactions.length > 1 ? "s" : ""}
-              </Badge>
-              <span className="text-sm text-muted-foreground">
-                Transacciones programadas que aún no han facturado
-              </span>
-            </div>
+          {/* Cuotas futuras como botón compacto */}
+          {futureTransactions.length > 0 && (
             <Button
               variant={showFuture ? "secondary" : "outline"}
               size="sm"
               onClick={() => setShowFuture(!showFuture)}
-              className="text-xs"
+              className="rounded-full gap-2 text-xs"
             >
-              {showFuture ? "Ocultar" : "Mostrar"}
+              <CalendarClock className="h-4 w-4" />
+              <span>{futureTransactions.length} cuota{futureTransactions.length > 1 ? "s" : ""} futura{futureTransactions.length > 1 ? "s" : ""}</span>
             </Button>
+          )}
+
+          {/* Separador */}
+          <div className="flex-1" />
+
+          {/* Search */}
+          <div className="relative">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+            <Input
+              placeholder="Buscar..."
+              value={searchValue}
+              onChange={(e) => setSearchValue(e.target.value)}
+              className="pl-9 w-48 sm:w-64"
+            />
+            {searchValue && (
+              <Button
+                variant="ghost"
+                size="sm"
+                className="absolute right-1 top-1/2 -translate-y-1/2 h-7 w-7 p-0"
+                onClick={() => setSearchValue("")}
+              >
+                <X className="h-4 w-4" />
+              </Button>
+            )}
           </div>
-        )}
+
+          {/* Filtro tipo */}
+          <Select value={typeFilter} onValueChange={setTypeFilter}>
+            <SelectTrigger className="w-[140px] sm:w-[160px]">
+              <SelectValue placeholder="Tipo" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">Todos los tipos</SelectItem>
+              <SelectItem value="Ingreso">Ingresos</SelectItem>
+              <SelectItem value="Gasto">Gastos</SelectItem>
+              <SelectItem value="Inversión">Inversiones</SelectItem>
+            </SelectContent>
+          </Select>
+
+          {/* Filtro categoría */}
+          <Select value={categoryFilter} onValueChange={setCategoryFilter}>
+            <SelectTrigger className="w-[160px] sm:w-[180px]">
+              <SelectValue placeholder="Categoría" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">Todas las categorías</SelectItem>
+              {Array.from(new Set(
+                [...transactions, ...(showFuture ? futureTransactions : [])].map(t => t.category_name)
+              ))
+                .filter(cat => cat && cat.trim().length > 0)
+                .map(cat => (
+                  <SelectItem key={cat} value={cat}>
+                    {getCategoryIcon(cat)} {cat}
+                  </SelectItem>
+                ))}
+            </SelectContent>
+          </Select>
+        </div>
 
         <TransactionsTable
           transactions={showFuture ? [...transactions, ...futureTransactions] : transactions}
@@ -709,6 +746,12 @@ export default function Transactions() {
           onUpdateMultiple={handleUpdateMultiple}
           onDuplicate={handleDuplicate}
           isUpdating={updateTransactionSilent.isPending}
+          searchValue={searchValue}
+          onSearchChange={setSearchValue}
+          typeFilter={typeFilter}
+          onTypeFilterChange={setTypeFilter}
+          categoryFilter={categoryFilter}
+          onCategoryFilterChange={setCategoryFilter}
         />
       </div>
 
