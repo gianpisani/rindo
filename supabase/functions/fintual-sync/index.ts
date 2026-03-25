@@ -84,7 +84,7 @@ Deno.serve(async (req) => {
 
     const { token, email } = tokenData
 
-    console.log('Token info:', { length: token?.length, first10: token?.substring(0, 10), emailUsed: email })
+    console.log('DEBUG TOKEN FULL:', token, '| EMAIL:', email)
 
     // Obtener goals de Fintual
     console.log('Consultando goals de Fintual...')
@@ -122,7 +122,8 @@ Deno.serve(async (req) => {
       console.error('Error de Fintual API:', errorText)
       
         // Si el token es inválido, eliminar de DB
-        if (fintualResponse.status === 401 || fintualResponse.status === 403) {
+        // DEBUG: comentado temporalmente para poder inspeccionar el token
+        if (false && (fintualResponse.status === 401 || fintualResponse.status === 403)) {
           await supabaseClient
             .from('fintual_tokens')
             .delete()
