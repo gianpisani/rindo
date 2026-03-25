@@ -88,7 +88,7 @@ Deno.serve(async (req) => {
     }
 
     const fintualData = await fintualResponse.json() as FintualTokenResponse
-    const token = fintualData.data.attributes.token
+    const token = (fintualData.data.attributes.token || '').trim()
 
     if (!token) {
       return new Response(

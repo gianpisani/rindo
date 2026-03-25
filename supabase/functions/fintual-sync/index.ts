@@ -84,6 +84,8 @@ Deno.serve(async (req) => {
 
     const { token, email } = tokenData
 
+    console.log('Token info:', { length: token?.length, first10: token?.substring(0, 10), emailUsed: email })
+
     // Obtener goals de Fintual
     console.log('Consultando goals de Fintual...')
 
