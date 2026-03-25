@@ -85,16 +85,29 @@ Deno.serve(async (req) => {
     const { token, email } = tokenData
 
     // Obtener goals de Fintual
-    const fintualUrl = `https://fintual.cl/api/goals?user_token=${encodeURIComponent(token)}&user_email=${encodeURIComponent(email)}`
-    
     console.log('Consultando goals de Fintual...')
-    
-    const fintualResponse = await fetch(fintualUrl, {
-      method: 'GET',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-    })
+
+    // Intentar con headers primero (nuevo formato), luego query params (formato legacy)
+    let fintualResponse = await fetch(
+      `https://fintual.cl/api/goals`,
+      {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-User-Token': token,
+          'X-User-Email': email,
+        },
+      }
+    )
+
+    // Si falla con headers, reintentar con query params (formato legacy)
+    if (!fintualResponse.ok) {
+      const legacyUrl = `https://fintual.cl/api/goals?user_token=${encodeURIComponent(token)}&user_email=${encodeURIComponent(email)}`
+      fintualResponse = await fetch(legacyUrl, {
+        method: 'GET',
+        headers: { 'Content-Type': 'application/json' },
+      })
+    }
 
     if (!fintualResponse.ok) {
       const errorText = await fintualResponse.text()
