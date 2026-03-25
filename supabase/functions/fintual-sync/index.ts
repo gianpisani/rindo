@@ -102,13 +102,19 @@ Deno.serve(async (req) => {
       }
     )
 
+    console.log('Headers attempt status:', fintualResponse.status)
+
     // Si falla con headers, reintentar con query params (formato legacy)
     if (!fintualResponse.ok) {
-      const legacyUrl = `https://fintual.cl/api/goals?user_token=${encodeURIComponent(token)}&user_email=${encodeURIComponent(email)}`
+      const headersError = await fintualResponse.text()
+      console.log('Headers attempt error:', headersError)
+
+      const legacyUrl = `https://fintual.cl/api/goals?user_token=${token}&user_email=${encodeURIComponent(email)}`
       fintualResponse = await fetch(legacyUrl, {
         method: 'GET',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 'Accept': 'application/json' },
       })
+      console.log('Query params attempt status:', fintualResponse.status)
     }
 
     if (!fintualResponse.ok) {
