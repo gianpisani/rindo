@@ -963,7 +963,7 @@ export function TransactionsTable({
                     <tr>
                       <td
                         colSpan={columns.length}
-                        className="px-4 py-2 bg-muted/30 border-t border-border/30 first:border-t-0"
+                        className="px-4 py-1 bg-muted/30 border-t border-border/30 first:border-t-0"
                       >
                         <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
                           {formatGroupDate(group.dayKey)}
