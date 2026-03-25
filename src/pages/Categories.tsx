@@ -12,24 +12,9 @@ import { useCategories } from "@/hooks/useCategories";
 import { cn } from "@/lib/utils";
 
 const typeConfig = {
-  Ingreso: {
-    icon: TrendingUp,
-    label: "Ingresos",
-    color: "text-success",
-    dot: "bg-success/20 text-success",
-  },
-  Gasto: {
-    icon: TrendingDown,
-    label: "Gastos",
-    color: "text-destructive",
-    dot: "bg-destructive/20 text-destructive",
-  },
-  Inversión: {
-    icon: PiggyBank,
-    label: "Inversiones",
-    color: "text-info",
-    dot: "bg-info/20 text-info",
-  },
+  Ingreso: { icon: TrendingUp, label: "Ingresos", color: "text-success", bg: "bg-success/10" },
+  Gasto: { icon: TrendingDown, label: "Gastos", color: "text-destructive", bg: "bg-destructive/10" },
+  Inversión: { icon: PiggyBank, label: "Inversiones", color: "text-info", bg: "bg-info/10" },
 };
 
 const defaultColors = [
@@ -39,11 +24,33 @@ const defaultColors = [
   "#e11d48", "#be123c", "#f43f5e", "#3b82f6",
 ];
 
+const EMOJI_OPTIONS = [
+  // Food & drink
+  "🍔", "🍽️", "☕", "🍺", "🥤", "🛒", "🍕", "🥗",
+  // Transport
+  "🚗", "🚕", "🚇", "✈️", "⛽", "🅿️", "🚌", "🛵",
+  // Fashion & personal
+  "👕", "👗", "👟", "✂️", "💅", "🛍️",
+  // Health & fitness
+  "💊", "🏥", "🦷", "🏋️", "🧘",
+  // Entertainment
+  "🎬", "🎵", "📺", "🎮", "🎭",
+  // Education
+  "📚", "🎓", "📖",
+  // Travel & home
+  "🏨", "🗺️", "🏠", "🪑", "💡", "💧", "📶",
+  // Finance
+  "💰", "📈", "💵", "💳", "🛡️", "🔄", "↔️", "🏦",
+  // Other
+  "🎁", "🎂", "🐾", "🏷️", "❓", "💼", "⚡", "🌱",
+];
+
 interface Category {
   id: string;
   name: string;
   type: "Ingreso" | "Gasto" | "Inversión";
-  color?: string;
+  color?: string | null;
+  icon?: string | null;
 }
 
 export default function Categories() {
@@ -55,6 +62,7 @@ export default function Categories() {
     name: "",
     type: "Gasto" as "Ingreso" | "Gasto" | "Inversión",
     color: "#ef4444",
+    icon: "🏷️",
   });
   const [confirmDelete, setConfirmDelete] = useState<{ open: boolean; id: string | null }>({
     open: false,
@@ -80,11 +88,16 @@ export default function Categories() {
   };
 
   const resetForm = () =>
-    setFormData({ name: "", type: "Gasto", color: "#ef4444" });
+    setFormData({ name: "", type: "Gasto", color: "#ef4444", icon: "🏷️" });
 
   const handleEdit = (category: any) => {
     setEditingCategory(category);
-    setFormData({ name: category.name, type: category.type, color: category.color || "#ef4444" });
+    setFormData({
+      name: category.name,
+      type: category.type,
+      color: category.color || "#ef4444",
+      icon: category.icon || "🏷️",
+    });
     setIsDialogOpen(true);
   };
 
@@ -140,6 +153,17 @@ export default function Categories() {
             }
           >
             <form id="category-form" onSubmit={handleSubmit} className="space-y-5">
+              {/* Preview */}
+              <div className="flex justify-center">
+                <div
+                  className="inline-flex items-center gap-2 px-4 py-2 rounded-full text-sm font-medium"
+                  style={{ backgroundColor: formData.color + "22", color: formData.color }}
+                >
+                  <span>{formData.icon}</span>
+                  <span>{formData.name || "Nombre"}</span>
+                </div>
+              </div>
+
               <div className="space-y-1.5">
                 <Label className="text-sm font-medium">Nombre</Label>
                 <Input
@@ -169,6 +193,29 @@ export default function Categories() {
                 </Select>
               </div>
 
+              {/* Emoji picker */}
+              <div className="space-y-2">
+                <Label className="text-sm font-medium">Emoji</Label>
+                <div className="grid grid-cols-8 gap-1.5">
+                  {EMOJI_OPTIONS.map((emoji) => (
+                    <button
+                      key={emoji}
+                      type="button"
+                      className={cn(
+                        "h-9 w-9 rounded-xl text-lg flex items-center justify-center transition-all duration-100",
+                        formData.icon === emoji
+                          ? "bg-foreground/10 ring-2 ring-foreground/30 scale-110"
+                          : "hover:bg-muted"
+                      )}
+                      onClick={() => setFormData({ ...formData, icon: emoji })}
+                    >
+                      {emoji}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* Color picker */}
               <div className="space-y-2">
                 <Label className="text-sm font-medium">Color</Label>
                 <div className="grid grid-cols-8 gap-2">
@@ -200,55 +247,46 @@ export default function Categories() {
 
         {/* Sections */}
         {(Object.entries(grouped) as [keyof typeof typeConfig, Category[]][]).map(([type, cats]) => {
-          const { icon: Icon, label, color, dot } = typeConfig[type];
+          const { icon: Icon, label, color } = typeConfig[type];
           return (
             <div key={type}>
-              {/* Section header */}
               <div className="flex items-center gap-2 mb-3">
-                <div className={cn("p-1.5 rounded-full", dot.split(" ")[0])}>
-                  <Icon className={cn("h-3.5 w-3.5", color)} />
-                </div>
+                <Icon className={cn("h-4 w-4", color)} />
                 <span className="text-sm font-semibold">{label}</span>
                 <span className="text-xs text-muted-foreground tabular-nums">({cats.length})</span>
               </div>
 
-              {/* List */}
               {cats.length === 0 ? (
                 <div className="rounded-2xl border border-dashed border-border/60 py-8 text-center text-sm text-muted-foreground">
                   Sin categorías de tipo {type.toLowerCase()}
                 </div>
               ) : (
-                <div className="rounded-2xl border border-border/50 divide-y divide-border/50 overflow-hidden">
+                <div className="flex flex-wrap gap-2">
                   {cats.map((cat) => (
                     <div
                       key={cat.id}
-                      className="group flex items-center gap-3 px-4 py-3 hover:bg-muted/30 transition-colors"
+                      className="group relative inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-sm font-medium transition-all"
+                      style={{
+                        backgroundColor: (cat.color || "#888") + "22",
+                        color: cat.color || "#888",
+                      }}
                     >
-                      {/* Color dot */}
-                      <div
-                        className="h-7 w-7 rounded-full flex-shrink-0 shadow-sm"
-                        style={{ backgroundColor: cat.color || "#888" }}
-                      />
-                      {/* Name */}
-                      <span className="flex-1 text-sm font-medium truncate">{cat.name}</span>
-                      {/* Actions - visible on hover */}
-                      <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          className="h-7 w-7 text-muted-foreground hover:text-foreground"
+                      <span className="text-base leading-none">{cat.icon || "🏷️"}</span>
+                      <span>{cat.name}</span>
+                      {/* Hover actions */}
+                      <div className="absolute inset-0 rounded-full flex items-center justify-end pr-1.5 gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity bg-background/80 backdrop-blur-sm">
+                        <button
+                          className="h-6 w-6 rounded-full flex items-center justify-center hover:bg-muted transition-colors"
                           onClick={() => handleEdit(cat)}
                         >
-                          <Pencil className="h-3.5 w-3.5" />
-                        </Button>
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          className="h-7 w-7 text-muted-foreground hover:text-destructive"
+                          <Pencil className="h-3 w-3 text-muted-foreground" />
+                        </button>
+                        <button
+                          className="h-6 w-6 rounded-full flex items-center justify-center hover:bg-destructive/10 transition-colors"
                           onClick={() => handleDelete(cat.id)}
                         >
-                          <Trash2 className="h-3.5 w-3.5" />
-                        </Button>
+                          <Trash2 className="h-3 w-3 text-destructive" />
+                        </button>
                       </div>
                     </div>
                   ))}

@@ -370,7 +370,7 @@ interface TransactionsTableProps {
   onDeleteMultiple: (ids: string[]) => Promise<void>;
   onUpdateMultiple: (ids: string[], updates: Partial<Pick<Transaction, "category_name" | "type">>) => Promise<void>;
   onDuplicate: (ids: string[]) => Promise<void>;
-  categories: Array<{ id?: string; name: string; type: string; color?: string | null }>;
+  categories: Array<{ id?: string; name: string; type: string; color?: string | null; icon?: string | null }>;
   isUpdating?: boolean;
   // Controlled filters (lifted to parent)
   searchValue?: string;
@@ -564,7 +564,7 @@ export function TransactionsTable({
           if (categoryName === "⚡ Analizando...") return <AnalyzingBadge />;
 
           const catData = categories.find(c => c.name === categoryName);
-          const emoji = getCategoryIcon(categoryName);
+          const emoji = catData?.icon || getCategoryIcon(categoryName);
           const dotColor = catData?.color || null;
           const filteredCats = categories.filter(c => c.type === type);
 
@@ -872,7 +872,7 @@ export function TransactionsTable({
                 .filter((cat) => cat && cat.trim().length > 0)
                 .map((cat) => (
                   <SelectItem key={cat} value={cat}>
-                    {getCategoryIcon(cat)} {cat}
+                    {categories.find(c => c.name === cat)?.icon || getCategoryIcon(cat)} {cat}
                   </SelectItem>
                 ))}
             </SelectContent>
@@ -908,7 +908,7 @@ export function TransactionsTable({
                   .filter(c => c.name && c.name.trim().length > 0)
                   .map((cat) => (
                     <DropdownMenuItem key={cat.name + cat.type} onClick={() => handleBatchCategoryChange(cat.name)}>
-                      <span className="mr-2">{getCategoryIcon(cat.name)}</span>
+                      <span className="mr-2">{cat.icon || getCategoryIcon(cat.name)}</span>
                       {cat.name}
                     </DropdownMenuItem>
                   ))}

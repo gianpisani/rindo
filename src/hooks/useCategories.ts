@@ -7,6 +7,7 @@ export interface Category {
   name: string;
   type: "Ingreso" | "Gasto" | "Inversión";
   color: string | null;
+  icon: string | null;
   user_id: string;
   created_at: string;
 }
