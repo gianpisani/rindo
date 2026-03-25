@@ -184,21 +184,20 @@ export function useFintual() {
         }
       )
 
-      if (!response.ok) {
-        const errorText = await response.text()
-        console.error('Error response:', errorText)
-        throw new Error(`Error ${response.status}: ${errorText || 'No se pudo sincronizar'}`)
+      let result: FintualSyncResponse
+      try {
+        result = await response.json()
+      } catch {
+        throw new Error(`Error ${response.status}: No se pudo sincronizar`)
       }
 
-      const result: FintualSyncResponse = await response.json()
-
-      if (!result.success) {
+      if (!response.ok || !result.success) {
         if (result.tokenExpired) {
           setIsConnected(false)
           toast.error('Token expirado. Reconecta tu cuenta de Fintual')
           return false
         }
-        throw new Error(result.error || 'Error sincronizando con Fintual')
+        throw new Error(result.error || `Error ${response.status}: No se pudo sincronizar`)
       }
 
       toast.success(result.message || 'Datos actualizados exitosamente')
