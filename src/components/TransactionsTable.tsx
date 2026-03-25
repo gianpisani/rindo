@@ -489,12 +489,21 @@ export function TransactionsTable({
           return (
             <div className={cn("flex items-center gap-2.5 max-w-[300px]", isPrivacyMode && "privacy-blur")}>
               {/* Avatar */}
-              <div
-                className="flex-shrink-0 w-7 h-7 rounded-full flex items-center justify-center text-white text-xs font-bold select-none"
-                style={{ backgroundColor: avatarColor }}
-                title={isBot ? "Detectado automáticamente" : undefined}
-              >
-                {initial}
+              <div className="relative flex-shrink-0">
+                <div
+                  className="w-7 h-7 rounded-full flex items-center justify-center text-white text-xs font-bold select-none"
+                  style={{ backgroundColor: avatarColor }}
+                >
+                  {initial}
+                </div>
+                {isBot && (
+                  <div
+                    className="absolute -bottom-0.5 -right-0.5 w-3.5 h-3.5 rounded-full bg-background flex items-center justify-center"
+                    title="Detectado por el bot"
+                  >
+                    <span className="text-[8px] leading-none">🤖</span>
+                  </div>
+                )}
               </div>
               {/* Text */}
               <EditableTextCell
@@ -918,9 +927,9 @@ export function TransactionsTable({
 
       {/* Table */}
       <div className="border border-border/50 rounded-lg overflow-hidden">
-        <div className="overflow-x-auto">
+        <div className="overflow-x-auto overflow-y-auto max-h-[calc(100vh-320px)] min-h-[300px]">
           <table className="w-full table-fixed">
-            <thead className="bg-muted/50 border-b border-border">
+            <thead className="bg-muted/50 border-b border-border sticky top-0 z-10">
               {table.getHeaderGroups().map((headerGroup) => (
                 <tr key={headerGroup.id}>
                   {headerGroup.headers.map((header) => (
@@ -975,7 +984,7 @@ export function TransactionsTable({
                           )}
                         >
                           {row.getVisibleCells().map((cell) => (
-                            <td key={cell.id} className={cn("px-4 py-2.5 overflow-hidden", isMissing && "bg-amber-400/5")}>
+                            <td key={cell.id} className={cn("px-4 py-1.5 overflow-hidden", isMissing && "bg-amber-400/5")}>
                               {flexRender(cell.column.columnDef.cell, cell.getContext())}
                             </td>
                           ))}
@@ -999,7 +1008,7 @@ export function TransactionsTable({
                       )}
                     >
                       {row.getVisibleCells().map((cell) => (
-                        <td key={cell.id} className={cn("px-4 py-2.5 overflow-hidden", isMissing && "bg-amber-400/5")}>
+                        <td key={cell.id} className={cn("px-4 py-1.5 overflow-hidden", isMissing && "bg-amber-400/5")}>
                           {flexRender(cell.column.columnDef.cell, cell.getContext())}
                         </td>
                       ))}
