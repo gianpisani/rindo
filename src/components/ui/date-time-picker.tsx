@@ -198,7 +198,7 @@ export function InlineDateTimePicker({
             "group whitespace-nowrap"
           )}
         >
-          <span>{format(value, "dd MMM yyyy", { locale: es })}</span>
+          <span>{format(value, "d MMM", { locale: es })}</span>
           {showTime && (
             <span className="text-muted-foreground text-xs">
               {format(value, "HH:mm")}
