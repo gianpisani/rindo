@@ -198,7 +198,7 @@ function parseCargoAutomatico(text: string): ParsedTransaction | null {
 }
 
 function parseGiroRetiro(text: string): ParsedTransaction | null {
-  if (!/giro|retiro.*cajero/i.test(text)) return null
+  if (!/retiro.*cajero|giro.*cajero/i.test(text)) return null
 
   const amount = extractAmount(text)
   if (!amount) return null
@@ -260,7 +260,7 @@ function isPromotionalEmail(subject: string, text: string): boolean {
     /comprobante|transferencia\s+(?:a|recibida|exitosa)/i,
     /compra\s+(?:por|con\s+tarjeta)|cargo\s+(?:en|por)/i,
     /pago\s+(?:de\s+tarjeta|exitoso|realizado)/i,
-    /retiro|giro|abono\s+por/i,
+    /retiro\s+(?:en\s+)?cajero|giro\s+(?:en\s+)?cajero|abono\s+por/i,
     /has\s+realizado|se\s+ha\s+realizado/i,
     /has\s+recibido\s+una\s+transferencia/i,
     /transferencia\s+electr[oó]nica/i,
