@@ -352,6 +352,87 @@ export type Database = {
           }
         ]
       }
+      training_sessions: {
+        Row: {
+          id: string
+          user_id: string
+          session_date: string
+          week_start_date: string
+          time_of_day: string
+          scheduled_time: string | null
+          sport_type: string
+          session_name: string
+          description: string | null
+          target_duration_minutes: number | null
+          target_distance_meters: number | null
+          target_hr_zone: number | null
+          target_hr_min: number | null
+          target_hr_max: number | null
+          target_pace_min_km: string | null
+          target_power_watts: number | null
+          intensity: string
+          status: string
+          garmin_activity_id: number | null
+          completed_at: string | null
+          coach_notes: string | null
+          plan_context: string | null
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          user_id: string
+          session_date: string
+          week_start_date: string
+          time_of_day?: string
+          scheduled_time?: string | null
+          sport_type: string
+          session_name: string
+          description?: string | null
+          target_duration_minutes?: number | null
+          target_distance_meters?: number | null
+          target_hr_zone?: number | null
+          target_hr_min?: number | null
+          target_hr_max?: number | null
+          target_pace_min_km?: string | null
+          target_power_watts?: number | null
+          intensity?: string
+          status?: string
+          garmin_activity_id?: number | null
+          completed_at?: string | null
+          coach_notes?: string | null
+          plan_context?: string | null
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          user_id?: string
+          session_date?: string
+          week_start_date?: string
+          time_of_day?: string
+          scheduled_time?: string | null
+          sport_type?: string
+          session_name?: string
+          description?: string | null
+          target_duration_minutes?: number | null
+          target_distance_meters?: number | null
+          target_hr_zone?: number | null
+          target_hr_min?: number | null
+          target_hr_max?: number | null
+          target_pace_min_km?: string | null
+          target_power_watts?: number | null
+          intensity?: string
+          status?: string
+          garmin_activity_id?: number | null
+          completed_at?: string | null
+          coach_notes?: string | null
+          plan_context?: string | null
+          created_at?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       transactions: {
         Row: {
           amount: number

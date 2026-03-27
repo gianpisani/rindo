@@ -10,6 +10,7 @@ import {
   CreditCard,
   CalendarDays,
   Bug,
+  Dumbbell,
 } from "lucide-react";
 import { ComponentType } from "react";
 
@@ -90,6 +91,12 @@ export const APP_ROUTES: RouteConfig[] = [
     url: "/category-insights",
     icon: Brain,
     shortcut: "9",
+    group: "tools",
+  },
+  {
+    title: "Entrenamiento",
+    url: "/training",
+    icon: Dumbbell,
     group: "tools",
   },
   {
