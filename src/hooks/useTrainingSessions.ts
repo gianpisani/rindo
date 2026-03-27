@@ -2,7 +2,7 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { useMemo } from "react";
-import { format, eachDayOfInterval, addDays } from "date-fns";
+import { format, eachDayOfInterval } from "date-fns";
 
 export interface TrainingSession {
   id: string;
@@ -35,22 +35,26 @@ export type SportType = "running" | "cycling" | "swimming" | "padel" | "strength
 export type Intensity = "easy" | "moderate" | "hard" | "recovery" | "rest";
 export type SessionStatus = "pending" | "completed" | "skipped";
 
-export function useTrainingSessions(weekStartDate: string) {
+export function useTrainingSessions(startDate: string, endDate: string) {
   const queryClient = useQueryClient();
 
   const { data: sessions = [], isLoading } = useQuery({
-    queryKey: ["training-sessions", weekStartDate],
+    queryKey: ["training-sessions", startDate, endDate],
     queryFn: async () => {
       const { data, error } = await supabase
         .from("training_sessions")
         .select("*")
-        .eq("week_start_date", weekStartDate)
+        .gte("session_date", startDate)
+        .lte("session_date", endDate)
         .order("session_date", { ascending: true });
 
       if (error) throw error;
       return data as TrainingSession[];
     },
   });
+
+  const invalidate = () =>
+    queryClient.invalidateQueries({ queryKey: ["training-sessions"] });
 
   const markCompleted = useMutation({
     mutationFn: async (sessionId: string) => {
@@ -61,7 +65,7 @@ export function useTrainingSessions(weekStartDate: string) {
       if (error) throw error;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["training-sessions", weekStartDate] });
+      invalidate();
       toast.success("Sesión completada");
     },
     onError: (e: Error) => toast.error(e.message),
@@ -76,7 +80,7 @@ export function useTrainingSessions(weekStartDate: string) {
       if (error) throw error;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["training-sessions", weekStartDate] });
+      invalidate();
       toast.success("Sesión omitida");
     },
     onError: (e: Error) => toast.error(e.message),
@@ -91,13 +95,13 @@ export function useTrainingSessions(weekStartDate: string) {
       if (error) throw error;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["training-sessions", weekStartDate] });
+      invalidate();
       toast.success("Sesión restaurada");
     },
     onError: (e: Error) => toast.error(e.message),
   });
 
-  const deleteWeekSessions = useMutation({
+  const deleteAllSessions = useMutation({
     mutationFn: async () => {
       const { data: userData } = await supabase.auth.getUser();
       if (!userData.user) throw new Error("No user");
@@ -105,21 +109,22 @@ export function useTrainingSessions(weekStartDate: string) {
         .from("training_sessions")
         .delete()
         .eq("user_id", userData.user.id)
-        .eq("week_start_date", weekStartDate);
+        .gte("session_date", startDate)
+        .lte("session_date", endDate);
       if (error) throw error;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["training-sessions", weekStartDate] });
-      toast.success("Plan semanal eliminado");
+      invalidate();
+      toast.success("Plan eliminado");
     },
     onError: (e: Error) => toast.error(e.message),
   });
 
   const sessionsByDate = useMemo(() => {
     const map: Record<string, TrainingSession[]> = {};
-    const weekStart = new Date(weekStartDate + "T00:00:00");
-    const weekEnd = addDays(weekStart, 6);
-    const days = eachDayOfInterval({ start: weekStart, end: weekEnd });
+    const start = new Date(startDate + "T00:00:00");
+    const end = new Date(endDate + "T00:00:00");
+    const days = eachDayOfInterval({ start, end });
     for (const day of days) {
       map[format(day, "yyyy-MM-dd")] = [];
     }
@@ -129,14 +134,17 @@ export function useTrainingSessions(weekStartDate: string) {
       map[key].push(session);
     }
     return map;
-  }, [sessions, weekStartDate]);
+  }, [sessions, startDate, endDate]);
 
-  const weekStats = useMemo(() => {
+  const stats = useMemo(() => {
     const total = sessions.length;
     const completed = sessions.filter((s) => s.status === "completed").length;
     const skipped = sessions.filter((s) => s.status === "skipped").length;
     const pending = sessions.filter((s) => s.status === "pending").length;
-    const totalDuration = sessions.reduce((sum, s) => sum + (s.target_duration_minutes || 0), 0);
+    const totalDuration = sessions.reduce(
+      (sum, s) => sum + (s.target_duration_minutes || 0),
+      0
+    );
     const sportCounts: Record<string, number> = {};
     for (const s of sessions) {
       if (s.sport_type !== "rest") {
@@ -150,10 +158,10 @@ export function useTrainingSessions(weekStartDate: string) {
     sessions,
     isLoading,
     sessionsByDate,
-    weekStats,
+    stats,
     markCompleted,
     markSkipped,
     resetSession,
-    deleteWeekSessions,
+    deleteAllSessions,
   };
 }

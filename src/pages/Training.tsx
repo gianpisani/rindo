@@ -1,6 +1,5 @@
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import Layout from "@/components/Layout";
-import { GlassCard } from "@/components/GlassCard";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import {
@@ -16,12 +15,17 @@ import {
 import { cn } from "@/lib/utils";
 import {
   format,
+  startOfMonth,
+  endOfMonth,
   startOfWeek,
-  addWeeks,
-  subWeeks,
-  isThisWeek,
+  endOfWeek,
+  addMonths,
+  subMonths,
+  isSameMonth,
   isSameDay,
   parseISO,
+  eachDayOfInterval,
+  isToday,
 } from "date-fns";
 import { es } from "date-fns/locale";
 import {
@@ -43,26 +47,77 @@ import {
   Timer,
 } from "lucide-react";
 
-// ─── Sport Config ──────────────────────────────────────
+// ─── Config ──────────────────────────────────────────
 
 const SPORT_CONFIG: Record<
   string,
-  { icon: typeof Footprints; color: string; bg: string; label: string }
+  { icon: typeof Footprints; color: string; bg: string; dot: string; label: string }
 > = {
-  running: { icon: Footprints, color: "text-orange-500", bg: "bg-orange-500/10", label: "Running" },
-  cycling: { icon: Bike, color: "text-blue-500", bg: "bg-blue-500/10", label: "Ciclismo" },
-  swimming: { icon: Waves, color: "text-cyan-500", bg: "bg-cyan-500/10", label: "Nataci\u00f3n" },
-  padel: { icon: Dumbbell, color: "text-violet-500", bg: "bg-violet-500/10", label: "P\u00e1del" },
-  strength: { icon: Dumbbell, color: "text-amber-500", bg: "bg-amber-500/10", label: "Fuerza" },
-  rest: { icon: Coffee, color: "text-muted-foreground", bg: "bg-muted/50", label: "Descanso" },
+  running: {
+    icon: Footprints,
+    color: "text-orange-500",
+    bg: "bg-orange-500/10",
+    dot: "bg-orange-500",
+    label: "Running",
+  },
+  cycling: {
+    icon: Bike,
+    color: "text-blue-500",
+    bg: "bg-blue-500/10",
+    dot: "bg-blue-500",
+    label: "Ciclismo",
+  },
+  swimming: {
+    icon: Waves,
+    color: "text-cyan-500",
+    bg: "bg-cyan-500/10",
+    dot: "bg-cyan-500",
+    label: "Natación",
+  },
+  padel: {
+    icon: Dumbbell,
+    color: "text-violet-500",
+    bg: "bg-violet-500/10",
+    dot: "bg-violet-500",
+    label: "Pádel",
+  },
+  strength: {
+    icon: Dumbbell,
+    color: "text-amber-500",
+    bg: "bg-amber-500/10",
+    dot: "bg-amber-500",
+    label: "Fuerza",
+  },
+  rest: {
+    icon: Coffee,
+    color: "text-muted-foreground",
+    bg: "bg-muted/50",
+    dot: "bg-muted-foreground/40",
+    label: "Descanso",
+  },
 };
 
 const INTENSITY_CONFIG: Record<string, { label: string; color: string }> = {
-  easy: { label: "Suave", color: "text-emerald-500 bg-emerald-500/10 border-emerald-500/20" },
-  moderate: { label: "Moderado", color: "text-amber-500 bg-amber-500/10 border-amber-500/20" },
-  hard: { label: "Intenso", color: "text-rose-500 bg-rose-500/10 border-rose-500/20" },
-  recovery: { label: "Recuperaci\u00f3n", color: "text-sky-500 bg-sky-500/10 border-sky-500/20" },
-  rest: { label: "Descanso", color: "text-muted-foreground bg-muted/50 border-border/50" },
+  easy: {
+    label: "Suave",
+    color: "text-emerald-500 bg-emerald-500/10 border-emerald-500/20",
+  },
+  moderate: {
+    label: "Moderado",
+    color: "text-amber-500 bg-amber-500/10 border-amber-500/20",
+  },
+  hard: {
+    label: "Intenso",
+    color: "text-rose-500 bg-rose-500/10 border-rose-500/20",
+  },
+  recovery: {
+    label: "Recuperación",
+    color: "text-sky-500 bg-sky-500/10 border-sky-500/20",
+  },
+  rest: {
+    label: "Descanso",
+    color: "text-muted-foreground bg-muted/50 border-border/50",
+  },
 };
 
 const STATUS_ICON: Record<string, typeof Circle> = {
@@ -77,7 +132,47 @@ const STATUS_COLOR: Record<string, string> = {
   skipped: "text-rose-400",
 };
 
-// ─── Session Card ──────────────────────────────────────
+const DAY_NAMES = ["Lun", "Mar", "Mié", "Jue", "Vie", "Sáb", "Dom"];
+
+// ─── Session Pill (compact, for calendar cells) ──────
+
+function SessionPill({
+  session,
+  onClick,
+}: {
+  session: TrainingSession;
+  onClick: () => void;
+}) {
+  const sport = SPORT_CONFIG[session.sport_type] || SPORT_CONFIG.rest;
+  const intensity = INTENSITY_CONFIG[session.intensity] || INTENSITY_CONFIG.moderate;
+  const SportIcon = sport.icon;
+  const isCompleted = session.status === "completed";
+  const isSkipped = session.status === "skipped";
+
+  return (
+    <button
+      onClick={(e) => {
+        e.stopPropagation();
+        onClick();
+      }}
+      className={cn(
+        "w-full flex items-center gap-1 px-1.5 py-[3px] rounded-md text-[11px] font-medium transition-all",
+        "hover:ring-1 hover:ring-primary/20",
+        sport.bg,
+        sport.color,
+        isCompleted && "opacity-50",
+        isSkipped && "opacity-30"
+      )}
+    >
+      <SportIcon className="h-3 w-3 shrink-0" />
+      <span className={cn("truncate", isCompleted && "line-through")}>
+        {session.session_name}
+      </span>
+    </button>
+  );
+}
+
+// ─── Session Card (mobile selected day) ──────────────
 
 function SessionCard({
   session,
@@ -87,7 +182,8 @@ function SessionCard({
   onClick: () => void;
 }) {
   const sport = SPORT_CONFIG[session.sport_type] || SPORT_CONFIG.rest;
-  const intensity = INTENSITY_CONFIG[session.intensity] || INTENSITY_CONFIG.moderate;
+  const intensity =
+    INTENSITY_CONFIG[session.intensity] || INTENSITY_CONFIG.moderate;
   const SportIcon = sport.icon;
   const StatusIcon = STATUS_ICON[session.status] || Circle;
 
@@ -107,8 +203,15 @@ function SessionCard({
         </div>
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-2">
-            <span className="text-sm font-semibold truncate">{session.session_name}</span>
-            <StatusIcon className={cn("h-3.5 w-3.5 shrink-0", STATUS_COLOR[session.status])} />
+            <span className="text-sm font-semibold truncate">
+              {session.session_name}
+            </span>
+            <StatusIcon
+              className={cn(
+                "h-3.5 w-3.5 shrink-0",
+                STATUS_COLOR[session.status]
+              )}
+            />
           </div>
           <div className="flex items-center gap-2 mt-1 text-xs text-muted-foreground">
             {session.target_duration_minutes && (
@@ -119,13 +222,10 @@ function SessionCard({
             )}
             {session.target_hr_zone && (
               <span className="flex items-center gap-0.5">
-                <Heart className="h-3 w-3" />
-                Z{session.target_hr_zone}
+                <Heart className="h-3 w-3" />Z{session.target_hr_zone}
               </span>
             )}
-            {session.scheduled_time && (
-              <span>{session.scheduled_time}</span>
-            )}
+            {session.scheduled_time && <span>{session.scheduled_time}</span>}
           </div>
         </div>
         <Badge
@@ -139,7 +239,7 @@ function SessionCard({
   );
 }
 
-// ─── Session Detail Drawer ─────────────────────────────
+// ─── Session Detail Drawer ───────────────────────────
 
 function SessionDetailDrawer({
   session,
@@ -158,7 +258,8 @@ function SessionDetailDrawer({
 }) {
   if (!session) return null;
   const sport = SPORT_CONFIG[session.sport_type] || SPORT_CONFIG.rest;
-  const intensity = INTENSITY_CONFIG[session.intensity] || INTENSITY_CONFIG.moderate;
+  const intensity =
+    INTENSITY_CONFIG[session.intensity] || INTENSITY_CONFIG.moderate;
   const SportIcon = sport.icon;
 
   return (
@@ -170,9 +271,13 @@ function SessionDetailDrawer({
               <SportIcon className={cn("h-5 w-5", sport.color)} />
             </div>
             <div>
-              <SheetTitle className="text-left">{session.session_name}</SheetTitle>
-              <p className="text-sm text-muted-foreground">
-                {format(parseISO(session.session_date), "EEEE d 'de' MMMM", { locale: es })}
+              <SheetTitle className="text-left">
+                {session.session_name}
+              </SheetTitle>
+              <p className="text-sm text-muted-foreground capitalize">
+                {format(parseISO(session.session_date), "EEEE d 'de' MMMM", {
+                  locale: es,
+                })}
               </p>
             </div>
           </div>
@@ -195,7 +300,11 @@ function SessionDetailDrawer({
                   : "text-muted-foreground"
               )}
             >
-              {session.status === "completed" ? "Completada" : session.status === "skipped" ? "Omitida" : "Pendiente"}
+              {session.status === "completed"
+                ? "Completada"
+                : session.status === "skipped"
+                ? "Omitida"
+                : "Pendiente"}
             </Badge>
           </div>
 
@@ -203,9 +312,11 @@ function SessionDetailDrawer({
           {session.description && (
             <div>
               <h4 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2">
-                Descripci\u00f3n
+                Descripción
               </h4>
-              <p className="text-sm leading-relaxed whitespace-pre-wrap">{session.description}</p>
+              <p className="text-sm leading-relaxed whitespace-pre-wrap">
+                {session.description}
+              </p>
             </div>
           )}
 
@@ -219,8 +330,10 @@ function SessionDetailDrawer({
                 <div className="flex items-center gap-2 p-3 rounded-lg bg-muted/30">
                   <Timer className="h-4 w-4 text-muted-foreground" />
                   <div>
-                    <p className="text-xs text-muted-foreground">Duraci\u00f3n</p>
-                    <p className="text-sm font-semibold">{session.target_duration_minutes} min</p>
+                    <p className="text-xs text-muted-foreground">Duración</p>
+                    <p className="text-sm font-semibold">
+                      {session.target_duration_minutes} min
+                    </p>
                   </div>
                 </div>
               )}
@@ -258,7 +371,9 @@ function SessionDetailDrawer({
                   <Footprints className="h-4 w-4 text-muted-foreground" />
                   <div>
                     <p className="text-xs text-muted-foreground">Ritmo</p>
-                    <p className="text-sm font-semibold">{session.target_pace_min_km}/km</p>
+                    <p className="text-sm font-semibold">
+                      {session.target_pace_min_km}/km
+                    </p>
                   </div>
                 </div>
               )}
@@ -267,7 +382,9 @@ function SessionDetailDrawer({
                   <Gauge className="h-4 w-4 text-muted-foreground" />
                   <div>
                     <p className="text-xs text-muted-foreground">Potencia</p>
-                    <p className="text-sm font-semibold">{session.target_power_watts}W</p>
+                    <p className="text-sm font-semibold">
+                      {session.target_power_watts}W
+                    </p>
                   </div>
                 </div>
               )}
@@ -276,7 +393,9 @@ function SessionDetailDrawer({
                   <Clock className="h-4 w-4 text-muted-foreground" />
                   <div>
                     <p className="text-xs text-muted-foreground">Horario</p>
-                    <p className="text-sm font-semibold">{session.scheduled_time}</p>
+                    <p className="text-sm font-semibold">
+                      {session.scheduled_time}
+                    </p>
                   </div>
                 </div>
               )}
@@ -316,7 +435,8 @@ function SessionDetailDrawer({
                 </Button>
               </>
             )}
-            {(session.status === "completed" || session.status === "skipped") && (
+            {(session.status === "completed" ||
+              session.status === "skipped") && (
               <Button
                 variant="outline"
                 className="flex-1"
@@ -333,22 +453,25 @@ function SessionDetailDrawer({
   );
 }
 
-// ─── Week Summary Banner ───────────────────────────────
+// ─── Month Summary Banner ────────────────────────────
 
-function WeekSummaryBanner({
-  weekStats,
+function MonthSummaryBanner({
+  stats,
 }: {
-  weekStats: {
+  stats: {
     total: number;
     completed: number;
     totalDuration: number;
     sportCounts: Record<string, number>;
   };
 }) {
-  const completionPct = weekStats.total > 0 ? Math.round((weekStats.completed / weekStats.total) * 100) : 0;
+  const completionPct =
+    stats.total > 0
+      ? Math.round((stats.completed / stats.total) * 100)
+      : 0;
 
   return (
-    <div className="relative overflow-hidden rounded-xl border border-border/50 bg-gradient-to-r from-primary/[0.03] via-card to-card p-4">
+    <div className="rounded-xl border border-border/50 bg-gradient-to-r from-primary/[0.03] via-card to-card p-4">
       <div className="flex items-center justify-between flex-wrap gap-4">
         <div className="flex items-center gap-6">
           {/* Duration */}
@@ -357,36 +480,51 @@ function WeekSummaryBanner({
               <Timer className="h-3.5 w-3.5 text-primary" />
             </div>
             <div>
-              <p className="text-[10px] text-muted-foreground uppercase tracking-wider">Duraci\u00f3n</p>
+              <p className="text-[10px] text-muted-foreground uppercase tracking-wider">
+                Duración
+              </p>
               <p className="text-sm font-bold font-mono tabular-nums">
-                {Math.floor(weekStats.totalDuration / 60)}h {weekStats.totalDuration % 60}m
+                {Math.floor(stats.totalDuration / 60)}h{" "}
+                {stats.totalDuration % 60}m
               </p>
             </div>
           </div>
 
           {/* Sessions */}
           <div>
-            <p className="text-[10px] text-muted-foreground uppercase tracking-wider">Sesiones</p>
-            <p className="text-sm font-bold font-mono tabular-nums">{weekStats.total}</p>
+            <p className="text-[10px] text-muted-foreground uppercase tracking-wider">
+              Sesiones
+            </p>
+            <p className="text-sm font-bold font-mono tabular-nums">
+              {stats.total}
+            </p>
           </div>
 
           {/* Completion */}
           <div>
-            <p className="text-[10px] text-muted-foreground uppercase tracking-wider">Completado</p>
-            <p className="text-sm font-bold font-mono tabular-nums">{completionPct}%</p>
+            <p className="text-[10px] text-muted-foreground uppercase tracking-wider">
+              Completado
+            </p>
+            <p className="text-sm font-bold font-mono tabular-nums">
+              {completionPct}%
+            </p>
           </div>
         </div>
 
         {/* Sport pills */}
         <div className="flex items-center gap-1.5">
-          {Object.entries(weekStats.sportCounts).map(([sport, count]) => {
+          {Object.entries(stats.sportCounts).map(([sport, count]) => {
             const config = SPORT_CONFIG[sport];
             if (!config) return null;
             const Icon = config.icon;
             return (
               <div
                 key={sport}
-                className={cn("flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium", config.bg, config.color)}
+                className={cn(
+                  "flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium",
+                  config.bg,
+                  config.color
+                )}
               >
                 <Icon className="h-3 w-3" />
                 {count}
@@ -399,99 +537,115 @@ function WeekSummaryBanner({
   );
 }
 
-// ─── Main Component ────────────────────────────────────
+// ─── Main Component ──────────────────────────────────
 
 export default function Training() {
-  const [currentWeek, setCurrentWeek] = useState(() =>
-    startOfWeek(new Date(), { weekStartsOn: 1 })
-  );
-  const [selectedSession, setSelectedSession] = useState<TrainingSession | null>(null);
+  const [currentMonth, setCurrentMonth] = useState(() => new Date());
+  const [selectedDate, setSelectedDate] = useState<Date>(() => new Date());
+  const [selectedSession, setSelectedSession] =
+    useState<TrainingSession | null>(null);
   const [drawerOpen, setDrawerOpen] = useState(false);
 
-  const weekStartStr = format(currentWeek, "yyyy-MM-dd");
+  // Build calendar grid (pad to full weeks)
+  const calendarDays = useMemo(() => {
+    const monthStart = startOfMonth(currentMonth);
+    const monthEnd = endOfMonth(currentMonth);
+    const calStart = startOfWeek(monthStart, { weekStartsOn: 1 });
+    const calEnd = endOfWeek(monthEnd, { weekStartsOn: 1 });
+    return eachDayOfInterval({ start: calStart, end: calEnd });
+  }, [currentMonth]);
+
+  const startDate = format(calendarDays[0], "yyyy-MM-dd");
+  const endDate = format(calendarDays[calendarDays.length - 1], "yyyy-MM-dd");
+
   const {
     sessions,
     isLoading,
     sessionsByDate,
-    weekStats,
+    stats,
     markCompleted,
     markSkipped,
     resetSession,
-    deleteWeekSessions,
-  } = useTrainingSessions(weekStartStr);
+    deleteAllSessions,
+  } = useTrainingSessions(startDate, endDate);
 
-  const isCurrentWeek = isThisWeek(currentWeek, { weekStartsOn: 1 });
-  const today = new Date();
+  const totalRows = Math.ceil(calendarDays.length / 7);
+
+  const handleMonthChange = (newMonth: Date) => {
+    setCurrentMonth(newMonth);
+    if (isSameMonth(new Date(), newMonth)) {
+      setSelectedDate(new Date());
+    } else {
+      setSelectedDate(startOfMonth(newMonth));
+    }
+  };
 
   const openSession = (session: TrainingSession) => {
     setSelectedSession(session);
     setDrawerOpen(true);
   };
 
+  const selectedDateStr = format(selectedDate, "yyyy-MM-dd");
+  const selectedDaySessions = sessionsByDate[selectedDateStr] || [];
+
   return (
     <Layout>
-      <div className="space-y-6">
+      <div className="space-y-4">
         {/* ─── Header ─────────────────────────── */}
-        <div className="flex items-center justify-between">
+        <div className="flex items-center justify-between flex-wrap gap-3">
           <div>
-            <h1 className="text-2xl font-bold tracking-tight mb-1">Entrenamiento</h1>
+            <h1 className="text-2xl font-bold tracking-tight mb-1">
+              Entrenamiento
+            </h1>
             <p className="text-sm text-muted-foreground">
               {isLoading
                 ? "Cargando..."
                 : sessions.length > 0
                 ? `${sessions.length} sesiones planificadas`
-                : "Sin plan para esta semana"}
+                : "Sin plan para este mes"}
             </p>
           </div>
 
-          {/* Week Navigator */}
+          {/* Month Navigator */}
           <div className="flex items-center gap-1">
             <Button
               variant="ghost"
               size="icon"
               className="h-8 w-8 rounded-lg"
-              onClick={() => setCurrentWeek(subWeeks(currentWeek, 1))}
+              onClick={() => handleMonthChange(subMonths(currentMonth, 1))}
             >
               <ChevronLeft className="h-4 w-4" />
             </Button>
             <button
-              onClick={() => !isCurrentWeek && setCurrentWeek(startOfWeek(new Date(), { weekStartsOn: 1 }))}
-              className={cn(
-                "min-w-[200px] text-center px-3 py-1.5 rounded-lg transition-colors",
-                !isCurrentWeek ? "hover:bg-accent cursor-pointer" : "cursor-default"
-              )}
+              onClick={() => handleMonthChange(new Date())}
+              className="min-w-[160px] text-center px-3 py-1.5 rounded-lg hover:bg-accent transition-colors"
             >
-              <span className="text-lg font-semibold">
-                {format(currentWeek, "d", { locale: es })} - {format(addWeeks(currentWeek, 1), "d MMM yyyy", { locale: es })}
+              <span className="text-lg font-semibold capitalize">
+                {format(currentMonth, "MMMM yyyy", { locale: es })}
               </span>
             </button>
             <Button
               variant="ghost"
               size="icon"
               className="h-8 w-8 rounded-lg"
-              onClick={() => setCurrentWeek(addWeeks(currentWeek, 1))}
+              onClick={() => handleMonthChange(addMonths(currentMonth, 1))}
             >
               <ChevronRight className="h-4 w-4" />
             </Button>
-            {!isCurrentWeek && (
-              <Button
-                variant="outline"
-                size="sm"
-                className="ml-2 text-xs h-7 rounded-lg"
-                onClick={() => setCurrentWeek(startOfWeek(new Date(), { weekStartsOn: 1 }))}
-              >
-                Esta semana
-              </Button>
-            )}
           </div>
         </div>
 
         {/* ─── Content ────────────────────────── */}
         {isLoading ? (
-          <div className="grid grid-cols-1 md:grid-cols-7 gap-4">
-            {Array.from({ length: 7 }).map((_, i) => (
-              <div key={i} className="h-40 rounded-xl bg-muted/30 animate-pulse" />
-            ))}
+          <div className="rounded-xl border border-border/40 overflow-hidden">
+            <div className="grid grid-cols-7">
+              {Array.from({ length: 35 }).map((_, i) => (
+                <div
+                  key={i}
+                  className="h-16 md:h-24 bg-muted/20 animate-pulse border-b border-r border-border/20"
+                />
+              ))}
+            </div>
           </div>
         ) : sessions.length === 0 ? (
           /* ─── Empty State ────────────────── */
@@ -501,79 +655,158 @@ export default function Training() {
               Sin plan de entrenamiento
             </h3>
             <p className="text-sm text-muted-foreground/60 mt-1 max-w-md">
-              Usa <code className="px-1.5 py-0.5 rounded bg-muted text-xs font-mono">/plan-training</code>{" "}
-              en Claude Code para generar un plan personalizado basado en tus datos de Garmin.
+              Usa{" "}
+              <code className="px-1.5 py-0.5 rounded bg-muted text-xs font-mono">
+                /plan-training
+              </code>{" "}
+              en Claude Code para generar un plan personalizado basado en tus
+              datos de Garmin.
             </p>
           </div>
         ) : (
           <>
-            {/* ─── Week Summary ──────────── */}
-            <WeekSummaryBanner weekStats={weekStats} />
+            {/* ─── Summary ────────────────── */}
+            <MonthSummaryBanner stats={stats} />
 
-            {/* ─── 7-Day Grid ────────────── */}
-            <div className="grid grid-cols-1 md:grid-cols-7 gap-3">
-              {Object.entries(sessionsByDate).map(([dateStr, daySessions]) => {
-                const date = parseISO(dateStr);
-                const isToday = isSameDay(date, today);
-                const dayName = format(date, "EEE", { locale: es });
-                const dayNum = format(date, "d");
-
-                return (
+            {/* ─── Calendar Grid ──────────── */}
+            <div className="rounded-xl border border-border/40 overflow-hidden bg-card">
+              {/* Day headers */}
+              <div className="grid grid-cols-7 bg-muted/30">
+                {DAY_NAMES.map((name, i) => (
                   <div
-                    key={dateStr}
+                    key={name}
                     className={cn(
-                      "rounded-xl border p-3 min-h-[120px] transition-all duration-200",
-                      isToday
-                        ? "border-primary/40 bg-primary/[0.02]"
-                        : "border-border/50 bg-card"
+                      "py-2 text-center",
+                      i < 6 && "border-r border-border/20"
                     )}
                   >
-                    {/* Day Header */}
-                    <div className="flex items-center justify-between mb-2">
-                      <span className="text-xs font-semibold text-muted-foreground uppercase">
-                        {dayName}
-                      </span>
-                      <span
-                        className={cn(
-                          "text-xs font-bold tabular-nums px-1.5 py-0.5 rounded-md",
-                          isToday ? "bg-primary text-primary-foreground" : "text-muted-foreground"
-                        )}
-                      >
-                        {dayNum}
-                      </span>
-                    </div>
-
-                    {/* Sessions */}
-                    <div className="space-y-2">
-                      {daySessions.length === 0 ? (
-                        <p className="text-[10px] text-muted-foreground/40 text-center py-4">
-                          Sin sesiones
-                        </p>
-                      ) : (
-                        daySessions.map((session) => (
-                          <SessionCard
-                            key={session.id}
-                            session={session}
-                            onClick={() => openSession(session)}
-                          />
-                        ))
-                      )}
-                    </div>
+                    <span className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wide">
+                      {name}
+                    </span>
                   </div>
-                );
-              })}
+                ))}
+              </div>
+
+              {/* Day cells */}
+              <div className="grid grid-cols-7">
+                {calendarDays.map((day, i) => {
+                  const dateStr = format(day, "yyyy-MM-dd");
+                  const daySessions = sessionsByDate[dateStr] || [];
+                  const dayIsToday = isToday(day);
+                  const inMonth = isSameMonth(day, currentMonth);
+                  const isSelected = isSameDay(day, selectedDate);
+                  const col = i % 7;
+                  const row = Math.floor(i / 7);
+                  const isLastRow = row === totalRows - 1;
+
+                  return (
+                    <div
+                      key={dateStr}
+                      onClick={() => setSelectedDate(day)}
+                      className={cn(
+                        "min-h-[56px] md:min-h-[90px] p-1 md:p-1.5 cursor-pointer transition-colors relative",
+                        col < 6 && "border-r border-border/20",
+                        !isLastRow && "border-b border-border/20",
+                        !inMonth && "bg-muted/10",
+                        dayIsToday && inMonth && "bg-primary/[0.04]",
+                        isSelected && "ring-2 ring-primary/30 ring-inset",
+                        "hover:bg-accent/20"
+                      )}
+                    >
+                      {/* Day number */}
+                      <div className="flex justify-end mb-0.5">
+                        <span
+                          className={cn(
+                            "text-[11px] md:text-xs tabular-nums w-5 h-5 md:w-6 md:h-6 flex items-center justify-center rounded-full transition-colors",
+                            dayIsToday &&
+                              "bg-primary text-primary-foreground font-bold",
+                            !dayIsToday &&
+                              inMonth &&
+                              "text-foreground",
+                            !dayIsToday &&
+                              !inMonth &&
+                              "text-muted-foreground/40"
+                          )}
+                        >
+                          {format(day, "d")}
+                        </span>
+                      </div>
+
+                      {/* Desktop: session pills */}
+                      <div className="hidden md:flex flex-col gap-0.5">
+                        {daySessions.map((s) => (
+                          <SessionPill
+                            key={s.id}
+                            session={s}
+                            onClick={() => openSession(s)}
+                          />
+                        ))}
+                      </div>
+
+                      {/* Mobile: colored dots */}
+                      <div className="flex md:hidden gap-[3px] justify-center flex-wrap mt-0.5">
+                        {daySessions.map((s) => {
+                          const sport =
+                            SPORT_CONFIG[s.sport_type] || SPORT_CONFIG.rest;
+                          return (
+                            <div
+                              key={s.id}
+                              className={cn(
+                                "w-[5px] h-[5px] rounded-full",
+                                sport.dot,
+                                s.status === "completed" && "opacity-50",
+                                s.status === "skipped" && "opacity-25"
+                              )}
+                            />
+                          );
+                        })}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
             </div>
 
-            {/* ─── Delete Week ────────────── */}
+            {/* ─── Mobile: Selected Day Detail ── */}
+            <div className="md:hidden space-y-3">
+              <div className="flex items-center gap-2">
+                <h3 className="text-sm font-semibold capitalize">
+                  {format(selectedDate, "EEEE d 'de' MMMM", { locale: es })}
+                </h3>
+                {isToday(selectedDate) && (
+                  <Badge
+                    variant="outline"
+                    className="text-[10px] px-1.5 py-0"
+                  >
+                    Hoy
+                  </Badge>
+                )}
+              </div>
+              {selectedDaySessions.length === 0 ? (
+                <p className="text-xs text-muted-foreground/50 py-4 text-center">
+                  Sin sesiones
+                </p>
+              ) : (
+                selectedDaySessions.map((session) => (
+                  <SessionCard
+                    key={session.id}
+                    session={session}
+                    onClick={() => openSession(session)}
+                  />
+                ))
+              )}
+            </div>
+
+            {/* ─── Delete ─────────────────── */}
             <div className="flex justify-end">
               <Button
                 variant="ghost"
                 size="sm"
                 className="text-xs text-muted-foreground hover:text-destructive"
-                onClick={() => deleteWeekSessions.mutate()}
+                onClick={() => deleteAllSessions.mutate()}
               >
                 <Trash2 className="h-3.5 w-3.5 mr-1.5" />
-                Eliminar plan semanal
+                Eliminar plan
               </Button>
             </div>
           </>
