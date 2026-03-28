@@ -136,7 +136,7 @@ export default function Auth() {
           </motion.div>
 
           <h1 className="text-3xl font-bold text-white tracking-tight">
-            rindo<span className="text-white/30">.</span>
+            rindo<span className="text-primary">.</span>
           </h1>
           <p className="text-sm text-white/20 mt-2 font-light tracking-wide">
             Rinde más. Sin excusas.

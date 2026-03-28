@@ -48,6 +48,7 @@ import {
 import { Kbd } from "@/components/ui/kbd";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { getMainRoutes, getToolRoutes } from "@/lib/routes-config";
+import { RindoLogo } from "./RindoLogo";
 
 interface AppSidebarProps {
   onAddTransaction?: () => void;
@@ -104,7 +105,7 @@ export function AppSidebar({ onAddTransaction, onConciliate, onWhisper }: AppSid
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <SidebarMenuButton size="lg" className="data-[state=open]:bg-sidebar-accent data-[state=open]:text-sidebar-accent-foreground">
-                  <img src="/icon-512x512-removebg-preview.png" alt="rindo" className="size-8 rounded-full" />
+                  <RindoLogo size={32} className="text-foreground" />
                   <div className="grid flex-1 text-left text-sm leading-tight">
                     <span className="truncate font-semibold">rindo<span className="text-primary">.</span></span>
                   </div>

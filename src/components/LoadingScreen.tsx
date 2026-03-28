@@ -82,9 +82,9 @@ export function LoadingScreen({
         initial={{ opacity: 0 }}
         animate={{ opacity: 0.3 }}
         transition={{ duration: 0.8, delay: 0.4 }}
-        className="mt-4 text-xs font-mono tracking-[0.25em] uppercase text-foreground"
+        className="mt-4 text-xs font-mono tracking-[0.25em] text-foreground"
       >
-        rindo
+        rindo<span className="text-primary">.</span>
       </motion.span>
 
       {/* Cycling messages */}
