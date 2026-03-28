@@ -23,13 +23,20 @@ export function TrainingGoals() {
   if (isLoading) return null;
   if (goals.length === 0 && !formOpen) {
     return (
-      <button
-        onClick={() => setFormOpen(true)}
-        className="w-full flex items-center justify-center gap-2 py-2 text-xs text-muted-foreground hover:text-primary transition-colors"
-      >
-        <Target className="h-3.5 w-3.5" />
-        Agregar meta de entrenamiento
-      </button>
+      <>
+        <button
+          onClick={() => setFormOpen(true)}
+          className="w-full border border-dashed border-border/40 rounded-lg py-6 flex flex-col items-center gap-2 text-muted-foreground hover:text-primary hover:border-primary/30 transition-colors"
+        >
+          <Target className="h-5 w-5" />
+          <span className="text-xs">Agregar meta de entrenamiento</span>
+        </button>
+        <GoalFormModal
+          open={formOpen}
+          onOpenChange={setFormOpen}
+          onSave={(data) => createGoal.mutate(data)}
+        />
+      </>
     );
   }
 
