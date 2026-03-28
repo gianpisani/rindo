@@ -16,6 +16,7 @@ import { useSoundPreferences } from "@/hooks/useSoundPreferences";
 import { useSoundFX } from "@/hooks/useSoundFX";
 import { initSounds } from "@/lib/snd";
 import { ShortcutsPopover } from "@/components/ShortcutsPopover";
+import { RindoLogo } from "./RindoLogo";
 import {
   Tooltip,
   TooltipContent,
@@ -182,6 +183,7 @@ export default function Layout({ children }: LayoutProps) {
             </Tooltip>
             <div className="flex flex-1 items-center justify-between">
               <div className="flex items-center gap-2">
+                <RindoLogo size={24} className="text-foreground" />
                 <span className="text-lg font-bold tracking-tight">
                   rindo<span className="text-primary">.</span>
                 </span>
