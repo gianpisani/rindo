@@ -28,13 +28,17 @@ export interface CreditCardSummary extends CreditCard {
 export function useCreditCards() {
   const queryClient = useQueryClient();
 
-  // Fetch all credit cards
+  // Fetch all credit cards (filtered by user)
   const { data: creditCards = [], isLoading } = useQuery({
     queryKey: ["credit_cards"],
     queryFn: async () => {
+      const { data: userData } = await supabase.auth.getUser();
+      if (!userData.user) throw new Error("No user found");
+
       const { data, error } = await supabase
         .from("credit_cards")
         .select("*")
+        .eq("user_id", userData.user.id)
         .order("name");
 
       if (error) throw error;
@@ -42,13 +46,17 @@ export function useCreditCards() {
     },
   });
 
-  // Fetch credit cards with summary (from view)
+  // Fetch credit cards with summary (from view, filtered by user)
   const { data: cardSummaries = [], isLoading: isLoadingSummaries } = useQuery({
     queryKey: ["credit_card_summaries"],
     queryFn: async () => {
+      const { data: userData } = await supabase.auth.getUser();
+      if (!userData.user) throw new Error("No user found");
+
       const { data, error } = await supabase
         .from("credit_card_summary")
         .select("*")
+        .eq("user_id", userData.user.id)
         .order("card_name");
 
       if (error) throw error;
