@@ -55,7 +55,7 @@ export default {
 				foreground: 'var(--secondary-foreground)'
 			},
 			destructive: {
-				DEFAULT: 'var(--destructive)',
+				DEFAULT: 'oklch(var(--destructive) / <alpha-value>)',
 				foreground: 'var(--destructive-foreground)'
 			},
 			success: {
