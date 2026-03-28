@@ -51,6 +51,11 @@ export function SessionCard({ session, onClick }: Props) {
             <span className="text-sm font-semibold truncate">
               {isRace ? session.race_name || session.session_name : session.session_name}
             </span>
+            {isRace && daysUntilRace > 0 && (
+              <span className="text-[10px] text-rose-500 font-semibold shrink-0">
+                {daysUntilRace}d
+              </span>
+            )}
             <StatusIcon
               className={cn("h-3.5 w-3.5 shrink-0", STATUS_COLOR[session.status])}
             />
@@ -72,11 +77,6 @@ export function SessionCard({ session, onClick }: Props) {
               <span className="text-muted-foreground/60">{subtype.label}</span>
             )}
           </div>
-          {isRace && daysUntilRace > 0 && (
-            <p className="text-xs text-rose-500 font-medium mt-1">
-              Faltan {daysUntilRace} días
-            </p>
-          )}
         </div>
         <Badge
           variant="outline"

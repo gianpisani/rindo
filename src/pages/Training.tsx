@@ -29,8 +29,9 @@ import {
   Dumbbell,
   Plus,
   Flag,
+  Timer,
 } from "lucide-react";
-import { MonthSummaryBanner } from "@/components/training/MonthSummaryBanner";
+import { SPORT_CONFIG } from "@/lib/training-config";
 import { MonthlyCalendarView } from "@/components/training/MonthlyCalendarView";
 import { WeeklyCalendarView } from "@/components/training/WeeklyCalendarView";
 import { SessionDetailDrawer } from "@/components/training/SessionDetailDrawer";
@@ -138,97 +139,126 @@ export default function Training() {
 
   // Upcoming race
   const nextRace = useMemo(() => {
-    const today = format(new Date(), "yyyy-MM-dd");
     return stats.upcomingRaces.sort((a, b) => a.session_date.localeCompare(b.session_date))[0] || null;
   }, [stats.upcomingRaces]);
 
+  // Inline stats
+  const completionPct =
+    stats.total > 0 ? Math.round((stats.completed / stats.total) * 100) : 0;
+
   return (
     <Layout>
-      <div className="space-y-4">
-        {/* Header */}
-        <div className="flex items-center justify-between flex-wrap gap-3">
-          <div className="flex items-center gap-3">
-            <div>
-              <h1 className="text-2xl font-bold tracking-tight mb-1">
-                Entrenamiento
-              </h1>
-              <p className="text-sm text-muted-foreground">
-                {isLoading
-                  ? "Cargando..."
-                  : sessions.length > 0
-                  ? `${sessions.length} sesiones planificadas`
-                  : "Sin plan para este mes"}
-              </p>
-            </div>
+      <div className="space-y-6">
+        {/* Header: Title + inline stats + FAB */}
+        <div className="flex items-start justify-between gap-3">
+          <div className="min-w-0">
+            <h1 className="text-2xl font-bold tracking-tight mb-1">
+              Entrenamiento
+            </h1>
+            {isLoading ? (
+              <p className="text-sm text-muted-foreground">Cargando...</p>
+            ) : sessions.length > 0 ? (
+              <div className="flex items-center gap-3 flex-wrap text-sm text-muted-foreground">
+                <span className="flex items-center gap-1">
+                  <Timer className="h-3.5 w-3.5" />
+                  {Math.floor(stats.totalDuration / 60)}h {stats.totalDuration % 60}m
+                </span>
+                <span className="hidden sm:inline text-border">·</span>
+                <span className="hidden sm:inline">{stats.total} sesiones</span>
+                <span className="hidden sm:inline text-border">·</span>
+                <span className="hidden sm:inline">{completionPct}%</span>
+                {Object.entries(stats.sportCounts).map(([sport, count]) => {
+                  const config = SPORT_CONFIG[sport];
+                  if (!config) return null;
+                  const Icon = config.icon;
+                  return (
+                    <span
+                      key={sport}
+                      className={cn(
+                        "inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full text-xs font-medium",
+                        config.bg,
+                        config.color
+                      )}
+                    >
+                      <Icon className="h-3 w-3" />
+                      {count}
+                    </span>
+                  );
+                })}
+              </div>
+            ) : (
+              <p className="text-sm text-muted-foreground">Sin plan para este mes</p>
+            )}
           </div>
 
-          <div className="flex items-center gap-2">
-            <Tabs value={viewMode} onValueChange={setViewMode}>
-              <TabsList className="h-8">
-                <TabsTrigger value="month" className="text-xs">
-                  Mes
-                </TabsTrigger>
-                <TabsTrigger value="week" className="text-xs">
-                  Semana
-                </TabsTrigger>
-              </TabsList>
-            </Tabs>
-
-            <Button
-              size="sm"
-              className="h-8"
-              onClick={() => openFormCreate()}
-            >
-              <Plus className="h-4 w-4 mr-1" />
-              Sesión
-            </Button>
-          </div>
+          {/* FAB */}
+          <Button
+            size="sm"
+            className="rounded-full h-10 w-10 p-0 md:w-auto md:h-9 md:px-4 md:rounded-lg shrink-0"
+            onClick={() => openFormCreate()}
+          >
+            <Plus className="h-4 w-4 md:mr-1.5" />
+            <span className="hidden md:inline text-sm">Sesión</span>
+          </Button>
         </div>
 
-        {/* Navigator */}
-        <div className="flex items-center justify-center gap-1">
-          <Button
-            variant="ghost"
-            size="icon"
-            className="h-8 w-8 rounded-lg"
-            onClick={() =>
-              viewMode === "month"
-                ? handleMonthChange(subMonths(currentMonth, 1))
-                : handleWeekChange(subWeeks(currentWeekStart, 1))
-            }
-          >
-            <ChevronLeft className="h-4 w-4" />
-          </Button>
-          <button
-            onClick={() =>
-              viewMode === "month"
-                ? handleMonthChange(new Date())
-                : handleWeekChange(startOfWeek(new Date(), { weekStartsOn: 1 }))
-            }
-            className="min-w-[160px] text-center px-3 py-1.5 rounded-lg hover:bg-accent transition-colors"
-          >
-            <span className="text-lg font-semibold capitalize">
-              {viewMode === "month"
-                ? format(currentMonth, "MMMM yyyy", { locale: es })
-                : `${format(currentWeekStart, "d MMM", { locale: es })} — ${format(
-                    endOfWeek(currentWeekStart, { weekStartsOn: 1 }),
-                    "d MMM",
-                    { locale: es }
-                  )}`}
-            </span>
-          </button>
-          <Button
-            variant="ghost"
-            size="icon"
-            className="h-8 w-8 rounded-lg"
-            onClick={() =>
-              viewMode === "month"
-                ? handleMonthChange(addMonths(currentMonth, 1))
-                : handleWeekChange(addWeeks(currentWeekStart, 1))
-            }
-          >
-            <ChevronRight className="h-4 w-4" />
-          </Button>
+        {/* Tabs + Navigator row */}
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+          <Tabs value={viewMode} onValueChange={setViewMode}>
+            <TabsList className="h-8">
+              <TabsTrigger value="month" className="text-xs">
+                Mes
+              </TabsTrigger>
+              <TabsTrigger value="week" className="text-xs">
+                Semana
+              </TabsTrigger>
+            </TabsList>
+          </Tabs>
+
+          <div className="flex items-center justify-center gap-1">
+            <Button
+              variant="ghost"
+              size="icon"
+              className="h-8 w-8 rounded-lg"
+              onClick={() =>
+                viewMode === "month"
+                  ? handleMonthChange(subMonths(currentMonth, 1))
+                  : handleWeekChange(subWeeks(currentWeekStart, 1))
+              }
+            >
+              <ChevronLeft className="h-4 w-4" />
+            </Button>
+            <button
+              onClick={() =>
+                viewMode === "month"
+                  ? handleMonthChange(new Date())
+                  : handleWeekChange(startOfWeek(new Date(), { weekStartsOn: 1 }))
+              }
+              className="min-w-[140px] text-center px-3 py-1.5 rounded-lg hover:bg-accent transition-colors"
+            >
+              <span className="text-sm font-semibold capitalize">
+                {viewMode === "month"
+                  ? format(currentMonth, "MMMM yyyy", { locale: es })
+                  : `${format(currentWeekStart, "d MMM", { locale: es })} — ${format(
+                      endOfWeek(currentWeekStart, { weekStartsOn: 1 }),
+                      "d MMM",
+                      { locale: es }
+                    )}`}
+              </span>
+            </button>
+            <Button
+              variant="ghost"
+              size="icon"
+              className="h-8 w-8 rounded-lg"
+              onClick={() =>
+                viewMode === "month"
+                  ? handleMonthChange(addMonths(currentMonth, 1))
+                  : handleWeekChange(addWeeks(currentWeekStart, 1))
+              }
+            >
+              <ChevronRight className="h-4 w-4" />
+            </Button>
+          </div>
         </div>
 
         {/* Content */}
@@ -243,7 +273,7 @@ export default function Training() {
               ))}
             </div>
           </div>
-        ) : sessions.length === 0 && viewMode === "month" ? (
+        ) : sessions.length === 0 ? (
           <div className="flex flex-col items-center justify-center py-20 text-center">
             <Dumbbell className="h-12 w-12 text-muted-foreground/30 mb-4" />
             <h3 className="text-lg font-semibold text-muted-foreground">
@@ -266,11 +296,29 @@ export default function Training() {
           </div>
         ) : (
           <>
-            {/* Summary Banner */}
-            {viewMode === "month" && <MonthSummaryBanner stats={stats} />}
+            {/* Calendar FIRST */}
+            {viewMode === "month" ? (
+              <MonthlyCalendarView
+                calendarDays={calendarDays}
+                currentMonth={currentMonth}
+                selectedDate={selectedDate}
+                sessionsByDate={sessionsByDate}
+                totalRows={totalRows}
+                onSelectDate={setSelectedDate}
+                onOpenSession={openSession}
+                onAddSession={openFormCreate}
+              />
+            ) : (
+              <WeeklyCalendarView
+                currentWeekStart={currentWeekStart}
+                sessionsByDate={sessionsByDate}
+                onOpenSession={openSession}
+                onAddSession={openFormCreate}
+              />
+            )}
 
             {/* Upcoming Race */}
-            {nextRace && viewMode === "month" && (
+            {nextRace && (
               <button
                 onClick={() => openSession(nextRace)}
                 className="w-full rounded-xl border border-rose-500/20 bg-gradient-to-r from-rose-500/[0.04] to-amber-500/[0.04] p-3 text-left hover:border-rose-500/40 transition-all"
@@ -297,44 +345,21 @@ export default function Training() {
               </button>
             )}
 
-            {/* Periodization + Load (desktop) */}
-            {viewMode === "month" && (
-              <div className="hidden md:flex gap-4">
-                <div className="flex-1">
-                  <PeriodizationBar sessions={sessions} />
-                </div>
-                <div className="flex-1">
-                  <WeeklyLoadChart sessions={sessions} />
-                </div>
-              </div>
-            )}
-
             {/* Goals */}
-            {viewMode === "month" && <TrainingGoals />}
+            <TrainingGoals />
 
-            {/* Calendar */}
-            {viewMode === "month" ? (
-              <MonthlyCalendarView
-                calendarDays={calendarDays}
-                currentMonth={currentMonth}
-                selectedDate={selectedDate}
-                sessionsByDate={sessionsByDate}
-                totalRows={totalRows}
-                onSelectDate={setSelectedDate}
-                onOpenSession={openSession}
-                onAddSession={openFormCreate}
-              />
-            ) : (
-              <WeeklyCalendarView
-                currentWeekStart={currentWeekStart}
-                sessionsByDate={sessionsByDate}
-                onOpenSession={openSession}
-                onAddSession={openFormCreate}
-              />
-            )}
+            {/* Periodization + Load (desktop) */}
+            <div className="hidden md:flex gap-4">
+              <div className="flex-1">
+                <PeriodizationBar sessions={sessions} />
+              </div>
+              <div className="flex-1">
+                <WeeklyLoadChart sessions={sessions} />
+              </div>
+            </div>
 
             {/* Delete all */}
-            <div className="flex justify-end">
+            <div className="flex justify-end border-t border-border/20 pt-4">
               <Button
                 variant="ghost"
                 size="sm"

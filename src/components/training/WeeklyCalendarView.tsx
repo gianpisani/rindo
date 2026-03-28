@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { cn } from "@/lib/utils";
 import { Badge } from "@/components/ui/badge";
 import { SPORT_CONFIG, DAY_NAMES } from "@/lib/training-config";
@@ -29,6 +29,18 @@ export function WeeklyCalendarView({
     return 0;
   });
 
+  // Reset selected day when week changes
+  useEffect(() => {
+    const today = new Date();
+    for (let i = 0; i < 7; i++) {
+      if (isSameDay(addDays(currentWeekStart, i), today)) {
+        setSelectedDayIndex(i);
+        return;
+      }
+    }
+    setSelectedDayIndex(0);
+  }, [currentWeekStart]);
+
   const days = Array.from({ length: 7 }, (_, i) => addDays(currentWeekStart, i));
   const selectedDay = days[selectedDayIndex];
   const selectedDateStr = format(selectedDay, "yyyy-MM-dd");
@@ -47,7 +59,7 @@ export function WeeklyCalendarView({
             <div
               key={dateStr}
               className={cn(
-                "rounded-xl border border-border/40 p-2 min-h-[200px] flex flex-col",
+                "rounded-xl border border-border/40 p-2 min-h-[140px] flex flex-col",
                 dayIsToday && "border-primary/30 bg-primary/[0.02]"
               )}
             >
@@ -81,9 +93,11 @@ export function WeeklyCalendarView({
                   />
                 ))}
                 {daySessions.length === 0 && (
-                  <p className="text-[10px] text-muted-foreground/40 text-center pt-4">
-                    Sin sesiones
-                  </p>
+                  <div className="flex-1 flex items-center justify-center border border-dashed border-border/40 rounded-lg py-4">
+                    <p className="text-[10px] text-muted-foreground/40">
+                      Sin sesiones
+                    </p>
+                  </div>
                 )}
               </div>
             </div>
@@ -91,10 +105,10 @@ export function WeeklyCalendarView({
         })}
       </div>
 
-      {/* Mobile: Horizontal day strip + detail */}
+      {/* Mobile: 7-column day grid + detail */}
       <div className="md:hidden space-y-3">
-        {/* Day strip */}
-        <div className="flex gap-1.5 overflow-x-auto pb-1 -mx-1 px-1">
+        {/* Day strip — fixed grid, no scroll */}
+        <div className="grid grid-cols-7 gap-1">
           {days.map((day, i) => {
             const dateStr = format(day, "yyyy-MM-dd");
             const daySessions = sessionsByDate[dateStr] || [];
@@ -106,7 +120,7 @@ export function WeeklyCalendarView({
                 key={dateStr}
                 onClick={() => setSelectedDayIndex(i)}
                 className={cn(
-                  "flex flex-col items-center gap-1 px-3 py-2 rounded-xl border transition-all shrink-0",
+                  "flex flex-col items-center gap-0.5 py-2 rounded-xl border transition-all",
                   isSelected
                     ? "border-primary bg-primary/10"
                     : "border-border/40 hover:bg-accent/30",
@@ -114,7 +128,7 @@ export function WeeklyCalendarView({
                 )}
               >
                 <span className="text-[10px] font-semibold text-muted-foreground uppercase">
-                  {DAY_NAMES[i]}
+                  {DAY_NAMES[i].charAt(0)}
                 </span>
                 <span
                   className={cn(
@@ -147,7 +161,7 @@ export function WeeklyCalendarView({
 
         {/* Selected day detail */}
         <div className="space-y-3">
-          <div className="flex items-center justify-between">
+          <div className="bg-muted/30 rounded-lg px-4 py-3 flex items-center justify-between">
             <div className="flex items-center gap-2">
               <h3 className="text-sm font-semibold capitalize">
                 {format(selectedDay, "EEEE d 'de' MMMM", { locale: es })}
@@ -166,9 +180,9 @@ export function WeeklyCalendarView({
             </button>
           </div>
           {selectedDaySessions.length === 0 ? (
-            <p className="text-xs text-muted-foreground/50 py-4 text-center">
-              Sin sesiones
-            </p>
+            <div className="border border-dashed border-border/40 rounded-lg py-8 text-center">
+              <p className="text-xs text-muted-foreground/50">Sin sesiones</p>
+            </div>
           ) : (
             selectedDaySessions.map((session) => (
               <SessionCard

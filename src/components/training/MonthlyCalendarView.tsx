@@ -106,7 +106,7 @@ export function MonthlyCalendarView({
                 </div>
 
                 {/* Desktop: session pills */}
-                <div className="hidden md:flex flex-col gap-0.5">
+                <div className="hidden md:flex flex-col gap-0.5 max-h-[80px] md:max-h-none overflow-hidden">
                   {daySessions.map((s) => (
                     <SessionPill
                       key={s.id}
@@ -141,7 +141,7 @@ export function MonthlyCalendarView({
 
       {/* Mobile: Selected Day Detail */}
       <div className="md:hidden space-y-3">
-        <div className="flex items-center justify-between">
+        <div className="bg-muted/30 rounded-lg px-4 py-3 flex items-center justify-between">
           <div className="flex items-center gap-2">
             <h3 className="text-sm font-semibold capitalize">
               {format(selectedDate, "EEEE d 'de' MMMM", { locale: es })}
@@ -162,9 +162,9 @@ export function MonthlyCalendarView({
           )}
         </div>
         {selectedDaySessions.length === 0 ? (
-          <p className="text-xs text-muted-foreground/50 py-4 text-center">
-            Sin sesiones
-          </p>
+          <div className="border border-dashed border-border/40 rounded-lg py-8 text-center">
+            <p className="text-xs text-muted-foreground/50">Sin sesiones</p>
+          </div>
         ) : (
           selectedDaySessions.map((session) => (
             <SessionCard
