@@ -288,7 +288,7 @@ export function AppSidebar({ onAddTransaction, onConciliate, onWhisper }: AppSid
                     </AvatarFallback>
                   </Avatar>
                   <div className="grid flex-1 text-left text-sm leading-tight">
-                    <span className="truncate font-semibold">Mi Cuenta</span>
+                    <span className="truncate font-semibold">Yo</span>
                     <span className="truncate text-xs text-muted-foreground">
                       {userEmail ?? "Cargando..."}
                     </span>
@@ -310,7 +310,7 @@ export function AppSidebar({ onAddTransaction, onConciliate, onWhisper }: AppSid
                       </AvatarFallback>
                     </Avatar>
                     <div className="grid flex-1 text-left text-sm leading-tight">
-                      <span className="truncate font-semibold">Mi Cuenta</span>
+                      <span className="truncate font-semibold">Yo</span>
                       <span className="truncate text-xs text-muted-foreground">
                         {userEmail ?? ""}
                       </span>

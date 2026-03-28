@@ -82,7 +82,7 @@ export function LoadingScreen({
         initial={{ opacity: 0 }}
         animate={{ opacity: 0.3 }}
         transition={{ duration: 0.8, delay: 0.4 }}
-        className="mt-4 text-xs font-mono tracking-[0.25em] text-foreground"
+        className="mt-4 text-xs font-semibold text-foreground"
       >
         rindo<span className="text-primary">.</span>
       </motion.span>
