@@ -15,6 +15,8 @@ import { cn } from "@/lib/utils";
 import NumberFlow from "@number-flow/react";
 import { usePrivacyMode } from "@/hooks/usePrivacyMode";
 import { MonthlyStory } from "@/components/MonthlyStory";
+import { useTodayTraining } from "@/hooks/useTodayTraining";
+import { TrainingBanner } from "@/components/training/TrainingBanner";
 
 const Index = () => {
   const { transactions } = useTransactions();
@@ -24,6 +26,7 @@ const Index = () => {
   const { openQuickAdd, openReconciliation } = useGlobalDrawers();
   const { isPrivacyMode } = usePrivacyMode();
   const [storyOpen, setStoryOpen] = useState(false);
+  const { sessions: todaySessions, nextRace, isLoading: trainingLoading } = useTodayTraining();
 
   const handleQuickAdd = (type: "Ingreso" | "Gasto" | "Inversión") => {
     openQuickAdd(type);
@@ -237,6 +240,15 @@ const Index = () => {
             </div>
           </div>
         </Card>
+
+        {/* Training Banner */}
+        {!trainingLoading && (todaySessions.length > 0 || nextRace) && (
+          <TrainingBanner
+            sessions={todaySessions}
+            nextRace={nextRace}
+            onViewTraining={() => navigate("/training")}
+          />
+        )}
 
         {/* Quick Actions */}
         <div className="grid grid-cols-2 md:grid-cols-4 gap-3">

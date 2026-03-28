@@ -2,7 +2,7 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { useMemo } from "react";
-import { format, eachDayOfInterval } from "date-fns";
+import { format, eachDayOfInterval, startOfWeek } from "date-fns";
 
 export interface TrainingSession {
   id: string;
@@ -27,6 +27,20 @@ export interface TrainingSession {
   completed_at: string | null;
   coach_notes: string | null;
   plan_context: string | null;
+  // New fields
+  is_race: boolean;
+  race_name: string | null;
+  race_distance_label: string | null;
+  workout_subtype: string | null;
+  feeling_rating: number | null;
+  post_notes: string | null;
+  actual_duration_minutes: number | null;
+  actual_distance_meters: number | null;
+  actual_avg_hr: number | null;
+  actual_avg_pace: string | null;
+  training_phase: string | null;
+  garmin_synced_at: string | null;
+  garmin_activity_name: string | null;
   created_at: string;
   updated_at: string;
 }
@@ -34,6 +48,43 @@ export interface TrainingSession {
 export type SportType = "running" | "cycling" | "swimming" | "padel" | "strength" | "rest";
 export type Intensity = "easy" | "moderate" | "hard" | "recovery" | "rest";
 export type SessionStatus = "pending" | "completed" | "skipped";
+
+export interface CreateSessionData {
+  session_date: string;
+  session_name: string;
+  sport_type: string;
+  intensity?: string;
+  description?: string | null;
+  target_duration_minutes?: number | null;
+  target_distance_meters?: number | null;
+  target_hr_zone?: number | null;
+  target_hr_min?: number | null;
+  target_hr_max?: number | null;
+  target_pace_min_km?: string | null;
+  target_power_watts?: number | null;
+  scheduled_time?: string | null;
+  coach_notes?: string | null;
+  is_race?: boolean;
+  race_name?: string | null;
+  race_distance_label?: string | null;
+  workout_subtype?: string | null;
+  training_phase?: string | null;
+  garmin_activity_id?: number | null;
+}
+
+export interface UpdateSessionData extends Partial<CreateSessionData> {
+  id: string;
+}
+
+export interface PostFeedbackData {
+  id: string;
+  feeling_rating?: number | null;
+  post_notes?: string | null;
+  actual_duration_minutes?: number | null;
+  actual_distance_meters?: number | null;
+  actual_avg_hr?: number | null;
+  actual_avg_pace?: string | null;
+}
 
 export function useTrainingSessions(startDate: string, endDate: string) {
   const queryClient = useQueryClient();
@@ -101,6 +152,81 @@ export function useTrainingSessions(startDate: string, endDate: string) {
     onError: (e: Error) => toast.error(e.message),
   });
 
+  const createSession = useMutation({
+    mutationFn: async (data: CreateSessionData) => {
+      const { data: userData } = await supabase.auth.getUser();
+      if (!userData.user) throw new Error("No user");
+      const weekStart = format(
+        startOfWeek(new Date(data.session_date + "T00:00:00"), { weekStartsOn: 1 }),
+        "yyyy-MM-dd"
+      );
+      const { error } = await supabase.from("training_sessions").insert({
+        user_id: userData.user.id,
+        week_start_date: weekStart,
+        time_of_day: data.scheduled_time ? "morning" : "morning",
+        ...data,
+      });
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      invalidate();
+      toast.success("Sesión creada");
+    },
+    onError: (e: Error) => toast.error(e.message),
+  });
+
+  const updateSession = useMutation({
+    mutationFn: async ({ id, ...data }: UpdateSessionData) => {
+      if (data.session_date) {
+        const weekStart = format(
+          startOfWeek(new Date(data.session_date + "T00:00:00"), { weekStartsOn: 1 }),
+          "yyyy-MM-dd"
+        );
+        (data as Record<string, unknown>).week_start_date = weekStart;
+      }
+      const { error } = await supabase
+        .from("training_sessions")
+        .update(data)
+        .eq("id", id);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      invalidate();
+      toast.success("Sesión actualizada");
+    },
+    onError: (e: Error) => toast.error(e.message),
+  });
+
+  const deleteSession = useMutation({
+    mutationFn: async (sessionId: string) => {
+      const { error } = await supabase
+        .from("training_sessions")
+        .delete()
+        .eq("id", sessionId);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      invalidate();
+      toast.success("Sesión eliminada");
+    },
+    onError: (e: Error) => toast.error(e.message),
+  });
+
+  const savePostFeedback = useMutation({
+    mutationFn: async ({ id, ...data }: PostFeedbackData) => {
+      const { error } = await supabase
+        .from("training_sessions")
+        .update(data)
+        .eq("id", id);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      invalidate();
+      toast.success("Feedback guardado");
+    },
+    onError: (e: Error) => toast.error(e.message),
+  });
+
   const deleteAllSessions = useMutation({
     mutationFn: async () => {
       const { data: userData } = await supabase.auth.getUser();
@@ -151,7 +277,11 @@ export function useTrainingSessions(startDate: string, endDate: string) {
         sportCounts[s.sport_type] = (sportCounts[s.sport_type] || 0) + 1;
       }
     }
-    return { total, completed, skipped, pending, totalDuration, sportCounts };
+    const races = sessions.filter((s) => s.is_race).length;
+    const upcomingRaces = sessions.filter(
+      (s) => s.is_race && s.session_date >= format(new Date(), "yyyy-MM-dd") && s.status === "pending"
+    );
+    return { total, completed, skipped, pending, totalDuration, sportCounts, races, upcomingRaces };
   }, [sessions]);
 
   return {
@@ -162,6 +292,10 @@ export function useTrainingSessions(startDate: string, endDate: string) {
     markCompleted,
     markSkipped,
     resetSession,
+    createSession,
+    updateSession,
+    deleteSession,
+    savePostFeedback,
     deleteAllSessions,
   };
 }

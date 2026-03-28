@@ -352,6 +352,48 @@ export type Database = {
           }
         ]
       }
+      training_goals: {
+        Row: {
+          id: string
+          user_id: string
+          goal_type: string
+          sport_type: string | null
+          target_value: number
+          race_distance: string | null
+          start_date: string
+          end_date: string | null
+          is_active: boolean
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          user_id: string
+          goal_type: string
+          sport_type?: string | null
+          target_value: number
+          race_distance?: string | null
+          start_date: string
+          end_date?: string | null
+          is_active?: boolean
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          user_id?: string
+          goal_type?: string
+          sport_type?: string | null
+          target_value?: number
+          race_distance?: string | null
+          start_date?: string
+          end_date?: string | null
+          is_active?: boolean
+          created_at?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       training_sessions: {
         Row: {
           id: string
@@ -376,6 +418,19 @@ export type Database = {
           completed_at: string | null
           coach_notes: string | null
           plan_context: string | null
+          is_race: boolean
+          race_name: string | null
+          race_distance_label: string | null
+          workout_subtype: string | null
+          feeling_rating: number | null
+          post_notes: string | null
+          actual_duration_minutes: number | null
+          actual_distance_meters: number | null
+          actual_avg_hr: number | null
+          actual_avg_pace: string | null
+          training_phase: string | null
+          garmin_synced_at: string | null
+          garmin_activity_name: string | null
           created_at: string
           updated_at: string
         }
@@ -402,6 +457,19 @@ export type Database = {
           completed_at?: string | null
           coach_notes?: string | null
           plan_context?: string | null
+          is_race?: boolean
+          race_name?: string | null
+          race_distance_label?: string | null
+          workout_subtype?: string | null
+          feeling_rating?: number | null
+          post_notes?: string | null
+          actual_duration_minutes?: number | null
+          actual_distance_meters?: number | null
+          actual_avg_hr?: number | null
+          actual_avg_pace?: string | null
+          training_phase?: string | null
+          garmin_synced_at?: string | null
+          garmin_activity_name?: string | null
           created_at?: string
           updated_at?: string
         }
@@ -428,6 +496,19 @@ export type Database = {
           completed_at?: string | null
           coach_notes?: string | null
           plan_context?: string | null
+          is_race?: boolean
+          race_name?: string | null
+          race_distance_label?: string | null
+          workout_subtype?: string | null
+          feeling_rating?: number | null
+          post_notes?: string | null
+          actual_duration_minutes?: number | null
+          actual_distance_meters?: number | null
+          actual_avg_hr?: number | null
+          actual_avg_pace?: string | null
+          training_phase?: string | null
+          garmin_synced_at?: string | null
+          garmin_activity_name?: string | null
           created_at?: string
           updated_at?: string
         }

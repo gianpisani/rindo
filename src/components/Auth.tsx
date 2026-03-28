@@ -1,19 +1,12 @@
-import { useState, useEffect, useMemo, useCallback, memo } from "react";
+import { useState, useCallback, useMemo, memo, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "./ui/button";
 import { Input } from "./ui/input";
 import { Label } from "./ui/label";
 import { toast } from "sonner";
-import {
-  EnvelopeIcon,
-  PaperAirplaneIcon,
-  SparklesIcon,
-  CheckCircleIcon,
-} from "@heroicons/react/24/outline";
-import Particles, { initParticlesEngine } from "@tsparticles/react";
-import { loadLinksPreset } from "@tsparticles/preset-links";
-import type { Engine } from "@tsparticles/engine";
+import { CheckCircleIcon } from "@heroicons/react/24/outline";
 import { AnimatePresence, motion } from "framer-motion";
+import { RindoLogo } from "./RindoLogo";
 
 const EMAIL_DOMAINS = [
   "gmail.com",
@@ -42,14 +35,10 @@ function getVisibleDomains(email: string): string[] {
   return EMAIL_DOMAINS.filter((d) => d.startsWith(partial) && d !== partial).slice(0, 4);
 }
 
-const MemoizedParticles = memo(({ options }: { options: any }) => (
-  <Particles className="absolute inset-0" options={options} />
-));
-
 const formVariants = {
-  enter: { opacity: 0, y: 24, filter: "blur(4px)" },
+  enter: { opacity: 0, y: 20, filter: "blur(4px)" },
   center: { opacity: 1, y: 0, filter: "blur(0px)" },
-  exit: { opacity: 0, y: -24, filter: "blur(4px)" },
+  exit: { opacity: 0, y: -20, filter: "blur(4px)" },
 };
 
 export default function Auth() {
@@ -57,43 +46,13 @@ export default function Auth() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
-  const [particlesInit, setParticlesInit] = useState(false);
   const [emailSent, setEmailSent] = useState(false);
   const [animationStage, setAnimationStage] = useState(0);
 
   useEffect(() => {
-    initParticlesEngine(async (engine: Engine) => {
-      await loadLinksPreset(engine);
-    }).then(() => setParticlesInit(true));
-  }, []);
-
-  const particlesOptions = useMemo(
-    () => ({
-      preset: "links",
-      background: { color: { value: "transparent" } },
-      particles: {
-        color: { value: "#6366f1" },
-        links: {
-          color: "#6366f1",
-          distance: 200,
-          enable: true,
-          opacity: 0.06,
-          width: 0.5,
-        },
-        move: { enable: true, speed: 0.3 },
-        number: { value: 30 },
-        opacity: { value: 0.15 },
-        size: { value: { min: 0.5, max: 1.5 } },
-      },
-    }),
-    []
-  );
-
-  useEffect(() => {
     if (emailSent) {
       setAnimationStage(1);
-      setTimeout(() => setAnimationStage(2), 1000);
-      setTimeout(() => setAnimationStage(3), 2500);
+      setTimeout(() => setAnimationStage(2), 800);
     }
   }, [emailSent]);
 
@@ -153,109 +112,36 @@ export default function Auth() {
   }, [email, showDomainUI, domainSuggestion]);
 
   return (
-    <div className="min-h-screen bg-[#050507] flex items-center justify-center relative overflow-hidden">
-      {/* === Atmospheric background layers === */}
+    <div className="min-h-screen bg-black flex items-center justify-center relative overflow-hidden">
+      {/* Subtle noise texture */}
+      <div className="absolute inset-0 opacity-[0.015]" style={{
+        backgroundImage: `url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='1'/%3E%3C/svg%3E")`,
+      }} />
 
-      {/* Deep gradient base */}
-      <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,_#0a0a1a_0%,_#050507_70%)]" />
-
-      {/* Floating orbs - slow drifting blurred blobs */}
-      <motion.div
-        className="absolute w-[500px] h-[500px] rounded-full opacity-[0.07]"
-        style={{
-          background: "radial-gradient(circle, #6366f1 0%, transparent 70%)",
-          filter: "blur(80px)",
-        }}
-        animate={{
-          x: [0, 60, -30, 0],
-          y: [0, -40, 50, 0],
-        }}
-        transition={{ duration: 20, repeat: Infinity, ease: "easeInOut" }}
-        initial={{ top: "10%", left: "15%" }}
-      />
-      <motion.div
-        className="absolute w-[400px] h-[400px] rounded-full opacity-[0.05]"
-        style={{
-          background: "radial-gradient(circle, #8b5cf6 0%, transparent 70%)",
-          filter: "blur(100px)",
-        }}
-        animate={{
-          x: [0, -50, 40, 0],
-          y: [0, 60, -30, 0],
-        }}
-        transition={{ duration: 25, repeat: Infinity, ease: "easeInOut" }}
-        initial={{ bottom: "10%", right: "10%" }}
-      />
-      <motion.div
-        className="absolute w-[300px] h-[300px] rounded-full opacity-[0.04]"
-        style={{
-          background: "radial-gradient(circle, #4f46e5 0%, transparent 70%)",
-          filter: "blur(60px)",
-        }}
-        animate={{
-          x: [0, 30, -50, 0],
-          y: [0, -60, 20, 0],
-        }}
-        transition={{ duration: 18, repeat: Infinity, ease: "easeInOut" }}
-        initial={{ top: "50%", right: "30%" }}
-      />
-
-      {/* Particles - ghostly connections */}
-      {particlesInit && (
-        <div className="absolute inset-0 pointer-events-none opacity-50">
-          <MemoizedParticles options={particlesOptions} />
-        </div>
-      )}
-
-      {/* Vignette overlay */}
-      <div
-        className="absolute inset-0 pointer-events-none"
-        style={{
-          background:
-            "radial-gradient(ellipse at center, transparent 40%, rgba(5,5,7,0.8) 100%)",
-        }}
-      />
-
-      {/* === Content === */}
-      <div className="relative z-10 w-full max-w-[380px] px-6">
-        {/* Logo + Tagline */}
+      <div className="relative z-10 w-full max-w-[360px] px-6">
+        {/* Logo + Brand */}
         <motion.div
-          initial={{ opacity: 0, y: -10 }}
+          initial={{ opacity: 0, y: -12 }}
           animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.8, delay: 0.1 }}
-          className="text-center mb-10"
+          transition={{ duration: 0.8, ease: "easeOut" }}
+          className="text-center mb-12"
         >
-          <div className="relative inline-block mb-5">
-            {/* Glow behind logo */}
-            <div className="absolute inset-0 scale-150 bg-primary/10 rounded-full blur-2xl" />
-            <img
-              src="/icon-512x512-removebg-preview.png"
-              alt="rindo"
-              className="relative size-16 rounded-full"
-            />
-          </div>
-          <h1 className="text-4xl font-bold text-white tracking-tight">
-            rindo<span className="text-primary">.</span>
+          <motion.div
+            initial={{ opacity: 0, scale: 0.8 }}
+            animate={{ opacity: 1, scale: 1 }}
+            transition={{ duration: 0.6, delay: 0.1 }}
+            className="mb-6"
+          >
+            <RindoLogo size={56} className="text-white mx-auto" />
+          </motion.div>
+
+          <h1 className="text-3xl font-bold text-white tracking-tight">
+            rindo<span className="text-white/30">.</span>
           </h1>
-          <p className="text-sm text-white/25 mt-2 font-light tracking-wide">
-            Tus finanzas. Sin ruido.
+          <p className="text-sm text-white/20 mt-2 font-light tracking-wide">
+            Rinde más. Sin excusas.
           </p>
         </motion.div>
-
-        {/* Header animado */}
-        <AnimatePresence mode="wait">
-          {!emailSent && (
-            <motion.div
-              key={isLogin ? "login-h" : "signup-h"}
-              initial={{ opacity: 0, y: 8 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: -8 }}
-              transition={{ duration: 0.2 }}
-              className="text-center mb-7"
-            >
-            </motion.div>
-          )}
-        </AnimatePresence>
 
         {/* Form / Email Sent */}
         <AnimatePresence mode="wait">
@@ -272,7 +158,7 @@ export default function Auth() {
             >
               {/* Email */}
               <div className="space-y-2">
-                <Label htmlFor="email" className="text-xs font-medium text-white/40 uppercase tracking-wider">
+                <Label htmlFor="email" className="text-[10px] font-medium text-white/25 uppercase tracking-widest">
                   Correo
                 </Label>
                 <div className="relative group">
@@ -283,11 +169,10 @@ export default function Auth() {
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
                     onKeyDown={handleEmailKeyDown}
-                    className="h-12 bg-white/[0.03] border-white/[0.06] text-white placeholder:text-white/15 rounded-xl focus-visible:ring-1 focus-visible:ring-primary/40 focus-visible:border-primary/20 focus-visible:bg-white/[0.05] transition-all duration-300"
+                    className="h-12 bg-white/[0.03] border-white/[0.08] text-white placeholder:text-white/15 rounded-xl focus-visible:ring-1 focus-visible:ring-white/20 focus-visible:border-white/15 focus-visible:bg-white/[0.05] transition-all duration-300"
                     required
                     autoComplete="email"
                   />
-                  {/* Ghost suggestion (desktop) */}
                   {showDomainUI && ghostText && (
                     <div className="hidden lg:flex absolute inset-0 pointer-events-none items-center px-3">
                       <span className="text-transparent text-sm">{email}</span>
@@ -296,7 +181,7 @@ export default function Auth() {
                   )}
                 </div>
                 {showDomainUI && ghostText && (
-                  <p className="hidden lg:block text-[10px] text-white/20 ml-1">
+                  <p className="hidden lg:block text-[10px] text-white/15 ml-1">
                     Tab para completar
                   </p>
                 )}
@@ -307,7 +192,7 @@ export default function Auth() {
                         key={domain}
                         type="button"
                         onClick={() => handleDomainChipClick(domain)}
-                        className="px-2.5 py-1 text-[11px] rounded-full bg-white/[0.04] border border-white/[0.08] text-white/40 active:bg-white/[0.08] active:text-white/60 transition-colors"
+                        className="px-2.5 py-1 text-[11px] rounded-full bg-white/[0.04] border border-white/[0.08] text-white/30 active:bg-white/[0.08] active:text-white/50 transition-colors"
                       >
                         @{domain}
                       </button>
@@ -318,7 +203,7 @@ export default function Auth() {
 
               {/* Password */}
               <div className="space-y-2">
-                <Label htmlFor="password" className="text-xs font-medium text-white/40 uppercase tracking-wider">
+                <Label htmlFor="password" className="text-[10px] font-medium text-white/25 uppercase tracking-widest">
                   Contraseña
                 </Label>
                 <Input
@@ -327,21 +212,21 @@ export default function Auth() {
                   placeholder="••••••••"
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
-                  className="h-12 bg-white/[0.03] border-white/[0.06] text-white placeholder:text-white/15 rounded-xl focus-visible:ring-1 focus-visible:ring-primary/40 focus-visible:border-primary/20 focus-visible:bg-white/[0.05] transition-all duration-300"
+                  className="h-12 bg-white/[0.03] border-white/[0.08] text-white placeholder:text-white/15 rounded-xl focus-visible:ring-1 focus-visible:ring-white/20 focus-visible:border-white/15 focus-visible:bg-white/[0.05] transition-all duration-300"
                   required
                   autoComplete={isLogin ? "current-password" : "new-password"}
                   minLength={6}
                 />
                 {!isLogin && (
-                  <p className="text-[10px] text-white/20 ml-1">Mínimo 6 caracteres</p>
+                  <p className="text-[10px] text-white/15 ml-1">Mínimo 6 caracteres</p>
                 )}
               </div>
 
-              {/* Submit with glow */}
-              <div className="pt-1">
+              {/* Submit */}
+              <div className="pt-2">
                 <Button
                   type="submit"
-                  className="w-full h-12 font-medium rounded-xl transition-all duration-300 bg-primary/90 hover:bg-primary hover:shadow-[0_0_30px_rgba(99,102,241,0.25)] hover:shadow-primary/25"
+                  className="w-full h-12 font-medium rounded-xl transition-all duration-300 bg-white text-black hover:bg-white/90 hover:shadow-[0_0_40px_rgba(255,255,255,0.08)]"
                   disabled={loading}
                 >
                   {loading
@@ -355,93 +240,45 @@ export default function Auth() {
           ) : (
             <motion.div
               key="email-sent"
-              initial={{ opacity: 0, scale: 0.9, filter: "blur(8px)" }}
+              initial={{ opacity: 0, scale: 0.95, filter: "blur(6px)" }}
               animate={{ opacity: 1, scale: 1, filter: "blur(0px)" }}
               transition={{ duration: 0.5, ease: "easeOut" }}
-              className="min-h-[300px] flex items-center justify-center"
+              className="min-h-[260px] flex items-center justify-center"
             >
               <div className="text-center space-y-6 py-8">
-                <div className="relative mx-auto w-32 h-32">
-                  <div
-                    className={`absolute inset-0 bg-primary/15 rounded-full blur-2xl transition-all duration-1000 ${animationStage >= 2 ? "scale-150 opacity-0" : "scale-100 opacity-100"}`}
-                  />
-                  <div className="relative">
-                    <div
-                      className={`absolute inset-0 flex items-center justify-center transition-all duration-1000 ${
-                        animationStage >= 2
-                          ? "translate-x-32 -translate-y-32 opacity-0 rotate-45 scale-50"
-                          : "translate-x-0 translate-y-0 opacity-0 scale-100"
-                      }`}
-                    >
-                      <PaperAirplaneIcon className="h-16 w-16 text-primary" />
-                    </div>
-                    <div
-                      className={`flex items-center justify-center transition-all duration-700 ${
-                        animationStage === 1
-                          ? "scale-110 rotate-12"
-                          : animationStage >= 2
-                            ? "scale-90 opacity-0"
-                            : "scale-100"
-                      }`}
-                    >
-                      <EnvelopeIcon className="h-20 w-20 text-primary" />
-                    </div>
-                    <div
-                      className={`absolute inset-0 flex items-center justify-center transition-all duration-500 ${
-                        animationStage >= 3
-                          ? "scale-100 opacity-100"
-                          : "scale-50 opacity-0"
-                      }`}
-                    >
-                      <CheckCircleIcon className="h-24 w-24 text-primary" />
-                    </div>
-                    {animationStage >= 2 && (
-                      <>
-                        <SparklesIcon
-                          className={`absolute -top-4 -right-4 h-8 w-8 text-yellow-500 transition-all duration-500 ${
-                            animationStage >= 3 ? "opacity-0 scale-0" : "opacity-100 scale-100 animate-pulse"
-                          }`}
-                        />
-                        <SparklesIcon
-                          className={`absolute -bottom-4 -left-4 h-6 w-6 text-primary transition-all duration-700 ${
-                            animationStage >= 3 ? "opacity-0 scale-0" : "opacity-100 scale-100 animate-pulse"
-                          }`}
-                          style={{ animationDelay: "150ms" }}
-                        />
-                        <SparklesIcon
-                          className={`absolute top-0 -left-6 h-5 w-5 text-primary transition-all duration-500 ${
-                            animationStage >= 3 ? "opacity-0 scale-0" : "opacity-100 scale-100 animate-pulse"
-                          }`}
-                          style={{ animationDelay: "300ms" }}
-                        />
-                      </>
-                    )}
-                  </div>
-                </div>
+                <motion.div
+                  initial={{ scale: 0.5, opacity: 0 }}
+                  animate={{ scale: 1, opacity: 1 }}
+                  transition={{ duration: 0.5, delay: 0.2, type: "spring" }}
+                >
+                  <CheckCircleIcon className="h-16 w-16 text-white/80 mx-auto" />
+                </motion.div>
 
                 <div className="space-y-3">
-                  <h3
-                    className={`text-2xl font-bold text-white transition-all duration-500 ${
-                      animationStage >= 3 ? "opacity-100 translate-y-0" : "opacity-0 translate-y-4"
-                    }`}
+                  <motion.h3
+                    initial={{ opacity: 0, y: 8 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ duration: 0.4, delay: 0.4 }}
+                    className="text-xl font-bold text-white"
                   >
-                    {animationStage >= 3 ? "¡Revisa tu correo!" : "Enviando..."}
-                  </h3>
-                  <div
-                    className={`transition-all duration-500 delay-100 ${
-                      animationStage >= 3 ? "opacity-100 translate-y-0" : "opacity-0 translate-y-4"
-                    }`}
+                    Revisa tu correo
+                  </motion.h3>
+                  <motion.div
+                    initial={{ opacity: 0, y: 8 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ duration: 0.4, delay: 0.5 }}
                   >
-                    <p className="text-white/30 mb-2">Te enviamos un link de confirmación a</p>
-                    <p className="font-semibold text-primary">{email}</p>
-                  </div>
-                  <div
-                    className={`pt-4 space-y-3 transition-all duration-500 delay-200 ${
-                      animationStage >= 3 ? "opacity-100 translate-y-0" : "opacity-0 translate-y-4"
-                    }`}
+                    <p className="text-white/25 text-sm mb-2">Te enviamos un link de confirmación a</p>
+                    <p className="font-medium text-white/70">{email}</p>
+                  </motion.div>
+                  <motion.div
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    transition={{ duration: 0.4, delay: 0.7 }}
+                    className="pt-4 space-y-3"
                   >
-                    <div className="flex items-start gap-2 text-xs text-white/30 text-left bg-white/[0.03] border border-white/[0.06] p-3 rounded-xl">
-                      <CheckCircleIcon className="h-4 w-4 mt-0.5 flex-shrink-0 text-primary" />
+                    <div className="flex items-start gap-2 text-xs text-white/25 text-left bg-white/[0.03] border border-white/[0.06] p-3 rounded-xl">
+                      <CheckCircleIcon className="h-4 w-4 mt-0.5 flex-shrink-0 text-white/40" />
                       <span>Revisa tu bandeja de entrada (y spam por si acaso)</span>
                     </div>
                     <Button
@@ -452,11 +289,11 @@ export default function Auth() {
                         setLoading(false);
                       }}
                       variant="outline"
-                      className="w-full h-11 rounded-xl border-white/[0.08] text-white/40 hover:text-white/70 hover:border-white/15 bg-transparent"
+                      className="w-full h-11 rounded-xl border-white/[0.08] text-white/30 hover:text-white/60 hover:border-white/15 bg-transparent"
                     >
                       Volver al inicio de sesión
                     </Button>
-                  </div>
+                  </motion.div>
                 </div>
               </div>
             </motion.div>
@@ -468,28 +305,18 @@ export default function Auth() {
           <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
-            transition={{ delay: 0.4 }}
+            transition={{ delay: 0.5 }}
             className="text-center mt-8"
           >
             <button
               type="button"
               onClick={() => setIsLogin(!isLogin)}
-              className="text-xs text-white/20 hover:text-white/40 transition-colors duration-300"
+              className="text-xs text-white/15 hover:text-white/30 transition-colors duration-300"
             >
               {isLogin ? (
-                <>
-                  ¿No tienes cuenta?{" "}
-                  <span className="text-primary/50 hover:text-primary/80 transition-colors">
-                    Regístrate
-                  </span>
-                </>
+                <>¿No tienes cuenta? <span className="text-white/30 hover:text-white/50">Regístrate</span></>
               ) : (
-                <>
-                  ¿Ya tienes cuenta?{" "}
-                  <span className="text-primary/50 hover:text-primary/80 transition-colors">
-                    Inicia sesión
-                  </span>
-                </>
+                <>¿Ya tienes cuenta? <span className="text-white/30 hover:text-white/50">Inicia sesión</span></>
               )}
             </button>
           </motion.div>
