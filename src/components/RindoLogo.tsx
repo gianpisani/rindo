@@ -1,5 +1,3 @@
-import { motion } from "framer-motion";
-
 interface RindoLogoProps {
   className?: string;
   size?: number;
@@ -17,30 +15,22 @@ export function RindoLogo({ className, size = 100, animate = false }: RindoLogoP
   }
 
   return (
-    <motion.svg
+    <svg
       viewBox="0 0 100 100"
       width={size}
       height={size}
       className={className}
       fill="currentColor"
-      animate={{ scale: [1, 1.04, 1] }}
-      transition={{ duration: 3, repeat: Infinity, ease: "easeInOut" }}
+      style={{ overflow: "visible" }}
     >
-      <motion.rect
+      <rect
         x="12" y="40" width="68" height="14" rx="3"
-        transform="rotate(-32, 50, 50)"
-        initial={{ pathLength: 0, opacity: 0 }}
-        animate={{ pathLength: 1, opacity: 1 }}
-        transition={{ duration: 0.6, ease: "easeOut" }}
+        className="rindo-saber-1"
       />
-      <motion.rect
+      <rect
         x="24" y="40" width="58" height="14" rx="3"
-        transform="rotate(38, 50, 50)"
-        opacity="0.55"
-        initial={{ pathLength: 0, opacity: 0 }}
-        animate={{ pathLength: 1, opacity: 0.55 }}
-        transition={{ duration: 0.6, ease: "easeOut", delay: 0.2 }}
+        className="rindo-saber-2"
       />
-    </motion.svg>
+    </svg>
   );
 }
