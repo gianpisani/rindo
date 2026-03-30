@@ -445,6 +445,52 @@ Deno.serve(async (req) => {
 
     console.log('✅ Transacción creada:', data.id, parsed.detail, parsed.amount)
 
+    // Weekly category stats for email notification
+    let weeklyStats = null
+    try {
+      const now = new Date(transactionDate)
+      const weekAgo = new Date(now)
+      weekAgo.setDate(weekAgo.getDate() - 6)
+      const weekAgoStr = weekAgo.toISOString().split('T')[0]
+
+      const { data: weekTxns } = await supabase
+        .from('transactions')
+        .select('date, amount, detail')
+        .eq('user_id', user_id)
+        .eq('category_name', categoryName)
+        .eq('type', parsed.type)
+        .gte('date', weekAgoStr)
+        .order('amount', { ascending: false })
+
+      if (weekTxns && weekTxns.length > 0) {
+        const dailyTotals: { date: string; day: string; total: number }[] = []
+        const dayNames = ['Dom', 'Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb']
+        for (let i = 6; i >= 0; i--) {
+          const d = new Date(now)
+          d.setDate(d.getDate() - i)
+          const dateStr = d.toISOString().split('T')[0]
+          const dayTotal = weekTxns
+            .filter(t => t.date.startsWith(dateStr))
+            .reduce((sum, t) => sum + t.amount, 0)
+          dailyTotals.push({
+            date: dateStr,
+            day: dayNames[d.getDay()],
+            total: dayTotal,
+          })
+        }
+
+        const top3 = weekTxns.slice(0, 3).map(t => ({
+          detail: t.detail.replace(/^🤖\s*/, ''),
+          amount: t.amount,
+        }))
+
+        const weekTotal = weekTxns.reduce((sum, t) => sum + t.amount, 0)
+        weeklyStats = { dailyTotals, top3, weekTotal, count: weekTxns.length }
+      }
+    } catch (e) {
+      console.error('⚠️ Weekly stats error:', e)
+    }
+
     // Push notification
     try {
       const supabaseUrl = Deno.env.get('SUPABASE_URL')!
@@ -487,6 +533,7 @@ Deno.serve(async (req) => {
           bank: parsed.bank,
           detail: parsed.detail,
           category: categoryName,
+          weeklyStats,
         },
       }),
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
