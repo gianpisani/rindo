@@ -66,14 +66,13 @@ function checkBankEmails() {
  * Envía un email de notificación cuando se crea una transacción.
  */
 function sendNotificationEmail(parsed) {
-  var emoji = parsed.type === 'Ingreso' ? '💰' : '💳';
   var amount = '$' + Number(parsed.amount).toLocaleString('es-CL');
   var detail = (parsed.detail || '').replace(/^🤖\s*/, '');
   var category = parsed.category || 'Sin categoría';
   var bank = parsed.bank || '—';
   var typeColor = parsed.type === 'Ingreso' ? '#22c55e' : '#e11d48';
 
-  var subject = emoji + ' ' + parsed.type + ': ' + amount + ' — ' + detail;
+  var subject = 'rindo. | ' + parsed.type + ': ' + amount + ' — ' + detail;
 
   var logoSvg = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" width="32" height="32">'
     + '<rect width="32" height="32" rx="6" fill="#e11d48"/>'
