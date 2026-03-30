@@ -1,14 +1,22 @@
-import { useState, useMemo, useCallback } from "react";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "./ui/card";
+import { useState, useMemo } from "react";
+import { GlassCard } from "./GlassCard";
 import { Button } from "./ui/button";
-import { Progress } from "./ui/progress";
 import { Input } from "./ui/input";
 import { Label } from "./ui/label";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from "./ui/tooltip";
 import { useCategoryInsights } from "@/hooks/useCategoryInsights";
 import { useCategoryLimits } from "@/hooks/useCategoryLimits";
 import { useMonthlyBudget } from "@/hooks/useMonthlyBudget";
 import { useTransactions } from "@/hooks/useTransactions";
 import { useCategories } from "@/hooks/useCategories";
+import { usePrivacyMode } from "@/hooks/usePrivacyMode";
+import { cn } from "@/lib/utils";
+import { CHART_COLORS } from "@/lib/chart-config";
+import NumberFlow from "@number-flow/react";
 import {
   Target,
   ChevronLeft,
@@ -17,6 +25,14 @@ import {
   X,
   Pencil,
   Check,
+  Info,
+  Wallet,
+  TrendingDown,
+  TrendingUp,
+  AlertTriangle,
+  CheckCircle,
+  Lightbulb,
+  BarChart3,
 } from "lucide-react";
 import { format, addMonths, subMonths } from "date-fns";
 import { es } from "date-fns/locale";
@@ -35,14 +51,113 @@ import {
   SelectTrigger,
   SelectValue,
 } from "./ui/select";
-import { LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer, Legend } from "recharts";
-import { CHART_COLORS } from "@/lib/chart-config";
+import {
+  LineChart,
+  Line,
+  XAxis,
+  YAxis,
+  Tooltip as ChartTooltip,
+  ResponsiveContainer,
+  Legend,
+} from "recharts";
+import type { TooltipProps } from "recharts";
+import type { LucideIcon } from "lucide-react";
+
+// ─── Formatters ──────────────────────────────────────────
+
+const formatCurrency = (value: number) =>
+  new Intl.NumberFormat("es-CL", {
+    style: "currency",
+    currency: "CLP",
+    minimumFractionDigits: 0,
+    maximumFractionDigits: 0,
+  }).format(value);
+
+const formatCompact = (value: number) =>
+  new Intl.NumberFormat("es-CL", {
+    style: "currency",
+    currency: "CLP",
+    notation: "compact",
+  }).format(value);
+
+// ─── Section Card ────────────────────────────────────────
+
+function SectionCard({
+  title,
+  icon: Icon,
+  tooltip,
+  action,
+  children,
+  className,
+}: {
+  title: string;
+  icon?: LucideIcon;
+  tooltip?: string;
+  action?: React.ReactNode;
+  children: React.ReactNode;
+  className?: string;
+}) {
+  return (
+    <GlassCard className={cn("flex flex-col", className)}>
+      <div className="flex items-center gap-2 px-6 pt-5 pb-2 border-b border-border/20">
+        {Icon && <Icon className="h-3.5 w-3.5 text-primary/60" />}
+        <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
+          {title}
+        </h3>
+        {tooltip && (
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Info className="h-3.5 w-3.5 text-muted-foreground/40 hover:text-muted-foreground transition-colors cursor-help" />
+            </TooltipTrigger>
+            <TooltipContent side="top" className="max-w-xs">
+              {tooltip}
+            </TooltipContent>
+          </Tooltip>
+        )}
+        {action && <div className="ml-auto">{action}</div>}
+      </div>
+      <div className="flex-1 p-6 pt-4">{children}</div>
+    </GlassCard>
+  );
+}
+
+// ─── Custom Chart Tooltip ────────────────────────────────
+
+function EvolutionTooltip({
+  active,
+  payload,
+  label,
+}: TooltipProps<number, string>) {
+  if (!active || !payload?.length) return null;
+  return (
+    <div className="bg-card border border-border/50 rounded-xl p-3 shadow-lg">
+      <p className="font-semibold text-sm text-foreground capitalize mb-1">
+        {label}
+      </p>
+      {payload.map((entry, i) => (
+        <div key={i} className="flex items-center gap-2 text-xs">
+          <div
+            className="w-2 h-2 rounded-full"
+            style={{ backgroundColor: entry.color }}
+          />
+          <span className="text-muted-foreground">{entry.name}:</span>
+          <span className="font-mono font-semibold tabular-nums">
+            {formatCurrency(entry.value as number)}
+          </span>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+// ─── Main Component ──────────────────────────────────────
 
 export function CategoryInsightsView() {
-  const { transactions } = useTransactions();
+  const { transactions, isLoading } = useTransactions();
   const { categories } = useCategories();
   const { limits, upsertLimit, deleteLimit } = useCategoryLimits();
   const { budget, upsertBudget } = useMonthlyBudget();
+  const { isPrivacyMode } = usePrivacyMode();
   const [selectedMonth, setSelectedMonth] = useState(new Date());
   const [isLimitDialogOpen, setIsLimitDialogOpen] = useState(false);
   const [editingBudget, setEditingBudget] = useState(false);
@@ -53,28 +168,15 @@ export function CategoryInsightsView() {
     alertPercentage: 80,
   });
 
-  const { categorySpending, monthlyComparison, totalSpending } = useCategoryInsights(
-    transactions,
-    limits,
-    selectedMonth
-  );
-
-  const formatCurrency = (value: number) =>
-    new Intl.NumberFormat("es-CL", {
-      style: "currency",
-      currency: "CLP",
-      notation: "compact",
-    }).format(value);
-
-  const formatCurrencyFull = (value: number) =>
-    new Intl.NumberFormat("es-CL", {
-      style: "currency",
-      currency: "CLP",
-    }).format(value);
+  const { categorySpending, monthlyComparison, insights, totalSpending } =
+    useCategoryInsights(transactions, limits, selectedMonth);
 
   // Budget management
   const totalAllocated = limits.reduce((s, l) => s + l.monthly_limit, 0);
-  const unallocated = (budget?.total_budget || 0) - totalAllocated;
+  const totalBudget = budget?.total_budget || 0;
+  const unallocated = totalBudget - totalAllocated;
+  const usagePercent = totalBudget > 0 ? (totalSpending / totalBudget) * 100 : 0;
+  const remaining = totalBudget - totalSpending;
 
   const handleSaveBudget = async () => {
     const value = parseInt(budgetInput.replace(/\D/g, ""), 10);
@@ -124,26 +226,27 @@ export function CategoryInsightsView() {
       .sort();
   }, [categories]);
 
-  const monthName = format(selectedMonth, "MMMM yyyy", { locale: es });
-  const isCurrentMonth = format(selectedMonth, "yyyy-MM") === format(new Date(), "yyyy-MM");
+  const isCurrentMonth =
+    format(selectedMonth, "yyyy-MM") === format(new Date(), "yyyy-MM");
 
-  // Categories with limits (for the grid)
+  // Categories with/without limits
   const categoriesWithLimits = categorySpending.filter((c) => c.limit);
-  const categoriesWithoutLimits = categorySpending.filter((c) => !c.limit && c.count > 0);
+  const categoriesWithoutLimits = categorySpending.filter(
+    (c) => !c.limit && c.count > 0
+  );
 
   // Distribution bar segments
   const distributionSegments = useMemo(() => {
-    if (!budget?.total_budget) return [];
-    const total = budget.total_budget;
+    if (!totalBudget) return [];
     return categoriesWithLimits.map((cat) => {
       const catObj = categories.find((c) => c.name === cat.category);
       return {
         category: cat.category,
-        percentage: (cat.limit! / total) * 100,
+        percentage: (cat.limit! / totalBudget) * 100,
         color: catObj?.color || "#6b7280",
       };
     });
-  }, [budget, categoriesWithLimits, categories]);
+  }, [totalBudget, categoriesWithLimits, categories]);
 
   // Chart data
   const comparisonChartData = monthlyComparison.map((month) => {
@@ -156,9 +259,10 @@ export function CategoryInsightsView() {
 
   const top5Categories = useMemo(() => {
     const categorySums = categorySpending.map((cat) => {
-      const total = monthlyComparison.reduce((sum, month) => {
-        return sum + (month.categories[cat.category] || 0);
-      }, 0);
+      const total = monthlyComparison.reduce(
+        (sum, month) => sum + (month.categories[cat.category] || 0),
+        0
+      );
       return { category: cat.category, total };
     });
     return categorySums
@@ -168,299 +272,571 @@ export function CategoryInsightsView() {
       .map((c) => c.category);
   }, [categorySpending, monthlyComparison]);
 
+  // Insights
+  const alertInsights = insights.filter((i) => i.type === "alert");
+  const achievementInsights = insights.filter((i) => i.type === "achievement");
+  const patternInsights = insights.filter(
+    (i) => i.type === "pattern" || i.type === "opportunity"
+  );
+
+  // Month navigation
+  const changeMonth = (delta: number) => {
+    setSelectedMonth((prev) =>
+      delta > 0 ? addMonths(prev, 1) : subMonths(prev, 1)
+    );
+  };
+
+  // Category colors for chart lines
+  const categoryLineColors = useMemo(() => {
+    const colors: Record<string, string> = {};
+    top5Categories.forEach((cat) => {
+      const catObj = categories.find((c) => c.name === cat);
+      colors[cat] = catObj?.color || `hsl(${Math.random() * 360}, 70%, 50%)`;
+    });
+    return colors;
+  }, [top5Categories, categories]);
+
   return (
     <div className="space-y-6">
-      {/* ─── Section 1: Budget Header ─────────────────────── */}
-      <Card>
-        <CardHeader>
-          <div className="flex flex-col md:flex-row gap-4 md:items-center justify-between">
-            <div>
-              <CardTitle className="text-2xl flex items-center gap-2">
-                <Target className="h-5 w-5 text-primary" />
-                Presupuesto
-              </CardTitle>
-              <CardDescription>
-                Define tu presupuesto mensual y distribúyelo por categoría
-              </CardDescription>
-            </div>
-            <div className="flex items-center gap-2 ml-auto md:ml-0">
-              <Button
-                variant="outline"
-                size="icon"
-                onClick={() => setSelectedMonth(subMonths(selectedMonth, 1))}
-              >
-                <ChevronLeft className="h-4 w-4" />
-              </Button>
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => setSelectedMonth(new Date())}
-                className="min-w-[140px] capitalize"
-              >
-                {monthName}
-              </Button>
-              <Button
-                variant="outline"
-                size="icon"
-                onClick={() => setSelectedMonth(addMonths(selectedMonth, 1))}
-                disabled={isCurrentMonth}
-              >
-                <ChevronRight className="h-4 w-4" />
-              </Button>
-            </div>
-          </div>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          {/* Budget Total */}
-          <div className="flex items-center gap-4">
-            <div className="flex-1">
-              <div className="text-sm text-muted-foreground mb-1">
-                Presupuesto total mensual
+      {/* ─── Header ────────────────────────────────────── */}
+      <div className="flex items-center justify-between">
+        <div>
+          <h1 className="text-2xl font-bold tracking-tight mb-1">
+            Presupuesto
+          </h1>
+          <p className="text-sm text-muted-foreground">
+            {isLoading
+              ? "Cargando..."
+              : totalBudget > 0
+              ? `${formatCurrency(totalSpending)} gastado de ${formatCurrency(totalBudget)}`
+              : "Define tu presupuesto mensual y distribúyelo por categoría"}
+          </p>
+        </div>
+
+        <div className="flex items-center gap-1">
+          <Button
+            variant="ghost"
+            size="icon"
+            className="h-8 w-8 rounded-lg"
+            onClick={() => changeMonth(-1)}
+          >
+            <ChevronLeft className="h-4 w-4" />
+          </Button>
+          <button
+            onClick={() => !isCurrentMonth && setSelectedMonth(new Date())}
+            className={cn(
+              "min-w-[180px] text-center px-3 py-1.5 rounded-lg transition-colors",
+              !isCurrentMonth
+                ? "hover:bg-accent cursor-pointer"
+                : "cursor-default"
+            )}
+          >
+            <span className="text-lg font-semibold capitalize">
+              {format(selectedMonth, "MMMM yyyy", { locale: es })}
+            </span>
+          </button>
+          <Button
+            variant="ghost"
+            size="icon"
+            className="h-8 w-8 rounded-lg"
+            onClick={() => changeMonth(1)}
+            disabled={isCurrentMonth}
+          >
+            <ChevronRight className="h-4 w-4" />
+          </Button>
+          {!isCurrentMonth && (
+            <Button
+              variant="outline"
+              size="sm"
+              className="ml-2 text-xs h-7 rounded-lg"
+              onClick={() => setSelectedMonth(new Date())}
+            >
+              Hoy
+            </Button>
+          )}
+        </div>
+      </div>
+
+      {/* ─── KPI Cards ──────────────────────────────────── */}
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+        {/* Total Budget */}
+        <GlassCard className="relative overflow-hidden group hover:scale-[1.02] transition-transform duration-200">
+          <div className="absolute inset-0 bg-gradient-to-br from-primary/[0.03] to-transparent" />
+          <div className="relative p-5">
+            <div className="flex items-center gap-2 mb-3">
+              <div className="p-1.5 rounded-lg bg-primary/10">
+                <Target className="h-3.5 w-3.5 text-primary" />
               </div>
-              {editingBudget ? (
-                <div className="flex items-center gap-2">
-                  <div className="relative flex-1 max-w-[240px]">
-                    <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground">
-                      $
-                    </span>
-                    <Input
-                      value={
-                        budgetInput
-                          ? parseInt(budgetInput.replace(/\D/g, ""), 10).toLocaleString("es-CL")
-                          : ""
-                      }
-                      onChange={(e) =>
-                        setBudgetInput(e.target.value.replace(/\D/g, ""))
-                      }
-                      onKeyDown={(e) => {
-                        if (e.key === "Enter") handleSaveBudget();
-                        if (e.key === "Escape") setEditingBudget(false);
-                      }}
-                      className="pl-7 text-lg font-bold font-mono h-10"
-                      autoFocus
-                    />
-                  </div>
-                  <Button size="icon" variant="ghost" onClick={handleSaveBudget}>
-                    <Check className="h-4 w-4" />
-                  </Button>
-                  <Button
-                    size="icon"
-                    variant="ghost"
-                    onClick={() => setEditingBudget(false)}
-                  >
-                    <X className="h-4 w-4" />
-                  </Button>
-                </div>
-              ) : (
-                <div className="flex items-center gap-2">
-                  <span className="text-3xl font-bold font-mono tabular-nums">
-                    {budget?.total_budget
-                      ? formatCurrencyFull(budget.total_budget)
-                      : "Sin definir"}
+              <span className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
+                Presupuesto
+              </span>
+              {!editingBudget && (
+                <button
+                  onClick={startEditBudget}
+                  className="ml-auto opacity-0 group-hover:opacity-100 transition-opacity p-1 rounded hover:bg-accent"
+                >
+                  <Pencil className="h-3 w-3 text-muted-foreground" />
+                </button>
+              )}
+            </div>
+            {editingBudget ? (
+              <div className="flex items-center gap-1.5">
+                <div className="relative flex-1">
+                  <span className="absolute left-2.5 top-1/2 -translate-y-1/2 text-muted-foreground text-sm">
+                    $
                   </span>
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    className="h-8 w-8"
+                  <Input
+                    value={
+                      budgetInput
+                        ? parseInt(
+                            budgetInput.replace(/\D/g, ""),
+                            10
+                          ).toLocaleString("es-CL")
+                        : ""
+                    }
+                    onChange={(e) =>
+                      setBudgetInput(e.target.value.replace(/\D/g, ""))
+                    }
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter") handleSaveBudget();
+                      if (e.key === "Escape") setEditingBudget(false);
+                    }}
+                    className="pl-6 text-base font-bold font-mono h-8"
+                    autoFocus
+                  />
+                </div>
+                <Button
+                  size="icon"
+                  variant="ghost"
+                  className="h-8 w-8 shrink-0"
+                  onClick={handleSaveBudget}
+                >
+                  <Check className="h-3.5 w-3.5" />
+                </Button>
+                <Button
+                  size="icon"
+                  variant="ghost"
+                  className="h-8 w-8 shrink-0"
+                  onClick={() => setEditingBudget(false)}
+                >
+                  <X className="h-3.5 w-3.5" />
+                </Button>
+              </div>
+            ) : (
+              <div
+                className={cn(
+                  "text-2xl font-bold font-mono tabular-nums",
+                  isPrivacyMode && "privacy-blur"
+                )}
+              >
+                {totalBudget > 0 ? (
+                  <>
+                    $
+                    <NumberFlow
+                      value={totalBudget}
+                      format={{
+                        style: "decimal",
+                        minimumFractionDigits: 0,
+                        maximumFractionDigits: 0,
+                      }}
+                      locales="es-CL"
+                    />
+                  </>
+                ) : (
+                  <button
                     onClick={startEditBudget}
+                    className="text-base text-muted-foreground hover:text-foreground transition-colors"
                   >
-                    <Pencil className="h-3.5 w-3.5" />
-                  </Button>
+                    Definir →
+                  </button>
+                )}
+              </div>
+            )}
+          </div>
+        </GlassCard>
+
+        {/* Spent */}
+        <GlassCard className="relative overflow-hidden group hover:scale-[1.02] transition-transform duration-200">
+          <div className="absolute inset-0 bg-gradient-to-br from-rose-500/[0.03] to-transparent" />
+          <div className="relative p-5">
+            <div className="flex items-center gap-2 mb-3">
+              <div className="p-1.5 rounded-lg bg-rose-500/10">
+                <TrendingDown className="h-3.5 w-3.5 text-rose-500" />
+              </div>
+              <span className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
+                Gastado
+              </span>
+            </div>
+            <div
+              className={cn(
+                "text-2xl font-bold font-mono tabular-nums",
+                isPrivacyMode && "privacy-blur"
+              )}
+            >
+              $
+              <NumberFlow
+                value={totalSpending}
+                format={{
+                  style: "decimal",
+                  minimumFractionDigits: 0,
+                  maximumFractionDigits: 0,
+                }}
+                locales="es-CL"
+              />
+            </div>
+            {totalBudget > 0 && (
+              <p className="mt-2 text-xs text-muted-foreground">
+                {usagePercent.toFixed(0)}% del presupuesto
+              </p>
+            )}
+          </div>
+        </GlassCard>
+
+        {/* Remaining */}
+        <GlassCard className="relative overflow-hidden group hover:scale-[1.02] transition-transform duration-200">
+          <div
+            className={cn(
+              "absolute inset-0 bg-gradient-to-br to-transparent",
+              remaining >= 0
+                ? "from-emerald-500/[0.03]"
+                : "from-rose-500/[0.03]"
+            )}
+          />
+          <div className="relative p-5">
+            <div className="flex items-center gap-2 mb-3">
+              <div
+                className={cn(
+                  "p-1.5 rounded-lg",
+                  remaining >= 0 ? "bg-emerald-500/10" : "bg-rose-500/10"
+                )}
+              >
+                <Wallet
+                  className={cn(
+                    "h-3.5 w-3.5",
+                    remaining >= 0 ? "text-emerald-500" : "text-rose-500"
+                  )}
+                />
+              </div>
+              <span className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
+                {remaining >= 0 ? "Restante" : "Excedido"}
+              </span>
+            </div>
+            <div
+              className={cn(
+                "text-2xl font-bold font-mono tabular-nums",
+                remaining >= 0 ? "" : "text-rose-500",
+                isPrivacyMode && "privacy-blur"
+              )}
+            >
+              $
+              <NumberFlow
+                value={Math.abs(remaining)}
+                format={{
+                  style: "decimal",
+                  minimumFractionDigits: 0,
+                  maximumFractionDigits: 0,
+                }}
+                locales="es-CL"
+              />
+            </div>
+            {totalBudget > 0 && (
+              <p className="mt-2 text-xs text-muted-foreground">
+                {remaining >= 0
+                  ? `${(100 - usagePercent).toFixed(0)}% disponible`
+                  : `${(usagePercent - 100).toFixed(0)}% sobre el límite`}
+              </p>
+            )}
+          </div>
+        </GlassCard>
+
+        {/* Allocated */}
+        <GlassCard className="relative overflow-hidden group hover:scale-[1.02] transition-transform duration-200">
+          <div className="absolute inset-0 bg-gradient-to-br from-sky-500/[0.03] to-transparent" />
+          <div className="relative p-5">
+            <div className="flex items-center gap-2 mb-3">
+              <div className="p-1.5 rounded-lg bg-sky-500/10">
+                <BarChart3 className="h-3.5 w-3.5 text-sky-500" />
+              </div>
+              <span className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
+                Asignado
+              </span>
+            </div>
+            <div
+              className={cn(
+                "text-2xl font-bold font-mono tabular-nums",
+                isPrivacyMode && "privacy-blur"
+              )}
+            >
+              $
+              <NumberFlow
+                value={totalAllocated}
+                format={{
+                  style: "decimal",
+                  minimumFractionDigits: 0,
+                  maximumFractionDigits: 0,
+                }}
+                locales="es-CL"
+              />
+            </div>
+            {totalBudget > 0 && (
+              <p
+                className={cn(
+                  "mt-2 text-xs",
+                  unallocated < 0
+                    ? "text-rose-500"
+                    : "text-muted-foreground"
+                )}
+              >
+                {unallocated >= 0
+                  ? `${formatCompact(unallocated)} sin asignar`
+                  : `${formatCompact(Math.abs(unallocated))} sobre-asignado`}
+              </p>
+            )}
+          </div>
+        </GlassCard>
+      </div>
+
+      {/* ─── Distribution Bar ───────────────────────────── */}
+      {totalBudget > 0 && distributionSegments.length > 0 && (
+        <div className="relative overflow-hidden rounded-xl border border-border/50 bg-card p-4">
+          <div className="space-y-3">
+            <div className="h-3 rounded-full overflow-hidden bg-muted/60 flex">
+              {distributionSegments.map((seg) => (
+                <Tooltip key={seg.category}>
+                  <TooltipTrigger asChild>
+                    <div
+                      className="h-full transition-all duration-300 first:rounded-l-full last:rounded-r-full hover:opacity-80 cursor-default"
+                      style={{
+                        width: `${Math.min(seg.percentage, 100)}%`,
+                        backgroundColor: seg.color,
+                      }}
+                    />
+                  </TooltipTrigger>
+                  <TooltipContent side="top">
+                    <p className="text-xs font-medium">
+                      {seg.category}: {seg.percentage.toFixed(0)}%
+                    </p>
+                  </TooltipContent>
+                </Tooltip>
+              ))}
+              {unallocated > 0 && (
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <div
+                      className="h-full bg-muted-foreground/10"
+                      style={{
+                        width: `${(unallocated / totalBudget) * 100}%`,
+                      }}
+                    />
+                  </TooltipTrigger>
+                  <TooltipContent side="top">
+                    <p className="text-xs font-medium">
+                      Sin asignar: {formatCompact(unallocated)}
+                    </p>
+                  </TooltipContent>
+                </Tooltip>
+              )}
+            </div>
+            {/* Legend */}
+            <div className="flex flex-wrap gap-x-4 gap-y-1.5">
+              {distributionSegments.map((seg) => (
+                <div
+                  key={seg.category}
+                  className="flex items-center gap-1.5"
+                >
+                  <div
+                    className="w-2 h-2 rounded-full shrink-0"
+                    style={{ backgroundColor: seg.color }}
+                  />
+                  <span className="text-xs text-muted-foreground">
+                    {seg.category}
+                  </span>
+                  <span className="text-xs font-semibold tabular-nums">
+                    {seg.percentage.toFixed(0)}%
+                  </span>
+                </div>
+              ))}
+              {unallocated > 0 && (
+                <div className="flex items-center gap-1.5">
+                  <div className="w-2 h-2 rounded-full shrink-0 bg-muted-foreground/20" />
+                  <span className="text-xs text-muted-foreground">
+                    Sin asignar
+                  </span>
+                  <span className="text-xs font-semibold tabular-nums">
+                    {((unallocated / totalBudget) * 100).toFixed(0)}%
+                  </span>
                 </div>
               )}
             </div>
           </div>
-
-          {/* Distribution bar */}
-          {budget?.total_budget && budget.total_budget > 0 && (
-            <div className="space-y-2">
-              <div className="h-3 rounded-full overflow-hidden bg-muted/60 flex">
-                {distributionSegments.map((seg) => (
-                  <div
-                    key={seg.category}
-                    className="h-full transition-all duration-300 first:rounded-l-full last:rounded-r-full"
-                    style={{
-                      width: `${Math.min(seg.percentage, 100)}%`,
-                      backgroundColor: seg.color,
-                    }}
-                    title={`${seg.category}: ${seg.percentage.toFixed(0)}%`}
-                  />
-                ))}
-                {unallocated > 0 && (
-                  <div
-                    className="h-full bg-muted-foreground/10"
-                    style={{
-                      width: `${(unallocated / budget.total_budget) * 100}%`,
-                    }}
-                    title={`Sin asignar: ${formatCurrency(unallocated)}`}
-                  />
-                )}
-              </div>
-              {/* Stats row */}
-              <div className="flex items-center gap-6 text-xs text-muted-foreground">
-                <div>
-                  Asignado:{" "}
-                  <span className="font-semibold text-foreground font-mono tabular-nums">
-                    {formatCurrency(totalAllocated)}
-                  </span>
-                </div>
-                <div>
-                  Sin asignar:{" "}
-                  <span
-                    className={`font-semibold font-mono tabular-nums ${
-                      unallocated < 0 ? "text-rose-500" : "text-foreground"
-                    }`}
-                  >
-                    {formatCurrency(Math.max(0, unallocated))}
-                  </span>
-                </div>
-                <div>
-                  Gastado este mes:{" "}
-                  <span className="font-semibold text-foreground font-mono tabular-nums">
-                    {formatCurrency(totalSpending)}
-                  </span>
-                </div>
-              </div>
-            </div>
-          )}
-        </CardContent>
-      </Card>
-
-      {/* ─── Section 2: Category Grid ─────────────────────── */}
-      <div>
-        <div className="flex items-center justify-between mb-4">
-          <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider">
-            Categorías con presupuesto
-          </h3>
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => {
-              setLimitFormData({
-                category: "",
-                limit: "",
-                alertPercentage: 80,
-              });
-              setIsLimitDialogOpen(true);
-            }}
-          >
-            <Plus className="h-4 w-4 mr-2" />
-            Agregar categoría
-          </Button>
         </div>
+      )}
 
-        {categoriesWithLimits.length > 0 ? (
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-            {categoriesWithLimits.map((cat) => {
-              const usagePercentage = cat.limit
-                ? (cat.effectiveAmount / cat.limit) * 100
-                : 0;
-              const remaining = (cat.limit || 0) - cat.effectiveAmount;
-              const catObj = categories.find((c) => c.name === cat.category);
-              const color = catObj?.color || "#6b7280";
+      {/* ─── Category Grid + Insights ───────────────────── */}
+      <div
+        className={cn(
+          "grid grid-cols-1 gap-6",
+          insights.length > 0 && "lg:grid-cols-12"
+        )}
+      >
+        {/* Categories with budgets */}
+        <div className={cn(insights.length > 0 ? "lg:col-span-8" : "")}>
+          <SectionCard
+            title="Categorías con presupuesto"
+            icon={Target}
+            tooltip="Categorías con límite mensual asignado"
+            action={
+              <Button
+                variant="ghost"
+                size="sm"
+                className="h-7 text-xs gap-1.5"
+                onClick={() => {
+                  setLimitFormData({
+                    category: "",
+                    limit: "",
+                    alertPercentage: 80,
+                  });
+                  setIsLimitDialogOpen(true);
+                }}
+              >
+                <Plus className="h-3 w-3" />
+                Agregar
+              </Button>
+            }
+          >
+            {categoriesWithLimits.length > 0 ? (
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                {categoriesWithLimits.map((cat) => {
+                  const catUsage = cat.limit
+                    ? (cat.effectiveAmount / cat.limit) * 100
+                    : 0;
+                  const catRemaining = (cat.limit || 0) - cat.effectiveAmount;
+                  const catObj = categories.find(
+                    (c) => c.name === cat.category
+                  );
+                  const color = catObj?.color || "#6b7280";
 
-              return (
-                <Card
-                  key={cat.category}
-                  className="hover:shadow-md transition-shadow"
-                >
-                  <CardContent className="pt-5 pb-4 space-y-3">
-                    {/* Name + color */}
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-2">
+                  return (
+                    <div
+                      key={cat.category}
+                      className="group relative rounded-xl border border-border/50 bg-card p-4 transition-all hover:border-primary/20 hover:shadow-sm"
+                    >
+                      {/* Header */}
+                      <div className="flex items-center justify-between mb-3">
+                        <div className="flex items-center gap-2 min-w-0">
+                          <div
+                            className="w-2.5 h-2.5 rounded-full shrink-0"
+                            style={{ backgroundColor: color }}
+                          />
+                          <span className="text-sm font-medium truncate">
+                            {cat.category}
+                          </span>
+                        </div>
+                        <div className="flex items-center gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity">
+                          <button
+                            className="p-1 rounded hover:bg-accent transition-colors"
+                            onClick={() => handleSetLimit(cat.category)}
+                          >
+                            <Pencil className="h-3 w-3 text-muted-foreground" />
+                          </button>
+                          <button
+                            className="p-1 rounded hover:bg-accent transition-colors"
+                            onClick={() => handleDeleteLimit(cat.category)}
+                          >
+                            <X className="h-3 w-3 text-muted-foreground hover:text-destructive" />
+                          </button>
+                        </div>
+                      </div>
+
+                      {/* Amount */}
+                      <div className="flex items-baseline justify-between mb-2">
+                        <span
+                          className={cn(
+                            "text-lg font-bold font-mono tabular-nums",
+                            isPrivacyMode && "privacy-blur"
+                          )}
+                        >
+                          {formatCurrency(cat.effectiveAmount)}
+                        </span>
+                        <span
+                          className={cn(
+                            "text-xs text-muted-foreground font-mono tabular-nums",
+                            isPrivacyMode && "privacy-blur"
+                          )}
+                        >
+                          de {formatCompact(cat.limit!)}
+                        </span>
+                      </div>
+
+                      {/* Progress bar */}
+                      <div className="h-2 rounded-full bg-muted/60 overflow-hidden mb-2">
                         <div
-                          className="w-3 h-3 rounded-full flex-shrink-0"
-                          style={{ backgroundColor: color }}
+                          className="h-full rounded-full transition-all duration-500"
+                          style={{
+                            width: `${Math.min(catUsage, 100)}%`,
+                            backgroundColor: cat.isOverLimit
+                              ? "#e11d48"
+                              : cat.isNearLimit
+                              ? "#f59e0b"
+                              : color,
+                          }}
                         />
-                        <span className="text-sm font-semibold">{cat.category}</span>
                       </div>
-                      <div className="flex items-center gap-1">
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          className="h-7 w-7 p-0"
-                          onClick={() => handleSetLimit(cat.category)}
+
+                      {/* Footer */}
+                      <div className="flex items-center justify-between text-xs">
+                        <span
+                          className={cn(
+                            "font-semibold font-mono tabular-nums",
+                            catRemaining < 0
+                              ? "text-rose-500"
+                              : "text-emerald-600",
+                            isPrivacyMode && "privacy-blur"
+                          )}
                         >
-                          <Pencil className="h-3 w-3" />
-                        </Button>
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          className="h-7 w-7 p-0 text-muted-foreground hover:text-destructive"
-                          onClick={() => handleDeleteLimit(cat.category)}
+                          {catRemaining >= 0
+                            ? `${formatCompact(catRemaining)} restante`
+                            : `${formatCompact(Math.abs(catRemaining))} excedido`}
+                        </span>
+                        <span
+                          className={cn(
+                            "font-mono tabular-nums font-semibold px-1.5 py-0.5 rounded-md",
+                            cat.isOverLimit
+                              ? "text-rose-600 bg-rose-500/10"
+                              : cat.isNearLimit
+                              ? "text-amber-600 bg-amber-500/10"
+                              : "text-muted-foreground bg-muted/60"
+                          )}
                         >
-                          <X className="h-3 w-3" />
-                        </Button>
+                          {catUsage.toFixed(0)}%
+                        </span>
                       </div>
+
+                      {/* Reimbursement */}
+                      {cat.reimbursedAmount > 0 && (
+                        <div className="mt-2 text-[11px] text-emerald-600 bg-emerald-500/10 px-2 py-1 rounded-lg">
+                          Reembolso: {formatCompact(cat.reimbursedAmount)}
+                        </div>
+                      )}
                     </div>
-
-                    {/* Amount + limit */}
-                    <div className="flex items-baseline justify-between">
-                      <span className="text-lg font-bold font-mono tabular-nums">
-                        {formatCurrencyFull(cat.effectiveAmount)}
-                      </span>
-                      <span className="text-xs text-muted-foreground font-mono tabular-nums">
-                        de {formatCurrency(cat.limit!)}
-                      </span>
-                    </div>
-
-                    {/* Progress */}
-                    <Progress
-                      value={Math.min(usagePercentage, 100)}
-                      className={`h-2 ${
-                        cat.isOverLimit
-                          ? "[&>div]:bg-destructive"
-                          : cat.isNearLimit
-                          ? "[&>div]:bg-amber-500"
-                          : "[&>div]:bg-emerald-500"
-                      }`}
-                    />
-
-                    {/* Remaining */}
-                    <div className="flex items-center justify-between text-xs">
-                      <span
-                        className={`font-semibold font-mono tabular-nums ${
-                          remaining < 0 ? "text-rose-500" : "text-emerald-600"
-                        }`}
-                      >
-                        {remaining >= 0
-                          ? `${formatCurrency(remaining)} restante`
-                          : `${formatCurrency(Math.abs(remaining))} excedido`}
-                      </span>
-                      <span
-                        className={`font-mono tabular-nums ${
-                          cat.isOverLimit
-                            ? "text-rose-500"
-                            : cat.isNearLimit
-                            ? "text-amber-500"
-                            : "text-muted-foreground"
-                        }`}
-                      >
-                        {usagePercentage.toFixed(0)}%
-                      </span>
-                    </div>
-
-                    {/* Reimbursement info */}
-                    {cat.reimbursedAmount > 0 && (
-                      <div className="text-[11px] text-emerald-600 bg-emerald-500/10 px-2 py-1 rounded">
-                        Reembolso aplicado: {formatCurrency(cat.reimbursedAmount)}
-                      </div>
-                    )}
-                  </CardContent>
-                </Card>
-              );
-            })}
-          </div>
-        ) : (
-          <Card>
-            <CardContent className="py-8">
-              <div className="text-center text-sm text-muted-foreground">
-                <Target className="h-8 w-8 mx-auto mb-2 opacity-50" />
-                <p>No hay categorías con presupuesto asignado</p>
+                  );
+                })}
+              </div>
+            ) : (
+              <div className="flex flex-col items-center justify-center py-8 text-center">
+                <div className="p-3 rounded-full bg-primary/10 mb-3">
+                  <Target className="h-5 w-5 text-primary" />
+                </div>
+                <p className="text-sm text-muted-foreground mb-1">
+                  No hay categorías con presupuesto
+                </p>
+                <p className="text-xs text-muted-foreground/60 mb-3">
+                  Asigna límites para controlar tus gastos
+                </p>
                 <Button
                   variant="outline"
                   size="sm"
-                  className="mt-3"
+                  className="gap-1.5 rounded-lg"
                   onClick={() => {
                     setLimitFormData({
                       category: "",
@@ -470,102 +846,170 @@ export function CategoryInsightsView() {
                     setIsLimitDialogOpen(true);
                   }}
                 >
-                  <Plus className="h-3 w-3 mr-2" />
+                  <Plus className="h-3 w-3" />
                   Asignar primera categoría
                 </Button>
               </div>
-            </CardContent>
-          </Card>
-        )}
+            )}
+          </SectionCard>
+        </div>
 
-        {/* Categories without limits (if they have spending) */}
-        {categoriesWithoutLimits.length > 0 && (
-          <div className="mt-4">
-            <h4 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-3">
-              Sin presupuesto asignado
-            </h4>
-            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-2">
-              {categoriesWithoutLimits.map((cat) => {
-                const catObj = categories.find((c) => c.name === cat.category);
-                const color = catObj?.color || "#6b7280";
-                return (
-                  <button
-                    key={cat.category}
-                    onClick={() => handleSetLimit(cat.category)}
-                    className="flex items-center gap-2 p-2.5 rounded-lg border border-border/50 bg-card hover:bg-muted/50 transition-colors text-left group"
+        {/* Insights */}
+        {insights.length > 0 && (
+          <div className="lg:col-span-4">
+            <SectionCard
+              title="Insights"
+              icon={Lightbulb}
+              tooltip="Alertas y patrones detectados en tus gastos"
+            >
+              <div className="space-y-3">
+                {/* Alerts */}
+                {alertInsights.map((insight, idx) => (
+                  <div
+                    key={`alert-${idx}`}
+                    className="flex items-start gap-2.5 px-3 py-2.5 rounded-lg bg-rose-500/5 border border-rose-500/20"
                   >
-                    <div
-                      className="w-2 h-2 rounded-full flex-shrink-0"
-                      style={{ backgroundColor: color }}
-                    />
-                    <div className="flex-1 min-w-0">
-                      <span className="text-xs font-medium truncate block">
-                        {cat.category}
-                      </span>
-                      <span className="text-[11px] text-muted-foreground font-mono tabular-nums">
-                        {formatCurrency(cat.effectiveAmount)}
-                      </span>
+                    <AlertTriangle className="h-3.5 w-3.5 text-rose-500 mt-0.5 shrink-0" />
+                    <div className="min-w-0">
+                      <p className="text-xs font-semibold text-rose-600">
+                        {insight.title}
+                      </p>
+                      <p className="text-[11px] text-muted-foreground mt-0.5">
+                        {insight.description}
+                      </p>
                     </div>
-                    <Plus className="h-3 w-3 text-muted-foreground/40 group-hover:text-primary transition-colors flex-shrink-0" />
-                  </button>
-                );
-              })}
-            </div>
+                  </div>
+                ))}
+
+                {/* Achievements */}
+                {achievementInsights.slice(0, 3).map((insight, idx) => (
+                  <div
+                    key={`ach-${idx}`}
+                    className="flex items-start gap-2.5 px-3 py-2.5 rounded-lg bg-emerald-500/5 border border-emerald-500/20"
+                  >
+                    <CheckCircle className="h-3.5 w-3.5 text-emerald-500 mt-0.5 shrink-0" />
+                    <div className="min-w-0">
+                      <p className="text-xs font-semibold text-emerald-600">
+                        {insight.title}
+                      </p>
+                      <p className="text-[11px] text-muted-foreground mt-0.5">
+                        {insight.description}
+                      </p>
+                    </div>
+                  </div>
+                ))}
+
+                {/* Patterns */}
+                {patternInsights.slice(0, 2).map((insight, idx) => (
+                  <div
+                    key={`pat-${idx}`}
+                    className="flex items-start gap-2.5 px-3 py-2.5 rounded-lg bg-amber-500/5 border border-amber-500/20"
+                  >
+                    <TrendingUp className="h-3.5 w-3.5 text-amber-500 mt-0.5 shrink-0" />
+                    <div className="min-w-0">
+                      <p className="text-xs font-semibold text-amber-600">
+                        {insight.title}
+                      </p>
+                      <p className="text-[11px] text-muted-foreground mt-0.5">
+                        {insight.description}
+                      </p>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </SectionCard>
           </div>
         )}
       </div>
 
-      {/* ─── Section 3: Evolution Chart ───────────────────── */}
+      {/* ─── Unbudgeted Categories ──────────────────────── */}
+      {categoriesWithoutLimits.length > 0 && (
+        <SectionCard
+          title="Sin presupuesto asignado"
+          tooltip="Categorías con gastos este mes pero sin límite definido. Haz clic para asignar un presupuesto."
+        >
+          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-2">
+            {categoriesWithoutLimits.map((cat) => {
+              const catObj = categories.find((c) => c.name === cat.category);
+              const color = catObj?.color || "#6b7280";
+              return (
+                <button
+                  key={cat.category}
+                  onClick={() => handleSetLimit(cat.category)}
+                  className="flex items-center gap-2.5 p-3 rounded-lg border border-border/50 bg-card hover:border-primary/20 hover:bg-accent/50 transition-all text-left group"
+                >
+                  <div
+                    className="w-2.5 h-2.5 rounded-full shrink-0"
+                    style={{ backgroundColor: color }}
+                  />
+                  <div className="flex-1 min-w-0">
+                    <span className="text-xs font-medium truncate block">
+                      {cat.category}
+                    </span>
+                    <span
+                      className={cn(
+                        "text-[11px] text-muted-foreground font-mono tabular-nums",
+                        isPrivacyMode && "privacy-blur"
+                      )}
+                    >
+                      {formatCompact(cat.effectiveAmount)}
+                    </span>
+                  </div>
+                  <Plus className="h-3 w-3 text-muted-foreground/40 group-hover:text-primary transition-colors shrink-0" />
+                </button>
+              );
+            })}
+          </div>
+        </SectionCard>
+      )}
+
+      {/* ─── Evolution Chart ────────────────────────────── */}
       {comparisonChartData.length > 1 && top5Categories.length > 0 && (
-        <Card>
-          <CardHeader>
-            <CardTitle>Evolución de Categorías (últimos 6 meses)</CardTitle>
-            <CardDescription>Top 5 categorías con más actividad</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <ResponsiveContainer width="100%" height={300}>
+        <SectionCard
+          title="Evolución de Categorías"
+          icon={BarChart3}
+          tooltip="Top 5 categorías con mayor actividad en los últimos 6 meses"
+        >
+          <div className={cn(isPrivacyMode && "privacy-blur")}>
+            <ResponsiveContainer width="100%" height={280}>
               <LineChart data={comparisonChartData}>
-                <XAxis dataKey="month" stroke={CHART_COLORS.mutedAxis} fontSize={12} />
+                <XAxis
+                  dataKey="month"
+                  stroke={CHART_COLORS.mutedAxis}
+                  fontSize={11}
+                  tickLine={false}
+                  axisLine={false}
+                />
                 <YAxis
                   stroke={CHART_COLORS.mutedAxis}
-                  fontSize={12}
-                  tickFormatter={(v) => formatCurrency(v)}
+                  fontSize={11}
+                  tickLine={false}
+                  axisLine={false}
+                  tickFormatter={(v) => formatCompact(v)}
+                  width={55}
                 />
-                <Tooltip
-                  formatter={(value: number) => formatCurrencyFull(value)}
-                  contentStyle={{
-                    backgroundColor: "rgba(255, 255, 255, 0.98)",
-                    border: "1px solid #e2e8f0",
-                    borderRadius: "0.75rem",
-                    boxShadow: "0 10px 15px -3px rgb(0 0 0 / 0.1)",
-                    padding: "12px",
-                  }}
-                  labelStyle={{
-                    color: "#0f172a",
-                    fontWeight: 600,
-                  }}
-                  itemStyle={{
-                    fontWeight: 600,
-                  }}
+                <ChartTooltip content={<EvolutionTooltip />} />
+                <Legend
+                  wrapperStyle={{ fontSize: "11px", paddingTop: "8px" }}
                 />
-                <Legend wrapperStyle={{ fontSize: "12px" }} />
-                {top5Categories.map((cat, idx) => (
+                {top5Categories.map((cat) => (
                   <Line
                     key={cat}
                     type="monotone"
                     dataKey={cat}
-                    stroke={`hsl(${(idx * 70) % 360}, 70%, 50%)`}
+                    stroke={categoryLineColors[cat]}
                     strokeWidth={2}
-                    dot={{ r: 3 }}
+                    dot={{ r: 3, strokeWidth: 2 }}
+                    activeDot={{ r: 5 }}
                   />
                 ))}
               </LineChart>
             </ResponsiveContainer>
-          </CardContent>
-        </Card>
+          </div>
+        </SectionCard>
       )}
 
-      {/* ─── Set Limit Dialog ─────────────────────────────── */}
+      {/* ─── Set Limit Dialog ───────────────────────────── */}
       <Dialog open={isLimitDialogOpen} onOpenChange={setIsLimitDialogOpen}>
         <DialogContent className="p-8">
           <DialogHeader>
