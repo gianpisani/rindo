@@ -165,11 +165,7 @@ export default function Layout({ children }: LayoutProps) {
         />
 
         {/* Desktop Sidebar */}
-        <AppSidebar
-          onAddTransaction={() => openQuickAdd()}
-          onConciliate={() => openReconciliation()}
-          onWhisper={toggleWhisper}
-        />
+        <AppSidebar />
 
         <SidebarInset>
           {/* Atmospheric glow - subliminal mood indicator */}

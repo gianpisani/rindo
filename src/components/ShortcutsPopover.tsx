@@ -1,8 +1,7 @@
 import { useMemo } from "react";
 import { Kbd } from "@/components/ui/kbd";
 import {
-  Plus,
-  Calculator,
+  MessageSquare,
   ArrowUp,
   ArrowDown,
   Command,
@@ -33,14 +32,9 @@ const useShortcuts = () => {
           icon: Command,
         },
         {
-          keys: ["N"],
-          description: "Nueva transacción",
-          icon: Plus,
-        },
-        {
-          keys: ["R"],
-          description: "Conciliar balance",
-          icon: Calculator,
+          keys: ["W"],
+          description: "Whisper",
+          icon: MessageSquare,
         },
         {
           keys: ["P"],

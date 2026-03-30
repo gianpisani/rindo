@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef, useEffect, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useTransactions } from "@/hooks/useTransactions";
 import { useCategories } from "@/hooks/useCategories";
@@ -8,6 +8,35 @@ import { useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { Check } from "lucide-react";
 
+const TRANSACTION_TYPES = [
+  {
+    key: "Gasto" as const,
+    label: "Gasto",
+    color: "rgb(248, 113, 113)",
+    colorMuted: "rgba(248, 113, 113, 0.4)",
+    colorBg: "rgba(248, 113, 113, 0.1)",
+    placeholder: "45000 sushi",
+  },
+  {
+    key: "Ingreso" as const,
+    label: "Ingreso",
+    color: "rgb(74, 222, 128)",
+    colorMuted: "rgba(74, 222, 128, 0.4)",
+    colorBg: "rgba(74, 222, 128, 0.1)",
+    placeholder: "1500000 sueldo",
+  },
+  {
+    key: "Inversión" as const,
+    label: "Inversión",
+    color: "rgb(96, 165, 250)",
+    colorMuted: "rgba(96, 165, 250, 0.4)",
+    colorBg: "rgba(96, 165, 250, 0.1)",
+    placeholder: "200000 fintual",
+  },
+] as const;
+
+type TransactionType = (typeof TRANSACTION_TYPES)[number]["key"];
+
 interface WhisperInputProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
@@ -15,6 +44,7 @@ interface WhisperInputProps {
 
 export function WhisperInput({ open, onOpenChange }: WhisperInputProps) {
   const [value, setValue] = useState("");
+  const [typeIndex, setTypeIndex] = useState(0);
   const [status, setStatus] = useState<"idle" | "saving" | "success">("idle");
   const inputRef = useRef<HTMLInputElement>(null);
   const { addTransaction } = useTransactions();
@@ -22,17 +52,23 @@ export function WhisperInput({ open, onOpenChange }: WhisperInputProps) {
   const { playCelebration } = useSoundFX();
   const queryClient = useQueryClient();
 
+  const currentType = TRANSACTION_TYPES[typeIndex];
+
   useEffect(() => {
     if (open) {
       setValue("");
+      setTypeIndex(0);
       setStatus("idle");
       setTimeout(() => inputRef.current?.focus(), 100);
     }
   }, [open]);
 
+  const cycleType = useCallback(() => {
+    setTypeIndex((prev) => (prev + 1) % TRANSACTION_TYPES.length);
+  }, []);
+
   const parseInput = (input: string) => {
     const cleaned = input.trim();
-    // Match: optional $, then digits with dots/commas, then optional text
     const match = cleaned.match(/^\$?\s*([\d.,]+)\s*(.*)/);
     if (!match) return null;
 
@@ -99,7 +135,7 @@ export function WhisperInput({ open, onOpenChange }: WhisperInputProps) {
 
       const transaction = await addTransaction.mutateAsync({
         amount: parsed.amount,
-        type: "Gasto",
+        type: currentType.key,
         category_name: willAnalyze ? "\u26A1 Analizando..." : "Sin categoría",
         detail: parsed.detail,
         date: new Date().toISOString(),
@@ -131,6 +167,11 @@ export function WhisperInput({ open, onOpenChange }: WhisperInputProps) {
   };
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key === "Tab") {
+      e.preventDefault();
+      cycleType();
+      return;
+    }
     if (e.key === "Enter" && value.trim()) {
       e.preventDefault();
       handleSubmit();
@@ -166,7 +207,8 @@ export function WhisperInput({ open, onOpenChange }: WhisperInputProps) {
         >
           {/* Backdrop */}
           <motion.div
-            className="absolute inset-0 bg-black/40 dark:bg-black/60 backdrop-blur-sm"
+            className="absolute inset-0 backdrop-blur-sm"
+            style={{ backgroundColor: "rgba(0, 0, 0, 0.5)" }}
             onClick={() => status === "idle" && onOpenChange(false)}
           />
 
@@ -183,7 +225,8 @@ export function WhisperInput({ open, onOpenChange }: WhisperInputProps) {
                   transition={{ duration: 0.3, ease: "easeOut" }}
                 >
                   <motion.div
-                    className="w-12 h-12 rounded-full bg-emerald-500/20 flex items-center justify-center"
+                    className="w-12 h-12 rounded-full flex items-center justify-center"
+                    style={{ backgroundColor: currentType.colorBg }}
                     initial={{ scale: 0 }}
                     animate={{ scale: 1 }}
                     transition={{
@@ -193,7 +236,7 @@ export function WhisperInput({ open, onOpenChange }: WhisperInputProps) {
                       damping: 20,
                     }}
                   >
-                    <Check className="h-6 w-6 text-emerald-400" />
+                    <Check className="h-6 w-6" style={{ color: currentType.color }} />
                   </motion.div>
                   {preview && (
                     <motion.p
@@ -215,6 +258,35 @@ export function WhisperInput({ open, onOpenChange }: WhisperInputProps) {
                   exit={{ opacity: 0, y: -20 }}
                   transition={{ duration: 0.3, ease: "easeOut" }}
                 >
+                  {/* Type indicator pill */}
+                  <motion.div
+                    className="flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-medium"
+                    style={{
+                      backgroundColor: currentType.colorBg,
+                      color: currentType.color,
+                    }}
+                    layout
+                    transition={{ duration: 0.3, ease: [0.4, 0, 0.2, 1] }}
+                  >
+                    <motion.div
+                      className="w-1.5 h-1.5 rounded-full"
+                      style={{ backgroundColor: currentType.color }}
+                      layoutId="type-dot"
+                      transition={{ duration: 0.3 }}
+                    />
+                    <AnimatePresence mode="wait">
+                      <motion.span
+                        key={currentType.key}
+                        initial={{ opacity: 0, y: 6 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        exit={{ opacity: 0, y: -6 }}
+                        transition={{ duration: 0.15 }}
+                      >
+                        {currentType.label}
+                      </motion.span>
+                    </AnimatePresence>
+                  </motion.div>
+
                   <input
                     ref={inputRef}
                     type="text"
@@ -225,15 +297,19 @@ export function WhisperInput({ open, onOpenChange }: WhisperInputProps) {
                     value={value}
                     onChange={(e) => setValue(e.target.value)}
                     onKeyDown={handleKeyDown}
-                    placeholder="45000 sushi"
-                    className="w-full text-center text-3xl md:text-4xl font-light text-white bg-transparent border-none outline-none placeholder:text-white/20 caret-white/60 font-sans"
-                    style={{ caretColor: "rgba(255,255,255,0.6)" }}
+                    placeholder={currentType.placeholder}
+                    className="w-full text-center text-3xl md:text-4xl font-light bg-transparent border-none outline-none placeholder:text-white/15 font-sans transition-colors duration-300"
+                    style={{
+                      color: value ? currentType.color : "rgba(255,255,255,0.9)",
+                      caretColor: currentType.color,
+                    }}
                   />
 
                   {/* Live preview */}
                   {preview && (
                     <motion.div
-                      className="flex items-center gap-2 text-white/40 text-sm"
+                      className="flex items-center gap-2 text-sm transition-colors duration-300"
+                      style={{ color: currentType.colorMuted }}
                       initial={{ opacity: 0 }}
                       animate={{ opacity: 1 }}
                       transition={{ duration: 0.2 }}
@@ -241,7 +317,7 @@ export function WhisperInput({ open, onOpenChange }: WhisperInputProps) {
                       <span className="font-mono">{preview.amount}</span>
                       {preview.detail && (
                         <>
-                          <span className="text-white/20">&middot;</span>
+                          <span style={{ opacity: 0.5 }}>&middot;</span>
                           <span>{preview.detail}</span>
                         </>
                       )}
@@ -255,8 +331,8 @@ export function WhisperInput({ open, onOpenChange }: WhisperInputProps) {
                     animate={{ opacity: 1 }}
                     transition={{ delay: 0.3 }}
                   >
-                    monto + detalle &middot; Enter para guardar &middot; Esc
-                    para cerrar
+                    monto + detalle &middot; Tab tipo &middot; Enter guardar
+                    &middot; Esc cerrar
                   </motion.p>
                 </motion.div>
               )}

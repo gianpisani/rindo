@@ -2,7 +2,6 @@ import { useEffect } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import { getAllRoutePaths, getMaxShortcutNumber } from "@/lib/routes-config";
 import { usePrivacyMode } from "@/hooks/usePrivacyMode";
-import { useGlobalDrawers } from "@/hooks/useGlobalDrawers";
 
 interface UseKeyboardShortcutsOptions {
   onToggleCommandBar: () => void;
@@ -18,7 +17,6 @@ export function useKeyboardShortcuts({
   const navigate = useNavigate();
   const location = useLocation();
   const { togglePrivacyMode } = usePrivacyMode();
-  const { openQuickAdd, openReconciliation } = useGlobalDrawers();
 
   const routes = getAllRoutePaths();
   const maxShortcut = getMaxShortcutNumber();
@@ -45,18 +43,6 @@ export function useKeyboardShortcuts({
       if (e.metaKey || e.ctrlKey || e.altKey) return;
 
       switch (e.key) {
-        case "n":
-        case "N":
-          e.preventDefault();
-          openQuickAdd();
-          break;
-
-        case "r":
-        case "R":
-          e.preventDefault();
-          openReconciliation();
-          break;
-
         case "w":
         case "W":
           e.preventDefault();
@@ -116,7 +102,5 @@ export function useKeyboardShortcuts({
     onToggleShortcutsPopover,
     onToggleWhisper,
     togglePrivacyMode,
-    openQuickAdd,
-    openReconciliation,
   ]);
 }

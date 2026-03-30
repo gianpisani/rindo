@@ -6,11 +6,8 @@ import {
   Moon,
   Sun,
   Monitor,
-  Plus,
-  Variable,
   Bell,
   BellOff,
-  MessageSquare,
   Volume2,
   VolumeOff,
 } from "lucide-react";
@@ -50,13 +47,7 @@ import { useIsMobile } from "@/hooks/use-mobile";
 import { getMainRoutes, getToolRoutes } from "@/lib/routes-config";
 import { RindoLogo } from "./RindoLogo";
 
-interface AppSidebarProps {
-  onAddTransaction?: () => void;
-  onConciliate?: () => void;
-  onWhisper?: () => void;
-}
-
-export function AppSidebar({ onAddTransaction, onConciliate, onWhisper }: AppSidebarProps = {}) {
+export function AppSidebar() {
   const location = useLocation();
   const { isPrivacyMode, togglePrivacyMode } = usePrivacyMode();
   const { soundEnabled, toggleSound } = useSoundPreferences();
@@ -231,46 +222,6 @@ export function AppSidebar({ onAddTransaction, onConciliate, onWhisper }: AppSid
           </SidebarGroupContent>
         </SidebarGroup>
 
-        <SidebarGroup>
-          <SidebarGroupLabel>Acciones Rápidas</SidebarGroupLabel>
-          <SidebarGroupContent>
-            <SidebarMenu>
-              <SidebarMenuItem>
-                <SidebarMenuButton onClick={onAddTransaction}>
-                  <Plus className="size-4" />
-                  <span>Agregar Gasto</span>
-                  {!isMobile && (
-                    <div className="flex gap-0.5 opacity-50 ml-auto group-data-[state=collapsed]:hidden">
-                      <Kbd className="text-[10px] px-1 py-0.5">N</Kbd>
-                    </div>
-                  )}
-                </SidebarMenuButton>
-              </SidebarMenuItem>
-              <SidebarMenuItem>
-                <SidebarMenuButton onClick={onConciliate}>
-                  <Variable className="size-4" />
-                  <span>Conciliar Balance</span>
-                  {!isMobile && (
-                    <div className="flex gap-0.5 opacity-50 ml-auto group-data-[state=collapsed]:hidden">
-                      <Kbd className="text-[10px] px-1 py-0.5">R</Kbd>
-                    </div>
-                  )}
-                </SidebarMenuButton>
-              </SidebarMenuItem>
-              <SidebarMenuItem>
-                <SidebarMenuButton onClick={onWhisper}>
-                  <MessageSquare className="size-4" />
-                  <span>Whisper</span>
-                  {!isMobile && (
-                    <div className="flex gap-0.5 opacity-50 ml-auto group-data-[state=collapsed]:hidden">
-                      <Kbd className="text-[10px] px-1 py-0.5">W</Kbd>
-                    </div>
-                  )}
-                </SidebarMenuButton>
-              </SidebarMenuItem>
-            </SidebarMenu>
-          </SidebarGroupContent>
-        </SidebarGroup>
       </SidebarContent>
 
       <SidebarFooter>
