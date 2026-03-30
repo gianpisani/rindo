@@ -14,6 +14,7 @@ export interface Transaction {
   created_at: string;
   card_id: string | null;
   installment_id: string | null;
+  reimbursement_for_category: string | null;
 }
 
 export function useTransactions() {

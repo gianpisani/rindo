@@ -232,6 +232,30 @@ export type Database = {
         }
         Relationships: []
       }
+      monthly_budgets: {
+        Row: {
+          id: string
+          user_id: string
+          total_budget: number
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          user_id: string
+          total_budget: number
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          user_id?: string
+          total_budget?: number
+          created_at?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       fintual_tokens: {
         Row: {
           id: string
@@ -526,6 +550,7 @@ export type Database = {
           user_id: string
           card_id: string | null
           installment_id: string | null
+          reimbursement_for_category: string | null
         }
         Insert: {
           amount: number
@@ -538,6 +563,7 @@ export type Database = {
           user_id: string
           card_id?: string | null
           installment_id?: string | null
+          reimbursement_for_category?: string | null
         }
         Update: {
           amount?: number
@@ -550,6 +576,7 @@ export type Database = {
           user_id?: string
           card_id?: string | null
           installment_id?: string | null
+          reimbursement_for_category?: string | null
         }
         Relationships: [
           {

@@ -28,6 +28,8 @@ export interface MonthlyKPI {
 export interface CategoryBreakdown {
   category: string;
   amount: number;
+  effectiveAmount: number;
+  reimbursedAmount: number;
   count: number;
   percentage: number;
   color: string;
@@ -38,6 +40,14 @@ export interface CategoryBreakdown {
   limitUsage?: number;
   isOverLimit: boolean;
   isNearLimit: boolean;
+}
+
+export interface BudgetSummary {
+  totalBudget: number;
+  totalAllocated: number;
+  totalEffectiveSpent: number;
+  budgetRemaining: number;
+  usagePercentage: number;
 }
 
 export interface DailySpending {
@@ -52,7 +62,8 @@ export function useMonthlySummary(
   transactions: Transaction[],
   categories: Category[],
   limits: CategoryLimit[],
-  selectedMonth: Date
+  selectedMonth: Date,
+  totalBudget?: number
 ) {
   const monthStart = startOfMonth(selectedMonth);
   const monthEnd = endOfMonth(selectedMonth);

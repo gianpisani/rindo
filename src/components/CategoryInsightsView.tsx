@@ -1,4 +1,4 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useCallback } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "./ui/card";
 import { Button } from "./ui/button";
 import { Badge } from "./ui/badge";
@@ -6,8 +6,9 @@ import { Progress } from "./ui/progress";
 import { Alert, AlertDescription } from "./ui/alert";
 import { Input } from "./ui/input";
 import { Label } from "./ui/label";
-import { CategoryDetailModal } from "./CategoryDetailModal";
+import { CategoryDetailExpanded } from "./CategoryDetailExpanded";
 import { useCategoryInsights, CategorySpending } from "@/hooks/useCategoryInsights";
+import { motion, AnimatePresence, LayoutGroup } from "framer-motion";
 import { useCategoryLimits } from "@/hooks/useCategoryLimits";
 import { useTransactions } from "@/hooks/useTransactions";
 import { useCategories } from "@/hooks/useCategories";
@@ -57,7 +58,7 @@ export function CategoryInsightsView() {
   const { limits, upsertLimit, deleteLimit } = useCategoryLimits();
   const [selectedMonth, setSelectedMonth] = useState(new Date());
   const [selectedCategory, setSelectedCategory] = useState<CategorySpending | null>(null);
-  const [isDetailModalOpen, setIsDetailModalOpen] = useState(false);
+  const [disableMorph, setDisableMorph] = useState(false);
   const [isLimitDialogOpen, setIsLimitDialogOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const [activeTab, setActiveTab] = useState<"all" | "with-limit" | "no-limit">("all");
@@ -113,10 +114,14 @@ export function CategoryInsightsView() {
     }
   };
 
-  const handleCategoryClick = (category: CategorySpending) => {
+  const handleCategoryClick = useCallback((category: CategorySpending, fromInsightsModal = false) => {
+    setDisableMorph(fromInsightsModal);
     setSelectedCategory(category);
-    setIsDetailModalOpen(true);
-  };
+  }, []);
+
+  const handleCloseDetail = useCallback(() => {
+    setSelectedCategory(null);
+  }, []);
 
   const handleSetLimit = (category: string) => {
     const existingLimit = limits.find((l) => l.category_name === category);
@@ -203,6 +208,7 @@ export function CategoryInsightsView() {
   }, [categorySpending, monthlyComparison]);
 
   return (
+    <LayoutGroup>
     <div className="space-y-6">
       {/* Month Navigator */}
       <Card>
@@ -542,130 +548,153 @@ export function CategoryInsightsView() {
             ? (spending.amount / spending.limit) * 100
             : 0;
           const hasSpending = spending.count > 0;
+          const isSelected = selectedCategory?.category === spending.category;
 
           return (
-            <Card key={spending.category} className={`hover:shadow-lg transition-shadow ${!hasSpending && 'opacity-75'}`}>
-              <CardContent className="pt-6">
-                <div className="space-y-4">
-                  {/* Header */}
-                  <div className="flex items-start justify-between">
-                    <div className="flex-1">
-                      <div className="flex items-center gap-3">
-                        <h3 className="text-lg font-semibold">{spending.category}</h3>
-                        {hasSpending && getTrendIcon(spending.trend)}
-                        {hasSpending && spending.trend !== "stable" && (
-                          <Badge variant="outline" className="text-xs font-mono tabular-nums">
-                            {spending.trend === "up" ? "+" : "-"}
-                            {spending.trendPercentage.toFixed(0)}%
-                          </Badge>
-                        )}
-                        {!hasSpending && (
-                          <Badge variant="outline" className="text-xs">
-                            Sin actividad este mes
-                          </Badge>
+            <motion.div
+              key={spending.category}
+              layoutId={`cat-card-${spending.category}`}
+              transition={{ type: "spring", stiffness: 350, damping: 30 }}
+              style={{ borderRadius: 8, opacity: isSelected ? 0 : 1 }}
+            >
+              <Card className={`hover:shadow-lg transition-shadow ${!hasSpending && 'opacity-75'} h-full`}>
+                <CardContent className="pt-6">
+                  <div className="space-y-4">
+                    {/* Header */}
+                    <div className="flex items-start justify-between">
+                      <div className="flex-1">
+                        <div className="flex items-center gap-3">
+                          <motion.h3
+                            layoutId={`cat-name-${spending.category}`}
+                            className="text-lg font-semibold"
+                            transition={{ type: "spring", stiffness: 350, damping: 30 }}
+                          >
+                            {spending.category}
+                          </motion.h3>
+                          {hasSpending && getTrendIcon(spending.trend)}
+                          {hasSpending && spending.trend !== "stable" && (
+                            <Badge variant="outline" className="text-xs font-mono tabular-nums">
+                              {spending.trend === "up" ? "+" : "-"}
+                              {spending.trendPercentage.toFixed(0)}%
+                            </Badge>
+                          )}
+                          {!hasSpending && (
+                            <Badge variant="outline" className="text-xs">
+                              Sin actividad este mes
+                            </Badge>
+                          )}
+                        </div>
+                        {hasSpending && (
+                          <div className="text-sm text-muted-foreground mt-1">
+                            {spending.count} transacciones • Promedio{" "}
+                            <span className="font-mono tabular-nums">{formatCurrency(spending.amount / spending.count)}</span>
+                          </div>
                         )}
                       </div>
-                      {hasSpending && (
-                        <div className="text-sm text-muted-foreground mt-1">
-                          {spending.count} transacciones • Promedio{" "}
-                          <span className="font-mono tabular-nums">{formatCurrency(spending.amount / spending.count)}</span>
-                        </div>
-                      )}
-                    </div>
-                    <div className="text-right">
-                      <div className={`text-2xl font-bold font-mono tabular-nums ${!hasSpending && 'text-muted-foreground'}`}>
-                        {formatCurrencyFull(spending.amount)}
-                      </div>
-                      {hasSpending && (
-                        <div className="text-sm text-muted-foreground font-mono tabular-nums">
-                          {spending.percentage.toFixed(1)}% del total
-                        </div>
-                      )}
-                    </div>
-                  </div>
-
-                  {/* Progress bar if limit exists */}
-                  {spending.limit && (
-                    <div className="space-y-2">
-                      <div className="flex items-center justify-between text-sm">
-                        <span className="text-muted-foreground font-mono tabular-nums">
-                          Límite: {formatCurrencyFull(spending.limit)}
-                        </span>
-                        <span
-                          className={`font-mono tabular-nums ${
-                            spending.isOverLimit
-                              ? "text-destructive font-semibold"
-                              : spending.isNearLimit
-                              ? "text-warning font-semibold"
-                              : "text-success"
-                          }`}
+                      <div className="text-right">
+                        <motion.div
+                          layoutId={`cat-amount-${spending.category}`}
+                          className={`text-2xl font-bold font-mono tabular-nums ${!hasSpending && 'text-muted-foreground'}`}
+                          transition={{ type: "spring", stiffness: 350, damping: 30 }}
                         >
-                          {usagePercentage.toFixed(0)}%
-                        </span>
+                          {formatCurrencyFull(spending.amount)}
+                        </motion.div>
+                        {hasSpending && (
+                          <div className="text-sm text-muted-foreground font-mono tabular-nums">
+                            {spending.percentage.toFixed(1)}% del total
+                          </div>
+                        )}
                       </div>
-                      <Progress
-                        value={Math.min(usagePercentage, 100)}
-                        className={
-                          spending.isOverLimit
-                            ? "[&>div]:bg-destructive"
-                            : spending.isNearLimit
-                            ? "[&>div]:bg-warning"
-                            : "[&>div]:bg-success"
-                        }
-                      />
                     </div>
-                  )}
 
-                  {/* Actions */}
-                  <div className="flex gap-2">
-                    {spending.count > 0 ? (
+                    {/* Progress bar if limit exists */}
+                    {spending.limit && (
+                      <div className="space-y-2">
+                        <div className="flex items-center justify-between text-sm">
+                          <span className="text-muted-foreground font-mono tabular-nums">
+                            Límite: {formatCurrencyFull(spending.limit)}
+                          </span>
+                          <span
+                            className={`font-mono tabular-nums ${
+                              spending.isOverLimit
+                                ? "text-destructive font-semibold"
+                                : spending.isNearLimit
+                                ? "text-warning font-semibold"
+                                : "text-success"
+                            }`}
+                          >
+                            {usagePercentage.toFixed(0)}%
+                          </span>
+                        </div>
+                        <Progress
+                          value={Math.min(usagePercentage, 100)}
+                          className={
+                            spending.isOverLimit
+                              ? "[&>div]:bg-destructive"
+                              : spending.isNearLimit
+                              ? "[&>div]:bg-warning"
+                              : "[&>div]:bg-success"
+                          }
+                        />
+                      </div>
+                    )}
+
+                    {/* Actions */}
+                    <div className="flex gap-2">
+                      {spending.count > 0 ? (
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => handleCategoryClick(spending)}
+                          className="flex-1"
+                        >
+                          <Eye className="h-4 w-4 mr-2" />
+                          Ver detalles
+                        </Button>
+                      ) : (
+                        <div className="flex-1 text-sm text-muted-foreground py-2 px-3 bg-muted/50 rounded-md text-center">
+                          Sin transacciones este mes
+                        </div>
+                      )}
                       <Button
                         variant="outline"
                         size="sm"
-                        onClick={() => handleCategoryClick(spending)}
-                        className="flex-1"
+                        onClick={() => handleSetLimit(spending.category)}
                       >
-                        <Eye className="h-4 w-4 mr-2" />
-                        Ver detalles
+                        <Settings className="h-4 w-4 mr-2" />
+                        {spending.limit ? "Ajustar" : "Definir"} límite
                       </Button>
-                    ) : (
-                      <div className="flex-1 text-sm text-muted-foreground py-2 px-3 bg-muted/50 rounded-md text-center">
-                        Sin transacciones este mes
-                      </div>
-                    )}
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => handleSetLimit(spending.category)}
-                    >
-                      <Settings className="h-4 w-4 mr-2" />
-                      {spending.limit ? "Ajustar" : "Definir"} límite
-                    </Button>
-                    {spending.limit && (
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => handleDeleteLimit(spending.category)}
-                        className="text-destructive hover:text-destructive hover:bg-destructive/10"
-                      >
-                        <X className="h-4 w-4" />
-                      </Button>
-                    )}
+                      {spending.limit && (
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => handleDeleteLimit(spending.category)}
+                          className="text-destructive hover:text-destructive hover:bg-destructive/10"
+                        >
+                          <X className="h-4 w-4" />
+                        </Button>
+                      )}
+                    </div>
                   </div>
-                </div>
-              </CardContent>
-            </Card>
+                </CardContent>
+              </Card>
+            </motion.div>
           );
         })}
       </div>
 
-      {/* Category Detail Modal */}
-      <CategoryDetailModal
-        open={isDetailModalOpen}
-        onOpenChange={setIsDetailModalOpen}
-        category={selectedCategory}
-        monthName={monthName}
-      />
+      {/* Category Detail Expanded (morph overlay) */}
+      <AnimatePresence>
+        {selectedCategory && (
+          <CategoryDetailExpanded
+            key={selectedCategory.category}
+            category={selectedCategory}
+            monthName={monthName}
+            onClose={handleCloseDetail}
+            disableMorph={disableMorph}
+          />
+        )}
+      </AnimatePresence>
 
       {/* All Insights Modal */}
       <Dialog open={isInsightsModalOpen} onOpenChange={setIsInsightsModalOpen}>
@@ -713,8 +742,7 @@ export function CategoryInsightsView() {
                             onClick={() => {
                               const cat = categorySpending.find((c) => c.category === insight.category);
                               if (cat) {
-                                setSelectedCategory(cat);
-                                setIsDetailModalOpen(true);
+                                handleCategoryClick(cat, true);
                                 setIsInsightsModalOpen(false);
                               }
                             }}
@@ -860,5 +888,6 @@ export function CategoryInsightsView() {
         </DialogContent>
       </Dialog>
     </div>
+    </LayoutGroup>
   );
 }
