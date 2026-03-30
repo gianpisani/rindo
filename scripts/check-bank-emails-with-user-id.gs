@@ -52,6 +52,10 @@ function checkBankEmails() {
               : '❌ Error: ' + (result.error || '')
         );
 
+        if (result.success && result.parsed) {
+          sendNotificationEmail(result.parsed);
+        }
+
         if (result.success || result.skipped) {
           msg.markRead();
         }
@@ -60,6 +64,40 @@ function checkBankEmails() {
       }
     }
   }
+}
+
+/**
+ * Envía un email de notificación cuando se crea una transacción.
+ * @param {Object} parsed - { amount, type, detail, category, bank }
+ */
+function sendNotificationEmail(parsed) {
+  var emoji = parsed.type === 'Ingreso' ? '💰' : '💳';
+  var amount = '$' + Number(parsed.amount).toLocaleString('es-CL');
+  var subject = emoji + ' ' + parsed.type + ': ' + amount + ' — ' + parsed.detail.replace(/^🤖\s*/, '');
+
+  var body = [
+    '<div style="font-family:-apple-system,system-ui,sans-serif;max-width:480px;margin:0 auto;padding:24px">',
+    '  <div style="background:#18181b;border-radius:12px;padding:24px;color:#fafafa">',
+    '    <h2 style="margin:0 0 4px;font-size:14px;color:#a1a1aa;font-weight:500">rindo.</h2>',
+    '    <h1 style="margin:0 0 20px;font-size:24px;font-weight:700">' + emoji + ' Nuevo ' + parsed.type.toLowerCase() + ' registrado</h1>',
+    '    <div style="background:#27272a;border-radius:8px;padding:16px;margin-bottom:16px">',
+    '      <div style="font-size:32px;font-weight:700;color:#fafafa;margin-bottom:8px">' + amount + '</div>',
+    '      <div style="font-size:14px;color:#a1a1aa">' + parsed.detail.replace(/^🤖\s*/, '') + '</div>',
+    '    </div>',
+    '    <table style="width:100%;font-size:13px;color:#a1a1aa">',
+    '      <tr><td style="padding:4px 0">Categoría</td><td style="text-align:right;color:#fafafa">' + (parsed.category || 'Sin categoría') + '</td></tr>',
+    '      <tr><td style="padding:4px 0">Banco</td><td style="text-align:right;color:#fafafa">' + (parsed.bank || '—') + '</td></tr>',
+    '      <tr><td style="padding:4px 0">Tipo</td><td style="text-align:right;color:#fafafa">' + parsed.type + '</td></tr>',
+    '    </table>',
+    '  </div>',
+    '  <p style="text-align:center;font-size:11px;color:#71717a;margin-top:16px">Creado automáticamente por rindo</p>',
+    '</div>'
+  ].join('\n');
+
+  GmailApp.sendEmail(Session.getEffectiveUser().getEmail(), subject, parsed.type + ': ' + amount + ' — ' + parsed.detail, {
+    htmlBody: body,
+    name: 'rindo.'
+  });
 }
 
 /**
