@@ -6,7 +6,7 @@ import { WhisperInput } from "./WhisperInput";
 import { SidebarProvider, SidebarTrigger, SidebarInset } from "@/components/ui/sidebar";
 import { AppSidebar } from "@/components/AppSidebar";
 import { Button } from "./ui/button";
-import { Eye, EyeOff, Keyboard, Volume2, VolumeOff } from "lucide-react";
+import { Bell, BellOff, Eye, EyeOff, Keyboard, Volume2, VolumeOff } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { usePrivacyMode } from "@/hooks/usePrivacyMode";
 import { useGlobalDrawers } from "@/hooks/useGlobalDrawers";
@@ -17,6 +17,7 @@ import { useSoundFX } from "@/hooks/useSoundFX";
 import { initSounds } from "@/lib/snd";
 import { ShortcutsPopover } from "@/components/ShortcutsPopover";
 import { RindoLogo } from "./RindoLogo";
+import { usePushNotifications } from "@/hooks/usePushNotifications";
 import {
   Tooltip,
   TooltipContent,
@@ -42,6 +43,7 @@ export default function Layout({ children }: LayoutProps) {
     openReconciliation,
   } = useGlobalDrawers();
 
+  const { isSupported: pushSupported, isSubscribed: pushSubscribed, isLoading: pushLoading, subscribe: pushSubscribe, unsubscribe: pushUnsubscribe } = usePushNotifications();
   const [commandBarOpen, setCommandBarOpen] = useState(false);
   const [showShortcutsPopover, setShowShortcutsPopover] = useState(false);
   const [whisperOpen, setWhisperOpen] = useState(false);
@@ -188,6 +190,37 @@ export default function Layout({ children }: LayoutProps) {
                 </span>
               </div>
               <div className="flex items-center gap-3">
+                {pushSupported && (
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <Button
+                        onClick={() => {
+                          if (pushSubscribed) pushUnsubscribe(); else pushSubscribe();
+                        }}
+                        disabled={pushLoading}
+                        variant="ghost"
+                        size="sm"
+                        className={cn(
+                          "rounded-full h-8 w-8 p-0 transition-all duration-200",
+                          pushSubscribed
+                            ? "bg-primary/20 text-primary hover:bg-primary/30"
+                            : "bg-muted/10 text-muted-foreground hover:bg-muted hover:text-foreground"
+                        )}
+                      >
+                        {pushSubscribed ? (
+                          <Bell className="h-4 w-4" />
+                        ) : (
+                          <BellOff className="h-4 w-4" />
+                        )}
+                      </Button>
+                    </TooltipTrigger>
+                    <TooltipContent>
+                      {pushSubscribed
+                        ? "Desactivar notificaciones"
+                        : "Activar notificaciones"}
+                    </TooltipContent>
+                  </Tooltip>
+                )}
                 <Tooltip>
                   <TooltipTrigger asChild>
                     <Button
