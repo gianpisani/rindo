@@ -121,6 +121,18 @@ export function useMonthlySummary(
     };
   }, [currentTransactions, prevTransactions]);
 
+  // Build reimbursement map: category -> total reimbursed amount
+  const reimbursementMap = useMemo(() => {
+    const map = new Map<string, number>();
+    currentTransactions
+      .filter((t) => t.type === "Ingreso" && t.reimbursement_for_category)
+      .forEach((t) => {
+        const cat = t.reimbursement_for_category!;
+        map.set(cat, (map.get(cat) || 0) + Number(t.amount));
+      });
+    return map;
+  }, [currentTransactions]);
+
   const categoryBreakdown = useMemo((): CategoryBreakdown[] => {
     const curExpenses = currentTransactions.filter((t) => t.type === "Gasto");
     const prevExpenses = prevTransactions.filter((t) => t.type === "Gasto");
@@ -146,18 +158,22 @@ export function useMonthlySummary(
     curMap.forEach(({ amount, count }, category) => {
       const cat = categories.find((c) => c.name === category);
       const prevAmount = prevMap.get(category) || 0;
+      const reimbursedAmount = reimbursementMap.get(category) || 0;
+      const effectiveAmount = Math.max(0, amount - reimbursedAmount);
       const change =
         prevAmount > 0
-          ? ((amount - prevAmount) / prevAmount) * 100
-          : amount > 0
+          ? ((effectiveAmount - prevAmount) / prevAmount) * 100
+          : effectiveAmount > 0
           ? 100
           : 0;
       const lim = limits.find((l) => l.category_name === category);
-      const limitUsage = lim ? (amount / lim.monthly_limit) * 100 : undefined;
+      const limitUsage = lim ? (effectiveAmount / lim.monthly_limit) * 100 : undefined;
 
       result.push({
         category,
         amount,
+        effectiveAmount,
+        reimbursedAmount,
         count,
         percentage: totalExp > 0 ? (amount / totalExp) * 100 : 0,
         color: cat?.color || "#6b7280",
@@ -174,7 +190,7 @@ export function useMonthlySummary(
     });
 
     return result.sort((a, b) => b.amount - a.amount);
-  }, [currentTransactions, prevTransactions, categories, limits]);
+  }, [currentTransactions, prevTransactions, categories, limits, reimbursementMap]);
 
   const dailySpending = useMemo((): DailySpending[] => {
     const now = new Date();
@@ -235,6 +251,25 @@ export function useMonthlySummary(
     return map;
   }, [currentTransactions]);
 
+  const budgetSummary = useMemo((): BudgetSummary | null => {
+    if (!totalBudget) return null;
+    const totalAllocated = limits.reduce((s, l) => s + l.monthly_limit, 0);
+    const totalEffectiveSpent = categoryBreakdown.reduce(
+      (s, c) => s + c.effectiveAmount,
+      0
+    );
+    const budgetRemaining = totalBudget - totalEffectiveSpent;
+    const usagePercentage =
+      totalBudget > 0 ? (totalEffectiveSpent / totalBudget) * 100 : 0;
+    return {
+      totalBudget,
+      totalAllocated,
+      totalEffectiveSpent,
+      budgetRemaining,
+      usagePercentage,
+    };
+  }, [totalBudget, limits, categoryBreakdown]);
+
   return {
     kpis,
     categoryBreakdown,
@@ -242,5 +277,6 @@ export function useMonthlySummary(
     dailyStats,
     cardSpending,
     transactionCount: currentTransactions.length,
+    budgetSummary,
   };
 }

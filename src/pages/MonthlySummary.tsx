@@ -12,6 +12,7 @@ import { useTransactions } from "@/hooks/useTransactions";
 import { useCategories } from "@/hooks/useCategories";
 import { useCreditCards } from "@/hooks/useCreditCards";
 import { useCategoryLimits } from "@/hooks/useCategoryLimits";
+import { useMonthlyBudget } from "@/hooks/useMonthlyBudget";
 import { usePrivacyMode } from "@/hooks/usePrivacyMode";
 import {
   useMonthlySummary,
@@ -38,6 +39,7 @@ import {
   Play,
 } from "lucide-react";
 import { MonthlyStory } from "@/components/MonthlyStory";
+import { BudgetWheel } from "@/components/BudgetWheel";
 import {
   PieChart,
   Pie,
@@ -283,11 +285,12 @@ export default function MonthlySummary() {
   const { transactions, isLoading } = useTransactions();
   const { categories } = useCategories();
   const { limits } = useCategoryLimits();
+  const { budget } = useMonthlyBudget();
   const { creditCards } = useCreditCards();
   const { isPrivacyMode } = usePrivacyMode();
 
-  const { kpis, categoryBreakdown, dailySpending, dailyStats, cardSpending, transactionCount } =
-    useMonthlySummary(transactions, categories, limits, selectedMonth);
+  const { kpis, categoryBreakdown, dailySpending, dailyStats, cardSpending, transactionCount, budgetSummary } =
+    useMonthlySummary(transactions, categories, limits, selectedMonth, budget?.total_budget);
 
   // Month navigation
   const changeMonth = (delta: number) => {
@@ -563,6 +566,19 @@ export default function MonthlySummary() {
                 </div>
               </div>
             )}
+
+            {/* ─── Budget Wheel ──────────────────────── */}
+            <BudgetWheel
+              totalBudget={budgetSummary?.totalBudget ?? 0}
+              totalSpent={budgetSummary?.totalEffectiveSpent ?? 0}
+              categoryBreakdown={categoryBreakdown.map((c) => ({
+                category: c.category,
+                allocated: c.limit ?? 0,
+                spent: c.effectiveAmount,
+                color: c.color,
+              }))}
+              isPrivacyMode={isPrivacyMode}
+            />
 
             {/* ─── Row 1: Donut + Comparison ─────────── */}
             <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
@@ -968,14 +984,16 @@ export default function MonthlySummary() {
                             </div>
                           </td>
                           <td className="text-right py-3 px-4">
-                            <span
-                              className={cn(
-                                "text-sm font-mono font-semibold tabular-nums",
-                                isPrivacyMode && "privacy-blur"
+                            <div className={cn(isPrivacyMode && "privacy-blur")}>
+                              <span className="text-sm font-mono font-semibold tabular-nums">
+                                {formatCurrency(cat.effectiveAmount)}
+                              </span>
+                              {cat.reimbursedAmount > 0 && (
+                                <span className="text-[10px] text-emerald-500 ml-1">
+                                  (-{formatCompact(cat.reimbursedAmount)})
+                                </span>
                               )}
-                            >
-                              {formatCurrency(cat.amount)}
-                            </span>
+                            </div>
                           </td>
                           <td className="text-right py-3 px-4 hidden sm:table-cell">
                             <div className="flex items-center justify-end gap-2">

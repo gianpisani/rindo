@@ -45,6 +45,7 @@ import {
   Tag,
   ArrowRightLeft,
   CreditCard,
+  Undo2,
 } from "lucide-react";
 import { Transaction } from "@/hooks/useTransactions";
 import { useFuzzySearch } from "@/hooks/useFuzzySearch";
@@ -541,10 +542,10 @@ export function TransactionsTable({
         },
       },
 
-      // ── Categoría (icono + color dot + nombre) ───────────────────────────
+      // ── Categoría (icono + color dot + nombre + reimbursement link) ────
       {
         accessorKey: "category_name",
-        size: 180, minSize: 160, maxSize: 200,
+        size: 180, minSize: 160, maxSize: 220,
         header: ({ column }) => (
           <div
             className="flex items-center cursor-pointer hover:bg-muted rounded px-2 py-1"
@@ -560,6 +561,8 @@ export function TransactionsTable({
           const categoryName = row.original.category_name;
           const type = row.original.type;
           const isMissing = categoryName === "Sin categoría";
+          const isReimbursement = type === "Ingreso" && categoryName.toLowerCase().includes("reembolso");
+          const linkedCategory = row.original.reimbursement_for_category;
 
           if (categoryName === "⚡ Analizando...") return <AnalyzingBadge />;
 
@@ -567,9 +570,10 @@ export function TransactionsTable({
           const emoji = catData?.icon || getCategoryIcon(categoryName);
           const dotColor = catData?.color || null;
           const filteredCats = categories.filter(c => c.type === type);
+          const expenseCategories = categories.filter(c => c.type === "Gasto");
 
           return (
-            <div className={cn("overflow-hidden", isPrivacyMode && "privacy-blur")}>
+            <div className={cn("overflow-hidden space-y-0.5", isPrivacyMode && "privacy-blur")}>
               <SelectableCell
                 value={categoryName}
                 options={filteredCats.map(c => ({ value: c.name, label: c.name }))}
@@ -596,6 +600,29 @@ export function TransactionsTable({
                 )}
                 className="max-w-full overflow-hidden"
               />
+              {/* Reimbursement link for Reembolsos */}
+              {isReimbursement && (
+                <SelectableCell
+                  value={linkedCategory || ""}
+                  options={[
+                    { value: "", label: "Sin vincular" },
+                    ...expenseCategories.map(c => ({ value: c.name, label: c.name })),
+                  ]}
+                  onSave={(val) => handleInlineUpdate(row.original.id, "reimbursement_for_category", val || null)}
+                  renderValue={(val) => (
+                    <div className="flex items-center gap-1 min-w-0">
+                      <Undo2 className="h-3 w-3 flex-shrink-0 text-emerald-500" />
+                      <span className={cn(
+                        "text-[11px] truncate",
+                        val ? "text-emerald-600 font-medium" : "text-muted-foreground/60 italic"
+                      )}>
+                        {val || "Vincular a gasto..."}
+                      </span>
+                    </div>
+                  )}
+                  className="max-w-full overflow-hidden px-1"
+                />
+              )}
             </div>
           );
         },

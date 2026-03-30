@@ -7,6 +7,8 @@ import { es } from "date-fns/locale";
 export interface CategorySpending {
   category: string;
   amount: number;
+  effectiveAmount: number;
+  reimbursedAmount: number;
   count: number;
   percentage: number;
   limit?: number;
@@ -75,6 +77,26 @@ export function useCategoryInsights(
     return Array.from(categorySet);
   }, [transactions, limits]);
 
+  // Build reimbursement map from current month income transactions
+  const reimbursementMap = useMemo(() => {
+    const map = new Map<string, number>();
+    transactions
+      .filter((t) => {
+        const date = new Date(t.date);
+        return (
+          t.type === "Ingreso" &&
+          t.reimbursement_for_category &&
+          date >= monthStart &&
+          date <= monthEnd
+        );
+      })
+      .forEach((t) => {
+        const cat = t.reimbursement_for_category!;
+        map.set(cat, (map.get(cat) || 0) + Number(t.amount));
+      });
+    return map;
+  }, [transactions, monthStart, monthEnd]);
+
   // Calculate spending by category for current month
   const categorySpending = useMemo((): CategorySpending[] => {
     const spendingMap = new Map<string, CategorySpending>();
@@ -86,6 +108,8 @@ export function useCategoryInsights(
       spendingMap.set(category, {
         category,
         amount: 0,
+        effectiveAmount: 0,
+        reimbursedAmount: 0,
         count: 0,
         percentage: 0,
         limit: limit?.monthly_limit,
@@ -121,19 +145,23 @@ export function useCategoryInsights(
     // Calculate percentages, limits, and trends
     const result: CategorySpending[] = [];
     spendingMap.forEach((spending) => {
+      // Apply reimbursements
+      spending.reimbursedAmount = reimbursementMap.get(spending.category) || 0;
+      spending.effectiveAmount = Math.max(0, spending.amount - spending.reimbursedAmount);
+
       spending.percentage = totalSpending > 0 ? (spending.amount / totalSpending) * 100 : 0;
 
-      // Check limits
+      // Check limits using effective amount
       if (spending.limit) {
-        const usagePercentage = spending.amount > 0 ? (spending.amount / spending.limit) * 100 : 0;
+        const usagePercentage = spending.effectiveAmount > 0 ? (spending.effectiveAmount / spending.limit) * 100 : 0;
         spending.isOverLimit = usagePercentage > 100;
         spending.isNearLimit = usagePercentage >= (spending.alertPercentage || 80) && !spending.isOverLimit;
       }
 
-      // Calculate trend
+      // Calculate trend using effective amounts
       const prevAmount = prevSpendingMap.get(spending.category) || 0;
-      if (prevAmount > 0 && spending.amount > 0) {
-        const change = ((spending.amount - prevAmount) / prevAmount) * 100;
+      if (prevAmount > 0 && spending.effectiveAmount > 0) {
+        const change = ((spending.effectiveAmount - prevAmount) / prevAmount) * 100;
         spending.trendPercentage = Math.abs(change);
         if (change > 5) {
           spending.trend = "up";
@@ -142,12 +170,10 @@ export function useCategoryInsights(
         } else {
           spending.trend = "stable";
         }
-      } else if (prevAmount > 0 && spending.amount === 0) {
-        // Had spending before, now zero
+      } else if (prevAmount > 0 && spending.effectiveAmount === 0) {
         spending.trend = "down";
         spending.trendPercentage = 100;
-      } else if (prevAmount === 0 && spending.amount > 0) {
-        // No spending before, now has spending
+      } else if (prevAmount === 0 && spending.effectiveAmount > 0) {
         spending.trend = "up";
         spending.trendPercentage = 100;
       }
@@ -162,7 +188,7 @@ export function useCategoryInsights(
       if (a.amount > 0 && b.amount > 0) return b.amount - a.amount;
       return a.category.localeCompare(b.category);
     });
-  }, [currentMonthTransactions, previousMonthTransactions, limits, allCategories]);
+  }, [currentMonthTransactions, previousMonthTransactions, limits, allCategories, reimbursementMap]);
 
   // Get last 6 months comparison
   const monthlyComparison = useMemo((): MonthlyComparison[] => {
@@ -197,33 +223,33 @@ export function useCategoryInsights(
   const insights = useMemo((): CategoryInsight[] => {
     const insights: CategoryInsight[] = [];
 
-    // Alerts for over limit
+    // Alerts for over limit (using effectiveAmount)
     categorySpending.forEach((spending) => {
       if (spending.isOverLimit) {
         insights.push({
           type: "alert",
           title: `Límite superado en ${spending.category}`,
-          description: `Has gastado $${spending.amount.toLocaleString("es-CL")} de $${spending.limit?.toLocaleString("es-CL")} (${((spending.amount / (spending.limit || 1)) * 100).toFixed(0)}%)`,
+          description: `Has gastado $${spending.effectiveAmount.toLocaleString("es-CL")} de $${spending.limit?.toLocaleString("es-CL")} (${((spending.effectiveAmount / (spending.limit || 1)) * 100).toFixed(0)}%)`,
           category: spending.category,
-          impact: spending.amount - (spending.limit || 0),
+          impact: spending.effectiveAmount - (spending.limit || 0),
         });
       } else if (spending.isNearLimit) {
         insights.push({
           type: "alert",
           title: `Cerca del límite en ${spending.category}`,
-          description: `Has gastado $${spending.amount.toLocaleString("es-CL")} de $${spending.limit?.toLocaleString("es-CL")} (${((spending.amount / (spending.limit || 1)) * 100).toFixed(0)}%)`,
+          description: `Has gastado $${spending.effectiveAmount.toLocaleString("es-CL")} de $${spending.limit?.toLocaleString("es-CL")} (${((spending.effectiveAmount / (spending.limit || 1)) * 100).toFixed(0)}%)`,
           category: spending.category,
         });
       }
     });
 
-    // Achievements for staying under budget
+    // Achievements for staying under budget (using effectiveAmount)
     categorySpending.forEach((spending) => {
-      if (spending.limit && spending.amount < spending.limit * 0.9) {
+      if (spending.limit && spending.effectiveAmount < spending.limit * 0.9) {
         insights.push({
           type: "achievement",
           title: `Bien hecho en ${spending.category}`,
-          description: `Te quedan $${(spending.limit - spending.amount).toLocaleString("es-CL")} del presupuesto`,
+          description: `Te quedan $${(spending.limit - spending.effectiveAmount).toLocaleString("es-CL")} del presupuesto`,
           category: spending.category,
         });
       }
@@ -276,6 +302,6 @@ export function useCategoryInsights(
     insights,
     currentMonth,
     previousMonth,
-    totalSpending: categorySpending.reduce((sum, c) => sum + c.amount, 0),
+    totalSpending: categorySpending.reduce((sum, c) => sum + c.effectiveAmount, 0),
   };
 }

@@ -1,34 +1,22 @@
 import { useState, useMemo, useCallback } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "./ui/card";
 import { Button } from "./ui/button";
-import { Badge } from "./ui/badge";
 import { Progress } from "./ui/progress";
-import { Alert, AlertDescription } from "./ui/alert";
 import { Input } from "./ui/input";
 import { Label } from "./ui/label";
-import { CategoryDetailExpanded } from "./CategoryDetailExpanded";
-import { useCategoryInsights, CategorySpending } from "@/hooks/useCategoryInsights";
-import { motion, AnimatePresence, LayoutGroup } from "framer-motion";
+import { useCategoryInsights } from "@/hooks/useCategoryInsights";
 import { useCategoryLimits } from "@/hooks/useCategoryLimits";
+import { useMonthlyBudget } from "@/hooks/useMonthlyBudget";
 import { useTransactions } from "@/hooks/useTransactions";
 import { useCategories } from "@/hooks/useCategories";
 import {
-  TrendingUp,
-  TrendingDown,
-  Minus,
-  AlertTriangle,
-  CheckCircle,
-  Lightbulb,
   Target,
   ChevronLeft,
   ChevronRight,
-  Settings,
-  Eye,
-  Search,
   Plus,
   X,
-  Info,
-  Bell,
+  Pencil,
+  Check,
 } from "lucide-react";
 import { format, addMonths, subMonths } from "date-fns";
 import { es } from "date-fns/locale";
@@ -39,7 +27,6 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
-  DialogTrigger,
 } from "./ui/dialog";
 import {
   Select,
@@ -50,79 +37,59 @@ import {
 } from "./ui/select";
 import { LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer, Legend } from "recharts";
 import { CHART_COLORS } from "@/lib/chart-config";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "./ui/tabs";
 
 export function CategoryInsightsView() {
   const { transactions } = useTransactions();
   const { categories } = useCategories();
   const { limits, upsertLimit, deleteLimit } = useCategoryLimits();
+  const { budget, upsertBudget } = useMonthlyBudget();
   const [selectedMonth, setSelectedMonth] = useState(new Date());
-  const [selectedCategory, setSelectedCategory] = useState<CategorySpending | null>(null);
-  const [disableMorph, setDisableMorph] = useState(false);
   const [isLimitDialogOpen, setIsLimitDialogOpen] = useState(false);
-  const [searchQuery, setSearchQuery] = useState("");
-  const [activeTab, setActiveTab] = useState<"all" | "with-limit" | "no-limit">("all");
-  const [isInsightsModalOpen, setIsInsightsModalOpen] = useState(false);
+  const [editingBudget, setEditingBudget] = useState(false);
+  const [budgetInput, setBudgetInput] = useState("");
   const [limitFormData, setLimitFormData] = useState({
     category: "",
     limit: "",
     alertPercentage: 80,
   });
 
-  const { categorySpending, monthlyComparison, insights, totalSpending } = useCategoryInsights(
+  const { categorySpending, monthlyComparison, totalSpending } = useCategoryInsights(
     transactions,
     limits,
     selectedMonth
   );
 
-  const formatCurrency = (value: number) => {
-    return new Intl.NumberFormat("es-CL", {
+  const formatCurrency = (value: number) =>
+    new Intl.NumberFormat("es-CL", {
       style: "currency",
       currency: "CLP",
       notation: "compact",
     }).format(value);
-  };
 
-  const formatCurrencyFull = (value: number) => {
-    return new Intl.NumberFormat("es-CL", {
+  const formatCurrencyFull = (value: number) =>
+    new Intl.NumberFormat("es-CL", {
       style: "currency",
       currency: "CLP",
     }).format(value);
-  };
 
-  const getTrendIcon = (trend: "up" | "down" | "stable") => {
-    switch (trend) {
-      case "up":
-        return <TrendingUp className="h-4 w-4 text-destructive" />;
-      case "down":
-        return <TrendingDown className="h-4 w-4 text-success" />;
-      default:
-        return <Minus className="h-4 w-4 text-muted-foreground" />;
+  // Budget management
+  const totalAllocated = limits.reduce((s, l) => s + l.monthly_limit, 0);
+  const unallocated = (budget?.total_budget || 0) - totalAllocated;
+
+  const handleSaveBudget = async () => {
+    const value = parseInt(budgetInput.replace(/\D/g, ""), 10);
+    if (!isNaN(value) && value > 0) {
+      await upsertBudget.mutateAsync(value);
     }
+    setEditingBudget(false);
   };
 
-  const getInsightIcon = (type: string) => {
-    switch (type) {
-      case "alert":
-        return <AlertTriangle className="h-5 w-5 text-destructive" />;
-      case "achievement":
-        return <CheckCircle className="h-5 w-5 text-success" />;
-      case "opportunity":
-        return <Lightbulb className="h-5 w-5 text-warning" />;
-      default:
-        return <Target className="h-5 w-5 text-info" />;
-    }
+  const startEditBudget = () => {
+    setBudgetInput(budget?.total_budget?.toString() || "");
+    setEditingBudget(true);
   };
 
-  const handleCategoryClick = useCallback((category: CategorySpending, fromInsightsModal = false) => {
-    setDisableMorph(fromInsightsModal);
-    setSelectedCategory(category);
-  }, []);
-
-  const handleCloseDetail = useCallback(() => {
-    setSelectedCategory(null);
-  }, []);
-
+  // Limit CRUD
   const handleSetLimit = (category: string) => {
     const existingLimit = limits.find((l) => l.category_name === category);
     setLimitFormData({
@@ -135,13 +102,11 @@ export function CategoryInsightsView() {
 
   const handleSaveLimit = async () => {
     if (!limitFormData.category || !limitFormData.limit) return;
-
     await upsertLimit.mutateAsync({
       category_name: limitFormData.category,
       monthly_limit: parseFloat(limitFormData.limit),
       alert_at_percentage: limitFormData.alertPercentage,
     });
-
     setIsLimitDialogOpen(false);
     setLimitFormData({ category: "", limit: "", alertPercentage: 80 });
   };
@@ -152,28 +117,6 @@ export function CategoryInsightsView() {
     await deleteLimit.mutateAsync(limit.id);
   };
 
-  // Filter categories based on search and tab
-  const filteredCategories = useMemo(() => {
-    let filtered = categorySpending;
-
-    // Filter by search
-    if (searchQuery.trim()) {
-      filtered = filtered.filter((cat) =>
-        cat.category.toLowerCase().includes(searchQuery.toLowerCase())
-      );
-    }
-
-    // Filter by tab
-    if (activeTab === "with-limit") {
-      filtered = filtered.filter((cat) => cat.limit !== undefined);
-    } else if (activeTab === "no-limit") {
-      filtered = filtered.filter((cat) => cat.limit === undefined);
-    }
-
-    return filtered;
-  }, [categorySpending, searchQuery, activeTab]);
-
-  // Get expense categories from categories list
   const expenseCategories = useMemo(() => {
     return categories
       .filter((c) => c.type === "Gasto")
@@ -182,8 +125,27 @@ export function CategoryInsightsView() {
   }, [categories]);
 
   const monthName = format(selectedMonth, "MMMM yyyy", { locale: es });
+  const isCurrentMonth = format(selectedMonth, "yyyy-MM") === format(new Date(), "yyyy-MM");
 
-  // Prepare data for multi-month comparison chart - ALL categories
+  // Categories with limits (for the grid)
+  const categoriesWithLimits = categorySpending.filter((c) => c.limit);
+  const categoriesWithoutLimits = categorySpending.filter((c) => !c.limit && c.count > 0);
+
+  // Distribution bar segments
+  const distributionSegments = useMemo(() => {
+    if (!budget?.total_budget) return [];
+    const total = budget.total_budget;
+    return categoriesWithLimits.map((cat) => {
+      const catObj = categories.find((c) => c.name === cat.category);
+      return {
+        category: cat.category,
+        percentage: (cat.limit! / total) * 100,
+        color: catObj?.color || "#6b7280",
+      };
+    });
+  }, [budget, categoriesWithLimits, categories]);
+
+  // Chart data
   const comparisonChartData = monthlyComparison.map((month) => {
     const data: Record<string, string | number> = { month: month.month };
     categorySpending.forEach((cat) => {
@@ -192,7 +154,6 @@ export function CategoryInsightsView() {
     return data;
   });
 
-  // Get top 5 categories for the chart (based on any activity in last 6 months)
   const top5Categories = useMemo(() => {
     const categorySums = categorySpending.map((cat) => {
       const total = monthlyComparison.reduce((sum, month) => {
@@ -208,71 +169,353 @@ export function CategoryInsightsView() {
   }, [categorySpending, monthlyComparison]);
 
   return (
-    <LayoutGroup>
     <div className="space-y-6">
-      {/* Month Navigator */}
+      {/* ─── Section 1: Budget Header ─────────────────────── */}
       <Card>
         <CardHeader>
           <div className="flex flex-col md:flex-row gap-4 md:items-center justify-between">
             <div>
-              <CardTitle className="text-2xl capitalize">{monthName}</CardTitle>
-              <CardDescription>Análisis detallado de gastos por categoría</CardDescription>
+              <CardTitle className="text-2xl flex items-center gap-2">
+                <Target className="h-5 w-5 text-primary" />
+                Presupuesto
+              </CardTitle>
+              <CardDescription>
+                Define tu presupuesto mensual y distribúyelo por categoría
+              </CardDescription>
             </div>
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-2 ml-auto md:ml-0">
+              <Button
+                variant="outline"
+                size="icon"
+                onClick={() => setSelectedMonth(subMonths(selectedMonth, 1))}
+              >
+                <ChevronLeft className="h-4 w-4" />
+              </Button>
               <Button
                 variant="outline"
                 size="sm"
-                onClick={() => {
-                  setLimitFormData({ category: "", limit: "", alertPercentage: 80 });
-                  setIsLimitDialogOpen(true);
-                }}
-                className="hidden md:flex"
+                onClick={() => setSelectedMonth(new Date())}
+                className="min-w-[140px] capitalize"
               >
-                <Plus className="h-4 w-4 mr-2" />
-                Agregar límite
+                {monthName}
               </Button>
-              <div className="flex items-center gap-2 ml-auto md:ml-0">
-                <Button
-                  variant="outline"
-                  size="icon"
-                  onClick={() => setSelectedMonth(subMonths(selectedMonth, 1))}
-                >
-                  <ChevronLeft className="h-4 w-4" />
-                </Button>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => setSelectedMonth(new Date())}
-                >
-                  Hoy
-                </Button>
-                <Button
-                  variant="outline"
-                  size="icon"
-                  onClick={() => setSelectedMonth(addMonths(selectedMonth, 1))}
-                  disabled={selectedMonth >= new Date()}
-                >
-                  <ChevronRight className="h-4 w-4" />
-                </Button>
-              </div>
+              <Button
+                variant="outline"
+                size="icon"
+                onClick={() => setSelectedMonth(addMonths(selectedMonth, 1))}
+                disabled={isCurrentMonth}
+              >
+                <ChevronRight className="h-4 w-4" />
+              </Button>
             </div>
           </div>
         </CardHeader>
-        <CardContent>
-          <div className="flex items-center justify-between">
-            <div>
-              <div className="text-sm text-muted-foreground">Total gastado</div>
-              <div className="text-3xl font-bold font-mono tabular-nums">{formatCurrencyFull(totalSpending)}</div>
-            </div>
-            <div className="text-right">
-              <div className="text-sm text-muted-foreground">Categorías activas</div>
-              <div className="text-3xl font-bold">{categorySpending.length}</div>
+        <CardContent className="space-y-4">
+          {/* Budget Total */}
+          <div className="flex items-center gap-4">
+            <div className="flex-1">
+              <div className="text-sm text-muted-foreground mb-1">
+                Presupuesto total mensual
+              </div>
+              {editingBudget ? (
+                <div className="flex items-center gap-2">
+                  <div className="relative flex-1 max-w-[240px]">
+                    <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground">
+                      $
+                    </span>
+                    <Input
+                      value={
+                        budgetInput
+                          ? parseInt(budgetInput.replace(/\D/g, ""), 10).toLocaleString("es-CL")
+                          : ""
+                      }
+                      onChange={(e) =>
+                        setBudgetInput(e.target.value.replace(/\D/g, ""))
+                      }
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter") handleSaveBudget();
+                        if (e.key === "Escape") setEditingBudget(false);
+                      }}
+                      className="pl-7 text-lg font-bold font-mono h-10"
+                      autoFocus
+                    />
+                  </div>
+                  <Button size="icon" variant="ghost" onClick={handleSaveBudget}>
+                    <Check className="h-4 w-4" />
+                  </Button>
+                  <Button
+                    size="icon"
+                    variant="ghost"
+                    onClick={() => setEditingBudget(false)}
+                  >
+                    <X className="h-4 w-4" />
+                  </Button>
+                </div>
+              ) : (
+                <div className="flex items-center gap-2">
+                  <span className="text-3xl font-bold font-mono tabular-nums">
+                    {budget?.total_budget
+                      ? formatCurrencyFull(budget.total_budget)
+                      : "Sin definir"}
+                  </span>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="h-8 w-8"
+                    onClick={startEditBudget}
+                  >
+                    <Pencil className="h-3.5 w-3.5" />
+                  </Button>
+                </div>
+              )}
             </div>
           </div>
+
+          {/* Distribution bar */}
+          {budget?.total_budget && budget.total_budget > 0 && (
+            <div className="space-y-2">
+              <div className="h-3 rounded-full overflow-hidden bg-muted/60 flex">
+                {distributionSegments.map((seg) => (
+                  <div
+                    key={seg.category}
+                    className="h-full transition-all duration-300 first:rounded-l-full last:rounded-r-full"
+                    style={{
+                      width: `${Math.min(seg.percentage, 100)}%`,
+                      backgroundColor: seg.color,
+                    }}
+                    title={`${seg.category}: ${seg.percentage.toFixed(0)}%`}
+                  />
+                ))}
+                {unallocated > 0 && (
+                  <div
+                    className="h-full bg-muted-foreground/10"
+                    style={{
+                      width: `${(unallocated / budget.total_budget) * 100}%`,
+                    }}
+                    title={`Sin asignar: ${formatCurrency(unallocated)}`}
+                  />
+                )}
+              </div>
+              {/* Stats row */}
+              <div className="flex items-center gap-6 text-xs text-muted-foreground">
+                <div>
+                  Asignado:{" "}
+                  <span className="font-semibold text-foreground font-mono tabular-nums">
+                    {formatCurrency(totalAllocated)}
+                  </span>
+                </div>
+                <div>
+                  Sin asignar:{" "}
+                  <span
+                    className={`font-semibold font-mono tabular-nums ${
+                      unallocated < 0 ? "text-rose-500" : "text-foreground"
+                    }`}
+                  >
+                    {formatCurrency(Math.max(0, unallocated))}
+                  </span>
+                </div>
+                <div>
+                  Gastado este mes:{" "}
+                  <span className="font-semibold text-foreground font-mono tabular-nums">
+                    {formatCurrency(totalSpending)}
+                  </span>
+                </div>
+              </div>
+            </div>
+          )}
         </CardContent>
       </Card>
 
-      {/* Multi-Month Comparison Chart - First */}
+      {/* ─── Section 2: Category Grid ─────────────────────── */}
+      <div>
+        <div className="flex items-center justify-between mb-4">
+          <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider">
+            Categorías con presupuesto
+          </h3>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => {
+              setLimitFormData({
+                category: "",
+                limit: "",
+                alertPercentage: 80,
+              });
+              setIsLimitDialogOpen(true);
+            }}
+          >
+            <Plus className="h-4 w-4 mr-2" />
+            Agregar categoría
+          </Button>
+        </div>
+
+        {categoriesWithLimits.length > 0 ? (
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+            {categoriesWithLimits.map((cat) => {
+              const usagePercentage = cat.limit
+                ? (cat.effectiveAmount / cat.limit) * 100
+                : 0;
+              const remaining = (cat.limit || 0) - cat.effectiveAmount;
+              const catObj = categories.find((c) => c.name === cat.category);
+              const color = catObj?.color || "#6b7280";
+
+              return (
+                <Card
+                  key={cat.category}
+                  className="hover:shadow-md transition-shadow"
+                >
+                  <CardContent className="pt-5 pb-4 space-y-3">
+                    {/* Name + color */}
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-2">
+                        <div
+                          className="w-3 h-3 rounded-full flex-shrink-0"
+                          style={{ backgroundColor: color }}
+                        />
+                        <span className="text-sm font-semibold">{cat.category}</span>
+                      </div>
+                      <div className="flex items-center gap-1">
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="h-7 w-7 p-0"
+                          onClick={() => handleSetLimit(cat.category)}
+                        >
+                          <Pencil className="h-3 w-3" />
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="h-7 w-7 p-0 text-muted-foreground hover:text-destructive"
+                          onClick={() => handleDeleteLimit(cat.category)}
+                        >
+                          <X className="h-3 w-3" />
+                        </Button>
+                      </div>
+                    </div>
+
+                    {/* Amount + limit */}
+                    <div className="flex items-baseline justify-between">
+                      <span className="text-lg font-bold font-mono tabular-nums">
+                        {formatCurrencyFull(cat.effectiveAmount)}
+                      </span>
+                      <span className="text-xs text-muted-foreground font-mono tabular-nums">
+                        de {formatCurrency(cat.limit!)}
+                      </span>
+                    </div>
+
+                    {/* Progress */}
+                    <Progress
+                      value={Math.min(usagePercentage, 100)}
+                      className={`h-2 ${
+                        cat.isOverLimit
+                          ? "[&>div]:bg-destructive"
+                          : cat.isNearLimit
+                          ? "[&>div]:bg-amber-500"
+                          : "[&>div]:bg-emerald-500"
+                      }`}
+                    />
+
+                    {/* Remaining */}
+                    <div className="flex items-center justify-between text-xs">
+                      <span
+                        className={`font-semibold font-mono tabular-nums ${
+                          remaining < 0 ? "text-rose-500" : "text-emerald-600"
+                        }`}
+                      >
+                        {remaining >= 0
+                          ? `${formatCurrency(remaining)} restante`
+                          : `${formatCurrency(Math.abs(remaining))} excedido`}
+                      </span>
+                      <span
+                        className={`font-mono tabular-nums ${
+                          cat.isOverLimit
+                            ? "text-rose-500"
+                            : cat.isNearLimit
+                            ? "text-amber-500"
+                            : "text-muted-foreground"
+                        }`}
+                      >
+                        {usagePercentage.toFixed(0)}%
+                      </span>
+                    </div>
+
+                    {/* Reimbursement info */}
+                    {cat.reimbursedAmount > 0 && (
+                      <div className="text-[11px] text-emerald-600 bg-emerald-500/10 px-2 py-1 rounded">
+                        Reembolso aplicado: {formatCurrency(cat.reimbursedAmount)}
+                      </div>
+                    )}
+                  </CardContent>
+                </Card>
+              );
+            })}
+          </div>
+        ) : (
+          <Card>
+            <CardContent className="py-8">
+              <div className="text-center text-sm text-muted-foreground">
+                <Target className="h-8 w-8 mx-auto mb-2 opacity-50" />
+                <p>No hay categorías con presupuesto asignado</p>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="mt-3"
+                  onClick={() => {
+                    setLimitFormData({
+                      category: "",
+                      limit: "",
+                      alertPercentage: 80,
+                    });
+                    setIsLimitDialogOpen(true);
+                  }}
+                >
+                  <Plus className="h-3 w-3 mr-2" />
+                  Asignar primera categoría
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+        )}
+
+        {/* Categories without limits (if they have spending) */}
+        {categoriesWithoutLimits.length > 0 && (
+          <div className="mt-4">
+            <h4 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-3">
+              Sin presupuesto asignado
+            </h4>
+            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-2">
+              {categoriesWithoutLimits.map((cat) => {
+                const catObj = categories.find((c) => c.name === cat.category);
+                const color = catObj?.color || "#6b7280";
+                return (
+                  <button
+                    key={cat.category}
+                    onClick={() => handleSetLimit(cat.category)}
+                    className="flex items-center gap-2 p-2.5 rounded-lg border border-border/50 bg-card hover:bg-muted/50 transition-colors text-left group"
+                  >
+                    <div
+                      className="w-2 h-2 rounded-full flex-shrink-0"
+                      style={{ backgroundColor: color }}
+                    />
+                    <div className="flex-1 min-w-0">
+                      <span className="text-xs font-medium truncate block">
+                        {cat.category}
+                      </span>
+                      <span className="text-[11px] text-muted-foreground font-mono tabular-nums">
+                        {formatCurrency(cat.effectiveAmount)}
+                      </span>
+                    </div>
+                    <Plus className="h-3 w-3 text-muted-foreground/40 group-hover:text-primary transition-colors flex-shrink-0" />
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+        )}
+      </div>
+
+      {/* ─── Section 3: Evolution Chart ───────────────────── */}
       {comparisonChartData.length > 1 && top5Categories.length > 0 && (
         <Card>
           <CardHeader>
@@ -297,12 +540,12 @@ export function CategoryInsightsView() {
                     boxShadow: "0 10px 15px -3px rgb(0 0 0 / 0.1)",
                     padding: "12px",
                   }}
-                  labelStyle={{ 
+                  labelStyle={{
                     color: "#0f172a",
                     fontWeight: 600,
                   }}
                   itemStyle={{
-                    fontWeight: 600
+                    fontWeight: 600,
                   }}
                 />
                 <Legend wrapperStyle={{ fontSize: "12px" }} />
@@ -322,460 +565,17 @@ export function CategoryInsightsView() {
         </Card>
       )}
 
-      {/* Insights - Minimalist version in 2 columns */}
-      {insights.length > 0 && (
-        <div className="grid md:grid-cols-2 gap-4">
-          {/* Alerts & Patterns */}
-          <Card>
-            <CardHeader className="pb-3">
-              <CardTitle className="flex items-center gap-2 text-base">
-                <AlertTriangle className="h-4 w-4" />
-                Alertas e Insights
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="space-y-2">
-                {insights.slice(0, 4).map((insight, idx) => (
-                  <div
-                    key={idx}
-                    className={`p-3 rounded-lg border cursor-pointer hover:shadow-md transition-shadow ${
-                      insight.type === "alert"
-                        ? "border-destructive/50 bg-destructive/10"
-                        : insight.type === "achievement"
-                        ? "border-success/50 bg-success/10"
-                        : insight.type === "opportunity"
-                        ? "border-warning/50 bg-warning/10"
-                        : "border-info/50 bg-info/10"
-                    }`}
-                    onClick={() => navigate("/category-insights")}
-                  >
-                    <div className="flex items-start gap-2">
-                      {getInsightIcon(insight.type)}
-                      <div className="flex-1 min-w-0">
-                        <div className="font-semibold text-sm">{insight.title}</div>
-                        <div className="text-xs text-muted-foreground mt-0.5 line-clamp-1">
-                          {insight.description}
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                ))}
-                {insights.length > 4 && (
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    className="w-full text-xs"
-                    onClick={() => setIsInsightsModalOpen(true)}
-                  >
-                    Ver todos ({insights.length})
-                  </Button>
-                )}
-              </div>
-            </CardContent>
-          </Card>
-
-          {/* Limits Summary */}
-          <Card>
-            <CardHeader className="pb-3">
-              <div className="flex items-center justify-between">
-                <CardTitle className="flex items-center gap-2 text-base">
-                  <Target className="h-4 w-4" />
-                  Límites Configurados
-                </CardTitle>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => {
-                    setLimitFormData({ category: "", limit: "", alertPercentage: 80 });
-                    setIsLimitDialogOpen(true);
-                  }}
-                  className="h-7 text-xs"
-                >
-                  <Plus className="h-3 w-3 mr-1" />
-                  Agregar
-                </Button>
-              </div>
-            </CardHeader>
-            <CardContent>
-              {categorySpending.filter((c) => c.limit).length > 0 ? (
-                <div className="space-y-2">
-                  {categorySpending
-                    .filter((c) => c.limit)
-                    .slice(0, 4)
-                    .map((cat) => {
-                      const usagePercentage = cat.limit
-                        ? (cat.amount / cat.limit) * 100
-                        : 0;
-                      return (
-                        <div
-                          key={cat.category}
-                          className="p-3 rounded-lg border bg-muted/30 hover:bg-muted/50 transition-colors cursor-pointer"
-                          onClick={() => handleCategoryClick(cat)}
-                        >
-                          <div className="flex items-center justify-between mb-2">
-                            <span className="text-sm font-semibold">{cat.category}</span>
-                            <span
-                              className={`text-xs font-bold font-mono tabular-nums ${
-                                cat.isOverLimit
-                                  ? "text-destructive"
-                                  : cat.isNearLimit
-                                  ? "text-warning"
-                                  : "text-success"
-                              }`}
-                            >
-                              {usagePercentage.toFixed(0)}%
-                            </span>
-                          </div>
-                          <Progress
-                            value={Math.min(usagePercentage, 100)}
-                            className={`h-1.5 ${
-                              cat.isOverLimit
-                                ? "[&>div]:bg-destructive"
-                                : cat.isNearLimit
-                                ? "[&>div]:bg-warning"
-                                : "[&>div]:bg-success"
-                            }`}
-                          />
-                          <div className="flex items-center justify-between mt-1">
-                            <span className="text-xs text-muted-foreground font-mono tabular-nums">
-                              {formatCurrency(cat.amount)} / {formatCurrency(cat.limit!)}
-                            </span>
-                          </div>
-                        </div>
-                      );
-                    })}
-                  {categorySpending.filter((c) => c.limit).length > 4 && (
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      className="w-full text-xs"
-                      onClick={() => {
-                        setActiveTab("with-limit");
-                        navigate("/category-insights");
-                      }}
-                    >
-                      Ver todos ({categorySpending.filter((c) => c.limit).length})
-                    </Button>
-                  )}
-                </div>
-              ) : (
-                <div className="text-center py-6 text-sm text-muted-foreground">
-                  <Target className="h-8 w-8 mx-auto mb-2 opacity-50" />
-                  <p>No hay límites configurados</p>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    className="mt-3"
-                    onClick={() => {
-                      setLimitFormData({ category: "", limit: "", alertPercentage: 80 });
-                      setIsLimitDialogOpen(true);
-                    }}
-                  >
-                    <Plus className="h-3 w-3 mr-2" />
-                    Configurar primer límite
-                  </Button>
-                </div>
-              )}
-            </CardContent>
-          </Card>
-        </div>
-      )}
-
-      {/* Search and Filter */}
-      <Card>
-        <CardContent className="pt-6">
-          <div className="flex flex-col md:flex-row gap-4 items-start md:items-center justify-between">
-            <div className="relative flex-1 w-full md:max-w-md">
-              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-              <Input
-                placeholder="Buscar categoría..."
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                className="pl-10 pr-10"
-              />
-              {searchQuery && (
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => setSearchQuery("")}
-                  className="absolute right-1 top-1/2 transform -translate-y-1/2 h-7 w-7 p-0"
-                >
-                  <X className="h-3 w-3" />
-                </Button>
-              )}
-            </div>
-
-            <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as typeof activeTab)} className="w-full md:w-auto">
-              <TabsList className="grid w-full grid-cols-3">
-                <TabsTrigger value="all">Todas ({categorySpending.length})</TabsTrigger>
-                <TabsTrigger value="with-limit">
-                  Con límite ({categorySpending.filter((c) => c.limit).length})
-                </TabsTrigger>
-                <TabsTrigger value="no-limit">
-                  Sin límite ({categorySpending.filter((c) => !c.limit).length})
-                </TabsTrigger>
-              </TabsList>
-            </Tabs>
-          </div>
-
-          {filteredCategories.length === 0 && (
-            <div className="text-center py-12">
-              <Search className="h-12 w-12 mx-auto text-muted-foreground opacity-50 mb-4" />
-              <p className="text-muted-foreground">
-                {searchQuery
-                  ? `No se encontraron categorías con "${searchQuery}"`
-                  : "No hay categorías en este filtro"}
-              </p>
-              {searchQuery && (
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => setSearchQuery("")}
-                  className="mt-4"
-                >
-                  Limpiar búsqueda
-                </Button>
-              )}
-            </div>
-          )}
-        </CardContent>
-      </Card>
-
-      {/* Categories List */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-        {filteredCategories.map((spending) => {
-          const usagePercentage = spending.limit
-            ? (spending.amount / spending.limit) * 100
-            : 0;
-          const hasSpending = spending.count > 0;
-          const isSelected = selectedCategory?.category === spending.category;
-
-          return (
-            <motion.div
-              key={spending.category}
-              layoutId={`cat-card-${spending.category}`}
-              transition={{ type: "spring", stiffness: 350, damping: 30 }}
-              style={{ borderRadius: 8, opacity: isSelected ? 0 : 1 }}
-            >
-              <Card className={`hover:shadow-lg transition-shadow ${!hasSpending && 'opacity-75'} h-full`}>
-                <CardContent className="pt-6">
-                  <div className="space-y-4">
-                    {/* Header */}
-                    <div className="flex items-start justify-between">
-                      <div className="flex-1">
-                        <div className="flex items-center gap-3">
-                          <motion.h3
-                            layoutId={`cat-name-${spending.category}`}
-                            className="text-lg font-semibold"
-                            transition={{ type: "spring", stiffness: 350, damping: 30 }}
-                          >
-                            {spending.category}
-                          </motion.h3>
-                          {hasSpending && getTrendIcon(spending.trend)}
-                          {hasSpending && spending.trend !== "stable" && (
-                            <Badge variant="outline" className="text-xs font-mono tabular-nums">
-                              {spending.trend === "up" ? "+" : "-"}
-                              {spending.trendPercentage.toFixed(0)}%
-                            </Badge>
-                          )}
-                          {!hasSpending && (
-                            <Badge variant="outline" className="text-xs">
-                              Sin actividad este mes
-                            </Badge>
-                          )}
-                        </div>
-                        {hasSpending && (
-                          <div className="text-sm text-muted-foreground mt-1">
-                            {spending.count} transacciones • Promedio{" "}
-                            <span className="font-mono tabular-nums">{formatCurrency(spending.amount / spending.count)}</span>
-                          </div>
-                        )}
-                      </div>
-                      <div className="text-right">
-                        <motion.div
-                          layoutId={`cat-amount-${spending.category}`}
-                          className={`text-2xl font-bold font-mono tabular-nums ${!hasSpending && 'text-muted-foreground'}`}
-                          transition={{ type: "spring", stiffness: 350, damping: 30 }}
-                        >
-                          {formatCurrencyFull(spending.amount)}
-                        </motion.div>
-                        {hasSpending && (
-                          <div className="text-sm text-muted-foreground font-mono tabular-nums">
-                            {spending.percentage.toFixed(1)}% del total
-                          </div>
-                        )}
-                      </div>
-                    </div>
-
-                    {/* Progress bar if limit exists */}
-                    {spending.limit && (
-                      <div className="space-y-2">
-                        <div className="flex items-center justify-between text-sm">
-                          <span className="text-muted-foreground font-mono tabular-nums">
-                            Límite: {formatCurrencyFull(spending.limit)}
-                          </span>
-                          <span
-                            className={`font-mono tabular-nums ${
-                              spending.isOverLimit
-                                ? "text-destructive font-semibold"
-                                : spending.isNearLimit
-                                ? "text-warning font-semibold"
-                                : "text-success"
-                            }`}
-                          >
-                            {usagePercentage.toFixed(0)}%
-                          </span>
-                        </div>
-                        <Progress
-                          value={Math.min(usagePercentage, 100)}
-                          className={
-                            spending.isOverLimit
-                              ? "[&>div]:bg-destructive"
-                              : spending.isNearLimit
-                              ? "[&>div]:bg-warning"
-                              : "[&>div]:bg-success"
-                          }
-                        />
-                      </div>
-                    )}
-
-                    {/* Actions */}
-                    <div className="flex gap-2">
-                      {spending.count > 0 ? (
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={() => handleCategoryClick(spending)}
-                          className="flex-1"
-                        >
-                          <Eye className="h-4 w-4 mr-2" />
-                          Ver detalles
-                        </Button>
-                      ) : (
-                        <div className="flex-1 text-sm text-muted-foreground py-2 px-3 bg-muted/50 rounded-md text-center">
-                          Sin transacciones este mes
-                        </div>
-                      )}
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => handleSetLimit(spending.category)}
-                      >
-                        <Settings className="h-4 w-4 mr-2" />
-                        {spending.limit ? "Ajustar" : "Definir"} límite
-                      </Button>
-                      {spending.limit && (
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => handleDeleteLimit(spending.category)}
-                          className="text-destructive hover:text-destructive hover:bg-destructive/10"
-                        >
-                          <X className="h-4 w-4" />
-                        </Button>
-                      )}
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-            </motion.div>
-          );
-        })}
-      </div>
-
-      {/* Category Detail Expanded (morph overlay) */}
-      <AnimatePresence>
-        {selectedCategory && (
-          <CategoryDetailExpanded
-            key={selectedCategory.category}
-            category={selectedCategory}
-            monthName={monthName}
-            onClose={handleCloseDetail}
-            disableMorph={disableMorph}
-          />
-        )}
-      </AnimatePresence>
-
-      {/* All Insights Modal */}
-      <Dialog open={isInsightsModalOpen} onOpenChange={setIsInsightsModalOpen}>
-        <DialogContent className="p-8 overflow-y-auto">
-          <DialogHeader>
-            <DialogTitle className="flex items-center gap-2">
-              <Lightbulb className="h-5 w-5" />
-              Todos los Insights de {monthName}
-            </DialogTitle>
-            <DialogDescription>
-              Análisis completo de patrones y recomendaciones para tus gastos
-            </DialogDescription>
-          </DialogHeader>
-          <div className="space-y-3">
-            {insights.length === 0 ? (
-              <div className="text-center py-8 text-muted-foreground">
-                <Lightbulb className="h-12 w-12 mx-auto mb-3 opacity-50" />
-                <p>No hay insights disponibles este mes</p>
-                <p className="text-sm mt-2">Agrega más transacciones para ver análisis</p>
-              </div>
-            ) : (
-              insights.map((insight, idx) => (
-                <Alert
-                  key={idx}
-                  className={`${
-                    insight.type === "alert"
-                      ? "border-destructive/50 bg-destructive/10"
-                      : insight.type === "achievement"
-                      ? "border-success/50 bg-success/10"
-                      : insight.type === "opportunity"
-                      ? "border-warning/50 bg-warning/10"
-                      : "border-info/50 bg-info/10"
-                  }`}
-                >
-                  <div className="flex items-start gap-3">
-                    {getInsightIcon(insight.type)}
-                    <AlertDescription className="flex-1">
-                      <div className="font-semibold text-base mb-1">{insight.title}</div>
-                      <div className="text-sm">{insight.description}</div>
-                      {insight.category && (
-                        <div className="mt-2">
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={() => {
-                              const cat = categorySpending.find((c) => c.category === insight.category);
-                              if (cat) {
-                                handleCategoryClick(cat, true);
-                                setIsInsightsModalOpen(false);
-                              }
-                            }}
-                          >
-                            Ver detalles de {insight.category}
-                          </Button>
-                        </div>
-                      )}
-                    </AlertDescription>
-                  </div>
-                </Alert>
-              ))
-            )}
-          </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setIsInsightsModalOpen(false)}>
-              Cerrar
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-
-      {/* Set Limit Dialog */}
+      {/* ─── Set Limit Dialog ─────────────────────────────── */}
       <Dialog open={isLimitDialogOpen} onOpenChange={setIsLimitDialogOpen}>
         <DialogContent className="p-8">
           <DialogHeader>
             <DialogTitle>
               {limitFormData.category
-                ? `Configurar límite para ${limitFormData.category}`
-                : "Configurar límite de categoría"}
+                ? `Configurar presupuesto para ${limitFormData.category}`
+                : "Asignar presupuesto a categoría"}
             </DialogTitle>
             <DialogDescription>
-              Define un presupuesto mensual y recibe alertas cuando te acerques al límite
+              Define cuánto quieres destinar a esta categoría cada mes
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-4">
@@ -802,92 +602,41 @@ export function CategoryInsightsView() {
               </div>
             )}
             <div className="space-y-2">
-              <Label htmlFor="limit">Límite mensual</Label>
+              <Label htmlFor="limit">Monto asignado</Label>
               <Input
                 id="limit"
                 type="text"
                 placeholder="$500.000"
-                value={limitFormData.limit ? `$${Number(limitFormData.limit).toLocaleString("es-CL")}` : ""}
+                value={
+                  limitFormData.limit
+                    ? `$${Number(limitFormData.limit).toLocaleString("es-CL")}`
+                    : ""
+                }
                 onChange={(e) => {
                   const value = e.target.value.replace(/\D/g, "");
                   setLimitFormData({ ...limitFormData, limit: value });
                 }}
                 className="text-lg h-10 rounded-lg px-6"
+                autoFocus
               />
-              <p className="text-xs text-muted-foreground">
-                Recibirás una alerta cuando alcances el {limitFormData.alertPercentage}% de este monto
-              </p>
-            </div>
-            <div className="space-y-3">
-              <div className="flex items-center justify-between">
-                <Label htmlFor="alertPercentage" className="flex items-center gap-2">
-                  <Bell className="h-4 w-4" />
-                  Porcentaje de alerta
-                </Label>
-                <div className="text-right">
-                  <div className="text-lg font-bold text-primary font-mono tabular-nums">
-                    {limitFormData.alertPercentage}%
-                  </div>
-                  {limitFormData.limit && (
-                    <div className="text-xs text-muted-foreground font-mono tabular-nums">
-                      = {formatCurrency(Number(limitFormData.limit) * (limitFormData.alertPercentage / 100))}
-                    </div>
-                  )}
-                </div>
-              </div>
-              <div className="relative">
-                <input
-                  id="alertPercentage"
-                  type="range"
-                  min="50"
-                  max="100"
-                  step="1"
-                  value={limitFormData.alertPercentage}
-                  onChange={(e) =>
-                    setLimitFormData({
-                      ...limitFormData,
-                      alertPercentage: parseInt(e.target.value),
-                    })
-                  }
-                  className="w-full h-2 rounded-lg appearance-none cursor-pointer slider-primary"
-                  style={{
-                    background: `linear-gradient(to right, hsl(var(--primary)) 0%, hsl(var(--primary)) ${((limitFormData.alertPercentage - 50) / 50) * 100}%, hsl(var(--muted)) ${((limitFormData.alertPercentage - 50) / 50) * 100}%, hsl(var(--muted)) 100%)`
-                  }}
-                />
-              </div>
-              <div className="flex justify-between text-xs text-muted-foreground">
-                <span>50%</span>
-                <span>100%</span>
-              </div>
-              {limitFormData.limit && (
-                <div className="flex items-start gap-2 text-xs text-muted-foreground bg-muted/50 p-3 rounded-md">
-                  <Info className="h-4 w-4 flex-shrink-0 mt-0.5" />
-                  <div>
-                    Te avisaremos cuando gastes{" "}
-                    <span className="font-semibold text-foreground font-mono tabular-nums">
-                      {formatCurrency(Number(limitFormData.limit) * (limitFormData.alertPercentage / 100))}
-                    </span>
-                    {" "}(te quedarían{" "}
-                    <span className="font-semibold text-foreground font-mono tabular-nums">
-                      {formatCurrency(Number(limitFormData.limit) * ((100 - limitFormData.alertPercentage) / 100))}
-                    </span>
-                    {" "}para el resto del mes)
-                  </div>
-                </div>
-              )}
             </div>
           </div>
           <DialogFooter>
-            <Button variant="outline" onClick={() => setIsLimitDialogOpen(false)}>
+            <Button
+              variant="outline"
+              onClick={() => setIsLimitDialogOpen(false)}
+            >
               Cancelar
             </Button>
-            <Button onClick={handleSaveLimit} disabled={!limitFormData.category || !limitFormData.limit}>
-              Guardar límite
+            <Button
+              onClick={handleSaveLimit}
+              disabled={!limitFormData.category || !limitFormData.limit}
+            >
+              Guardar
             </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
     </div>
-    </LayoutGroup>
   );
 }

@@ -71,7 +71,7 @@ const App = () => {
             <Route path="/transactions" element={<Transactions />} />
             <Route path="/categories" element={<Categories />} />
             <Route path="/fintual" element={<Fintual />} />
-            <Route path="/category-insights" element={<CategoryInsights />} />
+            <Route path="/budget" element={<CategoryInsights />} />
             <Route path="/pending-debts" element={<PendingDebts />} />
             <Route path="/monthly-summary" element={<MonthlySummary />} />
             <Route path="/credit-cards" element={<CreditCards />} />

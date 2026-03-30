@@ -60,7 +60,7 @@ export function CategoryInsightsWidget() {
           <Button
             variant="ghost"
             size="sm"
-            onClick={() => navigate("/category-insights")}
+            onClick={() => navigate("/budget")}
             className="text-xs"
           >
             Ver todo <ArrowRight className="h-3 w-3 ml-1" />
@@ -76,7 +76,7 @@ export function CategoryInsightsWidget() {
               <div
                 key={cat.category}
                 className="flex items-center justify-between p-2 rounded-lg bg-muted/50 hover:bg-muted transition-colors cursor-pointer"
-                onClick={() => navigate("/category-insights")}
+                onClick={() => navigate("/budget")}
               >
                 <div className="flex items-center gap-2 flex-1 min-w-0">
                   <span className="text-sm font-medium truncate">{cat.category}</span>
@@ -109,7 +109,7 @@ export function CategoryInsightsWidget() {
                 <Alert
                   key={idx}
                   className="py-2 px-3 cursor-pointer hover:shadow-md transition-shadow border-destructive/50 bg-destructive/10"
-                  onClick={() => navigate("/category-insights")}
+                  onClick={() => navigate("/budget")}
                 >
                   <div className="flex items-start gap-2">
                     {getInsightIcon(insight.type)}
@@ -130,7 +130,7 @@ export function CategoryInsightsWidget() {
                       ? "border-warning/50 bg-warning/10"
                       : "border-info/50 bg-info/10"
                   }`}
-                  onClick={() => navigate("/category-insights")}
+                  onClick={() => navigate("/budget")}
                 >
                   <div className="flex items-start gap-2">
                     {getInsightIcon(insight.type)}
@@ -146,7 +146,7 @@ export function CategoryInsightsWidget() {
                 variant="outline"
                 size="sm"
                 className="w-full"
-                onClick={() => navigate("/category-insights")}
+                onClick={() => navigate("/budget")}
               >
                 Ver todos los insights ({insights.length})
               </Button>
