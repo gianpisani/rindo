@@ -71,6 +71,7 @@ function sendNotificationEmail(parsed) {
   var category = parsed.category || 'Sin categoría';
   var bank = parsed.bank || '—';
   var typeColor = parsed.type === 'Ingreso' ? '#22c55e' : '#e11d48';
+  var stats = parsed.weeklyStats;
 
   var subject = 'rindo. | ' + parsed.type + ': ' + amount + ' — ' + detail;
 
@@ -80,6 +81,79 @@ function sendNotificationEmail(parsed) {
     + '<rect x="-11" y="-2.2" width="22" height="4.5" rx="1" fill="#fff" transform="rotate(-32)"/>'
     + '<rect x="-9.2" y="-2.2" width="18.5" height="4.5" rx="1" fill="#fff" transform="rotate(38)" opacity="0.55"/>'
     + '</g></svg>';
+
+  // Weekly stats section (bar chart + top 3)
+  var weeklyHtml = '';
+  if (stats && stats.dailyTotals && stats.dailyTotals.length > 0) {
+    var weekTotal = '$' + Number(stats.weekTotal).toLocaleString('es-CL');
+    var maxDay = 0;
+    for (var d = 0; d < stats.dailyTotals.length; d++) {
+      if (stats.dailyTotals[d].total > maxDay) maxDay = stats.dailyTotals[d].total;
+    }
+    if (maxDay === 0) maxDay = 1;
+
+    // Bar chart
+    var barsHtml = '';
+    for (var d = 0; d < stats.dailyTotals.length; d++) {
+      var day = stats.dailyTotals[d];
+      var pct = Math.round((day.total / maxDay) * 100);
+      var barHeight = Math.max(pct, 4); // min 4% so empty days show a sliver
+      var isToday = d === stats.dailyTotals.length - 1;
+      var barColor = isToday ? typeColor : '#27272a';
+      var labelColor = isToday ? '#fafafa' : '#52525b';
+
+      barsHtml += ''
+        + '<td style="vertical-align:bottom;text-align:center;padding:0 2px;width:14.28%">'
+        + '  <div style="height:80px;display:flex;flex-direction:column;justify-content:flex-end;align-items:center">'
+        + (day.total > 0 ? '    <div style="font-size:9px;color:#71717a;margin-bottom:3px">$' + Math.round(day.total / 1000) + 'k</div>' : '')
+        + '    <div style="width:100%;max-width:28px;height:' + barHeight + '%;min-height:3px;background:' + barColor + ';border-radius:3px 3px 0 0"></div>'
+        + '  </div>'
+        + '  <div style="font-size:10px;color:' + labelColor + ';padding-top:4px;font-weight:' + (isToday ? '600' : '400') + '">' + day.day + '</div>'
+        + '</td>';
+    }
+
+    // Top 3
+    var top3Html = '';
+    if (stats.top3 && stats.top3.length > 0) {
+      for (var t = 0; t < stats.top3.length; t++) {
+        var tx = stats.top3[t];
+        var txAmount = '$' + Number(tx.amount).toLocaleString('es-CL');
+        var txDetail = tx.detail.length > 28 ? tx.detail.substring(0, 28) + '...' : tx.detail;
+        top3Html += ''
+          + '<tr>'
+          + '  <td style="color:#a1a1aa;padding:3px 0;font-size:12px">'
+          + '    <span style="color:#52525b;margin-right:6px">' + (t + 1) + '.</span>' + txDetail
+          + '  </td>'
+          + '  <td style="color:#fafafa;text-align:right;padding:3px 0;font-size:12px;font-weight:600;white-space:nowrap">' + txAmount + '</td>'
+          + '</tr>';
+      }
+    }
+
+    weeklyHtml = ''
+      // Separador
+      + '<tr><td style="padding:0 28px"><div style="border-top:1px solid #27272a"></div></td></tr>'
+
+      // Header sección
+      + '<tr><td style="padding:20px 28px 4px">'
+      + '  <table width="100%" cellpadding="0" cellspacing="0"><tr>'
+      + '    <td style="font-size:11px;text-transform:uppercase;letter-spacing:1px;color:#71717a">' + category + ' — 7 días</td>'
+      + '    <td style="text-align:right;font-size:13px;font-weight:700;color:#fafafa">' + weekTotal + '</td>'
+      + '  </tr></table>'
+      + '</td></tr>'
+
+      // Barras
+      + '<tr><td style="padding:12px 28px 8px">'
+      + '  <table width="100%" cellpadding="0" cellspacing="0"><tr>' + barsHtml + '</tr></table>'
+      + '</td></tr>'
+
+      // Top 3
+      + (top3Html ? ''
+        + '<tr><td style="padding:10px 28px 20px">'
+        + '  <div style="font-size:10px;text-transform:uppercase;letter-spacing:0.5px;color:#52525b;margin-bottom:6px">Top gastos</div>'
+        + '  <table width="100%" cellpadding="0" cellspacing="0">' + top3Html + '</table>'
+        + '</td></tr>'
+        : '');
+  }
 
   var html = ''
     + '<div style="font-family:-apple-system,BlinkMacSystemFont,\'Segoe UI\',Roboto,sans-serif;max-width:440px;margin:0 auto;padding:20px 0">'
@@ -108,7 +182,7 @@ function sendNotificationEmail(parsed) {
     + '<tr><td style="padding:0 28px"><div style="border-top:1px solid #27272a"></div></td></tr>'
 
     // Info
-    + '<tr><td style="padding:16px 28px 24px">'
+    + '<tr><td style="padding:16px 28px ' + (weeklyHtml ? '16px' : '24px') + '">'
     + '  <table width="100%" cellpadding="0" cellspacing="0" style="font-size:13px">'
     + '    <tr><td style="color:#71717a;padding:5px 0">Categoría</td><td style="color:#fafafa;text-align:right;padding:5px 0">' + category + '</td></tr>'
     + '    <tr><td style="color:#71717a;padding:5px 0">Banco</td><td style="color:#fafafa;text-align:right;padding:5px 0">' + bank + '</td></tr>'
@@ -117,6 +191,9 @@ function sendNotificationEmail(parsed) {
     + '    </td></tr>'
     + '  </table>'
     + '</td></tr>'
+
+    // Weekly stats
+    + weeklyHtml
 
     + '</table>'
     + '<div style="text-align:center;padding:14px 0 0;font-size:11px;color:#52525b">Registrado automáticamente por rindo</div>'
