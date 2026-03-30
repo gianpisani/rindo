@@ -91,25 +91,32 @@ function sendNotificationEmail(parsed) {
       if (stats.dailyTotals[d].total > maxDay) maxDay = stats.dailyTotals[d].total;
     }
     if (maxDay === 0) maxDay = 1;
+    var chartHeight = 100; // px
 
-    // Bar chart
-    var barsHtml = '';
+    // Bar chart — pure table, no flex (Gmail compatible)
+    // Row 1: amount labels
+    var labelsRow = '';
+    // Row 2: bars (using a nested table trick for bottom-alignment)
+    var barsRow = '';
+    // Row 3: day names
+    var daysRow = '';
+
     for (var d = 0; d < stats.dailyTotals.length; d++) {
       var day = stats.dailyTotals[d];
-      var pct = Math.round((day.total / maxDay) * 100);
-      var barHeight = Math.max(pct, 4); // min 4% so empty days show a sliver
+      var barPx = day.total > 0 ? Math.max(Math.round((day.total / maxDay) * chartHeight), 6) : 3;
       var isToday = d === stats.dailyTotals.length - 1;
-      var barColor = isToday ? typeColor : '#27272a';
+      var barColor = isToday ? typeColor : '#3f3f46';
       var labelColor = isToday ? '#fafafa' : '#52525b';
+      var amountLabel = day.total > 0 ? '$' + Math.round(day.total / 1000) + 'k' : '';
 
-      barsHtml += ''
-        + '<td style="vertical-align:bottom;text-align:center;padding:0 2px;width:14.28%">'
-        + '  <div style="height:80px;display:flex;flex-direction:column;justify-content:flex-end;align-items:center">'
-        + (day.total > 0 ? '    <div style="font-size:9px;color:#71717a;margin-bottom:3px">$' + Math.round(day.total / 1000) + 'k</div>' : '')
-        + '    <div style="width:100%;max-width:28px;height:' + barHeight + '%;min-height:3px;background:' + barColor + ';border-radius:3px 3px 0 0"></div>'
-        + '  </div>'
-        + '  <div style="font-size:10px;color:' + labelColor + ';padding-top:4px;font-weight:' + (isToday ? '600' : '400') + '">' + day.day + '</div>'
+      labelsRow += '<td style="text-align:center;padding:0 3px;font-size:10px;color:#71717a;height:16px">' + amountLabel + '</td>';
+
+      barsRow += ''
+        + '<td style="vertical-align:bottom;text-align:center;padding:0 3px;height:' + chartHeight + 'px">'
+        + '<div style="display:inline-block;width:32px;height:' + barPx + 'px;background:' + barColor + ';border-radius:4px 4px 2px 2px"></div>'
         + '</td>';
+
+      daysRow += '<td style="text-align:center;padding:6px 3px 0;font-size:11px;color:' + labelColor + ';font-weight:' + (isToday ? '700' : '400') + '">' + day.day + '</td>';
     }
 
     // Top 3
@@ -118,13 +125,14 @@ function sendNotificationEmail(parsed) {
       for (var t = 0; t < stats.top3.length; t++) {
         var tx = stats.top3[t];
         var txAmount = '$' + Number(tx.amount).toLocaleString('es-CL');
-        var txDetail = tx.detail.length > 28 ? tx.detail.substring(0, 28) + '...' : tx.detail;
+        var txDetail = tx.detail.length > 24 ? tx.detail.substring(0, 24) + '...' : tx.detail;
         top3Html += ''
           + '<tr>'
-          + '  <td style="color:#a1a1aa;padding:3px 0;font-size:12px">'
-          + '    <span style="color:#52525b;margin-right:6px">' + (t + 1) + '.</span>' + txDetail
-          + '  </td>'
-          + '  <td style="color:#fafafa;text-align:right;padding:3px 0;font-size:12px;font-weight:600;white-space:nowrap">' + txAmount + '</td>'
+          + '<td style="color:#a1a1aa;padding:4px 0;font-size:12px;border-bottom:1px solid #1a1a1e">'
+          + '<span style="display:inline-block;width:6px;height:6px;border-radius:3px;background:' + (t === 0 ? typeColor : '#3f3f46') + ';margin-right:8px;vertical-align:middle"></span>'
+          + txDetail
+          + '</td>'
+          + '<td style="color:#fafafa;text-align:right;padding:4px 0;font-size:12px;font-weight:600;white-space:nowrap;border-bottom:1px solid #1a1a1e">' + txAmount + '</td>'
           + '</tr>';
       }
     }
@@ -134,23 +142,27 @@ function sendNotificationEmail(parsed) {
       + '<tr><td style="padding:0 28px"><div style="border-top:1px solid #27272a"></div></td></tr>'
 
       // Header sección
-      + '<tr><td style="padding:20px 28px 4px">'
-      + '  <table width="100%" cellpadding="0" cellspacing="0"><tr>'
-      + '    <td style="font-size:11px;text-transform:uppercase;letter-spacing:1px;color:#71717a">' + category + ' — 7 días</td>'
-      + '    <td style="text-align:right;font-size:13px;font-weight:700;color:#fafafa">' + weekTotal + '</td>'
-      + '  </tr></table>'
+      + '<tr><td style="padding:20px 28px 6px">'
+      + '<table width="100%" cellpadding="0" cellspacing="0"><tr>'
+      + '<td style="font-size:11px;text-transform:uppercase;letter-spacing:1px;color:#71717a">' + category + ' · 7 días</td>'
+      + '<td style="text-align:right;font-size:14px;font-weight:700;color:#fafafa;letter-spacing:-0.3px">' + weekTotal + '</td>'
+      + '</tr></table>'
       + '</td></tr>'
 
-      // Barras
-      + '<tr><td style="padding:12px 28px 8px">'
-      + '  <table width="100%" cellpadding="0" cellspacing="0"><tr>' + barsHtml + '</tr></table>'
+      // Chart area with subtle bg
+      + '<tr><td style="padding:8px 20px 4px">'
+      + '<table width="100%" cellpadding="0" cellspacing="0" style="background:#111113;border-radius:10px;padding:12px 8px 8px">'
+      + '<tr>' + labelsRow + '</tr>'
+      + '<tr>' + barsRow + '</tr>'
+      + '<tr>' + daysRow + '</tr>'
+      + '</table>'
       + '</td></tr>'
 
       // Top 3
       + (top3Html ? ''
-        + '<tr><td style="padding:10px 28px 20px">'
-        + '  <div style="font-size:10px;text-transform:uppercase;letter-spacing:0.5px;color:#52525b;margin-bottom:6px">Top gastos</div>'
-        + '  <table width="100%" cellpadding="0" cellspacing="0">' + top3Html + '</table>'
+        + '<tr><td style="padding:14px 28px 22px">'
+        + '<div style="font-size:10px;text-transform:uppercase;letter-spacing:0.8px;color:#52525b;margin-bottom:8px">Más altos de la semana</div>'
+        + '<table width="100%" cellpadding="0" cellspacing="0">' + top3Html + '</table>'
         + '</td></tr>'
         : '');
   }
