@@ -102,21 +102,26 @@ function parseCompraTarjeta(text: string): ParsedTransaction | null {
 }
 
 function parseTransferenciaTerceros(text: string): ParsedTransaction | null {
-  // Banco de Chile: "Transferencia a terceros"
+  // Banco de Chile format 1: "Transferencia a terceros"
+  // Banco de Chile format 2: "ha efectuado una transferencia de fondos a [Nombre]"
   // Itaú/otros: "comprobante electronico de transferencia de fondos realizada"
-  const isOutgoing = /transferencia a terceros|comprobante\s+(?:electr[oó]nico\s+)?de\s+transferencia\s+de\s+fondos\s+realizada/i.test(text)
+  const isOutgoing = /transferencia a terceros|ha\s+efectuado\s+una\s+transferencia\s+de\s+fondos|transferencias?\s+de\s+fondos\s+a\s+(?!tu\s+cuenta)/i.test(text)
+    || /comprobante\s+(?:electr[oó]nico\s+)?de\s+transferencia\s+de\s+fondos\s+realizada/i.test(text)
   if (!isOutgoing) return null
 
   const amount = extractAmount(text)
   if (!amount) return null
 
   // Recipient name: "Nombre y Apellido  X" or "Nombre  X"
+  // Format 2: "transferencia de fondos a [Nombre],"
   const destinatario =
     text.match(/Nombre(?:\s+y\s+Apellido)?\s+([A-ZÁÉÍÓÚÑa-záéíóúñ\s]+?)(?:\s+Rut|\s+Tipo|\s+N[º°]|\s+Banco|\s+E-?mail|$)/i)?.[1]?.trim()
+    || text.match(/transferencia\s+de\s+fondos\s+a\s+([A-ZÁÉÍÓÚÑa-záéíóúñ\s]+?)(?:,|\s+el\s+d[ií]a|\s+desde)/i)?.[1]?.trim()
 
   // Destination bank: "Banco  Banco BCI/MACHBANK" or "Banco  Scotiabank Sud Americano"
+  // Format 2: "Banco  Banco de Chile - Edwards"
   const bancoDestino =
-    text.match(/Banco\s+(.+?)(?:\s+Email|\s+Monto|\s+Mensaje|\s+Cuenta\s+de\s+destino|\s+Tipo\s+de\s+Cuenta|\s+Comentario)/i)?.[1]?.trim()
+    text.match(/Banco\s+(.+?)(?:\s+Email|\s+Mail|\s+Monto|\s+Mensaje|\s+Cuenta\s+de\s+destino|\s+Tipo\s+de\s+Cuenta|\s+Comentario|\s+Datos\s+de)/i)?.[1]?.trim()
 
   const parts = [destinatario, bancoDestino].filter(Boolean)
   const detail = parts.length > 0
@@ -253,7 +258,7 @@ function isPromotionalEmail(subject: string, text: string): boolean {
   ]
 
   const transactionalPatterns = [
-    /comprobante|transferencia\s+(?:a|recibida|exitosa)/i,
+    /comprobante|transferencias?\s+(?:a|de\s+fondos|recibida|exitosa)/i,
     /compra\s+(?:por|con\s+tarjeta)|cargo\s+(?:en|por)/i,
     /pago\s+(?:de\s+tarjeta|exitoso|realizado)/i,
     /retiro\s+(?:en\s+)?cajero|giro\s+(?:en\s+)?cajero|abono\s+por/i,
@@ -342,7 +347,7 @@ Deno.serve(async (req) => {
         )
       }
 
-      const looksTransactional = /comprobante|has realizado|se ha realizado|exitosa|cargo|abono/i.test(text)
+      const looksTransactional = /comprobante|has realizado|se ha realizado|ha efectuado|exitosa|cargo|abono/i.test(text)
       if (!looksTransactional) {
         console.log('🚫 Email no parece transaccional, ignorando:', subject)
         return new Response(
