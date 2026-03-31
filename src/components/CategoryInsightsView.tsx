@@ -430,7 +430,10 @@ export function CategoryInsightsView() {
                 )}
               >
                 {totalBudget > 0 ? (
-                  <>
+                  <button
+                    onClick={startEditBudget}
+                    className="hover:text-primary/80 transition-colors cursor-pointer"
+                  >
                     $
                     <NumberFlow
                       value={totalBudget}
@@ -441,7 +444,7 @@ export function CategoryInsightsView() {
                       }}
                       locales="es-CL"
                     />
-                  </>
+                  </button>
                 ) : (
                   <button
                     onClick={startEditBudget}
@@ -719,7 +722,8 @@ export function CategoryInsightsView() {
                   return (
                     <div
                       key={cat.category}
-                      className="group relative rounded-xl border border-border/50 bg-card p-4 transition-all hover:border-primary/20 hover:shadow-sm"
+                      className="group relative rounded-xl border border-border/50 bg-card p-4 transition-all hover:border-primary/20 hover:shadow-sm cursor-pointer"
+                      onClick={() => handleSetLimit(cat.category)}
                     >
                       {/* Header */}
                       <div className="flex items-center justify-between mb-3">
@@ -733,15 +737,13 @@ export function CategoryInsightsView() {
                           </span>
                         </div>
                         <div className="flex items-center gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity">
+                          <Pencil className="h-3 w-3 text-muted-foreground" />
                           <button
                             className="p-1 rounded hover:bg-accent transition-colors"
-                            onClick={() => handleSetLimit(cat.category)}
-                          >
-                            <Pencil className="h-3 w-3 text-muted-foreground" />
-                          </button>
-                          <button
-                            className="p-1 rounded hover:bg-accent transition-colors"
-                            onClick={() => handleDeleteLimit(cat.category)}
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleDeleteLimit(cat.category);
+                            }}
                           >
                             <X className="h-3 w-3 text-muted-foreground hover:text-destructive" />
                           </button>
@@ -1060,10 +1062,98 @@ export function CategoryInsightsView() {
                   const value = e.target.value.replace(/\D/g, "");
                   setLimitFormData({ ...limitFormData, limit: value });
                 }}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter" && limitFormData.category && limitFormData.limit) {
+                    handleSaveLimit();
+                  }
+                }}
                 className="text-lg h-10 rounded-lg px-6"
                 autoFocus
               />
+
+              {/* Quick percentage buttons */}
+              {totalBudget > 0 && (
+                <div className="flex flex-wrap gap-1.5 pt-1">
+                  {[5, 10, 15, 20, 25, 30].map((pct) => {
+                    const amount = Math.round(totalBudget * pct / 100);
+                    return (
+                      <button
+                        key={pct}
+                        type="button"
+                        onClick={() =>
+                          setLimitFormData({ ...limitFormData, limit: amount.toString() })
+                        }
+                        className={cn(
+                          "px-2.5 py-1 rounded-lg text-xs font-medium transition-colors border",
+                          Number(limitFormData.limit) === amount
+                            ? "bg-primary text-primary-foreground border-primary"
+                            : "bg-muted/50 text-muted-foreground border-border/50 hover:bg-accent hover:text-foreground"
+                        )}
+                      >
+                        {pct}%
+                      </button>
+                    );
+                  })}
+                </div>
+              )}
             </div>
+
+            {/* Budget allocation context */}
+            {totalBudget > 0 && (
+              <div className="rounded-lg border border-border/50 bg-muted/30 p-3 space-y-2">
+                {(() => {
+                  const currentLimit = Number(limitFormData.limit) || 0;
+                  const existingLimitForCategory = limits.find(
+                    (l) => l.category_name === limitFormData.category
+                  );
+                  const otherAllocated = totalAllocated - (existingLimitForCategory?.monthly_limit || 0);
+                  const newTotalAllocated = otherAllocated + currentLimit;
+                  const newUnallocated = totalBudget - newTotalAllocated;
+                  const pctOfBudget = totalBudget > 0 ? (currentLimit / totalBudget) * 100 : 0;
+
+                  return (
+                    <>
+                      <div className="flex items-center justify-between text-xs">
+                        <span className="text-muted-foreground">Esto representa</span>
+                        <span className="font-semibold font-mono tabular-nums">
+                          {pctOfBudget.toFixed(0)}% del presupuesto
+                        </span>
+                      </div>
+                      <div className="flex items-center justify-between text-xs">
+                        <span className="text-muted-foreground">Otras categorías</span>
+                        <span className="font-mono tabular-nums">
+                          {formatCurrency(otherAllocated)}
+                        </span>
+                      </div>
+                      <div className="h-px bg-border/50" />
+                      <div className="flex items-center justify-between text-xs">
+                        <span className="text-muted-foreground font-medium">
+                          {newUnallocated >= 0 ? "Sin asignar" : "Sobre-asignado"}
+                        </span>
+                        <span
+                          className={cn(
+                            "font-semibold font-mono tabular-nums",
+                            newUnallocated < 0 ? "text-rose-500" : "text-emerald-600"
+                          )}
+                        >
+                          {formatCurrency(Math.abs(newUnallocated))}
+                        </span>
+                      </div>
+                      {/* Mini progress bar */}
+                      <div className="h-1.5 rounded-full bg-muted/60 overflow-hidden">
+                        <div
+                          className={cn(
+                            "h-full rounded-full transition-all duration-300",
+                            newUnallocated < 0 ? "bg-rose-500" : "bg-primary"
+                          )}
+                          style={{ width: `${Math.min((newTotalAllocated / totalBudget) * 100, 100)}%` }}
+                        />
+                      </div>
+                    </>
+                  );
+                })()}
+              </div>
+            )}
           </div>
           <DialogFooter>
             <Button
