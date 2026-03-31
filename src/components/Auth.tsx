@@ -139,7 +139,7 @@ export default function Auth() {
             rindo<span className="text-primary">.</span>
           </h1>
           <p className="text-sm text-white/20 mt-2 font-light tracking-wide">
-            Rinde más. Sin excusas.
+            Tu banco no te juzga. Yo sí.
           </p>
         </motion.div>
 
