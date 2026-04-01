@@ -25,8 +25,11 @@ function checkBankEmails() {
       var body = msg.getPlainBody() || '';
       body = stripFooter(body);
 
+      // Marcar como leído ANTES de procesar para evitar duplicados por race condition
+      msg.markRead();
+
       var payload = {
-        subject: msg.getSubject(),
+        subject: msg.getSubject().substring(0, 500),
         content: body.substring(0, 2000),
         from: msg.getFrom(),
         timestamp: msg.getDate().toISOString(),
@@ -52,16 +55,17 @@ function checkBankEmails() {
               : '❌ Error: ' + (result.error || '')
         );
 
-        // Si se creó la transacción, mandar mail de notificación
         if (result.success && result.parsed) {
           sendNotificationEmail(result.parsed);
         }
 
-        if (result.success || result.skipped) {
-          msg.markRead();
+        // Si falló (no success ni skipped), volver a marcar como unread para reintentar
+        if (!result.success && !result.skipped) {
+          msg.markUnread();
         }
       } catch (e) {
         Logger.log('❌ Fetch error: ' + e);
+        msg.markUnread();
       }
     }
   }
