@@ -28,6 +28,7 @@ import {
   Trash2,
   Flag,
   Wifi,
+  Route,
 } from "lucide-react";
 import { differenceInDays, parseISO, format } from "date-fns";
 import { es } from "date-fns/locale";
@@ -68,12 +69,73 @@ export function SessionDetailDrawer({
   const phase = session.training_phase ? TRAINING_PHASES[session.training_phase] : null;
   const isGarminSynced = !!session.garmin_synced_at || !!session.garmin_activity_id;
 
+  // Collect target metrics
+  const metrics = [
+    session.target_duration_minutes && {
+      icon: Timer,
+      label: "Duración",
+      value: `${session.target_duration_minutes} min`,
+      actual: session.actual_duration_minutes ? `${session.actual_duration_minutes} min` : null,
+    },
+    session.target_distance_meters && {
+      icon: Route,
+      label: "Distancia",
+      value:
+        session.target_distance_meters >= 1000
+          ? `${(session.target_distance_meters / 1000).toFixed(1)} km`
+          : `${session.target_distance_meters} m`,
+      actual: session.actual_distance_meters
+        ? session.actual_distance_meters >= 1000
+          ? `${(session.actual_distance_meters / 1000).toFixed(1)} km`
+          : `${session.actual_distance_meters} m`
+        : null,
+    },
+    session.target_hr_zone && {
+      icon: Heart,
+      label: "Zona HR",
+      value: `Z${session.target_hr_zone}${
+        session.target_hr_min && session.target_hr_max
+          ? ` (${session.target_hr_min}–${session.target_hr_max})`
+          : ""
+      }`,
+      actual: session.actual_avg_hr ? `${session.actual_avg_hr} bpm` : null,
+    },
+    session.target_pace_min_km && {
+      icon: Footprints,
+      label: "Ritmo",
+      value: `${session.target_pace_min_km}/km`,
+      actual: session.actual_avg_pace ? `${session.actual_avg_pace}/km` : null,
+    },
+    session.target_power_watts && {
+      icon: Gauge,
+      label: "Potencia",
+      value: `${session.target_power_watts}W`,
+      actual: null,
+    },
+    session.scheduled_time && {
+      icon: Clock,
+      label: "Horario",
+      value: session.scheduled_time,
+      actual: null,
+    },
+  ].filter(Boolean) as Array<{
+    icon: typeof Timer;
+    label: string;
+    value: string;
+    actual: string | null;
+  }>;
+
   return (
     <Sheet open={open} onOpenChange={onClose}>
       <SheetContent className="overflow-y-auto">
         <SheetHeader>
-          <div className="flex items-center gap-3">
-            <div className={cn("p-2.5 rounded-xl", isRace ? "bg-rose-500/10" : sport.bg)}>
+          <div className="flex items-start gap-3">
+            <div
+              className={cn(
+                "p-3 rounded-xl shrink-0",
+                isRace ? "bg-rose-500/10" : sport.bg
+              )}
+            >
               {isRace ? (
                 <Flag className="h-5 w-5 text-rose-500" />
               ) : (
@@ -81,29 +143,29 @@ export function SessionDetailDrawer({
               )}
             </div>
             <div className="flex-1 min-w-0">
-              <SheetTitle className="text-left truncate">
+              <SheetTitle className="text-left truncate text-lg">
                 {isRace ? session.race_name || session.session_name : session.session_name}
               </SheetTitle>
-              <p className="text-sm text-muted-foreground capitalize">
+              <p className="text-sm text-muted-foreground/70 capitalize mt-0.5">
                 {format(parseISO(session.session_date), "EEEE d 'de' MMMM", { locale: es })}
               </p>
             </div>
-            <div className="flex gap-1 shrink-0">
+            <div className="flex gap-0.5 shrink-0">
               <Button
                 variant="ghost"
                 size="icon"
-                className="h-8 w-8"
+                className="h-8 w-8 rounded-lg"
                 onClick={() => onEdit(session)}
               >
-                <Pencil className="h-4 w-4" />
+                <Pencil className="h-3.5 w-3.5" />
               </Button>
               <Button
                 variant="ghost"
                 size="icon"
-                className="h-8 w-8 text-destructive hover:text-destructive"
+                className="h-8 w-8 rounded-lg text-destructive/60 hover:text-destructive"
                 onClick={() => onDelete(session)}
               >
-                <Trash2 className="h-4 w-4" />
+                <Trash2 className="h-3.5 w-3.5" />
               </Button>
             </div>
           </div>
@@ -112,24 +174,29 @@ export function SessionDetailDrawer({
         <div className="space-y-6 mt-6">
           {/* Race countdown */}
           {isRace && daysUntil > 0 && (
-            <div className="rounded-lg bg-gradient-to-r from-rose-500/10 to-amber-500/10 border border-rose-500/20 p-3 text-center">
-              <p className="text-2xl font-bold text-rose-500">{daysUntil}</p>
-              <p className="text-xs text-rose-500/80 font-medium">días para la carrera</p>
+            <div className="rounded-2xl bg-gradient-to-br from-rose-500/10 to-amber-500/10 border border-rose-500/15 p-4 text-center">
+              <p className="text-3xl font-black text-rose-500 tabular-nums">{daysUntil}</p>
+              <p className="text-xs text-rose-500/70 font-semibold mt-0.5">
+                días para la carrera
+              </p>
               {session.race_distance_label && (
-                <p className="text-xs text-muted-foreground mt-1">{session.race_distance_label}</p>
+                <p className="text-xs text-muted-foreground mt-1.5">{session.race_distance_label}</p>
               )}
             </div>
           )}
 
-          {/* Status + Intensity + Subtype */}
-          <div className="flex items-center gap-2 flex-wrap">
-            <Badge variant="outline" className={cn("border", intensity.color)}>
+          {/* Badges row */}
+          <div className="flex items-center gap-1.5 flex-wrap">
+            <Badge
+              variant="outline"
+              className={cn("border rounded-full text-[11px] font-semibold", intensity.color)}
+            >
               {intensity.label}
             </Badge>
             <Badge
               variant="outline"
               className={cn(
-                "border",
+                "border rounded-full text-[11px] font-semibold",
                 session.status === "completed"
                   ? "text-emerald-500 bg-emerald-500/10 border-emerald-500/20"
                   : session.status === "skipped"
@@ -144,167 +211,94 @@ export function SessionDetailDrawer({
                 : "Pendiente"}
             </Badge>
             {subtype && (
-              <Badge variant="outline" className="text-muted-foreground">
+              <Badge variant="outline" className="rounded-full text-[11px] text-muted-foreground">
                 {subtype.label}
               </Badge>
             )}
             {phase && (
-              <Badge variant="outline" className="text-muted-foreground">
+              <Badge variant="outline" className="rounded-full text-[11px] text-muted-foreground">
                 {phase.label}
               </Badge>
             )}
             {isRace && (
-              <Badge variant="outline" className="text-rose-500 bg-rose-500/10 border-rose-500/20">
+              <Badge
+                variant="outline"
+                className="rounded-full text-[11px] text-rose-500 bg-rose-500/10 border-rose-500/20"
+              >
                 Carrera
               </Badge>
             )}
           </div>
 
-          {/* Garmin sync status */}
+          {/* Garmin sync */}
           {isGarminSynced && (
-            <div className="flex items-center gap-2 text-xs text-emerald-500">
+            <div className="flex items-center gap-2 text-xs text-emerald-500 bg-emerald-500/5 rounded-lg px-3 py-2">
               <Wifi className="h-3.5 w-3.5" />
-              <span>Sincronizado con Garmin</span>
+              <span className="font-medium">Sincronizado con Garmin</span>
               {session.garmin_activity_name && (
                 <span className="text-muted-foreground">— {session.garmin_activity_name}</span>
               )}
             </div>
           )}
-          {!isGarminSynced && session.status === "completed" && (
-            <p className="text-xs text-muted-foreground/60">
-              Sin actividad Garmin vinculada
-            </p>
-          )}
 
           {/* Description */}
           {session.description && (
             <div>
-              <h4 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2">
+              <h4 className="text-[11px] font-bold text-muted-foreground/60 uppercase tracking-widest mb-2.5">
                 Descripción
               </h4>
-              <p className="text-sm leading-relaxed whitespace-pre-wrap">
+              <p className="text-sm leading-relaxed whitespace-pre-wrap text-foreground/80">
                 {session.description}
               </p>
             </div>
           )}
 
           {/* Targets */}
-          <div>
-            <h4 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-3">
-              Objetivos
-            </h4>
-            <div className="grid grid-cols-2 gap-3">
-              {session.target_duration_minutes && (
-                <div className="flex items-center gap-2 p-3 rounded-lg bg-muted/30">
-                  <Timer className="h-4 w-4 text-muted-foreground" />
-                  <div>
-                    <p className="text-xs text-muted-foreground">Duración</p>
-                    <p className="text-sm font-semibold">
-                      {session.target_duration_minutes} min
-                    </p>
-                    {session.actual_duration_minutes && (
-                      <p className="text-xs text-emerald-500">
-                        Real: {session.actual_duration_minutes} min
-                      </p>
-                    )}
-                  </div>
-                </div>
-              )}
-              {session.target_distance_meters && (
-                <div className="flex items-center gap-2 p-3 rounded-lg bg-muted/30">
-                  <Gauge className="h-4 w-4 text-muted-foreground" />
-                  <div>
-                    <p className="text-xs text-muted-foreground">Distancia</p>
-                    <p className="text-sm font-semibold">
-                      {session.target_distance_meters >= 1000
-                        ? `${(session.target_distance_meters / 1000).toFixed(1)} km`
-                        : `${session.target_distance_meters} m`}
-                    </p>
-                    {session.actual_distance_meters && (
-                      <p className="text-xs text-emerald-500">
-                        Real: {session.actual_distance_meters >= 1000
-                          ? `${(session.actual_distance_meters / 1000).toFixed(1)} km`
-                          : `${session.actual_distance_meters} m`}
-                      </p>
-                    )}
-                  </div>
-                </div>
-              )}
-              {session.target_hr_zone && (
-                <div className="flex items-center gap-2 p-3 rounded-lg bg-muted/30">
-                  <Heart className="h-4 w-4 text-muted-foreground" />
-                  <div>
-                    <p className="text-xs text-muted-foreground">Zona HR</p>
-                    <p className="text-sm font-semibold">
-                      Z{session.target_hr_zone}
-                      {session.target_hr_min && session.target_hr_max && (
-                        <span className="text-xs text-muted-foreground ml-1">
-                          ({session.target_hr_min}-{session.target_hr_max})
-                        </span>
-                      )}
-                    </p>
-                    {session.actual_avg_hr && (
-                      <p className="text-xs text-emerald-500">
-                        Real: {session.actual_avg_hr} bpm
-                      </p>
-                    )}
-                  </div>
-                </div>
-              )}
-              {session.target_pace_min_km && (
-                <div className="flex items-center gap-2 p-3 rounded-lg bg-muted/30">
-                  <Footprints className="h-4 w-4 text-muted-foreground" />
-                  <div>
-                    <p className="text-xs text-muted-foreground">Ritmo</p>
-                    <p className="text-sm font-semibold">
-                      {session.target_pace_min_km}/km
-                    </p>
-                    {session.actual_avg_pace && (
-                      <p className="text-xs text-emerald-500">
-                        Real: {session.actual_avg_pace}/km
-                      </p>
-                    )}
-                  </div>
-                </div>
-              )}
-              {session.target_power_watts && (
-                <div className="flex items-center gap-2 p-3 rounded-lg bg-muted/30">
-                  <Gauge className="h-4 w-4 text-muted-foreground" />
-                  <div>
-                    <p className="text-xs text-muted-foreground">Potencia</p>
-                    <p className="text-sm font-semibold">
-                      {session.target_power_watts}W
-                    </p>
-                  </div>
-                </div>
-              )}
-              {session.scheduled_time && (
-                <div className="flex items-center gap-2 p-3 rounded-lg bg-muted/30">
-                  <Clock className="h-4 w-4 text-muted-foreground" />
-                  <div>
-                    <p className="text-xs text-muted-foreground">Horario</p>
-                    <p className="text-sm font-semibold">
-                      {session.scheduled_time}
-                    </p>
-                  </div>
-                </div>
-              )}
+          {metrics.length > 0 && (
+            <div>
+              <h4 className="text-[11px] font-bold text-muted-foreground/60 uppercase tracking-widest mb-3">
+                Objetivos
+              </h4>
+              <div className="grid grid-cols-2 gap-2">
+                {metrics.map((m) => {
+                  const Icon = m.icon;
+                  return (
+                    <div
+                      key={m.label}
+                      className="flex items-start gap-2.5 p-3 rounded-xl bg-muted/20 border border-border/10"
+                    >
+                      <Icon className="h-4 w-4 text-muted-foreground/50 mt-0.5 shrink-0" />
+                      <div className="min-w-0">
+                        <p className="text-[10px] text-muted-foreground/50 font-semibold uppercase tracking-wider">
+                          {m.label}
+                        </p>
+                        <p className="text-sm font-semibold mt-0.5">{m.value}</p>
+                        {m.actual && (
+                          <p className="text-[11px] text-emerald-500 font-medium mt-0.5">
+                            Real: {m.actual}
+                          </p>
+                        )}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
             </div>
-          </div>
+          )}
 
           {/* Coach Notes */}
           {session.coach_notes && (
             <div>
-              <h4 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2">
+              <h4 className="text-[11px] font-bold text-muted-foreground/60 uppercase tracking-widest mb-2.5">
                 Notas del Coach
               </h4>
-              <div className="p-3 rounded-lg bg-primary/5 border border-primary/10 text-sm leading-relaxed whitespace-pre-wrap">
+              <div className="p-3.5 rounded-xl bg-primary/[0.03] border border-primary/10 text-sm leading-relaxed whitespace-pre-wrap text-foreground/80">
                 {session.coach_notes}
               </div>
             </div>
           )}
 
-          {/* Post-session Feedback (when completed) */}
+          {/* Post-session Feedback */}
           {session.status === "completed" && (
             <PostSessionFeedback
               sessionId={session.id}
@@ -319,7 +313,7 @@ export function SessionDetailDrawer({
             {session.status === "pending" && (
               <>
                 <Button
-                  className="flex-1"
+                  className="flex-1 rounded-xl h-11"
                   onClick={() => onComplete(session.id)}
                 >
                   <CheckCircle2 className="h-4 w-4 mr-2" />
@@ -327,7 +321,7 @@ export function SessionDetailDrawer({
                 </Button>
                 <Button
                   variant="outline"
-                  className="flex-1"
+                  className="flex-1 rounded-xl h-11"
                   onClick={() => onSkip(session.id)}
                 >
                   <XCircle className="h-4 w-4 mr-2" />
@@ -338,7 +332,7 @@ export function SessionDetailDrawer({
             {(session.status === "completed" || session.status === "skipped") && (
               <Button
                 variant="outline"
-                className="flex-1"
+                className="flex-1 rounded-xl h-11"
                 onClick={() => onReset(session.id)}
               >
                 <RotateCcw className="h-4 w-4 mr-2" />
