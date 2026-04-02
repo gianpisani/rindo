@@ -1,6 +1,7 @@
 import { useState, useMemo } from "react";
 import Layout from "@/components/Layout";
 import { Button } from "@/components/ui/button";
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   useTrainingSessions,
   type TrainingSession,
@@ -9,11 +10,16 @@ import {
 import { cn } from "@/lib/utils";
 import {
   format,
+  startOfMonth,
+  endOfMonth,
   startOfWeek,
   endOfWeek,
+  addMonths,
+  subMonths,
   addWeeks,
   subWeeks,
   isSameWeek,
+  isSameMonth,
   eachDayOfInterval,
 } from "date-fns";
 import { es } from "date-fns/locale";
@@ -28,6 +34,7 @@ import {
   TrendingUp,
 } from "lucide-react";
 import { SPORT_CONFIG } from "@/lib/training-config";
+import { MonthlyCalendarView } from "@/components/training/MonthlyCalendarView";
 import { WeeklyCalendarView } from "@/components/training/WeeklyCalendarView";
 import { SessionDetailDrawer } from "@/components/training/SessionDetailDrawer";
 import { SessionFormDrawer } from "@/components/training/SessionFormDrawer";
@@ -38,21 +45,31 @@ import ConfirmDialog from "@/components/ConfirmDialog";
 import { parseISO, differenceInDays } from "date-fns";
 
 export default function Training() {
+  const [currentMonth, setCurrentMonth] = useState(() => new Date());
   const [currentWeekStart, setCurrentWeekStart] = useState(() =>
     startOfWeek(new Date(), { weekStartsOn: 1 })
   );
+  const [selectedDate, setSelectedDate] = useState<Date>(() => new Date());
   const [selectedSession, setSelectedSession] = useState<TrainingSession | null>(null);
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [formOpen, setFormOpen] = useState(false);
   const [editingSession, setEditingSession] = useState<TrainingSession | null>(null);
   const [defaultFormDate, setDefaultFormDate] = useState<string | undefined>();
   const [deleteTarget, setDeleteTarget] = useState<TrainingSession | null>(null);
+  const [viewMode, setViewMode] = useState<string>("week");
 
-  const weekEnd = endOfWeek(currentWeekStart, { weekStartsOn: 1 });
-  const calendarDays = useMemo(
-    () => eachDayOfInterval({ start: currentWeekStart, end: weekEnd }),
-    [currentWeekStart, weekEnd]
-  );
+  // Date range based on view
+  const calendarDays = useMemo(() => {
+    if (viewMode === "week") {
+      const weekEnd = endOfWeek(currentWeekStart, { weekStartsOn: 1 });
+      return eachDayOfInterval({ start: currentWeekStart, end: weekEnd });
+    }
+    const monthStart = startOfMonth(currentMonth);
+    const monthEnd = endOfMonth(currentMonth);
+    const calStart = startOfWeek(monthStart, { weekStartsOn: 1 });
+    const calEnd = endOfWeek(monthEnd, { weekStartsOn: 1 });
+    return eachDayOfInterval({ start: calStart, end: calEnd });
+  }, [currentMonth, currentWeekStart, viewMode]);
 
   const startDate = format(calendarDays[0], "yyyy-MM-dd");
   const endDate = format(calendarDays[calendarDays.length - 1], "yyyy-MM-dd");
@@ -72,7 +89,18 @@ export default function Training() {
     deleteAllSessions,
   } = useTrainingSessions(startDate, endDate);
 
+  const weekEnd = endOfWeek(currentWeekStart, { weekStartsOn: 1 });
   const isCurrentWeek = isSameWeek(currentWeekStart, new Date(), { weekStartsOn: 1 });
+  const totalRows = Math.ceil(calendarDays.length / 7);
+
+  const handleMonthChange = (newMonth: Date) => {
+    setCurrentMonth(newMonth);
+    if (isSameMonth(new Date(), newMonth)) {
+      setSelectedDate(new Date());
+    } else {
+      setSelectedDate(startOfMonth(newMonth));
+    }
+  };
 
   const handleWeekChange = (newWeekStart: Date) => setCurrentWeekStart(newWeekStart);
 
@@ -117,6 +145,12 @@ export default function Training() {
   const completionPct =
     stats.total > 0 ? Math.round((stats.completed / stats.total) * 100) : 0;
 
+  // Navigation label
+  const navLabel =
+    viewMode === "week"
+      ? `${format(currentWeekStart, "d", { locale: es })} — ${format(weekEnd, "d MMM", { locale: es })}`
+      : format(currentMonth, "MMMM yyyy", { locale: es });
+
   return (
     <Layout>
       <div className="space-y-5">
@@ -135,9 +169,7 @@ export default function Training() {
                 <span className="text-border/50">·</span>
                 <span>{stats.total} sesiones</span>
                 <span className="text-border/50">·</span>
-                <span
-                  className={cn(completionPct === 100 && "text-emerald-500 font-semibold")}
-                >
+                <span className={cn(completionPct === 100 && "text-emerald-500 font-semibold")}>
                   {completionPct}%
                 </span>
               </div>
@@ -153,55 +185,70 @@ export default function Training() {
           </Button>
         </div>
 
-        {/* ── Week Navigator ── */}
+        {/* ── Tabs + Navigator ── */}
         <div className="flex items-center justify-between">
+          <Tabs value={viewMode} onValueChange={setViewMode}>
+            <TabsList className="h-8 rounded-lg bg-muted/40">
+              <TabsTrigger value="week" className="text-xs rounded-md px-3">
+                Semana
+              </TabsTrigger>
+              <TabsTrigger value="month" className="text-xs rounded-md px-3">
+                Mes
+              </TabsTrigger>
+            </TabsList>
+          </Tabs>
+
           <div className="flex items-center gap-0.5">
-            <Button
-              variant="ghost"
-              size="icon"
-              className="h-8 w-8 rounded-lg"
-              onClick={() => handleWeekChange(subWeeks(currentWeekStart, 1))}
-            >
-              <ChevronLeft className="h-4 w-4" />
-            </Button>
-            <button
-              onClick={() =>
-                handleWeekChange(startOfWeek(new Date(), { weekStartsOn: 1 }))
-              }
-              className={cn(
-                "px-3.5 py-1.5 rounded-xl text-sm font-semibold transition-all",
-                isCurrentWeek
-                  ? "bg-primary/8 text-primary"
-                  : "hover:bg-accent text-foreground"
-              )}
-            >
-              <span className="capitalize">
-                {format(currentWeekStart, "d", { locale: es })}
-                {" — "}
-                {format(weekEnd, "d MMM", { locale: es })}
-              </span>
-            </button>
-            <Button
-              variant="ghost"
-              size="icon"
-              className="h-8 w-8 rounded-lg"
-              onClick={() => handleWeekChange(addWeeks(currentWeekStart, 1))}
-            >
-              <ChevronRight className="h-4 w-4" />
-            </Button>
-            {!isCurrentWeek && (
+            {!isCurrentWeek && viewMode === "week" && (
               <Button
                 variant="outline"
                 size="sm"
-                className="h-7 text-[11px] rounded-lg ml-1 border-border/30"
-                onClick={() =>
-                  handleWeekChange(startOfWeek(new Date(), { weekStartsOn: 1 }))
-                }
+                className="h-7 text-[11px] rounded-lg mr-1.5 border-border/30"
+                onClick={() => handleWeekChange(startOfWeek(new Date(), { weekStartsOn: 1 }))}
               >
                 <CalendarDays className="h-3 w-3 mr-1" />
                 Hoy
               </Button>
             )}
+            <Button
+              variant="ghost"
+              size="icon"
+              className="h-8 w-8 rounded-lg"
+              onClick={() =>
+                viewMode === "week"
+                  ? handleWeekChange(subWeeks(currentWeekStart, 1))
+                  : handleMonthChange(subMonths(currentMonth, 1))
+              }
+            >
+              <ChevronLeft className="h-4 w-4" />
+            </Button>
+            <button
+              onClick={() =>
+                viewMode === "week"
+                  ? handleWeekChange(startOfWeek(new Date(), { weekStartsOn: 1 }))
+                  : handleMonthChange(new Date())
+              }
+              className={cn(
+                "px-3 py-1.5 rounded-xl text-sm font-semibold transition-all min-w-[130px] text-center capitalize",
+                viewMode === "week" && isCurrentWeek
+                  ? "bg-primary/8 text-primary"
+                  : "hover:bg-accent"
+              )}
+            >
+              {navLabel}
+            </button>
+            <Button
+              variant="ghost"
+              size="icon"
+              className="h-8 w-8 rounded-lg"
+              onClick={() =>
+                viewMode === "week"
+                  ? handleWeekChange(addWeeks(currentWeekStart, 1))
+                  : handleMonthChange(addMonths(currentMonth, 1))
+              }
+            >
+              <ChevronRight className="h-4 w-4" />
+            </Button>
           </div>
 
           {/* Desktop stats */}
@@ -213,19 +260,16 @@ export default function Training() {
                 {stats.totalDuration % 60 > 0 && ` ${stats.totalDuration % 60}m`}
               </span>
               <span className="text-border/40">·</span>
-              <span>{stats.total} sesiones</span>
+              <span>{stats.total} ses.</span>
               <span className="text-border/40">·</span>
-              <span
-                className={cn(
-                  "flex items-center gap-0.5",
-                  completionPct === 100 && "text-emerald-500 font-semibold"
-                )}
-              >
+              <span className={cn(
+                "flex items-center gap-0.5",
+                completionPct === 100 && "text-emerald-500 font-semibold"
+              )}>
                 {completionPct === 100 && <TrendingUp className="h-3 w-3" />}
                 {completionPct}%
               </span>
-              <span className="text-border/40 hidden lg:inline">·</span>
-              <div className="hidden lg:flex items-center gap-1">
+              <div className="hidden lg:flex items-center gap-1 ml-0.5">
                 {Object.entries(stats.sportCounts).map(([sport, count]) => {
                   const config = SPORT_CONFIG[sport];
                   if (!config) return null;
@@ -235,8 +279,7 @@ export default function Training() {
                       key={sport}
                       className={cn(
                         "inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded-full text-[10px] font-semibold",
-                        config.bg,
-                        config.color
+                        config.bg, config.color
                       )}
                     >
                       <Icon className="h-2.5 w-2.5" />
@@ -251,9 +294,9 @@ export default function Training() {
 
         {/* ── Content ── */}
         {isLoading ? (
-          <div className="hidden md:grid grid-cols-7 gap-px bg-border/20 rounded-2xl overflow-hidden border border-border/30">
-            {Array.from({ length: 7 }).map((_, i) => (
-              <div key={i} className="h-[180px] bg-muted/20 animate-pulse" />
+          <div className="grid grid-cols-7 gap-px bg-border/20 rounded-2xl overflow-hidden border border-border/30">
+            {Array.from({ length: viewMode === "week" ? 7 : 35 }).map((_, i) => (
+              <div key={i} className={cn("bg-muted/20 animate-pulse", viewMode === "week" ? "h-[180px]" : "h-20")} />
             ))}
           </div>
         ) : sessions.length === 0 ? (
@@ -262,7 +305,7 @@ export default function Training() {
               <Dumbbell className="h-8 w-8 text-muted-foreground/20" />
             </div>
             <h3 className="text-base font-semibold text-muted-foreground/70">
-              Sin plan esta semana
+              Sin plan {viewMode === "week" ? "esta semana" : "este mes"}
             </h3>
             <p className="text-sm text-muted-foreground/40 mt-1.5 max-w-xs leading-relaxed">
               Usa{" "}
@@ -271,23 +314,32 @@ export default function Training() {
               </code>{" "}
               para generar un plan o crea sesiones manualmente.
             </p>
-            <Button
-              className="mt-5 rounded-xl shadow-sm"
-              size="sm"
-              onClick={() => openFormCreate()}
-            >
+            <Button className="mt-5 rounded-xl shadow-sm" size="sm" onClick={() => openFormCreate()}>
               <Plus className="h-4 w-4 mr-1.5" />
               Crear sesión
             </Button>
           </div>
         ) : (
           <>
-            <WeeklyCalendarView
-              currentWeekStart={currentWeekStart}
-              sessionsByDate={sessionsByDate}
-              onOpenSession={openSession}
-              onAddSession={openFormCreate}
-            />
+            {viewMode === "week" ? (
+              <WeeklyCalendarView
+                currentWeekStart={currentWeekStart}
+                sessionsByDate={sessionsByDate}
+                onOpenSession={openSession}
+                onAddSession={openFormCreate}
+              />
+            ) : (
+              <MonthlyCalendarView
+                calendarDays={calendarDays}
+                currentMonth={currentMonth}
+                selectedDate={selectedDate}
+                sessionsByDate={sessionsByDate}
+                totalRows={totalRows}
+                onSelectDate={setSelectedDate}
+                onOpenSession={openSession}
+                onAddSession={openFormCreate}
+              />
+            )}
 
             {/* Upcoming Race */}
             {nextRace && (
@@ -317,10 +369,8 @@ export default function Training() {
               </button>
             )}
 
-            {/* Goals */}
             <TrainingGoals />
 
-            {/* Periodization + Load (desktop) */}
             <div className="hidden md:flex gap-4">
               <div className="flex-1">
                 <PeriodizationBar sessions={sessions} />
@@ -330,7 +380,6 @@ export default function Training() {
               </div>
             </div>
 
-            {/* Delete all */}
             <div className="flex justify-end border-t border-border/15 pt-4">
               <Button
                 variant="ghost"
@@ -346,23 +395,13 @@ export default function Training() {
         )}
       </div>
 
-      {/* Session Detail Drawer */}
       <SessionDetailDrawer
         session={selectedSession}
         open={drawerOpen}
         onClose={() => setDrawerOpen(false)}
-        onComplete={(id) => {
-          markCompleted.mutate(id);
-          setDrawerOpen(false);
-        }}
-        onSkip={(id) => {
-          markSkipped.mutate(id);
-          setDrawerOpen(false);
-        }}
-        onReset={(id) => {
-          resetSession.mutate(id);
-          setDrawerOpen(false);
-        }}
+        onComplete={(id) => { markCompleted.mutate(id); setDrawerOpen(false); }}
+        onSkip={(id) => { markSkipped.mutate(id); setDrawerOpen(false); }}
+        onReset={(id) => { resetSession.mutate(id); setDrawerOpen(false); }}
         onEdit={openFormEdit}
         onDelete={(s) => setDeleteTarget(s)}
         onSaveFeedback={(id, rating, notes) => {
@@ -370,7 +409,6 @@ export default function Training() {
         }}
       />
 
-      {/* Session Form Drawer */}
       <SessionFormDrawer
         open={formOpen}
         onOpenChange={setFormOpen}
@@ -379,7 +417,6 @@ export default function Training() {
         onSave={handleFormSave}
       />
 
-      {/* Delete Confirmation */}
       <ConfirmDialog
         open={!!deleteTarget}
         onOpenChange={(open) => !open && setDeleteTarget(null)}

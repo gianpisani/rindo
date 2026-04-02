@@ -23,9 +23,12 @@ import {
   XCircle,
   Coffee,
   Flag,
-  Zap,
-  Route,
 } from "lucide-react";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 
 interface Props {
   currentWeekStart: Date;
@@ -35,7 +38,124 @@ interface Props {
 }
 
 /* ─────────────────────────────────────────────────────────────
-   Desktop mini card — fits inside the narrow day column
+   Week Glance — compact horizontal overview (desktop only)
+   ───────────────────────────────────────────────────────────── */
+
+function WeekGlance({
+  days,
+  sessionsByDate,
+  onOpenSession,
+}: {
+  days: Date[];
+  sessionsByDate: Record<string, TrainingSession[]>;
+  onOpenSession: (session: TrainingSession) => void;
+}) {
+  return (
+    <div className="hidden md:grid grid-cols-7 gap-1 mb-2">
+      {days.map((day, i) => {
+        const dateStr = format(day, "yyyy-MM-dd");
+        const daySessions = sessionsByDate[dateStr] || [];
+        const dayIsToday = isToday(day);
+        const totalMin = daySessions.reduce((s, x) => s + (x.target_duration_minutes || 0), 0);
+        const allDone = daySessions.length > 0 && daySessions.every((s) => s.status !== "pending");
+        const isRest = daySessions.length === 1 && daySessions[0].sport_type === "rest";
+        const isEmpty = daySessions.length === 0;
+
+        // Get dominant intensity for color
+        const hardSession = daySessions.find((s) => s.intensity === "hard");
+        const modSession = daySessions.find((s) => s.intensity === "moderate");
+        const barColor = hardSession
+          ? "bg-rose-500"
+          : modSession
+          ? "bg-amber-500"
+          : isRest || isEmpty
+          ? "bg-transparent"
+          : "bg-emerald-500";
+
+        return (
+          <Tooltip key={dateStr}>
+            <TooltipTrigger asChild>
+              <div
+                className={cn(
+                  "relative rounded-lg px-2 py-1.5 flex items-center gap-2 transition-colors cursor-default",
+                  dayIsToday ? "bg-primary/[0.06]" : "bg-muted/15 hover:bg-muted/25"
+                )}
+              >
+                {/* Intensity bar */}
+                <div className={cn("w-[3px] h-5 rounded-full shrink-0", barColor, isEmpty && "bg-border/20")} />
+
+                {/* Sport icons */}
+                <div className="flex items-center gap-1 flex-1 min-w-0">
+                  {isEmpty ? (
+                    <span className="text-[10px] text-muted-foreground/30">—</span>
+                  ) : isRest ? (
+                    <Coffee className="h-3 w-3 text-muted-foreground/30" />
+                  ) : (
+                    daySessions
+                      .filter((s) => s.sport_type !== "rest")
+                      .slice(0, 3)
+                      .map((s) => {
+                        const sp = SPORT_CONFIG[s.sport_type] || SPORT_CONFIG.rest;
+                        const Icon = sp.icon;
+                        return (
+                          <Icon
+                            key={s.id}
+                            className={cn("h-3 w-3 shrink-0", sp.color, allDone && "opacity-50")}
+                          />
+                        );
+                      })
+                  )}
+                </div>
+
+                {/* Duration */}
+                {totalMin > 0 && (
+                  <span
+                    className={cn(
+                      "text-[10px] tabular-nums font-semibold shrink-0",
+                      allDone ? "text-emerald-500" : "text-muted-foreground/60"
+                    )}
+                  >
+                    {totalMin}′
+                  </span>
+                )}
+
+                {allDone && (
+                  <CheckCircle2 className="h-3 w-3 text-emerald-500 shrink-0" />
+                )}
+              </div>
+            </TooltipTrigger>
+            <TooltipContent side="bottom" className="max-w-[200px]">
+              <p className="font-semibold text-xs capitalize mb-1">
+                {format(day, "EEEE d", { locale: es })}
+              </p>
+              {isEmpty ? (
+                <p className="text-xs text-muted-foreground">Sin sesiones</p>
+              ) : (
+                daySessions.map((s) => {
+                  const sp = SPORT_CONFIG[s.sport_type] || SPORT_CONFIG.rest;
+                  return (
+                    <div key={s.id} className="flex items-center gap-1.5 text-xs py-0.5">
+                      <div className={cn("w-1.5 h-1.5 rounded-full shrink-0", sp.dot)} />
+                      <span className="truncate">{s.session_name}</span>
+                      {s.target_duration_minutes && (
+                        <span className="text-muted-foreground ml-auto shrink-0">
+                          {s.target_duration_minutes}′
+                        </span>
+                      )}
+                    </div>
+                  );
+                })
+              )}
+            </TooltipContent>
+          </Tooltip>
+        );
+      })}
+    </div>
+  );
+}
+
+/* ─────────────────────────────────────────────────────────────
+   Desktop mini card — compact, no overflow
    ───────────────────────────────────────────────────────────── */
 
 function MiniSessionCard({
@@ -58,16 +178,16 @@ function MiniSessionCard({
       <button
         onClick={onClick}
         className={cn(
-          "w-full text-left rounded-lg border border-dashed border-border/30 px-2.5 py-2 transition-all",
-          "hover:border-border/50 hover:bg-muted/10",
+          "w-full text-left rounded-lg border border-dashed border-border/30 px-2 py-1.5 transition-all",
+          "hover:border-border/50",
           isCompleted && "opacity-50",
           isSkipped && "opacity-30"
         )}
       >
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-1.5">
           <Coffee className="h-3 w-3 text-muted-foreground/40" />
-          <span className="text-[11px] text-muted-foreground/50 font-medium">Descanso</span>
-          {isCompleted && <CheckCircle2 className="h-3 w-3 text-emerald-500 ml-auto" />}
+          <span className="text-[10px] text-muted-foreground/50 font-medium">Descanso</span>
+          {isCompleted && <CheckCircle2 className="h-2.5 w-2.5 text-emerald-500 ml-auto" />}
         </div>
       </button>
     );
@@ -78,8 +198,8 @@ function MiniSessionCard({
       onClick={onClick}
       className={cn(
         "w-full text-left rounded-lg overflow-hidden transition-all",
-        "border hover:shadow-[0_2px_8px_-2px_rgba(0,0,0,0.06)]",
-        "active:scale-[0.98]",
+        "border active:scale-[0.98]",
+        "hover:shadow-[0_2px_8px_-2px_rgba(0,0,0,0.06)]",
         isRace
           ? "border-rose-500/20 bg-gradient-to-br from-rose-500/[0.04] to-amber-500/[0.02]"
           : "border-border/30 hover:border-border/50",
@@ -90,58 +210,38 @@ function MiniSessionCard({
       {/* Sport accent bar */}
       <div className={cn("h-[2px]", isRace ? "bg-gradient-to-r from-rose-500 to-amber-500" : sport.dot)} />
 
-      <div className="p-2.5">
-        <div className="flex items-start gap-2">
-          <div
-            className={cn(
-              "mt-px p-1 rounded-md shrink-0",
-              isRace ? "bg-rose-500/10" : sport.bg
-            )}
-          >
+      <div className="px-2 py-1.5">
+        {/* Row 1: Icon + name + status */}
+        <div className="flex items-center gap-1.5">
+          <div className={cn("p-0.5 rounded shrink-0", isRace ? "bg-rose-500/10" : sport.bg)}>
             {isRace ? (
-              <Flag className="h-3 w-3 text-rose-500" />
+              <Flag className="h-2.5 w-2.5 text-rose-500" />
             ) : (
-              <SportIcon className={cn("h-3 w-3", sport.color)} />
+              <SportIcon className={cn("h-2.5 w-2.5", sport.color)} />
             )}
           </div>
-          <div className="flex-1 min-w-0">
-            <div className="flex items-center gap-1">
-              <span className="text-[11px] font-semibold truncate leading-tight">
-                {isRace ? session.race_name || session.session_name : session.session_name}
-              </span>
-              {isCompleted && <CheckCircle2 className="h-3 w-3 text-emerald-500 shrink-0" />}
-              {isSkipped && <XCircle className="h-3 w-3 text-rose-400 shrink-0" />}
-            </div>
-            <div className="flex items-center gap-1.5 mt-1">
-              {session.target_duration_minutes && (
-                <span className="text-[10px] text-muted-foreground/70 flex items-center gap-0.5">
-                  <Clock className="h-2.5 w-2.5" />
-                  {session.target_duration_minutes}′
-                </span>
-              )}
-              {session.target_hr_zone && (
-                <span className="text-[10px] text-muted-foreground/70 flex items-center gap-0.5">
-                  <Heart className="h-2.5 w-2.5" />
-                  Z{session.target_hr_zone}
-                </span>
-              )}
-              {session.target_distance_meters && session.target_distance_meters >= 1000 && (
-                <span className="text-[10px] text-muted-foreground/70 flex items-center gap-0.5">
-                  <Route className="h-2.5 w-2.5" />
-                  {(session.target_distance_meters / 1000).toFixed(0)}k
-                </span>
-              )}
-            </div>
-          </div>
+          <span className="text-[10px] font-semibold truncate leading-tight flex-1">
+            {isRace ? session.race_name || session.session_name : session.session_name}
+          </span>
+          {isCompleted && <CheckCircle2 className="h-2.5 w-2.5 text-emerald-500 shrink-0" />}
+          {isSkipped && <XCircle className="h-2.5 w-2.5 text-rose-400 shrink-0" />}
         </div>
-        {/* Intensity pill at bottom */}
-        <div className="mt-1.5">
-          <span
-            className={cn(
-              "text-[9px] font-semibold px-1.5 py-[1px] rounded-full",
-              intensity.color
-            )}
-          >
+
+        {/* Row 2: Metrics + intensity */}
+        <div className="flex items-center gap-1 mt-1 flex-wrap">
+          {session.target_duration_minutes && (
+            <span className="text-[9px] text-muted-foreground/60 flex items-center gap-px">
+              <Clock className="h-2 w-2" />
+              {session.target_duration_minutes}′
+            </span>
+          )}
+          {session.target_hr_zone && (
+            <span className="text-[9px] text-muted-foreground/60 flex items-center gap-px">
+              <Heart className="h-2 w-2" />
+              Z{session.target_hr_zone}
+            </span>
+          )}
+          <span className={cn("text-[8px] font-bold px-1 py-px rounded-full ml-auto", intensity.color)}>
             {intensity.label}
           </span>
         </div>
@@ -151,7 +251,7 @@ function MiniSessionCard({
 }
 
 /* ─────────────────────────────────────────────────────────────
-   Main weekly calendar component
+   Main weekly calendar
    ───────────────────────────────────────────────────────────── */
 
 export function WeeklyCalendarView({
@@ -186,6 +286,9 @@ export function WeeklyCalendarView({
 
   return (
     <>
+      {/* ── Week Glance (desktop) ── */}
+      <WeekGlance days={days} sessionsByDate={sessionsByDate} onOpenSession={onOpenSession} />
+
       {/* ── Desktop: 7-column grid ── */}
       <div className="hidden md:grid grid-cols-7 gap-px bg-border/20 rounded-2xl overflow-hidden border border-border/30">
         {days.map((day, i) => {
@@ -193,76 +296,56 @@ export function WeeklyCalendarView({
           const daySessions = sessionsByDate[dateStr] || [];
           const dayIsToday = isToday(day);
           const dayIsPast = isPast(day) && !dayIsToday;
-          const allDone =
-            daySessions.length > 0 && daySessions.every((s) => s.status !== "pending");
+          const allDone = daySessions.length > 0 && daySessions.every((s) => s.status !== "pending");
 
           return (
             <div
               key={dateStr}
               className={cn(
-                "group/day min-h-[180px] flex flex-col bg-background transition-colors",
+                "group/day min-h-[160px] flex flex-col bg-background transition-colors",
                 dayIsToday && "bg-primary/[0.02]",
                 dayIsPast && "bg-muted/[0.03]",
                 allDone && !dayIsToday && "bg-emerald-500/[0.015]"
               )}
             >
               {/* Day header */}
-              <div
-                className={cn(
-                  "flex items-center justify-between px-2.5 py-2 border-b",
-                  dayIsToday
-                    ? "border-primary/15 bg-primary/[0.04]"
-                    : "border-border/15"
-                )}
-              >
-                <div className="flex items-center gap-1.5">
-                  <span
-                    className={cn(
-                      "text-[10px] font-bold uppercase tracking-widest",
-                      dayIsToday ? "text-primary" : "text-muted-foreground/50"
-                    )}
-                  >
+              <div className={cn(
+                "flex items-center justify-between px-2 py-1.5 border-b",
+                dayIsToday ? "border-primary/15 bg-primary/[0.04]" : "border-border/15"
+              )}>
+                <div className="flex items-center gap-1">
+                  <span className={cn(
+                    "text-[9px] font-bold uppercase tracking-widest",
+                    dayIsToday ? "text-primary" : "text-muted-foreground/40"
+                  )}>
                     {DAY_NAMES[i]}
                   </span>
-                  <span
-                    className={cn(
-                      "text-xs tabular-nums w-6 h-6 flex items-center justify-center rounded-full font-bold transition-colors",
-                      dayIsToday
-                        ? "bg-primary text-primary-foreground"
-                        : "text-muted-foreground/70"
-                    )}
-                  >
+                  <span className={cn(
+                    "text-[11px] tabular-nums w-5 h-5 flex items-center justify-center rounded-full font-bold",
+                    dayIsToday ? "bg-primary text-primary-foreground" : "text-muted-foreground/60"
+                  )}>
                     {format(day, "d")}
                   </span>
-                  {allDone && (
-                    <CheckCircle2 className="h-3 w-3 text-emerald-500" />
-                  )}
                 </div>
                 <button
                   onClick={() => onAddSession(dateStr)}
-                  className="h-5 w-5 flex items-center justify-center rounded-full opacity-0 group-hover/day:opacity-100 hover:bg-primary/10 text-muted-foreground/50 hover:text-primary transition-all"
+                  className="h-4 w-4 flex items-center justify-center rounded-full opacity-0 group-hover/day:opacity-100 hover:bg-primary/10 text-muted-foreground/40 hover:text-primary transition-all"
                 >
-                  <Plus className="h-3 w-3" />
+                  <Plus className="h-2.5 w-2.5" />
                 </button>
               </div>
 
               {/* Sessions */}
-              <div className="flex-1 p-1.5 space-y-1">
+              <div className="flex-1 p-1 space-y-1">
                 {daySessions.map((s) => (
-                  <MiniSessionCard
-                    key={s.id}
-                    session={s}
-                    onClick={() => onOpenSession(s)}
-                  />
+                  <MiniSessionCard key={s.id} session={s} onClick={() => onOpenSession(s)} />
                 ))}
                 {daySessions.length === 0 && (
                   <button
                     onClick={() => onAddSession(dateStr)}
-                    className="flex-1 w-full h-full min-h-[80px] flex items-center justify-center rounded-lg transition-all group/empty"
+                    className="flex-1 w-full h-full min-h-[60px] flex items-center justify-center rounded-lg transition-all"
                   >
-                    <div className="flex flex-col items-center gap-1 opacity-0 group-hover/day:opacity-100 transition-opacity">
-                      <Plus className="h-4 w-4 text-muted-foreground/25" />
-                    </div>
+                    <Plus className="h-3.5 w-3.5 text-muted-foreground/15 opacity-0 group-hover/day:opacity-100 transition-opacity" />
                   </button>
                 )}
               </div>
@@ -273,15 +356,14 @@ export function WeeklyCalendarView({
 
       {/* ── Mobile: Day selector + detail ── */}
       <div className="md:hidden space-y-4">
-        {/* Day strip — segmented control style */}
+        {/* Day strip */}
         <div className="grid grid-cols-7 gap-0.5 bg-muted/30 p-1 rounded-2xl">
           {days.map((day, i) => {
             const dateStr = format(day, "yyyy-MM-dd");
             const daySessions = sessionsByDate[dateStr] || [];
             const dayIsToday = isToday(day);
             const isSelected = i === selectedDayIndex;
-            const allDone =
-              daySessions.length > 0 && daySessions.every((s) => s.status !== "pending");
+            const allDone = daySessions.length > 0 && daySessions.every((s) => s.status !== "pending");
 
             return (
               <button
@@ -289,35 +371,24 @@ export function WeeklyCalendarView({
                 onClick={() => setSelectedDayIndex(i)}
                 className={cn(
                   "relative flex flex-col items-center gap-0.5 py-2.5 rounded-xl transition-all",
-                  isSelected
-                    ? "bg-background shadow-sm shadow-black/5"
-                    : "hover:bg-background/40"
+                  isSelected ? "bg-background shadow-sm shadow-black/5" : "hover:bg-background/40"
                 )}
               >
-                <span
-                  className={cn(
-                    "text-[10px] font-bold uppercase tracking-wide",
-                    isSelected
-                      ? dayIsToday
-                        ? "text-primary"
-                        : "text-foreground"
-                      : "text-muted-foreground/50"
-                  )}
-                >
+                <span className={cn(
+                  "text-[10px] font-bold uppercase tracking-wide",
+                  isSelected ? (dayIsToday ? "text-primary" : "text-foreground") : "text-muted-foreground/50"
+                )}>
                   {DAY_NAMES[i].charAt(0)}
                 </span>
-                <span
-                  className={cn(
-                    "text-sm font-bold tabular-nums w-7 h-7 flex items-center justify-center rounded-full transition-colors",
-                    dayIsToday && isSelected && "bg-primary text-primary-foreground",
-                    dayIsToday && !isSelected && "text-primary",
-                    !dayIsToday && isSelected && "text-foreground",
-                    !dayIsToday && !isSelected && "text-muted-foreground/60"
-                  )}
-                >
+                <span className={cn(
+                  "text-sm font-bold tabular-nums w-7 h-7 flex items-center justify-center rounded-full transition-colors",
+                  dayIsToday && isSelected && "bg-primary text-primary-foreground",
+                  dayIsToday && !isSelected && "text-primary",
+                  !dayIsToday && isSelected && "text-foreground",
+                  !dayIsToday && !isSelected && "text-muted-foreground/60"
+                )}>
                   {format(day, "d")}
                 </span>
-                {/* Status indicators */}
                 <div className="flex gap-[3px] h-2.5 items-center">
                   {allDone ? (
                     <CheckCircle2 className="h-2.5 w-2.5 text-emerald-500" />
@@ -328,7 +399,7 @@ export function WeeklyCalendarView({
                         <div
                           key={s.id}
                           className={cn(
-                            "w-[5px] h-[5px] rounded-full transition-transform",
+                            "w-[5px] h-[5px] rounded-full",
                             s.is_race ? "bg-rose-500" : sport.dot,
                             s.status === "skipped" && "opacity-25",
                             isSelected && "scale-110"
@@ -350,10 +421,7 @@ export function WeeklyCalendarView({
               {format(selectedDay, "EEEE d", { locale: es })}
             </h3>
             {isToday(selectedDay) && (
-              <Badge
-                variant="outline"
-                className="text-[10px] px-2 py-0 text-primary border-primary/25 bg-primary/5 font-semibold"
-              >
+              <Badge variant="outline" className="text-[10px] px-2 py-0 text-primary border-primary/25 bg-primary/5 font-semibold">
                 Hoy
               </Badge>
             )}
@@ -384,11 +452,7 @@ export function WeeklyCalendarView({
         ) : (
           <div className="space-y-2.5">
             {selectedDaySessions.map((session) => (
-              <MobileSessionCard
-                key={session.id}
-                session={session}
-                onClick={() => onOpenSession(session)}
-              />
+              <MobileSessionCard key={session.id} session={session} onClick={() => onOpenSession(session)} />
             ))}
           </div>
         )}
@@ -398,7 +462,7 @@ export function WeeklyCalendarView({
 }
 
 /* ─────────────────────────────────────────────────────────────
-   Mobile: Rich session card with more detail
+   Mobile: Rich session card
    ───────────────────────────────────────────────────────────── */
 
 function MobileSessionCard({
@@ -430,9 +494,7 @@ function MobileSessionCard({
           <div className="p-2.5 rounded-xl bg-muted/40">
             <Coffee className="h-4 w-4 text-muted-foreground/40" />
           </div>
-          <span className="text-sm text-muted-foreground/60 font-medium">
-            Día de descanso
-          </span>
+          <span className="text-sm text-muted-foreground/60 font-medium">Día de descanso</span>
           {isCompleted && <CheckCircle2 className="h-4 w-4 text-emerald-500 ml-auto" />}
         </div>
       </button>
@@ -453,24 +515,11 @@ function MobileSessionCard({
         isSkipped && "opacity-45"
       )}
     >
-      {/* Sport accent bar */}
-      <div
-        className={cn(
-          "h-[2.5px]",
-          isRace
-            ? "bg-gradient-to-r from-rose-500 to-amber-500"
-            : sport.dot
-        )}
-      />
+      <div className={cn("h-[2.5px]", isRace ? "bg-gradient-to-r from-rose-500 to-amber-500" : sport.dot)} />
 
       <div className="p-4">
         <div className="flex items-start gap-3">
-          <div
-            className={cn(
-              "p-2.5 rounded-xl shrink-0",
-              isRace ? "bg-rose-500/10" : sport.bg
-            )}
-          >
+          <div className={cn("p-2.5 rounded-xl shrink-0", isRace ? "bg-rose-500/10" : sport.bg)}>
             {isRace ? (
               <Flag className="h-[18px] w-[18px] text-rose-500" />
             ) : (
@@ -480,16 +529,10 @@ function MobileSessionCard({
           <div className="flex-1 min-w-0">
             <div className="flex items-center gap-2">
               <span className="text-[15px] font-semibold truncate leading-tight">
-                {isRace
-                  ? session.race_name || session.session_name
-                  : session.session_name}
+                {isRace ? session.race_name || session.session_name : session.session_name}
               </span>
-              {isCompleted && (
-                <CheckCircle2 className="h-4 w-4 text-emerald-500 shrink-0" />
-              )}
-              {isSkipped && (
-                <XCircle className="h-4 w-4 text-rose-400 shrink-0" />
-              )}
+              {isCompleted && <CheckCircle2 className="h-4 w-4 text-emerald-500 shrink-0" />}
+              {isSkipped && <XCircle className="h-4 w-4 text-rose-400 shrink-0" />}
             </div>
             <div className="flex items-center gap-2.5 mt-2 flex-wrap">
               {session.target_duration_minutes && (
@@ -504,32 +547,17 @@ function MobileSessionCard({
                   Zona {session.target_hr_zone}
                 </span>
               )}
-              {session.target_distance_meters && session.target_distance_meters >= 1000 && (
-                <span className="text-xs text-muted-foreground/70 flex items-center gap-1">
-                  <Route className="h-3 w-3" />
-                  {(session.target_distance_meters / 1000).toFixed(1)} km
-                </span>
-              )}
               {session.scheduled_time && (
-                <span className="text-xs text-muted-foreground/70 flex items-center gap-1">
-                  <Zap className="h-3 w-3" />
+                <span className="text-xs text-muted-foreground/70">
                   {session.scheduled_time}
                 </span>
               )}
             </div>
           </div>
-          <Badge
-            variant="outline"
-            className={cn(
-              "text-[10px] shrink-0 border rounded-full font-semibold mt-0.5",
-              intensity.color
-            )}
-          >
+          <Badge variant="outline" className={cn("text-[10px] shrink-0 border rounded-full font-semibold mt-0.5", intensity.color)}>
             {intensity.label}
           </Badge>
         </div>
-
-        {/* Description preview */}
         {session.description && (
           <p className="text-xs text-muted-foreground/50 mt-3 line-clamp-2 leading-relaxed pl-[52px]">
             {session.description}
