@@ -110,22 +110,28 @@ export function MobileBottomBar() {
           <DrawerTitle className="sr-only">Menú</DrawerTitle>
 
           <div className="px-2 pt-4 pb-2">
-            {/* Quick Add - Hero button */}
-            <button
-              onClick={handleQuickAdd}
-              className="mobile-drawer-quickadd"
-            >
-              <div className="mobile-drawer-quickadd-icon">
-                <Plus className="h-5 w-5 text-primary-foreground" strokeWidth={2.5} />
-              </div>
-              <div className="text-left">
-                <span className="text-sm font-semibold text-foreground">Agregar movimiento</span>
-                <span className="text-[11px] text-muted-foreground block">Ingreso o gasto rápido</span>
-              </div>
-            </button>
+            {/* Quick Add - Centered hero */}
+            <div className="flex flex-col items-center py-4">
+              <button
+                onClick={handleQuickAdd}
+                className="mobile-drawer-quickadd-btn group"
+              >
+                <div className="mobile-drawer-quickadd-ring">
+                  <div className="mobile-drawer-quickadd-icon">
+                    <Plus className="h-6 w-6 text-primary-foreground" strokeWidth={2.5} />
+                  </div>
+                </div>
+              </button>
+              <span className="text-[13px] font-semibold text-foreground mt-3 tracking-tight">
+                Agregar movimiento
+              </span>
+              <span className="text-[11px] text-muted-foreground/60 mt-0.5">
+                Ingreso o gasto rápido
+              </span>
+            </div>
 
             {/* Divider */}
-            <div className="my-3 mx-3 h-px bg-border/50" />
+            <div className="my-2 mx-6 h-px bg-border/40" />
 
             {/* Tool routes - Grid layout */}
             <div className="mobile-drawer-grid">

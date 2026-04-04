@@ -446,37 +446,62 @@ Based on Indigo, Blue, Cyan palette
     max-height: 70vh !important;
   }
 
-  .mobile-drawer-quickadd {
-    display: flex;
-    align-items: center;
-    gap: 14px;
-    width: 100%;
-    padding: 14px 16px;
-    border-radius: 16px;
-    background: hsl(var(--muted) / 0.4);
-    border: 1px solid hsl(var(--border) / 0.5);
-    transition: all 0.2s ease;
+  .mobile-drawer-quickadd-btn {
+    position: relative;
     -webkit-tap-highlight-color: transparent;
     touch-action: manipulation;
     cursor: pointer;
-    text-align: left;
+    background: none;
+    border: none;
+    padding: 0;
   }
 
-  .mobile-drawer-quickadd:active {
-    transform: scale(0.97);
-    background: hsl(var(--muted) / 0.6);
+  .mobile-drawer-quickadd-btn:active .mobile-drawer-quickadd-icon {
+    transform: scale(0.9);
+  }
+
+  .mobile-drawer-quickadd-btn:active .mobile-drawer-quickadd-ring {
+    transform: scale(0.95);
+  }
+
+  .mobile-drawer-quickadd-ring {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 68px;
+    height: 68px;
+    border-radius: 50%;
+    background: hsl(var(--primary) / 0.08);
+    border: 1.5px solid hsl(var(--primary) / 0.15);
+    transition: all 0.35s cubic-bezier(0.34, 1.56, 0.64, 1);
   }
 
   .mobile-drawer-quickadd-icon {
     display: flex;
     align-items: center;
     justify-content: center;
-    width: 44px;
-    height: 44px;
-    border-radius: 14px;
+    width: 52px;
+    height: 52px;
+    border-radius: 50%;
     background: hsl(var(--primary));
-    flex-shrink: 0;
-    box-shadow: 0 4px 16px hsl(var(--primary) / 0.35);
+    box-shadow:
+      0 4px 20px hsl(var(--primary) / 0.4),
+      0 0 40px hsl(var(--primary) / 0.15);
+    transition: all 0.35s cubic-bezier(0.34, 1.56, 0.64, 1);
+    animation: quickadd-breathe 3s ease-in-out infinite;
+  }
+
+  @keyframes quickadd-breathe {
+    0%, 100% {
+      box-shadow:
+        0 4px 20px hsl(var(--primary) / 0.4),
+        0 0 40px hsl(var(--primary) / 0.15);
+    }
+    50% {
+      box-shadow:
+        0 6px 28px hsl(var(--primary) / 0.5),
+        0 0 50px hsl(var(--primary) / 0.2);
+    }
   }
 
   .mobile-drawer-grid {
