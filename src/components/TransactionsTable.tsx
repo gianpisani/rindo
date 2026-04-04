@@ -55,6 +55,7 @@ import { es } from "date-fns/locale";
 import { cn } from "@/lib/utils";
 import { useSearchParams } from "react-router-dom";
 import { usePrivacyMode } from "@/hooks/usePrivacyMode";
+import { useIsMobile } from "@/hooks/use-mobile";
 import { AnalyzingBadge } from "./AnalyzingBadge";
 import { InlineDateTimePicker } from "./ui/date-time-picker";
 import { ChevronDoubleLeftIcon, ChevronDoubleRightIcon } from "@heroicons/react/24/outline";
@@ -409,6 +410,7 @@ export function TransactionsTable({
   const [rowSelection, setRowSelection] = useState<RowSelectionState>({});
   const { isPrivacyMode } = usePrivacyMode();
   const { creditCards } = useCreditCards();
+  const isMobile = useIsMobile();
 
   const isControlled = externalSearch !== undefined;
   const globalFilter = isControlled ? externalSearch! : internalSearch;
@@ -975,53 +977,372 @@ export function TransactionsTable({
         </div>
       )}
 
-      {/* Table */}
-      <div className="border border-border/50 rounded-lg overflow-hidden">
-        <div className="overflow-x-auto overflow-y-auto max-h-[calc(100vh-320px)] min-h-[300px]">
-          <table className="w-full table-fixed">
-            <thead className="bg-card border-b border-border sticky top-0 z-10 shadow-sm">
-              {table.getHeaderGroups().map((headerGroup) => (
-                <tr key={headerGroup.id}>
-                  {headerGroup.headers.map((header) => (
-                    <th
-                      key={header.id}
-                      className="px-4 py-3 text-left text-xs font-semibold text-foreground uppercase tracking-wide"
-                      style={{
-                        width: header.column.columnDef.size,
-                        minWidth: header.column.columnDef.minSize,
-                        maxWidth: header.column.columnDef.maxSize,
+      {/* ── Mobile Card List ─────────────────────────────────────────────── */}
+      {isMobile ? (
+        <>
+          <div className="mobile-tx-list">
+            {table.getRowModel().rows.length === 0 ? (
+              <div className="py-16 text-center text-sm text-muted-foreground">
+                No se encontraron transacciones
+              </div>
+            ) : groupedRows ? (
+              groupedRows.map((group) => (
+                <React.Fragment key={group.dayKey}>
+                  {/* Date sticky header */}
+                  <div className="mobile-tx-date-header">
+                    {formatGroupDate(group.dayKey)}
+                  </div>
+                  {/* Transaction cards */}
+                  {group.rows.map((row) => {
+                    const t = row.original;
+                    const clean = getCleanDetail(t.detail);
+                    const initial = clean.charAt(0).toUpperCase() || "?";
+                    const avatarColor = getAvatarColor(clean || "default");
+                    const isBot = (t.detail || "").startsWith("🤖");
+                    const catData = categories.find(c => c.name === t.category_name);
+                    const emoji = catData?.icon || getCategoryIcon(t.category_name);
+                    const amountColor = typeAmountColors[t.type];
+                    const time = format(new Date(t.date), "HH:mm");
+                    const isMissing = t.category_name === "Sin categoría";
+                    const isSelected = row.getIsSelected();
+
+                    return (
+                      <div
+                        key={row.id}
+                        className={cn(
+                          "mobile-tx-card",
+                          isSelected && "mobile-tx-card-selected",
+                          isMissing && "mobile-tx-card-missing"
+                        )}
+                        onClick={() => onEdit(t)}
+                      >
+                        {/* Selection checkbox */}
+                        <div
+                          className="mobile-tx-checkbox"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            row.toggleSelected(!isSelected);
+                          }}
+                        >
+                          <Checkbox
+                            checked={isSelected}
+                            className="h-4 w-4"
+                            tabIndex={-1}
+                          />
+                        </div>
+
+                        {/* Avatar */}
+                        <div className="relative flex-shrink-0">
+                          <div
+                            className="w-10 h-10 rounded-full flex items-center justify-center text-white text-sm font-bold select-none"
+                            style={{ backgroundColor: avatarColor }}
+                          >
+                            {initial}
+                          </div>
+                          {isBot && (
+                            <div className="absolute -bottom-0.5 -right-0.5 w-4 h-4 rounded-full bg-background flex items-center justify-center">
+                              <span className="text-[9px] leading-none">🤖</span>
+                            </div>
+                          )}
+                        </div>
+
+                        {/* Content */}
+                        <div className="flex-1 min-w-0 ml-3">
+                          <div className="flex items-center justify-between gap-2">
+                            <span className={cn(
+                              "text-sm font-semibold truncate",
+                              isPrivacyMode && "privacy-blur"
+                            )}>
+                              {clean || <span className="text-muted-foreground/50 italic font-normal">Sin detalle</span>}
+                            </span>
+                            <span className={cn(
+                              "text-sm font-bold tabular-nums whitespace-nowrap font-mono",
+                              amountColor,
+                              isPrivacyMode && "privacy-blur"
+                            )}>
+                              {t.type === "Ingreso" ? "+" : t.type === "Gasto" ? "−" : ""}
+                              {formatCurrency(t.amount)}
+                            </span>
+                          </div>
+                          <div className="flex items-center justify-between gap-2 mt-0.5">
+                            <div className="flex items-center gap-1.5 min-w-0">
+                              {t.category_name === "⚡ Analizando..." ? (
+                                <AnalyzingBadge />
+                              ) : (
+                                <>
+                                  <span className="text-xs leading-none">{emoji}</span>
+                                  <span className={cn(
+                                    "text-xs truncate",
+                                    isMissing ? "text-amber-500" : "text-muted-foreground"
+                                  )}>
+                                    {t.category_name}
+                                  </span>
+                                </>
+                              )}
+                            </div>
+                            <span className="text-[11px] text-muted-foreground/50 tabular-nums flex-shrink-0">
+                              {time}
+                            </span>
+                          </div>
+                        </div>
+
+                        {/* Actions */}
+                        <div className="flex-shrink-0 ml-1">
+                          <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                              <button
+                                className="mobile-tx-actions-btn"
+                                onClick={(e) => e.stopPropagation()}
+                              >
+                                <MoreHorizontal className="h-4 w-4" />
+                              </button>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent align="end">
+                              <DropdownMenuItem onClick={() => onEdit(t)}>
+                                <Pencil className="mr-2 h-4 w-4" />
+                                Editar
+                              </DropdownMenuItem>
+                              <DropdownMenuItem onClick={() => onDuplicate([t.id])}>
+                                <Copy className="mr-2 h-4 w-4" />
+                                Duplicar
+                              </DropdownMenuItem>
+                              <DropdownMenuSeparator />
+                              <DropdownMenuItem
+                                onClick={() => onDelete(t.id)}
+                                className="text-destructive focus:text-destructive"
+                              >
+                                <Trash2 className="mr-2 h-4 w-4" />
+                                Eliminar
+                              </DropdownMenuItem>
+                            </DropdownMenuContent>
+                          </DropdownMenu>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </React.Fragment>
+              ))
+            ) : (
+              // Flat list
+              table.getRowModel().rows.map((row) => {
+                const t = row.original;
+                const clean = getCleanDetail(t.detail);
+                const initial = clean.charAt(0).toUpperCase() || "?";
+                const avatarColor = getAvatarColor(clean || "default");
+                const isBot = (t.detail || "").startsWith("🤖");
+                const catData = categories.find(c => c.name === t.category_name);
+                const emoji = catData?.icon || getCategoryIcon(t.category_name);
+                const amountColor = typeAmountColors[t.type];
+                const dateStr = format(new Date(t.date), "d MMM HH:mm", { locale: es });
+                const isMissing = t.category_name === "Sin categoría";
+                const isSelected = row.getIsSelected();
+
+                return (
+                  <div
+                    key={row.id}
+                    className={cn(
+                      "mobile-tx-card",
+                      isSelected && "mobile-tx-card-selected",
+                      isMissing && "mobile-tx-card-missing"
+                    )}
+                    onClick={() => onEdit(t)}
+                  >
+                    <div
+                      className="mobile-tx-checkbox"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        row.toggleSelected(!isSelected);
                       }}
                     >
-                      {header.isPlaceholder ? null : flexRender(header.column.columnDef.header, header.getContext())}
-                    </th>
-                  ))}
-                </tr>
-              ))}
-            </thead>
-            <tbody className="divide-y divide-border/50 bg-card">
-              {table.getRowModel().rows.length === 0 ? (
-                <tr>
-                  <td colSpan={columns.length} className="px-4 py-12 text-center text-sm text-muted-foreground">
-                    No se encontraron transacciones
-                  </td>
-                </tr>
-              ) : groupedRows ? (
-                // Grouped by date
-                groupedRows.map((group) => (
-                  <React.Fragment key={group.dayKey}>
-                    {/* Date header */}
-                    <tr>
-                      <td
-                        colSpan={columns.length}
-                        className="px-4 py-1 bg-muted/30 border-t border-border/30 first:border-t-0"
+                      <Checkbox
+                        checked={isSelected}
+                        className="h-4 w-4"
+                        tabIndex={-1}
+                      />
+                    </div>
+
+                    <div className="relative flex-shrink-0">
+                      <div
+                        className="w-10 h-10 rounded-full flex items-center justify-center text-white text-sm font-bold select-none"
+                        style={{ backgroundColor: avatarColor }}
                       >
-                        <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
-                          {formatGroupDate(group.dayKey)}
+                        {initial}
+                      </div>
+                      {isBot && (
+                        <div className="absolute -bottom-0.5 -right-0.5 w-4 h-4 rounded-full bg-background flex items-center justify-center">
+                          <span className="text-[9px] leading-none">🤖</span>
+                        </div>
+                      )}
+                    </div>
+
+                    <div className="flex-1 min-w-0 ml-3">
+                      <div className="flex items-center justify-between gap-2">
+                        <span className={cn(
+                          "text-sm font-semibold truncate",
+                          isPrivacyMode && "privacy-blur"
+                        )}>
+                          {clean || <span className="text-muted-foreground/50 italic font-normal">Sin detalle</span>}
                         </span>
+                        <span className={cn(
+                          "text-sm font-bold tabular-nums whitespace-nowrap font-mono",
+                          amountColor,
+                          isPrivacyMode && "privacy-blur"
+                        )}>
+                          {t.type === "Ingreso" ? "+" : t.type === "Gasto" ? "−" : ""}
+                          {formatCurrency(t.amount)}
+                        </span>
+                      </div>
+                      <div className="flex items-center justify-between gap-2 mt-0.5">
+                        <div className="flex items-center gap-1.5 min-w-0">
+                          <span className="text-xs leading-none">{emoji}</span>
+                          <span className={cn(
+                            "text-xs truncate",
+                            isMissing ? "text-amber-500" : "text-muted-foreground"
+                          )}>
+                            {t.category_name}
+                          </span>
+                        </div>
+                        <span className="text-[11px] text-muted-foreground/50 tabular-nums flex-shrink-0">
+                          {dateStr}
+                        </span>
+                      </div>
+                    </div>
+
+                    <div className="flex-shrink-0 ml-1">
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <button
+                            className="mobile-tx-actions-btn"
+                            onClick={(e) => e.stopPropagation()}
+                          >
+                            <MoreHorizontal className="h-4 w-4" />
+                          </button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end">
+                          <DropdownMenuItem onClick={() => onEdit(t)}>
+                            <Pencil className="mr-2 h-4 w-4" />
+                            Editar
+                          </DropdownMenuItem>
+                          <DropdownMenuItem onClick={() => onDuplicate([t.id])}>
+                            <Copy className="mr-2 h-4 w-4" />
+                            Duplicar
+                          </DropdownMenuItem>
+                          <DropdownMenuSeparator />
+                          <DropdownMenuItem
+                            onClick={() => onDelete(t.id)}
+                            className="text-destructive focus:text-destructive"
+                          >
+                            <Trash2 className="mr-2 h-4 w-4" />
+                            Eliminar
+                          </DropdownMenuItem>
+                        </DropdownMenuContent>
+                      </DropdownMenu>
+                    </div>
+                  </div>
+                );
+              })
+            )}
+          </div>
+
+          {/* Mobile Pagination */}
+          <div className="flex items-center justify-between pt-1">
+            <span className="text-xs text-muted-foreground">
+              {table.getFilteredRowModel().rows.length} movimientos
+            </span>
+            <div className="flex items-center gap-1">
+              <Button
+                variant="ghost" size="sm"
+                onClick={() => table.previousPage()}
+                disabled={!table.getCanPreviousPage()}
+                className="h-8 px-2 text-xs"
+              >
+                <ChevronUp className="h-4 w-4 rotate-[-90deg] mr-1" />
+                Ant
+              </Button>
+              <span className="text-xs text-muted-foreground tabular-nums px-2">
+                {table.getState().pagination.pageIndex + 1}/{table.getPageCount()}
+              </span>
+              <Button
+                variant="ghost" size="sm"
+                onClick={() => table.nextPage()}
+                disabled={!table.getCanNextPage()}
+                className="h-8 px-2 text-xs"
+              >
+                Sig
+                <ChevronDown className="h-4 w-4 rotate-[-90deg] ml-1" />
+              </Button>
+            </div>
+          </div>
+        </>
+      ) : (
+        <>
+          {/* ── Desktop Table ──────────────────────────────────────────────── */}
+          <div className="border border-border/50 rounded-lg overflow-hidden">
+            <div className="overflow-x-auto overflow-y-auto max-h-[calc(100vh-320px)] min-h-[300px]">
+              <table className="w-full table-fixed">
+                <thead className="bg-card border-b border-border sticky top-0 z-10 shadow-sm">
+                  {table.getHeaderGroups().map((headerGroup) => (
+                    <tr key={headerGroup.id}>
+                      {headerGroup.headers.map((header) => (
+                        <th
+                          key={header.id}
+                          className="px-4 py-3 text-left text-xs font-semibold text-foreground uppercase tracking-wide"
+                          style={{
+                            width: header.column.columnDef.size,
+                            minWidth: header.column.columnDef.minSize,
+                            maxWidth: header.column.columnDef.maxSize,
+                          }}
+                        >
+                          {header.isPlaceholder ? null : flexRender(header.column.columnDef.header, header.getContext())}
+                        </th>
+                      ))}
+                    </tr>
+                  ))}
+                </thead>
+                <tbody className="divide-y divide-border/50 bg-card">
+                  {table.getRowModel().rows.length === 0 ? (
+                    <tr>
+                      <td colSpan={columns.length} className="px-4 py-12 text-center text-sm text-muted-foreground">
+                        No se encontraron transacciones
                       </td>
                     </tr>
-                    {/* Rows */}
-                    {group.rows.map((row) => {
+                  ) : groupedRows ? (
+                    groupedRows.map((group) => (
+                      <React.Fragment key={group.dayKey}>
+                        <tr>
+                          <td
+                            colSpan={columns.length}
+                            className="px-4 py-1 bg-muted/30 border-t border-border/30 first:border-t-0"
+                          >
+                            <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
+                              {formatGroupDate(group.dayKey)}
+                            </span>
+                          </td>
+                        </tr>
+                        {group.rows.map((row) => {
+                          const isMissing = row.original.category_name === "Sin categoría";
+                          return (
+                            <tr
+                              key={row.id}
+                              data-state={row.getIsSelected() && "selected"}
+                              className={cn(
+                                "hover:bg-muted/40 transition-colors",
+                                row.getIsSelected() && "bg-primary/5 hover:bg-primary/10",
+                                isMissing && "border-l-2 border-l-amber-400/70"
+                              )}
+                            >
+                              {row.getVisibleCells().map((cell) => (
+                                <td key={cell.id} className={cn("px-4 py-1.5 overflow-hidden", isMissing && "bg-amber-400/5")}>
+                                  {flexRender(cell.column.columnDef.cell, cell.getContext())}
+                                </td>
+                              ))}
+                            </tr>
+                          );
+                        })}
+                      </React.Fragment>
+                    ))
+                  ) : (
+                    table.getRowModel().rows.map((row) => {
                       const isMissing = row.original.category_name === "Sin categoría";
                       return (
                         <tr
@@ -1040,119 +1361,97 @@ export function TransactionsTable({
                           ))}
                         </tr>
                       );
-                    })}
-                  </React.Fragment>
-                ))
+                    })
+                  )}
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+          {/* Desktop Pagination */}
+          <div className="flex items-center justify-between flex-wrap gap-3">
+            <div className="text-sm text-muted-foreground">
+              {hasSelection ? (
+                <span className="mr-2 font-medium text-primary">
+                  {selectedIds.length} de {table.getFilteredRowModel().rows.length} seleccionada(s)
+                </span>
               ) : (
-                // Flat list (when sorted by something other than date)
-                table.getRowModel().rows.map((row) => {
-                  const isMissing = row.original.category_name === "Sin categoría";
-                  return (
-                    <tr
-                      key={row.id}
-                      data-state={row.getIsSelected() && "selected"}
-                      className={cn(
-                        "hover:bg-muted/40 transition-colors",
-                        row.getIsSelected() && "bg-primary/5 hover:bg-primary/10",
-                        isMissing && "border-l-2 border-l-amber-400/70"
-                      )}
-                    >
-                      {row.getVisibleCells().map((cell) => (
-                        <td key={cell.id} className={cn("px-4 py-1.5 overflow-hidden", isMissing && "bg-amber-400/5")}>
-                          {flexRender(cell.column.columnDef.cell, cell.getContext())}
-                        </td>
-                      ))}
-                    </tr>
-                  );
-                })
+                <span>{table.getFilteredRowModel().rows.length} transacción(es)</span>
               )}
-            </tbody>
-          </table>
-        </div>
-      </div>
+            </div>
+            <div className="flex items-center gap-2">
+              <Select
+                value={table.getState().pagination.pageSize.toString()}
+                onValueChange={(value) => table.setPageSize(Number(value))}
+              >
+                <SelectTrigger className="h-8 w-[100px]">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="10">10 filas</SelectItem>
+                  <SelectItem value="20">20 filas</SelectItem>
+                  <SelectItem value="50">50 filas</SelectItem>
+                  <SelectItem value="100">100 filas</SelectItem>
+                </SelectContent>
+              </Select>
 
-      {/* Pagination */}
-      <div className="flex items-center justify-between flex-wrap gap-3">
-        <div className="text-sm text-muted-foreground">
-          {hasSelection ? (
-            <span className="mr-2 font-medium text-primary">
-              {selectedIds.length} de {table.getFilteredRowModel().rows.length} seleccionada(s)
-            </span>
-          ) : (
-            <span>{table.getFilteredRowModel().rows.length} transacción(es)</span>
-          )}
-        </div>
-        <div className="flex items-center gap-2">
-          <Select
-            value={table.getState().pagination.pageSize.toString()}
-            onValueChange={(value) => table.setPageSize(Number(value))}
-          >
-            <SelectTrigger className="h-8 w-[100px]">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="10">10 filas</SelectItem>
-              <SelectItem value="20">20 filas</SelectItem>
-              <SelectItem value="50">50 filas</SelectItem>
-              <SelectItem value="100">100 filas</SelectItem>
-            </SelectContent>
-          </Select>
+              <div className="flex items-center gap-1">
+                <Button
+                  variant="outline" size="sm"
+                  onClick={() => table.setPageIndex(0)}
+                  disabled={!table.getCanPreviousPage()}
+                  className="h-8 w-8 p-0"
+                >
+                  <ChevronDoubleLeftIcon className="h-4 w-4" />
+                </Button>
+                <Button
+                  variant="outline" size="sm"
+                  onClick={() => table.previousPage()}
+                  disabled={!table.getCanPreviousPage()}
+                  className="h-8 px-2"
+                >
+                  <ChevronUp className="h-4 w-4 rotate-[-90deg]" />
+                </Button>
+              </div>
 
-          <div className="flex items-center gap-1">
-            <Button
-              variant="outline" size="sm"
-              onClick={() => table.setPageIndex(0)}
-              disabled={!table.getCanPreviousPage()}
-              className="h-8 w-8 p-0"
-            >
-              <ChevronDoubleLeftIcon className="h-4 w-4" />
-            </Button>
-            <Button
-              variant="outline" size="sm"
-              onClick={() => table.previousPage()}
-              disabled={!table.getCanPreviousPage()}
-              className="h-8 px-2"
-            >
-              <ChevronUp className="h-4 w-4 rotate-[-90deg]" />
-            </Button>
+              <div className="flex items-center gap-1.5">
+                <span className="text-sm text-muted-foreground">Pág.</span>
+                <Input
+                  type="number"
+                  min={1}
+                  max={table.getPageCount()}
+                  value={table.getState().pagination.pageIndex + 1}
+                  onChange={(e) => {
+                    const page = e.target.value ? Number(e.target.value) - 1 : 0;
+                    if (page >= 0 && page < table.getPageCount()) table.setPageIndex(page);
+                  }}
+                  className="h-8 w-14 text-center"
+                />
+                <span className="text-sm text-muted-foreground">de {table.getPageCount()}</span>
+              </div>
+
+              <div className="flex items-center gap-1">
+                <Button
+                  variant="outline" size="sm"
+                  onClick={() => table.nextPage()}
+                  disabled={!table.getCanNextPage()}
+                  className="h-8 px-2"
+                >
+                  <ChevronDown className="h-4 w-4 rotate-[-90deg]" />
+                </Button>
+                <Button
+                  variant="outline" size="sm"
+                  onClick={() => table.setPageIndex(table.getPageCount() - 1)}
+                  disabled={!table.getCanNextPage()}
+                  className="h-8 w-8 p-0"
+                >
+                  <ChevronDoubleRightIcon className="h-4 w-4" />
+                </Button>
+              </div>
+            </div>
           </div>
-
-          <div className="flex items-center gap-1.5">
-            <span className="text-sm text-muted-foreground">Pág.</span>
-            <Input
-              type="number"
-              min={1}
-              max={table.getPageCount()}
-              value={table.getState().pagination.pageIndex + 1}
-              onChange={(e) => {
-                const page = e.target.value ? Number(e.target.value) - 1 : 0;
-                if (page >= 0 && page < table.getPageCount()) table.setPageIndex(page);
-              }}
-              className="h-8 w-14 text-center"
-            />
-            <span className="text-sm text-muted-foreground">de {table.getPageCount()}</span>
-          </div>
-
-          <div className="flex items-center gap-1">
-            <Button
-              variant="outline" size="sm"
-              onClick={() => table.nextPage()}
-              disabled={!table.getCanNextPage()}
-              className="h-8 px-2"
-            >
-              <ChevronDown className="h-4 w-4 rotate-[-90deg]" />
-            </Button>
-            <Button
-              variant="outline" size="sm"
-              onClick={() => table.setPageIndex(table.getPageCount() - 1)}
-              disabled={!table.getCanNextPage()}
-              className="h-8 w-8 p-0"
-            >
-              <ChevronDoubleRightIcon className="h-4 w-4" />
-            </Button>
-          </div>
-        </div>
-      </div>
+        </>
+      )}
     </div>
   );
 }

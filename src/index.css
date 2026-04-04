@@ -543,6 +543,83 @@ Based on Indigo, Blue, Cyan palette
     transition: all 0.25s ease;
   }
 
+  /* ── Mobile Transaction Cards ── */
+  .mobile-tx-list {
+    display: flex;
+    flex-direction: column;
+  }
+
+  .mobile-tx-date-header {
+    position: sticky;
+    top: 0;
+    z-index: 5;
+    padding: 10px 4px 6px;
+    font-size: 11px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    color: hsl(var(--muted-foreground));
+    background: hsl(var(--background));
+  }
+
+  .mobile-tx-card {
+    display: flex;
+    align-items: center;
+    padding: 12px 4px;
+    border-bottom: 1px solid hsl(var(--border) / 0.3);
+    transition: background 0.15s ease;
+    -webkit-tap-highlight-color: transparent;
+    touch-action: manipulation;
+    cursor: pointer;
+  }
+
+  .mobile-tx-card:active {
+    background: hsl(var(--muted) / 0.4);
+  }
+
+  .mobile-tx-card-selected {
+    background: hsl(var(--primary) / 0.06);
+  }
+
+  .mobile-tx-card-selected:active {
+    background: hsl(var(--primary) / 0.12);
+  }
+
+  .mobile-tx-card-missing {
+    border-left: 2px solid hsl(45 93% 58% / 0.7);
+  }
+
+  .mobile-tx-checkbox {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 28px;
+    flex-shrink: 0;
+    padding: 8px 4px 8px 0;
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  .mobile-tx-actions-btn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 32px;
+    height: 32px;
+    border-radius: 8px;
+    color: hsl(var(--muted-foreground) / 0.4);
+    transition: all 0.15s ease;
+    -webkit-tap-highlight-color: transparent;
+    background: none;
+    border: none;
+    cursor: pointer;
+    padding: 0;
+  }
+
+  .mobile-tx-actions-btn:active {
+    background: hsl(var(--muted) / 0.5);
+    color: hsl(var(--foreground));
+  }
+
   /* Smooth indicator slide animation */
   @keyframes slide-indicator {
     from {
