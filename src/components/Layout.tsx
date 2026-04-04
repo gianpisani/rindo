@@ -18,6 +18,8 @@ import { initSounds } from "@/lib/snd";
 import { ShortcutsPopover } from "@/components/ShortcutsPopover";
 import { RindoLogo } from "./RindoLogo";
 import { usePushNotifications } from "@/hooks/usePushNotifications";
+import { MobileBottomBar } from "./MobileBottomBar";
+import { useIsMobile } from "@/hooks/use-mobile";
 import {
   Tooltip,
   TooltipContent,
@@ -44,6 +46,7 @@ export default function Layout({ children }: LayoutProps) {
   } = useGlobalDrawers();
 
   const { isSupported: pushSupported, isSubscribed: pushSubscribed, isLoading: pushLoading, subscribe: pushSubscribe, unsubscribe: pushUnsubscribe } = usePushNotifications();
+  const isMobile = useIsMobile();
   const [commandBarOpen, setCommandBarOpen] = useState(false);
   const [showShortcutsPopover, setShowShortcutsPopover] = useState(false);
   const [whisperOpen, setWhisperOpen] = useState(false);
@@ -173,12 +176,14 @@ export default function Layout({ children }: LayoutProps) {
 
           {/* Top Bar with Trigger and Actions */}
           <header className="sticky top-0 z-40 flex h-14 shrink-0 items-center gap-2 border-b border-border/40 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 px-4">
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <SidebarTrigger className="-ml-1" />
-              </TooltipTrigger>
-              <TooltipContent side="right">Toggle sidebar</TooltipContent>
-            </Tooltip>
+            {!isMobile && (
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <SidebarTrigger className="-ml-1" />
+                </TooltipTrigger>
+                <TooltipContent side="right">Toggle sidebar</TooltipContent>
+              </Tooltip>
+            )}
             <div className="flex flex-1 items-center justify-between">
               <div className="flex items-center gap-2">
                 <span className="text-lg font-bold tracking-tight">
@@ -335,12 +340,18 @@ export default function Layout({ children }: LayoutProps) {
 
           {/* Main Content */}
           <main
-            className="flex flex-1 flex-col gap-4 p-6 sm:p-6 overflow-x-hidden"
+            className={cn(
+              "flex flex-1 flex-col gap-4 p-6 sm:p-6 overflow-x-hidden",
+              isMobile && "pb-28"
+            )}
             data-scrollable
           >
             {children}
           </main>
         </SidebarInset>
+
+        {/* Mobile Bottom Navigation */}
+        <MobileBottomBar />
       </SidebarProvider>
     </TooltipProvider>
   );

@@ -381,6 +381,143 @@ Based on Indigo, Blue, Cyan palette
     border: 1px solid rgba(255, 255, 255, 0.05);
   }
   
+  /* ── Mobile Bottom Tab Bar ── */
+  .mobile-tab-bar {
+    display: flex;
+    align-items: center;
+    justify-content: space-around;
+    height: 64px;
+    background: hsl(var(--background) / 0.82);
+    backdrop-filter: blur(24px) saturate(180%);
+    -webkit-backdrop-filter: blur(24px) saturate(180%);
+    border-top: 1px solid hsl(var(--border) / 0.3);
+    padding: 0 4px;
+  }
+
+  .mobile-tab-item {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    flex: 1;
+    height: 100%;
+    gap: 1px;
+    position: relative;
+    -webkit-tap-highlight-color: transparent;
+    touch-action: manipulation;
+    background: none;
+    border: none;
+    cursor: pointer;
+    padding: 0;
+    text-decoration: none;
+  }
+
+  .mobile-tab-item:active {
+    transform: scale(0.92) !important;
+    transition: transform 0.1s cubic-bezier(0.4, 0, 0.2, 1) !important;
+  }
+
+  .mobile-tab-icon-wrap {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 40px;
+    height: 30px;
+    border-radius: 14px;
+    transition: all 0.35s cubic-bezier(0.34, 1.56, 0.64, 1);
+  }
+
+  .mobile-tab-icon-active {
+    background: hsl(var(--primary) / 0.12);
+  }
+
+  .mobile-tab-active .mobile-tab-icon-active {
+    animation: tab-activate 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
+  }
+
+  @keyframes tab-activate {
+    0% { transform: scale(0.85); opacity: 0.5; }
+    50% { transform: scale(1.1); }
+    100% { transform: scale(1); opacity: 1; }
+  }
+
+  /* ── Mobile Drawer ── */
+  .mobile-drawer-content {
+    max-height: 70vh !important;
+  }
+
+  .mobile-drawer-quickadd {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    width: 100%;
+    padding: 14px 16px;
+    border-radius: 16px;
+    background: hsl(var(--muted) / 0.4);
+    border: 1px solid hsl(var(--border) / 0.5);
+    transition: all 0.2s ease;
+    -webkit-tap-highlight-color: transparent;
+    touch-action: manipulation;
+    cursor: pointer;
+    text-align: left;
+  }
+
+  .mobile-drawer-quickadd:active {
+    transform: scale(0.97);
+    background: hsl(var(--muted) / 0.6);
+  }
+
+  .mobile-drawer-quickadd-icon {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 44px;
+    height: 44px;
+    border-radius: 14px;
+    background: hsl(var(--primary));
+    flex-shrink: 0;
+    box-shadow: 0 4px 16px hsl(var(--primary) / 0.35);
+  }
+
+  .mobile-drawer-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 6px;
+    padding: 0 4px;
+  }
+
+  .mobile-drawer-item {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 8px;
+    padding: 16px 8px;
+    border-radius: 16px;
+    transition: all 0.2s ease;
+    -webkit-tap-highlight-color: transparent;
+    touch-action: manipulation;
+    text-decoration: none;
+  }
+
+  .mobile-drawer-item:active {
+    transform: scale(0.94);
+    background: hsl(var(--muted) / 0.5);
+  }
+
+  .mobile-drawer-item-active {
+    background: hsl(var(--primary) / 0.06);
+  }
+
+  .mobile-drawer-item-icon {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 48px;
+    height: 48px;
+    border-radius: 14px;
+    transition: all 0.25s ease;
+  }
+
   /* Smooth indicator slide animation */
   @keyframes slide-indicator {
     from {
