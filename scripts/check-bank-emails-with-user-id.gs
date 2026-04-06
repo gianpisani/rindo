@@ -5,15 +5,30 @@
  * Bancos soportados: Banco de Chile, BCI, Santander, BancoEstado, Itaú
  *
  * ⚠️ Configurar USER_ID con tu ID de usuario de rindo antes de usar.
+ *
+ * Usa el label "rindo/procesado" para marcar emails ya procesados y evitar
+ * duplicados (más confiable que read/unread, que tiene delay en el índice de Gmail).
  */
 
 var USER_ID = 'TU_USER_ID_AQUI';
 
 var SUPABASE_ENDPOINT = 'https://fxlztcwqmlmhqwzbrebo.supabase.co/functions/v1/process-email-v2';
 
-var GMAIL_QUERY = 'is:unread newer_than:2h from:(bancochile.cl OR bci.cl OR santander.cl OR bancoestado.cl OR itau.cl)';
+var LABEL_NAME = 'rindo/procesado';
+
+var GMAIL_QUERY = 'is:unread newer_than:2h -label:rindo-procesado from:(bancochile.cl OR bci.cl OR santander.cl OR bancoestado.cl OR itau.cl)';
+
+/**
+ * Obtiene o crea el label de Gmail para marcar emails procesados.
+ */
+function getOrCreateLabel_() {
+  var label = GmailApp.getUserLabelByName(LABEL_NAME);
+  if (!label) label = GmailApp.createLabel(LABEL_NAME);
+  return label;
+}
 
 function checkBankEmails() {
+  var label = getOrCreateLabel_();
   var threads = GmailApp.search(GMAIL_QUERY);
 
   for (var i = 0; i < threads.length; i++) {
@@ -24,9 +39,6 @@ function checkBankEmails() {
 
       var body = msg.getPlainBody() || '';
       body = stripFooter(body);
-
-      // Marcar como leído ANTES de procesar para evitar duplicados por race condition
-      msg.markRead();
 
       var payload = {
         subject: msg.getSubject().substring(0, 500),
@@ -55,17 +67,18 @@ function checkBankEmails() {
               : '❌ Error: ' + (result.error || '')
         );
 
-        if (result.success && result.parsed) {
-          sendNotificationEmail(result.parsed);
-        }
+        if (result.success || result.skipped) {
+          msg.markRead();
+          threads[i].addLabel(label);
 
-        // Si falló (no success ni skipped), volver a marcar como unread para reintentar
-        if (!result.success && !result.skipped) {
-          msg.markUnread();
+          if (result.success && result.parsed) {
+            sendNotificationEmail(result.parsed);
+          }
+        } else {
+          Logger.log('⚠️ No se aplicó label, se reintentará: ' + (result.error || ''));
         }
       } catch (e) {
-        Logger.log('❌ Fetch error: ' + e);
-        msg.markUnread();
+        Logger.log('❌ Fetch error (se reintentará): ' + e);
       }
     }
   }
