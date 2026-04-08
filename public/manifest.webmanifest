@@ -1,7 +1,7 @@
 {
-  "name": "rindo - Finanzas Personales Inteligentes",
+  "name": "aveces rindo",
   "short_name": "rindo",
-  "description": "Gestión financiera personal moderna y efectiva. Control total de tus ingresos, gastos, presupuesto e inversiones con análisis inteligentes en tiempo real.",
+  "description": "aveces rindo, aveces no",
   "start_url": "/?source=pwa",
   "scope": "/",
   "display": "standalone",
