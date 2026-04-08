@@ -1,4 +1,4 @@
-import { useState, useCallback, useMemo } from "react";
+import { useState, useCallback, useMemo, useEffect } from "react";
 import Layout from "@/components/Layout";
 import ConfirmDialog from "@/components/ConfirmDialog";
 import { BaseModal } from "@/components/BaseModal";
@@ -139,6 +139,31 @@ export default function TutoringClasses() {
   const [sorting, setSorting] = useState<SortingState>([{ id: "date", desc: true }]);
   const [confirmDelete, setConfirmDelete] = useState<{ open: boolean; id: string | null }>({ open: false, id: null });
   const [viewMode, setViewMode] = useState<"list" | "students">("list");
+
+  // ── Keyboard shortcut: C → quick add ──────────────────────
+
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      // Skip if modifier keys held
+      if (e.metaKey || e.ctrlKey || e.altKey) return;
+
+      // Skip if inside input/textarea
+      const target = e.target as HTMLElement;
+      if (target.tagName === "INPUT" || target.tagName === "TEXTAREA" || target.isContentEditable) return;
+
+      // Skip if any dialog/modal is open
+      if (document.querySelector("[role='dialog'][data-state='open']")) return;
+
+      if (e.key === "c" || e.key === "C") {
+        e.preventDefault();
+        resetQuickForm();
+        setIsQuickAddOpen(true);
+      }
+    };
+
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, []);
 
   // ── Quick Add form ────────────────────────────────────────
 
