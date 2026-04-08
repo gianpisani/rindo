@@ -135,11 +135,11 @@ export default function TutoringClasses() {
   const [isStudentDialogOpen, setIsStudentDialogOpen] = useState(false);
   const [newStudentName, setNewStudentName] = useState("");
   const [searchValue, setSearchValue] = useState("");
-  const [statusFilter, setStatusFilter] = useState("all");
+  const [statusFilter, setStatusFilter] = useState("scheduled");
   const [studentFilter, setStudentFilter] = useState("all");
   const [paidFilter, setPaidFilter] = useState("all");
   const [selectedMonth, setSelectedMonth] = useState(new Date());
-  const [sorting, setSorting] = useState<SortingState>([{ id: "date", desc: true }]);
+  const [sorting, setSorting] = useState<SortingState>([{ id: "date", desc: false }]);
   const [confirmDelete, setConfirmDelete] = useState<{ open: boolean; id: string | null }>({ open: false, id: null });
   const [viewMode, setViewMode] = useState<"list" | "students">("list");
 
