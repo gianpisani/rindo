@@ -714,12 +714,12 @@ export default function TutoringClasses() {
 
   return (
     <Layout>
-      <div className="space-y-6">
+      <div className="space-y-4 sm:space-y-6">
         {/* Header */}
         <div className="flex items-center justify-between">
           <div>
-            <h1 className="text-2xl font-bold tracking-tight mb-1">Mis clases</h1>
-            <p className="text-sm text-muted-foreground">
+            <h1 className="text-xl sm:text-2xl font-bold tracking-tight mb-0.5">Mis clases</h1>
+            <p className="text-xs sm:text-sm text-muted-foreground">
               Trackea tus clases particulares
             </p>
           </div>
@@ -734,7 +734,7 @@ export default function TutoringClasses() {
               <span className="hidden sm:inline">Alumno</span>
             </Button>
             <Button
-              className="rounded-full h-12 w-12 p-0 md:w-auto md:px-6"
+              className="rounded-full h-10 w-10 p-0 md:w-auto md:h-12 md:px-6"
               onClick={() => {
                 resetQuickForm();
                 setIsQuickAddOpen(true);
@@ -764,16 +764,16 @@ export default function TutoringClasses() {
           const timeLabel = format(nextDate, "HH:mm") !== "00:00" ? ` a las ${format(nextDate, "HH:mm")}` : "";
 
           return (
-            <div className="flex items-center gap-3 px-3 py-2 rounded-lg bg-blue-500/5 border border-blue-500/10">
+            <div className="flex items-center gap-2 sm:gap-3 px-3 py-2 rounded-lg bg-blue-500/5 border border-blue-500/10">
               <Clock className="h-3.5 w-3.5 text-blue-500 flex-shrink-0" />
-              <div className="flex items-center gap-1.5 text-sm">
+              <div className="flex flex-wrap items-center gap-x-1.5 gap-y-0 text-xs sm:text-sm min-w-0">
                 <span className="text-blue-500 font-medium">{dayLabel}{timeLabel}</span>
                 <span className="text-muted-foreground">—</span>
-                <span className="font-medium">{next.student_name}</span>
-                <span className="text-muted-foreground text-xs">({next.duration_hours}h · {formatCurrency(next.price_per_hour)}/h)</span>
+                <span className="font-medium truncate">{next.student_name}</span>
+                <span className="text-muted-foreground text-[11px] hidden sm:inline">({next.duration_hours}h · {formatCurrency(next.price_per_hour)}/h)</span>
               </div>
               {after && (
-                <span className="text-[11px] text-muted-foreground/60 ml-auto hidden sm:block">
+                <span className="text-[11px] text-muted-foreground/60 ml-auto hidden md:block flex-shrink-0">
                   luego {after.student_name} · {format(new Date(after.date), "EEE d", { locale: es })}
                 </span>
               )}
@@ -781,120 +781,126 @@ export default function TutoringClasses() {
           );
         })()}
 
-        {/* Toolbar */}
-        <div className="flex flex-wrap items-center gap-2">
-          {/* View toggle */}
-          <div className="flex items-center rounded-lg border border-border/50 p-0.5">
-            <Button
-              variant={viewMode === "students" ? "secondary" : "ghost"}
-              size="sm"
-              className="h-8 px-3 rounded-md gap-1.5"
-              onClick={() => setViewMode("students")}
-            >
-              <Users className="h-3.5 w-3.5" />
-              <span className="hidden sm:inline text-xs">Alumnos</span>
-            </Button>
-            <Button
-              variant={viewMode === "list" ? "secondary" : "ghost"}
-              size="sm"
-              className="h-8 px-3 rounded-md gap-1.5"
-              onClick={() => setViewMode("list")}
-            >
-              <LayoutList className="h-3.5 w-3.5" />
-              <span className="hidden sm:inline text-xs">Tabla</span>
-            </Button>
-          </div>
+        {/* Toolbar — row 1: toggle + search + month */}
+        <div className="space-y-2">
+          <div className="flex items-center gap-2">
+            {/* View toggle */}
+            <div className="flex items-center rounded-lg border border-border/50 p-0.5 flex-shrink-0">
+              <Button
+                variant={viewMode === "students" ? "secondary" : "ghost"}
+                size="sm"
+                className="h-8 px-2.5 sm:px-3 rounded-md gap-1.5"
+                onClick={() => setViewMode("students")}
+              >
+                <Users className="h-3.5 w-3.5" />
+                <span className="hidden sm:inline text-xs">Alumnos</span>
+              </Button>
+              <Button
+                variant={viewMode === "list" ? "secondary" : "ghost"}
+                size="sm"
+                className="h-8 px-2.5 sm:px-3 rounded-md gap-1.5"
+                onClick={() => setViewMode("list")}
+              >
+                <LayoutList className="h-3.5 w-3.5" />
+                <span className="hidden sm:inline text-xs">Tabla</span>
+              </Button>
+            </div>
 
-          <div className="relative">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-            <Input
-              placeholder="Buscar..."
-              value={searchValue}
-              onChange={(e) => setSearchValue(e.target.value)}
-              className="pl-9 w-48 sm:w-64"
-            />
-            {searchValue && (
+            {/* Month filter */}
+            <div className="flex items-center gap-0.5 rounded-lg border border-border/50 px-1 h-9 flex-shrink-0">
               <Button
                 variant="ghost"
                 size="sm"
-                className="absolute right-1 top-1/2 -translate-y-1/2 h-7 w-7 p-0"
-                onClick={() => setSearchValue("")}
+                className="h-7 w-7 p-0"
+                disabled={!selectedMonth}
+                onClick={() => setSelectedMonth((m) => m ? subMonths(m, 1) : null)}
               >
-                <X className="h-4 w-4" />
+                <ChevronLeft className="h-3.5 w-3.5" />
               </Button>
-            )}
-          </div>
+              <button
+                className={cn(
+                  "text-xs font-medium px-1 sm:px-2 capitalize transition-colors min-w-[60px] sm:min-w-[100px] text-center",
+                  selectedMonth ? "text-foreground hover:text-muted-foreground" : "text-muted-foreground hover:text-foreground"
+                )}
+                onClick={() => setSelectedMonth((m) => m ? null : new Date())}
+                title={selectedMonth ? "Mostrar todo" : "Filtrar por mes"}
+              >
+                {monthLabel}
+              </button>
+              <Button
+                variant="ghost"
+                size="sm"
+                className="h-7 w-7 p-0"
+                disabled={!selectedMonth}
+                onClick={() => setSelectedMonth((m) => m ? addMonths(m, 1) : null)}
+              >
+                <ChevronRight className="h-3.5 w-3.5" />
+              </Button>
+            </div>
 
-          {/* Month filter */}
-          <div className="flex items-center gap-0.5 rounded-lg border border-border/50 px-1 h-9">
-            <Button
-              variant="ghost"
-              size="sm"
-              className="h-7 w-7 p-0"
-              disabled={!selectedMonth}
-              onClick={() => setSelectedMonth((m) => m ? subMonths(m, 1) : null)}
-            >
-              <ChevronLeft className="h-3.5 w-3.5" />
-            </Button>
-            <button
-              className={cn(
-                "text-xs font-medium px-2 capitalize transition-colors min-w-[100px] text-center",
-                selectedMonth ? "text-foreground hover:text-muted-foreground" : "text-muted-foreground hover:text-foreground"
+            <div className="flex-1" />
+
+            {/* Search */}
+            <div className="relative flex-shrink-0">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+              <Input
+                placeholder="Buscar..."
+                value={searchValue}
+                onChange={(e) => setSearchValue(e.target.value)}
+                className="pl-9 w-36 sm:w-56"
+              />
+              {searchValue && (
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="absolute right-1 top-1/2 -translate-y-1/2 h-7 w-7 p-0"
+                  onClick={() => setSearchValue("")}
+                >
+                  <X className="h-4 w-4" />
+                </Button>
               )}
-              onClick={() => setSelectedMonth((m) => m ? null : new Date())}
-              title={selectedMonth ? "Mostrar todo" : "Filtrar por mes"}
-            >
-              {monthLabel}
-            </button>
-            <Button
-              variant="ghost"
-              size="sm"
-              className="h-7 w-7 p-0"
-              disabled={!selectedMonth}
-              onClick={() => setSelectedMonth((m) => m ? addMonths(m, 1) : null)}
-            >
-              <ChevronRight className="h-3.5 w-3.5" />
-            </Button>
+            </div>
           </div>
 
-          <div className="flex-1" />
+          {/* Toolbar — row 2: filters */}
+          <div className="flex items-center gap-2">
+            <Select value={statusFilter} onValueChange={setStatusFilter}>
+              <SelectTrigger className="w-full sm:w-[140px] h-9">
+                <SelectValue placeholder="Estado" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">Todos</SelectItem>
+                <SelectItem value="scheduled">Agendadas</SelectItem>
+                <SelectItem value="completed">Realizadas</SelectItem>
+                <SelectItem value="cancelled">Canceladas</SelectItem>
+              </SelectContent>
+            </Select>
 
-          <Select value={statusFilter} onValueChange={setStatusFilter}>
-            <SelectTrigger className="w-[140px]">
-              <SelectValue placeholder="Estado" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">Todos</SelectItem>
-              <SelectItem value="scheduled">Agendadas</SelectItem>
-              <SelectItem value="completed">Realizadas</SelectItem>
-              <SelectItem value="cancelled">Canceladas</SelectItem>
-            </SelectContent>
-          </Select>
+            <Select value={studentFilter} onValueChange={setStudentFilter}>
+              <SelectTrigger className="w-full sm:w-[150px] h-9">
+                <SelectValue placeholder="Alumno" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">Todos</SelectItem>
+                {students.map((s) => (
+                  <SelectItem key={s.id} value={s.id}>
+                    {s.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
 
-          <Select value={studentFilter} onValueChange={setStudentFilter}>
-            <SelectTrigger className="w-[150px]">
-              <SelectValue placeholder="Alumno" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">Todos</SelectItem>
-              {students.map((s) => (
-                <SelectItem key={s.id} value={s.id}>
-                  {s.name}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-
-          <Select value={paidFilter} onValueChange={setPaidFilter}>
-            <SelectTrigger className="w-[130px]">
-              <SelectValue placeholder="Pago" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">Todos</SelectItem>
-              <SelectItem value="paid">Pagados</SelectItem>
-              <SelectItem value="unpaid">Pendientes</SelectItem>
-            </SelectContent>
-          </Select>
+            <Select value={paidFilter} onValueChange={setPaidFilter}>
+              <SelectTrigger className="w-full sm:w-[130px] h-9">
+                <SelectValue placeholder="Pago" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">Todos</SelectItem>
+                <SelectItem value="paid">Pagados</SelectItem>
+                <SelectItem value="unpaid">Pendientes</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
         </div>
 
         {/* ── Students View ───────────────────────────────── */}
@@ -931,26 +937,33 @@ export default function TutoringClasses() {
                   const initial = student.name.charAt(0).toUpperCase();
 
                   return (
-                    <div key={student.id} className="rounded-lg border border-border/50 bg-card px-4 py-3">
-                      <div className="flex items-center gap-3">
-                        {/* Avatar */}
+                    <div key={student.id} className="rounded-lg border border-border/50 bg-card px-3 sm:px-4 py-3">
+                      {/* Header: avatar + name + totals */}
+                      <div className="flex items-center gap-3 mb-2 sm:mb-0">
                         <div
-                          className="w-9 h-9 rounded-full flex items-center justify-center text-white text-xs font-bold select-none flex-shrink-0"
+                          className="w-8 h-8 sm:w-9 sm:h-9 rounded-full flex items-center justify-center text-white text-xs font-bold select-none flex-shrink-0"
                           style={{ backgroundColor: avatarColor }}
                         >
                           {initial}
                         </div>
-
-                        {/* Name + meta */}
-                        <div className="min-w-0 w-40 flex-shrink-0">
+                        <div className="flex-1 min-w-0">
                           <h3 className="font-semibold text-sm truncate">{student.name}</h3>
                           <p className="text-[11px] text-muted-foreground truncate">
                             {formatCurrency(pricePerHour)}/h · {totalClasses} clase{totalClasses !== 1 ? "s" : ""} · {totalHours}h
                           </p>
                         </div>
+                        <div className={cn("text-right flex-shrink-0", isPrivacyMode && "privacy-blur")}>
+                          <p className="text-sm font-bold font-mono tabular-nums text-emerald-500">{formatCurrency(totalEarned)}</p>
+                          {totalPending > 0 && (
+                            <p className="text-[10px] text-amber-500 font-medium">
+                              {formatCurrency(totalPending)} pend.
+                            </p>
+                          )}
+                        </div>
+                      </div>
 
-                        {/* Class squares — one per actual class */}
-                        <div className="flex-1 flex items-center gap-1.5 overflow-x-auto py-0.5">
+                      {/* Class squares — scrollable row */}
+                      <div className="flex items-center gap-1.5 overflow-x-auto py-0.5 -mx-1 px-1">
                           {studentClasses.map((cls) => {
                             const cfg = statusConfig[cls.status];
                             const StatusIcon = cfg.icon;
@@ -1045,17 +1058,6 @@ export default function TutoringClasses() {
                             <span className="text-[9px] text-muted-foreground/30 leading-none group-hover:text-primary/60">nueva</span>
                           </button>
                         </div>
-
-                        {/* Totals */}
-                        <div className={cn("text-right flex-shrink-0 pl-3", isPrivacyMode && "privacy-blur")}>
-                          <p className="text-sm font-bold font-mono tabular-nums text-emerald-500">{formatCurrency(totalEarned)}</p>
-                          {totalPending > 0 && (
-                            <p className="text-[10px] text-amber-500 font-medium">
-                              {formatCurrency(totalPending)} pend.
-                            </p>
-                          )}
-                        </div>
-                      </div>
                     </div>
                   );
                 })}
@@ -1222,7 +1224,7 @@ export default function TutoringClasses() {
         )}
 
         {/* ── Dashboard Summary ─────────────────────────── */}
-        <div className="grid grid-cols-3 md:grid-cols-6 gap-2">
+        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-6 gap-2">
           <Card className="rounded-xl border-border/50">
             <CardContent className="p-3">
               <div className="flex items-center gap-1.5 text-muted-foreground mb-1">
