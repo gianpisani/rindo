@@ -55,12 +55,14 @@ import {
   AlertCircle,
   Users,
   LayoutList,
+  ChevronLeft,
+  ChevronRight,
 } from "lucide-react";
 import {
   useTutoringClasses,
   TutoringClass,
 } from "@/hooks/useTutoringClasses";
-import { format, subDays, startOfMonth, endOfMonth, startOfWeek, addWeeks, isWithinInterval, isSameWeek } from "date-fns";
+import { format, subDays, startOfMonth, endOfMonth, startOfWeek, addWeeks, addMonths, subMonths, isWithinInterval, isSameWeek } from "date-fns";
 import { es } from "date-fns/locale";
 import { cn } from "@/lib/utils";
 import { usePrivacyMode } from "@/hooks/usePrivacyMode";
@@ -136,6 +138,7 @@ export default function TutoringClasses() {
   const [statusFilter, setStatusFilter] = useState("all");
   const [studentFilter, setStudentFilter] = useState("all");
   const [paidFilter, setPaidFilter] = useState("all");
+  const [selectedMonth, setSelectedMonth] = useState(new Date());
   const [sorting, setSorting] = useState<SortingState>([{ id: "date", desc: true }]);
   const [confirmDelete, setConfirmDelete] = useState<{ open: boolean; id: string | null }>({ open: false, id: null });
   const [viewMode, setViewMode] = useState<"list" | "students">("list");
@@ -303,8 +306,17 @@ export default function TutoringClasses() {
 
   // ── Filtering ─────────────────────────────────────────────
 
+  const monthStart = startOfMonth(selectedMonth);
+  const monthEnd = endOfMonth(selectedMonth);
+  const monthLabel = format(selectedMonth, "MMMM yyyy", { locale: es });
+
   const filteredData = useMemo(() => {
     let data = classes;
+    // Month filter
+    data = data.filter((c) => {
+      const d = new Date(c.date + "T12:00:00");
+      return isWithinInterval(d, { start: monthStart, end: monthEnd });
+    });
     if (searchValue) {
       const q = searchValue.toLowerCase();
       data = data.filter(
@@ -320,17 +332,13 @@ export default function TutoringClasses() {
       if (paidFilter === "unpaid") data = data.filter((c) => !c.is_paid && c.status !== "cancelled");
     }
     return data;
-  }, [classes, searchValue, statusFilter, studentFilter, paidFilter]);
+  }, [classes, searchValue, statusFilter, studentFilter, paidFilter, monthStart, monthEnd]);
 
   // ── Dashboard stats (current month) ───────────────────────
 
   const stats = useMemo(() => {
-    const now = new Date();
-    const monthStart = startOfMonth(now);
-    const monthEnd = endOfMonth(now);
-
     const thisMonth = classes.filter((c) => {
-      const d = new Date(c.date);
+      const d = new Date(c.date + "T12:00:00");
       return isWithinInterval(d, { start: monthStart, end: monthEnd });
     });
 
@@ -350,7 +358,7 @@ export default function TutoringClasses() {
     const cancelled = thisMonth.filter((c) => c.status === "cancelled").length;
 
     return { completed: completed.length, totalEarned, totalPaid, totalPending, totalHours, scheduled, cancelled };
-  }, [classes]);
+  }, [classes, monthStart, monthEnd]);
 
   // ── Student weekly breakdown ──────────────────────────────
 
@@ -737,6 +745,37 @@ export default function TutoringClasses() {
           </div>
         </div>
 
+        {/* Next class indicator */}
+        {(() => {
+          const upcoming = classes
+            .filter((c) => c.status === "scheduled" && new Date(c.date + "T12:00:00") >= new Date(format(new Date(), "yyyy-MM-dd") + "T00:00:00"))
+            .sort((a, b) => a.date.localeCompare(b.date));
+          const next = upcoming[0];
+          const after = upcoming[1];
+          if (!next) return null;
+          const nextDate = new Date(next.date + "T12:00:00");
+          const isToday = next.date === format(new Date(), "yyyy-MM-dd");
+          const isTomorrow = next.date === format(subDays(new Date(), -1), "yyyy-MM-dd");
+          const dayLabel = isToday ? "Hoy" : isTomorrow ? "Mañana" : format(nextDate, "EEEE d", { locale: es });
+
+          return (
+            <div className="flex items-center gap-3 px-3 py-2 rounded-lg bg-blue-500/5 border border-blue-500/10">
+              <Clock className="h-3.5 w-3.5 text-blue-500 flex-shrink-0" />
+              <div className="flex items-center gap-1.5 text-sm">
+                <span className="text-blue-500 font-medium">{dayLabel}</span>
+                <span className="text-muted-foreground">—</span>
+                <span className="font-medium">{next.student_name}</span>
+                <span className="text-muted-foreground text-xs">({next.duration_hours}h · {formatCurrency(next.price_per_hour)}/h)</span>
+              </div>
+              {after && (
+                <span className="text-[11px] text-muted-foreground/60 ml-auto hidden sm:block">
+                  luego {after.student_name} · {format(new Date(after.date + "T12:00:00"), "EEE d", { locale: es })}
+                </span>
+              )}
+            </div>
+          );
+        })()}
+
         {/* Toolbar */}
         <div className="flex flex-wrap items-center gap-2">
           {/* View toggle */}
@@ -779,6 +818,33 @@ export default function TutoringClasses() {
                 <X className="h-4 w-4" />
               </Button>
             )}
+          </div>
+
+          {/* Month selector */}
+          <div className="flex items-center gap-0.5 rounded-lg border border-border/50 px-1 h-9">
+            <Button
+              variant="ghost"
+              size="sm"
+              className="h-7 w-7 p-0"
+              onClick={() => setSelectedMonth((m) => subMonths(m, 1))}
+            >
+              <ChevronLeft className="h-3.5 w-3.5" />
+            </Button>
+            <button
+              className="text-xs font-medium px-2 capitalize hover:text-foreground text-muted-foreground transition-colors min-w-[100px] text-center"
+              onClick={() => setSelectedMonth(new Date())}
+              title="Ir al mes actual"
+            >
+              {monthLabel}
+            </button>
+            <Button
+              variant="ghost"
+              size="sm"
+              className="h-7 w-7 p-0"
+              onClick={() => setSelectedMonth((m) => addMonths(m, 1))}
+            >
+              <ChevronRight className="h-3.5 w-3.5" />
+            </Button>
           </div>
 
           <div className="flex-1" />
@@ -1052,9 +1118,9 @@ export default function TutoringClasses() {
                         <tr>
                           <td
                             colSpan={columns.length}
-                            className="px-4 py-1 bg-muted/30 border-t border-border/30 first:border-t-0"
+                            className="px-4 py-0.5 bg-muted/20"
                           >
-                            <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
+                            <span className="text-[11px] font-medium text-muted-foreground/70 capitalize">
                               {formatGroupDate(group.dayKey)}
                             </span>
                           </td>
@@ -1103,7 +1169,7 @@ export default function TutoringClasses() {
             <CardContent className="p-4">
               <div className="flex items-center gap-2 text-muted-foreground mb-1">
                 <GraduationCap className="h-4 w-4" />
-                <span className="text-xs font-medium">Clases este mes</span>
+                <span className="text-xs font-medium">Clases</span>
               </div>
               <p className="text-2xl font-bold">{stats.completed}</p>
               {stats.scheduled > 0 && (
@@ -1116,7 +1182,7 @@ export default function TutoringClasses() {
             <CardContent className="p-4">
               <div className="flex items-center gap-2 text-muted-foreground mb-1">
                 <Clock className="h-4 w-4" />
-                <span className="text-xs font-medium">Horas este mes</span>
+                <span className="text-xs font-medium">Horas</span>
               </div>
               <p className="text-2xl font-bold">{stats.totalHours}h</p>
             </CardContent>
