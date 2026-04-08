@@ -957,75 +957,76 @@ export default function TutoringClasses() {
                             const dateLabel = format(new Date(cls.date), "dd MMM", { locale: es });
 
                             return (
-                              <div key={cls.id} className="flex flex-col items-center gap-0.5 min-w-[38px]">
-                                {/* Square → dropdown (status, paid, edit, delete) */}
-                                <DropdownMenu>
-                                  <DropdownMenuTrigger asChild>
-                                    <button className="cursor-pointer focus:outline-none group">
-                                      <div
-                                        className={cn(
-                                          "w-7 h-7 rounded-md flex items-center justify-center transition-all group-hover:scale-110",
-                                          cfg.bg,
-                                          "border",
-                                          cfg.border,
-                                          cls.is_paid && cls.status === "completed" && "ring-1 ring-emerald-500/30"
-                                        )}
+                              <DropdownMenu key={cls.id}>
+                                <DropdownMenuTrigger asChild>
+                                  <button className="flex flex-col items-center gap-0.5 min-w-[38px] cursor-pointer focus:outline-none group">
+                                    <div
+                                      className={cn(
+                                        "w-7 h-7 rounded-md flex items-center justify-center transition-all group-hover:scale-110",
+                                        cfg.bg,
+                                        "border",
+                                        cfg.border,
+                                        cls.is_paid && cls.status === "completed" && "ring-1 ring-emerald-500/30"
+                                      )}
+                                    >
+                                      {cls.status === "completed" && cls.is_paid ? (
+                                        <DollarSign className="h-3 w-3 text-emerald-500" />
+                                      ) : (
+                                        <StatusIcon className={cn("h-3 w-3", cfg.color)} />
+                                      )}
+                                    </div>
+                                    <span className={cn("text-[9px] font-medium leading-none", cfg.color)}>{dateLabel}</span>
+                                  </button>
+                                </DropdownMenuTrigger>
+                                <DropdownMenuContent align="center" className="min-w-[160px]">
+                                  {(Object.entries(statusConfig) as [TutoringClass["status"], typeof statusConfig.scheduled][]).map(
+                                    ([key, val]) => (
+                                      <DropdownMenuItem
+                                        key={key}
+                                        onClick={() => handleInlineUpdate(cls.id, "status", key)}
+                                        className="flex items-center gap-2"
                                       >
-                                        {cls.status === "completed" && cls.is_paid ? (
-                                          <DollarSign className="h-3 w-3 text-emerald-500" />
-                                        ) : (
-                                          <StatusIcon className={cn("h-3 w-3", cfg.color)} />
-                                        )}
-                                      </div>
-                                    </button>
-                                  </DropdownMenuTrigger>
-                                  <DropdownMenuContent align="center" className="min-w-[160px]">
-                                    {(Object.entries(statusConfig) as [TutoringClass["status"], typeof statusConfig.scheduled][]).map(
-                                      ([key, val]) => (
-                                        <DropdownMenuItem
-                                          key={key}
-                                          onClick={() => handleInlineUpdate(cls.id, "status", key)}
-                                          className="flex items-center gap-2"
-                                        >
-                                          <val.icon className={cn("h-3.5 w-3.5", val.color)} />
-                                          <span className="text-sm">{val.label}</span>
-                                          {key === cls.status && <Check className="h-3.5 w-3.5 ml-auto" />}
-                                        </DropdownMenuItem>
-                                      )
-                                    )}
-                                    <DropdownMenuSeparator />
-                                    <DropdownMenuItem
-                                      onClick={() => handleInlineUpdate(cls.id, "is_paid", !cls.is_paid)}
-                                      className="flex items-center gap-2"
-                                    >
-                                      <DollarSign className={cn("h-3.5 w-3.5", cls.is_paid ? "text-emerald-500" : "text-muted-foreground")} />
-                                      <span className="text-sm">{cls.is_paid ? "No pagada" : "Pagada"}</span>
-                                    </DropdownMenuItem>
-                                    <DropdownMenuSeparator />
-                                    <DropdownMenuItem
-                                      onClick={() => handleEdit(cls)}
-                                      className="flex items-center gap-2"
-                                    >
-                                      <Pencil className="h-3.5 w-3.5" />
-                                      <span className="text-sm">Editar todo</span>
-                                    </DropdownMenuItem>
-                                    <DropdownMenuSeparator />
-                                    <DropdownMenuItem
-                                      onClick={() => handleDelete(cls.id)}
-                                      className="flex items-center gap-2 text-destructive focus:text-destructive"
-                                    >
-                                      <Trash2 className="h-3.5 w-3.5" />
-                                      <span className="text-sm">Eliminar</span>
-                                    </DropdownMenuItem>
-                                  </DropdownMenuContent>
-                                </DropdownMenu>
-                                {/* Date label → InlineDateTimePicker */}
-                                <InlineDateTimePicker
-                                  value={new Date(cls.date)}
-                                  onChange={(newDate) => handleInlineUpdate(cls.id, "date", newDate.toISOString())}
-                                  showTime={true}
-                                />
-                              </div>
+                                        <val.icon className={cn("h-3.5 w-3.5", val.color)} />
+                                        <span className="text-sm">{val.label}</span>
+                                        {key === cls.status && <Check className="h-3.5 w-3.5 ml-auto" />}
+                                      </DropdownMenuItem>
+                                    )
+                                  )}
+                                  <DropdownMenuSeparator />
+                                  <DropdownMenuItem
+                                    onClick={() => handleInlineUpdate(cls.id, "is_paid", !cls.is_paid)}
+                                    className="flex items-center gap-2"
+                                  >
+                                    <DollarSign className={cn("h-3.5 w-3.5", cls.is_paid ? "text-emerald-500" : "text-muted-foreground")} />
+                                    <span className="text-sm">{cls.is_paid ? "No pagada" : "Pagada"}</span>
+                                  </DropdownMenuItem>
+                                  <DropdownMenuSeparator />
+                                  {/* Date picker inside dropdown */}
+                                  <div className="px-1 py-1">
+                                    <InlineDateTimePicker
+                                      value={new Date(cls.date)}
+                                      onChange={(newDate) => handleInlineUpdate(cls.id, "date", newDate.toISOString())}
+                                      showTime={true}
+                                    />
+                                  </div>
+                                  <DropdownMenuSeparator />
+                                  <DropdownMenuItem
+                                    onClick={() => handleEdit(cls)}
+                                    className="flex items-center gap-2"
+                                  >
+                                    <Pencil className="h-3.5 w-3.5" />
+                                    <span className="text-sm">Editar todo</span>
+                                  </DropdownMenuItem>
+                                  <DropdownMenuSeparator />
+                                  <DropdownMenuItem
+                                    onClick={() => handleDelete(cls.id)}
+                                    className="flex items-center gap-2 text-destructive focus:text-destructive"
+                                  >
+                                    <Trash2 className="h-3.5 w-3.5" />
+                                    <span className="text-sm">Eliminar</span>
+                                  </DropdownMenuItem>
+                                </DropdownMenuContent>
+                              </DropdownMenu>
                             );
                           })}
 
