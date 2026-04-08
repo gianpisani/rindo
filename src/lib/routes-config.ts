@@ -94,7 +94,7 @@ export const APP_ROUTES: RouteConfig[] = [
     customIcon: true,
   },
   {
-    title: "Mis Clases",
+    title: "Mis clases",
     url: "/tutoring",
     icon: GraduationCap,
     group: "tools",

@@ -1,4 +1,4 @@
-import { useState, useCallback, useMemo, useEffect } from "react";
+import React, { useState, useCallback, useMemo, useEffect } from "react";
 import Layout from "@/components/Layout";
 import ConfirmDialog from "@/components/ConfirmDialog";
 import { BaseModal } from "@/components/BaseModal";
@@ -631,13 +631,13 @@ export default function TutoringClasses() {
   const renderRow = (row: ReturnType<typeof table.getRowModel>["rows"][0]) => (
     <tr
       key={row.id}
-      className="border-b border-border/50 hover:bg-muted/50 transition-colors cursor-pointer"
+      className="hover:bg-muted/40 transition-colors cursor-pointer"
       onClick={() => handleEdit(row.original)}
     >
       {row.getVisibleCells().map((cell) => (
         <td
           key={cell.id}
-          className="px-3 py-2.5"
+          className="px-4 py-1.5 overflow-hidden"
           style={{ width: cell.column.getSize() }}
         >
           {flexRender(cell.column.columnDef.cell, cell.getContext())}
@@ -654,7 +654,7 @@ export default function TutoringClasses() {
         {/* Header */}
         <div className="flex items-center justify-between">
           <div>
-            <h1 className="text-2xl font-bold tracking-tight mb-1">Mis Clases</h1>
+            <h1 className="text-2xl font-bold tracking-tight mb-1">Mis clases</h1>
             <p className="text-sm text-muted-foreground">
               Trackea tus clases particulares
             </p>
@@ -957,51 +957,59 @@ export default function TutoringClasses() {
           </div>
         ) : (
           /* ── Desktop Table ─────────────────────────────── */
-          <div className="rounded-xl border border-border/50 overflow-hidden">
-            <table className="w-full">
-              <thead>
-                {table.getHeaderGroups().map((headerGroup) => (
-                  <tr key={headerGroup.id} className="border-b bg-muted/30">
-                    {headerGroup.headers.map((header) => (
-                      <th
-                        key={header.id}
-                        className="px-3 py-2.5 text-left"
-                        style={{ width: header.getSize() }}
-                      >
-                        {header.isPlaceholder
-                          ? null
-                          : flexRender(header.column.columnDef.header, header.getContext())}
-                      </th>
-                    ))}
-                  </tr>
-                ))}
-              </thead>
-              <tbody>
-                {table.getRowModel().rows.length === 0 ? (
-                  <tr>
-                    <td colSpan={columns.length} className="py-16 text-center text-sm text-muted-foreground">
-                      No se encontraron clases
-                    </td>
-                  </tr>
-                ) : groupedRows ? (
-                  groupedRows.map((group) => (
-                    <tbody key={group.dayKey}>
-                      <tr>
-                        <td
-                          colSpan={columns.length}
-                          className="px-3 py-2 text-xs font-semibold text-muted-foreground bg-muted/20 capitalize"
+          <div className="border border-border/50 rounded-lg overflow-hidden">
+            <div className="overflow-x-auto overflow-y-auto max-h-[calc(100vh-320px)] min-h-[300px]">
+              <table className="w-full table-fixed">
+                <thead className="bg-card border-b border-border sticky top-0 z-10 shadow-sm">
+                  {table.getHeaderGroups().map((headerGroup) => (
+                    <tr key={headerGroup.id}>
+                      {headerGroup.headers.map((header) => (
+                        <th
+                          key={header.id}
+                          className="px-4 py-3 text-left text-xs font-semibold text-foreground uppercase tracking-wide"
+                          style={{
+                            width: header.column.columnDef.size,
+                            minWidth: header.column.columnDef.minSize,
+                            maxWidth: header.column.columnDef.maxSize,
+                          }}
                         >
-                          {formatGroupDate(group.dayKey)}
-                        </td>
-                      </tr>
-                      {group.rows.map(renderRow)}
-                    </tbody>
-                  ))
-                ) : (
-                  table.getRowModel().rows.map(renderRow)
-                )}
-              </tbody>
-            </table>
+                          {header.isPlaceholder
+                            ? null
+                            : flexRender(header.column.columnDef.header, header.getContext())}
+                        </th>
+                      ))}
+                    </tr>
+                  ))}
+                </thead>
+                <tbody className="divide-y divide-border/50 bg-card">
+                  {table.getRowModel().rows.length === 0 ? (
+                    <tr>
+                      <td colSpan={columns.length} className="px-4 py-12 text-center text-sm text-muted-foreground">
+                        No se encontraron clases
+                      </td>
+                    </tr>
+                  ) : groupedRows ? (
+                    groupedRows.map((group) => (
+                      <React.Fragment key={group.dayKey}>
+                        <tr>
+                          <td
+                            colSpan={columns.length}
+                            className="px-4 py-1 bg-muted/30 border-t border-border/30 first:border-t-0"
+                          >
+                            <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
+                              {formatGroupDate(group.dayKey)}
+                            </span>
+                          </td>
+                        </tr>
+                        {group.rows.map(renderRow)}
+                      </React.Fragment>
+                    ))
+                  ) : (
+                    table.getRowModel().rows.map(renderRow)
+                  )}
+                </tbody>
+              </table>
+            </div>
           </div>
         ))}
 
