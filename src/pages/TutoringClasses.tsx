@@ -57,6 +57,7 @@ import {
   LayoutList,
   ChevronLeft,
   ChevronRight,
+  StickyNote,
 } from "lucide-react";
 import {
   useTutoringClasses,
@@ -976,25 +977,30 @@ export default function TutoringClasses() {
                               <DropdownMenu key={cls.id}>
                                 <DropdownMenuTrigger asChild>
                                   <button className="flex flex-col items-center gap-0.5 min-w-[38px] cursor-pointer focus:outline-none group">
-                                    <div
-                                      className={cn(
-                                        "w-7 h-7 rounded-md flex items-center justify-center transition-all group-hover:scale-110",
-                                        cfg.bg,
-                                        "border",
-                                        cfg.border,
-                                        cls.is_paid && cls.status === "completed" && "ring-1 ring-emerald-500/30"
-                                      )}
-                                    >
-                                      {cls.status === "completed" && cls.is_paid ? (
-                                        <DollarSign className="h-3 w-3 text-emerald-500" />
-                                      ) : (
-                                        <StatusIcon className={cn("h-3 w-3", cfg.color)} />
+                                    <div className="relative">
+                                      <div
+                                        className={cn(
+                                          "w-7 h-7 rounded-md flex items-center justify-center transition-all group-hover:scale-110",
+                                          cfg.bg,
+                                          "border",
+                                          cfg.border,
+                                          cls.is_paid && cls.status === "completed" && "ring-1 ring-emerald-500/30"
+                                        )}
+                                      >
+                                        {cls.status === "completed" && cls.is_paid ? (
+                                          <DollarSign className="h-3 w-3 text-emerald-500" />
+                                        ) : (
+                                          <StatusIcon className={cn("h-3 w-3", cfg.color)} />
+                                        )}
+                                      </div>
+                                      {cls.notes && (
+                                        <div className="absolute -top-0.5 -right-0.5 w-2 h-2 rounded-full bg-amber-400 border border-card" />
                                       )}
                                     </div>
                                     <span className={cn("text-[9px] font-medium leading-none", cfg.color)}>{dateLabel}</span>
                                   </button>
                                 </DropdownMenuTrigger>
-                                <DropdownMenuContent align="center" className="min-w-[160px]">
+                                <DropdownMenuContent align="center" className="min-w-[200px]" onClick={(e) => e.stopPropagation()}>
                                   {(Object.entries(statusConfig) as [TutoringClass["status"], typeof statusConfig.scheduled][]).map(
                                     ([key, val]) => (
                                       <DropdownMenuItem
@@ -1017,7 +1023,31 @@ export default function TutoringClasses() {
                                     <span className="text-sm">{cls.is_paid ? "No pagada" : "Pagada"}</span>
                                   </DropdownMenuItem>
                                   <DropdownMenuSeparator />
-                                  {/* Date picker inside dropdown */}
+                                  {/* Post-it notes */}
+                                  <div
+                                    className="mx-1.5 my-1.5 rounded-lg bg-amber-500/5 border border-amber-500/15 p-2"
+                                    onClick={(e) => e.stopPropagation()}
+                                    onKeyDown={(e) => e.stopPropagation()}
+                                  >
+                                    <div className="flex items-center gap-1.5 mb-1.5">
+                                      <StickyNote className="h-3 w-3 text-amber-500/70" />
+                                      <span className="text-[10px] font-semibold text-amber-500/70 uppercase tracking-wider">Notas</span>
+                                    </div>
+                                    <textarea
+                                      className="w-full bg-transparent text-xs font-mono leading-relaxed resize-none placeholder:text-muted-foreground/30 focus:outline-none min-h-[48px] text-foreground/80"
+                                      placeholder="Escribe una nota..."
+                                      defaultValue={cls.notes || ""}
+                                      rows={2}
+                                      onBlur={(e) => {
+                                        const val = e.target.value.trim();
+                                        if (val !== (cls.notes || "")) {
+                                          handleInlineUpdate(cls.id, "notes", val || null);
+                                        }
+                                      }}
+                                    />
+                                  </div>
+                                  <DropdownMenuSeparator />
+                                  {/* Date picker */}
                                   <div className="px-1 py-1">
                                     <InlineDateTimePicker
                                       value={new Date(cls.date)}
