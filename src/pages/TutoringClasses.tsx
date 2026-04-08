@@ -719,7 +719,7 @@ export default function TutoringClasses() {
         {/* Header */}
         <div className="flex items-center justify-between">
           <div>
-            <h1 className="text-xl sm:text-2xl font-bold tracking-tight mb-0.5">Mis clases</h1>
+            <h1 className="text-xl sm:text-2xl font-bold tracking-tight mb-0.5">Clases</h1>
             <p className="text-xs sm:text-sm text-muted-foreground">
               Trackea tus clases particulares
             </p>
@@ -1186,7 +1186,7 @@ export default function TutoringClasses() {
         ) : (
           /* ── Desktop Table ─────────────────────────────── */
           <div className="border border-border/50 rounded-lg overflow-hidden">
-            <div className="overflow-x-auto overflow-y-auto max-h-[calc(100vh-320px)] min-h-[300px]">
+            <div className="overflow-x-auto">
               <table className="w-full table-fixed">
                 <thead className="bg-card border-b border-border sticky top-0 z-10 shadow-sm">
                   {table.getHeaderGroups().map((headerGroup) => (
