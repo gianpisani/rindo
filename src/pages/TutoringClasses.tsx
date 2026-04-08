@@ -371,10 +371,13 @@ export default function TutoringClasses() {
       .filter((c) => !c.is_paid)
       .reduce((sum, c) => sum + c.duration_hours * c.price_per_hour, 0);
     const totalHours = completed.reduce((sum, c) => sum + c.duration_hours, 0);
-    const scheduled = filteredData.filter((c) => c.status === "scheduled").length;
+    const scheduledClasses = filteredData.filter((c) => c.status === "scheduled");
+    const scheduled = scheduledClasses.length;
+    const scheduledValue = scheduledClasses.reduce((sum, c) => sum + c.duration_hours * c.price_per_hour, 0);
     const cancelled = filteredData.filter((c) => c.status === "cancelled").length;
+    const grandTotal = totalEarned + scheduledValue;
 
-    return { completed: completed.length, totalEarned, totalPaid, totalPending, totalHours, scheduled, cancelled };
+    return { completed: completed.length, totalEarned, totalPaid, totalPending, totalHours, scheduled, scheduledValue, cancelled, grandTotal };
   }, [filteredData]);
 
   // ── Student breakdown (class-based, not week-based) ───────
@@ -1203,50 +1206,74 @@ export default function TutoringClasses() {
         )}
 
         {/* ── Dashboard Summary ─────────────────────────── */}
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+        <div className="grid grid-cols-3 md:grid-cols-6 gap-2">
           <Card className="rounded-xl border-border/50">
-            <CardContent className="p-4">
-              <div className="flex items-center gap-2 text-muted-foreground mb-1">
-                <GraduationCap className="h-4 w-4" />
-                <span className="text-xs font-medium">Clases</span>
+            <CardContent className="p-3">
+              <div className="flex items-center gap-1.5 text-muted-foreground mb-1">
+                <GraduationCap className="h-3.5 w-3.5" />
+                <span className="text-[11px] font-medium">Clases</span>
               </div>
-              <p className="text-2xl font-bold">{stats.completed}</p>
+              <p className="text-xl font-bold">{stats.completed}</p>
               {stats.scheduled > 0 && (
-                <p className="text-xs text-blue-500 mt-0.5">{stats.scheduled} agendada{stats.scheduled > 1 ? "s" : ""}</p>
+                <p className="text-[10px] text-blue-500 mt-0.5">{stats.scheduled} agendada{stats.scheduled > 1 ? "s" : ""}</p>
               )}
             </CardContent>
           </Card>
 
           <Card className="rounded-xl border-border/50">
-            <CardContent className="p-4">
-              <div className="flex items-center gap-2 text-muted-foreground mb-1">
-                <Clock className="h-4 w-4" />
-                <span className="text-xs font-medium">Horas</span>
+            <CardContent className="p-3">
+              <div className="flex items-center gap-1.5 text-muted-foreground mb-1">
+                <Clock className="h-3.5 w-3.5" />
+                <span className="text-[11px] font-medium">Horas</span>
               </div>
-              <p className="text-2xl font-bold">{stats.totalHours}h</p>
+              <p className="text-xl font-bold">{stats.totalHours}h</p>
             </CardContent>
           </Card>
 
           <Card className="rounded-xl border-border/50">
-            <CardContent className="p-4">
-              <div className="flex items-center gap-2 text-muted-foreground mb-1">
-                <CircleDollarSign className="h-4 w-4" />
-                <span className="text-xs font-medium">Cobrado</span>
+            <CardContent className="p-3">
+              <div className="flex items-center gap-1.5 text-muted-foreground mb-1">
+                <CircleDollarSign className="h-3.5 w-3.5" />
+                <span className="text-[11px] font-medium">Cobrado</span>
               </div>
-              <p className={cn("text-2xl font-bold text-emerald-500", isPrivacyMode && "privacy-blur")}>
+              <p className={cn("text-xl font-bold text-emerald-500", isPrivacyMode && "privacy-blur")}>
                 {formatCurrency(stats.totalPaid)}
               </p>
             </CardContent>
           </Card>
 
           <Card className="rounded-xl border-border/50">
-            <CardContent className="p-4">
-              <div className="flex items-center gap-2 text-muted-foreground mb-1">
-                <AlertCircle className="h-4 w-4" />
-                <span className="text-xs font-medium">Por cobrar</span>
+            <CardContent className="p-3">
+              <div className="flex items-center gap-1.5 text-muted-foreground mb-1">
+                <AlertCircle className="h-3.5 w-3.5" />
+                <span className="text-[11px] font-medium">Por cobrar</span>
               </div>
-              <p className={cn("text-2xl font-bold", stats.totalPending > 0 ? "text-amber-500" : "text-muted-foreground", isPrivacyMode && "privacy-blur")}>
+              <p className={cn("text-xl font-bold", stats.totalPending > 0 ? "text-amber-500" : "text-muted-foreground", isPrivacyMode && "privacy-blur")}>
                 {formatCurrency(stats.totalPending)}
+              </p>
+            </CardContent>
+          </Card>
+
+          <Card className="rounded-xl border-border/50">
+            <CardContent className="p-3">
+              <div className="flex items-center gap-1.5 text-muted-foreground mb-1">
+                <CalendarDays className="h-3.5 w-3.5" />
+                <span className="text-[11px] font-medium">Por ganar</span>
+              </div>
+              <p className={cn("text-xl font-bold text-blue-500", isPrivacyMode && "privacy-blur")}>
+                {formatCurrency(stats.scheduledValue)}
+              </p>
+            </CardContent>
+          </Card>
+
+          <Card className="rounded-xl border-border/50">
+            <CardContent className="p-3">
+              <div className="flex items-center gap-1.5 text-muted-foreground mb-1">
+                <TrendingUp className="h-3.5 w-3.5" />
+                <span className="text-[11px] font-medium">Total</span>
+              </div>
+              <p className={cn("text-xl font-bold", isPrivacyMode && "privacy-blur")}>
+                {formatCurrency(stats.grandTotal)}
               </p>
             </CardContent>
           </Card>
