@@ -439,7 +439,7 @@ export default function TutoringClasses() {
         },
       },
 
-      // Student
+      // Student (inline-editable dropdown)
       {
         accessorKey: "student_name",
         size: 180,
@@ -450,29 +450,84 @@ export default function TutoringClasses() {
           const avatarColor = getAvatarColor(name);
 
           return (
-            <div className={cn("flex items-center gap-2.5", isPrivacyMode && "privacy-blur")}>
-              <div
-                className="w-7 h-7 rounded-full flex items-center justify-center text-white text-xs font-bold select-none flex-shrink-0"
-                style={{ backgroundColor: avatarColor }}
-              >
-                {initial}
-              </div>
-              <span className="text-sm font-medium truncate">{name}</span>
-            </div>
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <button
+                  className={cn(
+                    "flex items-center gap-2.5 px-2 py-1 rounded-md transition-all",
+                    "hover:bg-muted/80 group cursor-pointer focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-1",
+                    isPrivacyMode && "privacy-blur"
+                  )}
+                  onClick={(e) => e.stopPropagation()}
+                >
+                  <div
+                    className="w-7 h-7 rounded-full flex items-center justify-center text-white text-xs font-bold select-none flex-shrink-0"
+                    style={{ backgroundColor: avatarColor }}
+                  >
+                    {initial}
+                  </div>
+                  <span className="text-sm font-medium truncate">{name}</span>
+                  <ChevronDown className="h-3 w-3 opacity-0 group-hover:opacity-50 transition-opacity flex-shrink-0" />
+                </button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="start" className="min-w-[160px]">
+                {students.map((s) => (
+                  <DropdownMenuItem
+                    key={s.id}
+                    onClick={() => handleInlineUpdate(row.original.id, "student_id", s.id)}
+                    className="flex items-center gap-2"
+                  >
+                    <div
+                      className="w-5 h-5 rounded-full flex items-center justify-center text-white text-[9px] font-bold"
+                      style={{ backgroundColor: getAvatarColor(s.name) }}
+                    >
+                      {s.name.charAt(0).toUpperCase()}
+                    </div>
+                    {s.name}
+                    {s.id === row.original.student_id && <Check className="h-4 w-4 ml-auto" />}
+                  </DropdownMenuItem>
+                ))}
+              </DropdownMenuContent>
+            </DropdownMenu>
           );
         },
       },
 
-      // Duration
+      // Duration (inline-editable dropdown)
       {
         accessorKey: "duration_hours",
-        size: 90,
+        size: 100,
         header: "Duración",
-        cell: ({ row }) => (
-          <span className="text-sm text-muted-foreground">
-            {row.original.duration_hours}h
-          </span>
-        ),
+        cell: ({ row }) => {
+          const hours = row.original.duration_hours;
+          const label = hours === 0.5 ? "30 min" : `${hours}h`;
+
+          return (
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <button
+                  className="flex items-center gap-1 px-2 py-1 rounded-md transition-all hover:bg-muted/80 group cursor-pointer focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-1"
+                  onClick={(e) => e.stopPropagation()}
+                >
+                  <span className="text-sm text-muted-foreground">{label}</span>
+                  <ChevronDown className="h-3 w-3 opacity-0 group-hover:opacity-50 transition-opacity" />
+                </button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="start" className="min-w-[120px]">
+                {[0.5, 1, 1.5, 2, 2.5, 3].map((h) => (
+                  <DropdownMenuItem
+                    key={h}
+                    onClick={() => handleInlineUpdate(row.original.id, "duration_hours", h)}
+                    className="flex items-center gap-2"
+                  >
+                    {h === 0.5 ? "30 min" : `${h} hora${h > 1 ? "s" : ""}`}
+                    {h === hours && <Check className="h-4 w-4 ml-auto" />}
+                  </DropdownMenuItem>
+                ))}
+              </DropdownMenuContent>
+            </DropdownMenu>
+          );
+        },
       },
 
       // Status
@@ -768,57 +823,70 @@ export default function TutoringClasses() {
 
         {/* ── Students View ───────────────────────────────── */}
         {viewMode === "students" && (
-          <div className="space-y-4">
+          <div className="space-y-2">
             {studentBreakdown.length === 0 ? (
               <div className="py-16 text-center text-sm text-muted-foreground">
                 No hay datos de alumnos aún
               </div>
             ) : (
-              studentBreakdown.map(({ student, pricePerHour, totalClasses, totalHours, totalEarned, totalPaid, totalPending, weekData }) => {
-                const avatarColor = getAvatarColor(student.name);
-                const initial = student.name.charAt(0).toUpperCase();
+              <>
+                {/* Legend — once at top */}
+                <div className="flex items-center gap-4 px-1 pb-1">
+                  <div className="flex items-center gap-1.5">
+                    <div className="w-2 h-2 rounded-full bg-emerald-500/30 ring-1 ring-emerald-500/40" />
+                    <span className="text-[10px] text-muted-foreground">Pagada</span>
+                  </div>
+                  <div className="flex items-center gap-1.5">
+                    <div className="w-2 h-2 rounded-full bg-emerald-500/20" />
+                    <span className="text-[10px] text-muted-foreground">Realizada</span>
+                  </div>
+                  <div className="flex items-center gap-1.5">
+                    <div className="w-2 h-2 rounded-full bg-blue-500/20" />
+                    <span className="text-[10px] text-muted-foreground">Agendada</span>
+                  </div>
+                  <div className="flex items-center gap-1.5">
+                    <div className="w-2 h-2 rounded-full bg-muted/50 border border-dashed border-border/40" />
+                    <span className="text-[10px] text-muted-foreground">Sin clase</span>
+                  </div>
+                </div>
 
-                return (
-                  <Card key={student.id} className="rounded-xl border-border/50 overflow-hidden">
-                    <CardContent className="p-0">
-                      {/* Student header */}
-                      <div className="flex items-center gap-3 p-4 pb-3">
+                {studentBreakdown.map(({ student, pricePerHour, totalClasses, totalHours, totalEarned, totalPaid, totalPending, weekData }) => {
+                  const avatarColor = getAvatarColor(student.name);
+                  const initial = student.name.charAt(0).toUpperCase();
+
+                  return (
+                    <div key={student.id} className="rounded-lg border border-border/50 bg-card px-3 py-2.5">
+                      {/* Row: avatar + info + week grid + totals */}
+                      <div className="flex items-center gap-3">
+                        {/* Avatar */}
                         <div
-                          className="w-10 h-10 rounded-full flex items-center justify-center text-white text-sm font-bold select-none flex-shrink-0"
+                          className="w-8 h-8 rounded-full flex items-center justify-center text-white text-xs font-bold select-none flex-shrink-0"
                           style={{ backgroundColor: avatarColor }}
                         >
                           {initial}
                         </div>
-                        <div className="flex-1 min-w-0">
-                          <h3 className="font-semibold text-sm">{student.name}</h3>
-                          <p className="text-xs text-muted-foreground">
-                            {formatCurrency(pricePerHour)}/hora · {totalClasses} clase{totalClasses !== 1 ? "s" : ""} · {totalHours}h total
+
+                        {/* Name + meta */}
+                        <div className="min-w-0 w-36 flex-shrink-0">
+                          <h3 className="font-semibold text-sm truncate">{student.name}</h3>
+                          <p className="text-[11px] text-muted-foreground truncate">
+                            {formatCurrency(pricePerHour)}/h · {totalClasses} clase{totalClasses !== 1 ? "s" : ""} · {totalHours}h
                           </p>
                         </div>
-                        <div className={cn("text-right flex-shrink-0", isPrivacyMode && "privacy-blur")}>
-                          <p className="text-sm font-bold text-emerald-500">{formatCurrency(totalEarned)}</p>
-                          {totalPending > 0 && (
-                            <p className="text-[11px] text-amber-500 font-medium">
-                              {formatCurrency(totalPending)} pendiente
-                            </p>
-                          )}
-                        </div>
-                      </div>
 
-                      {/* Week-by-week grid */}
-                      <div className="px-4 pb-4">
-                        <div className="flex gap-1.5 overflow-x-auto pb-1">
+                        {/* Week grid — horizontal, compact */}
+                        <div className="flex-1 flex items-center gap-1 overflow-x-auto">
                           {weekData.map((w, i) => {
                             const cls = w.cls;
                             if (!cls) {
                               return (
                                 <div
                                   key={i}
-                                  className="flex flex-col items-center gap-1 min-w-[52px]"
-                                  title={`Semana del ${w.weekLabel} - Sin clase`}
+                                  className="flex flex-col items-center gap-0.5 min-w-[36px]"
+                                  title={`${w.weekLabel} — sin clase`}
                                 >
-                                  <div className="w-8 h-8 rounded-lg bg-muted/40 border border-dashed border-border/50" />
-                                  <span className="text-[10px] text-muted-foreground/50">{w.weekLabel}</span>
+                                  <div className="w-6 h-6 rounded-md bg-muted/30 border border-dashed border-border/40" />
+                                  <span className="text-[9px] text-muted-foreground/40 leading-none">{w.weekLabel}</span>
                                 </div>
                               );
                             }
@@ -829,55 +897,45 @@ export default function TutoringClasses() {
                             return (
                               <div
                                 key={i}
-                                className="flex flex-col items-center gap-1 min-w-[52px] cursor-pointer"
+                                className="flex flex-col items-center gap-0.5 min-w-[36px] cursor-pointer"
                                 title={`${w.weekLabel} · ${cls.duration_hours}h · ${cfg.label}${cls.is_paid ? " · Pagado" : ""}`}
                                 onClick={() => handleEdit(cls)}
                               >
                                 <div
                                   className={cn(
-                                    "w-8 h-8 rounded-lg flex items-center justify-center transition-all",
+                                    "w-6 h-6 rounded-md flex items-center justify-center transition-all",
                                     cfg.bg,
                                     "border",
                                     cfg.border,
-                                    cls.is_paid && cls.status === "completed" && "ring-2 ring-emerald-500/30"
+                                    cls.is_paid && cls.status === "completed" && "ring-1 ring-emerald-500/30"
                                   )}
                                 >
                                   {cls.status === "completed" && cls.is_paid ? (
-                                    <DollarSign className="h-3.5 w-3.5 text-emerald-500" />
+                                    <DollarSign className="h-3 w-3 text-emerald-500" />
                                   ) : (
-                                    <StatusIcon className={cn("h-3.5 w-3.5", cfg.color)} />
+                                    <StatusIcon className={cn("h-3 w-3", cfg.color)} />
                                   )}
                                 </div>
-                                <span className={cn("text-[10px] font-medium", cfg.color)}>{w.weekLabel}</span>
+                                <span className={cn("text-[9px] font-medium leading-none", cfg.color)}>{w.weekLabel}</span>
                               </div>
                             );
                           })}
                         </div>
 
-                        {/* Legend for this student */}
-                        <div className="flex items-center gap-3 mt-3 pt-2 border-t border-border/30">
-                          <div className="flex items-center gap-1">
-                            <div className="w-2.5 h-2.5 rounded-sm bg-emerald-500/20 border border-emerald-500/30 ring-1 ring-emerald-500/30" />
-                            <span className="text-[10px] text-muted-foreground">Pagada</span>
-                          </div>
-                          <div className="flex items-center gap-1">
-                            <div className="w-2.5 h-2.5 rounded-sm bg-emerald-500/10 border border-emerald-500/20" />
-                            <span className="text-[10px] text-muted-foreground">Realizada</span>
-                          </div>
-                          <div className="flex items-center gap-1">
-                            <div className="w-2.5 h-2.5 rounded-sm bg-blue-500/10 border border-blue-500/20" />
-                            <span className="text-[10px] text-muted-foreground">Agendada</span>
-                          </div>
-                          <div className="flex items-center gap-1">
-                            <div className="w-2.5 h-2.5 rounded-sm bg-muted/40 border border-dashed border-border/50" />
-                            <span className="text-[10px] text-muted-foreground">Sin clase</span>
-                          </div>
+                        {/* Totals */}
+                        <div className={cn("text-right flex-shrink-0 pl-2", isPrivacyMode && "privacy-blur")}>
+                          <p className="text-sm font-bold font-mono tabular-nums text-emerald-500">{formatCurrency(totalEarned)}</p>
+                          {totalPending > 0 && (
+                            <p className="text-[10px] text-amber-500 font-medium">
+                              {formatCurrency(totalPending)} pend.
+                            </p>
+                          )}
                         </div>
                       </div>
-                    </CardContent>
-                  </Card>
-                );
-              })
+                    </div>
+                  );
+                })}
+              </>
             )}
           </div>
         )}
