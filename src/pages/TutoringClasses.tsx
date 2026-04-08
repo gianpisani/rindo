@@ -62,7 +62,8 @@ import {
   useTutoringClasses,
   TutoringClass,
 } from "@/hooks/useTutoringClasses";
-import { format, subDays, startOfMonth, endOfMonth, addMonths, subMonths, isWithinInterval } from "date-fns";
+import { format, subDays, addDays, startOfMonth, endOfMonth, addMonths, subMonths, isWithinInterval } from "date-fns";
+import { DateTimePicker } from "@/components/ui/date-time-picker";
 import { es } from "date-fns/locale";
 import { cn } from "@/lib/utils";
 import { usePrivacyMode } from "@/hooks/usePrivacyMode";
@@ -141,7 +142,7 @@ export default function TutoringClasses() {
   const [selectedMonth, setSelectedMonth] = useState(new Date());
   const [sorting, setSorting] = useState<SortingState>([{ id: "date", desc: false }]);
   const [confirmDelete, setConfirmDelete] = useState<{ open: boolean; id: string | null }>({ open: false, id: null });
-  const [viewMode, setViewMode] = useState<"list" | "students">("list");
+  const [viewMode, setViewMode] = useState<"list" | "students">("students");
 
   // ── Keyboard shortcut: C → quick add ──────────────────────
 
@@ -172,7 +173,7 @@ export default function TutoringClasses() {
 
   const [quickForm, setQuickForm] = useState({
     student_id: "",
-    date: format(new Date(), "yyyy-MM-dd"),
+    date: new Date(),
     duration_hours: "1",
     price_per_hour: "",
     status: "completed" as TutoringClass["status"],
@@ -184,7 +185,7 @@ export default function TutoringClasses() {
 
   const [formData, setFormData] = useState({
     student_id: "",
-    date: format(new Date(), "yyyy-MM-dd"),
+    date: new Date(),
     duration_hours: "1",
     price_per_hour: "",
     status: "scheduled" as TutoringClass["status"],
@@ -196,7 +197,7 @@ export default function TutoringClasses() {
   const resetForm = () => {
     setFormData({
       student_id: "",
-      date: format(new Date(), "yyyy-MM-dd"),
+      date: new Date(),
       duration_hours: "1",
       price_per_hour: "",
       status: "scheduled",
@@ -209,7 +210,7 @@ export default function TutoringClasses() {
   const resetQuickForm = () => {
     setQuickForm({
       student_id: "",
-      date: format(new Date(), "yyyy-MM-dd"),
+      date: new Date(),
       duration_hours: "1",
       price_per_hour: "",
       status: "completed",
@@ -227,7 +228,7 @@ export default function TutoringClasses() {
 
     await addClass.mutateAsync({
       student_id: quickForm.student_id,
-      date: quickForm.date,
+      date: quickForm.date.toISOString(),
       duration_hours: parseFloat(quickForm.duration_hours),
       price_per_hour: priceNum,
       status: quickForm.status,
@@ -248,7 +249,7 @@ export default function TutoringClasses() {
 
     const payload = {
       student_id: formData.student_id,
-      date: formData.date,
+      date: formData.date.toISOString(),
       duration_hours: parseFloat(formData.duration_hours),
       price_per_hour: priceNum,
       status: formData.status,
@@ -272,7 +273,7 @@ export default function TutoringClasses() {
     setEditingClass(cls);
     setFormData({
       student_id: cls.student_id,
-      date: cls.date,
+      date: new Date(cls.date),
       duration_hours: cls.duration_hours.toString(),
       price_per_hour: cls.price_per_hour.toString(),
       status: cls.status,
@@ -304,13 +305,13 @@ export default function TutoringClasses() {
     [updateClassSilent]
   );
 
-  // Quick-add class for a specific student (pre-filled)
+  // Quick-add class for a specific student (pre-filled, +7 days from last class)
   const handleQuickAddForStudent = useCallback(
-    async (studentId: string, pricePerHour: number, duration: number) => {
-      const tomorrow = format(new Date(Date.now() + 86400000), "yyyy-MM-dd");
+    async (studentId: string, pricePerHour: number, duration: number, lastDate: string) => {
+      const nextDate = addDays(new Date(lastDate), 7);
       await addClass.mutateAsync({
         student_id: studentId,
-        date: tomorrow,
+        date: nextDate.toISOString(),
         duration_hours: duration,
         price_per_hour: pricePerHour,
         status: "scheduled",
@@ -333,7 +334,7 @@ export default function TutoringClasses() {
     let data = classes;
     // Month filter
     data = data.filter((c) => {
-      const d = new Date(c.date + "T12:00:00");
+      const d = new Date(c.date);
       return isWithinInterval(d, { start: monthStart, end: monthEnd });
     });
     if (searchValue) {
@@ -357,7 +358,7 @@ export default function TutoringClasses() {
 
   const stats = useMemo(() => {
     const thisMonth = classes.filter((c) => {
-      const d = new Date(c.date + "T12:00:00");
+      const d = new Date(c.date);
       return isWithinInterval(d, { start: monthStart, end: monthEnd });
     });
 
@@ -435,10 +436,10 @@ export default function TutoringClasses() {
           </div>
         ),
         cell: ({ row }) => {
-          const d = new Date(row.original.date + "T12:00:00");
+          const d = new Date(row.original.date);
           return (
             <span className={cn("text-sm font-medium", isPrivacyMode && "privacy-blur-light")}>
-              {format(d, "dd MMM yyyy", { locale: es })}
+              {format(d, "dd MMM · HH:mm", { locale: es })}
             </span>
           );
         },
@@ -675,7 +676,7 @@ export default function TutoringClasses() {
 
     const groups: { dayKey: string; rows: typeof rows }[] = [];
     for (const row of rows) {
-      const dayKey = row.original.date;
+      const dayKey = format(new Date(row.original.date), "yyyy-MM-dd");
       const lastGroup = groups[groups.length - 1];
       if (lastGroup && lastGroup.dayKey === dayKey) {
         lastGroup.rows.push(row);
@@ -744,29 +745,33 @@ export default function TutoringClasses() {
 
         {/* Next class indicator */}
         {(() => {
+          const today = new Date();
+          today.setHours(0, 0, 0, 0);
           const upcoming = classes
-            .filter((c) => c.status === "scheduled" && new Date(c.date + "T12:00:00") >= new Date(format(new Date(), "yyyy-MM-dd") + "T00:00:00"))
-            .sort((a, b) => a.date.localeCompare(b.date));
+            .filter((c) => c.status === "scheduled" && new Date(c.date) >= today)
+            .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
           const next = upcoming[0];
           const after = upcoming[1];
           if (!next) return null;
-          const nextDate = new Date(next.date + "T12:00:00");
-          const isToday = next.date === format(new Date(), "yyyy-MM-dd");
-          const isTomorrow = next.date === format(subDays(new Date(), -1), "yyyy-MM-dd");
-          const dayLabel = isToday ? "Hoy" : isTomorrow ? "Mañana" : format(nextDate, "EEEE d", { locale: es });
+          const nextDate = new Date(next.date);
+          const todayStr = format(new Date(), "yyyy-MM-dd");
+          const tomorrowStr = format(addDays(new Date(), 1), "yyyy-MM-dd");
+          const nextDayStr = format(nextDate, "yyyy-MM-dd");
+          const dayLabel = nextDayStr === todayStr ? "Hoy" : nextDayStr === tomorrowStr ? "Mañana" : format(nextDate, "EEEE d", { locale: es });
+          const timeLabel = format(nextDate, "HH:mm") !== "00:00" ? ` a las ${format(nextDate, "HH:mm")}` : "";
 
           return (
             <div className="flex items-center gap-3 px-3 py-2 rounded-lg bg-blue-500/5 border border-blue-500/10">
               <Clock className="h-3.5 w-3.5 text-blue-500 flex-shrink-0" />
               <div className="flex items-center gap-1.5 text-sm">
-                <span className="text-blue-500 font-medium">{dayLabel}</span>
+                <span className="text-blue-500 font-medium">{dayLabel}{timeLabel}</span>
                 <span className="text-muted-foreground">—</span>
                 <span className="font-medium">{next.student_name}</span>
                 <span className="text-muted-foreground text-xs">({next.duration_hours}h · {formatCurrency(next.price_per_hour)}/h)</span>
               </div>
               {after && (
                 <span className="text-[11px] text-muted-foreground/60 ml-auto hidden sm:block">
-                  luego {after.student_name} · {format(new Date(after.date + "T12:00:00"), "EEE d", { locale: es })}
+                  luego {after.student_name} · {format(new Date(after.date), "EEE d", { locale: es })}
                 </span>
               )}
             </div>
@@ -778,15 +783,6 @@ export default function TutoringClasses() {
           {/* View toggle */}
           <div className="flex items-center rounded-lg border border-border/50 p-0.5">
             <Button
-              variant={viewMode === "list" ? "secondary" : "ghost"}
-              size="sm"
-              className="h-8 px-3 rounded-md gap-1.5"
-              onClick={() => setViewMode("list")}
-            >
-              <LayoutList className="h-3.5 w-3.5" />
-              <span className="hidden sm:inline text-xs">Clases</span>
-            </Button>
-            <Button
               variant={viewMode === "students" ? "secondary" : "ghost"}
               size="sm"
               className="h-8 px-3 rounded-md gap-1.5"
@@ -794,6 +790,15 @@ export default function TutoringClasses() {
             >
               <Users className="h-3.5 w-3.5" />
               <span className="hidden sm:inline text-xs">Alumnos</span>
+            </Button>
+            <Button
+              variant={viewMode === "list" ? "secondary" : "ghost"}
+              size="sm"
+              className="h-8 px-3 rounded-md gap-1.5"
+              onClick={() => setViewMode("list")}
+            >
+              <LayoutList className="h-3.5 w-3.5" />
+              <span className="hidden sm:inline text-xs">Tabla</span>
             </Button>
           </div>
 
@@ -941,7 +946,7 @@ export default function TutoringClasses() {
                           {studentClasses.map((cls) => {
                             const cfg = statusConfig[cls.status];
                             const StatusIcon = cfg.icon;
-                            const dateLabel = format(new Date(cls.date + "T12:00:00"), "dd MMM", { locale: es });
+                            const dateLabel = format(new Date(cls.date), "dd MMM", { locale: es });
 
                             return (
                               <DropdownMenu key={cls.id}>
@@ -1003,7 +1008,10 @@ export default function TutoringClasses() {
                           {/* Quick-add + button */}
                           <button
                             className="flex flex-col items-center gap-0.5 min-w-[38px] cursor-pointer group"
-                            onClick={() => handleQuickAddForStudent(student.id, pricePerHour, lastDuration)}
+                            onClick={() => {
+                              const lastCls = studentClasses[studentClasses.length - 1];
+                              handleQuickAddForStudent(student.id, pricePerHour, lastDuration, lastCls?.date || new Date().toISOString());
+                            }}
                             title="Agendar clase"
                           >
                             <div className="w-7 h-7 rounded-md border border-dashed border-border/40 flex items-center justify-center transition-all group-hover:border-primary/50 group-hover:bg-primary/5 group-hover:scale-110">
@@ -1076,7 +1084,7 @@ export default function TutoringClasses() {
                         </Badge>
                       </div>
                       <div className="flex items-center gap-2 text-xs text-muted-foreground mt-0.5">
-                        <span>{format(new Date(cls.date + "T12:00:00"), "dd MMM", { locale: es })}</span>
+                        <span>{format(new Date(cls.date), "dd MMM", { locale: es })}</span>
                         <span>·</span>
                         <span>{cls.duration_hours}h</span>
                         {cls.is_paid && (
@@ -1277,12 +1285,12 @@ export default function TutoringClasses() {
           {/* Date + Duration row */}
           <div className="grid grid-cols-2 gap-3">
             <div className="space-y-2">
-              <Label className="text-sm font-medium">Fecha</Label>
-              <Input
-                type="date"
+              <Label className="text-sm font-medium">Fecha y Hora</Label>
+              <DateTimePicker
                 value={quickForm.date}
-                onChange={(e) => setQuickForm({ ...quickForm, date: e.target.value })}
-                className="h-10 rounded-xl"
+                onChange={(date) => date && setQuickForm({ ...quickForm, date })}
+                showTime={true}
+                className="w-full h-10 rounded-xl"
               />
             </div>
             <div className="space-y-2">
@@ -1415,12 +1423,12 @@ export default function TutoringClasses() {
 
           <div className="grid grid-cols-2 gap-3">
             <div className="space-y-2">
-              <Label className="text-sm font-medium">Fecha</Label>
-              <Input
-                type="date"
+              <Label className="text-sm font-medium">Fecha y Hora</Label>
+              <DateTimePicker
                 value={formData.date}
-                onChange={(e) => setFormData({ ...formData, date: e.target.value })}
-                className="h-10 rounded-xl"
+                onChange={(date) => date && setFormData({ ...formData, date })}
+                showTime={true}
+                className="w-full h-10 rounded-xl"
               />
             </div>
             <div className="space-y-2">
