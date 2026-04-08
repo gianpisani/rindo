@@ -10,6 +10,7 @@ import {
   CreditCard,
   CalendarDays,
   Dumbbell,
+  GraduationCap,
 } from "lucide-react";
 import { ComponentType } from "react";
 
@@ -91,6 +92,12 @@ export const APP_ROUTES: RouteConfig[] = [
     shortcut: "9",
     group: "tools",
     customIcon: true,
+  },
+  {
+    title: "Mis Clases",
+    url: "/tutoring",
+    icon: GraduationCap,
+    group: "tools",
   },
   {
     title: "Entrenamiento",

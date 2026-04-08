@@ -16,6 +16,7 @@ import PendingDebts from "./pages/PendingDebts";
 import CreditCards from "./pages/CreditCards";
 import MonthlySummary from "./pages/MonthlySummary";
 import Training from "./pages/Training";
+import TutoringClasses from "./pages/TutoringClasses";
 import NotFound from "./pages/NotFound";
 import Auth from "./components/Auth";
 import { LoadingScreen } from "./components/LoadingScreen";
@@ -75,6 +76,7 @@ const App = () => {
             <Route path="/pending-debts" element={<PendingDebts />} />
             <Route path="/monthly-summary" element={<MonthlySummary />} />
             <Route path="/credit-cards" element={<CreditCards />} />
+            <Route path="/tutoring" element={<TutoringClasses />} />
             <Route path="/training" element={<Training />} />
             <Route path="*" element={<NotFound />} />
           </Routes>
