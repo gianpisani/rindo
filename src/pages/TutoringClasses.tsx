@@ -696,8 +696,7 @@ export default function TutoringClasses() {
   const renderRow = (row: ReturnType<typeof table.getRowModel>["rows"][0]) => (
     <tr
       key={row.id}
-      className="hover:bg-muted/40 transition-colors cursor-pointer"
-      onClick={() => handleEdit(row.original)}
+      className="hover:bg-muted/40 transition-colors"
     >
       {row.getVisibleCells().map((cell) => (
         <td
