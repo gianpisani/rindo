@@ -380,10 +380,10 @@ export default function TutoringClasses() {
   // ── Student breakdown (class-based, not week-based) ───────
 
   const studentBreakdown = useMemo(() => {
-    if (classes.length === 0 || students.length === 0) return [];
+    if (filteredData.length === 0 || students.length === 0) return [];
 
     return students.map((student) => {
-      const studentClasses = classes
+      const studentClasses = filteredData
         .filter((c) => c.student_id === student.id)
         .sort((a, b) => a.date.localeCompare(b.date));
       const completedClasses = studentClasses.filter((c) => c.status === "completed");
@@ -407,7 +407,7 @@ export default function TutoringClasses() {
         classes: studentClasses,
       };
     }).filter((s) => s.classes.length > 0);
-  }, [classes, students]);
+  }, [filteredData, students]);
 
   // ── Columns ───────────────────────────────────────────────
 
