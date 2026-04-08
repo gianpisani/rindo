@@ -921,37 +921,36 @@ export default function TutoringClasses() {
                   const initial = student.name.charAt(0).toUpperCase();
 
                   return (
-                    <div key={student.id} className="rounded-lg border border-border/50 bg-card px-3 py-2.5">
-                      {/* Row: avatar + info + week grid + totals */}
+                    <div key={student.id} className="rounded-lg border border-border/50 bg-card px-4 py-3">
                       <div className="flex items-center gap-3">
                         {/* Avatar */}
                         <div
-                          className="w-8 h-8 rounded-full flex items-center justify-center text-white text-xs font-bold select-none flex-shrink-0"
+                          className="w-9 h-9 rounded-full flex items-center justify-center text-white text-xs font-bold select-none flex-shrink-0"
                           style={{ backgroundColor: avatarColor }}
                         >
                           {initial}
                         </div>
 
                         {/* Name + meta */}
-                        <div className="min-w-0 w-36 flex-shrink-0">
+                        <div className="min-w-0 w-40 flex-shrink-0">
                           <h3 className="font-semibold text-sm truncate">{student.name}</h3>
                           <p className="text-[11px] text-muted-foreground truncate">
                             {formatCurrency(pricePerHour)}/h · {totalClasses} clase{totalClasses !== 1 ? "s" : ""} · {totalHours}h
                           </p>
                         </div>
 
-                        {/* Week grid — horizontal, compact */}
-                        <div className="flex-1 flex items-center gap-1 overflow-x-auto">
+                        {/* Week grid — inline editable */}
+                        <div className="flex-1 flex items-center gap-1.5 overflow-x-auto py-0.5">
                           {weekData.map((w, i) => {
                             const cls = w.cls;
                             if (!cls) {
                               return (
                                 <div
                                   key={i}
-                                  className="flex flex-col items-center gap-0.5 min-w-[36px]"
+                                  className="flex flex-col items-center gap-0.5 min-w-[38px]"
                                   title={`${w.weekLabel} — sin clase`}
                                 >
-                                  <div className="w-6 h-6 rounded-md bg-muted/30 border border-dashed border-border/40" />
+                                  <div className="w-7 h-7 rounded-md bg-muted/20 border border-dashed border-border/30" />
                                   <span className="text-[9px] text-muted-foreground/40 leading-none">{w.weekLabel}</span>
                                 </div>
                               );
@@ -961,35 +960,67 @@ export default function TutoringClasses() {
                             const StatusIcon = cfg.icon;
 
                             return (
-                              <div
-                                key={i}
-                                className="flex flex-col items-center gap-0.5 min-w-[36px] cursor-pointer"
-                                title={`${w.weekLabel} · ${cls.duration_hours}h · ${cfg.label}${cls.is_paid ? " · Pagado" : ""}`}
-                                onClick={() => handleEdit(cls)}
-                              >
-                                <div
-                                  className={cn(
-                                    "w-6 h-6 rounded-md flex items-center justify-center transition-all",
-                                    cfg.bg,
-                                    "border",
-                                    cfg.border,
-                                    cls.is_paid && cls.status === "completed" && "ring-1 ring-emerald-500/30"
+                              <DropdownMenu key={i}>
+                                <DropdownMenuTrigger asChild>
+                                  <button className="flex flex-col items-center gap-0.5 min-w-[38px] cursor-pointer focus:outline-none group">
+                                    <div
+                                      className={cn(
+                                        "w-7 h-7 rounded-md flex items-center justify-center transition-all group-hover:scale-110",
+                                        cfg.bg,
+                                        "border",
+                                        cfg.border,
+                                        cls.is_paid && cls.status === "completed" && "ring-1 ring-emerald-500/30"
+                                      )}
+                                    >
+                                      {cls.status === "completed" && cls.is_paid ? (
+                                        <DollarSign className="h-3 w-3 text-emerald-500" />
+                                      ) : (
+                                        <StatusIcon className={cn("h-3 w-3", cfg.color)} />
+                                      )}
+                                    </div>
+                                    <span className={cn("text-[9px] font-medium leading-none", cfg.color)}>{w.weekLabel}</span>
+                                  </button>
+                                </DropdownMenuTrigger>
+                                <DropdownMenuContent align="center" className="min-w-[160px]">
+                                  {/* Status options */}
+                                  {(Object.entries(statusConfig) as [TutoringClass["status"], typeof statusConfig.scheduled][]).map(
+                                    ([key, val]) => (
+                                      <DropdownMenuItem
+                                        key={key}
+                                        onClick={() => handleInlineUpdate(cls.id, "status", key)}
+                                        className="flex items-center gap-2"
+                                      >
+                                        <val.icon className={cn("h-3.5 w-3.5", val.color)} />
+                                        <span className="text-sm">{val.label}</span>
+                                        {key === cls.status && <Check className="h-3.5 w-3.5 ml-auto" />}
+                                      </DropdownMenuItem>
+                                    )
                                   )}
-                                >
-                                  {cls.status === "completed" && cls.is_paid ? (
-                                    <DollarSign className="h-3 w-3 text-emerald-500" />
-                                  ) : (
-                                    <StatusIcon className={cn("h-3 w-3", cfg.color)} />
-                                  )}
-                                </div>
-                                <span className={cn("text-[9px] font-medium leading-none", cfg.color)}>{w.weekLabel}</span>
-                              </div>
+                                  <DropdownMenuSeparator />
+                                  {/* Paid toggle */}
+                                  <DropdownMenuItem
+                                    onClick={() => handleInlineUpdate(cls.id, "is_paid", !cls.is_paid)}
+                                    className="flex items-center gap-2"
+                                  >
+                                    <DollarSign className={cn("h-3.5 w-3.5", cls.is_paid ? "text-emerald-500" : "text-muted-foreground")} />
+                                    <span className="text-sm">{cls.is_paid ? "Marcar no pagada" : "Marcar pagada"}</span>
+                                  </DropdownMenuItem>
+                                  <DropdownMenuSeparator />
+                                  <DropdownMenuItem
+                                    onClick={() => handleEdit(cls)}
+                                    className="flex items-center gap-2"
+                                  >
+                                    <Pencil className="h-3.5 w-3.5" />
+                                    <span className="text-sm">Editar</span>
+                                  </DropdownMenuItem>
+                                </DropdownMenuContent>
+                              </DropdownMenu>
                             );
                           })}
                         </div>
 
                         {/* Totals */}
-                        <div className={cn("text-right flex-shrink-0 pl-2", isPrivacyMode && "privacy-blur")}>
+                        <div className={cn("text-right flex-shrink-0 pl-3", isPrivacyMode && "privacy-blur")}>
                           <p className="text-sm font-bold font-mono tabular-nums text-emerald-500">{formatCurrency(totalEarned)}</p>
                           {totalPending > 0 && (
                             <p className="text-[10px] text-amber-500 font-medium">
