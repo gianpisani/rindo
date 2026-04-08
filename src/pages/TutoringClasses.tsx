@@ -937,33 +937,36 @@ export default function TutoringClasses() {
                   const initial = student.name.charAt(0).toUpperCase();
 
                   return (
-                    <div key={student.id} className="rounded-lg border border-border/50 bg-card px-3 sm:px-4 py-3">
-                      {/* Header: avatar + name + totals */}
-                      <div className="flex items-center gap-3 mb-2 sm:mb-0">
-                        <div
-                          className="w-8 h-8 sm:w-9 sm:h-9 rounded-full flex items-center justify-center text-white text-xs font-bold select-none flex-shrink-0"
-                          style={{ backgroundColor: avatarColor }}
-                        >
-                          {initial}
-                        </div>
-                        <div className="flex-1 min-w-0">
-                          <h3 className="font-semibold text-sm truncate">{student.name}</h3>
-                          <p className="text-[11px] text-muted-foreground truncate">
-                            {formatCurrency(pricePerHour)}/h · {totalClasses} clase{totalClasses !== 1 ? "s" : ""} · {totalHours}h
-                          </p>
-                        </div>
-                        <div className={cn("text-right flex-shrink-0", isPrivacyMode && "privacy-blur")}>
-                          <p className="text-sm font-bold font-mono tabular-nums text-emerald-500">{formatCurrency(totalEarned)}</p>
-                          {totalPending > 0 && (
-                            <p className="text-[10px] text-amber-500 font-medium">
-                              {formatCurrency(totalPending)} pend.
+                    <div key={student.id} className="rounded-lg border border-border/50 bg-card px-4 py-3">
+                      {/* Desktop: single row | Mobile: stacked */}
+                      <div className="flex flex-col md:flex-row md:items-center gap-2 md:gap-3">
+                        {/* Avatar + Name */}
+                        <div className="flex items-center gap-3 md:w-40 md:flex-shrink-0">
+                          <div
+                            className="w-9 h-9 rounded-full flex items-center justify-center text-white text-xs font-bold select-none flex-shrink-0"
+                            style={{ backgroundColor: avatarColor }}
+                          >
+                            {initial}
+                          </div>
+                          <div className="flex-1 min-w-0 md:flex-initial">
+                            <h3 className="font-semibold text-sm truncate">{student.name}</h3>
+                            <p className="text-[11px] text-muted-foreground truncate">
+                              {formatCurrency(pricePerHour)}/h · {totalClasses} clase{totalClasses !== 1 ? "s" : ""} · {totalHours}h
                             </p>
-                          )}
+                          </div>
+                          {/* Totals — mobile only (right side of header) */}
+                          <div className={cn("text-right flex-shrink-0 md:hidden", isPrivacyMode && "privacy-blur")}>
+                            <p className="text-sm font-bold font-mono tabular-nums text-emerald-500">{formatCurrency(totalEarned)}</p>
+                            {totalPending > 0 && (
+                              <p className="text-[10px] text-amber-500 font-medium">
+                                {formatCurrency(totalPending)} pend.
+                              </p>
+                            )}
+                          </div>
                         </div>
-                      </div>
 
-                      {/* Class squares — scrollable row */}
-                      <div className="flex items-center gap-1.5 overflow-x-auto py-0.5 -mx-1 px-1">
+                        {/* Class squares */}
+                        <div className="flex-1 flex items-center gap-1.5 overflow-x-auto py-0.5">
                           {studentClasses.map((cls) => {
                             const cfg = statusConfig[cls.status];
                             const StatusIcon = cfg.icon;
@@ -1058,6 +1061,17 @@ export default function TutoringClasses() {
                             <span className="text-[9px] text-muted-foreground/30 leading-none group-hover:text-primary/60">nueva</span>
                           </button>
                         </div>
+
+                        {/* Totals — desktop only (end of row) */}
+                        <div className={cn("text-right flex-shrink-0 pl-3 hidden md:block", isPrivacyMode && "privacy-blur")}>
+                          <p className="text-sm font-bold font-mono tabular-nums text-emerald-500">{formatCurrency(totalEarned)}</p>
+                          {totalPending > 0 && (
+                            <p className="text-[10px] text-amber-500 font-medium">
+                              {formatCurrency(totalPending)} pend.
+                            </p>
+                          )}
+                        </div>
+                      </div>
                     </div>
                   );
                 })}
