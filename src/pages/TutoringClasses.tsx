@@ -937,7 +937,7 @@ export default function TutoringClasses() {
                   const initial = student.name.charAt(0).toUpperCase();
 
                   return (
-                    <div key={student.id} className="rounded-lg border border-border/50 bg-card px-4 py-3">
+                    <div key={student.id} className="rounded-lg border border-border/50 bg-card px-4 py-3 overflow-hidden">
                       {/* Desktop: single row | Mobile: stacked */}
                       <div className="flex flex-col md:flex-row md:items-center gap-2 md:gap-3">
                         {/* Avatar + Name */}
@@ -966,7 +966,7 @@ export default function TutoringClasses() {
                         </div>
 
                         {/* Class squares */}
-                        <div className="flex-1 flex items-center gap-1.5 overflow-x-auto py-0.5">
+                        <div className="flex-1 min-w-0 flex items-center gap-1.5 overflow-x-auto py-0.5">
                           {studentClasses.map((cls) => {
                             const cfg = statusConfig[cls.status];
                             const StatusIcon = cfg.icon;
