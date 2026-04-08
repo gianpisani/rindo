@@ -62,7 +62,7 @@ import {
   useTutoringClasses,
   TutoringClass,
 } from "@/hooks/useTutoringClasses";
-import { format, subDays, startOfMonth, endOfMonth, startOfWeek, addWeeks, addMonths, subMonths, isWithinInterval, isSameWeek } from "date-fns";
+import { format, subDays, startOfMonth, endOfMonth, addMonths, subMonths, isWithinInterval } from "date-fns";
 import { es } from "date-fns/locale";
 import { cn } from "@/lib/utils";
 import { usePrivacyMode } from "@/hooks/usePrivacyMode";
@@ -304,6 +304,25 @@ export default function TutoringClasses() {
     [updateClassSilent]
   );
 
+  // Quick-add class for a specific student (pre-filled)
+  const handleQuickAddForStudent = useCallback(
+    async (studentId: string, pricePerHour: number, duration: number) => {
+      const tomorrow = format(new Date(Date.now() + 86400000), "yyyy-MM-dd");
+      await addClass.mutateAsync({
+        student_id: studentId,
+        date: tomorrow,
+        duration_hours: duration,
+        price_per_hour: pricePerHour,
+        status: "scheduled",
+        is_paid: false,
+        notes: null,
+        cancellation_reason: null,
+      });
+      playToggleOff();
+    },
+    [addClass, playToggleOff]
+  );
+
   // ── Filtering ─────────────────────────────────────────────
 
   const monthStart = startOfMonth(selectedMonth);
@@ -360,60 +379,36 @@ export default function TutoringClasses() {
     return { completed: completed.length, totalEarned, totalPaid, totalPending, totalHours, scheduled, cancelled };
   }, [classes, monthStart, monthEnd]);
 
-  // ── Student weekly breakdown ──────────────────────────────
+  // ── Student breakdown (class-based, not week-based) ───────
 
   const studentBreakdown = useMemo(() => {
     if (classes.length === 0 || students.length === 0) return [];
 
-    // Find date range from classes
-    const dates = classes.map((c) => new Date(c.date + "T12:00:00"));
-    const minDate = new Date(Math.min(...dates.map((d) => d.getTime())));
-    const maxDate = new Date(Math.max(...dates.map((d) => d.getTime())));
-
-    // Generate week labels
-    const weeks: { start: Date; label: string }[] = [];
-    let weekStart = startOfWeek(minDate, { weekStartsOn: 1 });
-    const lastWeekStart = startOfWeek(maxDate, { weekStartsOn: 1 });
-    while (weekStart <= lastWeekStart) {
-      weeks.push({
-        start: weekStart,
-        label: format(weekStart, "dd MMM", { locale: es }),
-      });
-      weekStart = addWeeks(weekStart, 1);
-    }
-
     return students.map((student) => {
-      const studentClasses = classes.filter((c) => c.student_id === student.id);
+      const studentClasses = classes
+        .filter((c) => c.student_id === student.id)
+        .sort((a, b) => a.date.localeCompare(b.date));
       const completedClasses = studentClasses.filter((c) => c.status === "completed");
       const totalHours = completedClasses.reduce((s, c) => s + c.duration_hours, 0);
       const totalEarned = completedClasses.reduce((s, c) => s + c.duration_hours * c.price_per_hour, 0);
       const totalPaid = completedClasses.filter((c) => c.is_paid).reduce((s, c) => s + c.duration_hours * c.price_per_hour, 0);
       const totalPending = totalEarned - totalPaid;
-      const pricePerHour = studentClasses[0]?.price_per_hour ?? 0;
-
-      const weekData = weeks.map((week) => {
-        const cls = studentClasses.find((c) =>
-          isSameWeek(new Date(c.date + "T12:00:00"), week.start, { weekStartsOn: 1 })
-        );
-        return {
-          weekLabel: cls
-            ? format(new Date(cls.date + "T12:00:00"), "dd MMM", { locale: es })
-            : week.label,
-          cls: cls || null,
-        };
-      });
+      const lastClass = studentClasses[studentClasses.length - 1];
+      const pricePerHour = lastClass?.price_per_hour ?? 0;
+      const lastDuration = lastClass?.duration_hours ?? 1;
 
       return {
         student,
         pricePerHour,
+        lastDuration,
         totalClasses: completedClasses.length,
         totalHours,
         totalEarned,
         totalPaid,
         totalPending,
-        weekData,
+        classes: studentClasses,
       };
-    }).filter((s) => s.weekData.some((w) => w.cls !== null)); // only show students with classes
+    }).filter((s) => s.classes.length > 0);
   }, [classes, students]);
 
   // ── Columns ───────────────────────────────────────────────
@@ -918,7 +913,7 @@ export default function TutoringClasses() {
                   </div>
                 </div>
 
-                {studentBreakdown.map(({ student, pricePerHour, totalClasses, totalHours, totalEarned, totalPaid, totalPending, weekData }) => {
+                {studentBreakdown.map(({ student, pricePerHour, lastDuration, totalClasses, totalHours, totalEarned, totalPaid, totalPending, classes: studentClasses }) => {
                   const avatarColor = getAvatarColor(student.name);
                   const initial = student.name.charAt(0).toUpperCase();
 
@@ -941,28 +936,15 @@ export default function TutoringClasses() {
                           </p>
                         </div>
 
-                        {/* Week grid — inline editable */}
+                        {/* Class squares — one per actual class */}
                         <div className="flex-1 flex items-center gap-1.5 overflow-x-auto py-0.5">
-                          {weekData.map((w, i) => {
-                            const cls = w.cls;
-                            if (!cls) {
-                              return (
-                                <div
-                                  key={i}
-                                  className="flex flex-col items-center gap-0.5 min-w-[38px]"
-                                  title={`${w.weekLabel} — sin clase`}
-                                >
-                                  <div className="w-7 h-7 rounded-md bg-muted/20 border border-dashed border-border/30" />
-                                  <span className="text-[9px] text-muted-foreground/40 leading-none">{w.weekLabel}</span>
-                                </div>
-                              );
-                            }
-
+                          {studentClasses.map((cls) => {
                             const cfg = statusConfig[cls.status];
                             const StatusIcon = cfg.icon;
+                            const dateLabel = format(new Date(cls.date + "T12:00:00"), "dd MMM", { locale: es });
 
                             return (
-                              <DropdownMenu key={i}>
+                              <DropdownMenu key={cls.id}>
                                 <DropdownMenuTrigger asChild>
                                   <button className="flex flex-col items-center gap-0.5 min-w-[38px] cursor-pointer focus:outline-none group">
                                     <div
@@ -980,11 +962,10 @@ export default function TutoringClasses() {
                                         <StatusIcon className={cn("h-3 w-3", cfg.color)} />
                                       )}
                                     </div>
-                                    <span className={cn("text-[9px] font-medium leading-none", cfg.color)}>{w.weekLabel}</span>
+                                    <span className={cn("text-[9px] font-medium leading-none", cfg.color)}>{dateLabel}</span>
                                   </button>
                                 </DropdownMenuTrigger>
                                 <DropdownMenuContent align="center" className="min-w-[160px]">
-                                  {/* Status options */}
                                   {(Object.entries(statusConfig) as [TutoringClass["status"], typeof statusConfig.scheduled][]).map(
                                     ([key, val]) => (
                                       <DropdownMenuItem
@@ -999,7 +980,6 @@ export default function TutoringClasses() {
                                     )
                                   )}
                                   <DropdownMenuSeparator />
-                                  {/* Paid toggle */}
                                   <DropdownMenuItem
                                     onClick={() => handleInlineUpdate(cls.id, "is_paid", !cls.is_paid)}
                                     className="flex items-center gap-2"
@@ -1019,6 +999,18 @@ export default function TutoringClasses() {
                               </DropdownMenu>
                             );
                           })}
+
+                          {/* Quick-add + button */}
+                          <button
+                            className="flex flex-col items-center gap-0.5 min-w-[38px] cursor-pointer group"
+                            onClick={() => handleQuickAddForStudent(student.id, pricePerHour, lastDuration)}
+                            title="Agendar clase"
+                          >
+                            <div className="w-7 h-7 rounded-md border border-dashed border-border/40 flex items-center justify-center transition-all group-hover:border-primary/50 group-hover:bg-primary/5 group-hover:scale-110">
+                              <Plus className="h-3 w-3 text-muted-foreground/40 group-hover:text-primary transition-colors" />
+                            </div>
+                            <span className="text-[9px] text-muted-foreground/30 leading-none group-hover:text-primary/60">nueva</span>
+                          </button>
                         </div>
 
                         {/* Totals */}
