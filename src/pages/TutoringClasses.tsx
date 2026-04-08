@@ -53,6 +53,8 @@ import {
   TrendingUp,
   CircleDollarSign,
   AlertCircle,
+  Users,
+  LayoutList,
 } from "lucide-react";
 import {
   useTutoringClasses,
@@ -136,6 +138,7 @@ export default function TutoringClasses() {
   const [paidFilter, setPaidFilter] = useState("all");
   const [sorting, setSorting] = useState<SortingState>([{ id: "date", desc: true }]);
   const [confirmDelete, setConfirmDelete] = useState<{ open: boolean; id: string | null }>({ open: false, id: null });
+  const [viewMode, setViewMode] = useState<"list" | "students">("list");
 
   // ── Quick Add form ────────────────────────────────────────
 
@@ -323,6 +326,60 @@ export default function TutoringClasses() {
 
     return { completed: completed.length, totalEarned, totalPaid, totalPending, totalHours, scheduled, cancelled };
   }, [classes]);
+
+  // ── Student weekly breakdown ──────────────────────────────
+
+  const studentBreakdown = useMemo(() => {
+    if (classes.length === 0 || students.length === 0) return [];
+
+    // Find date range from classes
+    const dates = classes.map((c) => new Date(c.date + "T12:00:00"));
+    const minDate = new Date(Math.min(...dates.map((d) => d.getTime())));
+    const maxDate = new Date(Math.max(...dates.map((d) => d.getTime())));
+
+    // Generate week labels
+    const weeks: { start: Date; label: string }[] = [];
+    let weekStart = startOfWeek(minDate, { weekStartsOn: 1 });
+    const lastWeekStart = startOfWeek(maxDate, { weekStartsOn: 1 });
+    while (weekStart <= lastWeekStart) {
+      weeks.push({
+        start: weekStart,
+        label: format(weekStart, "dd MMM", { locale: es }),
+      });
+      weekStart = addWeeks(weekStart, 1);
+    }
+
+    return students.map((student) => {
+      const studentClasses = classes.filter((c) => c.student_id === student.id);
+      const completedClasses = studentClasses.filter((c) => c.status === "completed");
+      const totalHours = completedClasses.reduce((s, c) => s + c.duration_hours, 0);
+      const totalEarned = completedClasses.reduce((s, c) => s + c.duration_hours * c.price_per_hour, 0);
+      const totalPaid = completedClasses.filter((c) => c.is_paid).reduce((s, c) => s + c.duration_hours * c.price_per_hour, 0);
+      const totalPending = totalEarned - totalPaid;
+      const pricePerHour = studentClasses[0]?.price_per_hour ?? 0;
+
+      const weekData = weeks.map((week) => {
+        const cls = studentClasses.find((c) =>
+          isSameWeek(new Date(c.date + "T12:00:00"), week.start, { weekStartsOn: 1 })
+        );
+        return {
+          weekLabel: week.label,
+          cls: cls || null,
+        };
+      });
+
+      return {
+        student,
+        pricePerHour,
+        totalClasses: completedClasses.length,
+        totalHours,
+        totalEarned,
+        totalPaid,
+        totalPending,
+        weekData,
+      };
+    }).filter((s) => s.weekData.some((w) => w.cls !== null)); // only show students with classes
+  }, [classes, students]);
 
   // ── Columns ───────────────────────────────────────────────
 
@@ -602,6 +659,28 @@ export default function TutoringClasses() {
 
         {/* Toolbar */}
         <div className="flex flex-wrap items-center gap-2">
+          {/* View toggle */}
+          <div className="flex items-center rounded-lg border border-border/50 p-0.5">
+            <Button
+              variant={viewMode === "list" ? "secondary" : "ghost"}
+              size="sm"
+              className="h-8 px-3 rounded-md gap-1.5"
+              onClick={() => setViewMode("list")}
+            >
+              <LayoutList className="h-3.5 w-3.5" />
+              <span className="hidden sm:inline text-xs">Clases</span>
+            </Button>
+            <Button
+              variant={viewMode === "students" ? "secondary" : "ghost"}
+              size="sm"
+              className="h-8 px-3 rounded-md gap-1.5"
+              onClick={() => setViewMode("students")}
+            >
+              <Users className="h-3.5 w-3.5" />
+              <span className="hidden sm:inline text-xs">Alumnos</span>
+            </Button>
+          </div>
+
           <div className="relative">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
             <Input
@@ -662,8 +741,124 @@ export default function TutoringClasses() {
           </Select>
         </div>
 
+        {/* ── Students View ───────────────────────────────── */}
+        {viewMode === "students" && (
+          <div className="space-y-4">
+            {studentBreakdown.length === 0 ? (
+              <div className="py-16 text-center text-sm text-muted-foreground">
+                No hay datos de alumnos aún
+              </div>
+            ) : (
+              studentBreakdown.map(({ student, pricePerHour, totalClasses, totalHours, totalEarned, totalPaid, totalPending, weekData }) => {
+                const avatarColor = getAvatarColor(student.name);
+                const initial = student.name.charAt(0).toUpperCase();
+
+                return (
+                  <Card key={student.id} className="rounded-xl border-border/50 overflow-hidden">
+                    <CardContent className="p-0">
+                      {/* Student header */}
+                      <div className="flex items-center gap-3 p-4 pb-3">
+                        <div
+                          className="w-10 h-10 rounded-full flex items-center justify-center text-white text-sm font-bold select-none flex-shrink-0"
+                          style={{ backgroundColor: avatarColor }}
+                        >
+                          {initial}
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <h3 className="font-semibold text-sm">{student.name}</h3>
+                          <p className="text-xs text-muted-foreground">
+                            {formatCurrency(pricePerHour)}/hora · {totalClasses} clase{totalClasses !== 1 ? "s" : ""} · {totalHours}h total
+                          </p>
+                        </div>
+                        <div className={cn("text-right flex-shrink-0", isPrivacyMode && "privacy-blur")}>
+                          <p className="text-sm font-bold text-emerald-500">{formatCurrency(totalEarned)}</p>
+                          {totalPending > 0 && (
+                            <p className="text-[11px] text-amber-500 font-medium">
+                              {formatCurrency(totalPending)} pendiente
+                            </p>
+                          )}
+                        </div>
+                      </div>
+
+                      {/* Week-by-week grid */}
+                      <div className="px-4 pb-4">
+                        <div className="flex gap-1.5 overflow-x-auto pb-1">
+                          {weekData.map((w, i) => {
+                            const cls = w.cls;
+                            if (!cls) {
+                              return (
+                                <div
+                                  key={i}
+                                  className="flex flex-col items-center gap-1 min-w-[52px]"
+                                  title={`Semana del ${w.weekLabel} - Sin clase`}
+                                >
+                                  <div className="w-8 h-8 rounded-lg bg-muted/40 border border-dashed border-border/50" />
+                                  <span className="text-[10px] text-muted-foreground/50">{w.weekLabel}</span>
+                                </div>
+                              );
+                            }
+
+                            const cfg = statusConfig[cls.status];
+                            const StatusIcon = cfg.icon;
+
+                            return (
+                              <div
+                                key={i}
+                                className="flex flex-col items-center gap-1 min-w-[52px] cursor-pointer"
+                                title={`${w.weekLabel} · ${cls.duration_hours}h · ${cfg.label}${cls.is_paid ? " · Pagado" : ""}`}
+                                onClick={() => handleEdit(cls)}
+                              >
+                                <div
+                                  className={cn(
+                                    "w-8 h-8 rounded-lg flex items-center justify-center transition-all",
+                                    cfg.bg,
+                                    "border",
+                                    cfg.border,
+                                    cls.is_paid && cls.status === "completed" && "ring-2 ring-emerald-500/30"
+                                  )}
+                                >
+                                  {cls.status === "completed" && cls.is_paid ? (
+                                    <DollarSign className="h-3.5 w-3.5 text-emerald-500" />
+                                  ) : (
+                                    <StatusIcon className={cn("h-3.5 w-3.5", cfg.color)} />
+                                  )}
+                                </div>
+                                <span className={cn("text-[10px] font-medium", cfg.color)}>{w.weekLabel}</span>
+                              </div>
+                            );
+                          })}
+                        </div>
+
+                        {/* Legend for this student */}
+                        <div className="flex items-center gap-3 mt-3 pt-2 border-t border-border/30">
+                          <div className="flex items-center gap-1">
+                            <div className="w-2.5 h-2.5 rounded-sm bg-emerald-500/20 border border-emerald-500/30 ring-1 ring-emerald-500/30" />
+                            <span className="text-[10px] text-muted-foreground">Pagada</span>
+                          </div>
+                          <div className="flex items-center gap-1">
+                            <div className="w-2.5 h-2.5 rounded-sm bg-emerald-500/10 border border-emerald-500/20" />
+                            <span className="text-[10px] text-muted-foreground">Realizada</span>
+                          </div>
+                          <div className="flex items-center gap-1">
+                            <div className="w-2.5 h-2.5 rounded-sm bg-blue-500/10 border border-blue-500/20" />
+                            <span className="text-[10px] text-muted-foreground">Agendada</span>
+                          </div>
+                          <div className="flex items-center gap-1">
+                            <div className="w-2.5 h-2.5 rounded-sm bg-muted/40 border border-dashed border-border/50" />
+                            <span className="text-[10px] text-muted-foreground">Sin clase</span>
+                          </div>
+                        </div>
+                      </div>
+                    </CardContent>
+                  </Card>
+                );
+              })
+            )}
+          </div>
+        )}
+
         {/* ── Mobile Card List ─────────────────────────────── */}
-        {isMobile ? (
+        {viewMode === "list" && (isMobile ? (
           <div className="space-y-1">
             {filteredData.length === 0 ? (
               <div className="py-16 text-center text-sm text-muted-foreground">
@@ -783,10 +978,10 @@ export default function TutoringClasses() {
               </tbody>
             </table>
           </div>
-        )}
+        ))}
 
         {/* Pagination */}
-        {table.getPageCount() > 1 && (
+        {viewMode === "list" && table.getPageCount() > 1 && (
           <div className="flex items-center justify-between px-2">
             <p className="text-xs text-muted-foreground">
               {filteredData.length} clase{filteredData.length !== 1 ? "s" : ""}
