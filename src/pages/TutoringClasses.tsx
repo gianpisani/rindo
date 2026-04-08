@@ -396,7 +396,9 @@ export default function TutoringClasses() {
           isSameWeek(new Date(c.date + "T12:00:00"), week.start, { weekStartsOn: 1 })
         );
         return {
-          weekLabel: week.label,
+          weekLabel: cls
+            ? format(new Date(cls.date + "T12:00:00"), "dd MMM", { locale: es })
+            : week.label,
           cls: cls || null,
         };
       });
