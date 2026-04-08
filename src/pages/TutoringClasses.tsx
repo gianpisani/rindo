@@ -978,7 +978,7 @@ export default function TutoringClasses() {
                                     <span className={cn("text-[9px] font-medium leading-none", cfg.color)}>{dateLabel}</span>
                                   </button>
                                 </DropdownMenuTrigger>
-                                <DropdownMenuContent align="center" className="min-w-[160px]">
+                                <DropdownMenuContent align="center" className="min-w-[170px]">
                                   {(Object.entries(statusConfig) as [TutoringClass["status"], typeof statusConfig.scheduled][]).map(
                                     ([key, val]) => (
                                       <DropdownMenuItem
@@ -998,15 +998,40 @@ export default function TutoringClasses() {
                                     className="flex items-center gap-2"
                                   >
                                     <DollarSign className={cn("h-3.5 w-3.5", cls.is_paid ? "text-emerald-500" : "text-muted-foreground")} />
-                                    <span className="text-sm">{cls.is_paid ? "Marcar no pagada" : "Marcar pagada"}</span>
+                                    <span className="text-sm">{cls.is_paid ? "No pagada" : "Pagada"}</span>
                                   </DropdownMenuItem>
                                   <DropdownMenuSeparator />
+                                  {/* Inline date edit */}
+                                  <DropdownMenuItem asChild onSelect={(e) => e.preventDefault()}>
+                                    <label className="flex items-center gap-2 cursor-pointer relative">
+                                      <CalendarDays className="h-3.5 w-3.5" />
+                                      <span className="text-sm">Cambiar fecha</span>
+                                      <input
+                                        type="datetime-local"
+                                        className="absolute inset-0 opacity-0 cursor-pointer"
+                                        defaultValue={format(new Date(cls.date), "yyyy-MM-dd'T'HH:mm")}
+                                        onChange={(e) => {
+                                          if (e.target.value) {
+                                            handleInlineUpdate(cls.id, "date", new Date(e.target.value).toISOString());
+                                          }
+                                        }}
+                                      />
+                                    </label>
+                                  </DropdownMenuItem>
                                   <DropdownMenuItem
                                     onClick={() => handleEdit(cls)}
                                     className="flex items-center gap-2"
                                   >
                                     <Pencil className="h-3.5 w-3.5" />
-                                    <span className="text-sm">Editar</span>
+                                    <span className="text-sm">Editar todo</span>
+                                  </DropdownMenuItem>
+                                  <DropdownMenuSeparator />
+                                  <DropdownMenuItem
+                                    onClick={() => handleDelete(cls.id)}
+                                    className="flex items-center gap-2 text-destructive focus:text-destructive"
+                                  >
+                                    <Trash2 className="h-3.5 w-3.5" />
+                                    <span className="text-sm">Eliminar</span>
                                   </DropdownMenuItem>
                                 </DropdownMenuContent>
                               </DropdownMenu>
