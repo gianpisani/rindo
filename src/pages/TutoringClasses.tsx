@@ -136,10 +136,10 @@ export default function TutoringClasses() {
   const [isStudentDialogOpen, setIsStudentDialogOpen] = useState(false);
   const [newStudentName, setNewStudentName] = useState("");
   const [searchValue, setSearchValue] = useState("");
-  const [statusFilter, setStatusFilter] = useState("scheduled");
+  const [statusFilter, setStatusFilter] = useState("all");
   const [studentFilter, setStudentFilter] = useState("all");
   const [paidFilter, setPaidFilter] = useState("all");
-  const [selectedMonth, setSelectedMonth] = useState(new Date());
+  const [selectedMonth, setSelectedMonth] = useState<Date | null>(null);
   const [sorting, setSorting] = useState<SortingState>([{ id: "date", desc: false }]);
   const [confirmDelete, setConfirmDelete] = useState<{ open: boolean; id: string | null }>({ open: false, id: null });
   const [viewMode, setViewMode] = useState<"list" | "students">("students");
@@ -326,17 +326,19 @@ export default function TutoringClasses() {
 
   // ── Filtering ─────────────────────────────────────────────
 
-  const monthStart = startOfMonth(selectedMonth);
-  const monthEnd = endOfMonth(selectedMonth);
-  const monthLabel = format(selectedMonth, "MMMM yyyy", { locale: es });
+  const monthLabel = selectedMonth ? format(selectedMonth, "MMMM yyyy", { locale: es }) : "Todo";
 
   const filteredData = useMemo(() => {
     let data = classes;
-    // Month filter
-    data = data.filter((c) => {
-      const d = new Date(c.date);
-      return isWithinInterval(d, { start: monthStart, end: monthEnd });
-    });
+    // Month filter (only if a month is selected)
+    if (selectedMonth) {
+      const ms = startOfMonth(selectedMonth);
+      const me = endOfMonth(selectedMonth);
+      data = data.filter((c) => {
+        const d = new Date(c.date);
+        return isWithinInterval(d, { start: ms, end: me });
+      });
+    }
     if (searchValue) {
       const q = searchValue.toLowerCase();
       data = data.filter(
@@ -352,17 +354,12 @@ export default function TutoringClasses() {
       if (paidFilter === "unpaid") data = data.filter((c) => !c.is_paid && c.status !== "cancelled");
     }
     return data;
-  }, [classes, searchValue, statusFilter, studentFilter, paidFilter, monthStart, monthEnd]);
+  }, [classes, searchValue, statusFilter, studentFilter, paidFilter, selectedMonth]);
 
-  // ── Dashboard stats (current month) ───────────────────────
+  // ── Dashboard stats (based on filtered data) ──────────────
 
   const stats = useMemo(() => {
-    const thisMonth = classes.filter((c) => {
-      const d = new Date(c.date);
-      return isWithinInterval(d, { start: monthStart, end: monthEnd });
-    });
-
-    const completed = thisMonth.filter((c) => c.status === "completed");
+    const completed = filteredData.filter((c) => c.status === "completed");
     const totalEarned = completed.reduce(
       (sum, c) => sum + c.duration_hours * c.price_per_hour,
       0
@@ -374,11 +371,11 @@ export default function TutoringClasses() {
       .filter((c) => !c.is_paid)
       .reduce((sum, c) => sum + c.duration_hours * c.price_per_hour, 0);
     const totalHours = completed.reduce((sum, c) => sum + c.duration_hours, 0);
-    const scheduled = thisMonth.filter((c) => c.status === "scheduled").length;
-    const cancelled = thisMonth.filter((c) => c.status === "cancelled").length;
+    const scheduled = filteredData.filter((c) => c.status === "scheduled").length;
+    const cancelled = filteredData.filter((c) => c.status === "cancelled").length;
 
     return { completed: completed.length, totalEarned, totalPaid, totalPending, totalHours, scheduled, cancelled };
-  }, [classes, monthStart, monthEnd]);
+  }, [filteredData]);
 
   // ── Student breakdown (class-based, not week-based) ───────
 
@@ -822,20 +819,24 @@ export default function TutoringClasses() {
             )}
           </div>
 
-          {/* Month selector */}
+          {/* Month filter */}
           <div className="flex items-center gap-0.5 rounded-lg border border-border/50 px-1 h-9">
             <Button
               variant="ghost"
               size="sm"
               className="h-7 w-7 p-0"
-              onClick={() => setSelectedMonth((m) => subMonths(m, 1))}
+              disabled={!selectedMonth}
+              onClick={() => setSelectedMonth((m) => m ? subMonths(m, 1) : null)}
             >
               <ChevronLeft className="h-3.5 w-3.5" />
             </Button>
             <button
-              className="text-xs font-medium px-2 capitalize hover:text-foreground text-muted-foreground transition-colors min-w-[100px] text-center"
-              onClick={() => setSelectedMonth(new Date())}
-              title="Ir al mes actual"
+              className={cn(
+                "text-xs font-medium px-2 capitalize transition-colors min-w-[100px] text-center",
+                selectedMonth ? "text-foreground hover:text-muted-foreground" : "text-muted-foreground hover:text-foreground"
+              )}
+              onClick={() => setSelectedMonth((m) => m ? null : new Date())}
+              title={selectedMonth ? "Mostrar todo" : "Filtrar por mes"}
             >
               {monthLabel}
             </button>
@@ -843,7 +844,8 @@ export default function TutoringClasses() {
               variant="ghost"
               size="sm"
               className="h-7 w-7 p-0"
-              onClick={() => setSelectedMonth((m) => addMonths(m, 1))}
+              disabled={!selectedMonth}
+              onClick={() => setSelectedMonth((m) => m ? addMonths(m, 1) : null)}
             >
               <ChevronRight className="h-3.5 w-3.5" />
             </Button>
