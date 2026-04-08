@@ -63,7 +63,7 @@ import {
   TutoringClass,
 } from "@/hooks/useTutoringClasses";
 import { format, subDays, addDays, startOfMonth, endOfMonth, addMonths, subMonths, isWithinInterval } from "date-fns";
-import { DateTimePicker } from "@/components/ui/date-time-picker";
+import { DateTimePicker, InlineDateTimePicker } from "@/components/ui/date-time-picker";
 import { es } from "date-fns/locale";
 import { cn } from "@/lib/utils";
 import { usePrivacyMode } from "@/hooks/usePrivacyMode";
@@ -435,9 +435,13 @@ export default function TutoringClasses() {
         cell: ({ row }) => {
           const d = new Date(row.original.date);
           return (
-            <span className={cn("text-sm font-medium", isPrivacyMode && "privacy-blur-light")}>
-              {format(d, "dd MMM · HH:mm", { locale: es })}
-            </span>
+            <div className={cn("font-medium text-sm", isPrivacyMode && "privacy-blur-light")}>
+              <InlineDateTimePicker
+                value={d}
+                onChange={(newDate) => handleInlineUpdate(row.original.id, "date", newDate.toISOString())}
+                showTime={true}
+              />
+            </div>
           );
         },
       },
