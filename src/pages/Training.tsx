@@ -39,7 +39,6 @@ import { WeeklyCalendarView } from "@/components/training/WeeklyCalendarView";
 import { SessionDetailDrawer } from "@/components/training/SessionDetailDrawer";
 import { SessionFormDrawer } from "@/components/training/SessionFormDrawer";
 import { TrainingGoals } from "@/components/training/TrainingGoals";
-import { PeriodizationBar } from "@/components/training/PeriodizationBar";
 import { WeeklyLoadChart } from "@/components/training/WeeklyLoadChart";
 import ConfirmDialog from "@/components/ConfirmDialog";
 import { parseISO, differenceInDays } from "date-fns";
@@ -92,6 +91,28 @@ export default function Training() {
   const weekEnd = endOfWeek(currentWeekStart, { weekStartsOn: 1 });
   const isCurrentWeek = isSameWeek(currentWeekStart, new Date(), { weekStartsOn: 1 });
   const totalRows = Math.ceil(calendarDays.length / 7);
+
+  // Sessions for the viewed week (for WeeklyLoadChart)
+  const viewedWeekStart = viewMode === "week" ? currentWeekStart : startOfWeek(new Date(), { weekStartsOn: 1 });
+  const viewedWeekEnd = endOfWeek(viewedWeekStart, { weekStartsOn: 1 });
+  const viewedWeekStr = format(viewedWeekStart, "yyyy-MM-dd");
+  const viewedWeekEndStr = format(viewedWeekEnd, "yyyy-MM-dd");
+
+  const viewedWeekSessions = useMemo(
+    () => sessions.filter((s) => s.session_date >= viewedWeekStr && s.session_date <= viewedWeekEndStr),
+    [sessions, viewedWeekStr, viewedWeekEndStr]
+  );
+
+  // Previous week sessions (for trend comparison)
+  const prevWeekStart = subWeeks(viewedWeekStart, 1);
+  const prevWeekEnd = endOfWeek(prevWeekStart, { weekStartsOn: 1 });
+  const prevWeekStr = format(prevWeekStart, "yyyy-MM-dd");
+  const prevWeekEndStr = format(prevWeekEnd, "yyyy-MM-dd");
+
+  const prevWeekSessions = useMemo(
+    () => sessions.filter((s) => s.session_date >= prevWeekStr && s.session_date <= prevWeekEndStr),
+    [sessions, prevWeekStr, prevWeekEndStr]
+  );
 
   const handleMonthChange = (newMonth: Date) => {
     setCurrentMonth(newMonth);
@@ -371,11 +392,12 @@ export default function Training() {
               </button>
             )}
 
-            {/* Stats section — visible on both mobile and desktop */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-              <WeeklyLoadChart sessions={sessions} />
-              <PeriodizationBar sessions={sessions} />
-            </div>
+            {/* Week summary */}
+            <WeeklyLoadChart
+              sessions={viewedWeekSessions}
+              weekStart={viewedWeekStart}
+              previousWeekSessions={prevWeekSessions}
+            />
 
             <TrainingGoals />
 
