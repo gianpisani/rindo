@@ -1,23 +1,5 @@
 import { cn } from "@/lib/utils";
-import { useState, useEffect, useCallback } from "react";
-import { motion, AnimatePresence } from "framer-motion";
 import { RindoLogo } from "./RindoLogo";
-
-const funMessages = [
-  "Consultando al Tío René sobre tu situación financiera...",
-  "Preguntándole a tu vieja si te puede prestar...",
-  "Analizando cuánto gastaste en café este mes...",
-  "Contando las veces que dijiste 'desde el lunes'...",
-  "Sincronizando datos con el universo...",
-  "Preparando los datos sin juzgar...",
-  "Cargando con fe...",
-];
-
-const simpleMessages = [
-  "Cargando datos...",
-  "Preparando todo...",
-  "Un momento...",
-];
 
 interface LoadingScreenProps {
   fullScreen?: boolean;
@@ -30,21 +12,7 @@ export function LoadingScreen({
   fullScreen = true,
   message,
   size = "md",
-  showFunFact = true,
 }: LoadingScreenProps) {
-  const pool = showFunFact ? funMessages : simpleMessages;
-  const [msgIndex, setMsgIndex] = useState(() => Math.floor(Math.random() * pool.length));
-
-  const nextMessage = useCallback(() => {
-    setMsgIndex((prev) => (prev + 1) % pool.length);
-  }, [pool.length]);
-
-  useEffect(() => {
-    if (message) return;
-    const id = setInterval(nextMessage, 2800);
-    return () => clearInterval(id);
-  }, [message, nextMessage]);
-
   if (message) {
     return (
       <div
@@ -53,13 +21,13 @@ export function LoadingScreen({
           fullScreen && "min-h-screen bg-background"
         )}
       >
-        <RindoLogo size={20} className="text-foreground/40 animate-breathe" />
+        <RindoLogo size={20} className="text-foreground/40 loading-breathe" />
         <p className="text-sm text-muted-foreground font-mono">{message}</p>
       </div>
     );
   }
 
-  const logoSize = size === "sm" ? 48 : size === "md" ? 72 : 100;
+  const logoSize = size === "sm" ? 48 : size === "md" ? 80 : 120;
 
   return (
     <div
@@ -68,39 +36,63 @@ export function LoadingScreen({
         fullScreen && "min-h-screen bg-background"
       )}
     >
-      {/* Logo */}
-      <motion.div
-        initial={{ opacity: 0, scale: 0.8 }}
-        animate={{ opacity: 1, scale: 1 }}
-        transition={{ duration: 0.6, ease: "easeOut" }}
-      >
-        <RindoLogo size={logoSize} animate className="text-foreground" />
-      </motion.div>
+      {/* Outer glow ring */}
+      <div className="relative">
+        {/* Pulsing glow */}
+        <div className="absolute inset-0 loading-glow-pulse">
+          <div
+            className="w-full h-full rounded-full"
+            style={{
+              background: "radial-gradient(circle, hsl(var(--primary) / 0.15) 0%, transparent 70%)",
+              transform: "scale(2.5)",
+            }}
+          />
+        </div>
 
-      {/* Brand */}
-      <motion.span
-        initial={{ opacity: 0 }}
-        animate={{ opacity: 0.3 }}
-        transition={{ duration: 0.8, delay: 0.4 }}
-        className="mt-4 text-xs font-semibold text-foreground"
-      >
-        rindo<span className="text-primary">.</span>
-      </motion.span>
-
-      {/* Cycling messages */}
-      <div className="mt-8 h-6 relative flex items-center justify-center">
-        <AnimatePresence mode="wait">
-          <motion.p
-            key={msgIndex}
-            initial={{ opacity: 0, y: 8, filter: "blur(4px)" }}
-            animate={{ opacity: 0.4, y: 0, filter: "blur(0px)" }}
-            exit={{ opacity: 0, y: -8, filter: "blur(4px)" }}
-            transition={{ duration: 0.5, ease: "easeInOut" }}
-            className="text-xs text-muted-foreground text-center absolute whitespace-nowrap"
+        {/* Spinning ring */}
+        <div className="absolute inset-0 flex items-center justify-center loading-spin-slow">
+          <svg
+            width={logoSize * 1.8}
+            height={logoSize * 1.8}
+            viewBox="0 0 100 100"
+            fill="none"
+            className="absolute"
+            style={{ marginLeft: -(logoSize * 0.4), marginTop: -(logoSize * 0.4) }}
           >
-            {pool[msgIndex]}
-          </motion.p>
-        </AnimatePresence>
+            <circle
+              cx="50" cy="50" r="46"
+              stroke="hsl(var(--primary))"
+              strokeWidth="0.5"
+              strokeDasharray="12 8"
+              opacity="0.2"
+            />
+          </svg>
+        </div>
+
+        {/* Orbiting dot */}
+        <div className="absolute inset-0 flex items-center justify-center loading-orbit">
+          <div
+            className="absolute w-1.5 h-1.5 rounded-full bg-primary loading-dot-glow"
+            style={{ transform: `translateY(-${logoSize * 0.85}px)` }}
+          />
+        </div>
+
+        {/* Logo */}
+        <div className="loading-logo-enter">
+          <RindoLogo size={logoSize} animate className="text-foreground" />
+        </div>
+      </div>
+
+      {/* Brand text */}
+      <div className="mt-6 loading-text-enter">
+        <span className="text-sm font-bold tracking-tight text-foreground/20">
+          rindo<span className="text-primary/40">.</span>
+        </span>
+      </div>
+
+      {/* Subtle loading bar */}
+      <div className="mt-6 w-16 h-[2px] rounded-full bg-muted/20 overflow-hidden loading-text-enter">
+        <div className="h-full w-1/3 rounded-full bg-primary/40 loading-bar-slide" />
       </div>
     </div>
   );
@@ -109,7 +101,7 @@ export function LoadingScreen({
 export function LoadingSpinner({ className }: { className?: string }) {
   return (
     <div className={cn("relative", className)}>
-      <RindoLogo size={24} className="text-foreground/60 animate-breathe" />
+      <RindoLogo size={24} className="text-foreground/60 loading-breathe" />
     </div>
   );
 }
