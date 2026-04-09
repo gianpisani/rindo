@@ -237,13 +237,9 @@ Based on Indigo, Blue, Cyan palette
     max-width: 100%;
   }
 
-  /* PWA Splash Screen - Logo centered */
+  /* PWA Splash Screen */
   html {
     background-color: #000000;
-    background-image: url('/splash-screen.png');
-    background-size: contain;
-    background-position: center;
-    background-repeat: no-repeat;
     min-height: 100vh;
     min-height: -webkit-fill-available;
   }
