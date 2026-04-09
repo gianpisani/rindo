@@ -40,7 +40,7 @@ export function LoadingScreen({
         <RindoLogo size={logoSize} animate className="text-foreground" />
       </div>
       <span className="text-xs font-bold tracking-tight text-foreground/20 loading-text-enter">
-        rindo<span className="text-primary/40">.</span>
+        rindo<span className="text-primary">.</span>
       </span>
     </div>
   );
