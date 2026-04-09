@@ -339,7 +339,7 @@ function SelectableCell<T extends string>({ value, options, onSave, renderValue,
           className={cn(
             "flex items-center gap-1 px-2 py-1 rounded-md transition-all",
             "hover:bg-muted/80 group cursor-pointer",
-            "focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-1",
+            "focus:outline-none focus-visible:bg-muted/80",
             className
           )}
         >
@@ -392,7 +392,7 @@ function CategoryCombobox({ value, options, onSave, renderValue, className, plac
           className={cn(
             "flex items-center gap-1 px-2 py-1 rounded-md transition-all",
             "hover:bg-muted/80 group cursor-pointer",
-            "focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-1",
+            "focus:outline-none focus-visible:bg-muted/80",
             className
           )}
         >
