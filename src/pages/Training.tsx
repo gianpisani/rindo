@@ -327,6 +327,8 @@ export default function Training() {
                 sessionsByDate={sessionsByDate}
                 onOpenSession={openSession}
                 onAddSession={openFormCreate}
+                onComplete={(id) => markCompleted.mutate(id)}
+                onSkip={(id) => markSkipped.mutate(id)}
               />
             ) : (
               <MonthlyCalendarView

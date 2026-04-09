@@ -23,6 +23,8 @@ import {
   XCircle,
   Coffee,
   Flag,
+  Route,
+  Footprints,
 } from "lucide-react";
 import {
   Tooltip,
@@ -35,6 +37,8 @@ interface Props {
   sessionsByDate: Record<string, TrainingSession[]>;
   onOpenSession: (session: TrainingSession) => void;
   onAddSession: (date: string) => void;
+  onComplete?: (id: string) => void;
+  onSkip?: (id: string) => void;
 }
 
 /* ─────────────────────────────────────────────────────────────
@@ -44,15 +48,13 @@ interface Props {
 function WeekGlance({
   days,
   sessionsByDate,
-  onOpenSession,
 }: {
   days: Date[];
   sessionsByDate: Record<string, TrainingSession[]>;
-  onOpenSession: (session: TrainingSession) => void;
 }) {
   return (
     <div className="hidden md:grid grid-cols-7 gap-1 mb-2">
-      {days.map((day, i) => {
+      {days.map((day) => {
         const dateStr = format(day, "yyyy-MM-dd");
         const daySessions = sessionsByDate[dateStr] || [];
         const dayIsToday = isToday(day);
@@ -61,7 +63,6 @@ function WeekGlance({
         const isRest = daySessions.length === 1 && daySessions[0].sport_type === "rest";
         const isEmpty = daySessions.length === 0;
 
-        // Get dominant intensity for color
         const hardSession = daySessions.find((s) => s.intensity === "hard");
         const modSession = daySessions.find((s) => s.intensity === "moderate");
         const barColor = hardSession
@@ -81,10 +82,7 @@ function WeekGlance({
                   dayIsToday ? "bg-primary/[0.06]" : "bg-muted/15 hover:bg-muted/25"
                 )}
               >
-                {/* Intensity bar */}
                 <div className={cn("w-[3px] h-5 rounded-full shrink-0", barColor, isEmpty && "bg-border/20")} />
-
-                {/* Sport icons */}
                 <div className="flex items-center gap-1 flex-1 min-w-0">
                   {isEmpty ? (
                     <span className="text-[10px] text-muted-foreground/30">—</span>
@@ -106,8 +104,6 @@ function WeekGlance({
                       })
                   )}
                 </div>
-
-                {/* Duration */}
                 {totalMin > 0 && (
                   <span
                     className={cn(
@@ -118,7 +114,6 @@ function WeekGlance({
                     {totalMin}′
                   </span>
                 )}
-
                 {allDone && (
                   <CheckCircle2 className="h-3 w-3 text-emerald-500 shrink-0" />
                 )}
@@ -207,11 +202,8 @@ function MiniSessionCard({
         isSkipped && "opacity-40"
       )}
     >
-      {/* Sport accent bar */}
       <div className={cn("h-[2px]", isRace ? "bg-gradient-to-r from-rose-500 to-amber-500" : sport.dot)} />
-
       <div className="px-2 py-1.5">
-        {/* Row 1: Icon + name + status */}
         <div className="flex items-center gap-1.5">
           <div className={cn("p-0.5 rounded shrink-0", isRace ? "bg-rose-500/10" : sport.bg)}>
             {isRace ? (
@@ -226,8 +218,6 @@ function MiniSessionCard({
           {isCompleted && <CheckCircle2 className="h-2.5 w-2.5 text-emerald-500 shrink-0" />}
           {isSkipped && <XCircle className="h-2.5 w-2.5 text-rose-400 shrink-0" />}
         </div>
-
-        {/* Row 2: Metrics + intensity */}
         <div className="flex items-center gap-1 mt-1 flex-wrap">
           {session.target_duration_minutes && (
             <span className="text-[9px] text-muted-foreground/60 flex items-center gap-px">
@@ -259,6 +249,8 @@ export function WeeklyCalendarView({
   sessionsByDate,
   onOpenSession,
   onAddSession,
+  onComplete,
+  onSkip,
 }: Props) {
   const [selectedDayIndex, setSelectedDayIndex] = useState(() => {
     const today = new Date();
@@ -287,7 +279,7 @@ export function WeeklyCalendarView({
   return (
     <>
       {/* ── Week Glance (desktop) ── */}
-      <WeekGlance days={days} sessionsByDate={sessionsByDate} onOpenSession={onOpenSession} />
+      <WeekGlance days={days} sessionsByDate={sessionsByDate} />
 
       {/* ── Desktop: 7-column grid ── */}
       <div className="hidden md:grid grid-cols-7 gap-px bg-border/20 rounded-2xl overflow-hidden border border-border/30">
@@ -308,7 +300,6 @@ export function WeeklyCalendarView({
                 allDone && !dayIsToday && "bg-emerald-500/[0.015]"
               )}
             >
-              {/* Day header */}
               <div className={cn(
                 "flex items-center justify-between px-2 py-1.5 border-b",
                 dayIsToday ? "border-primary/15 bg-primary/[0.04]" : "border-border/15"
@@ -334,8 +325,6 @@ export function WeeklyCalendarView({
                   <Plus className="h-2.5 w-2.5" />
                 </button>
               </div>
-
-              {/* Sessions */}
               <div className="flex-1 p-1 space-y-1">
                 {daySessions.map((s) => (
                   <MiniSessionCard key={s.id} session={s} onClick={() => onOpenSession(s)} />
@@ -452,7 +441,13 @@ export function WeeklyCalendarView({
         ) : (
           <div className="space-y-2.5">
             {selectedDaySessions.map((session) => (
-              <MobileSessionCard key={session.id} session={session} onClick={() => onOpenSession(session)} />
+              <MobileSessionCard
+                key={session.id}
+                session={session}
+                onClick={() => onOpenSession(session)}
+                onComplete={onComplete}
+                onSkip={onSkip}
+              />
             ))}
           </div>
         )}
@@ -462,15 +457,19 @@ export function WeeklyCalendarView({
 }
 
 /* ─────────────────────────────────────────────────────────────
-   Mobile: Rich session card
+   Mobile: Rich session card with inline quick actions
    ───────────────────────────────────────────────────────────── */
 
 function MobileSessionCard({
   session,
   onClick,
+  onComplete,
+  onSkip,
 }: {
   session: TrainingSession;
   onClick: () => void;
+  onComplete?: (id: string) => void;
+  onSkip?: (id: string) => void;
 }) {
   const sport = SPORT_CONFIG[session.sport_type] || SPORT_CONFIG.rest;
   const intensity = INTENSITY_CONFIG[session.intensity] || INTENSITY_CONFIG.moderate;
@@ -478,36 +477,46 @@ function MobileSessionCard({
   const isRace = session.is_race;
   const isCompleted = session.status === "completed";
   const isSkipped = session.status === "skipped";
+  const isPending = session.status === "pending";
   const isRest = session.sport_type === "rest";
 
   if (isRest) {
     return (
-      <button
-        onClick={onClick}
+      <div
         className={cn(
-          "w-full text-left rounded-2xl border border-dashed border-border/30 p-4 transition-all",
-          "hover:border-border/50 active:scale-[0.99]",
+          "rounded-2xl border border-dashed border-border/30 p-4 transition-all",
           isCompleted && "opacity-50"
         )}
       >
         <div className="flex items-center gap-3">
-          <div className="p-2.5 rounded-xl bg-muted/40">
+          <button onClick={onClick} className="p-2.5 rounded-xl bg-muted/40">
             <Coffee className="h-4 w-4 text-muted-foreground/40" />
-          </div>
-          <span className="text-sm text-muted-foreground/60 font-medium">Día de descanso</span>
-          {isCompleted && <CheckCircle2 className="h-4 w-4 text-emerald-500 ml-auto" />}
+          </button>
+          <button onClick={onClick} className="flex-1 text-left">
+            <span className="text-sm text-muted-foreground/60 font-medium">Día de descanso</span>
+            {session.description && (
+              <p className="text-xs text-muted-foreground/35 mt-0.5 line-clamp-1">{session.description}</p>
+            )}
+          </button>
+          {isPending && onComplete && (
+            <button
+              onClick={(e) => { e.stopPropagation(); onComplete(session.id); }}
+              className="h-8 w-8 flex items-center justify-center rounded-full bg-emerald-500/10 text-emerald-500 hover:bg-emerald-500/20 transition-all active:scale-90 shrink-0"
+            >
+              <CheckCircle2 className="h-4 w-4" />
+            </button>
+          )}
+          {isCompleted && <CheckCircle2 className="h-4 w-4 text-emerald-500 shrink-0" />}
         </div>
-      </button>
+      </div>
     );
   }
 
   return (
-    <button
-      onClick={onClick}
+    <div
       className={cn(
-        "w-full text-left rounded-2xl overflow-hidden transition-all",
-        "border active:scale-[0.99]",
-        "hover:shadow-[0_4px_12px_-4px_rgba(0,0,0,0.08)]",
+        "rounded-2xl overflow-hidden transition-all",
+        "border",
         isRace
           ? "border-rose-500/20 bg-gradient-to-r from-rose-500/[0.03] to-amber-500/[0.02]"
           : "border-border/30",
@@ -519,51 +528,100 @@ function MobileSessionCard({
 
       <div className="p-4">
         <div className="flex items-start gap-3">
-          <div className={cn("p-2.5 rounded-xl shrink-0", isRace ? "bg-rose-500/10" : sport.bg)}>
+          {/* Sport icon — tap to open detail */}
+          <button
+            onClick={onClick}
+            className={cn("p-2.5 rounded-xl shrink-0", isRace ? "bg-rose-500/10" : sport.bg)}
+          >
             {isRace ? (
               <Flag className="h-[18px] w-[18px] text-rose-500" />
             ) : (
               <SportIcon className={cn("h-[18px] w-[18px]", sport.color)} />
             )}
-          </div>
-          <div className="flex-1 min-w-0">
+          </button>
+
+          {/* Info — tap to open detail */}
+          <button onClick={onClick} className="flex-1 min-w-0 text-left">
             <div className="flex items-center gap-2">
-              <span className="text-[15px] font-semibold truncate leading-tight">
+              <span className={cn(
+                "text-[15px] font-semibold truncate leading-tight",
+                isCompleted && "line-through text-muted-foreground/60"
+              )}>
                 {isRace ? session.race_name || session.session_name : session.session_name}
               </span>
-              {isCompleted && <CheckCircle2 className="h-4 w-4 text-emerald-500 shrink-0" />}
-              {isSkipped && <XCircle className="h-4 w-4 text-rose-400 shrink-0" />}
+              <Badge variant="outline" className={cn("text-[10px] shrink-0 border rounded-full font-semibold", intensity.color)}>
+                {intensity.label}
+              </Badge>
             </div>
-            <div className="flex items-center gap-2.5 mt-2 flex-wrap">
+            <div className="flex items-center gap-2.5 mt-1.5 flex-wrap">
               {session.target_duration_minutes && (
-                <span className="text-xs text-muted-foreground/70 flex items-center gap-1">
+                <span className="text-xs text-muted-foreground/60 flex items-center gap-1">
                   <Clock className="h-3 w-3" />
                   {session.target_duration_minutes} min
                 </span>
               )}
+              {session.target_distance_meters && session.target_distance_meters >= 1000 && (
+                <span className="text-xs text-muted-foreground/60 flex items-center gap-1">
+                  <Route className="h-3 w-3" />
+                  {(session.target_distance_meters / 1000).toFixed(1)} km
+                </span>
+              )}
+              {session.target_pace_min_km && (
+                <span className="text-xs text-muted-foreground/60 flex items-center gap-1">
+                  <Footprints className="h-3 w-3" />
+                  {session.target_pace_min_km}/km
+                </span>
+              )}
               {session.target_hr_zone && (
-                <span className="text-xs text-muted-foreground/70 flex items-center gap-1">
+                <span className="text-xs text-muted-foreground/60 flex items-center gap-1">
                   <Heart className="h-3 w-3" />
                   Zona {session.target_hr_zone}
                 </span>
               )}
               {session.scheduled_time && (
-                <span className="text-xs text-muted-foreground/70">
+                <span className="text-xs text-muted-foreground/60">
                   {session.scheduled_time}
                 </span>
               )}
             </div>
-          </div>
-          <Badge variant="outline" className={cn("text-[10px] shrink-0 border rounded-full font-semibold mt-0.5", intensity.color)}>
-            {intensity.label}
-          </Badge>
+          </button>
+
+          {/* Quick actions — one tap */}
+          {isPending && (
+            <div className="flex items-center gap-1 shrink-0 pt-0.5">
+              {onSkip && (
+                <button
+                  onClick={(e) => { e.stopPropagation(); onSkip(session.id); }}
+                  className="h-8 w-8 flex items-center justify-center rounded-full text-muted-foreground/25 hover:text-rose-400 hover:bg-rose-500/10 transition-all active:scale-90"
+                >
+                  <XCircle className="h-4 w-4" />
+                </button>
+              )}
+              {onComplete && (
+                <button
+                  onClick={(e) => { e.stopPropagation(); onComplete(session.id); }}
+                  className="h-9 w-9 flex items-center justify-center rounded-full bg-emerald-500/10 text-emerald-500 hover:bg-emerald-500/20 transition-all active:scale-90"
+                >
+                  <CheckCircle2 className="h-5 w-5" />
+                </button>
+              )}
+            </div>
+          )}
+          {isCompleted && (
+            <CheckCircle2 className="h-5 w-5 text-emerald-500 shrink-0 mt-1" />
+          )}
+          {isSkipped && (
+            <XCircle className="h-4 w-4 text-rose-400 shrink-0 mt-1" />
+          )}
         </div>
-        {session.description && (
-          <p className="text-xs text-muted-foreground/50 mt-3 line-clamp-2 leading-relaxed pl-[52px]">
-            {session.description}
+
+        {/* Description or coach notes preview */}
+        {isPending && (session.coach_notes || session.description) && (
+          <p className="text-[11px] text-muted-foreground/40 mt-3 pl-[52px] line-clamp-2 leading-relaxed italic">
+            {session.coach_notes || session.description}
           </p>
         )}
       </div>
-    </button>
+    </div>
   );
 }
