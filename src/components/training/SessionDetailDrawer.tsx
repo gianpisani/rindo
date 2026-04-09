@@ -265,20 +265,23 @@ export function SessionDetailDrawer({
                   return (
                     <div
                       key={m.label}
-                      className="flex items-start gap-2.5 p-3 rounded-xl bg-muted/20 border border-border/10"
+                      className="p-3 rounded-xl bg-muted/20 border border-border/10"
                     >
-                      <Icon className="h-4 w-4 text-muted-foreground/50 mt-0.5 shrink-0" />
-                      <div className="min-w-0">
-                        <p className="text-[10px] text-muted-foreground/50 font-semibold uppercase tracking-wider">
+                      <div className="flex items-center gap-1.5 mb-1.5">
+                        <Icon className="h-3.5 w-3.5 text-muted-foreground/40 shrink-0" />
+                        <p className="text-[10px] text-muted-foreground/40 font-semibold uppercase tracking-wider">
                           {m.label}
                         </p>
-                        <p className="text-sm font-semibold mt-0.5">{m.value}</p>
-                        {m.actual && (
-                          <p className="text-[11px] text-emerald-500 font-medium mt-0.5">
-                            Real: {m.actual}
-                          </p>
-                        )}
                       </div>
+                      <p className="text-base font-bold tabular-nums">{m.value}</p>
+                      {m.actual && (
+                        <div className="flex items-center gap-1.5 mt-1.5 pt-1.5 border-t border-border/10">
+                          <div className="w-1 h-1 rounded-full bg-emerald-500 shrink-0" />
+                          <span className="text-[11px] text-emerald-500 font-semibold tabular-nums">
+                            {m.actual}
+                          </span>
+                        </div>
+                      )}
                     </div>
                   );
                 })}
@@ -313,18 +316,18 @@ export function SessionDetailDrawer({
             {session.status === "pending" && (
               <>
                 <Button
-                  className="flex-1 rounded-xl h-11"
+                  className="flex-[2] rounded-xl h-12 bg-emerald-600 hover:bg-emerald-700 text-white shadow-sm"
                   onClick={() => onComplete(session.id)}
                 >
                   <CheckCircle2 className="h-4 w-4 mr-2" />
                   Completar
                 </Button>
                 <Button
-                  variant="outline"
-                  className="flex-1 rounded-xl h-11"
+                  variant="ghost"
+                  className="flex-1 rounded-xl h-12 text-muted-foreground/60 hover:text-rose-400"
                   onClick={() => onSkip(session.id)}
                 >
-                  <XCircle className="h-4 w-4 mr-2" />
+                  <XCircle className="h-4 w-4 mr-1.5" />
                   Omitir
                 </Button>
               </>

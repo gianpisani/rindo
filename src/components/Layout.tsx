@@ -175,7 +175,7 @@ export default function Layout({ children }: LayoutProps) {
           <div className="atmospheric-glow active" />
 
           {/* Top Bar with Trigger and Actions */}
-          <header className="sticky top-0 z-40 flex h-14 shrink-0 items-center gap-2 border-b border-border/40 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 px-4">
+          <header className="sticky top-0 z-40 flex h-14 shrink-0 items-center gap-2 border-b border-border/40 shadow-[0_1px_2px_-1px_rgba(0,0,0,0.06)] bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 px-4">
             {!isMobile && (
               <Tooltip>
                 <TooltipTrigger asChild>

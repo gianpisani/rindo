@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { cn } from "@/lib/utils";
 import { Badge } from "@/components/ui/badge";
 import { SPORT_CONFIG, INTENSITY_CONFIG } from "@/lib/training-config";
@@ -134,6 +135,18 @@ function SessionRow({
   onComplete?: (id: string) => void;
   onSkip?: (id: string) => void;
 }) {
+  const [animating, setAnimating] = useState<"complete" | "skip" | null>(null);
+
+  const handleComplete = (id: string) => {
+    setAnimating("complete");
+    setTimeout(() => onComplete?.(id), 400);
+  };
+
+  const handleSkip = (id: string) => {
+    setAnimating("skip");
+    setTimeout(() => onSkip?.(id), 400);
+  };
+
   const sport = SPORT_CONFIG[session.sport_type] || SPORT_CONFIG.rest;
   const intensity = INTENSITY_CONFIG[session.intensity] || INTENSITY_CONFIG.moderate;
   const SportIcon = sport.icon;
@@ -145,12 +158,14 @@ function SessionRow({
   return (
     <div
       className={cn(
-        "group rounded-2xl border overflow-hidden transition-all",
+        "group rounded-2xl border overflow-hidden transition-all duration-400",
         isRace
           ? "border-rose-500/20 bg-gradient-to-r from-rose-500/[0.03] to-amber-500/[0.02]"
           : "border-border/40",
         isCompleted && "border-emerald-500/15 bg-emerald-500/[0.02]",
-        isSkipped && "opacity-50"
+        isSkipped && "opacity-50",
+        animating === "complete" && "opacity-0 translate-x-4 scale-95",
+        animating === "skip" && "opacity-0 -translate-x-4 scale-95"
       )}
     >
       {/* Accent bar */}
@@ -209,14 +224,14 @@ function SessionRow({
             </div>
           </button>
 
-          {/* Quick actions — the magic: one-tap complete/skip */}
-          {isPending && (
+          {/* Quick actions — one-tap complete/skip with animation */}
+          {isPending && !animating && (
             <div className="flex items-center gap-1 shrink-0">
               {onSkip && (
                 <button
                   onClick={(e) => {
                     e.stopPropagation();
-                    onSkip(session.id);
+                    handleSkip(session.id);
                   }}
                   className="h-8 w-8 flex items-center justify-center rounded-full text-muted-foreground/30 hover:text-rose-400 hover:bg-rose-500/10 transition-all active:scale-90"
                 >
@@ -227,7 +242,7 @@ function SessionRow({
                 <button
                   onClick={(e) => {
                     e.stopPropagation();
-                    onComplete(session.id);
+                    handleComplete(session.id);
                   }}
                   className="h-9 w-9 flex items-center justify-center rounded-full bg-emerald-500/10 text-emerald-500 hover:bg-emerald-500/20 transition-all active:scale-90"
                 >

@@ -256,32 +256,32 @@ const Index = () => {
         <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
           <Button
             onClick={() => handleQuickAdd("Ingreso")}
-            className="h-20 md:h-24 flex-col gap-2 border-2 border-success/30 text-success hover:bg-success/10 bg-transparent"
+            className="h-14 md:h-16 flex-col gap-1.5 border border-success/20 text-success hover:bg-success/10 hover:shadow-sm bg-transparent"
           >
-            <TrendingUp className="h-6 w-6" />
-            <span className="text-sm font-semibold">Ingreso</span>
+            <TrendingUp className="h-5 w-5" />
+            <span className="text-xs font-semibold">Ingreso</span>
           </Button>
           <Button
             onClick={() => handleQuickAdd("Gasto")}
-            className="h-20 md:h-24 flex-col gap-2 border-2 border-destructive/30 text-destructive hover:bg-destructive/10 bg-transparent"
+            className="h-14 md:h-16 flex-col gap-1.5 border border-destructive/20 text-destructive hover:bg-destructive/10 hover:shadow-sm bg-transparent"
           >
-            <TrendingDown className="h-6 w-6" />
-            <span className="text-sm font-semibold">Gasto</span>
+            <TrendingDown className="h-5 w-5" />
+            <span className="text-xs font-semibold">Gasto</span>
           </Button>
           <Button
             onClick={() => handleQuickAdd("Inversión")}
-            className="h-20 md:h-24 flex-col gap-2 border-2 border-blue/30 text-blue hover:bg-blue/10 bg-transparent"
+            className="h-14 md:h-16 flex-col gap-1.5 border border-blue/20 text-blue hover:bg-blue/10 hover:shadow-sm bg-transparent"
           >
-            <PiggyBank className="h-6 w-6" />
-            <span className="text-sm font-semibold">Inversión</span>
+            <PiggyBank className="h-5 w-5" />
+            <span className="text-xs font-semibold">Inversión</span>
           </Button>
           <Button
             onClick={() => openReconciliation()}
             variant="outline"
-            className="h-20 md:h-24 flex-col gap-2 hover:bg-muted"
+            className="h-14 md:h-16 flex-col gap-1.5 hover:bg-muted hover:shadow-sm"
           >
-            <Variable className="h-6 w-6" />
-            <span className="text-sm font-semibold">Conciliar</span>
+            <Variable className="h-5 w-5" />
+            <span className="text-xs font-semibold">Conciliar</span>
           </Button>
         </div>
 
@@ -318,7 +318,7 @@ const Index = () => {
               {sortedDateKeys.map((dateKey) => (
                 <div key={dateKey}>
                   {/* Sticky date header */}
-                  <div className="flex items-center gap-3 px-5 py-1.5 sticky top-0 bg-card z-10">
+                  <div className="flex items-center gap-3 px-5 py-1.5 sticky top-0 bg-card z-10 shadow-[0_1px_3px_-1px_rgba(0,0,0,0.1)]">
                     <span className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground whitespace-nowrap">
                       {getDateLabel(dateKey)}
                     </span>

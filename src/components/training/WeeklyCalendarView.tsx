@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { cn } from "@/lib/utils";
 import { Badge } from "@/components/ui/badge";
 import {
@@ -471,6 +471,18 @@ function MobileSessionCard({
   onComplete?: (id: string) => void;
   onSkip?: (id: string) => void;
 }) {
+  const [animating, setAnimating] = useState<"complete" | "skip" | null>(null);
+
+  const handleComplete = useCallback((id: string) => {
+    setAnimating("complete");
+    setTimeout(() => onComplete?.(id), 400);
+  }, [onComplete]);
+
+  const handleSkip = useCallback((id: string) => {
+    setAnimating("skip");
+    setTimeout(() => onSkip?.(id), 400);
+  }, [onSkip]);
+
   const sport = SPORT_CONFIG[session.sport_type] || SPORT_CONFIG.rest;
   const intensity = INTENSITY_CONFIG[session.intensity] || INTENSITY_CONFIG.moderate;
   const SportIcon = sport.icon;
@@ -515,13 +527,15 @@ function MobileSessionCard({
   return (
     <div
       className={cn(
-        "rounded-2xl overflow-hidden transition-all",
+        "rounded-2xl overflow-hidden transition-all duration-400",
         "border",
         isRace
           ? "border-rose-500/20 bg-gradient-to-r from-rose-500/[0.03] to-amber-500/[0.02]"
           : "border-border/30",
         isCompleted && "border-emerald-500/15 bg-emerald-500/[0.02]",
-        isSkipped && "opacity-45"
+        isSkipped && "opacity-45",
+        animating === "complete" && "opacity-0 translate-x-4 scale-95",
+        animating === "skip" && "opacity-0 -translate-x-4 scale-95"
       )}
     >
       <div className={cn("h-[2.5px]", isRace ? "bg-gradient-to-r from-rose-500 to-amber-500" : sport.dot)} />
@@ -586,12 +600,12 @@ function MobileSessionCard({
             </div>
           </button>
 
-          {/* Quick actions — one tap */}
-          {isPending && (
+          {/* Quick actions — one tap with animation */}
+          {isPending && !animating && (
             <div className="flex items-center gap-1 shrink-0 pt-0.5">
               {onSkip && (
                 <button
-                  onClick={(e) => { e.stopPropagation(); onSkip(session.id); }}
+                  onClick={(e) => { e.stopPropagation(); handleSkip(session.id); }}
                   className="h-8 w-8 flex items-center justify-center rounded-full text-muted-foreground/25 hover:text-rose-400 hover:bg-rose-500/10 transition-all active:scale-90"
                 >
                   <XCircle className="h-4 w-4" />
@@ -599,7 +613,7 @@ function MobileSessionCard({
               )}
               {onComplete && (
                 <button
-                  onClick={(e) => { e.stopPropagation(); onComplete(session.id); }}
+                  onClick={(e) => { e.stopPropagation(); handleComplete(session.id); }}
                   className="h-9 w-9 flex items-center justify-center rounded-full bg-emerald-500/10 text-emerald-500 hover:bg-emerald-500/20 transition-all active:scale-90"
                 >
                   <CheckCircle2 className="h-5 w-5" />
