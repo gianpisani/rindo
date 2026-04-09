@@ -400,9 +400,9 @@ function CategoryCombobox({ value, options, onSave, renderValue, className, plac
           <ChevronDown className="h-3 w-3 opacity-0 group-hover:opacity-50 transition-opacity" />
         </button>
       </PopoverTrigger>
-      <PopoverContent className="w-[220px] p-0" align="start" side="bottom" sideOffset={4}>
-        <Command>
-          <CommandInput placeholder={placeholder} className="h-9" />
+      <PopoverContent className="w-[220px] p-0 border-0 shadow-lg shadow-black/10 dark:shadow-black/30 rounded-lg overflow-hidden" align="start" side="bottom" sideOffset={4}>
+        <Command className="rounded-lg">
+          <CommandInput placeholder={placeholder} className="h-8 text-xs border-0 ring-0 focus:ring-0" />
           <CommandList>
             <CommandEmpty className="py-3 text-center text-xs text-muted-foreground">
               Sin resultados
