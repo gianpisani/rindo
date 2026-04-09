@@ -371,16 +371,13 @@ export default function Training() {
               </button>
             )}
 
-            <TrainingGoals />
-
-            <div className="hidden md:flex gap-4">
-              <div className="flex-1">
-                <PeriodizationBar sessions={sessions} />
-              </div>
-              <div className="flex-1">
-                <WeeklyLoadChart sessions={sessions} />
-              </div>
+            {/* Stats section — visible on both mobile and desktop */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+              <WeeklyLoadChart sessions={sessions} />
+              <PeriodizationBar sessions={sessions} />
             </div>
+
+            <TrainingGoals />
 
             <div className="flex justify-end border-t border-border/15 pt-4">
               <Button

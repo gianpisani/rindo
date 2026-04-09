@@ -2,12 +2,8 @@ import { useMemo } from "react";
 import { cn } from "@/lib/utils";
 import { TRAINING_PHASES } from "@/lib/training-config";
 import type { TrainingSession } from "@/hooks/useTrainingSessions";
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipTrigger,
-} from "@/components/ui/tooltip";
 import { format, parseISO, startOfWeek, isSameWeek } from "date-fns";
+import { es } from "date-fns/locale";
 
 interface Props {
   sessions: TrainingSession[];
@@ -35,44 +31,42 @@ export function PeriodizationBar({ sessions }: Props) {
   const now = new Date();
 
   return (
-    <div>
-      <h4 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2">
+    <div className="rounded-2xl border border-border/40 p-4 space-y-3">
+      <h4 className="text-[11px] font-bold text-muted-foreground/50 uppercase tracking-widest">
         Periodización
       </h4>
-      <div className="flex gap-0.5 h-3 rounded-full overflow-hidden">
+
+      {/* Week blocks */}
+      <div className="flex gap-1">
         {weekPhases.map(({ weekKey, phase }) => {
           const config = TRAINING_PHASES[phase];
           if (!config) return null;
           const isCurrent = isSameWeek(parseISO(weekKey), now, { weekStartsOn: 1 });
+          const weekLabel = format(parseISO(weekKey), "d MMM", { locale: es });
 
           return (
-            <Tooltip key={weekKey}>
-              <TooltipTrigger asChild>
-                <div
-                  className={cn(
-                    "flex-1 transition-all",
-                    config.color,
-                    isCurrent && "ring-2 ring-primary ring-offset-1 ring-offset-background rounded-sm"
-                  )}
-                />
-              </TooltipTrigger>
-              <TooltipContent>
-                <p className="text-xs">
-                  {config.label} — Semana del {weekKey}
-                </p>
-              </TooltipContent>
-            </Tooltip>
-          );
-        })}
-      </div>
-      <div className="flex gap-3 mt-2 flex-wrap">
-        {Array.from(new Set(weekPhases.map((w) => w.phase))).map((phase) => {
-          const config = TRAINING_PHASES[phase];
-          if (!config) return null;
-          return (
-            <div key={phase} className="flex items-center gap-1.5 text-[10px] text-muted-foreground">
-              <div className={cn("w-2 h-2 rounded-full", config.color)} />
-              {config.label}
+            <div key={weekKey} className="flex-1 flex flex-col items-center gap-1.5">
+              {/* Bar */}
+              <div
+                className={cn(
+                  "w-full h-3 rounded-full transition-all",
+                  config.color,
+                  isCurrent && "ring-2 ring-primary ring-offset-1 ring-offset-background"
+                )}
+              />
+              {/* Label */}
+              <span className={cn(
+                "text-[9px] tabular-nums",
+                isCurrent ? "text-primary font-bold" : "text-muted-foreground/40 font-medium"
+              )}>
+                {weekLabel}
+              </span>
+              <span className={cn(
+                "text-[8px] font-semibold uppercase tracking-wide",
+                isCurrent ? "text-foreground/70" : "text-muted-foreground/30"
+              )}>
+                {config.label}
+              </span>
             </div>
           );
         })}
