@@ -59,6 +59,8 @@ import { useIsMobile } from "@/hooks/use-mobile";
 import { AnalyzingBadge } from "./AnalyzingBadge";
 import { InlineDateTimePicker } from "./ui/date-time-picker";
 import { ChevronDoubleLeftIcon, ChevronDoubleRightIcon } from "@heroicons/react/24/outline";
+import { Popover, PopoverContent, PopoverTrigger } from "./ui/popover";
+import { Command, CommandInput, CommandList, CommandEmpty, CommandGroup, CommandItem } from "./ui/command";
 
 // ── Category icon map ──────────────────────────────────────────────────────
 
@@ -362,6 +364,83 @@ function SelectableCell<T extends string>({ value, options, onSave, renderValue,
   );
 }
 
+// ── Category Combobox (searchable, scrollable, with emojis) ─────────────
+
+interface CategoryComboboxOption {
+  value: string;
+  label: string;
+  emoji?: string;
+  color?: string | null;
+}
+
+interface CategoryComboboxProps {
+  value: string;
+  options: CategoryComboboxOption[];
+  onSave: (value: string) => void;
+  renderValue: (value: string) => React.ReactNode;
+  className?: string;
+  placeholder?: string;
+}
+
+function CategoryCombobox({ value, options, onSave, renderValue, className, placeholder = "Buscar categoría..." }: CategoryComboboxProps) {
+  const [open, setOpen] = useState(false);
+
+  return (
+    <Popover open={open} onOpenChange={setOpen}>
+      <PopoverTrigger asChild>
+        <button
+          className={cn(
+            "flex items-center gap-1 px-2 py-1 rounded-md transition-all",
+            "hover:bg-muted/80 group cursor-pointer",
+            "focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-1",
+            className
+          )}
+        >
+          {renderValue(value)}
+          <ChevronDown className="h-3 w-3 opacity-0 group-hover:opacity-50 transition-opacity" />
+        </button>
+      </PopoverTrigger>
+      <PopoverContent className="w-[220px] p-0" align="start" side="bottom" sideOffset={4}>
+        <Command>
+          <CommandInput placeholder={placeholder} className="h-9" />
+          <CommandList>
+            <CommandEmpty className="py-3 text-center text-xs text-muted-foreground">
+              Sin resultados
+            </CommandEmpty>
+            <CommandGroup>
+              {options.map((option) => (
+                <CommandItem
+                  key={option.value}
+                  value={option.label}
+                  onSelect={() => {
+                    if (option.value !== value) onSave(option.value);
+                    setOpen(false);
+                  }}
+                  className="flex items-center gap-2 cursor-pointer"
+                >
+                  {option.emoji && (
+                    <span className="text-base leading-none flex-shrink-0">{option.emoji}</span>
+                  )}
+                  {option.color && (
+                    <div
+                      className="w-2 h-2 rounded-full flex-shrink-0"
+                      style={{ backgroundColor: option.color }}
+                    />
+                  )}
+                  <span className="truncate text-sm">{option.label}</span>
+                  {option.value === value && (
+                    <Check className="h-3.5 w-3.5 ml-auto flex-shrink-0 text-primary" />
+                  )}
+                </CommandItem>
+              ))}
+            </CommandGroup>
+          </CommandList>
+        </Command>
+      </PopoverContent>
+    </Popover>
+  );
+}
+
 // ── Props ──────────────────────────────────────────────────────────────────
 
 interface TransactionsTableProps {
@@ -576,9 +655,14 @@ export function TransactionsTable({
 
           return (
             <div className={cn("overflow-hidden space-y-0.5", isPrivacyMode && "privacy-blur")}>
-              <SelectableCell
+              <CategoryCombobox
                 value={categoryName}
-                options={filteredCats.map(c => ({ value: c.name, label: c.name }))}
+                options={filteredCats.map(c => ({
+                  value: c.name,
+                  label: c.name,
+                  emoji: c.icon || getCategoryIcon(c.name),
+                  color: c.color,
+                }))}
                 onSave={(newCategory) => handleInlineUpdate(row.original.id, "category_name", newCategory)}
                 renderValue={(val) => (
                   <div className="flex items-center gap-1.5 min-w-0">
@@ -604,13 +688,19 @@ export function TransactionsTable({
               />
               {/* Reimbursement link for Reembolsos */}
               {isReimbursement && (
-                <SelectableCell
+                <CategoryCombobox
                   value={linkedCategory || ""}
                   options={[
-                    { value: "", label: "Sin vincular" },
-                    ...expenseCategories.map(c => ({ value: c.name, label: c.name })),
+                    { value: "", label: "Sin vincular", emoji: "🔗" },
+                    ...expenseCategories.map(c => ({
+                      value: c.name,
+                      label: c.name,
+                      emoji: c.icon || getCategoryIcon(c.name),
+                      color: c.color,
+                    })),
                   ]}
                   onSave={(val) => handleInlineUpdate(row.original.id, "reimbursement_for_category", val || null)}
+                  placeholder="Buscar gasto..."
                   renderValue={(val) => (
                     <div className="flex items-center gap-1 min-w-0">
                       <Undo2 className="h-3 w-3 flex-shrink-0 text-emerald-500" />
