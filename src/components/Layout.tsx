@@ -341,7 +341,7 @@ export default function Layout({ children }: LayoutProps) {
           {/* Main Content */}
           <main
             className={cn(
-              "flex flex-1 flex-col gap-4 p-6 sm:p-6",
+              "flex flex-1 flex-col gap-4 p-6 sm:p-6 overflow-x-clip max-w-full",
               isMobile && "pb-28"
             )}
             data-scrollable
