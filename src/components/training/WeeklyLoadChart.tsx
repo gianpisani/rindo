@@ -53,7 +53,7 @@ export function WeeklyLoadChart({ sessions, weekStart, previousWeekSessions }: P
   const weekLabel = `${format(weekStart, "d", { locale: es })} – ${format(weekEnd, "d MMM", { locale: es })}`;
 
   return (
-    <div className="rounded-2xl border border-border/40 p-4 space-y-4">
+    <div className="rounded-2xl border border-border/40 bg-card p-4 space-y-4">
       {/* Header with date range */}
       <div className="flex items-start justify-between">
         <div>
@@ -94,7 +94,7 @@ export function WeeklyLoadChart({ sessions, weekStart, previousWeekSessions }: P
       {sportBreakdown.length > 0 && (
         <div className="space-y-2.5">
           {/* Stacked horizontal bar */}
-          <div className="h-3 bg-muted/20 rounded-full overflow-hidden flex">
+          <div className="h-3.5 bg-muted/50 rounded-full overflow-hidden flex">
             {sportBreakdown.map(({ sport, minutes }) => {
               const config = SPORT_CONFIG[sport] || SPORT_CONFIG.rest;
               const pct = (minutes / totalMax) * 100;
