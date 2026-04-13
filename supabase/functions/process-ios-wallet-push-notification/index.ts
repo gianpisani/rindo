@@ -24,27 +24,44 @@ Deno.serve(async (req) => {
     let usuario: string | null = null
 
     if (req.method === 'POST') {
-      const body = await req.json()
-      comercio = body.comercio ?? null
-      cantidad = body.cantidad != null ? String(body.cantidad) : null
-      divisa = body.divisa ?? null
-      tarjeta = body.tarjeta ?? null
-      banco = body.banco ?? null
-      digitos = body.digitos != null ? String(body.digitos) : null
-      usuario = body.usuario ?? null
+      const contentType = req.headers.get('content-type') || ''
+      if (contentType.includes('application/x-www-form-urlencoded')) {
+        // Form data — used by iOS Shortcuts "Get Contents of URL" with Form body
+        const formData = await req.formData()
+        const f = (name: string) => formData.get(name)?.toString() || null
+        comercio = f('comercio')
+        cantidad = f('cantidad')
+        divisa = f('divisa')
+        tarjeta = f('tarjeta')
+        banco = f('banco')
+        digitos = f('digitos')
+        usuario = f('usuario')
+      } else {
+        // JSON body
+        const body = await req.json()
+        comercio = body.comercio ?? null
+        cantidad = body.cantidad != null ? String(body.cantidad) : null
+        divisa = body.divisa ?? null
+        tarjeta = body.tarjeta ?? null
+        banco = body.banco ?? null
+        digitos = body.digitos != null ? String(body.digitos) : null
+        usuario = body.usuario ?? null
+      }
     } else {
-      // GET — read from headers (decode for special chars like tildes)
+      // GET — read from query params first, headers as fallback
+      const url = new URL(req.url)
+      const q = (name: string) => url.searchParams.get(name)
       const h = (name: string) => {
         const val = req.headers.get(name)
         return val ? decodeURIComponent(val) : null
       }
-      comercio = h('comercio')
-      cantidad = h('cantidad')
-      divisa = h('divisa')
-      tarjeta = h('tarjeta')
-      banco = h('banco')
-      digitos = h('digitos')
-      usuario = h('usuario')
+      comercio = q('comercio') || h('comercio')
+      cantidad = q('cantidad') || h('cantidad')
+      divisa = q('divisa') || h('divisa')
+      tarjeta = q('tarjeta') || h('tarjeta')
+      banco = q('banco') || h('banco')
+      digitos = q('digitos') || h('digitos')
+      usuario = q('usuario') || h('usuario')
     }
 
     if (!comercio || !cantidad || !usuario) {
