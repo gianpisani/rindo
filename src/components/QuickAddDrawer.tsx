@@ -4,7 +4,7 @@ import QuickTransactionForm from "./QuickTransactionForm";
 interface QuickAddDrawerProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  defaultType?: "Ingreso" | "Gasto" | "Inversión";
+  defaultType?: "Ingreso" | "Gasto" | "Inversión" | "Reembolso";
 }
 
 const typeVariants = {

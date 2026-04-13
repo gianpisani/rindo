@@ -10,7 +10,7 @@ import { EXTENDED_CATEGORY_KEYWORDS } from "./keywords-dictionary";
 const CATEGORY_KEYWORDS = EXTENDED_CATEGORY_KEYWORDS;
 
 // Mapeo de categorías a tipos
-const CATEGORY_TYPES: Record<string, "Ingreso" | "Gasto" | "Inversión"> = {
+const CATEGORY_TYPES: Record<string, "Ingreso" | "Gasto" | "Inversión" | "Reembolso"> = {
   "Comida": "Gasto",
   "Transporte": "Gasto",
   "Viajes y hospedaje": "Gasto",
@@ -34,7 +34,7 @@ const CATEGORY_TYPES: Record<string, "Ingreso" | "Gasto" | "Inversión"> = {
 
 interface CategorizationResult {
   category: string | null;
-  type: "Ingreso" | "Gasto" | "Inversión" | null;
+  type: "Ingreso" | "Gasto" | "Inversión" | "Reembolso" | null;
   confidence: number; // 0-100
   reasons: string[];
 }

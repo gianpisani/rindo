@@ -8,7 +8,7 @@ export interface Transaction {
   date: string; // Now TIMESTAMPTZ in Chile timezone
   detail: string | null;
   category_name: string;
-  type: "Ingreso" | "Gasto" | "Inversión";
+  type: "Ingreso" | "Gasto" | "Inversión" | "Reembolso";
   amount: number;
   user_id: string;
   created_at: string;

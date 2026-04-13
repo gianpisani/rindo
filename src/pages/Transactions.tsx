@@ -9,10 +9,23 @@ import { Dialog, DialogTrigger } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { Plus, Download, TrendingUp, TrendingDown, PiggyBank, Upload, X, Sparkles, Info, Trash2, Search, CalendarClock } from "lucide-react";
+import { Plus, Download, TrendingUp, TrendingDown, PiggyBank, Upload, X, Sparkles, Info, Trash2, Search, CalendarClock, Users, CheckCircle2, Clock, Pencil, ArrowLeftRight } from "lucide-react";
 import { useTransactions, Transaction } from "@/hooks/useTransactions";
 import { useCategories } from "@/hooks/useCategories";
+import { useSharedExpenses } from "@/hooks/useSharedExpenses";
+import { Checkbox } from "@/components/ui/checkbox";
+import SharedExpenseDrawer from "@/components/SharedExpenseDrawer";
 import { format, parse } from "date-fns";
 import Papa from "papaparse";
 import { supabase } from "@/integrations/supabase/client";
@@ -24,39 +37,53 @@ const typeIcons = {
   Ingreso: TrendingUp,
   Gasto: TrendingDown,
   Inversión: PiggyBank,
+  Reembolso: ArrowLeftRight,
 };
 
 const typeColors = {
   Ingreso: "text-success",
   Gasto: "text-destructive",
   Inversión: "text-info",
+  Reembolso: "text-amber-500",
 };
 
 const typeBg = {
   Ingreso: "bg-success/5",
   Gasto: "bg-destructive/5",
   Inversión: "bg-info/5",
+  Reembolso: "bg-amber-500/5",
 };
 
 export default function Transactions() {
-  const { 
-    transactions, 
+  const {
+    transactions,
     futureTransactions,
-    addTransaction, 
-    updateTransaction, 
+    addTransaction,
+    updateTransaction,
     updateTransactionSilent,
-    deleteTransaction, 
+    deleteTransaction,
     deleteMultipleTransactions,
     updateMultipleTransactions,
     duplicateTransactions,
   } = useTransactions();
   const { categories } = useCategories();
+  const { addSharedExpenses, updateSharedExpenseAmount, getSharedExpensesByTransaction, markAsPaid, linkExistingTransaction, deleteSharedExpense, sharedExpenses, sharedExpensesWithTransaction } = useSharedExpenses();
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [showFuture, setShowFuture] = useState(false);
 
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [isImportDialogOpen, setIsImportDialogOpen] = useState(false);
   const [editingTransaction, setEditingTransaction] = useState<Transaction | null>(null);
+  const [isShared, setIsShared] = useState(false);
+  const [sharedDrawerOpen, setSharedDrawerOpen] = useState(false);
+  const [pendingTransaction, setPendingTransaction] = useState<{ id: string; amount: number } | null>(null);
+  const [confirmPaid, setConfirmPaid] = useState<{ id: string; name: string; amount: number; detail?: string } | null>(null);
+  const [addingDebtor, setAddingDebtor] = useState(false);
+  const [newDebtorName, setNewDebtorName] = useState("");
+  const [newDebtorAmount, setNewDebtorAmount] = useState("");
+  const [editingDebtorId, setEditingDebtorId] = useState<string | null>(null);
+  const [editingDebtorAmount, setEditingDebtorAmount] = useState("");
+  const [debtToLink, setDebtToLink] = useState<{ id: string; debtorName: string; amount: number; transactionDetail?: string } | null>(null);
   const [isImporting, setIsImporting] = useState(false);
   const [searchValue, setSearchValue] = useState("");
   const [typeFilter, setTypeFilter] = useState("all");
@@ -71,7 +98,7 @@ export default function Transactions() {
   });
   const [suggestion, setSuggestion] = useState<{
     category: string;
-    type: "Ingreso" | "Gasto" | "Inversión";
+    type: "Ingreso" | "Gasto" | "Inversión" | "Reembolso";
     confidence: number;
     reasons: string[];
   } | null>(null);
@@ -81,7 +108,7 @@ export default function Transactions() {
     date: new Date(),
     detail: "",
     category_name: "",
-    type: "Gasto" as "Ingreso" | "Gasto" | "Inversión",
+    type: "Gasto" as "Ingreso" | "Gasto" | "Inversión" | "Reembolso",
     amount: "",
   });
 
@@ -165,25 +192,89 @@ export default function Transactions() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    
+
+    const parsedAmount = parseFloat(formData.amount.replace(/\D/g, ""));
+
     if (editingTransaction) {
       await updateTransaction.mutateAsync({
         id: editingTransaction.id,
         ...formData,
         date: formData.date.toISOString(),
-        amount: parseFloat(formData.amount.replace(/\D/g, "")),
+        amount: parsedAmount,
       });
+
+      const existingShared = getSharedExpensesByTransaction(editingTransaction.id);
+      if (isShared && formData.type === "Gasto" && existingShared.length === 0) {
+        setPendingTransaction({ id: editingTransaction.id, amount: parsedAmount });
+        setIsDialogOpen(false);
+        setSharedDrawerOpen(true);
+        return;
+      }
     } else {
-      await addTransaction.mutateAsync({
+      const transaction = await addTransaction.mutateAsync({
         ...formData,
         date: formData.date.toISOString(),
-        amount: parseFloat(formData.amount.replace(/\D/g, "")),
+        amount: parsedAmount,
       });
+
+      if (debtToLink && transaction?.id) {
+        await linkExistingTransaction.mutateAsync({
+          sharedExpenseId: debtToLink.id,
+          existingTransactionId: transaction.id,
+          amount: debtToLink.amount,
+          debtorName: debtToLink.debtorName,
+          transactionDetail: debtToLink.transactionDetail,
+        });
+      } else if (isShared && formData.type === "Gasto" && transaction?.id) {
+        setPendingTransaction({ id: transaction.id, amount: parsedAmount });
+        setIsDialogOpen(false);
+        setSharedDrawerOpen(true);
+        return;
+      }
     }
 
     setIsDialogOpen(false);
     setEditingTransaction(null);
     resetForm();
+  };
+
+  const handleSharedExpenseConfirm = async (debtors: Array<{ name: string; amount: number }>) => {
+    if (!pendingTransaction) return;
+
+    try {
+      await addSharedExpenses.mutateAsync(
+        debtors.map((d) => ({
+          transaction_id: pendingTransaction.id,
+          debtor_name: d.name,
+          amount_owed: d.amount,
+        }))
+      );
+
+      toast.success(`Gasto compartido dividido entre ${debtors.length} persona${debtors.length > 1 ? "s" : ""}`);
+    } catch (error) {
+      console.error("Error guardando gastos compartidos:", error);
+    }
+
+    setPendingTransaction(null);
+    setEditingTransaction(null);
+    resetForm();
+  };
+
+  const handleMarkAsPaid = async () => {
+    if (!confirmPaid) return;
+    await markAsPaid.mutateAsync({
+      sharedExpenseId: confirmPaid.id,
+      debtorName: confirmPaid.name,
+      amount: confirmPaid.amount,
+      transactionDetail: confirmPaid.detail,
+    });
+    // Actualizar formData para que "Guardar Cambios" no sobreescriba el monto reducido
+    const currentAmount = parseFloat(formData.amount || "0");
+    const newAmount = currentAmount - confirmPaid.amount;
+    if (newAmount > 0) {
+      setFormData(prev => ({ ...prev, amount: newAmount.toString() }));
+    }
+    setConfirmPaid(null);
   };
 
   const resetForm = () => {
@@ -196,12 +287,20 @@ export default function Transactions() {
     });
     setSuggestion(null);
     setIsAnalyzing(false);
+    setIsShared(false);
+    setPendingTransaction(null);
+    setAddingDebtor(false);
+    setNewDebtorName("");
+    setNewDebtorAmount("");
+    setEditingDebtorId(null);
+    setEditingDebtorAmount("");
+    setDebtToLink(null);
   };
 
   const handleEdit = (transaction: Transaction) => {
     setEditingTransaction(transaction);
     const dateObj = new Date(transaction.date);
-    
+
     setFormData({
       date: dateObj,
       detail: transaction.detail || "",
@@ -209,6 +308,10 @@ export default function Transactions() {
       type: transaction.type,
       amount: transaction.amount.toString(),
     });
+
+    const existingShared = getSharedExpensesByTransaction(transaction.id);
+    setIsShared(existingShared.length > 0);
+
     setIsDialogOpen(true);
   };
 
@@ -456,7 +559,10 @@ export default function Transactions() {
                   <Label htmlFor="type" className="text-sm font-medium">Tipo</Label>
                   <Select
                     value={formData.type}
-                    onValueChange={(value: "Ingreso" | "Gasto" | "Inversión") => setFormData({ ...formData, type: value, category_name: "" })}
+                    onValueChange={(value: "Ingreso" | "Gasto" | "Inversión" | "Reembolso") => {
+                      setFormData({ ...formData, type: value, category_name: "" });
+                      if (value !== "Ingreso" && value !== "Reembolso") setDebtToLink(null);
+                    }}
                   >
                     <SelectTrigger className="h-10 rounded-xl px-6">
                       <SelectValue />
@@ -465,6 +571,7 @@ export default function Transactions() {
                       <SelectItem value="Ingreso">Ingreso</SelectItem>
                       <SelectItem value="Gasto">Gasto</SelectItem>
                       <SelectItem value="Inversión">Inversión</SelectItem>
+                      <SelectItem value="Reembolso">Reembolso</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
@@ -607,6 +714,365 @@ export default function Transactions() {
                     </Alert>
                   )}
                 </div>
+
+                {/* Vincular a deuda pendiente — para Ingreso/Reembolso */}
+                {(formData.type === "Ingreso" || formData.type === "Reembolso") && (() => {
+                  // Al editar: ocultar si ya está vinculada
+                  if (editingTransaction) {
+                    const linkedTxIds = new Set(
+                      sharedExpenses.filter(se => se.paid_transaction_id).map(se => se.paid_transaction_id!)
+                    );
+                    if (linkedTxIds.has(editingTransaction.id)) return null;
+                  }
+
+                  const pendingDebts = sharedExpensesWithTransaction.filter(se => !se.paid);
+                  if (pendingDebts.length === 0) return null;
+
+                  const txAmount = parseFloat(formData.amount || "0");
+
+                  return (
+                    <div className="space-y-3 rounded-xl border-2 border-amber-500/20 bg-amber-500/5 p-4">
+                      <div className="flex items-center gap-2">
+                        <Users className="h-4 w-4 text-amber-500" />
+                        <span className="text-sm font-semibold">Vincular a deuda pendiente</span>
+                      </div>
+                      <div className="space-y-2">
+                        {pendingDebts.map((debt) => {
+                          const isSelected = debtToLink?.id === debt.id;
+                          const amountMismatch = txAmount > 0 && Math.abs(txAmount - debt.amount_owed) > 1;
+                          return (
+                            <div
+                              key={debt.id}
+                              className={`flex items-center justify-between rounded-lg border bg-background p-3 gap-3 transition-colors ${isSelected ? "border-amber-500 bg-amber-500/5" : "border-border"}`}
+                            >
+                              <div className="flex-1 min-w-0">
+                                <div className="flex items-center gap-1.5">
+                                  <span className="text-sm font-medium truncate">{debt.debtor_name}</span>
+                                  <span className="text-xs text-muted-foreground">·</span>
+                                  <span className="text-sm font-semibold text-amber-600">
+                                    ${new Intl.NumberFormat("es-CL").format(debt.amount_owed)}
+                                  </span>
+                                </div>
+                                <p className="text-xs text-muted-foreground truncate mt-0.5">
+                                  {debt.transaction_detail || "Sin detalle"} · {new Date(debt.transaction_date).toLocaleDateString("es-CL", { day: "numeric", month: "short" })}
+                                </p>
+                                {amountMismatch && (
+                                  <p className="text-xs text-amber-600 mt-0.5">
+                                    Monto diferente a la deuda (${new Intl.NumberFormat("es-CL").format(debt.amount_owed)})
+                                  </p>
+                                )}
+                              </div>
+                              <Button
+                                type="button"
+                                size="sm"
+                                variant={isSelected ? "default" : "outline"}
+                                className="shrink-0 text-xs h-8"
+                                disabled={linkExistingTransaction.isPending}
+                                onClick={async () => {
+                                  if (editingTransaction) {
+                                    // Al editar: la mutación actualiza tipo, detalle y categoría
+                                    await linkExistingTransaction.mutateAsync({
+                                      sharedExpenseId: debt.id,
+                                      existingTransactionId: editingTransaction.id,
+                                      amount: debt.amount_owed,
+                                      debtorName: debt.debtor_name,
+                                      transactionDetail: debt.transaction_detail || undefined,
+                                    });
+                                    setIsDialogOpen(false);
+                                    setEditingTransaction(null);
+                                    resetForm();
+                                  } else {
+                                    // Al crear: marcar deuda seleccionada y forzar tipo Reembolso
+                                    if (isSelected) {
+                                      setDebtToLink(null);
+                                    } else {
+                                      setDebtToLink({ id: debt.id, debtorName: debt.debtor_name, amount: debt.amount_owed, transactionDetail: debt.transaction_detail || undefined });
+                                      setFormData(prev => ({ ...prev, type: "Reembolso", category_name: "" }));
+                                    }
+                                  }
+                                }}
+                              >
+                                {editingTransaction ? "Vincular" : isSelected ? "Seleccionado" : "Seleccionar"}
+                              </Button>
+                            </div>
+                          );
+                        })}
+                      </div>
+                      {!editingTransaction && debtToLink && (
+                        <p className="text-xs text-amber-600">
+                          Al guardar, esta transacción se vinculará como pago de {debtToLink.debtorName} y quedará registrada como Reembolso.
+                        </p>
+                      )}
+                    </div>
+                  );
+                })()}
+
+                {/* Gasto Compartido — solo para Gastos */}
+                {formData.type === "Gasto" && (() => {
+                  const existingShared = editingTransaction
+                    ? getSharedExpensesByTransaction(editingTransaction.id)
+                    : [];
+                  const hasExisting = existingShared.length > 0;
+
+                  if (hasExisting) {
+                    return (
+                      <div className="space-y-3 rounded-xl border-2 border-primary/20 bg-primary/5 p-4">
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center gap-2">
+                            <Users className="h-4 w-4 text-primary" />
+                            <span className="text-sm font-semibold">Gasto compartido</span>
+                          </div>
+                          {!addingDebtor && (
+                            <Button
+                              type="button"
+                              variant="outline"
+                              size="sm"
+                              className="h-7 text-xs gap-1"
+                              onClick={() => setAddingDebtor(true)}
+                            >
+                              <Plus className="h-3 w-3" />
+                              Agregar persona
+                            </Button>
+                          )}
+                        </div>
+
+                        <div className="space-y-2">
+                          {existingShared.map((se) => {
+                            const isEditingThis = editingDebtorId === se.id;
+                            const editAmount = parseFloat(editingDebtorAmount || "0");
+                            const otherAssigned = existingShared.filter(s => s.id !== se.id).reduce((sum, s) => sum + s.amount_owed, 0);
+                            const editRemaining = parseFloat(formData.amount || "0") - otherAssigned;
+                            const editExceeds = editAmount > editRemaining;
+                            const editValid = editingDebtorAmount && editAmount > 0 && !editExceeds;
+
+                            return (
+                              <div key={se.id} className="rounded-lg border bg-background px-3 py-2 space-y-2">
+                                <div className="flex items-center justify-between">
+                                  <div className="flex items-center gap-2">
+                                    {se.paid ? (
+                                      <CheckCircle2 className="h-4 w-4 text-success shrink-0" />
+                                    ) : (
+                                      <Clock className="h-4 w-4 text-amber-500 shrink-0" />
+                                    )}
+                                    <div>
+                                      <p className="text-sm font-medium">{se.debtor_name}</p>
+                                      {se.paid && (
+                                        <p className="text-xs text-muted-foreground">
+                                          Pagado {se.paid_at ? new Date(se.paid_at).toLocaleDateString("es-CL") : ""}
+                                        </p>
+                                      )}
+                                    </div>
+                                  </div>
+                                  <div className="flex items-center gap-2">
+                                    {!isEditingThis && (
+                                      <span className="text-sm font-bold">
+                                        ${new Intl.NumberFormat("es-CL").format(se.amount_owed)}
+                                      </span>
+                                    )}
+                                    {!se.paid && !isEditingThis && (
+                                      <>
+                                        <Button
+                                          type="button"
+                                          size="sm"
+                                          variant="ghost"
+                                          className="h-7 w-7 p-0"
+                                          onClick={() => {
+                                            setEditingDebtorId(se.id);
+                                            setEditingDebtorAmount(se.amount_owed.toString());
+                                          }}
+                                        >
+                                          <Pencil className="h-3 w-3" />
+                                        </Button>
+                                        <Button
+                                          type="button"
+                                          size="sm"
+                                          variant="outline"
+                                          className="h-7 text-xs px-2"
+                                          onClick={() => setConfirmPaid({
+                                            id: se.id,
+                                            name: se.debtor_name,
+                                            amount: se.amount_owed,
+                                            detail: editingTransaction?.detail || undefined,
+                                          })}
+                                        >
+                                          <CheckCircle2 className="h-3 w-3 mr-1" />
+                                          Pagado
+                                        </Button>
+                                      </>
+                                    )}
+                                    <Button
+                                      type="button"
+                                      size="sm"
+                                      variant="ghost"
+                                      className="h-7 w-7 p-0"
+                                      onClick={() => deleteSharedExpense.mutate(se.id)}
+                                    >
+                                      <Trash2 className="h-3 w-3 text-destructive" />
+                                    </Button>
+                                  </div>
+                                </div>
+
+                                {isEditingThis && (
+                                  <div className="space-y-1.5">
+                                    <div className="flex gap-2 items-center">
+                                      <Input
+                                        type="text"
+                                        inputMode="numeric"
+                                        value={editingDebtorAmount}
+                                        onChange={(e) => setEditingDebtorAmount(e.target.value.replace(/\D/g, ""))}
+                                        className={`h-8 text-sm flex-1 ${editExceeds ? "border-destructive focus-visible:ring-destructive" : ""}`}
+                                        autoFocus
+                                      />
+                                      <Button
+                                        type="button"
+                                        size="sm"
+                                        className="h-8 px-3 text-xs"
+                                        disabled={!editValid}
+                                        onClick={async () => {
+                                          await updateSharedExpenseAmount.mutateAsync({ id: se.id, amount_owed: editAmount });
+                                          setEditingDebtorId(null);
+                                          setEditingDebtorAmount("");
+                                        }}
+                                      >
+                                        Guardar
+                                      </Button>
+                                      <Button
+                                        type="button"
+                                        size="sm"
+                                        variant="ghost"
+                                        className="h-8 w-8 p-0"
+                                        onClick={() => { setEditingDebtorId(null); setEditingDebtorAmount(""); }}
+                                      >
+                                        <X className="h-3.5 w-3.5" />
+                                      </Button>
+                                    </div>
+                                    {editExceeds && (
+                                      <p className="text-xs text-destructive">
+                                        Máximo disponible: ${new Intl.NumberFormat("es-CL").format(editRemaining)}
+                                      </p>
+                                    )}
+                                  </div>
+                                )}
+                              </div>
+                            );
+                          })}
+                        </div>
+
+                        {/* Tu parte */}
+                        {(() => {
+                          const liveTxAmount = editingTransaction
+                            ? (transactions.find(t => t.id === editingTransaction.id)?.amount ?? parseFloat(formData.amount || "0"))
+                            : parseFloat(formData.amount || "0");
+                          const alreadyAssigned = existingShared.filter(se => !se.paid).reduce((sum, se) => sum + se.amount_owed, 0);
+                          const myShare = liveTxAmount - alreadyAssigned;
+                          return myShare >= 0 ? (
+                            <div className="bg-info/10 text-info p-3 rounded-lg">
+                              <div className="flex justify-between items-center text-sm">
+                                <span>Tu parte:</span>
+                                <span className="font-bold">
+                                  ${new Intl.NumberFormat("es-CL").format(myShare)}
+                                </span>
+                              </div>
+                            </div>
+                          ) : null;
+                        })()}
+
+                        {/* Formulario inline para agregar nueva persona */}
+                        {addingDebtor && (() => {
+                          const totalAmount = editingTransaction
+                            ? (transactions.find(t => t.id === editingTransaction.id)?.amount ?? parseFloat(formData.amount || "0"))
+                            : parseFloat(formData.amount || "0");
+                          const alreadyAssigned = existingShared.reduce((sum, se) => sum + se.amount_owed, 0);
+                          const remaining = totalAmount - alreadyAssigned;
+                          const newAmount = parseFloat(newDebtorAmount || "0");
+                          const exceedsLimit = newAmount > remaining;
+                          const isFormValid = newDebtorName.trim() && newDebtorAmount && !exceedsLimit;
+
+                          return (
+                            <div className="space-y-2 pt-2 border-t border-primary/20">
+                              <div className="flex items-center justify-between text-xs">
+                                <span className="text-muted-foreground">Disponible para asignar:</span>
+                                <span className={`font-semibold ${remaining <= 0 ? "text-destructive" : "text-success"}`}>
+                                  ${new Intl.NumberFormat("es-CL").format(remaining)}
+                                </span>
+                              </div>
+                              <div className="flex gap-2 items-center">
+                                <Input
+                                  placeholder="Nombre"
+                                  value={newDebtorName}
+                                  onChange={(e) => setNewDebtorName(e.target.value)}
+                                  className="h-8 text-sm flex-1"
+                                  autoFocus
+                                />
+                                <Input
+                                  type="text"
+                                  inputMode="numeric"
+                                  placeholder="Monto"
+                                  value={newDebtorAmount}
+                                  onChange={(e) => setNewDebtorAmount(e.target.value.replace(/\D/g, ""))}
+                                  className={`h-8 text-sm w-28 ${exceedsLimit ? "border-destructive focus-visible:ring-destructive" : ""}`}
+                                />
+                                <Button
+                                  type="button"
+                                  size="sm"
+                                  className="h-8 px-3 text-xs"
+                                  disabled={!isFormValid}
+                                  onClick={async () => {
+                                    await addSharedExpenses.mutateAsync([{
+                                      transaction_id: editingTransaction!.id,
+                                      debtor_name: newDebtorName.trim(),
+                                      amount_owed: newAmount,
+                                    }]);
+                                    setNewDebtorName("");
+                                    setNewDebtorAmount("");
+                                    setAddingDebtor(false);
+                                  }}
+                                >
+                                  Agregar
+                                </Button>
+                                <Button
+                                  type="button"
+                                  size="sm"
+                                  variant="ghost"
+                                  className="h-8 w-8 p-0"
+                                  onClick={() => {
+                                    setAddingDebtor(false);
+                                    setNewDebtorName("");
+                                    setNewDebtorAmount("");
+                                  }}
+                                >
+                                  <X className="h-3.5 w-3.5" />
+                                </Button>
+                              </div>
+                              {exceedsLimit && (
+                                <p className="text-xs text-destructive">
+                                  El monto supera el disponible (${new Intl.NumberFormat("es-CL").format(remaining)})
+                                </p>
+                              )}
+                            </div>
+                          );
+                        })()}
+                      </div>
+                    );
+                  }
+
+                  return (
+                    <div className="flex items-center justify-center gap-2 p-3 rounded-xl border-2 border-dashed border-input hover:border-primary/50 transition-colors">
+                      <Checkbox
+                        id="shared-modal"
+                        checked={isShared}
+                        onCheckedChange={(checked) => setIsShared(checked as boolean)}
+                      />
+                      <label
+                        htmlFor="shared-modal"
+                        className="text-sm font-medium leading-none cursor-pointer flex items-center gap-2"
+                      >
+                        <Users className="h-4 w-4 text-primary" />
+                        Gasto compartido con amigos
+                      </label>
+                    </div>
+                  );
+                })()}
               </form>
           </BaseModal>
         </div>
@@ -713,6 +1179,7 @@ export default function Transactions() {
               <SelectItem value="Ingreso">Ingresos</SelectItem>
               <SelectItem value="Gasto">Gastos</SelectItem>
               <SelectItem value="Inversión">Inversiones</SelectItem>
+              <SelectItem value="Reembolso">Reembolsos</SelectItem>
             </SelectContent>
           </Select>
 
@@ -755,6 +1222,13 @@ export default function Transactions() {
         />
       </div>
 
+      <SharedExpenseDrawer
+        open={sharedDrawerOpen}
+        onOpenChange={setSharedDrawerOpen}
+        totalAmount={pendingTransaction?.amount || 0}
+        onConfirm={handleSharedExpenseConfirm}
+      />
+
       <ConfirmDialog
         open={confirmDelete.open}
         onOpenChange={(open) => setConfirmDelete({ open, id: null })}
@@ -775,6 +1249,24 @@ export default function Transactions() {
         cancelText="Cancelar"
         variant="destructive"
       />
+      <AlertDialog open={!!confirmPaid} onOpenChange={() => setConfirmPaid(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>¿Confirmar pago?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Se creará automáticamente un reembolso de{" "}
+              <span className="font-bold">
+                ${confirmPaid && new Intl.NumberFormat("es-CL").format(confirmPaid.amount)}
+              </span>{" "}
+              por el pago de <span className="font-bold">{confirmPaid?.name}</span>.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+            <AlertDialogAction onClick={handleMarkAsPaid}>Confirmar</AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </Layout>
   );
 }

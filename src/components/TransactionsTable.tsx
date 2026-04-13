@@ -46,6 +46,7 @@ import {
   ArrowRightLeft,
   CreditCard,
   Undo2,
+  ArrowLeftRight,
 } from "lucide-react";
 import { Transaction } from "@/hooks/useTransactions";
 import { useFuzzySearch } from "@/hooks/useFuzzySearch";
@@ -196,12 +197,14 @@ const typeIcons = {
   Ingreso: TrendingUp,
   Gasto: TrendingDown,
   Inversión: PiggyBank,
+  Reembolso: ArrowLeftRight,
 };
 
 const typeAmountColors = {
   Ingreso: "text-emerald-500",
   Gasto: "text-rose-500",
   Inversión: "text-blue-500",
+  Reembolso: "text-amber-500",
 };
 
 // ── Editable cell components ───────────────────────────────────────────────
@@ -520,6 +523,7 @@ export function TransactionsTable({
       { value: "Ingreso" as const, label: "Ingreso", icon: TrendingUp },
       { value: "Gasto" as const, label: "Gasto", icon: TrendingDown },
       { value: "Inversión" as const, label: "Inversión", icon: PiggyBank },
+      { value: "Reembolso" as const, label: "Reembolso", icon: ArrowLeftRight },
     ];
 
     return [
@@ -978,6 +982,7 @@ export function TransactionsTable({
               <SelectItem value="Ingreso">Ingresos</SelectItem>
               <SelectItem value="Gasto">Gastos</SelectItem>
               <SelectItem value="Inversión">Inversiones</SelectItem>
+              <SelectItem value="Reembolso">Reembolsos</SelectItem>
             </SelectContent>
           </Select>
 
