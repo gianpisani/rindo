@@ -1,5 +1,6 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import Layout from "@/components/Layout";
+import { Checkbox } from "@/components/ui/checkbox";
 import { GlassCard } from "@/components/GlassCard";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Button } from "@/components/ui/button";
@@ -282,6 +283,7 @@ function makeComparison(
 export default function MonthlySummary() {
   const [selectedMonth, setSelectedMonth] = useState(new Date());
   const [storyOpen, setStoryOpen] = useState(false);
+  const [excludedCategories, setExcludedCategories] = useState<Set<string>>(new Set());
   const { transactions, isLoading } = useTransactions();
   const { categories } = useCategories();
   const { limits } = useCategoryLimits();
@@ -290,13 +292,36 @@ export default function MonthlySummary() {
   const { isPrivacyMode } = usePrivacyMode();
 
   const { kpis, categoryBreakdown, dailySpending, dailyStats, cardSpending, transactionCount, budgetSummary } =
-    useMonthlySummary(transactions, categories, limits, selectedMonth, budget?.total_budget);
+    useMonthlySummary(transactions, categories, limits, selectedMonth, budget?.total_budget, excludedCategories);
 
   // Month navigation
   const changeMonth = (delta: number) => {
     setSelectedMonth((prev) =>
       delta > 0 ? addMonths(prev, 1) : subMonths(prev, 1)
     );
+  };
+
+  // Reset category selection when month changes
+  useEffect(() => {
+    setExcludedCategories(new Set());
+  }, [selectedMonth]);
+
+  const toggleCategory = (name: string) => {
+    setExcludedCategories((prev) => {
+      const next = new Set(prev);
+      if (next.has(name)) next.delete(name);
+      else next.add(name);
+      return next;
+    });
+  };
+
+  const allSelected = excludedCategories.size === 0;
+  const toggleAll = () => {
+    if (allSelected) {
+      setExcludedCategories(new Set(categoryBreakdown.map((c) => c.category)));
+    } else {
+      setExcludedCategories(new Set());
+    }
   };
 
   const isCurrentMonth =
@@ -355,13 +380,25 @@ export default function MonthlySummary() {
     },
   ];
 
+  // Filtered category breakdown (respects excluded categories)
+  const filteredCategoryBreakdown = useMemo(() => {
+    const filtered = categoryBreakdown.filter((c) => !excludedCategories.has(c.category));
+    const total = filtered.reduce((s, c) => s + c.amount, 0);
+    return filtered.map((c) => ({
+      ...c,
+      percentage: total > 0 ? (c.amount / total) * 100 : 0,
+    }));
+  }, [categoryBreakdown, excludedCategories]);
+
+  const filteredTotal = filteredCategoryBreakdown.reduce((s, c) => s + c.amount, 0);
+
   // Donut chart data (top 5 + others)
   const donutData = useMemo(() => {
-    if (categoryBreakdown.length <= 6) return categoryBreakdown;
-    const top5 = categoryBreakdown.slice(0, 5);
-    const others = categoryBreakdown.slice(5);
+    if (filteredCategoryBreakdown.length <= 6) return filteredCategoryBreakdown;
+    const top5 = filteredCategoryBreakdown.slice(0, 5);
+    const others = filteredCategoryBreakdown.slice(5);
     const othersTotal = others.reduce((s, c) => s + c.amount, 0);
-    const totalExp = categoryBreakdown.reduce((s, c) => s + c.amount, 0);
+    const totalExp = filteredCategoryBreakdown.reduce((s, c) => s + c.amount, 0);
     return [
       ...top5,
       {
@@ -377,7 +414,7 @@ export default function MonthlySummary() {
         isNearLimit: false,
       },
     ];
-  }, [categoryBreakdown]);
+  }, [filteredCategoryBreakdown]);
 
   // Comparison data
   const comparisonData = [
@@ -570,8 +607,8 @@ export default function MonthlySummary() {
             {/* ─── Budget Wheel ──────────────────────── */}
             <BudgetWheel
               totalBudget={budgetSummary?.totalBudget ?? 0}
-              totalSpent={budgetSummary?.totalEffectiveSpent ?? 0}
-              categoryBreakdown={categoryBreakdown.map((c) => ({
+              totalSpent={filteredCategoryBreakdown.reduce((s, c) => s + c.effectiveAmount, 0)}
+              categoryBreakdown={filteredCategoryBreakdown.map((c) => ({
                 category: c.category,
                 allocated: c.limit ?? 0,
                 spent: c.effectiveAmount,
@@ -588,7 +625,7 @@ export default function MonthlySummary() {
                   title="Gastos por Categoría"
                   tooltip="Distribución de gastos del mes por categoría"
                 >
-                  {categoryBreakdown.length === 0 ? (
+                  {filteredCategoryBreakdown.length === 0 ? (
                     <p className="text-sm text-muted-foreground text-center py-8">
                       Sin gastos registrados
                     </p>
@@ -634,7 +671,7 @@ export default function MonthlySummary() {
                                 isPrivacyMode && "privacy-blur"
                               )}
                             >
-                              {formatCompact(kpis.expenses)}
+                              {formatCompact(filteredTotal)}
                             </p>
                           </div>
                         </div>
@@ -944,6 +981,13 @@ export default function MonthlySummary() {
                   <table className="w-full">
                     <thead>
                       <tr className="border-b border-border/50">
+                        <th className="py-3 pr-3 w-8">
+                          <Checkbox
+                            checked={allSelected}
+                            onCheckedChange={toggleAll}
+                            className="h-3.5 w-3.5"
+                          />
+                        </th>
                         <th className="text-left text-[10px] font-semibold text-muted-foreground uppercase tracking-wider py-3 pr-4">
                           Categoría
                         </th>
@@ -965,11 +1009,23 @@ export default function MonthlySummary() {
                       </tr>
                     </thead>
                     <tbody>
-                      {categoryBreakdown.map((cat) => (
+                      {categoryBreakdown.map((cat) => {
+                        const isExcluded = excludedCategories.has(cat.category);
+                        return (
                         <tr
                           key={cat.category}
-                          className="border-b border-border/10 hover:bg-accent/50 transition-colors"
+                          className={cn(
+                            "border-b border-border/10 hover:bg-accent/50 transition-colors",
+                            isExcluded && "opacity-40"
+                          )}
                         >
+                          <td className="py-3 pr-3">
+                            <Checkbox
+                              checked={!isExcluded}
+                              onCheckedChange={() => toggleCategory(cat.category)}
+                              className="h-3.5 w-3.5"
+                            />
+                          </td>
                           <td className="py-3 pr-4">
                             <div className="flex items-center gap-2.5">
                               <div
@@ -1062,7 +1118,8 @@ export default function MonthlySummary() {
                             )}
                           </td>
                         </tr>
-                      ))}
+                        );
+                      })}
                     </tbody>
                   </table>
                 </div>
