@@ -28,7 +28,7 @@ const Index = () => {
   const [storyOpen, setStoryOpen] = useState(false);
   const { sessions: todaySessions, nextRace, isLoading: trainingLoading, markCompleted, markSkipped } = useTodayTraining();
 
-  const handleQuickAdd = (type: "Ingreso" | "Gasto" | "Inversión") => {
+  const handleQuickAdd = (type: "Ingreso" | "Gasto" | "Inversión" | "Reembolso") => {
     openQuickAdd(type);
   };
 

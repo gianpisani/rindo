@@ -7,7 +7,7 @@ import { Input } from "@/components/ui/input";
 import { Dialog, DialogTrigger } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Plus, Pencil, Trash2, TrendingUp, TrendingDown, PiggyBank } from "lucide-react";
+import { Plus, Pencil, Trash2, TrendingUp, TrendingDown, PiggyBank, ArrowLeftRight } from "lucide-react";
 import { useCategories } from "@/hooks/useCategories";
 import { cn } from "@/lib/utils";
 
@@ -15,6 +15,7 @@ const typeConfig = {
   Ingreso: { icon: TrendingUp, label: "Ingresos", color: "text-success", bg: "bg-success/10" },
   Gasto: { icon: TrendingDown, label: "Gastos", color: "text-destructive", bg: "bg-destructive/10" },
   Inversión: { icon: PiggyBank, label: "Inversiones", color: "text-info", bg: "bg-info/10" },
+  Reembolso: { icon: ArrowLeftRight, label: "Reembolsos", color: "text-amber-500", bg: "bg-amber-500/10" },
 };
 
 const defaultColors = [
@@ -48,7 +49,7 @@ const EMOJI_OPTIONS = [
 interface Category {
   id: string;
   name: string;
-  type: "Ingreso" | "Gasto" | "Inversión";
+  type: "Ingreso" | "Gasto" | "Inversión" | "Reembolso";
   color?: string | null;
   icon?: string | null;
 }
@@ -60,7 +61,7 @@ export default function Categories() {
   const [editingCategory, setEditingCategory] = useState<any>(null);
   const [formData, setFormData] = useState({
     name: "",
-    type: "Gasto" as "Ingreso" | "Gasto" | "Inversión",
+    type: "Gasto" as "Ingreso" | "Gasto" | "Inversión" | "Reembolso",
     color: "#ef4444",
     icon: "🏷️",
   });
@@ -73,6 +74,7 @@ export default function Categories() {
     Ingreso: categories.filter((c) => c.type === "Ingreso"),
     Gasto: categories.filter((c) => c.type === "Gasto"),
     Inversión: categories.filter((c) => c.type === "Inversión"),
+    Reembolso: categories.filter((c) => c.type === "Reembolso"),
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -189,6 +191,7 @@ export default function Categories() {
                     <SelectItem value="Ingreso">Ingreso</SelectItem>
                     <SelectItem value="Gasto">Gasto</SelectItem>
                     <SelectItem value="Inversión">Inversión</SelectItem>
+                    <SelectItem value="Reembolso">Reembolso</SelectItem>
                   </SelectContent>
                 </Select>
               </div>

@@ -122,17 +122,26 @@ export function useSharedExpenses() {
       if (!userData.user) throw new Error("No user found");
 
       // Construir detalle descriptivo
-      const detail = transactionDetail 
+      const detail = transactionDetail
         ? `${debtorName} pagó: ${transactionDetail}`
         : `Pago de ${debtorName}`;
 
-      // 1. Crear transacción de ingreso
-      const { data: ingresoTransaction, error: transactionError } = await supabase
+      // 1. Leer el shared_expense para obtener transaction_id del gasto original
+      const { data: sharedExp, error: sharedExpError } = await supabase
+        .from("shared_expenses")
+        .select("transaction_id")
+        .eq("id", sharedExpenseId)
+        .single();
+
+      if (sharedExpError) throw sharedExpError;
+
+      // 2. Crear transacción de reembolso (no suma al balance)
+      const { data: reembolsoTransaction, error: transactionError } = await supabase
         .from("transactions")
         .insert({
           date: new Date().toISOString(),
           amount,
-          type: "Ingreso",
+          type: "Reembolso",
           category_name: "Pagos recibidos",
           detail,
           user_id: userData.user.id,
@@ -142,19 +151,36 @@ export function useSharedExpenses() {
 
       if (transactionError) throw transactionError;
 
-      // 2. Actualizar shared_expense como pagado
+      // 3. Actualizar shared_expense como pagado
       const { error: updateError } = await supabase
         .from("shared_expenses")
         .update({
           paid: true,
           paid_at: new Date().toISOString(),
-          paid_transaction_id: ingresoTransaction.id,
+          paid_transaction_id: reembolsoTransaction.id,
         })
         .eq("id", sharedExpenseId);
 
       if (updateError) throw updateError;
 
-      return ingresoTransaction;
+      // 4. Reducir el monto del gasto original
+      const { data: originalTx, error: originalTxError } = await supabase
+        .from("transactions")
+        .select("amount")
+        .eq("id", sharedExp.transaction_id)
+        .single();
+
+      if (!originalTxError && originalTx) {
+        const newAmount = Number(originalTx.amount) - amount;
+        if (newAmount > 0) {
+          await supabase
+            .from("transactions")
+            .update({ amount: newAmount })
+            .eq("id", sharedExp.transaction_id);
+        }
+      }
+
+      return reembolsoTransaction;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["shared_expenses"] });
@@ -163,6 +189,97 @@ export function useSharedExpenses() {
       queryClient.invalidateQueries({ queryKey: ["transactions"] });
       
       toast.success("Pago registrado. Se ha creado el ingreso automáticamente");
+    },
+    onError: (error: any) => {
+      toast.error(error.message);
+    },
+  });
+
+  // Actualizar monto de un gasto compartido
+  const updateSharedExpenseAmount = useMutation({
+    mutationFn: async ({ id, amount_owed }: { id: string; amount_owed: number }) => {
+      const { error } = await supabase
+        .from("shared_expenses")
+        .update({ amount_owed })
+        .eq("id", id);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["shared_expenses"] });
+      queryClient.invalidateQueries({ queryKey: ["shared_expenses_with_transaction"] });
+      queryClient.invalidateQueries({ queryKey: ["pending_by_debtor"] });
+    },
+  });
+
+  // Vincular transacción existente como pago de deuda
+  const linkExistingTransaction = useMutation({
+    mutationFn: async ({
+      sharedExpenseId,
+      existingTransactionId,
+      amount,
+      debtorName,
+      transactionDetail,
+    }: {
+      sharedExpenseId: string;
+      existingTransactionId: string;
+      amount: number;
+      debtorName: string;
+      transactionDetail?: string;
+    }) => {
+      // 1. Leer transaction_id del gasto original
+      const { data: sharedExp, error: sharedExpError } = await supabase
+        .from("shared_expenses")
+        .select("transaction_id")
+        .eq("id", sharedExpenseId)
+        .single();
+
+      if (sharedExpError) throw sharedExpError;
+
+      // 2. Actualizar la transacción vinculada: tipo Reembolso + detalle descriptivo
+      const detail = transactionDetail
+        ? `${debtorName} pagó: ${transactionDetail}`
+        : `Pago de ${debtorName}`;
+
+      await supabase
+        .from("transactions")
+        .update({ type: "Reembolso", detail, category_name: "Pagos recibidos" })
+        .eq("id", existingTransactionId);
+
+      // 3. Marcar como pagado usando la transacción existente
+      const { error: updateError } = await supabase
+        .from("shared_expenses")
+        .update({
+          paid: true,
+          paid_at: new Date().toISOString(),
+          paid_transaction_id: existingTransactionId,
+        })
+        .eq("id", sharedExpenseId);
+
+      if (updateError) throw updateError;
+
+      // 4. Reducir el monto del gasto original
+      const { data: originalTx, error: originalTxError } = await supabase
+        .from("transactions")
+        .select("amount")
+        .eq("id", sharedExp.transaction_id)
+        .single();
+
+      if (!originalTxError && originalTx) {
+        const newAmount = Number(originalTx.amount) - amount;
+        if (newAmount > 0) {
+          await supabase
+            .from("transactions")
+            .update({ amount: newAmount })
+            .eq("id", sharedExp.transaction_id);
+        }
+      }
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["shared_expenses"] });
+      queryClient.invalidateQueries({ queryKey: ["shared_expenses_with_transaction"] });
+      queryClient.invalidateQueries({ queryKey: ["pending_by_debtor"] });
+      queryClient.invalidateQueries({ queryKey: ["transactions"] });
+      toast.success("Deuda vinculada a transacción existente");
     },
     onError: (error: any) => {
       toast.error(error.message);
@@ -188,7 +305,9 @@ export function useSharedExpenses() {
     pendingByDebtor,
     isLoading,
     addSharedExpenses,
+    updateSharedExpenseAmount,
     markAsPaid,
+    linkExistingTransaction,
     deleteSharedExpense,
     getSharedExpensesByTransaction,
   };

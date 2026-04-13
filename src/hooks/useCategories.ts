@@ -5,7 +5,7 @@ import { toast } from "sonner";
 export interface Category {
   id: string;
   name: string;
-  type: "Ingreso" | "Gasto" | "Inversión";
+  type: "Ingreso" | "Gasto" | "Inversión" | "Reembolso";
   color: string | null;
   icon: string | null;
   user_id: string;

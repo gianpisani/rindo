@@ -3,8 +3,8 @@ import { create } from "zustand";
 interface GlobalDrawersState {
   quickAddOpen: boolean;
   reconciliationOpen: boolean;
-  quickAddDefaultType?: "Ingreso" | "Gasto" | "Inversión";
-  openQuickAdd: (type?: "Ingreso" | "Gasto" | "Inversión") => void;
+  quickAddDefaultType?: "Ingreso" | "Gasto" | "Inversión" | "Reembolso";
+  openQuickAdd: (type?: "Ingreso" | "Gasto" | "Inversión" | "Reembolso") => void;
   closeQuickAdd: () => void;
   setQuickAddOpen: (open: boolean) => void;
   openReconciliation: () => void;

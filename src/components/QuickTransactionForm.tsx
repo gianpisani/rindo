@@ -16,7 +16,7 @@ import SharedExpenseDrawer from "./SharedExpenseDrawer";
 
 interface QuickTransactionFormProps {
   onSuccess?: () => void;
-  defaultType?: "Ingreso" | "Gasto" | "Inversión";
+  defaultType?: "Ingreso" | "Gasto" | "Inversión" | "Reembolso";
 }
 
 const typeTexts = {
