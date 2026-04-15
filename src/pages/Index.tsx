@@ -128,16 +128,17 @@ const Index = () => {
   return (
     <Layout>
       <div className="space-y-6">
-        {/* Hero Balance Card */}
-        <Card className="p-6 md:p-8 border-border/50">
-          <div className="space-y-4">
+        {/* Hero: Balance (izq) + Quick Actions 2x2 (der) */}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          {/* Balance Card */}
+          <Card className="p-6 md:p-7 border-border/50 flex flex-col">
             <div className="flex items-center justify-between">
               <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Balance Total</span>
-              <span className="text-xs text-muted-foreground font-mono tabular-nums">
+              <span className="text-xs text-muted-foreground font-mono tabular-nums capitalize">
                 {format(now, "MMMM yyyy", { locale: es })}
               </span>
             </div>
-            <div className={cn("text-4xl md:text-5xl font-bold font-mono tabular-nums tracking-tight", isPrivacyMode && "privacy-blur")}>
+            <div className={cn("mt-4 text-4xl md:text-5xl font-bold font-mono tabular-nums tracking-tight", isPrivacyMode && "privacy-blur")}>
               $<NumberFlow
                 value={totalBalance}
                 format={{
@@ -148,9 +149,11 @@ const Index = () => {
                 locales="es-CL"
               />
             </div>
-            <div className="space-y-2 pt-4 border-t border-border/50">
-              <p className="text-xs text-muted-foreground font-medium">Este mes ({format(now, "MMM yyyy", { locale: es })})</p>
-              <div className="grid grid-cols-3 gap-4">
+            <div className="mt-5 pt-4 border-t border-border/50 space-y-3">
+              <p className="text-xs text-muted-foreground font-medium capitalize">
+                Este mes ({format(now, "MMM yyyy", { locale: es })})
+              </p>
+              <div className="grid grid-cols-3 gap-3">
                 <div className="space-y-1">
                   <div className="flex items-center gap-1 text-success">
                     <TrendingUp className="h-3.5 w-3.5" />
@@ -237,52 +240,53 @@ const Index = () => {
                   </p>
                 </div>
               </div>
+              {(lastMonthIncome > 0 || lastMonthExpenses > 0) && (
+                <p className={cn(
+                  "text-[11px] text-muted-foreground/70 font-mono tabular-nums pt-1",
+                  isPrivacyMode && "privacy-blur"
+                )}>
+                  <span className="capitalize">{format(lastMonth, "MMM", { locale: es })}</span>
+                  <span className="mx-1.5 text-muted-foreground/40">·</span>
+                  <span className="text-success/80">+{formatCurrency(lastMonthIncome)}</span>
+                  <span className="mx-1.5 text-muted-foreground/40">·</span>
+                  <span className="text-destructive/80">−{formatCurrency(lastMonthExpenses)}</span>
+                </p>
+              )}
             </div>
+          </Card>
+
+          {/* Quick Actions 2x2 */}
+          <div className="grid grid-cols-2 grid-rows-2 gap-3 min-h-[180px] md:min-h-0">
+            <Button
+              onClick={() => handleQuickAdd("Ingreso")}
+              className="h-full min-h-[72px] flex-col gap-1.5 border border-success/20 text-success hover:bg-success/10 hover:shadow-sm bg-transparent"
+            >
+              <TrendingUp className="h-5 w-5" />
+              <span className="text-xs font-semibold">Ingreso</span>
+            </Button>
+            <Button
+              onClick={() => handleQuickAdd("Gasto")}
+              className="h-full min-h-[72px] flex-col gap-1.5 border border-destructive/20 text-destructive hover:bg-destructive/10 hover:shadow-sm bg-transparent"
+            >
+              <TrendingDown className="h-5 w-5" />
+              <span className="text-xs font-semibold">Gasto</span>
+            </Button>
+            <Button
+              onClick={() => handleQuickAdd("Inversión")}
+              className="h-full min-h-[72px] flex-col gap-1.5 border border-blue/20 text-blue hover:bg-blue/10 hover:shadow-sm bg-transparent"
+            >
+              <PiggyBank className="h-5 w-5" />
+              <span className="text-xs font-semibold">Inversión</span>
+            </Button>
+            <Button
+              onClick={() => openReconciliation()}
+              variant="outline"
+              className="h-full min-h-[72px] flex-col gap-1.5 hover:bg-muted hover:shadow-sm"
+            >
+              <Variable className="h-5 w-5" />
+              <span className="text-xs font-semibold">Conciliar</span>
+            </Button>
           </div>
-        </Card>
-
-        {/* Training Banner */}
-        {!trainingLoading && (todaySessions.length > 0 || nextRace) && (
-          <TrainingBanner
-            sessions={todaySessions}
-            nextRace={nextRace}
-            onViewTraining={() => navigate("/training")}
-            onComplete={(id) => markCompleted.mutate(id)}
-            onSkip={(id) => markSkipped.mutate(id)}
-          />
-        )}
-
-        {/* Quick Actions */}
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-          <Button
-            onClick={() => handleQuickAdd("Ingreso")}
-            className="h-14 md:h-16 flex-col gap-1.5 border border-success/20 text-success hover:bg-success/10 hover:shadow-sm bg-transparent"
-          >
-            <TrendingUp className="h-5 w-5" />
-            <span className="text-xs font-semibold">Ingreso</span>
-          </Button>
-          <Button
-            onClick={() => handleQuickAdd("Gasto")}
-            className="h-14 md:h-16 flex-col gap-1.5 border border-destructive/20 text-destructive hover:bg-destructive/10 hover:shadow-sm bg-transparent"
-          >
-            <TrendingDown className="h-5 w-5" />
-            <span className="text-xs font-semibold">Gasto</span>
-          </Button>
-          <Button
-            onClick={() => handleQuickAdd("Inversión")}
-            className="h-14 md:h-16 flex-col gap-1.5 border border-blue/20 text-blue hover:bg-blue/10 hover:shadow-sm bg-transparent"
-          >
-            <PiggyBank className="h-5 w-5" />
-            <span className="text-xs font-semibold">Inversión</span>
-          </Button>
-          <Button
-            onClick={() => openReconciliation()}
-            variant="outline"
-            className="h-14 md:h-16 flex-col gap-1.5 hover:bg-muted hover:shadow-sm"
-          >
-            <Variable className="h-5 w-5" />
-            <span className="text-xs font-semibold">Conciliar</span>
-          </Button>
         </div>
 
         {/* Recent Transactions */}
@@ -368,6 +372,17 @@ const Index = () => {
             </div>
           )}
         </Card>
+
+        {/* Training Banner */}
+        {!trainingLoading && (todaySessions.length > 0 || nextRace) && (
+          <TrainingBanner
+            sessions={todaySessions}
+            nextRace={nextRace}
+            onViewTraining={() => navigate("/training")}
+            onComplete={(id) => markCompleted.mutate(id)}
+            onSkip={(id) => markSkipped.mutate(id)}
+          />
+        )}
 
         {/* Monthly Story - Last month review */}
         {hasLastMonthData && (
