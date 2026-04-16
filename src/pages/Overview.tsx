@@ -495,10 +495,10 @@ export default function Overview() {
         <div className="flex flex-col gap-3">
           <div className="flex items-center justify-between">
             <div>
-              <h1 className="text-xl font-bold tracking-tight mb-0.5">
+              <h1 className="text-2xl font-bold tracking-tight mb-1">
                 Finanzas
               </h1>
-              <p className="text-xs text-muted-foreground">
+              <p className="text-sm text-muted-foreground">
                 {isLoading
                   ? "Cargando..."
                   : `${transactionCount} movimientos en ${format(selectedMonth, "MMMM", { locale: es })}`}
