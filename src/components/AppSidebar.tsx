@@ -97,9 +97,7 @@ export function AppSidebar() {
 
   return (
     <Sidebar collapsible="icon">
-      <SidebarHeader className="relative overflow-hidden">
-        {/* Subtle gradient glow behind logo */}
-        <div className="absolute inset-0 accent-gradient-bg opacity-[0.06] pointer-events-none" />
+      <SidebarHeader>
         <SidebarMenu>
           <SidebarMenuItem>
             <DropdownMenu>
