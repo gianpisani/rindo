@@ -145,12 +145,14 @@ const Index = () => {
         <div className="flex items-center gap-3">
           {displayName && (
             <button onClick={() => openProfileEdit()} className="focus:outline-none group">
-              <Avatar className="size-10 ring-2 ring-primary/15 transition-all group-hover:ring-primary/40 group-hover:scale-105">
-                {avatarUrl && <AvatarImage src={avatarUrl} className="object-cover" />}
-                <AvatarFallback className="bg-primary/10 text-primary text-sm font-semibold">
-                  {greetingInitials}
-                </AvatarFallback>
-              </Avatar>
+              <div className="rounded-full p-[2px] accent-gradient-bg transition-all group-hover:scale-105">
+                <Avatar className="size-10">
+                  {avatarUrl && <AvatarImage src={avatarUrl} className="object-cover" />}
+                  <AvatarFallback className="bg-background text-primary text-sm font-semibold">
+                    {greetingInitials}
+                  </AvatarFallback>
+                </Avatar>
+              </div>
             </button>
           )}
           <h1 className="text-2xl font-bold tracking-tight">

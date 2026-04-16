@@ -240,10 +240,10 @@ export function AppSidebar() {
                   size="lg"
                   className="data-[state=open]:bg-sidebar-accent data-[state=open]:text-sidebar-accent-foreground sm:mb-0 mb-4"
                 >
-                  <div className="rounded-lg p-[1.5px] accent-gradient-bg">
-                    <Avatar className="size-8 rounded-[5px]">
-                      {avatarUrl && <AvatarImage src={avatarUrl} className="rounded-[5px] object-cover" />}
-                      <AvatarFallback className="rounded-[5px] bg-sidebar text-primary text-xs font-semibold">
+                  <div className="rounded-full p-[2px] accent-gradient-bg shrink-0">
+                    <Avatar className="size-8">
+                      {avatarUrl && <AvatarImage src={avatarUrl} className="object-cover" />}
+                      <AvatarFallback className="bg-sidebar text-primary text-xs font-semibold">
                         {userInitials}
                       </AvatarFallback>
                     </Avatar>
@@ -265,12 +265,14 @@ export function AppSidebar() {
               >
                 <DropdownMenuLabel className="p-0 font-normal">
                   <div className="flex items-center gap-3 px-3 py-3">
-                    <Avatar className="size-9 rounded-lg">
-                      {avatarUrl && <AvatarImage src={avatarUrl} className="rounded-lg object-cover" />}
-                      <AvatarFallback className="rounded-lg bg-primary/10 text-primary text-sm font-semibold">
-                        {userInitials}
-                      </AvatarFallback>
-                    </Avatar>
+                    <div className="rounded-full p-[2px] accent-gradient-bg shrink-0">
+                      <Avatar className="size-9">
+                        {avatarUrl && <AvatarImage src={avatarUrl} className="object-cover" />}
+                        <AvatarFallback className="bg-popover text-primary text-sm font-semibold">
+                          {userInitials}
+                        </AvatarFallback>
+                      </Avatar>
+                    </div>
                     <div className="grid flex-1 text-left text-sm leading-tight">
                       <span className="truncate font-semibold">{displayName}</span>
                       <span className="truncate text-xs text-muted-foreground">
