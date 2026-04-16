@@ -1,11 +1,15 @@
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef, useEffect, useCallback } from "react";
 import { BaseModal } from "./BaseModal";
 import { Button } from "./ui/button";
 import { Input } from "./ui/input";
 import { Label } from "./ui/label";
 import { Avatar, AvatarImage, AvatarFallback } from "./ui/avatar";
 import { useUserProfile } from "@/hooks/useUserProfile";
-import { useCustomTheme, PRESET_GRADIENTS } from "@/hooks/useCustomTheme";
+import {
+  THEME_PRESETS,
+  applyThemePreview,
+  clearThemeOverrides,
+} from "@/hooks/useCustomTheme";
 import { useTheme } from "next-themes";
 import {
   Camera,
@@ -13,7 +17,7 @@ import {
   ChevronLeft,
   Sun,
   Moon,
-  Sparkles,
+  Save,
   User,
   Palette,
   Check,
@@ -33,54 +37,127 @@ const STEPS = [
   { icon: Palette, label: "Tema" },
 ];
 
+// Mini preview card for a theme palette
+function ThemePreviewCard({
+  palette,
+  name,
+  selected,
+  onClick,
+}: {
+  palette: { background: string; card: string; primary: string; foreground: string; muted: string; border: string };
+  name: string;
+  selected: boolean;
+  onClick: () => void;
+}) {
+  return (
+    <button
+      onClick={onClick}
+      className={cn(
+        "flex flex-col items-center gap-1.5 p-1.5 rounded-xl transition-all",
+        selected ? "ring-2 ring-primary/40 bg-primary/5" : "hover:bg-muted/50"
+      )}
+    >
+      {/* Mini app preview */}
+      <div
+        className="w-full aspect-[4/3] rounded-lg overflow-hidden border"
+        style={{
+          backgroundColor: palette.background,
+          borderColor: palette.border,
+        }}
+      >
+        {/* Mini sidebar */}
+        <div className="flex h-full">
+          <div
+            className="w-1/4 h-full"
+            style={{ backgroundColor: palette.muted }}
+          >
+            <div
+              className="w-2/3 h-1 rounded-full mt-2 mx-auto"
+              style={{ backgroundColor: palette.primary }}
+            />
+            <div
+              className="w-1/2 h-0.5 rounded-full mt-1.5 mx-auto opacity-40"
+              style={{ backgroundColor: palette.foreground }}
+            />
+            <div
+              className="w-1/2 h-0.5 rounded-full mt-1 mx-auto opacity-30"
+              style={{ backgroundColor: palette.foreground }}
+            />
+          </div>
+          {/* Mini content */}
+          <div className="flex-1 p-1.5 space-y-1">
+            <div
+              className="w-3/4 h-1 rounded-full"
+              style={{ backgroundColor: palette.foreground, opacity: 0.7 }}
+            />
+            <div
+              className="w-full h-4 rounded"
+              style={{ backgroundColor: palette.card, border: `0.5px solid ${palette.border}` }}
+            >
+              <div
+                className="w-1/2 h-0.5 rounded-full mt-1 ml-1"
+                style={{ backgroundColor: palette.primary }}
+              />
+            </div>
+            <div
+              className="w-full h-3 rounded"
+              style={{ backgroundColor: palette.card, border: `0.5px solid ${palette.border}` }}
+            />
+          </div>
+        </div>
+      </div>
+      <span className="text-[10px] font-medium text-muted-foreground">
+        {name}
+      </span>
+    </button>
+  );
+}
+
 export function OnboardingModal({
   open,
   onOpenChange,
   mode = "onboarding",
 }: OnboardingModalProps) {
   const { profile, updateProfile, uploadAvatar, avatarUrl } = useUserProfile();
-  const { theme, setTheme } = useTheme();
+  const { theme, setTheme, resolvedTheme } = useTheme();
 
   const [step, setStep] = useState(0);
   const [fullName, setFullName] = useState("");
   const [nickname, setNickname] = useState("");
-  const [selectedGradient, setSelectedGradient] = useState(0);
+  const [selectedTheme, setSelectedTheme] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
   const [uploading, setUploading] = useState(false);
-  const [localAvatarPreview, setLocalAvatarPreview] = useState<string | null>(null);
+  const [localAvatarPreview, setLocalAvatarPreview] = useState<string | null>(
+    null
+  );
+  const [initialized, setInitialized] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  // Pre-fill in edit mode
+  // Pre-fill ONLY on open (not on profile changes, fixing the race condition)
   useEffect(() => {
-    if (open && profile) {
+    if (open && profile && !initialized) {
       setFullName(profile.full_name || "");
       setNickname(profile.nickname || "");
       setLocalAvatarPreview(null);
-
-      // Find matching preset
-      if (profile.accent_color_1) {
-        const idx = PRESET_GRADIENTS.findIndex(
-          (g) => g.color1 === profile.accent_color_1
-        );
-        setSelectedGradient(idx >= 0 ? idx : 0);
-      } else {
-        setSelectedGradient(0);
-      }
-
+      setSelectedTheme(profile.accent_color_1 || null);
       if (mode === "edit") setStep(0);
+      setInitialized(true);
     }
-  }, [open, profile, mode]);
+    if (!open) {
+      setInitialized(false);
+    }
+  }, [open, profile, mode, initialized]);
 
-  const displayInitials = (nickname || fullName || "?").slice(0, 2).toUpperCase();
+  const displayInitials = (nickname || fullName || "?")
+    .slice(0, 2)
+    .toUpperCase();
   const currentAvatarSrc = localAvatarPreview || avatarUrl;
+  const currentMode = (resolvedTheme || "dark") as "light" | "dark";
 
   const handleFileSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
-
-    // Local preview immediately
     setLocalAvatarPreview(URL.createObjectURL(file));
-
     setUploading(true);
     try {
       await uploadAvatar.mutateAsync(file);
@@ -89,38 +166,33 @@ export function OnboardingModal({
     }
   };
 
-  const applyGradientPreview = (index: number) => {
-    setSelectedGradient(index);
-    const gradient = PRESET_GRADIENTS[index];
-    const root = document.documentElement;
+  const handleSelectTheme = useCallback(
+    (themeId: string | null) => {
+      setSelectedTheme(themeId);
+      applyThemePreview(themeId, currentMode);
+    },
+    [currentMode]
+  );
 
-    if (!gradient.color1) {
-      root.style.removeProperty("--primary");
-      root.style.removeProperty("--sidebar-primary");
-      root.style.removeProperty("--accent-gradient");
-      root.style.removeProperty("--ring");
-    } else {
-      const c1 = gradient.color1;
-      const c2 = gradient.color2 || c1;
-      root.style.setProperty("--primary", c1);
-      root.style.setProperty("--sidebar-primary", c1);
-      root.style.setProperty("--ring", c1);
-      root.style.setProperty(
-        "--accent-gradient",
-        `linear-gradient(135deg, ${c1}, ${c2})`
-      );
-    }
-  };
+  const handleToggleMode = useCallback(
+    (newMode: "light" | "dark") => {
+      setTheme(newMode);
+      // Re-apply selected theme with new mode (effect runs after theme resolves)
+      setTimeout(() => {
+        applyThemePreview(selectedTheme, newMode);
+      }, 50);
+    },
+    [selectedTheme, setTheme]
+  );
 
   const handleSave = async () => {
     setSaving(true);
     try {
-      const gradient = PRESET_GRADIENTS[selectedGradient];
       await updateProfile.mutateAsync({
         full_name: fullName || null,
         nickname: nickname || null,
-        accent_color_1: gradient.color1,
-        accent_color_2: gradient.color2,
+        accent_color_1: selectedTheme,
+        accent_color_2: null,
         onboarding_completed: true,
       });
       onOpenChange(false);
@@ -133,12 +205,7 @@ export function OnboardingModal({
     setSaving(true);
     try {
       await updateProfile.mutateAsync({ onboarding_completed: true });
-      // Reset any live preview
-      const root = document.documentElement;
-      root.style.removeProperty("--primary");
-      root.style.removeProperty("--sidebar-primary");
-      root.style.removeProperty("--accent-gradient");
-      root.style.removeProperty("--ring");
+      clearThemeOverrides();
       onOpenChange(false);
     } finally {
       setSaving(false);
@@ -153,9 +220,7 @@ export function OnboardingModal({
       onOpenChange={mode === "onboarding" ? undefined! : onOpenChange}
       title={mode === "edit" ? "Editar perfil" : "Personaliza tu experiencia"}
       description={
-        mode === "onboarding"
-          ? "Haz que Rindo se sienta tuyo"
-          : undefined
+        mode === "onboarding" ? "Haz que Rindo se sienta tuyo" : undefined
       }
       maxWidth="md"
     >
@@ -265,68 +330,84 @@ export function OnboardingModal({
       {/* Step 2: Theme */}
       {step === 2 && (
         <div className="space-y-5">
-          {/* Gradient presets */}
-          <div className="space-y-2">
-            <Label>Acento</Label>
-            <div className="grid grid-cols-4 gap-3">
-              {PRESET_GRADIENTS.map((gradient, i) => {
-                const isDefault = !gradient.color1;
-                const bg = isDefault
-                  ? "linear-gradient(135deg, oklch(0.586 0.253 17.585), oklch(0.645 0.246 16.439))"
-                  : `linear-gradient(135deg, ${gradient.color1}, ${gradient.color2})`;
-
-                return (
-                  <button
-                    key={gradient.name}
-                    onClick={() => applyGradientPreview(i)}
-                    className={cn(
-                      "flex flex-col items-center gap-1.5 p-2 rounded-xl transition-all",
-                      selectedGradient === i
-                        ? "bg-primary/10 ring-2 ring-primary/30"
-                        : "hover:bg-muted"
-                    )}
-                  >
-                    <div
-                      className="size-10 rounded-full ring-1 ring-border/50"
-                      style={{ background: bg }}
-                    />
-                    <span className="text-[10px] font-medium text-muted-foreground">
-                      {gradient.name}
-                    </span>
-                  </button>
-                );
-              })}
-            </div>
+          {/* Light / Dark toggle */}
+          <div className="grid grid-cols-2 gap-3">
+            <button
+              onClick={() => handleToggleMode("light")}
+              className={cn(
+                "flex items-center gap-2 px-4 py-2.5 rounded-xl border transition-all text-sm font-medium",
+                currentMode === "light"
+                  ? "border-primary/30 bg-primary/5 text-foreground"
+                  : "border-border/50 text-muted-foreground hover:bg-muted"
+              )}
+            >
+              <Sun className="size-4" />
+              Light
+            </button>
+            <button
+              onClick={() => handleToggleMode("dark")}
+              className={cn(
+                "flex items-center gap-2 px-4 py-2.5 rounded-xl border transition-all text-sm font-medium",
+                currentMode === "dark"
+                  ? "border-primary/30 bg-primary/5 text-foreground"
+                  : "border-border/50 text-muted-foreground hover:bg-muted"
+              )}
+            >
+              <Moon className="size-4" />
+              Dark
+            </button>
           </div>
 
-          {/* Light / Dark toggle */}
+          {/* Theme presets */}
           <div className="space-y-2">
-            <Label>Modo</Label>
-            <div className="grid grid-cols-2 gap-3">
-              <button
-                onClick={() => setTheme("light")}
-                className={cn(
-                  "flex items-center gap-2 px-4 py-3 rounded-xl border transition-all text-sm font-medium",
-                  theme === "light"
-                    ? "border-primary/30 bg-primary/5 text-foreground"
-                    : "border-border/50 text-muted-foreground hover:bg-muted"
-                )}
-              >
-                <Sun className="size-4" />
-                Rindo Light
-              </button>
-              <button
-                onClick={() => setTheme("dark")}
-                className={cn(
-                  "flex items-center gap-2 px-4 py-3 rounded-xl border transition-all text-sm font-medium",
-                  theme === "dark"
-                    ? "border-primary/30 bg-primary/5 text-foreground"
-                    : "border-border/50 text-muted-foreground hover:bg-muted"
-                )}
-              >
-                <Moon className="size-4" />
-                Rindo Dark
-              </button>
+            <Label>Tema</Label>
+            <div className="grid grid-cols-3 gap-2">
+              {/* Default Rindo */}
+              <ThemePreviewCard
+                palette={{
+                  background:
+                    currentMode === "dark"
+                      ? "oklch(0.098 0.005 285.823)"
+                      : "oklch(1 0 0)",
+                  card:
+                    currentMode === "dark"
+                      ? "oklch(0.141 0.005 285.823)"
+                      : "oklch(1 0 0)",
+                  primary:
+                    currentMode === "dark"
+                      ? "oklch(0.645 0.246 16.439)"
+                      : "oklch(0.586 0.253 17.585)",
+                  foreground:
+                    currentMode === "dark"
+                      ? "oklch(0.985 0 0)"
+                      : "oklch(0.141 0.005 285.823)",
+                  muted:
+                    currentMode === "dark"
+                      ? "oklch(0.21 0.006 285.885)"
+                      : "oklch(0.967 0.001 286.375)",
+                  border:
+                    currentMode === "dark"
+                      ? "oklch(0.28 0.006 285)"
+                      : "oklch(0.92 0.004 286.32)",
+                }}
+                name="Rindo"
+                selected={selectedTheme === null}
+                onClick={() => handleSelectTheme(null)}
+              />
+              {/* Custom presets */}
+              {THEME_PRESETS.map((preset) => {
+                const palette =
+                  currentMode === "dark" ? preset.dark : preset.light;
+                return (
+                  <ThemePreviewCard
+                    key={preset.id}
+                    palette={palette}
+                    name={preset.name}
+                    selected={selectedTheme === preset.id}
+                    onClick={() => handleSelectTheme(preset.id)}
+                  />
+                );
+              })}
             </div>
           </div>
         </div>
@@ -369,7 +450,7 @@ export function OnboardingModal({
               {saving ? (
                 <Loader2 className="size-4 animate-spin" />
               ) : (
-                <Sparkles className="size-4" />
+                <Save className="size-4" />
               )}
               {mode === "edit" ? "Guardar" : "Empezar"}
             </Button>
