@@ -97,12 +97,14 @@ export function AppSidebar() {
 
   return (
     <Sidebar collapsible="icon">
-      <SidebarHeader>
+      <SidebarHeader className="relative overflow-hidden">
+        {/* Subtle gradient glow behind logo */}
+        <div className="absolute inset-0 accent-gradient-bg opacity-[0.06] pointer-events-none" />
         <SidebarMenu>
           <SidebarMenuItem>
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
-                <SidebarMenuButton size="lg" className="data-[state=open]:bg-sidebar-accent data-[state=open]:text-sidebar-accent-foreground">
+                <SidebarMenuButton size="lg" className="data-[state=open]:bg-sidebar-accent data-[state=open]:text-sidebar-accent-foreground relative">
                   <div className="flex aspect-square size-8 items-center justify-center">
                     <RindoLogo size={28} className="text-foreground" />
                   </div>
@@ -240,12 +242,14 @@ export function AppSidebar() {
                   size="lg"
                   className="data-[state=open]:bg-sidebar-accent data-[state=open]:text-sidebar-accent-foreground sm:mb-0 mb-4"
                 >
-                  <Avatar className="size-8 rounded-lg">
-                    {avatarUrl && <AvatarImage src={avatarUrl} className="rounded-lg object-cover" />}
-                    <AvatarFallback className="rounded-lg bg-primary/10 text-primary text-xs font-semibold">
-                      {userInitials}
-                    </AvatarFallback>
-                  </Avatar>
+                  <div className="rounded-lg p-[1.5px] accent-gradient-bg">
+                    <Avatar className="size-8 rounded-[5px]">
+                      {avatarUrl && <AvatarImage src={avatarUrl} className="rounded-[5px] object-cover" />}
+                      <AvatarFallback className="rounded-[5px] bg-sidebar text-primary text-xs font-semibold">
+                        {userInitials}
+                      </AvatarFallback>
+                    </Avatar>
+                  </div>
                   <div className="grid flex-1 text-left text-sm leading-tight">
                     <span className="truncate font-semibold">{displayName}</span>
                     <span className="truncate text-xs text-muted-foreground">

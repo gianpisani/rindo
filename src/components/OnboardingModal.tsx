@@ -125,6 +125,8 @@ export function OnboardingModal({
   const { theme, setTheme, resolvedTheme } = useTheme();
 
   const [step, setStep] = useState(0);
+  const [slideDirection, setSlideDirection] = useState<"left" | "right">("right");
+  const [animating, setAnimating] = useState(false);
   const [fullName, setFullName] = useState("");
   const [nickname, setNickname] = useState("");
   const [selectedTheme, setSelectedTheme] = useState<string | null>(null);
@@ -150,6 +152,16 @@ export function OnboardingModal({
       setInitialized(false);
     }
   }, [open, profile, mode, initialized]);
+
+  const goToStep = useCallback((target: number) => {
+    if (target === step || animating) return;
+    setSlideDirection(target > step ? "right" : "left");
+    setAnimating(true);
+    setTimeout(() => {
+      setStep(target);
+      setTimeout(() => setAnimating(false), 20);
+    }, 150);
+  }, [step, animating]);
 
   const displayInitials = (nickname || fullName || "?")
     .slice(0, 2)
@@ -236,7 +248,7 @@ export function OnboardingModal({
   return (
     <BaseModal
       open={open}
-      onOpenChange={mode === "onboarding" ? undefined! : onOpenChange}
+      onOpenChange={mode === "onboarding" ? (open) => { if (!open) handleSkipAll(); } : onOpenChange}
       title={mode === "edit" ? "Editar perfil" : "Personaliza tu experiencia"}
       description={
         mode === "onboarding" ? "Haz que Rindo se sienta tuyo" : undefined
@@ -250,7 +262,7 @@ export function OnboardingModal({
           return (
             <button
               key={i}
-              onClick={() => setStep(i)}
+              onClick={() => goToStep(i)}
               className={cn(
                 "flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium transition-all",
                 i === step
@@ -270,6 +282,16 @@ export function OnboardingModal({
           );
         })}
       </div>
+
+      {/* Step content with slide transition */}
+      <div
+        className={cn(
+          "transition-all duration-200 ease-out",
+          animating && slideDirection === "right" && "opacity-0 translate-x-4",
+          animating && slideDirection === "left" && "opacity-0 -translate-x-4",
+          !animating && "opacity-100 translate-x-0"
+        )}
+      >
 
       {/* Step 0: Name */}
       {step === 0 && (
@@ -446,6 +468,8 @@ export function OnboardingModal({
         </div>
       )}
 
+      </div>{/* end slide wrapper */}
+
       {/* Navigation footer */}
       <div className="flex items-center justify-between mt-6 pt-4 border-t border-border/50">
         <div>
@@ -453,7 +477,7 @@ export function OnboardingModal({
             <Button
               variant="ghost"
               size="sm"
-              onClick={() => setStep(step - 1)}
+              onClick={() => goToStep(step - 1)}
               className="gap-1"
             >
               <ChevronLeft className="size-4" />
@@ -489,7 +513,7 @@ export function OnboardingModal({
             </Button>
           ) : (
             <Button
-              onClick={() => setStep(step + 1)}
+              onClick={() => goToStep(step + 1)}
               size="sm"
               className="gap-1"
             >

@@ -25,7 +25,7 @@ const Index = () => {
   const { categories } = useCategories();
   const { limits } = useCategoryLimits();
   const navigate = useNavigate();
-  const { openQuickAdd, openReconciliation } = useGlobalDrawers();
+  const { openQuickAdd, openReconciliation, openProfileEdit } = useGlobalDrawers();
   const { isPrivacyMode } = usePrivacyMode();
   const [storyOpen, setStoryOpen] = useState(false);
   const { sessions: todaySessions, nextRace, isLoading: trainingLoading, markCompleted, markSkipped } = useTodayTraining();
@@ -144,12 +144,14 @@ const Index = () => {
         {/* Greeting */}
         <div className="flex items-center gap-3">
           {displayName && (
-            <Avatar className="size-10 ring-2 ring-primary/15">
-              {avatarUrl && <AvatarImage src={avatarUrl} className="object-cover" />}
-              <AvatarFallback className="bg-primary/10 text-primary text-sm font-semibold">
-                {greetingInitials}
-              </AvatarFallback>
-            </Avatar>
+            <button onClick={() => openProfileEdit()} className="focus:outline-none group">
+              <Avatar className="size-10 ring-2 ring-primary/15 transition-all group-hover:ring-primary/40 group-hover:scale-105">
+                {avatarUrl && <AvatarImage src={avatarUrl} className="object-cover" />}
+                <AvatarFallback className="bg-primary/10 text-primary text-sm font-semibold">
+                  {greetingInitials}
+                </AvatarFallback>
+              </Avatar>
+            </button>
           )}
           <h1 className="text-2xl font-bold tracking-tight">
             {getGreeting()}{displayName ? <>, <span className="animated-gradient-text">{displayName}</span></> : ""}

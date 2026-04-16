@@ -140,6 +140,7 @@ export default function Layout({ children }: LayoutProps) {
           onOpenChange={setCommandBarOpen}
           onAddTransaction={() => openQuickAdd()}
           onConciliate={() => openReconciliation()}
+          onEditProfile={() => setProfileEditOpen(true)}
         />
 
         {/* Quick Add Drawer - Global */}

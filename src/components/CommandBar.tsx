@@ -18,6 +18,7 @@ import {
   PiggyBank,
   ArrowRight,
   TrendingUp,
+  UserPen,
 } from "lucide-react";
 import { useTransactions } from "@/hooks/useTransactions";
 import { useFuzzySearch } from "@/hooks/useFuzzySearch";
@@ -33,6 +34,7 @@ interface CommandBarProps {
   onOpenChange: (open: boolean) => void;
   onAddTransaction?: () => void;
   onConciliate?: () => void;
+  onEditProfile?: () => void;
 }
 
 const typeIcons = {
@@ -47,7 +49,7 @@ const typeColors = {
   Inversión: "bg-info/10 text-info border-info/50",
 };
 
-export function CommandBar({ open, onOpenChange, onAddTransaction, onConciliate }: CommandBarProps) {
+export function CommandBar({ open, onOpenChange, onAddTransaction, onConciliate, onEditProfile }: CommandBarProps) {
   const [search, setSearch] = useState("");
   const navigate = useNavigate();
   const { transactions } = useTransactions();
@@ -168,6 +170,11 @@ export function CommandBar({ open, onOpenChange, onAddTransaction, onConciliate 
               <span>Conciliar Balance</span>
               <Kbd>R</Kbd>
             </div>
+          </CommandItem>
+
+          <CommandItem onSelect={() => runCommand(() => onEditProfile?.())}>
+            <UserPen className="mr-2 h-4 w-4" />
+            <span>Editar perfil</span>
           </CommandItem>
         </CommandGroup>
 
