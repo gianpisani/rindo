@@ -322,10 +322,17 @@ const CSS_VARS = [
   "--chart-5",
 ];
 
+function setMetaThemeColor(color: string) {
+  document.querySelectorAll('meta[name="theme-color"]').forEach((meta) => {
+    meta.setAttribute("content", color);
+  });
+}
+
 function clearAllOverrides(root: HTMLElement) {
   for (const v of CSS_VARS) {
     root.style.removeProperty(v);
   }
+  setMetaThemeColor("#000000");
 }
 
 function extractHue(oklchStr: string): number {
@@ -363,6 +370,9 @@ function applyPalette(root: HTMLElement, p: PaletteVars) {
     "--accent-gradient",
     `linear-gradient(135deg, ${p.primary}, ${p.ring})`
   );
+
+  // Update meta theme-color for browser/PWA chrome
+  setMetaThemeColor(p.sidebar);
 
   // Derive chart colors from theme hue
   const hue = extractHue(p.primary);

@@ -145,7 +145,7 @@ const Index = () => {
         <div className="flex items-center gap-3">
           {displayName && (
             <button onClick={() => openProfileEdit()} className="focus:outline-none group">
-              <div className="rounded-full p-[2px] accent-gradient-bg transition-all group-hover:scale-105">
+              <div className="rounded-full p-[2px] accent-gradient-bg transition-all duration-300 group-hover:scale-105 group-hover:shadow-[0_0_16px_var(--primary)]">
                 <Avatar className="size-10">
                   {avatarUrl && <AvatarImage src={avatarUrl} className="object-cover" />}
                   <AvatarFallback className="bg-background text-primary text-sm font-semibold">
@@ -163,7 +163,9 @@ const Index = () => {
         {/* Hero: Balance (izq) + Quick Actions 2x2 (der) */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           {/* Balance Card */}
-          <Card className="p-6 md:p-7 border-border/50 flex flex-col">
+          <Card className="border-border/50 flex flex-col overflow-hidden">
+            <div className="h-[2px] accent-gradient-bg" />
+            <div className="p-6 md:p-7 flex flex-col">
             <div className="flex items-center justify-between">
               <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Balance Total</span>
               <span className="text-xs text-muted-foreground font-mono tabular-nums capitalize">
@@ -285,27 +287,28 @@ const Index = () => {
                 </p>
               )}
             </div>
+            </div>
           </Card>
 
           {/* Quick Actions 2x2 */}
           <div className="grid grid-cols-2 grid-rows-2 gap-3 min-h-[180px] md:min-h-0">
             <Button
               onClick={() => handleQuickAdd("Ingreso")}
-              className="h-full min-h-[72px] flex-col gap-1.5 border border-success/20 text-success hover:bg-success/10 hover:shadow-sm bg-transparent"
+              className="h-full min-h-[72px] flex-col gap-1.5 border border-success/20 text-success hover:bg-primary/[0.06] hover:border-primary/20 hover:shadow-sm bg-transparent transition-all"
             >
               <TrendingUp className="h-5 w-5" />
               <span className="text-xs font-semibold">Ingreso</span>
             </Button>
             <Button
               onClick={() => handleQuickAdd("Gasto")}
-              className="h-full min-h-[72px] flex-col gap-1.5 border border-destructive/20 text-destructive hover:bg-destructive/10 hover:shadow-sm bg-transparent"
+              className="h-full min-h-[72px] flex-col gap-1.5 border border-destructive/20 text-destructive hover:bg-primary/[0.06] hover:border-primary/20 hover:shadow-sm bg-transparent transition-all"
             >
               <TrendingDown className="h-5 w-5" />
               <span className="text-xs font-semibold">Gasto</span>
             </Button>
             <Button
               onClick={() => handleQuickAdd("Inversión")}
-              className="h-full min-h-[72px] flex-col gap-1.5 border border-blue/20 text-blue hover:bg-blue/10 hover:shadow-sm bg-transparent"
+              className="h-full min-h-[72px] flex-col gap-1.5 border border-blue/20 text-blue hover:bg-primary/[0.06] hover:border-primary/20 hover:shadow-sm bg-transparent transition-all"
             >
               <PiggyBank className="h-5 w-5" />
               <span className="text-xs font-semibold">Inversión</span>
@@ -313,7 +316,7 @@ const Index = () => {
             <Button
               onClick={() => openReconciliation()}
               variant="outline"
-              className="h-full min-h-[72px] flex-col gap-1.5 hover:bg-muted hover:shadow-sm"
+              className="h-full min-h-[72px] flex-col gap-1.5 hover:bg-primary/[0.06] hover:border-primary/20 hover:shadow-sm transition-all"
             >
               <Variable className="h-5 w-5" />
               <span className="text-xs font-semibold">Conciliar</span>
