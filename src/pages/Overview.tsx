@@ -47,7 +47,6 @@ import {
   Play,
 } from "lucide-react";
 import { MonthlyStory } from "@/components/MonthlyStory";
-import { BudgetWheel } from "@/components/BudgetWheel";
 import { MonthlyEvolutionChart } from "@/components/MonthlyEvolutionChart";
 import ProjectionCard from "@/components/ProjectionCard";
 import { CreditCardWidget } from "@/components/CreditCardWidget";
@@ -66,6 +65,7 @@ import {
 import type { TooltipProps } from "recharts";
 import type { LucideIcon } from "lucide-react";
 import { Link } from "react-router-dom";
+import { getCategoryIcon } from "@/components/TransactionsTable";
 
 // ─── Formatters ──────────────────────────────────────────
 
@@ -143,6 +143,13 @@ function BarTooltip({ active, payload }: TooltipProps<number, string>) {
       </p>
     </div>
   );
+}
+
+// ─── Category Emoji Helper ───────────────────────────────
+
+function getCatEmoji(categoryName: string, categories: { name: string; icon: string | null }[]) {
+  const cat = categories.find((c) => c.name === categoryName);
+  return cat?.icon || getCategoryIcon(categoryName);
 }
 
 // ─── Section Card ────────────────────────────────────────
@@ -670,42 +677,6 @@ export default function Overview() {
                   </div>
                 )}
 
-                {/* Budget */}
-                {hasBudget ? (
-                  <BudgetWheel
-                    totalBudget={budgetSummary?.totalBudget ?? 0}
-                    totalSpent={budgetSummary?.totalEffectiveSpent ?? 0}
-                    categoryBreakdown={categoryBreakdown.map((c) => ({
-                      category: c.category,
-                      allocated: c.limit ?? 0,
-                      spent: c.effectiveAmount,
-                      color: c.color,
-                    }))}
-                    isPrivacyMode={isPrivacyMode}
-                  />
-                ) : (
-                  <GlassCard className="p-6">
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-3">
-                        <div className="p-2 rounded-lg bg-muted/60">
-                          <Target className="h-4 w-4 text-muted-foreground" />
-                        </div>
-                        <div>
-                          <p className="text-sm font-medium text-muted-foreground">
-                            Sin presupuesto configurado
-                          </p>
-                          <p className="text-xs text-muted-foreground/60">
-                            Configura un presupuesto mensual para trackear tus gastos
-                          </p>
-                        </div>
-                      </div>
-                      <Button variant="outline" size="sm" className="rounded-lg text-xs" asChild>
-                        <Link to="/budget">Configurar</Link>
-                      </Button>
-                    </div>
-                  </GlassCard>
-                )}
-
                 {/* Donut + Comparison */}
                 <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
                   <div className="lg:col-span-7">
@@ -763,20 +734,17 @@ export default function Overview() {
                               </div>
                             </div>
                           </div>
-                          <div className="flex flex-wrap justify-center gap-x-4 gap-y-2 mt-2">
+                          <div className="flex flex-wrap justify-center gap-x-3 gap-y-1.5 mt-2">
                             {donutData.map((cat) => (
                               <div
                                 key={cat.category}
-                                className="flex items-center gap-1.5"
+                                className="flex items-center gap-1"
                               >
-                                <div
-                                  className="w-2.5 h-2.5 rounded-full shrink-0"
-                                  style={{ backgroundColor: cat.color }}
-                                />
-                                <span className="text-xs text-muted-foreground">
+                                <span className="text-xs leading-none">{getCatEmoji(cat.category, categories)}</span>
+                                <span className="text-[11px] text-muted-foreground">
                                   {cat.category}
                                 </span>
-                                <span className="text-xs font-semibold tabular-nums">
+                                <span className="text-[11px] font-semibold tabular-nums">
                                   {cat.percentage.toFixed(0)}%
                                 </span>
                               </div>
@@ -878,309 +846,219 @@ export default function Overview() {
                   </div>
                 </div>
 
-                {/* Daily Spending + Credit Cards */}
-                <div
-                  className={cn(
-                    "grid grid-cols-1 gap-6",
-                    monthlyCardSpending.length > 0 && "lg:grid-cols-12"
-                  )}
-                >
-                  <div
-                    className={cn(
-                      monthlyCardSpending.length > 0 ? "lg:col-span-8" : ""
-                    )}
+                {/* Gasto Diario */}
+                {dailySpending.length > 0 && (
+                  <SectionCard
+                    title="Gasto Diario"
+                    tooltip="Gasto por día del mes. La línea punteada es el promedio diario"
                   >
-                    <SectionCard
-                      title="Gasto Diario"
-                      tooltip="Gasto por día del mes. La línea punteada es el promedio diario"
-                    >
-                      {dailySpending.length > 0 ? (
-                        <div>
-                          <ResponsiveContainer width="100%" height={220}>
-                            <BarChart
-                              data={dailySpending}
-                              className={cn(
-                                isPrivacyMode && "privacy-blur"
-                              )}
-                            >
-                              <XAxis
-                                dataKey="day"
-                                fontSize={10}
-                                tickLine={false}
-                                axisLine={false}
-                                stroke={CHART_COLORS.mutedAxis}
-                                interval="preserveStartEnd"
+                    <div>
+                      <ResponsiveContainer width="100%" height={160}>
+                        <BarChart
+                          data={dailySpending}
+                          className={cn(isPrivacyMode && "privacy-blur")}
+                        >
+                          <XAxis
+                            dataKey="day"
+                            fontSize={9}
+                            tickLine={false}
+                            axisLine={false}
+                            stroke={CHART_COLORS.mutedAxis}
+                            interval="preserveStartEnd"
+                          />
+                          <YAxis
+                            fontSize={9}
+                            tickLine={false}
+                            axisLine={false}
+                            stroke={CHART_COLORS.mutedAxis}
+                            tickFormatter={formatCompact}
+                            width={45}
+                          />
+                          <ChartTooltip content={<DailyTooltip />} />
+                          <ReferenceLine
+                            y={dailyStats.avgDaily}
+                            stroke={CHART_COLORS.balance}
+                            strokeDasharray="4 4"
+                            strokeWidth={1.5}
+                          />
+                          <Bar dataKey="amount" radius={[3, 3, 0, 0]} maxBarSize={14}>
+                            {dailySpending.map((entry, i) => (
+                              <Cell
+                                key={i}
+                                fill={CHART_COLORS.expense}
+                                opacity={
+                                  entry.amount === 0 ? 0.08 : entry.isWeekend ? 0.55 : 1
+                                }
                               />
-                              <YAxis
-                                fontSize={10}
-                                tickLine={false}
-                                axisLine={false}
-                                stroke={CHART_COLORS.mutedAxis}
-                                tickFormatter={formatCompact}
-                                width={50}
+                            ))}
+                          </Bar>
+                        </BarChart>
+                      </ResponsiveContainer>
+                      <div className="flex items-center gap-4 mt-2 text-[11px] text-muted-foreground">
+                        <span>
+                          📊 Prom:{" "}
+                          <span className={cn("font-semibold text-foreground font-mono tabular-nums", isPrivacyMode && "privacy-blur")}>
+                            {formatCompact(dailyStats.avgDaily)}/día
+                          </span>
+                        </span>
+                        {dailyStats.peakDay && (
+                          <span>
+                            🔺 Pico:{" "}
+                            <span className={cn("font-semibold text-foreground font-mono tabular-nums", isPrivacyMode && "privacy-blur")}>
+                              {formatCompact(dailyStats.peakDay.amount)}
+                            </span>
+                          </span>
+                        )}
+                        <span>
+                          📅 {dailyStats.daysWithSpending}/{dailyStats.totalDays} días
+                        </span>
+                      </div>
+                    </div>
+                  </SectionCard>
+                )}
+
+                {/* Gastos + Presupuesto side by side */}
+                {categoryBreakdown.length > 0 && (
+                  <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                    {/* Gastos por Categoría */}
+                    <SectionCard title="Gastos por Categoría">
+                      <div className="space-y-0.5">
+                        {categoryBreakdown.map((cat) => (
+                          <div
+                            key={cat.category}
+                            className="flex items-center gap-2 py-1.5 group hover:bg-accent/30 -mx-2 px-2 rounded-lg transition-colors"
+                          >
+                            <span className="text-sm leading-none shrink-0">{getCatEmoji(cat.category, categories)}</span>
+                            <span className="text-xs font-medium truncate flex-1 min-w-0">
+                              {cat.category}
+                            </span>
+                            <span className="text-[10px] text-muted-foreground tabular-nums shrink-0">
+                              {cat.count} mov
+                            </span>
+                            <div className="w-12 h-1 rounded-full bg-muted/60 overflow-hidden shrink-0 hidden sm:block">
+                              <div
+                                className="h-full rounded-full"
+                                style={{ width: `${cat.percentage}%`, backgroundColor: cat.color }}
                               />
-                              <ChartTooltip content={<DailyTooltip />} />
-                              <ReferenceLine
-                                y={dailyStats.avgDaily}
-                                stroke={CHART_COLORS.balance}
-                                strokeDasharray="4 4"
-                                strokeWidth={1.5}
-                              />
-                              <Bar
-                                dataKey="amount"
-                                radius={[4, 4, 0, 0]}
-                                maxBarSize={16}
-                              >
-                                {dailySpending.map((entry, i) => (
-                                  <Cell
-                                    key={i}
-                                    fill={CHART_COLORS.expense}
-                                    opacity={
-                                      entry.amount === 0
-                                        ? 0.08
-                                        : entry.isWeekend
-                                        ? 0.55
-                                        : 1
-                                    }
-                                  />
-                                ))}
-                              </Bar>
-                            </BarChart>
-                          </ResponsiveContainer>
-                          <div className="flex items-center gap-6 mt-3 text-xs text-muted-foreground">
-                            <div className="flex items-center gap-1.5">
-                              <div className="w-3 h-[2px] bg-amber-500 rounded" style={{ borderTop: "2px dashed" }} />
-                              <span>
-                                Promedio:{" "}
-                                <span
-                                  className={cn(
-                                    "font-semibold text-foreground font-mono tabular-nums",
-                                    isPrivacyMode && "privacy-blur"
-                                  )}
-                                >
-                                  {formatCompact(dailyStats.avgDaily)}/día
-                                </span>
+                            </div>
+                            <span className={cn(
+                              "text-xs font-mono font-semibold tabular-nums shrink-0 w-[72px] text-right",
+                              isPrivacyMode && "privacy-blur"
+                            )}>
+                              {formatCompact(cat.effectiveAmount)}
+                            </span>
+                            {cat.prevAmount > 0 ? (
+                              <span className={cn(
+                                "text-[10px] font-semibold tabular-nums shrink-0 w-10 text-right",
+                                cat.trend === "down" ? "text-emerald-500" : cat.trend === "up" ? "text-rose-500" : "text-muted-foreground"
+                              )}>
+                                {cat.trend === "up" ? "▲" : cat.trend === "down" ? "▼" : "─"}{cat.trendPercentage.toFixed(0)}%
                               </span>
-                            </div>
-                            {dailyStats.peakDay && (
-                              <div>
-                                Pico:{" "}
-                                <span
-                                  className={cn(
-                                    "font-semibold text-foreground font-mono tabular-nums",
-                                    isPrivacyMode && "privacy-blur"
-                                  )}
-                                >
-                                  {formatCompact(dailyStats.peakDay.amount)}
-                                </span>{" "}
-                                <span className="capitalize">
-                                  ({dailyStats.peakDay.date})
-                                </span>
-                              </div>
+                            ) : (
+                              <span className="text-[10px] text-muted-foreground/50 shrink-0 w-10 text-right">—</span>
                             )}
-                            <div>
-                              {dailyStats.daysWithSpending} de{" "}
-                              {dailyStats.totalDays} días con gasto
-                            </div>
                           </div>
+                        ))}
+                      </div>
+                    </SectionCard>
+
+                    {/* Presupuesto por Categoría */}
+                    <SectionCard title="Presupuesto por Categoría">
+                      {!hasBudget ? (
+                        <div className="flex flex-col items-center justify-center py-6 text-center">
+                          <p className="text-sm text-muted-foreground mb-3">
+                            Sin presupuesto configurado
+                          </p>
+                          <Button variant="outline" size="sm" className="rounded-lg text-xs" asChild>
+                            <Link to="/budget">🎯 Configurar</Link>
+                          </Button>
                         </div>
                       ) : (
-                        <p className="text-sm text-muted-foreground text-center py-8">
-                          Sin gastos registrados
-                        </p>
-                      )}
-                    </SectionCard>
-                  </div>
-
-                  {monthlyCardSpending.length > 0 && (
-                    <div className="lg:col-span-4">
-                      <SectionCard title="Tarjetas" icon={CreditCard}>
-                        <div className="space-y-5">
-                          {monthlyCardSpending.map((card) => {
-                            const usage =
-                              card.credit_limit > 0
-                                ? (card.spent / card.credit_limit) * 100
-                                : 0;
+                        <div className="space-y-0.5">
+                          {categoryBreakdown.map((cat) => {
+                            const usage = cat.limitUsage ?? 0;
+                            const hasLimit = !!cat.limit;
                             return (
-                              <div key={card.id} className="space-y-1.5">
-                                <div className="flex items-center justify-between">
-                                  <div className="flex items-center gap-2">
-                                    <div
-                                      className="w-2.5 h-2.5 rounded-full shrink-0"
-                                      style={{
-                                        backgroundColor:
-                                          card.color || "#6b7280",
-                                      }}
-                                    />
-                                    <span className="text-sm font-medium">
-                                      {card.name}
+                              <div
+                                key={cat.category}
+                                className="flex items-center gap-2 py-1.5 group hover:bg-accent/30 -mx-2 px-2 rounded-lg transition-colors"
+                              >
+                                <span className="text-sm leading-none shrink-0">{getCatEmoji(cat.category, categories)}</span>
+                                <span className="text-xs font-medium truncate flex-1 min-w-0">
+                                  {cat.category}
+                                </span>
+                                {hasLimit ? (
+                                  <>
+                                    <div className="w-20 h-1.5 rounded-full bg-muted/60 overflow-hidden shrink-0">
+                                      <div
+                                        className={cn(
+                                          "h-full rounded-full transition-all",
+                                          cat.isOverLimit ? "bg-rose-500" : cat.isNearLimit ? "bg-amber-500" : "bg-emerald-500"
+                                        )}
+                                        style={{ width: `${Math.min(usage, 100)}%` }}
+                                      />
+                                    </div>
+                                    <span className={cn(
+                                      "text-[11px] font-semibold tabular-nums shrink-0 w-10 text-right",
+                                      cat.isOverLimit ? "text-rose-500" : cat.isNearLimit ? "text-amber-500" : "text-emerald-500"
+                                    )}>
+                                      {usage.toFixed(0)}%
                                     </span>
-                                  </div>
-                                  <span
-                                    className={cn(
-                                      "text-sm font-mono font-semibold tabular-nums",
+                                    <span className={cn(
+                                      "text-[10px] text-muted-foreground tabular-nums shrink-0 w-16 text-right",
                                       isPrivacyMode && "privacy-blur"
-                                    )}
-                                  >
-                                    {formatCompact(card.spent)}
+                                    )}>
+                                      {formatCompact(cat.effectiveAmount)}/{formatCompact(cat.limit!)}
+                                    </span>
+                                  </>
+                                ) : (
+                                  <span className="text-[10px] text-muted-foreground/40 shrink-0">
+                                    sin límite
                                   </span>
-                                </div>
-                                <div className="h-2 rounded-full bg-muted/60 overflow-hidden">
-                                  <div
-                                    className="h-full rounded-full transition-all duration-700"
-                                    style={{
-                                      width: `${Math.min(usage, 100)}%`,
-                                      backgroundColor:
-                                        card.color || "#6b7280",
-                                    }}
-                                  />
-                                </div>
-                                <p
-                                  className={cn(
-                                    "text-[10px] text-muted-foreground text-right tabular-nums",
-                                    isPrivacyMode && "privacy-blur"
-                                  )}
-                                >
-                                  {usage.toFixed(0)}% del límite (
-                                  {formatCompact(card.credit_limit)})
-                                </p>
+                                )}
                               </div>
                             );
                           })}
                         </div>
-                      </SectionCard>
-                    </div>
-                  )}
-                </div>
+                      )}
+                    </SectionCard>
+                  </div>
+                )}
 
-                {/* Category Detail Table */}
-                {categoryBreakdown.length > 0 && (
-                  <SectionCard title="Detalle por Categoría">
-                    <div className="overflow-x-auto -mx-6 px-6">
-                      <table className="w-full">
-                        <thead>
-                          <tr className="border-b border-border/50">
-                            <th className="text-left text-[10px] font-semibold text-muted-foreground uppercase tracking-wider py-3 pr-4">
-                              Categoría
-                            </th>
-                            <th className="text-right text-[10px] font-semibold text-muted-foreground uppercase tracking-wider py-3 px-4">
-                              Monto
-                            </th>
-                            <th className="text-right text-[10px] font-semibold text-muted-foreground uppercase tracking-wider py-3 px-4 hidden sm:table-cell">
-                              % Total
-                            </th>
-                            <th className="text-right text-[10px] font-semibold text-muted-foreground uppercase tracking-wider py-3 px-4 hidden md:table-cell">
-                              # Mov
-                            </th>
-                            <th className="text-right text-[10px] font-semibold text-muted-foreground uppercase tracking-wider py-3 px-4">
-                              vs Anterior
-                            </th>
-                            <th className="text-right text-[10px] font-semibold text-muted-foreground uppercase tracking-wider py-3 pl-4 hidden sm:table-cell">
-                              Límite
-                            </th>
-                          </tr>
-                        </thead>
-                        <tbody>
-                          {categoryBreakdown.map((cat) => (
-                            <tr
-                              key={cat.category}
-                              className="border-b border-border/10 hover:bg-accent/50 transition-colors"
-                            >
-                              <td className="py-3 pr-4">
-                                <div className="flex items-center gap-2.5">
-                                  <div
-                                    className="w-2.5 h-2.5 rounded-full shrink-0"
-                                    style={{
-                                      backgroundColor: cat.color,
-                                    }}
-                                  />
-                                  <span className="text-sm font-medium truncate max-w-[160px]">
-                                    {cat.category}
-                                  </span>
-                                </div>
-                              </td>
-                              <td className="text-right py-3 px-4">
-                                <div className={cn(isPrivacyMode && "privacy-blur")}>
-                                  <span className="text-sm font-mono font-semibold tabular-nums">
-                                    {formatCurrency(cat.effectiveAmount)}
-                                  </span>
-                                  {cat.reimbursedAmount > 0 && (
-                                    <span className="text-[10px] text-emerald-500 ml-1">
-                                      (-{formatCompact(cat.reimbursedAmount)})
-                                    </span>
-                                  )}
-                                </div>
-                              </td>
-                              <td className="text-right py-3 px-4 hidden sm:table-cell">
-                                <div className="flex items-center justify-end gap-2">
-                                  <div className="w-16 h-1.5 rounded-full bg-muted/60 overflow-hidden">
-                                    <div
-                                      className="h-full rounded-full"
-                                      style={{
-                                        width: `${cat.percentage}%`,
-                                        backgroundColor: cat.color,
-                                      }}
-                                    />
-                                  </div>
-                                  <span className="text-xs text-muted-foreground tabular-nums w-9 text-right">
-                                    {cat.percentage.toFixed(1)}%
-                                  </span>
-                                </div>
-                              </td>
-                              <td className="text-right py-3 px-4 hidden md:table-cell">
-                                <span className="text-xs text-muted-foreground tabular-nums">
-                                  {cat.count}
+                {/* Tarjetas (compact) */}
+                {monthlyCardSpending.length > 0 && (
+                  <SectionCard title="Tarjetas" icon={CreditCard}>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+                      {monthlyCardSpending.map((card) => {
+                        const usage = card.credit_limit > 0 ? (card.spent / card.credit_limit) * 100 : 0;
+                        return (
+                          <div key={card.id} className="flex items-center gap-2.5 py-1">
+                            <div
+                              className="w-2 h-2 rounded-full shrink-0"
+                              style={{ backgroundColor: card.color || "#6b7280" }}
+                            />
+                            <div className="flex-1 min-w-0">
+                              <div className="flex items-center justify-between gap-2">
+                                <span className="text-xs font-medium truncate">{card.name}</span>
+                                <span className={cn("text-xs font-mono font-semibold tabular-nums shrink-0", isPrivacyMode && "privacy-blur")}>
+                                  {formatCompact(card.spent)}
                                 </span>
-                              </td>
-                              <td className="text-right py-3 px-4">
-                                {cat.prevAmount > 0 ? (
-                                  <span
-                                    className={cn(
-                                      "inline-flex items-center gap-0.5 text-xs font-semibold",
-                                      cat.trend === "down"
-                                        ? "text-emerald-500"
-                                        : cat.trend === "up"
-                                        ? "text-rose-500"
-                                        : "text-muted-foreground"
-                                    )}
-                                  >
-                                    {cat.trend === "up"
-                                      ? "▲"
-                                      : cat.trend === "down"
-                                      ? "▼"
-                                      : "─"}{" "}
-                                    {cat.trendPercentage.toFixed(0)}%
-                                  </span>
-                                ) : (
-                                  <span className="text-xs text-muted-foreground">
-                                    nueva
-                                  </span>
-                                )}
-                              </td>
-                              <td className="text-right py-3 pl-4 hidden sm:table-cell">
-                                {cat.limit ? (
-                                  <span
-                                    className={cn(
-                                      "text-xs font-semibold px-2 py-0.5 rounded-full",
-                                      cat.isOverLimit
-                                        ? "text-rose-600 bg-rose-500/10"
-                                        : cat.isNearLimit
-                                        ? "text-amber-600 bg-amber-500/10"
-                                        : "text-emerald-600 bg-emerald-500/10"
-                                    )}
-                                  >
-                                    {cat.limitUsage?.toFixed(0)}%
-                                  </span>
-                                ) : (
-                                  <span className="text-xs text-muted-foreground">
-                                    —
-                                  </span>
-                                )}
-                              </td>
-                            </tr>
-                          ))}
-                        </tbody>
-                      </table>
+                              </div>
+                              <div className="flex items-center gap-2 mt-0.5">
+                                <div className="flex-1 h-1 rounded-full bg-muted/60 overflow-hidden">
+                                  <div
+                                    className="h-full rounded-full"
+                                    style={{ width: `${Math.min(usage, 100)}%`, backgroundColor: card.color || "#6b7280" }}
+                                  />
+                                </div>
+                                <span className={cn("text-[9px] text-muted-foreground tabular-nums shrink-0", isPrivacyMode && "privacy-blur")}>
+                                  {usage.toFixed(0)}%
+                                </span>
+                              </div>
+                            </div>
+                          </div>
+                        );
+                      })}
                     </div>
                   </SectionCard>
                 )}
