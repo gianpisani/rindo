@@ -4,9 +4,19 @@ import "./index.css";
 import { injectSpeedInsights } from '@vercel/speed-insights';
 import { inject } from '@vercel/analytics';
 import { ThemeProvider } from "next-themes";
+import { applyThemePreview, getCachedThemeId } from "./hooks/useCustomTheme";
 
 injectSpeedInsights();
 inject();
+
+// Apply cached theme instantly to avoid flash of default colors
+const cachedTheme = getCachedThemeId();
+if (cachedTheme) {
+  const prefersDark = window.matchMedia("(prefers-color-scheme: dark)").matches;
+  const storedTheme = localStorage.getItem("theme");
+  const mode = storedTheme === "light" ? "light" : storedTheme === "dark" ? "dark" : prefersDark ? "dark" : "light";
+  applyThemePreview(cachedTheme, mode);
+}
 
 createRoot(document.getElementById("root")!).render(
   <ThemeProvider attribute="class" defaultTheme="system" enableSystem>

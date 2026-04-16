@@ -315,12 +315,22 @@ const CSS_VARS = [
   "--sidebar-border",
   "--sidebar-ring",
   "--accent-gradient",
+  "--chart-1",
+  "--chart-2",
+  "--chart-3",
+  "--chart-4",
+  "--chart-5",
 ];
 
 function clearAllOverrides(root: HTMLElement) {
   for (const v of CSS_VARS) {
     root.style.removeProperty(v);
   }
+}
+
+function extractHue(oklchStr: string): number {
+  const match = oklchStr.match(/oklch\(\s*[\d.]+\s+[\d.]+\s+([\d.]+)/);
+  return match ? parseFloat(match[1]) : 0;
 }
 
 function applyPalette(root: HTMLElement, p: PaletteVars) {
@@ -353,6 +363,14 @@ function applyPalette(root: HTMLElement, p: PaletteVars) {
     "--accent-gradient",
     `linear-gradient(135deg, ${p.primary}, ${p.ring})`
   );
+
+  // Derive chart colors from theme hue
+  const hue = extractHue(p.primary);
+  root.style.setProperty("--chart-1", `oklch(0.81 0.12 ${hue})`);
+  root.style.setProperty("--chart-2", `oklch(0.65 0.2 ${hue})`);
+  root.style.setProperty("--chart-3", `oklch(0.55 0.22 ${hue})`);
+  root.style.setProperty("--chart-4", `oklch(0.48 0.2 ${hue + 15})`);
+  root.style.setProperty("--chart-5", `oklch(0.42 0.17 ${hue - 15})`);
 }
 
 // ── Public helpers (used by OnboardingModal for live preview) ────────
@@ -378,6 +396,17 @@ export function clearThemeOverrides() {
   clearAllOverrides(document.documentElement);
 }
 
+// ── localStorage cache key ───────────────────────────────────────────
+const THEME_CACHE_KEY = "rindo-theme-id";
+
+export function getCachedThemeId(): string | null {
+  try {
+    return localStorage.getItem(THEME_CACHE_KEY);
+  } catch {
+    return null;
+  }
+}
+
 // ── Hook ─────────────────────────────────────────────────────────────
 
 export function useCustomTheme() {
@@ -387,6 +416,12 @@ export function useCustomTheme() {
   useEffect(() => {
     const root = document.documentElement;
     const themeId = profile?.accent_color_1;
+
+    // Cache for instant load next time
+    try {
+      if (themeId) localStorage.setItem(THEME_CACHE_KEY, themeId);
+      else localStorage.removeItem(THEME_CACHE_KEY);
+    } catch {}
 
     if (!themeId) {
       clearAllOverrides(root);

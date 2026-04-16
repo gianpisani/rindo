@@ -127,6 +127,30 @@ export function useUserProfile() {
     },
   });
 
+  const removeAvatar = useMutation({
+    mutationFn: async () => {
+      const { data: userData } = await supabase.auth.getUser();
+      if (!userData.user) throw new Error("No user found");
+
+      if (profile?.avatar_path) {
+        await supabase.storage.from("avatars").remove([profile.avatar_path]);
+      }
+
+      const { error } = await supabase
+        .from("user_profiles")
+        .update({ avatar_path: null })
+        .eq("user_id", userData.user.id);
+
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["user-profile"] });
+    },
+    onError: (error: Error) => {
+      toast.error(`Error al eliminar avatar: ${error.message}`);
+    },
+  });
+
   const avatarUrl = profile?.avatar_path
     ? supabase.storage
         .from("avatars")
@@ -139,6 +163,7 @@ export function useUserProfile() {
     isLoading,
     updateProfile,
     uploadAvatar,
+    removeAvatar,
     avatarUrl,
   };
 }

@@ -241,6 +241,7 @@ Based on Indigo, Blue, Cyan palette
     @apply bg-background text-foreground antialiased;
     font-family: 'Plus Jakarta Sans', sans-serif;
     font-weight: 400;
+    transition: background-color 0.35s ease, color 0.25s ease;
     overscroll-behavior: none;
     overflow-x: clip;
     max-width: 100%;
@@ -329,6 +330,13 @@ Based on Indigo, Blue, Cyan palette
     -webkit-background-clip: text;
     -webkit-text-fill-color: transparent;
     background-clip: text;
+  }
+
+  /* Smooth theme transitions for key surfaces */
+  .theme-transition,
+  [data-sidebar],
+  header {
+    transition: background-color 0.35s ease, color 0.25s ease, border-color 0.3s ease;
   }
 
   /* Standardized shadow system */

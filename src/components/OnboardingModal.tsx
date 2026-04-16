@@ -22,7 +22,9 @@ import {
   Palette,
   Check,
   Loader2,
+  Trash2,
 } from "lucide-react";
+import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 
 interface OnboardingModalProps {
@@ -118,7 +120,8 @@ export function OnboardingModal({
   onOpenChange,
   mode = "onboarding",
 }: OnboardingModalProps) {
-  const { profile, updateProfile, uploadAvatar, avatarUrl } = useUserProfile();
+  const { profile, updateProfile, uploadAvatar, removeAvatar, avatarUrl } =
+    useUserProfile();
   const { theme, setTheme, resolvedTheme } = useTheme();
 
   const [step, setStep] = useState(0);
@@ -185,6 +188,16 @@ export function OnboardingModal({
     [selectedTheme, setTheme]
   );
 
+  const handleRemoveAvatar = async () => {
+    setUploading(true);
+    try {
+      await removeAvatar.mutateAsync();
+      setLocalAvatarPreview(null);
+    } finally {
+      setUploading(false);
+    }
+  };
+
   const handleSave = async () => {
     setSaving(true);
     try {
@@ -195,6 +208,12 @@ export function OnboardingModal({
         accent_color_2: null,
         onboarding_completed: true,
       });
+      const name = nickname || fullName;
+      if (mode === "onboarding" && name) {
+        toast.success(`Listo, bienvenido ${name}!`);
+      } else if (mode === "edit") {
+        toast.success("Perfil actualizado");
+      }
       onOpenChange(false);
     } finally {
       setSaving(false);
@@ -302,16 +321,30 @@ export function OnboardingModal({
             )}
           </div>
 
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => fileInputRef.current?.click()}
-            disabled={uploading}
-            className="gap-2"
-          >
-            <Camera className="size-4" />
-            {currentAvatarSrc ? "Cambiar foto" : "Subir foto"}
-          </Button>
+          <div className="flex gap-2">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => fileInputRef.current?.click()}
+              disabled={uploading}
+              className="gap-2"
+            >
+              <Camera className="size-4" />
+              {currentAvatarSrc ? "Cambiar foto" : "Subir foto"}
+            </Button>
+            {currentAvatarSrc && (
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={handleRemoveAvatar}
+                disabled={uploading}
+                className="gap-1.5 text-muted-foreground hover:text-destructive"
+              >
+                <Trash2 className="size-3.5" />
+                Eliminar
+              </Button>
+            )}
+          </div>
 
           <input
             ref={fileInputRef}
@@ -361,7 +394,7 @@ export function OnboardingModal({
           {/* Theme presets */}
           <div className="space-y-2">
             <Label>Tema</Label>
-            <div className="grid grid-cols-3 gap-2">
+            <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
               {/* Default Rindo */}
               <ThemePreviewCard
                 palette={{

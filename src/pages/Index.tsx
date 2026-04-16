@@ -18,6 +18,7 @@ import { MonthlyStory } from "@/components/MonthlyStory";
 import { useTodayTraining } from "@/hooks/useTodayTraining";
 import { TrainingBanner } from "@/components/training/TrainingBanner";
 import { useUserProfile } from "@/hooks/useUserProfile";
+import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 
 const Index = () => {
   const { transactions } = useTransactions();
@@ -28,7 +29,7 @@ const Index = () => {
   const { isPrivacyMode } = usePrivacyMode();
   const [storyOpen, setStoryOpen] = useState(false);
   const { sessions: todaySessions, nextRace, isLoading: trainingLoading, markCompleted, markSkipped } = useTodayTraining();
-  const { profile: userProfile } = useUserProfile();
+  const { profile: userProfile, avatarUrl } = useUserProfile();
 
   const getGreeting = () => {
     const hour = new Date().getHours();
@@ -38,6 +39,7 @@ const Index = () => {
   };
 
   const displayName = userProfile?.nickname || userProfile?.full_name || null;
+  const greetingInitials = (displayName || "").slice(0, 2).toUpperCase();
 
   const handleQuickAdd = (type: "Ingreso" | "Gasto" | "Inversión" | "Reembolso") => {
     openQuickAdd(type);
@@ -140,11 +142,19 @@ const Index = () => {
     <Layout>
       <div className="space-y-6">
         {/* Greeting */}
-        {displayName && (
+        <div className="flex items-center gap-3">
+          {displayName && (
+            <Avatar className="size-10 ring-2 ring-primary/15">
+              {avatarUrl && <AvatarImage src={avatarUrl} className="object-cover" />}
+              <AvatarFallback className="bg-primary/10 text-primary text-sm font-semibold">
+                {greetingInitials}
+              </AvatarFallback>
+            </Avatar>
+          )}
           <h1 className="text-2xl font-bold tracking-tight">
-            <span className="accent-gradient-text">{getGreeting()}</span>, {displayName}
+            <span className="accent-gradient-text">{getGreeting()}</span>{displayName ? `, ${displayName}` : ""}
           </h1>
-        )}
+        </div>
 
         {/* Hero: Balance (izq) + Quick Actions 2x2 (der) */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
