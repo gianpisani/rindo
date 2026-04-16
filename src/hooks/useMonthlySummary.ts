@@ -23,6 +23,12 @@ export interface MonthlyKPI {
   prevInvestments: number;
   prevBalance: number;
   prevSavingsRate: number;
+  /** Projected income if salary hasn't arrived yet this month */
+  projectedIncome: number | null;
+  /** Savings rate using projected income (null if actual income is available) */
+  projectedSavingsRate: number | null;
+  /** The salary amount used for projection */
+  expectedSalary: number | null;
 }
 
 export interface CategoryBreakdown {
@@ -111,6 +117,29 @@ export function useMonthlySummary(
 
     const cur = calc(currentTransactions);
     const prev = calc(prevTransactions);
+
+    // Detect salary: look for "Sueldo" category in income transactions
+    const salaryName = "Sueldo";
+    const curSalary = currentTransactions
+      .filter((t) => t.type === "Ingreso" && t.category_name.toLowerCase() === salaryName.toLowerCase())
+      .reduce((s, t) => s + Number(t.amount), 0);
+    const prevSalary = prevTransactions
+      .filter((t) => t.type === "Ingreso" && t.category_name.toLowerCase() === salaryName.toLowerCase())
+      .reduce((s, t) => s + Number(t.amount), 0);
+
+    // Project income if salary hasn't arrived yet this month but existed last month
+    let projectedIncome: number | null = null;
+    let projectedSavingsRate: number | null = null;
+    let expectedSalary: number | null = null;
+
+    if (curSalary === 0 && prevSalary > 0) {
+      expectedSalary = prevSalary;
+      projectedIncome = cur.income + prevSalary;
+      projectedSavingsRate = projectedIncome > 0
+        ? ((projectedIncome - cur.expenses) / projectedIncome) * 100
+        : 0;
+    }
+
     return {
       ...cur,
       prevIncome: prev.income,
@@ -118,6 +147,9 @@ export function useMonthlySummary(
       prevInvestments: prev.investments,
       prevBalance: prev.balance,
       prevSavingsRate: prev.savingsRate,
+      projectedIncome,
+      projectedSavingsRate,
+      expectedSalary,
     };
   }, [currentTransactions, prevTransactions]);
 

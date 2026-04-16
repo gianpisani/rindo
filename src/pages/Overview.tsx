@@ -203,10 +203,12 @@ function KPICard({
   prevMonthLabel,
   isPrivacyMode,
 }: KPICardProps) {
-  const delta = prev !== 0 ? ((value - prev) / Math.abs(prev)) * 100 : 0;
+  const rawDelta = prev !== 0 ? ((value - prev) / Math.abs(prev)) * 100 : 0;
+  const delta = Math.max(-999, Math.min(999, rawDelta));
   const isPositive = delta > 0;
   const isGood = invertDelta ? !isPositive : isPositive;
-  const showDelta = prev !== 0;
+  // Hide delta if prev was 0, or if the change is absurdly large (>500%) — not useful info
+  const showDelta = prev !== 0 && Math.abs(rawDelta) <= 500;
 
   return (
     <Tooltip>
@@ -616,52 +618,73 @@ export default function Overview() {
                 </div>
 
                 {/* Savings Rate Banner */}
-                {kpis.income > 0 && (
-                  <div className="relative overflow-hidden rounded-xl border border-border/50 bg-gradient-to-r from-violet-500/[0.03] via-card to-card px-4 py-2.5">
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-2.5">
-                        <div className="p-1.5 rounded-md bg-violet-500/10">
-                          <Target className="h-3.5 w-3.5 text-violet-500" />
-                        </div>
-                        <div>
-                          <p className="text-[10px] text-muted-foreground uppercase tracking-wider font-medium">
-                            Tasa de Ahorro
-                          </p>
-                          <div
-                            className={cn(
-                              "text-lg font-bold font-mono tabular-nums",
-                              kpis.savingsRate >= 0
-                                ? "text-violet-500"
-                                : "text-rose-500",
-                              isPrivacyMode && "privacy-blur"
-                            )}
-                          >
-                            <NumberFlow
-                              value={kpis.savingsRate}
-                              format={{ maximumFractionDigits: 1 }}
-                            />
-                            %
+                {(kpis.income > 0 || kpis.projectedSavingsRate !== null) && (() => {
+                  const isProjected = kpis.projectedSavingsRate !== null && kpis.income === 0;
+                  const displayRate = isProjected ? kpis.projectedSavingsRate! : kpis.savingsRate;
+                  return (
+                    <div className="relative overflow-hidden rounded-xl border border-border/50 bg-gradient-to-r from-violet-500/[0.03] via-card to-card px-4 py-2.5">
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-2.5">
+                          <div className="p-1.5 rounded-md bg-violet-500/10">
+                            <Target className="h-3.5 w-3.5 text-violet-500" />
+                          </div>
+                          <div>
+                            <p className="text-[10px] text-muted-foreground uppercase tracking-wider font-medium">
+                              {isProjected ? "Tasa de Ahorro (proyectada)" : "Tasa de Ahorro"}
+                            </p>
+                            <div
+                              className={cn(
+                                "text-lg font-bold font-mono tabular-nums",
+                                displayRate >= 0
+                                  ? "text-violet-500"
+                                  : "text-rose-500",
+                                isPrivacyMode && "privacy-blur"
+                              )}
+                            >
+                              {isProjected && <span className="text-xs font-normal text-muted-foreground mr-0.5">~</span>}
+                              <NumberFlow
+                                value={displayRate}
+                                format={{ maximumFractionDigits: 1 }}
+                              />
+                              %
+                            </div>
                           </div>
                         </div>
-                      </div>
-                      {kpis.prevSavingsRate !== 0 && (
                         <div className="text-right">
-                          <p className="text-[10px] text-muted-foreground">
-                            Mes anterior
-                          </p>
-                          <p
-                            className={cn(
-                              "text-xs font-mono tabular-nums text-muted-foreground",
-                              isPrivacyMode && "privacy-blur"
-                            )}
-                          >
-                            {kpis.prevSavingsRate.toFixed(1)}%
-                          </p>
+                          {isProjected && kpis.expectedSalary ? (
+                            <>
+                              <p className="text-[10px] text-muted-foreground">
+                                Sueldo esperado
+                              </p>
+                              <p
+                                className={cn(
+                                  "text-xs font-mono tabular-nums text-muted-foreground",
+                                  isPrivacyMode && "privacy-blur"
+                                )}
+                              >
+                                {formatCompact(kpis.expectedSalary)}
+                              </p>
+                            </>
+                          ) : kpis.prevSavingsRate !== 0 ? (
+                            <>
+                              <p className="text-[10px] text-muted-foreground">
+                                Mes anterior
+                              </p>
+                              <p
+                                className={cn(
+                                  "text-xs font-mono tabular-nums text-muted-foreground",
+                                  isPrivacyMode && "privacy-blur"
+                                )}
+                              >
+                                {kpis.prevSavingsRate.toFixed(1)}%
+                              </p>
+                            </>
+                          ) : null}
                         </div>
-                      )}
+                      </div>
                     </div>
-                  </div>
-                )}
+                  );
+                })()}
 
                 {/* Donut + Comparison */}
                 <div className="grid grid-cols-1 lg:grid-cols-12 gap-4">
@@ -931,7 +954,7 @@ export default function Overview() {
                             )}>
                               {formatCompact(cat.effectiveAmount)}
                             </span>
-                            {cat.prevAmount > 0 ? (
+                            {cat.prevAmount > 0 && cat.trendPercentage <= 500 ? (
                               <span className={cn(
                                 "text-[10px] font-semibold tabular-nums shrink-0 w-10 text-right",
                                 cat.trend === "down" ? "text-emerald-500" : cat.trend === "up" ? "text-rose-500" : "text-muted-foreground"
