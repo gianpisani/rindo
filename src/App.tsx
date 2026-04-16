@@ -19,6 +19,9 @@ import TutoringClasses from "./pages/TutoringClasses";
 import NotFound from "./pages/NotFound";
 import Auth from "./components/Auth";
 import { LoadingScreen } from "./components/LoadingScreen";
+import { OnboardingModal } from "./components/OnboardingModal";
+import { useCustomTheme } from "./hooks/useCustomTheme";
+import { useUserProfile } from "./hooks/useUserProfile";
 
 const queryClient = new QueryClient();
 
@@ -64,24 +67,47 @@ const App = () => {
       <TooltipProvider>
         <Toaster />
         <Sonner />
-        <BrowserRouter>
-          <Routes>
-            <Route path="/" element={<Index />} />
-            <Route path="/overview" element={<Overview />} />
-            <Route path="/transactions" element={<Transactions />} />
-            <Route path="/categories" element={<Categories />} />
-            <Route path="/fintual" element={<Fintual />} />
-            <Route path="/budget" element={<CategoryInsights />} />
-            <Route path="/pending-debts" element={<PendingDebts />} />
-            <Route path="/credit-cards" element={<CreditCards />} />
-            <Route path="/tutoring" element={<TutoringClasses />} />
-            <Route path="/training" element={<Training />} />
-            <Route path="*" element={<NotFound />} />
-          </Routes>
-        </BrowserRouter>
+        <AuthenticatedApp />
       </TooltipProvider>
     </QueryClientProvider>
   );
 };
+
+function AuthenticatedApp() {
+  useCustomTheme();
+  const { profile, isLoading } = useUserProfile();
+  const [onboardingOpen, setOnboardingOpen] = useState(false);
+
+  useEffect(() => {
+    if (!isLoading && profile && !profile.onboarding_completed) {
+      setOnboardingOpen(true);
+    }
+  }, [isLoading, profile]);
+
+  return (
+    <>
+      <OnboardingModal
+        open={onboardingOpen}
+        onOpenChange={setOnboardingOpen}
+        mode="onboarding"
+      />
+      <BrowserRouter>
+        <Routes>
+          <Route path="/" element={<Index />} />
+          <Route path="/overview" element={<Overview />} />
+          <Route path="/transactions" element={<Transactions />} />
+          <Route path="/categories" element={<Categories />} />
+          <Route path="/fintual" element={<Fintual />} />
+          <Route path="/budget" element={<CategoryInsights />} />
+          <Route path="/pending-debts" element={<PendingDebts />} />
+          <Route path="/credit-cards" element={<CreditCards />} />
+          <Route path="/tutoring" element={<TutoringClasses />} />
+          <Route path="/training" element={<Training />} />
+          <Route path="*" element={<NotFound />} />
+        </Routes>
+      </BrowserRouter>
+    </>
+  );
+}
 
 export default App;

@@ -3,6 +3,7 @@ import { CommandBar } from "./CommandBar";
 import { QuickAddDrawer } from "./QuickAddDrawer";
 import { ReconciliationDrawer } from "./ReconciliationDrawer";
 import { WhisperInput } from "./WhisperInput";
+import { OnboardingModal } from "./OnboardingModal";
 import { SidebarProvider, SidebarTrigger, SidebarInset } from "@/components/ui/sidebar";
 import { AppSidebar } from "@/components/AppSidebar";
 import { Button } from "./ui/button";
@@ -43,6 +44,8 @@ export default function Layout({ children }: LayoutProps) {
     setReconciliationOpen,
     openQuickAdd,
     openReconciliation,
+    profileEditOpen,
+    setProfileEditOpen,
   } = useGlobalDrawers();
 
   const { isSupported: pushSupported, isSubscribed: pushSubscribed, isLoading: pushLoading, subscribe: pushSubscribe, unsubscribe: pushUnsubscribe } = usePushNotifications();
@@ -156,6 +159,13 @@ export default function Layout({ children }: LayoutProps) {
             if (open) playToggleOn(); else playToggleOff();
             setReconciliationOpen(open);
           }}
+        />
+
+        {/* Profile Edit Modal - Global */}
+        <OnboardingModal
+          open={profileEditOpen}
+          onOpenChange={setProfileEditOpen}
+          mode="edit"
         />
 
         {/* Whisper Mode - Ultra-minimal transaction input */}

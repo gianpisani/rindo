@@ -17,6 +17,7 @@ import { usePrivacyMode } from "@/hooks/usePrivacyMode";
 import { MonthlyStory } from "@/components/MonthlyStory";
 import { useTodayTraining } from "@/hooks/useTodayTraining";
 import { TrainingBanner } from "@/components/training/TrainingBanner";
+import { useUserProfile } from "@/hooks/useUserProfile";
 
 const Index = () => {
   const { transactions } = useTransactions();
@@ -27,6 +28,16 @@ const Index = () => {
   const { isPrivacyMode } = usePrivacyMode();
   const [storyOpen, setStoryOpen] = useState(false);
   const { sessions: todaySessions, nextRace, isLoading: trainingLoading, markCompleted, markSkipped } = useTodayTraining();
+  const { profile: userProfile } = useUserProfile();
+
+  const getGreeting = () => {
+    const hour = new Date().getHours();
+    if (hour < 12) return "Buenos días";
+    if (hour < 20) return "Buenas tardes";
+    return "Buenas noches";
+  };
+
+  const displayName = userProfile?.nickname || userProfile?.full_name || null;
 
   const handleQuickAdd = (type: "Ingreso" | "Gasto" | "Inversión" | "Reembolso") => {
     openQuickAdd(type);
@@ -128,6 +139,13 @@ const Index = () => {
   return (
     <Layout>
       <div className="space-y-6">
+        {/* Greeting */}
+        {displayName && (
+          <h1 className="text-2xl font-bold tracking-tight">
+            <span className="accent-gradient-text">{getGreeting()}</span>, {displayName}
+          </h1>
+        )}
+
         {/* Hero: Balance (izq) + Quick Actions 2x2 (der) */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           {/* Balance Card */}

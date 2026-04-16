@@ -20,7 +20,7 @@ import { useSoundPreferences } from "@/hooks/useSoundPreferences";
 import { useSoundFX } from "@/hooks/useSoundFX";
 import { usePushNotifications } from "@/hooks/usePushNotifications";
 import { useTheme } from "next-themes";
-import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import {
   Sidebar,
   SidebarContent,
@@ -46,6 +46,9 @@ import { Kbd } from "@/components/ui/kbd";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { getMainRoutes, getToolRoutes } from "@/lib/routes-config";
 import { RindoLogo } from "./RindoLogo";
+import { useUserProfile } from "@/hooks/useUserProfile";
+import { useGlobalDrawers } from "@/hooks/useGlobalDrawers";
+import { UserPen } from "lucide-react";
 
 export function AppSidebar() {
   const location = useLocation();
@@ -56,6 +59,9 @@ export function AppSidebar() {
   const { theme, setTheme } = useTheme();
   const isMobile = useIsMobile();
 
+  const { profile, avatarUrl } = useUserProfile();
+  const { openProfileEdit } = useGlobalDrawers();
+
   const [userEmail, setUserEmail] = useState<string | null>(null);
 
   useEffect(() => {
@@ -64,9 +70,10 @@ export function AppSidebar() {
     });
   }, []);
 
-  const userInitials = userEmail
-    ? userEmail.slice(0, 2).toUpperCase()
-    : "U";
+  const displayName = profile?.nickname || profile?.full_name || "Yo";
+  const userInitials = (profile?.nickname || profile?.full_name || userEmail || "U")
+    .slice(0, 2)
+    .toUpperCase();
 
   const mainNavItems = getMainRoutes();
   const secondaryNavItems = getToolRoutes();
@@ -234,12 +241,13 @@ export function AppSidebar() {
                   className="data-[state=open]:bg-sidebar-accent data-[state=open]:text-sidebar-accent-foreground sm:mb-0 mb-4"
                 >
                   <Avatar className="size-8 rounded-lg">
+                    {avatarUrl && <AvatarImage src={avatarUrl} className="rounded-lg object-cover" />}
                     <AvatarFallback className="rounded-lg bg-primary/10 text-primary text-xs font-semibold">
                       {userInitials}
                     </AvatarFallback>
                   </Avatar>
                   <div className="grid flex-1 text-left text-sm leading-tight">
-                    <span className="truncate font-semibold">Yo</span>
+                    <span className="truncate font-semibold">{displayName}</span>
                     <span className="truncate text-xs text-muted-foreground">
                       {userEmail ?? "Cargando..."}
                     </span>
@@ -256,12 +264,13 @@ export function AppSidebar() {
                 <DropdownMenuLabel className="p-0 font-normal">
                   <div className="flex items-center gap-3 px-3 py-3">
                     <Avatar className="size-9 rounded-lg">
+                      {avatarUrl && <AvatarImage src={avatarUrl} className="rounded-lg object-cover" />}
                       <AvatarFallback className="rounded-lg bg-primary/10 text-primary text-sm font-semibold">
                         {userInitials}
                       </AvatarFallback>
                     </Avatar>
                     <div className="grid flex-1 text-left text-sm leading-tight">
-                      <span className="truncate font-semibold">Yo</span>
+                      <span className="truncate font-semibold">{displayName}</span>
                       <span className="truncate text-xs text-muted-foreground">
                         {userEmail ?? ""}
                       </span>
@@ -286,6 +295,14 @@ export function AppSidebar() {
                     <DropdownMenuSeparator />
                   </>
                 )}
+                <DropdownMenuItem
+                  onClick={() => openProfileEdit()}
+                  className="gap-2 px-3 py-2 cursor-pointer"
+                >
+                  <UserPen className="size-4 text-muted-foreground" />
+                  Editar perfil
+                </DropdownMenuItem>
+                <DropdownMenuSeparator />
                 <DropdownMenuItem
                   onClick={handleLogout}
                   className="gap-2 px-3 py-2 text-destructive focus:text-destructive cursor-pointer"

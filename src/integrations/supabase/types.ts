@@ -14,6 +14,45 @@ export type Database = {
   }
   public: {
     Tables: {
+      user_profiles: {
+        Row: {
+          id: string
+          user_id: string
+          full_name: string | null
+          nickname: string | null
+          avatar_path: string | null
+          accent_color_1: string | null
+          accent_color_2: string | null
+          onboarding_completed: boolean
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          user_id: string
+          full_name?: string | null
+          nickname?: string | null
+          avatar_path?: string | null
+          accent_color_1?: string | null
+          accent_color_2?: string | null
+          onboarding_completed?: boolean
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          user_id?: string
+          full_name?: string | null
+          nickname?: string | null
+          avatar_path?: string | null
+          accent_color_1?: string | null
+          accent_color_2?: string | null
+          onboarding_completed?: boolean
+          created_at?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       credit_cards: {
         Row: {
           id: string

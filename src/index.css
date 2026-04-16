@@ -319,6 +319,18 @@ Based on Indigo, Blue, Cyan palette
 }
 
 @layer utilities {
+  /* Accent gradient utilities */
+  .accent-gradient-bg {
+    background: var(--accent-gradient, linear-gradient(135deg, var(--primary), var(--primary)));
+  }
+
+  .accent-gradient-text {
+    background: var(--accent-gradient, linear-gradient(135deg, var(--primary), var(--primary)));
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+  }
+
   /* Standardized shadow system */
   .shadow-sm {
     box-shadow: 0 1px 2px 0 rgb(0 0 0 / 0.05);
