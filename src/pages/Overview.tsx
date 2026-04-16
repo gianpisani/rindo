@@ -131,20 +131,6 @@ function DailyTooltip({
   );
 }
 
-function BarTooltip({ active, payload }: TooltipProps<number, string>) {
-  if (!active || !payload?.length) return null;
-  return (
-    <div className="bg-card border border-border/50 rounded-xl p-3 shadow-lg">
-      <p className="font-semibold text-sm text-foreground mb-1">
-        {payload[0].payload.name}
-      </p>
-      <p className="text-sm font-mono tabular-nums font-semibold" style={{ color: payload[0].payload.color }}>
-        {formatCurrency(payload[0].value as number)}
-      </p>
-    </div>
-  );
-}
-
 // ─── Category Emoji Helper ───────────────────────────────
 
 function getCatEmoji(categoryName: string, categories: { name: string; icon: string | null }[]) {
@@ -169,15 +155,15 @@ function SectionCard({
 }) {
   return (
     <GlassCard className={cn("flex flex-col", className)}>
-      <div className="flex items-center gap-2 px-6 pt-5 pb-2 border-b border-border/20">
-        {Icon && <Icon className="h-3.5 w-3.5 text-primary/60" />}
-        <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
+      <div className="flex items-center gap-2 px-4 pt-3 pb-1.5 border-b border-border/20">
+        {Icon && <Icon className="h-3 w-3 text-primary/60" />}
+        <h3 className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider">
           {title}
         </h3>
         {tooltip && (
           <Tooltip>
             <TooltipTrigger asChild>
-              <Info className="h-3.5 w-3.5 text-muted-foreground/40 hover:text-muted-foreground transition-colors cursor-help" />
+              <Info className="h-3 w-3 text-muted-foreground/40 hover:text-muted-foreground transition-colors cursor-help" />
             </TooltipTrigger>
             <TooltipContent side="top" className="max-w-xs">
               {tooltip}
@@ -185,7 +171,7 @@ function SectionCard({
           </Tooltip>
         )}
       </div>
-      <div className="flex-1 p-6 pt-4">{children}</div>
+      <div className="flex-1 p-4 pt-3">{children}</div>
     </GlassCard>
   );
 }
@@ -233,18 +219,18 @@ function KPICard({
                 gradient
               )}
             />
-            <div className="relative p-5">
-              <div className="flex items-center gap-2 mb-3">
-                <div className={cn("p-1.5 rounded-lg", iconBg)}>
-                  <Icon className={cn("h-3.5 w-3.5", iconColor)} />
+            <div className="relative p-4">
+              <div className="flex items-center gap-1.5 mb-2">
+                <div className={cn("p-1 rounded-md", iconBg)}>
+                  <Icon className={cn("h-3 w-3", iconColor)} />
                 </div>
-                <span className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
+                <span className="text-[10px] font-medium text-muted-foreground uppercase tracking-wider">
                   {label}
                 </span>
               </div>
               <div
                 className={cn(
-                  "text-2xl font-bold font-mono tabular-nums",
+                  "text-xl font-bold font-mono tabular-nums",
                   isPrivacyMode && "privacy-blur"
                 )}
               >
@@ -260,10 +246,10 @@ function KPICard({
                 />
               </div>
               {showDelta && (
-                <div className="mt-2 flex items-center gap-1.5">
+                <div className="mt-1.5 flex items-center gap-1">
                   <span
                     className={cn(
-                      "inline-flex items-center gap-0.5 text-xs font-semibold px-1.5 py-0.5 rounded-md",
+                      "inline-flex items-center gap-0.5 text-[10px] font-semibold px-1 py-0.5 rounded",
                       isGood
                         ? "text-emerald-600 bg-emerald-500/10"
                         : "text-rose-600 bg-rose-500/10"
@@ -271,7 +257,7 @@ function KPICard({
                   >
                     {isPositive ? "▲" : "▼"} {Math.abs(delta).toFixed(0)}%
                   </span>
-                  <span className="text-[10px] text-muted-foreground">
+                  <span className="text-[9px] text-muted-foreground">
                     vs anterior
                   </span>
                 </div>
@@ -504,15 +490,15 @@ export default function Overview() {
 
   return (
     <Layout>
-      <div className="space-y-6">
+      <div className="space-y-4">
         {/* ─── Header ────────────────────────────────── */}
-        <div className="flex flex-col gap-4">
+        <div className="flex flex-col gap-3">
           <div className="flex items-center justify-between">
             <div>
-              <h1 className="text-2xl font-bold tracking-tight mb-1">
+              <h1 className="text-xl font-bold tracking-tight mb-0.5">
                 Finanzas
               </h1>
-              <p className="text-sm text-muted-foreground">
+              <p className="text-xs text-muted-foreground">
                 {isLoading
                   ? "Cargando..."
                   : `${transactionCount} movimientos en ${format(selectedMonth, "MMMM", { locale: es })}`}
@@ -590,10 +576,10 @@ export default function Overview() {
           {/* ════════════════════════════════════════════ */}
           {/* TAB: MES                                     */}
           {/* ════════════════════════════════════════════ */}
-          <TabsContent value="mes" className="mt-6 space-y-6">
+          <TabsContent value="mes" className="mt-4 space-y-4">
             {isLoading ? (
               <div className="space-y-6">
-                <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+                <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
                   {Array.from({ length: 4 }).map((_, i) => (
                     <Skeleton key={i} className="h-32 rounded-xl" />
                   ))}
@@ -618,7 +604,7 @@ export default function Overview() {
             ) : (
               <>
                 {/* KPI Cards */}
-                <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+                <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
                   {kpiCards.map((card) => (
                     <KPICard
                       key={card.label}
@@ -631,19 +617,19 @@ export default function Overview() {
 
                 {/* Savings Rate Banner */}
                 {kpis.income > 0 && (
-                  <div className="relative overflow-hidden rounded-xl border border-border/50 bg-gradient-to-r from-violet-500/[0.03] via-card to-card p-4">
+                  <div className="relative overflow-hidden rounded-xl border border-border/50 bg-gradient-to-r from-violet-500/[0.03] via-card to-card px-4 py-2.5">
                     <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-3">
-                        <div className="p-2 rounded-lg bg-violet-500/10">
-                          <Target className="h-4 w-4 text-violet-500" />
+                      <div className="flex items-center gap-2.5">
+                        <div className="p-1.5 rounded-md bg-violet-500/10">
+                          <Target className="h-3.5 w-3.5 text-violet-500" />
                         </div>
                         <div>
-                          <p className="text-xs text-muted-foreground uppercase tracking-wider font-medium">
+                          <p className="text-[10px] text-muted-foreground uppercase tracking-wider font-medium">
                             Tasa de Ahorro
                           </p>
                           <div
                             className={cn(
-                              "text-xl font-bold font-mono tabular-nums",
+                              "text-lg font-bold font-mono tabular-nums",
                               kpis.savingsRate >= 0
                                 ? "text-violet-500"
                                 : "text-rose-500",
@@ -660,12 +646,12 @@ export default function Overview() {
                       </div>
                       {kpis.prevSavingsRate !== 0 && (
                         <div className="text-right">
-                          <p className="text-xs text-muted-foreground">
+                          <p className="text-[10px] text-muted-foreground">
                             Mes anterior
                           </p>
                           <p
                             className={cn(
-                              "text-sm font-mono tabular-nums text-muted-foreground",
+                              "text-xs font-mono tabular-nums text-muted-foreground",
                               isPrivacyMode && "privacy-blur"
                             )}
                           >
@@ -678,20 +664,20 @@ export default function Overview() {
                 )}
 
                 {/* Donut + Comparison */}
-                <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+                <div className="grid grid-cols-1 lg:grid-cols-12 gap-4">
                   <div className="lg:col-span-7">
                     <SectionCard
                       title="Gastos por Categoría"
                       tooltip="Distribución de gastos del mes por categoría"
                     >
                       {categoryBreakdown.length === 0 ? (
-                        <p className="text-sm text-muted-foreground text-center py-8">
+                        <p className="text-xs text-muted-foreground text-center py-6">
                           Sin gastos registrados
                         </p>
                       ) : (
                         <div className="flex flex-col items-center">
-                          <div className="relative w-full max-w-[280px]">
-                            <ResponsiveContainer width="100%" height={280}>
+                          <div className="relative w-full max-w-[220px]">
+                            <ResponsiveContainer width="100%" height={220}>
                               <PieChart>
                                 <Pie
                                   data={donutData}
@@ -699,13 +685,11 @@ export default function Overview() {
                                   nameKey="category"
                                   cx="50%"
                                   cy="50%"
-                                  innerRadius={75}
-                                  outerRadius={110}
+                                  innerRadius={60}
+                                  outerRadius={90}
                                   paddingAngle={3}
                                   strokeWidth={0}
-                                  className={cn(
-                                    isPrivacyMode && "privacy-blur"
-                                  )}
+                                  className={cn(isPrivacyMode && "privacy-blur")}
                                 >
                                   {donutData.map((entry, i) => (
                                     <Cell
@@ -720,12 +704,12 @@ export default function Overview() {
                             </ResponsiveContainer>
                             <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
                               <div className="text-center">
-                                <p className="text-[10px] text-muted-foreground uppercase tracking-wider">
+                                <p className="text-[9px] text-muted-foreground uppercase tracking-wider">
                                   Total
                                 </p>
                                 <p
                                   className={cn(
-                                    "text-lg font-bold font-mono tabular-nums",
+                                    "text-base font-bold font-mono tabular-nums",
                                     isPrivacyMode && "privacy-blur"
                                   )}
                                 >
@@ -734,17 +718,17 @@ export default function Overview() {
                               </div>
                             </div>
                           </div>
-                          <div className="flex flex-wrap justify-center gap-x-3 gap-y-1.5 mt-2">
+                          <div className="flex flex-wrap justify-center gap-x-3 gap-y-1 mt-1">
                             {donutData.map((cat) => (
                               <div
                                 key={cat.category}
                                 className="flex items-center gap-1"
                               >
-                                <span className="text-xs leading-none">{getCatEmoji(cat.category, categories)}</span>
-                                <span className="text-[11px] text-muted-foreground">
+                                <span className="text-[11px] leading-none">{getCatEmoji(cat.category, categories)}</span>
+                                <span className="text-[10px] text-muted-foreground">
                                   {cat.category}
                                 </span>
-                                <span className="text-[11px] font-semibold tabular-nums">
+                                <span className="text-[10px] font-semibold tabular-nums">
                                   {cat.percentage.toFixed(0)}%
                                 </span>
                               </div>
@@ -761,26 +745,26 @@ export default function Overview() {
                       icon={ArrowRight}
                       tooltip={`Comparación con ${prevMonthLabel}`}
                     >
-                      <div className="space-y-5">
+                      <div className="space-y-3">
                         {comparisonData.map((item) => {
                           const maxVal =
                             Math.max(item.current, item.previous) || 1;
                           return (
-                            <div key={item.label} className="space-y-1.5">
+                            <div key={item.label} className="space-y-1">
                               <div className="flex items-center justify-between">
-                                <span className="text-sm font-medium">
+                                <span className="text-xs font-medium">
                                   {item.label}
                                 </span>
                                 <span
                                   className={cn(
-                                    "text-sm font-mono font-semibold tabular-nums",
+                                    "text-xs font-mono font-semibold tabular-nums",
                                     isPrivacyMode && "privacy-blur"
                                   )}
                                 >
                                   {formatCompact(item.current)}
                                 </span>
                               </div>
-                              <div className="h-3 rounded-full bg-muted/60 overflow-hidden">
+                              <div className="h-2 rounded-full bg-muted/60 overflow-hidden">
                                 <div
                                   className="h-full rounded-full transition-all duration-700 ease-out"
                                   style={{
@@ -789,7 +773,7 @@ export default function Overview() {
                                   }}
                                 />
                               </div>
-                              <div className="h-1.5 rounded-full bg-muted/60 overflow-hidden">
+                              <div className="h-1 rounded-full bg-muted/60 overflow-hidden">
                                 <div
                                   className="h-full rounded-full transition-all duration-700 ease-out opacity-35"
                                   style={{
@@ -801,7 +785,7 @@ export default function Overview() {
                               <div className="flex items-center justify-between">
                                 <span
                                   className={cn(
-                                    "text-[10px] text-muted-foreground",
+                                    "text-[9px] text-muted-foreground",
                                     isPrivacyMode && "privacy-blur"
                                   )}
                                 >
@@ -815,7 +799,7 @@ export default function Overview() {
                                 {item.delta !== 0 && (
                                   <span
                                     className={cn(
-                                      "text-xs font-semibold",
+                                      "text-[10px] font-semibold",
                                       item.isGood
                                         ? "text-emerald-500"
                                         : "text-rose-500"
@@ -832,7 +816,7 @@ export default function Overview() {
                         {summaryInsight && (
                           <div
                             className={cn(
-                              "mt-4 px-3 py-2.5 rounded-lg text-xs font-medium border",
+                              "mt-2 px-2.5 py-2 rounded-lg text-[11px] font-medium border",
                               summaryInsight.isGood
                                 ? "bg-emerald-500/5 border-emerald-500/20 text-emerald-600"
                                 : "bg-rose-500/5 border-rose-500/20 text-rose-600"
@@ -919,7 +903,7 @@ export default function Overview() {
 
                 {/* Gastos + Presupuesto side by side */}
                 {categoryBreakdown.length > 0 && (
-                  <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                  <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
                     {/* Gastos por Categoría */}
                     <SectionCard title="Gastos por Categoría">
                       <div className="space-y-0.5">
@@ -1069,32 +1053,32 @@ export default function Overview() {
           {/* ════════════════════════════════════════════ */}
           {/* TAB: HISTÓRICO                               */}
           {/* ════════════════════════════════════════════ */}
-          <TabsContent value="historico" className="mt-6 space-y-6">
+          <TabsContent value="historico" className="mt-4 space-y-4">
             {isLoading ? (
-              <div className="space-y-6">
-                <Skeleton className="h-16 rounded-xl" />
-                <Skeleton className="h-80 rounded-xl" />
-                <Skeleton className="h-80 rounded-xl" />
+              <div className="space-y-4">
+                <Skeleton className="h-12 rounded-xl" />
+                <Skeleton className="h-64 rounded-xl" />
+                <Skeleton className="h-64 rounded-xl" />
               </div>
             ) : (
               <>
                 {/* Compact KPIs */}
-                <GlassCard className="p-4">
-                  <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+                <GlassCard className="px-4 py-2.5">
+                  <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
                     {kpiCards.map((card) => {
                       const Icon = card.icon;
                       return (
-                        <div key={card.label} className="flex items-center gap-3">
-                          <div className={cn("p-1.5 rounded-lg", card.iconBg)}>
-                            <Icon className={cn("h-3.5 w-3.5", card.iconColor)} />
+                        <div key={card.label} className="flex items-center gap-2">
+                          <div className={cn("p-1 rounded-md", card.iconBg)}>
+                            <Icon className={cn("h-3 w-3", card.iconColor)} />
                           </div>
                           <div>
-                            <p className="text-[10px] text-muted-foreground uppercase tracking-wider">
+                            <p className="text-[9px] text-muted-foreground uppercase tracking-wider">
                               {card.label}
                             </p>
                             <p
                               className={cn(
-                                "text-sm font-bold font-mono tabular-nums",
+                                "text-xs font-bold font-mono tabular-nums",
                                 isPrivacyMode && "privacy-blur"
                               )}
                             >
@@ -1120,43 +1104,47 @@ export default function Overview() {
                   <ProjectionCard />
                 </SectionCard>
 
-                {/* Expenses by Category Bar Chart */}
-                {expensesByCategory.length > 0 && (
-                  <SectionCard title="Gastos por Categoría" tooltip="Top 8 categorías con mayor gasto">
-                    <ResponsiveContainer width="100%" height={Math.max(300, expensesByCategory.length * 45)}>
-                      <BarChart data={expensesByCategory} layout="vertical" className={cn(isPrivacyMode && "privacy-blur")}>
-                        <XAxis
-                          type="number"
-                          stroke={CHART_COLORS.mutedAxis}
-                          tickFormatter={formatCompact}
-                          fontSize={12}
-                          tickLine={false}
-                          axisLine={false}
-                        />
-                        <YAxis
-                          dataKey="name"
-                          type="category"
-                          stroke={CHART_COLORS.mutedAxis}
-                          width={120}
-                          fontSize={12}
-                          tickLine={false}
-                          axisLine={false}
-                        />
-                        <ChartTooltip content={<BarTooltip />} />
-                        <Bar dataKey="value" radius={[0, 16, 16, 0]}>
-                          {expensesByCategory.map((entry, index) => (
-                            <Cell key={`cell-${index}`} fill={entry.color} />
-                          ))}
-                        </Bar>
-                      </BarChart>
-                    </ResponsiveContainer>
-                  </SectionCard>
-                )}
+                {/* Gastos + Tarjetas side by side */}
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                  {/* Expenses by Category - Compact list with emojis */}
+                  {expensesByCategory.length > 0 && (
+                    <SectionCard title="Gastos por Categoría" tooltip="Top categorías con mayor gasto acumulado">
+                      <div className="space-y-0.5">
+                        {expensesByCategory.map((cat, i) => {
+                          const maxVal = expensesByCategory[0]?.value || 1;
+                          return (
+                            <div
+                              key={cat.name}
+                              className="flex items-center gap-2 py-1.5 group hover:bg-accent/30 -mx-2 px-2 rounded-lg transition-colors"
+                            >
+                              <span className="text-sm leading-none shrink-0">{getCatEmoji(cat.name, categories)}</span>
+                              <span className="text-xs font-medium truncate flex-1 min-w-0">
+                                {cat.name}
+                              </span>
+                              <div className="w-16 h-1 rounded-full bg-muted/60 overflow-hidden shrink-0">
+                                <div
+                                  className="h-full rounded-full"
+                                  style={{ width: `${(cat.value / maxVal) * 100}%`, backgroundColor: cat.color }}
+                                />
+                              </div>
+                              <span className={cn(
+                                "text-xs font-mono font-semibold tabular-nums shrink-0 w-[72px] text-right",
+                                isPrivacyMode && "privacy-blur"
+                              )}>
+                                {formatCompact(cat.value)}
+                              </span>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </SectionCard>
+                  )}
 
-                {/* Credit Cards Detail */}
-                <SectionCard title="Tarjetas de Crédito" icon={CreditCard}>
-                  <CreditCardWidget />
-                </SectionCard>
+                  {/* Credit Cards Detail */}
+                  <SectionCard title="Tarjetas de Crédito" icon={CreditCard}>
+                    <CreditCardWidget />
+                  </SectionCard>
+                </div>
               </>
             )}
           </TabsContent>
