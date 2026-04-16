@@ -1,16 +1,18 @@
 import { useCallback, useState, ComponentType } from "react";
 import { Link, useLocation } from "react-router-dom";
-import { Plus, ChevronUp } from "lucide-react";
+import { Plus, ChevronUp, UserPen } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { useGlobalDrawers } from "@/hooks/useGlobalDrawers";
 import { useSoundFX } from "@/hooks/useSoundFX";
+import { useUserProfile } from "@/hooks/useUserProfile";
 import { getMainRoutes, getToolRoutes, type RouteConfig } from "@/lib/routes-config";
 import {
   Drawer,
   DrawerContent,
   DrawerTitle,
 } from "@/components/ui/drawer";
+import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import { LucideIcon } from "lucide-react";
 
 function RouteIcon({ route, className }: { route: RouteConfig; className?: string }) {
@@ -24,9 +26,13 @@ function RouteIcon({ route, className }: { route: RouteConfig; className?: strin
 export function MobileBottomBar() {
   const isMobile = useIsMobile();
   const location = useLocation();
-  const { openQuickAdd } = useGlobalDrawers();
+  const { openQuickAdd, openProfileEdit } = useGlobalDrawers();
   const { playToggleOn } = useSoundFX();
+  const { profile, avatarUrl } = useUserProfile();
   const [drawerOpen, setDrawerOpen] = useState(false);
+
+  const displayName = profile?.nickname || profile?.full_name || null;
+  const userInitials = (displayName || "U").slice(0, 2).toUpperCase();
 
   const mainRoutes = getMainRoutes();
   const toolRoutes = getToolRoutes();
@@ -165,6 +171,30 @@ export function MobileBottomBar() {
                 );
               })}
             </div>
+
+            {/* Divider */}
+            <div className="my-2 mx-6 h-px bg-border/40" />
+
+            {/* Profile */}
+            <button
+              onClick={() => {
+                setDrawerOpen(false);
+                openProfileEdit();
+              }}
+              className="flex items-center gap-3 w-full px-4 py-3 rounded-xl active:bg-muted/50 transition-colors"
+            >
+              <Avatar className="size-9 ring-1 ring-border/50">
+                {avatarUrl && <AvatarImage src={avatarUrl} className="object-cover" />}
+                <AvatarFallback className="bg-primary/10 text-primary text-xs font-semibold">
+                  {userInitials}
+                </AvatarFallback>
+              </Avatar>
+              <div className="flex-1 text-left">
+                <p className="text-sm font-medium">{displayName || "Mi perfil"}</p>
+                <p className="text-[11px] text-muted-foreground">Editar perfil y tema</p>
+              </div>
+              <UserPen className="size-4 text-muted-foreground" />
+            </button>
           </div>
 
           {/* Safe area spacer */}
