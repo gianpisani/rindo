@@ -332,6 +332,27 @@ Based on Indigo, Blue, Cyan palette
     background-clip: text;
   }
 
+  .animated-gradient-text {
+    background: linear-gradient(
+      90deg,
+      var(--primary) 0%,
+      var(--ring) 33%,
+      var(--primary) 66%,
+      var(--ring) 100%
+    );
+    background-size: 300% 100%;
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+    animation: gradient-flow 4s ease-in-out infinite;
+  }
+
+  @keyframes gradient-flow {
+    0% { background-position: 0% 50%; }
+    50% { background-position: 100% 50%; }
+    100% { background-position: 0% 50%; }
+  }
+
   /* Smooth theme transitions for key surfaces */
   .theme-transition,
   [data-sidebar],

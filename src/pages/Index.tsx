@@ -152,7 +152,7 @@ const Index = () => {
             </Avatar>
           )}
           <h1 className="text-2xl font-bold tracking-tight">
-            <span className="accent-gradient-text">{getGreeting()}</span>{displayName ? `, ${displayName}` : ""}
+            {getGreeting()}{displayName ? <>, <span className="animated-gradient-text">{displayName}</span></> : ""}
           </h1>
         </div>
 
