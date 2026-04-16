@@ -496,7 +496,8 @@ export function TransactionsTable({
   const [panelExpanded, setPanelExpanded] = useState(false);
   const [panelY, setPanelY] = useState<number | null>(null);
   const panelDragRef = React.useRef<{ startY: number; startTop: number } | null>(null);
-  const lastClickedRowRef = React.useRef<number | null>(null);
+  const rowDragRef = React.useRef<{ active: boolean; startIdx: number; currentIdx: number; initialSelection: RowSelectionState } | null>(null);
+  const tbodyRef = React.useRef<HTMLTableSectionElement>(null);
   const { isPrivacyMode } = usePrivacyMode();
   const { creditCards } = useCreditCards();
   const isMobile = useIsMobile();
@@ -907,29 +908,68 @@ export function TransactionsTable({
   const selectedIds = selectedRows.map(row => row.original.id);
   const hasSelection = selectedIds.length > 0;
 
-  // ── Row click handler (Excel-like selection) ──────────────────────────────
-  const handleRowClick = useCallback((e: React.MouseEvent, rowIndex: number, row: { id: string; toggleSelected: (v: boolean) => void; getIsSelected: () => boolean }) => {
-    // Ignore clicks on interactive elements
+  // ── Drag-to-select (Excel-like) ─────────────────────────────────────────
+  const getRowIndexFromEvent = useCallback((e: MouseEvent | React.MouseEvent): number | null => {
+    const tbody = tbodyRef.current;
+    if (!tbody) return null;
+    // Find the <tr> with data-row-index under the cursor
+    const el = document.elementFromPoint(e.clientX, e.clientY);
+    const tr = el?.closest("tr[data-row-index]");
+    if (!tr) return null;
+    const idx = parseInt(tr.getAttribute("data-row-index") || "", 10);
+    return isNaN(idx) ? null : idx;
+  }, []);
+
+  const handleRowMouseDown = useCallback((e: React.MouseEvent, rowIndex: number) => {
+    // Only left-click, ignore interactive elements
+    if (e.button !== 0) return;
     const target = e.target as HTMLElement;
-    if (target.closest('button, input, [role="menuitem"], [role="combobox"], [role="listbox"], [data-radix-collection-item]')) return;
+    if (target.closest('button, input, [role="menuitem"], [role="combobox"], [role="listbox"], [data-radix-collection-item], [type="checkbox"]')) return;
+
+    rowDragRef.current = {
+      active: false,
+      startIdx: rowIndex,
+      currentIdx: rowIndex,
+      initialSelection: { ...rowSelection },
+    };
 
     const allRows = table.getRowModel().rows;
 
-    if (e.shiftKey && lastClickedRowRef.current !== null) {
-      // Shift+click: select range
-      const start = Math.min(lastClickedRowRef.current, rowIndex);
-      const end = Math.max(lastClickedRowRef.current, rowIndex);
-      const newSelection = { ...rowSelection };
+    const handleMove = (ev: MouseEvent) => {
+      if (!rowDragRef.current) return;
+      const idx = getRowIndexFromEvent(ev);
+      if (idx === null || idx === rowDragRef.current.currentIdx) return;
+
+      // Mark as actively dragging (past threshold of 1 row)
+      if (!rowDragRef.current.active && idx !== rowDragRef.current.startIdx) {
+        rowDragRef.current.active = true;
+      }
+
+      rowDragRef.current.currentIdx = idx;
+      const start = Math.min(rowDragRef.current.startIdx, idx);
+      const end = Math.max(rowDragRef.current.startIdx, idx);
+
+      // Build selection: keep initial + add drag range
+      const newSelection: RowSelectionState = { ...rowDragRef.current.initialSelection };
       for (let i = start; i <= end; i++) {
-        newSelection[allRows[i].id] = true;
+        if (allRows[i]) newSelection[allRows[i].id] = true;
       }
       setRowSelection(newSelection);
-    } else {
-      // Normal click: toggle this row
-      row.toggleSelected(!row.getIsSelected());
-      lastClickedRowRef.current = rowIndex;
-    }
-  }, [table, rowSelection]);
+    };
+
+    const handleUp = () => {
+      rowDragRef.current = null;
+      window.removeEventListener("mousemove", handleMove);
+      window.removeEventListener("mouseup", handleUp);
+      // Re-enable text selection
+      document.body.style.userSelect = "";
+    };
+
+    // Disable text selection during drag
+    document.body.style.userSelect = "none";
+    window.addEventListener("mousemove", handleMove);
+    window.addEventListener("mouseup", handleUp);
+  }, [table, rowSelection, getRowIndexFromEvent]);
 
   const uniqueCategories = Array.from(new Set(transactions.map((t) => t.category_name)));
 
@@ -1588,7 +1628,7 @@ export function TransactionsTable({
                     </tr>
                   ))}
                 </thead>
-                <tbody className="divide-y divide-border/50 bg-card">
+                <tbody ref={tbodyRef} className="divide-y divide-border/50 bg-card">
                   {table.getRowModel().rows.length === 0 ? (
                     <tr>
                       <td colSpan={columns.length} className="px-4 py-12 text-center text-sm text-muted-foreground">
@@ -1620,13 +1660,14 @@ export function TransactionsTable({
                             return (
                               <tr
                                 key={row.id}
+                                data-row-index={flatOffset + i}
                                 data-state={row.getIsSelected() && "selected"}
                                 className={cn(
-                                  "hover:bg-muted/40 transition-colors cursor-pointer select-none",
+                                  "hover:bg-muted/40 transition-colors",
                                   row.getIsSelected() && "bg-primary/5 hover:bg-primary/10",
                                   isMissing && "border-l-2 border-l-amber-400/70"
                                 )}
-                                onClick={(e) => handleRowClick(e, flatOffset + i, row)}
+                                onMouseDown={(e) => handleRowMouseDown(e, flatOffset + i)}
                               >
                                 {row.getVisibleCells().map((cell) => (
                                   <td key={cell.id} className={cn("px-4 py-1.5 overflow-hidden", isMissing && "bg-amber-400/5")}>
@@ -1645,13 +1686,14 @@ export function TransactionsTable({
                       return (
                         <tr
                           key={row.id}
+                          data-row-index={i}
                           data-state={row.getIsSelected() && "selected"}
                           className={cn(
-                            "hover:bg-muted/40 transition-colors cursor-pointer select-none",
+                            "hover:bg-muted/40 transition-colors",
                             row.getIsSelected() && "bg-primary/5 hover:bg-primary/10",
                             isMissing && "border-l-2 border-l-amber-400/70"
                           )}
-                          onClick={(e) => handleRowClick(e, i, row)}
+                          onMouseDown={(e) => handleRowMouseDown(e, i)}
                         >
                           {row.getVisibleCells().map((cell) => (
                             <td key={cell.id} className={cn("px-4 py-1.5 overflow-hidden", isMissing && "bg-amber-400/5")}>
