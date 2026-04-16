@@ -490,6 +490,7 @@ export function TransactionsTable({
   const [internalTypeFilter, setInternalTypeFilter] = useState<string>("all");
   const [internalCategoryFilter, setInternalCategoryFilter] = useState<string>("all");
   const [rowSelection, setRowSelection] = useState<RowSelectionState>({});
+  const lastClickedRowRef = React.useRef<number | null>(null);
   const { isPrivacyMode } = usePrivacyMode();
   const { creditCards } = useCreditCards();
   const isMobile = useIsMobile();
@@ -900,7 +901,48 @@ export function TransactionsTable({
   const selectedIds = selectedRows.map(row => row.original.id);
   const hasSelection = selectedIds.length > 0;
 
+  // ── Row click handler (Excel-like selection) ──────────────────────────────
+  const handleRowClick = useCallback((e: React.MouseEvent, rowIndex: number, row: { id: string; toggleSelected: (v: boolean) => void; getIsSelected: () => boolean }) => {
+    // Ignore clicks on interactive elements
+    const target = e.target as HTMLElement;
+    if (target.closest('button, input, [role="menuitem"], [role="combobox"], [role="listbox"], [data-radix-collection-item]')) return;
+
+    const allRows = table.getRowModel().rows;
+
+    if (e.shiftKey && lastClickedRowRef.current !== null) {
+      // Shift+click: select range
+      const start = Math.min(lastClickedRowRef.current, rowIndex);
+      const end = Math.max(lastClickedRowRef.current, rowIndex);
+      const newSelection = { ...rowSelection };
+      for (let i = start; i <= end; i++) {
+        newSelection[allRows[i].id] = true;
+      }
+      setRowSelection(newSelection);
+    } else {
+      // Normal click: toggle this row
+      row.toggleSelected(!row.getIsSelected());
+      lastClickedRowRef.current = rowIndex;
+    }
+  }, [table, rowSelection]);
+
   const uniqueCategories = Array.from(new Set(transactions.map((t) => t.category_name)));
+
+  // ── Summary stats (selected rows or current page) ────────────────────────
+  const summaryStats = useMemo(() => {
+    const rows = hasSelection
+      ? selectedRows.map(r => r.original)
+      : table.getRowModel().rows.map(r => r.original);
+    if (rows.length === 0) return null;
+    const amounts = rows.map(r => r.amount);
+    const sum = amounts.reduce((a, b) => a + b, 0);
+    return {
+      count: rows.length,
+      sum,
+      avg: Math.round(sum / amounts.length),
+      min: Math.min(...amounts),
+      max: Math.max(...amounts),
+    };
+  }, [hasSelection, selectedRows, table.getRowModel().rows]);
 
   // ── Batch handlers ────────────────────────────────────────────────────────
 
@@ -1381,7 +1423,7 @@ export function TransactionsTable({
                       {headerGroup.headers.map((header) => (
                         <th
                           key={header.id}
-                          className="px-4 py-3 text-left text-xs font-semibold text-foreground uppercase tracking-wide"
+                          className="px-4 py-1.5 text-left text-xs font-semibold text-foreground uppercase tracking-wide"
                           style={{
                             width: header.column.columnDef.size,
                             minWidth: header.column.columnDef.minSize,
@@ -1402,52 +1444,62 @@ export function TransactionsTable({
                       </td>
                     </tr>
                   ) : groupedRows ? (
-                    groupedRows.map((group) => (
-                      <React.Fragment key={group.dayKey}>
-                        <tr>
-                          <td
-                            colSpan={columns.length}
-                            className="px-4 py-1 bg-muted/30 border-t border-border/30 first:border-t-0"
-                          >
-                            <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
-                              {formatGroupDate(group.dayKey)}
-                            </span>
-                          </td>
-                        </tr>
-                        {group.rows.map((row) => {
-                          const isMissing = row.original.category_name === "Sin categoría";
-                          return (
-                            <tr
-                              key={row.id}
-                              data-state={row.getIsSelected() && "selected"}
-                              className={cn(
-                                "hover:bg-muted/40 transition-colors",
-                                row.getIsSelected() && "bg-primary/5 hover:bg-primary/10",
-                                isMissing && "border-l-2 border-l-amber-400/70"
-                              )}
+                    groupedRows.map((group) => {
+                      // Calculate flat index offset for shift+click
+                      let flatOffset = 0;
+                      for (const g of groupedRows) {
+                        if (g.dayKey === group.dayKey) break;
+                        flatOffset += g.rows.length;
+                      }
+                      return (
+                        <React.Fragment key={group.dayKey}>
+                          <tr>
+                            <td
+                              colSpan={columns.length}
+                              className="px-4 py-1 bg-muted/30 border-t border-border/30 first:border-t-0"
                             >
-                              {row.getVisibleCells().map((cell) => (
-                                <td key={cell.id} className={cn("px-4 py-1.5 overflow-hidden", isMissing && "bg-amber-400/5")}>
-                                  {flexRender(cell.column.columnDef.cell, cell.getContext())}
-                                </td>
-                              ))}
-                            </tr>
-                          );
-                        })}
-                      </React.Fragment>
-                    ))
+                              <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
+                                {formatGroupDate(group.dayKey)}
+                              </span>
+                            </td>
+                          </tr>
+                          {group.rows.map((row, i) => {
+                            const isMissing = row.original.category_name === "Sin categoría";
+                            return (
+                              <tr
+                                key={row.id}
+                                data-state={row.getIsSelected() && "selected"}
+                                className={cn(
+                                  "hover:bg-muted/40 transition-colors cursor-pointer select-none",
+                                  row.getIsSelected() && "bg-primary/5 hover:bg-primary/10",
+                                  isMissing && "border-l-2 border-l-amber-400/70"
+                                )}
+                                onClick={(e) => handleRowClick(e, flatOffset + i, row)}
+                              >
+                                {row.getVisibleCells().map((cell) => (
+                                  <td key={cell.id} className={cn("px-4 py-1.5 overflow-hidden", isMissing && "bg-amber-400/5")}>
+                                    {flexRender(cell.column.columnDef.cell, cell.getContext())}
+                                  </td>
+                                ))}
+                              </tr>
+                            );
+                          })}
+                        </React.Fragment>
+                      );
+                    }))
                   ) : (
-                    table.getRowModel().rows.map((row) => {
+                    table.getRowModel().rows.map((row, i) => {
                       const isMissing = row.original.category_name === "Sin categoría";
                       return (
                         <tr
                           key={row.id}
                           data-state={row.getIsSelected() && "selected"}
                           className={cn(
-                            "hover:bg-muted/40 transition-colors",
+                            "hover:bg-muted/40 transition-colors cursor-pointer select-none",
                             row.getIsSelected() && "bg-primary/5 hover:bg-primary/10",
                             isMissing && "border-l-2 border-l-amber-400/70"
                           )}
+                          onClick={(e) => handleRowClick(e, i, row)}
                         >
                           {row.getVisibleCells().map((cell) => (
                             <td key={cell.id} className={cn("px-4 py-1.5 overflow-hidden", isMissing && "bg-amber-400/5")}>
@@ -1461,6 +1513,41 @@ export function TransactionsTable({
                 </tbody>
               </table>
             </div>
+
+            {/* ── Summary Footer (Excel-style) ─────────────────────────────── */}
+            {summaryStats && (
+              <div className="border-t border-border/50 bg-muted/20 px-4 py-1.5 flex items-center justify-end gap-6">
+                {hasSelection && (
+                  <span className="text-[11px] text-muted-foreground/60 mr-auto">
+                    {summaryStats.count} seleccionada{summaryStats.count > 1 ? "s" : ""}
+                  </span>
+                )}
+                <div className="flex items-center gap-1">
+                  <span className="text-[11px] text-muted-foreground/60 uppercase tracking-wide">Min</span>
+                  <span className={cn("text-xs font-mono font-semibold tabular-nums", isPrivacyMode && "privacy-blur")}>
+                    {formatCurrency(summaryStats.min)}
+                  </span>
+                </div>
+                <div className="flex items-center gap-1">
+                  <span className="text-[11px] text-muted-foreground/60 uppercase tracking-wide">Max</span>
+                  <span className={cn("text-xs font-mono font-semibold tabular-nums", isPrivacyMode && "privacy-blur")}>
+                    {formatCurrency(summaryStats.max)}
+                  </span>
+                </div>
+                <div className="flex items-center gap-1">
+                  <span className="text-[11px] text-muted-foreground/60 uppercase tracking-wide">Prom</span>
+                  <span className={cn("text-xs font-mono font-semibold tabular-nums", isPrivacyMode && "privacy-blur")}>
+                    {formatCurrency(summaryStats.avg)}
+                  </span>
+                </div>
+                <div className="flex items-center gap-1">
+                  <span className="text-[11px] text-muted-foreground/60 uppercase tracking-wide">Suma</span>
+                  <span className={cn("text-xs font-mono font-bold tabular-nums", isPrivacyMode && "privacy-blur")}>
+                    {formatCurrency(summaryStats.sum)}
+                  </span>
+                </div>
+              </div>
+            )}
           </div>
 
           {/* Desktop Pagination */}
