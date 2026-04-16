@@ -7,14 +7,13 @@ import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Session } from "@supabase/supabase-js";
 import Index from "./pages/Index";
-import Dashboard from "./pages/Dashboard";
+import Overview from "./pages/Overview";
 import Transactions from "./pages/Transactions";
 import Categories from "./pages/Categories";
 import Fintual from "./pages/Fintual";
 import CategoryInsights from "./pages/CategoryInsights";
 import PendingDebts from "./pages/PendingDebts";
 import CreditCards from "./pages/CreditCards";
-import MonthlySummary from "./pages/MonthlySummary";
 import Training from "./pages/Training";
 import TutoringClasses from "./pages/TutoringClasses";
 import NotFound from "./pages/NotFound";
@@ -68,13 +67,12 @@ const App = () => {
         <BrowserRouter>
           <Routes>
             <Route path="/" element={<Index />} />
-            <Route path="/dashboard" element={<Dashboard />} />
+            <Route path="/overview" element={<Overview />} />
             <Route path="/transactions" element={<Transactions />} />
             <Route path="/categories" element={<Categories />} />
             <Route path="/fintual" element={<Fintual />} />
             <Route path="/budget" element={<CategoryInsights />} />
             <Route path="/pending-debts" element={<PendingDebts />} />
-            <Route path="/monthly-summary" element={<MonthlySummary />} />
             <Route path="/credit-cards" element={<CreditCards />} />
             <Route path="/tutoring" element={<TutoringClasses />} />
             <Route path="/training" element={<Training />} />
