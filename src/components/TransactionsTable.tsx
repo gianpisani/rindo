@@ -1638,7 +1638,7 @@ export function TransactionsTable({
                           })}
                         </React.Fragment>
                       );
-                    }))
+                    })
                   ) : (
                     table.getRowModel().rows.map((row, i) => {
                       const isMissing = row.original.category_name === "Sin categoría";
