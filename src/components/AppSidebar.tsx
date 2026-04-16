@@ -240,10 +240,10 @@ export function AppSidebar() {
                   size="lg"
                   className="data-[state=open]:bg-sidebar-accent data-[state=open]:text-sidebar-accent-foreground sm:mb-0 mb-4"
                 >
-                  <div className="rounded-full p-[2px] accent-gradient-bg shrink-0">
-                    <Avatar className="size-8">
+                  <div className="rounded-full p-[1.5px] accent-gradient-bg shrink-0">
+                    <Avatar className="size-7">
                       {avatarUrl && <AvatarImage src={avatarUrl} className="object-cover" />}
-                      <AvatarFallback className="bg-sidebar text-primary text-xs font-semibold">
+                      <AvatarFallback className="bg-sidebar text-primary text-[10px] font-semibold">
                         {userInitials}
                       </AvatarFallback>
                     </Avatar>
