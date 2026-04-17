@@ -10,6 +10,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Plus, Pencil, Trash2, TrendingUp, TrendingDown, PiggyBank, ArrowLeftRight } from "lucide-react";
 import { useCategories } from "@/hooks/useCategories";
 import { cn } from "@/lib/utils";
+import { EmojiPicker } from "@/components/EmojiPicker";
 
 const typeConfig = {
   Ingreso: { icon: TrendingUp, label: "Ingresos", color: "text-success", bg: "bg-success/10" },
@@ -25,26 +26,6 @@ const defaultColors = [
   "#e11d48", "#be123c", "#f43f5e", "#3b82f6",
 ];
 
-const EMOJI_OPTIONS = [
-  // Food & drink
-  "🍔", "🍽️", "☕", "🍺", "🥤", "🛒", "🍕", "🥗",
-  // Transport
-  "🚗", "🚕", "🚇", "✈️", "⛽", "🅿️", "🚌", "🛵",
-  // Fashion & personal
-  "👕", "👗", "👟", "✂️", "💅", "🛍️",
-  // Health & fitness
-  "💊", "🏥", "🦷", "🏋️", "🧘",
-  // Entertainment
-  "🎬", "🎵", "📺", "🎮", "🎭",
-  // Education
-  "📚", "🎓", "📖",
-  // Travel & home
-  "🏨", "🗺️", "🏠", "🪑", "💡", "💧", "📶",
-  // Finance
-  "💰", "📈", "💵", "💳", "🛡️", "🔄", "↔️", "🏦",
-  // Other
-  "🎁", "🎂", "🐾", "🏷️", "❓", "💼", "⚡", "🌱",
-];
 
 interface Category {
   id: string;
@@ -199,23 +180,10 @@ export default function Categories() {
               {/* Emoji picker */}
               <div className="space-y-2">
                 <Label className="text-sm font-medium">Emoji</Label>
-                <div className="grid grid-cols-8 gap-1.5">
-                  {EMOJI_OPTIONS.map((emoji) => (
-                    <button
-                      key={emoji}
-                      type="button"
-                      className={cn(
-                        "h-9 w-9 rounded-xl text-lg flex items-center justify-center transition-all duration-100",
-                        formData.icon === emoji
-                          ? "bg-foreground/10 ring-2 ring-foreground/30 scale-110"
-                          : "hover:bg-muted"
-                      )}
-                      onClick={() => setFormData({ ...formData, icon: emoji })}
-                    >
-                      {emoji}
-                    </button>
-                  ))}
-                </div>
+                <EmojiPicker
+                  value={formData.icon ?? ""}
+                  onSelect={(emoji) => setFormData({ ...formData, icon: emoji })}
+                />
               </div>
 
               {/* Color picker */}
