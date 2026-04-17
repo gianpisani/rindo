@@ -36,9 +36,9 @@ function getVisibleDomains(email: string): string[] {
 }
 
 const formVariants = {
-  enter: { opacity: 0, y: 20, filter: "blur(4px)" },
+  enter: { opacity: 0, y: 20, filter: "blur(2px)" },
   center: { opacity: 1, y: 0, filter: "blur(0px)" },
-  exit: { opacity: 0, y: -20, filter: "blur(4px)" },
+  exit: { opacity: 0, y: -20, filter: "blur(2px)" },
 };
 
 export default function Auth() {
@@ -192,7 +192,7 @@ export default function Auth() {
                         key={domain}
                         type="button"
                         onClick={() => handleDomainChipClick(domain)}
-                        className="px-2.5 py-1 text-[11px] rounded-full bg-white/[0.04] border border-white/[0.08] text-white/30 active:bg-white/[0.08] active:text-white/50 transition-colors"
+                        className="px-2.5 py-1 text-[11px] rounded-full bg-white/[0.04] border border-white/[0.08] text-white/30 hover:bg-white/[0.08] hover:text-white/50 active:bg-white/[0.1] active:text-white/60 transition-colors"
                       >
                         @{domain}
                       </button>
@@ -226,7 +226,7 @@ export default function Auth() {
               <div className="pt-2">
                 <Button
                   type="submit"
-                  className="w-full h-12 font-medium rounded-xl transition-all duration-300 bg-white text-black hover:bg-white/90 hover:shadow-[0_0_40px_rgba(255,255,255,0.08)]"
+                  className="w-full h-12 font-medium rounded-xl transition-all duration-300 bg-white text-black hover:bg-white/90 hover:shadow-[0_0_40px_rgba(255,255,255,0.15)]"
                   disabled={loading}
                 >
                   {loading

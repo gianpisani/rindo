@@ -113,7 +113,7 @@ export function AppSidebar() {
                 </SidebarMenuButton>
               </DropdownMenuTrigger>
               <DropdownMenuContent
-                className="w-[--radix-dropdown-menu-trigger-width] min-w-56 rounded-lg"
+                className="w-[--radix-dropdown-menu-trigger-width] min-w-56 rounded-xl"
                 align="start"
                 side="bottom"
                 sideOffset={4}
@@ -183,7 +183,7 @@ export function AppSidebar() {
                           <span>{item.title}</span>
                         </div>
                         {!isMobile && item.shortcut && (
-                          <div className="flex gap-0.5 opacity-50 group-data-[state=collapsed]:hidden">
+                          <div className="flex gap-0.5 opacity-60 group-data-[state=collapsed]:hidden">
                             <Kbd className="text-[10px] px-1 py-0.5">{item.shortcut}</Kbd>
                           </div>
                         )}
@@ -216,7 +216,7 @@ export function AppSidebar() {
                           <span>{item.title}</span>
                         </div>
                         {!isMobile && item.shortcut && (
-                          <div className="flex gap-0.5 opacity-50 group-data-[state=collapsed]:hidden">
+                          <div className="flex gap-0.5 opacity-60 group-data-[state=collapsed]:hidden">
                             <Kbd className="text-[10px] px-1 py-0.5">{item.shortcut}</Kbd>
                           </div>
                         )}
@@ -240,7 +240,7 @@ export function AppSidebar() {
                   size="lg"
                   className="data-[state=open]:bg-sidebar-accent data-[state=open]:text-sidebar-accent-foreground sm:mb-0 mb-4"
                 >
-                  <div className="rounded-full p-[1.5px] accent-gradient-bg shrink-0">
+                  <div className="rounded-full p-[2px] accent-gradient-bg shrink-0">
                     <Avatar className="size-7">
                       {avatarUrl && <AvatarImage src={avatarUrl} className="object-cover" />}
                       <AvatarFallback className="bg-sidebar text-primary text-[10px] font-semibold">

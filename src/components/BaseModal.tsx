@@ -92,7 +92,7 @@ export function BaseModal({
         </div>
 
         {footer && (
-          <div className="flex-shrink-0 px-6 pb-6 pt-2">
+          <div className="flex-shrink-0 px-6 pb-6 pt-4 border-t border-border/50">
             {footer}
           </div>
         )}

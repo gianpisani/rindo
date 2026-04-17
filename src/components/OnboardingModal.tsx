@@ -254,6 +254,59 @@ export function OnboardingModal({
         mode === "onboarding" ? "Haz que Rindo se sienta tuyo" : undefined
       }
       maxWidth="md"
+      footer={
+        <div className="flex items-center justify-between">
+          <div>
+            {step > 0 ? (
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => goToStep(step - 1)}
+                className="gap-1"
+              >
+                <ChevronLeft className="size-4" />
+                Anterior
+              </Button>
+            ) : mode === "onboarding" ? (
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={handleSkipAll}
+                disabled={saving}
+                className="text-muted-foreground"
+              >
+                Omitir
+              </Button>
+            ) : null}
+          </div>
+          <div className="flex gap-2">
+            {isLastStep ? (
+              <Button
+                onClick={handleSave}
+                disabled={saving}
+                size="sm"
+                className="gap-1.5"
+              >
+                {saving ? (
+                  <Loader2 className="size-4 animate-spin" />
+                ) : (
+                  <Save className="size-4" />
+                )}
+                {mode === "edit" ? "Guardar" : "Empezar"}
+              </Button>
+            ) : (
+              <Button
+                onClick={() => goToStep(step + 1)}
+                size="sm"
+                className="gap-1"
+              >
+                Siguiente
+                <ChevronRight className="size-4" />
+              </Button>
+            )}
+          </div>
+        </div>
+      }
     >
       {/* Step indicators */}
       <div className="flex items-center justify-center gap-2 mb-6">
@@ -469,60 +522,6 @@ export function OnboardingModal({
       )}
 
       </div>{/* end slide wrapper */}
-
-      {/* Navigation footer */}
-      <div className="flex items-center justify-between mt-6 pt-4 border-t border-border/50">
-        <div>
-          {step > 0 ? (
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={() => goToStep(step - 1)}
-              className="gap-1"
-            >
-              <ChevronLeft className="size-4" />
-              Anterior
-            </Button>
-          ) : mode === "onboarding" ? (
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={handleSkipAll}
-              disabled={saving}
-              className="text-muted-foreground"
-            >
-              Omitir
-            </Button>
-          ) : null}
-        </div>
-
-        <div className="flex gap-2">
-          {isLastStep ? (
-            <Button
-              onClick={handleSave}
-              disabled={saving}
-              size="sm"
-              className="gap-1.5"
-            >
-              {saving ? (
-                <Loader2 className="size-4 animate-spin" />
-              ) : (
-                <Save className="size-4" />
-              )}
-              {mode === "edit" ? "Guardar" : "Empezar"}
-            </Button>
-          ) : (
-            <Button
-              onClick={() => goToStep(step + 1)}
-              size="sm"
-              className="gap-1"
-            >
-              Siguiente
-              <ChevronRight className="size-4" />
-            </Button>
-          )}
-        </div>
-      </div>
     </BaseModal>
   );
 }

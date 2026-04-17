@@ -347,10 +347,12 @@ const Index = () => {
           </div>
 
           {recentTransactions.length === 0 ? (
-            <div className="py-12 text-center text-muted-foreground px-5 pb-5">
-              <Receipt className="h-12 w-12 mx-auto mb-3 opacity-20" />
-              <p className="text-sm">No hay transacciones aún</p>
-              <p className="text-xs mt-1">Agrega tu primera transacción arriba</p>
+            <div className="py-14 text-center px-5 pb-5">
+              <div className="inline-flex items-center justify-center size-16 rounded-2xl bg-muted/50 mb-4">
+                <Receipt className="h-7 w-7 text-muted-foreground/40" />
+              </div>
+              <p className="text-sm font-medium text-muted-foreground">No hay transacciones aún</p>
+              <p className="text-xs text-muted-foreground/60 mt-1">Agrega tu primera transacción arriba</p>
             </div>
           ) : (
             <div className="overflow-y-auto max-h-[360px] pb-2">
