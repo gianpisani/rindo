@@ -18,12 +18,20 @@ import Training from "./pages/Training";
 import TutoringClasses from "./pages/TutoringClasses";
 import NotFound from "./pages/NotFound";
 import Auth from "./components/Auth";
-import { LoadingScreen } from "./components/LoadingScreen";
 import { OnboardingModal } from "./components/OnboardingModal";
 import { useCustomTheme } from "./hooks/useCustomTheme";
 import { useUserProfile } from "./hooks/useUserProfile";
 
 const queryClient = new QueryClient();
+
+/** Dismiss the HTML splash screen with a smooth fade-out */
+function dismissSplash() {
+  const splash = document.getElementById("splash");
+  if (!splash) return;
+  splash.style.opacity = "0";
+  splash.style.pointerEvents = "none";
+  splash.addEventListener("transitionend", () => splash.remove(), { once: true });
+}
 
 const App = () => {
   const [session, setSession] = useState<Session | null>(null);
@@ -35,6 +43,7 @@ const App = () => {
       setSession(session);
       await minDelay;
       setLoading(false);
+      dismissSplash();
     });
 
     const {
@@ -47,16 +56,19 @@ const App = () => {
   }, []);
 
   if (loading) {
-    return <LoadingScreen size="lg" showFunFact={true}/>;
+    // HTML splash is still visible — render nothing to avoid double loading screen
+    return null;
   }
 
   if (!session) {
     return (
       <QueryClientProvider client={queryClient}>
         <TooltipProvider>
-          <Toaster />
-          <Sonner />
-          <Auth />
+          <div className="app-enter">
+            <Toaster />
+            <Sonner />
+            <Auth />
+          </div>
         </TooltipProvider>
       </QueryClientProvider>
     );
@@ -65,9 +77,11 @@ const App = () => {
   return (
     <QueryClientProvider client={queryClient}>
       <TooltipProvider>
-        <Toaster />
-        <Sonner />
-        <AuthenticatedApp />
+        <div className="app-enter">
+          <Toaster />
+          <Sonner />
+          <AuthenticatedApp />
+        </div>
       </TooltipProvider>
     </QueryClientProvider>
   );

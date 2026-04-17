@@ -79,6 +79,15 @@
   animation: loading-breathe 2s ease-in-out infinite;
 }
 
+/* Smooth app entrance after loading screen */
+@keyframes app-enter {
+  0%   { opacity: 0; }
+  100% { opacity: 1; }
+}
+.app-enter {
+  animation: app-enter 0.4s ease-out both;
+}
+
 /* Privacy Mode Blur Effect */
 .privacy-blur {
   filter: blur(6px);

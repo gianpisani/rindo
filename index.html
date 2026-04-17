@@ -172,6 +172,28 @@
 </head>
 
   <body>
+    <!-- Instant splash: lives outside #root so React never touches it -->
+    <div id="splash" style="position:fixed;inset:0;z-index:9999;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:20px;background:var(--background,#09090b);transition:opacity 0.35s ease-out">
+      <div class="splash-logo-enter">
+        <svg viewBox="0 0 100 100" width="100" height="100" fill="currentColor" style="overflow:visible;color:var(--foreground,#fafafa)">
+          <rect x="12" y="40" width="68" height="14" rx="3" class="splash-saber-1"/>
+          <rect x="24" y="40" width="58" height="14" rx="3" class="splash-saber-2"/>
+        </svg>
+      </div>
+      <span style="font-size:12px;font-weight:700;letter-spacing:-0.025em;color:color-mix(in srgb,var(--foreground,#fafafa) 20%,transparent);opacity:0;animation:splash-text .4s ease-out .3s both">rindo<span style="color:var(--primary,#3b82f6)">.</span></span>
+    </div>
+    <style>
+      /* Critical inline styles — scoped to #splash, removed when splash is dismissed */
+      @keyframes splash-saber1-enter{0%{transform:translate(-45px,-25px) rotate(65deg) scale(.5);opacity:0}55%{transform:translate(3px,2px) rotate(-36deg) scale(1.03);opacity:1}100%{transform:rotate(-32deg) scale(1);opacity:1}}
+      @keyframes splash-saber2-enter{0%{transform:translate(45px,-25px) rotate(-65deg) scale(.5);opacity:0}55%{transform:translate(-3px,2px) rotate(42deg) scale(1.03);opacity:.6}100%{transform:rotate(38deg) scale(1);opacity:.55}}
+      @keyframes splash-saber1-breathe{0%,100%{opacity:1}50%{opacity:.4}}
+      @keyframes splash-saber2-breathe{0%,100%{opacity:.55}50%{opacity:.2}}
+      @keyframes splash-logo-enter{0%{opacity:0;transform:scale(.8)}100%{opacity:1;transform:scale(1)}}
+      @keyframes splash-text{0%{opacity:0}100%{opacity:1}}
+      .splash-saber-1{transform-origin:50px 50px;animation:splash-saber1-enter 2.2s cubic-bezier(.25,.1,.1,1) both,splash-saber1-breathe 4s ease-in-out 2.4s infinite both}
+      .splash-saber-2{transform-origin:50px 50px;animation:splash-saber2-enter 2.2s cubic-bezier(.25,.1,.1,1) .15s both,splash-saber2-breathe 4s ease-in-out 2.55s infinite both}
+      .splash-logo-enter{animation:splash-logo-enter .5s ease-out both}
+    </style>
     <div id="root"></div>
     <script type="module" src="/src/main.tsx"></script>
   </body>
