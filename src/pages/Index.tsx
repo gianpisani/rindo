@@ -294,21 +294,21 @@ const Index = () => {
           <div className="grid grid-cols-2 grid-rows-2 gap-3 min-h-[180px] md:min-h-0">
             <Button
               onClick={() => handleQuickAdd("Ingreso")}
-              className="h-full min-h-[72px] flex-col gap-1.5 border border-success/20 text-success hover:bg-primary/[0.06] hover:border-primary/20 hover:shadow-sm bg-transparent transition-all"
+              className="h-full min-h-[72px] flex-col gap-1.5 border border-success/20 text-success hover:bg-success/10 hover:border-success/30 hover:shadow-sm bg-transparent transition-all"
             >
               <TrendingUp className="h-5 w-5" />
               <span className="text-xs font-semibold">Ingreso</span>
             </Button>
             <Button
               onClick={() => handleQuickAdd("Gasto")}
-              className="h-full min-h-[72px] flex-col gap-1.5 border border-destructive/20 text-destructive hover:bg-primary/[0.06] hover:border-primary/20 hover:shadow-sm bg-transparent transition-all"
+              className="h-full min-h-[72px] flex-col gap-1.5 border border-destructive/20 text-destructive hover:bg-destructive/10 hover:border-destructive/30 hover:shadow-sm bg-transparent transition-all"
             >
               <TrendingDown className="h-5 w-5" />
               <span className="text-xs font-semibold">Gasto</span>
             </Button>
             <Button
               onClick={() => handleQuickAdd("Inversión")}
-              className="h-full min-h-[72px] flex-col gap-1.5 border border-blue/20 text-blue hover:bg-primary/[0.06] hover:border-primary/20 hover:shadow-sm bg-transparent transition-all"
+              className="h-full min-h-[72px] flex-col gap-1.5 border border-blue/20 text-blue hover:bg-blue/10 hover:border-blue/30 hover:shadow-sm bg-transparent transition-all"
             >
               <PiggyBank className="h-5 w-5" />
               <span className="text-xs font-semibold">Inversión</span>
@@ -316,7 +316,7 @@ const Index = () => {
             <Button
               onClick={() => openReconciliation()}
               variant="outline"
-              className="h-full min-h-[72px] flex-col gap-1.5 hover:bg-primary/[0.06] hover:border-primary/20 hover:shadow-sm transition-all"
+              className="h-full min-h-[72px] flex-col gap-1.5 hover:bg-muted hover:border-border hover:shadow-sm transition-all"
             >
               <Variable className="h-5 w-5" />
               <span className="text-xs font-semibold">Conciliar</span>
