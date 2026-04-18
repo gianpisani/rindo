@@ -127,9 +127,9 @@ export function MobileBottomBar() {
         <DrawerContent className="mobile-drawer-content">
           <DrawerTitle className="sr-only">Menú</DrawerTitle>
 
-          <div className="px-2 pt-4 pb-2">
+          <div className="px-4 pt-4 pb-2">
             {/* Quick Add - Centered hero */}
-            <div className="flex flex-col items-center py-4">
+            <div className="flex flex-col items-center py-3">
               <button
                 onClick={handleQuickAdd}
                 className="mobile-drawer-quickadd-btn group"
@@ -188,7 +188,7 @@ export function MobileBottomBar() {
             <div className="my-2 mx-6 h-px bg-border/40" />
 
             {/* Profile + Customize */}
-            <div className="flex items-center gap-2 px-3">
+            <div className="flex items-center gap-2 px-1">
               {/* Profile */}
               <button
                 onClick={() => {
