@@ -67,6 +67,8 @@ import type { LucideIcon } from "lucide-react";
 import { Link } from "react-router-dom";
 import { getCategoryIcon } from "@/components/TransactionsTable";
 import { Checkbox } from "@/components/ui/checkbox";
+import { CategoryDetailModal } from "@/components/CategoryDetailModal";
+import type { CategorySpending } from "@/hooks/useCategoryInsights";
 
 // ─── Formatters ──────────────────────────────────────────
 
@@ -312,6 +314,7 @@ export default function Overview() {
   const { isPrivacyMode } = usePrivacyMode();
 
   const [excludedCategories, setExcludedCategories] = useState<Set<string>>(new Set());
+  const [selectedCategory, setSelectedCategory] = useState<CategorySpending | null>(null);
 
   useEffect(() => {
     setExcludedCategories(new Set());
@@ -338,6 +341,29 @@ export default function Overview() {
 
   const isCurrentMonth =
     format(selectedMonth, "yyyy-MM") === format(new Date(), "yyyy-MM");
+
+  const openCategoryDetail = (cat: (typeof categoryBreakdown)[number]) => {
+    const start = startOfMonth(selectedMonth);
+    const end = endOfMonth(selectedMonth);
+    const catTxns = transactions.filter((t) => {
+      const d = new Date(t.date);
+      return t.category_name === cat.category && d >= start && d <= end;
+    });
+    setSelectedCategory({
+      category: cat.category,
+      amount: cat.amount,
+      effectiveAmount: cat.effectiveAmount,
+      reimbursedAmount: cat.reimbursedAmount,
+      count: cat.count,
+      percentage: cat.percentage,
+      limit: cat.limit,
+      isOverLimit: cat.isOverLimit,
+      isNearLimit: cat.isNearLimit,
+      trend: cat.trend,
+      trendPercentage: cat.trendPercentage,
+      transactions: catTxns,
+    });
+  };
 
   const prevMonthLabel = format(subMonths(selectedMonth, 1), "MMMM yyyy", {
     locale: es,
@@ -1016,6 +1042,12 @@ export default function Overview() {
                               ) : (
                                 <span className="text-[10px] text-muted-foreground/50 shrink-0 w-10 text-right">—</span>
                               )}
+                              <button
+                                onClick={(e) => { e.stopPropagation(); openCategoryDetail(cat); }}
+                                className="shrink-0 opacity-0 group-hover:opacity-100 transition-opacity text-muted-foreground hover:text-foreground"
+                              >
+                                <ArrowRight className="w-3.5 h-3.5" />
+                              </button>
                             </div>
                           );
                         })}
@@ -1236,6 +1268,13 @@ export default function Overview() {
         categoryBreakdown={categoryBreakdown}
         dailyStats={dailyStats}
         transactionCount={transactionCount}
+      />
+
+      <CategoryDetailModal
+        open={!!selectedCategory}
+        onOpenChange={(open) => { if (!open) setSelectedCategory(null); }}
+        category={selectedCategory}
+        monthName={format(selectedMonth, "MMMM yyyy", { locale: es })}
       />
     </Layout>
   );
