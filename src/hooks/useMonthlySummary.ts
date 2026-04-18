@@ -69,7 +69,8 @@ export function useMonthlySummary(
   categories: Category[],
   limits: CategoryLimit[],
   selectedMonth: Date,
-  totalBudget?: number
+  totalBudget?: number,
+  excludedCategories?: Set<string>
 ) {
   const monthStart = startOfMonth(selectedMonth);
   const monthEnd = endOfMonth(selectedMonth);
@@ -101,7 +102,7 @@ export function useMonthlySummary(
         .filter((t) => t.type === "Ingreso")
         .reduce((s, t) => s + Number(t.amount), 0);
       const expenses = txns
-        .filter((t) => t.type === "Gasto")
+        .filter((t) => t.type === "Gasto" && !excludedCategories?.has(t.category_name))
         .reduce((s, t) => s + Number(t.amount), 0);
       const investments = txns
         .filter((t) => t.type === "Inversión")
@@ -151,7 +152,7 @@ export function useMonthlySummary(
       projectedSavingsRate,
       expectedSalary,
     };
-  }, [currentTransactions, prevTransactions]);
+  }, [currentTransactions, prevTransactions, excludedCategories]);
 
   // Build reimbursement map: category -> total reimbursed amount
   const reimbursementMap = useMemo(() => {
@@ -242,7 +243,12 @@ export function useMonthlySummary(
       const amount = currentTransactions
         .filter((t) => {
           const d = new Date(t.date);
-          return t.type === "Gasto" && d >= dayStart && d <= dayEnd;
+          return (
+            t.type === "Gasto" &&
+            d >= dayStart &&
+            d <= dayEnd &&
+            !excludedCategories?.has(t.category_name)
+          );
         })
         .reduce((s, t) => s + Number(t.amount), 0);
 
@@ -255,7 +261,7 @@ export function useMonthlySummary(
         isWeekend: dow === 0 || dow === 6,
       };
     });
-  }, [currentTransactions, monthStart, monthEnd, selectedMonth]);
+  }, [currentTransactions, monthStart, monthEnd, selectedMonth, excludedCategories]);
 
   const dailyStats = useMemo(() => {
     const withSpending = dailySpending.filter((d) => d.amount > 0);

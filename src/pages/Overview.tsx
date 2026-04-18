@@ -1,4 +1,4 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import Layout from "@/components/Layout";
 import { GlassCard } from "@/components/GlassCard";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -66,6 +66,9 @@ import type { TooltipProps } from "recharts";
 import type { LucideIcon } from "lucide-react";
 import { Link } from "react-router-dom";
 import { getCategoryIcon } from "@/components/TransactionsTable";
+import { Checkbox } from "@/components/ui/checkbox";
+import { CategoryDetailModal } from "@/components/CategoryDetailModal";
+import type { CategorySpending } from "@/hooks/useCategoryInsights";
 
 // ─── Formatters ──────────────────────────────────────────
 
@@ -310,8 +313,24 @@ export default function Overview() {
   const { creditCards } = useCreditCards();
   const { isPrivacyMode } = usePrivacyMode();
 
+  const [excludedCategories, setExcludedCategories] = useState<Set<string>>(new Set());
+  const [selectedCategory, setSelectedCategory] = useState<CategorySpending | null>(null);
+
+  useEffect(() => {
+    setExcludedCategories(new Set());
+  }, [format(selectedMonth, "yyyy-MM")]);
+
+  const toggleCategory = (cat: string) => {
+    setExcludedCategories((prev) => {
+      const next = new Set(prev);
+      if (next.has(cat)) next.delete(cat);
+      else next.add(cat);
+      return next;
+    });
+  };
+
   const { kpis, categoryBreakdown, dailySpending, dailyStats, cardSpending, transactionCount, budgetSummary } =
-    useMonthlySummary(transactions, categories, limits, selectedMonth, budget?.total_budget);
+    useMonthlySummary(transactions, categories, limits, selectedMonth, budget?.total_budget, excludedCategories);
 
   // Month navigation
   const changeMonth = (delta: number) => {
@@ -322,6 +341,29 @@ export default function Overview() {
 
   const isCurrentMonth =
     format(selectedMonth, "yyyy-MM") === format(new Date(), "yyyy-MM");
+
+  const openCategoryDetail = (cat: (typeof categoryBreakdown)[number]) => {
+    const start = startOfMonth(selectedMonth);
+    const end = endOfMonth(selectedMonth);
+    const catTxns = transactions.filter((t) => {
+      const d = new Date(t.date);
+      return t.category_name === cat.category && d >= start && d <= end;
+    });
+    setSelectedCategory({
+      category: cat.category,
+      amount: cat.amount,
+      effectiveAmount: cat.effectiveAmount,
+      reimbursedAmount: cat.reimbursedAmount,
+      count: cat.count,
+      percentage: cat.percentage,
+      limit: cat.limit,
+      isOverLimit: cat.isOverLimit,
+      isNearLimit: cat.isNearLimit,
+      trend: cat.trend,
+      trendPercentage: cat.trendPercentage,
+      transactions: catTxns,
+    });
+  };
 
   const prevMonthLabel = format(subMonths(selectedMonth, 1), "MMMM yyyy", {
     locale: es,
@@ -376,13 +418,25 @@ export default function Overview() {
     },
   ];
 
-  // Donut chart data (top 5 + others)
+  // Filtered breakdown (excludes toggled-off categories, recalculates percentages)
+  const filteredCategoryBreakdown = useMemo(() => {
+    const included = categoryBreakdown.filter((c) => !excludedCategories.has(c.category));
+    const total = included.reduce((s, c) => s + c.amount, 0);
+    return included.map((c) => ({
+      ...c,
+      percentage: total > 0 ? (c.amount / total) * 100 : 0,
+    }));
+  }, [categoryBreakdown, excludedCategories]);
+
+  const filteredTotal = filteredCategoryBreakdown.reduce((s, c) => s + c.amount, 0);
+
+  // Donut chart data (top 5 + others), using filtered breakdown
   const donutData = useMemo(() => {
-    if (categoryBreakdown.length <= 6) return categoryBreakdown;
-    const top5 = categoryBreakdown.slice(0, 5);
-    const others = categoryBreakdown.slice(5);
+    if (filteredCategoryBreakdown.length <= 6) return filteredCategoryBreakdown;
+    const top5 = filteredCategoryBreakdown.slice(0, 5);
+    const others = filteredCategoryBreakdown.slice(5);
     const othersTotal = others.reduce((s, c) => s + c.amount, 0);
-    const totalExp = categoryBreakdown.reduce((s, c) => s + c.amount, 0);
+    const totalExp = filteredCategoryBreakdown.reduce((s, c) => s + c.amount, 0);
     return [
       ...top5,
       {
@@ -398,7 +452,7 @@ export default function Overview() {
         isNearLimit: false,
       },
     ];
-  }, [categoryBreakdown]);
+  }, [filteredCategoryBreakdown]);
 
   // Comparison data
   const comparisonData = [
@@ -736,7 +790,7 @@ export default function Overview() {
                                     isPrivacyMode && "privacy-blur"
                                   )}
                                 >
-                                  {formatCompact(kpis.expenses)}
+                                  {formatCompact(filteredTotal)}
                                 </p>
                               </div>
                             </div>
@@ -930,42 +984,73 @@ export default function Overview() {
                     {/* Gastos por Categoría */}
                     <SectionCard title="Gastos por Categoría">
                       <div className="space-y-0.5">
-                        {categoryBreakdown.map((cat) => (
-                          <div
-                            key={cat.category}
-                            className="flex items-center gap-2 py-1.5 group hover:bg-accent/30 -mx-2 px-2 rounded-lg transition-colors"
-                          >
-                            <span className="text-sm leading-none shrink-0">{getCatEmoji(cat.category, categories)}</span>
-                            <span className="text-xs font-medium truncate flex-1 min-w-0">
-                              {cat.category}
-                            </span>
-                            <span className="text-[10px] text-muted-foreground tabular-nums shrink-0">
-                              {cat.count} mov
-                            </span>
-                            <div className="w-12 h-1 rounded-full bg-muted/60 overflow-hidden shrink-0 hidden sm:block">
-                              <div
-                                className="h-full rounded-full"
-                                style={{ width: `${cat.percentage}%`, backgroundColor: cat.color }}
+                        {/* Select all header */}
+                        <div className="flex items-center gap-2 pb-1 mb-0.5 border-b border-border/40">
+                          <Checkbox
+                            checked={excludedCategories.size === 0}
+                            onCheckedChange={(checked) => {
+                              if (checked) setExcludedCategories(new Set());
+                              else setExcludedCategories(new Set(categoryBreakdown.map((c) => c.category)));
+                            }}
+                            className="shrink-0"
+                          />
+                          <span className="text-[10px] text-muted-foreground">Todas las categorías</span>
+                        </div>
+                        {categoryBreakdown.map((cat) => {
+                          const isExcluded = excludedCategories.has(cat.category);
+                          return (
+                            <div
+                              key={cat.category}
+                              className={cn(
+                                "flex items-center gap-2 py-1.5 group hover:bg-accent/30 -mx-2 px-2 rounded-lg transition-colors cursor-pointer",
+                                isExcluded && "opacity-40"
+                              )}
+                              onClick={() => toggleCategory(cat.category)}
+                            >
+                              <Checkbox
+                                checked={!isExcluded}
+                                onCheckedChange={() => toggleCategory(cat.category)}
+                                className="shrink-0"
+                                onClick={(e) => e.stopPropagation()}
                               />
-                            </div>
-                            <span className={cn(
-                              "text-xs font-mono font-semibold tabular-nums shrink-0 w-[72px] text-right",
-                              isPrivacyMode && "privacy-blur"
-                            )}>
-                              {formatCompact(cat.effectiveAmount)}
-                            </span>
-                            {cat.prevAmount > 0 && cat.trendPercentage <= 500 ? (
-                              <span className={cn(
-                                "text-[10px] font-semibold tabular-nums shrink-0 w-10 text-right",
-                                cat.trend === "down" ? "text-emerald-500" : cat.trend === "up" ? "text-rose-500" : "text-muted-foreground"
-                              )}>
-                                {cat.trend === "up" ? "▲" : cat.trend === "down" ? "▼" : "─"}{cat.trendPercentage.toFixed(0)}%
+                              <span className="text-sm leading-none shrink-0">{getCatEmoji(cat.category, categories)}</span>
+                              <span className="text-xs font-medium truncate flex-1 min-w-0">
+                                {cat.category}
                               </span>
-                            ) : (
-                              <span className="text-[10px] text-muted-foreground/50 shrink-0 w-10 text-right">—</span>
-                            )}
-                          </div>
-                        ))}
+                              <span className="text-[10px] text-muted-foreground tabular-nums shrink-0">
+                                {cat.count} mov
+                              </span>
+                              <div className="w-12 h-1 rounded-full bg-muted/60 overflow-hidden shrink-0 hidden sm:block">
+                                <div
+                                  className="h-full rounded-full"
+                                  style={{ width: `${cat.percentage}%`, backgroundColor: cat.color }}
+                                />
+                              </div>
+                              <span className={cn(
+                                "text-xs font-mono font-semibold tabular-nums shrink-0 w-[72px] text-right",
+                                isPrivacyMode && "privacy-blur"
+                              )}>
+                                {formatCompact(cat.effectiveAmount)}
+                              </span>
+                              {cat.prevAmount > 0 && cat.trendPercentage <= 500 ? (
+                                <span className={cn(
+                                  "text-[10px] font-semibold tabular-nums shrink-0 w-10 text-right",
+                                  cat.trend === "down" ? "text-emerald-500" : cat.trend === "up" ? "text-rose-500" : "text-muted-foreground"
+                                )}>
+                                  {cat.trend === "up" ? "▲" : cat.trend === "down" ? "▼" : "─"}{cat.trendPercentage.toFixed(0)}%
+                                </span>
+                              ) : (
+                                <span className="text-[10px] text-muted-foreground/50 shrink-0 w-10 text-right">—</span>
+                              )}
+                              <button
+                                onClick={(e) => { e.stopPropagation(); openCategoryDetail(cat); }}
+                                className="shrink-0 opacity-0 group-hover:opacity-100 transition-opacity text-muted-foreground hover:text-foreground"
+                              >
+                                <ArrowRight className="w-3.5 h-3.5" />
+                              </button>
+                            </div>
+                          );
+                        })}
                       </div>
                     </SectionCard>
 
@@ -1183,6 +1268,13 @@ export default function Overview() {
         categoryBreakdown={categoryBreakdown}
         dailyStats={dailyStats}
         transactionCount={transactionCount}
+      />
+
+      <CategoryDetailModal
+        open={!!selectedCategory}
+        onOpenChange={(open) => { if (!open) setSelectedCategory(null); }}
+        category={selectedCategory}
+        monthName={format(selectedMonth, "MMMM yyyy", { locale: es })}
       />
     </Layout>
   );
