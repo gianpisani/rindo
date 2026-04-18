@@ -589,7 +589,7 @@ export default function Transactions() {
                         .filter(cat => cat.name && cat.name.trim().length > 0)
                         .map((cat) => (
                           <SelectItem key={cat.id} value={cat.name}>
-                            {cat.name}
+                            {cat.icon || getCategoryIcon(cat.name)} {cat.name}
                           </SelectItem>
                         ))}
                     </SelectContent>
