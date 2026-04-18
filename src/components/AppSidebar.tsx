@@ -55,9 +55,10 @@ import { RindoLogo } from "./RindoLogo";
 import { useUserProfile } from "@/hooks/useUserProfile";
 import { useGlobalDrawers } from "@/hooks/useGlobalDrawers";
 import { useNavPreferences } from "@/hooks/useNavPreferences";
-import { SortableNavItem } from "./SortableNavItem";
+import { SortableNavItem, DragOverlayItem } from "./SortableNavItem";
 import { cn } from "@/lib/utils";
-import { motion, AnimatePresence } from "framer-motion";
+import { AnimatePresence, motion } from "framer-motion";
+import { APP_ROUTES } from "@/lib/routes-config";
 
 import {
   DndContext,
@@ -66,12 +67,16 @@ import {
   PointerSensor,
   useSensor,
   useSensors,
+  DragOverlay,
+  type DragStartEvent,
+  type DragOverEvent,
   type DragEndEvent,
 } from "@dnd-kit/core";
 import {
   SortableContext,
   sortableKeyboardCoordinates,
   verticalListSortingStrategy,
+  arrayMove,
 } from "@dnd-kit/sortable";
 import { restrictToVerticalAxis } from "@dnd-kit/modifiers";
 
@@ -100,6 +105,7 @@ export function AppSidebar() {
   } = useNavPreferences();
 
   const [isEditMode, setIsEditMode] = useState(false);
+  const [activeId, setActiveId] = useState<string | null>(null);
   const [userEmail, setUserEmail] = useState<string | null>(null);
 
   useEffect(() => {
@@ -128,24 +134,40 @@ export function AppSidebar() {
     useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates })
   );
 
-  const handleDragEnd = useCallback(
-    (event: DragEndEvent) => {
+  const activeRoute = activeId
+    ? APP_ROUTES.find((r) => r.url === activeId) ?? null
+    : null;
+
+  const handleDragStart = useCallback((event: DragStartEvent) => {
+    setActiveId(event.active.id as string);
+  }, []);
+
+  // Live reorder as you drag over items — this is what makes it feel smooth
+  const handleDragOver = useCallback(
+    (event: DragOverEvent) => {
       const { active, over } = event;
       if (!over || active.id === over.id) return;
 
-      const currentOrder = [...sidebarOrder];
-      const oldIndex = currentOrder.indexOf(active.id as string);
-      const newIndex = currentOrder.indexOf(over.id as string);
-
+      const oldIndex = sidebarOrder.indexOf(active.id as string);
+      const newIndex = sidebarOrder.indexOf(over.id as string);
       if (oldIndex === -1 || newIndex === -1) return;
 
-      currentOrder.splice(oldIndex, 1);
-      currentOrder.splice(newIndex, 0, active.id as string);
-      setSidebarOrder(currentOrder);
-      playSelect();
+      setSidebarOrder(arrayMove(sidebarOrder, oldIndex, newIndex));
     },
-    [sidebarOrder, setSidebarOrder, playSelect]
+    [sidebarOrder, setSidebarOrder]
   );
+
+  const handleDragEnd = useCallback(
+    (_event: DragEndEvent) => {
+      if (activeId) playSelect();
+      setActiveId(null);
+    },
+    [activeId, playSelect]
+  );
+
+  const handleDragCancel = useCallback(() => {
+    setActiveId(null);
+  }, []);
 
   const handleToggleEditMode = useCallback(() => {
     setIsEditMode((prev) => {
@@ -244,7 +266,10 @@ export function AppSidebar() {
         <DndContext
           sensors={sensors}
           collisionDetection={closestCenter}
+          onDragStart={handleDragStart}
+          onDragOver={handleDragOver}
           onDragEnd={handleDragEnd}
+          onDragCancel={handleDragCancel}
           modifiers={modifiers}
         >
           <SortableContext items={allUrls} strategy={verticalListSortingStrategy}>
@@ -337,6 +362,14 @@ export function AppSidebar() {
               </SidebarGroupContent>
             </SidebarGroup>
           </SortableContext>
+
+          {/* Floating drag preview */}
+          <DragOverlay dropAnimation={{
+            duration: 200,
+            easing: "cubic-bezier(0.25, 1, 0.5, 1)",
+          }}>
+            {activeRoute ? <DragOverlayItem route={activeRoute} /> : null}
+          </DragOverlay>
         </DndContext>
 
         {/* Empty state when all tools hidden */}
