@@ -1,6 +1,6 @@
 import { useCallback, useState, ComponentType } from "react";
 import { Link, useLocation } from "react-router-dom";
-import { Plus, ChevronUp, UserPen, Sparkles } from "lucide-react";
+import { Plus, ChevronUp, UserPen, SlidersHorizontal } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { useGlobalDrawers } from "@/hooks/useGlobalDrawers";
@@ -187,44 +187,38 @@ export function MobileBottomBar() {
             {/* Divider */}
             <div className="my-2 mx-6 h-px bg-border/40" />
 
-            {/* Customize + Profile */}
-            <div className="space-y-1">
-              {/* Customize bar button */}
-              <button
-                onClick={() => {
-                  setDrawerOpen(false);
-                  setTimeout(() => setCustomizeOpen(true), 300);
-                }}
-                className="flex items-center gap-3 w-full px-4 py-3 rounded-xl active:bg-muted/50 transition-colors"
-              >
-                <div className="size-9 rounded-full bg-primary/10 flex items-center justify-center">
-                  <Sparkles className="size-4 text-primary" />
-                </div>
-                <div className="flex-1 text-left">
-                  <p className="text-sm font-medium">Personalizar barra</p>
-                  <p className="text-[11px] text-muted-foreground">Elige tus accesos rápidos</p>
-                </div>
-              </button>
-
+            {/* Profile + Customize */}
+            <div className="flex items-center gap-2 px-3">
               {/* Profile */}
               <button
                 onClick={() => {
                   setDrawerOpen(false);
                   openProfileEdit();
                 }}
-                className="flex items-center gap-3 w-full px-4 py-3 rounded-xl active:bg-muted/50 transition-colors"
+                className="flex items-center gap-3 flex-1 min-w-0 px-3 py-2.5 rounded-xl active:bg-muted/50 transition-colors"
               >
-                <Avatar className="size-9 ring-1 ring-border/50">
+                <Avatar className="size-9 ring-1 ring-border/50 shrink-0">
                   {avatarUrl && <AvatarImage src={avatarUrl} className="object-cover" />}
                   <AvatarFallback className="bg-primary/10 text-primary text-xs font-semibold">
                     {userInitials}
                   </AvatarFallback>
                 </Avatar>
-                <div className="flex-1 text-left">
-                  <p className="text-sm font-medium">{displayName || "Mi perfil"}</p>
-                  <p className="text-[11px] text-muted-foreground">Editar perfil y tema</p>
+                <div className="flex-1 text-left min-w-0">
+                  <p className="text-sm font-medium truncate">{displayName || "Mi perfil"}</p>
+                  <p className="text-[11px] text-muted-foreground">Editar perfil</p>
                 </div>
-                <UserPen className="size-4 text-muted-foreground" />
+                <UserPen className="size-4 text-muted-foreground shrink-0" />
+              </button>
+
+              {/* Customize button */}
+              <button
+                onClick={() => {
+                  setDrawerOpen(false);
+                  setTimeout(() => setCustomizeOpen(true), 300);
+                }}
+                className="size-11 rounded-xl bg-muted/40 flex items-center justify-center shrink-0 active:bg-muted active:scale-95 transition-all"
+              >
+                <SlidersHorizontal className="size-4.5 text-muted-foreground" />
               </button>
             </div>
           </div>
