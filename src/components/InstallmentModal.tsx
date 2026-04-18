@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import { BaseModal } from "./BaseModal";
+import { getCategoryIcon } from "./TransactionsTable";
 import { Button } from "./ui/button";
 import { Input } from "./ui/input";
 import { Label } from "./ui/label";
@@ -301,7 +302,7 @@ export function InstallmentModal({
             <SelectContent>
               {expenseCategories.map((cat) => (
                 <SelectItem key={cat.id} value={cat.name}>
-                  {cat.name}
+                  {cat.icon || getCategoryIcon(cat.name)} {cat.name}
                 </SelectItem>
               ))}
             </SelectContent>
