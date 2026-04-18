@@ -1,38 +1,57 @@
-import { useState } from "react";
+import { useState, useRef, useEffect } from "react";
 import Layout from "@/components/Layout";
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
+import { GlassCard } from "@/components/GlassCard";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
+import { BaseModal } from "@/components/BaseModal";
+import ConfirmDialog from "@/components/ConfirmDialog";
 import { useSharedExpenses } from "@/hooks/useSharedExpenses";
-import { Users, CheckCircle2, Clock, Trash2, ChevronDown, ChevronUp } from "lucide-react";
-import { LoadingScreen } from "@/components/LoadingScreen";
-import { Separator } from "@/components/ui/separator";
+import { usePrivacyMode } from "@/hooks/usePrivacyMode";
+import { cn } from "@/lib/utils";
 import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-} from "@/components/ui/alert-dialog";
+  Plus,
+  CheckCircle2,
+  Trash2,
+  Users,
+  Clock,
+  ChevronDown,
+  DollarSign,
+  Receipt,
+} from "lucide-react";
+import { LoadingScreen } from "@/components/LoadingScreen";
+
+const fmt = (n: number) => `$${new Intl.NumberFormat("es-CL").format(n)}`;
 
 export default function PendingDebts() {
-  const { 
-    pendingByDebtor, 
-    sharedExpensesWithTransaction, 
-    markAsPaid, 
+  const {
+    pendingByDebtor,
+    sharedExpensesWithTransaction,
+    markAsPaid,
     deleteSharedExpense,
-    isLoading 
+    addQuickDebt,
+    isLoading,
   } = useSharedExpenses();
+  const { isPrivacyMode } = usePrivacyMode();
 
-  const [expandedDebtor, setExpandedDebtor] = useState<string | null>(null);
-  const [confirmPaid, setConfirmPaid] = useState<{ id: string; name: string; amount: number; detail?: string } | null>(null);
+  const [confirmPaid, setConfirmPaid] = useState<{
+    id: string;
+    name: string;
+    amount: number;
+    detail?: string;
+  } | null>(null);
+  const [showAddModal, setShowAddModal] = useState(false);
+  const [showPaid, setShowPaid] = useState(false);
+  const [newDebt, setNewDebt] = useState({ name: "", amount: "", detail: "" });
+  const nameInputRef = useRef<HTMLInputElement>(null);
 
-  const toggleDebtor = (name: string) => {
-    setExpandedDebtor(expandedDebtor === name ? null : name);
-  };
+  // Focus name input when modal opens
+  useEffect(() => {
+    if (showAddModal) {
+      setTimeout(() => nameInputRef.current?.focus(), 100);
+    }
+  }, [showAddModal]);
 
   const handleMarkAsPaid = async () => {
     if (!confirmPaid) return;
@@ -45,13 +64,27 @@ export default function PendingDebts() {
     setConfirmPaid(null);
   };
 
-  const getExpensesForDebtor = (debtorName: string) => {
-    return sharedExpensesWithTransaction.filter(
-      (exp) => exp.debtor_name === debtorName && !exp.paid
-    );
+  const handleAddDebt = async () => {
+    const amount = parseFloat(newDebt.amount);
+    if (!newDebt.name.trim() || !amount || amount <= 0) return;
+    await addQuickDebt.mutateAsync({
+      debtorName: newDebt.name.trim(),
+      amount,
+      detail: newDebt.detail.trim() || undefined,
+    });
+    setNewDebt({ name: "", amount: "", detail: "" });
+    setShowAddModal(false);
   };
 
+  const getExpensesForDebtor = (debtorName: string) =>
+    sharedExpensesWithTransaction.filter(
+      (exp) => exp.debtor_name === debtorName && !exp.paid
+    );
+
   const paidExpenses = sharedExpensesWithTransaction.filter((exp) => exp.paid);
+
+  const totalPending = pendingByDebtor.reduce((s, d) => s + d.total_owed, 0);
+  const totalExpenses = pendingByDebtor.reduce((s, d) => s + d.count_expenses, 0);
 
   if (isLoading) {
     return (
@@ -67,234 +100,328 @@ export default function PendingDebts() {
         {/* Header */}
         <div className="flex items-center justify-between">
           <div>
-            <h1 className="text-2xl font-bold tracking-tight mb-1">Cuentas Pendientes</h1>
+            <h1 className="text-2xl font-bold tracking-tight mb-1">Deudas</h1>
             <p className="text-sm text-muted-foreground">
-              Gestiona los gastos compartidos con tus amigos
+              Gestiona gastos compartidos
             </p>
           </div>
+          <Button
+            className="rounded-full h-10 w-10 p-0 md:w-auto md:px-5 md:h-10"
+            onClick={() => setShowAddModal(true)}
+          >
+            <Plus className="h-4 w-4 md:mr-2" />
+            <span className="hidden md:inline text-sm">Nueva deuda</span>
+          </Button>
         </div>
 
-        {/* Summary Cards */}
-        <div className="grid gap-4 md:grid-cols-3">
-          <Card>
-            <CardHeader className="pb-3">
-              <CardTitle className="text-sm font-medium text-muted-foreground">
-                Total Pendiente
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold text-primary">
-                ${new Intl.NumberFormat("es-CL").format(
-                  pendingByDebtor.reduce((sum, d) => sum + d.total_owed, 0)
-                )}
-              </div>
-            </CardContent>
-          </Card>
+        {/* Compact Stats Row */}
+        {pendingByDebtor.length > 0 && (
+          <div className="flex items-center gap-4 text-sm">
+            <div className="flex items-center gap-1.5 text-amber-500">
+              <DollarSign className="h-4 w-4" />
+              <span className={cn("font-semibold tabular-nums", isPrivacyMode && "privacy-blur")}>
+                {fmt(totalPending)}
+              </span>
+              <span className="text-muted-foreground">pendiente</span>
+            </div>
+            <span className="text-border">|</span>
+            <div className="flex items-center gap-1.5 text-muted-foreground">
+              <Users className="h-3.5 w-3.5" />
+              <span className="tabular-nums">{pendingByDebtor.length}</span>
+            </div>
+            <span className="text-border">|</span>
+            <div className="flex items-center gap-1.5 text-muted-foreground">
+              <Receipt className="h-3.5 w-3.5" />
+              <span className="tabular-nums">{totalExpenses}</span>
+            </div>
+          </div>
+        )}
 
-          <Card>
-            <CardHeader className="pb-3">
-              <CardTitle className="text-sm font-medium text-muted-foreground">
-                Personas
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">
-                {pendingByDebtor.length}
-              </div>
-            </CardContent>
-          </Card>
+        {/* Pending Debts - Flat List by Person */}
+        {pendingByDebtor.length === 0 ? (
+          <div className="rounded-2xl border border-dashed border-border/60 py-16 text-center">
+            <Users className="h-12 w-12 mx-auto text-muted-foreground/30 mb-3" />
+            <p className="text-base font-medium text-muted-foreground mb-1">
+              No hay deudas pendientes
+            </p>
+            <p className="text-sm text-muted-foreground/60 mb-4">
+              Agrega una deuda o divide un gasto compartido
+            </p>
+            <Button
+              variant="outline"
+              size="sm"
+              className="rounded-full"
+              onClick={() => setShowAddModal(true)}
+            >
+              <Plus className="h-4 w-4 mr-1.5" />
+              Nueva deuda
+            </Button>
+          </div>
+        ) : (
+          <div className="space-y-3">
+            {pendingByDebtor.map((debtor) => {
+              const expenses = getExpensesForDebtor(debtor.debtor_name);
 
-          <Card>
-            <CardHeader className="pb-3">
-              <CardTitle className="text-sm font-medium text-muted-foreground">
-                Gastos
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">
-                {pendingByDebtor.reduce((sum, d) => sum + d.count_expenses, 0)}
-              </div>
-            </CardContent>
-          </Card>
-        </div>
+              return (
+                <GlassCard key={debtor.debtor_name}>
+                  {/* Person Header */}
+                  <div className="flex items-center gap-3 px-4 py-3">
+                    <div className="h-9 w-9 rounded-full bg-primary/10 flex items-center justify-center shrink-0">
+                      <span className="text-sm font-bold text-primary">
+                        {debtor.debtor_name.charAt(0).toUpperCase()}
+                      </span>
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="font-semibold text-sm truncate">
+                        {debtor.debtor_name}
+                      </p>
+                      <p className="text-xs text-muted-foreground">
+                        {debtor.count_expenses}{" "}
+                        {debtor.count_expenses === 1 ? "gasto" : "gastos"}
+                      </p>
+                    </div>
+                    <span
+                      className={cn(
+                        "text-base font-bold text-amber-500 tabular-nums",
+                        isPrivacyMode && "privacy-blur"
+                      )}
+                    >
+                      {fmt(debtor.total_owed)}
+                    </span>
+                  </div>
 
-        {/* Pending Debts */}
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <Clock className="h-5 w-5 text-amber-500" />
-              Pendientes
-            </CardTitle>
-            <CardDescription>
-              Gastos compartidos que aún no han sido pagados
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            {pendingByDebtor.length === 0 ? (
-              <div className="text-center py-12 text-muted-foreground">
-                <Users className="h-12 w-12 mx-auto mb-4 opacity-50" />
-                <p className="text-lg font-medium">No hay deudas pendientes</p>
-                <p className="text-sm mt-1">¡Todos están al día! 🎉</p>
-              </div>
-            ) : (
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-                {pendingByDebtor.map((debtor) => {
-                  const isExpanded = expandedDebtor === debtor.debtor_name;
-                  const expenses = getExpensesForDebtor(debtor.debtor_name);
-
-                  return (
-                    <div key={debtor.debtor_name} className="border rounded-lg overflow-hidden">
-                      {/* Debtor Header */}
-                      <div 
-                        className="flex items-center justify-between p-4 bg-muted/50 cursor-pointer hover:bg-muted transition-colors"
-                        onClick={() => toggleDebtor(debtor.debtor_name)}
-                      >
-                        <div className="flex items-center gap-3">
-                          <div className="h-10 w-10 rounded-full bg-primary/10 flex items-center justify-center">
-                            <Users className="h-5 w-5 text-primary" />
-                          </div>
-                          <div>
-                            <p className="font-semibold">{debtor.debtor_name}</p>
-                            <p className="text-sm text-muted-foreground">
-                              {debtor.count_expenses} {debtor.count_expenses === 1 ? 'gasto' : 'gastos'}
+                  {/* Individual expenses */}
+                  {expenses.length > 0 && (
+                    <div className="border-t border-border/40">
+                      {expenses.map((expense, i) => (
+                        <div
+                          key={expense.id}
+                          className={cn(
+                            "group flex items-center gap-3 px-4 py-2.5 hover:bg-accent/30 transition-colors",
+                            i < expenses.length - 1 && "border-b border-border/20"
+                          )}
+                        >
+                          <div className="flex-1 min-w-0">
+                            <p className="text-sm truncate">
+                              {expense.transaction_detail || "Sin detalle"}
+                            </p>
+                            <p className="text-xs text-muted-foreground">
+                              {new Date(expense.transaction_date).toLocaleDateString(
+                                "es-CL",
+                                { day: "numeric", month: "short" }
+                              )}
+                              {expense.transaction_category && (
+                                <>
+                                  {" · "}
+                                  {expense.transaction_category}
+                                </>
+                              )}
                             </p>
                           </div>
+                          <span
+                            className={cn(
+                              "text-sm font-medium tabular-nums shrink-0",
+                              isPrivacyMode && "privacy-blur"
+                            )}
+                          >
+                            {fmt(expense.amount_owed)}
+                          </span>
+                          {/* Actions - visible on hover */}
+                          <div className="flex items-center gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity shrink-0">
+                            <button
+                              className="h-7 w-7 rounded-full flex items-center justify-center hover:bg-success/10 transition-colors"
+                              title="Marcar como pagado"
+                              onClick={() =>
+                                setConfirmPaid({
+                                  id: expense.id,
+                                  name: expense.debtor_name,
+                                  amount: expense.amount_owed,
+                                  detail: expense.transaction_detail || undefined,
+                                })
+                              }
+                            >
+                              <CheckCircle2 className="h-4 w-4 text-success" />
+                            </button>
+                            <button
+                              className="h-7 w-7 rounded-full flex items-center justify-center hover:bg-destructive/10 transition-colors"
+                              title="Eliminar"
+                              onClick={() => deleteSharedExpense.mutate(expense.id)}
+                            >
+                              <Trash2 className="h-3.5 w-3.5 text-destructive" />
+                            </button>
+                          </div>
                         </div>
-                        <div className="flex items-center gap-3">
-                          <Badge variant="outline" className="text-base font-bold">
-                            ${new Intl.NumberFormat("es-CL").format(debtor.total_owed)}
-                          </Badge>
-                          {isExpanded ? (
-                            <ChevronUp className="h-5 w-5 text-muted-foreground" />
-                          ) : (
-                            <ChevronDown className="h-5 w-5 text-muted-foreground" />
-                          )}
-                        </div>
-                      </div>
-
-                      {/* Expenses Detail */}
-                      {isExpanded && (
-                        <div className="p-4 space-y-3 bg-background">
-                          {expenses.map((expense) => (
-                            <div key={expense.id} className="flex items-start justify-between p-3 rounded-lg border">
-                              <div className="flex-1">
-                                <p className="font-medium">
-                                  {expense.transaction_detail || "Sin detalle"}
-                                </p>
-                                <p className="text-sm text-muted-foreground mt-1">
-                                  {new Date(expense.transaction_date).toLocaleDateString("es-CL", {
-                                    day: "numeric",
-                                    month: "long",
-                                    year: "numeric",
-                                  })}
-                                </p>
-                                <Badge variant="secondary" className="mt-2">
-                                  {expense.transaction_category}
-                                </Badge>
-                              </div>
-                              <div className="flex flex-col items-end gap-2 ml-4">
-                                <p className="font-bold text-lg">
-                                  ${new Intl.NumberFormat("es-CL").format(expense.amount_owed)}
-                                </p>
-                                <div className="flex gap-2">
-                                  <Button
-                                    size="sm"
-                                    onClick={() =>
-                                      setConfirmPaid({
-                                        id: expense.id,
-                                        name: expense.debtor_name,
-                                        amount: expense.amount_owed,
-                                        detail: expense.transaction_detail || undefined,
-                                      })
-                                    }
-                                  >
-                                    <CheckCircle2 className="h-4 w-4 mr-1" />
-                                    Pagado
-                                  </Button>
-                                  <Button
-                                    size="sm"
-                                    variant="ghost"
-                                    onClick={() => deleteSharedExpense.mutate(expense.id)}
-                                  >
-                                    <Trash2 className="h-4 w-4 text-destructive" />
-                                  </Button>
-                                </div>
-                              </div>
-                            </div>
-                          ))}
-                        </div>
-                      )}
+                      ))}
                     </div>
-                  );
-                })}
-              </div>
-            )}
-          </CardContent>
-        </Card>
+                  )}
+
+                  {/* Quick "Mark all paid" for multi-expense debtors */}
+                  {expenses.length > 1 && (
+                    <div className="border-t border-border/40 px-4 py-2">
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="w-full text-xs text-success hover:text-success hover:bg-success/10 h-8"
+                        onClick={() =>
+                          setConfirmPaid({
+                            id: expenses[0].id,
+                            name: debtor.debtor_name,
+                            amount: expenses[0].amount_owed,
+                            detail: expenses[0].transaction_detail || undefined,
+                          })
+                        }
+                      >
+                        <CheckCircle2 className="h-3.5 w-3.5 mr-1.5" />
+                        Cobrar primero
+                      </Button>
+                    </div>
+                  )}
+                </GlassCard>
+              );
+            })}
+          </div>
+        )}
 
         {/* Paid History */}
         {paidExpenses.length > 0 && (
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <CheckCircle2 className="h-5 w-5 text-green-500" />
-                Pagados
-              </CardTitle>
-              <CardDescription>
-                Historial de gastos compartidos ya pagados
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-                {paidExpenses.slice(0, 10).map((expense) => (
-                  <div key={expense.id} className="flex items-center justify-between p-3 rounded-lg border bg-muted/30 hover:shadow-lg transition-shadow">
-                    <div>
-                      <p className="font-medium">{expense.debtor_name}</p>
-                      <p className="text-sm text-muted-foreground">
+          <div>
+            <button
+              className="flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground transition-colors mb-3"
+              onClick={() => setShowPaid(!showPaid)}
+            >
+              <ChevronDown
+                className={cn(
+                  "h-4 w-4 transition-transform",
+                  showPaid && "rotate-180"
+                )}
+              />
+              <CheckCircle2 className="h-4 w-4 text-success" />
+              <span>Pagados ({paidExpenses.length})</span>
+            </button>
+
+            {showPaid && (
+              <div className="space-y-1">
+                {paidExpenses.slice(0, 15).map((expense) => (
+                  <div
+                    key={expense.id}
+                    className="flex items-center gap-3 px-3 py-2 rounded-lg text-sm text-muted-foreground hover:bg-muted/30 transition-colors"
+                  >
+                    <div className="h-7 w-7 rounded-full bg-success/10 flex items-center justify-center shrink-0">
+                      <span className="text-xs font-bold text-success">
+                        {expense.debtor_name.charAt(0).toUpperCase()}
+                      </span>
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <span className="truncate">
+                        {expense.debtor_name}
+                      </span>
+                      <span className="mx-1.5">·</span>
+                      <span className="text-xs">
                         {expense.transaction_detail || "Sin detalle"}
-                      </p>
-                      <p className="text-xs text-muted-foreground mt-1">
-                        Pagado: {new Date(expense.paid_at!).toLocaleDateString("es-CL")}
-                      </p>
+                      </span>
                     </div>
-                    <div className="text-right">
-                      <p className="font-bold">
-                        ${new Intl.NumberFormat("es-CL").format(expense.amount_owed)}
-                      </p>
-                      <Badge variant="outline" className="mt-1 text-green-600 border-green-600">
-                        Pagado
-                      </Badge>
-                    </div>
+                    <span
+                      className={cn(
+                        "tabular-nums text-xs shrink-0",
+                        isPrivacyMode && "privacy-blur"
+                      )}
+                    >
+                      {fmt(expense.amount_owed)}
+                    </span>
+                    <span className="text-xs shrink-0">
+                      {new Date(expense.paid_at!).toLocaleDateString("es-CL", {
+                        day: "numeric",
+                        month: "short",
+                      })}
+                    </span>
                   </div>
                 ))}
               </div>
-            </CardContent>
-          </Card>
+            )}
+          </div>
         )}
       </div>
 
+      {/* Quick Add Debt Modal */}
+      <BaseModal
+        open={showAddModal}
+        onOpenChange={(open) => {
+          setShowAddModal(open);
+          if (!open) setNewDebt({ name: "", amount: "", detail: "" });
+        }}
+        title="Nueva deuda"
+        maxWidth="sm"
+        footer={
+          <Button
+            className="w-full rounded-full"
+            onClick={handleAddDebt}
+            disabled={
+              !newDebt.name.trim() ||
+              !newDebt.amount ||
+              parseFloat(newDebt.amount) <= 0 ||
+              addQuickDebt.isPending
+            }
+          >
+            Crear deuda
+          </Button>
+        }
+      >
+        <div className="space-y-4">
+          <div className="space-y-1.5">
+            <Label className="text-sm font-medium">Nombre</Label>
+            <Input
+              ref={nameInputRef}
+              placeholder="ej. Juan"
+              value={newDebt.name}
+              onChange={(e) => setNewDebt({ ...newDebt, name: e.target.value })}
+              className="h-11 rounded-full px-5"
+            />
+          </div>
+          <div className="space-y-1.5">
+            <Label className="text-sm font-medium">Monto</Label>
+            <Input
+              type="number"
+              placeholder="ej. 15000"
+              value={newDebt.amount}
+              onChange={(e) => setNewDebt({ ...newDebt, amount: e.target.value })}
+              className="h-11 rounded-full px-5"
+              onKeyDown={(e) => {
+                if (e.key === "Enter") handleAddDebt();
+              }}
+            />
+          </div>
+          <div className="space-y-1.5">
+            <Label className="text-sm font-medium">
+              Detalle <span className="text-muted-foreground font-normal">(opcional)</span>
+            </Label>
+            <Input
+              placeholder="ej. Cena del viernes"
+              value={newDebt.detail}
+              onChange={(e) => setNewDebt({ ...newDebt, detail: e.target.value })}
+              className="h-11 rounded-full px-5"
+              onKeyDown={(e) => {
+                if (e.key === "Enter") handleAddDebt();
+              }}
+            />
+          </div>
+        </div>
+      </BaseModal>
+
       {/* Confirm Paid Dialog */}
-      <AlertDialog open={!!confirmPaid} onOpenChange={() => setConfirmPaid(null)}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>¿Confirmar pago?</AlertDialogTitle>
-            <AlertDialogDescription>
-              Se creará automáticamente un ingreso de{" "}
-              <span className="font-bold">
-                ${confirmPaid && new Intl.NumberFormat("es-CL").format(confirmPaid.amount)}
-              </span>{" "}
-              por el pago de <span className="font-bold">{confirmPaid?.name}</span>.
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel>Cancelar</AlertDialogCancel>
-            <AlertDialogAction onClick={handleMarkAsPaid}>
-              Confirmar
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
+      <ConfirmDialog
+        open={!!confirmPaid}
+        onOpenChange={() => setConfirmPaid(null)}
+        onConfirm={handleMarkAsPaid}
+        title="Confirmar pago"
+        description={
+          confirmPaid
+            ? `Se registrará el pago de ${fmt(confirmPaid.amount)} de ${confirmPaid.name}.`
+            : ""
+        }
+        confirmText="Pagado"
+        cancelText="Cancelar"
+        variant="default"
+      />
     </Layout>
   );
 }
-
