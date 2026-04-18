@@ -466,6 +466,8 @@ interface TransactionsTableProps {
   onTypeFilterChange?: (v: string) => void;
   categoryFilter?: string;
   onCategoryFilterChange?: (v: string) => void;
+  cardFilter?: string;
+  onCardFilterChange?: (v: string) => void;
 }
 
 // ── Main component ─────────────────────────────────────────────────────────
@@ -486,12 +488,15 @@ export function TransactionsTable({
   onTypeFilterChange,
   categoryFilter: externalCategoryFilter,
   onCategoryFilterChange,
+  cardFilter: externalCardFilter,
+  onCardFilterChange,
 }: TransactionsTableProps) {
   const [searchParams] = useSearchParams();
   const [sorting, setSorting] = useState<SortingState>([{ id: "date", desc: true }]);
   const [internalSearch, setInternalSearch] = useState(searchParams.get("search") || "");
   const [internalTypeFilter, setInternalTypeFilter] = useState<string>("all");
   const [internalCategoryFilter, setInternalCategoryFilter] = useState<string>("all");
+  const [internalCardFilter, setInternalCardFilter] = useState<string>("all");
   const [rowSelection, setRowSelection] = useState<RowSelectionState>({});
   const [panelExpanded, setPanelExpanded] = useState(false);
   const [panelY, setPanelY] = useState<number | null>(null);
@@ -509,6 +514,8 @@ export function TransactionsTable({
   const setTypeFilter = isControlled ? onTypeFilterChange! : setInternalTypeFilter;
   const categoryFilter = isControlled ? externalCategoryFilter! : internalCategoryFilter;
   const setCategoryFilter = isControlled ? onCategoryFilterChange! : setInternalCategoryFilter;
+  const cardFilter = isControlled ? (externalCardFilter ?? "all") : internalCardFilter;
+  const setCardFilter = isControlled ? (onCardFilterChange ?? setInternalCardFilter) : setInternalCardFilter;
 
   useEffect(() => {
     const searchFromUrl = searchParams.get("search");
@@ -885,8 +892,15 @@ export function TransactionsTable({
     let data = globalFilter ? fuzzyResults : transactions;
     if (typeFilter !== "all") data = data.filter(t => t.type === typeFilter);
     if (categoryFilter !== "all") data = data.filter(t => t.category_name === categoryFilter);
+    if (cardFilter !== "all") {
+      if (cardFilter === "none") {
+        data = data.filter(t => !t.card_id);
+      } else {
+        data = data.filter(t => t.card_id === cardFilter);
+      }
+    }
     return data;
-  }, [fuzzyResults, transactions, globalFilter, typeFilter, categoryFilter]);
+  }, [fuzzyResults, transactions, globalFilter, typeFilter, categoryFilter, cardFilter]);
 
   const table = useReactTable({
     data: filteredData,
@@ -1116,6 +1130,21 @@ export function TransactionsTable({
                     {categories.find(c => c.name === cat)?.icon || getCategoryIcon(cat)} {cat}
                   </SelectItem>
                 ))}
+            </SelectContent>
+          </Select>
+
+          <Select value={cardFilter} onValueChange={setCardFilter}>
+            <SelectTrigger className="w-full sm:w-[180px]">
+              <SelectValue placeholder="Tarjeta" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">Todas las tarjetas</SelectItem>
+              <SelectItem value="none">Sin tarjeta</SelectItem>
+              {creditCards.map((card) => (
+                <SelectItem key={card.id} value={card.id}>
+                  {card.name}{card.last_4_digits ? ` ···${card.last_4_digits}` : ""}
+                </SelectItem>
+              ))}
             </SelectContent>
           </Select>
         </div>

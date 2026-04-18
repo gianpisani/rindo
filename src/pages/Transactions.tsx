@@ -23,6 +23,7 @@ import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Plus, Download, TrendingUp, TrendingDown, PiggyBank, Upload, X, Sparkles, Info, Trash2, Search, CalendarClock, Users, CheckCircle2, Clock, Pencil, ArrowLeftRight } from "lucide-react";
 import { useTransactions, Transaction } from "@/hooks/useTransactions";
 import { useCategories } from "@/hooks/useCategories";
+import { useCreditCards } from "@/hooks/useCreditCards";
 import { useSharedExpenses } from "@/hooks/useSharedExpenses";
 import { Checkbox } from "@/components/ui/checkbox";
 import SharedExpenseDrawer from "@/components/SharedExpenseDrawer";
@@ -67,6 +68,7 @@ export default function Transactions() {
     duplicateTransactions,
   } = useTransactions();
   const { categories } = useCategories();
+  const { creditCards } = useCreditCards();
   const { addSharedExpenses, updateSharedExpenseAmount, getSharedExpensesByTransaction, markAsPaid, linkExistingTransaction, deleteSharedExpense, sharedExpenses, sharedExpensesWithTransaction } = useSharedExpenses();
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [showFuture, setShowFuture] = useState(false);
@@ -88,6 +90,7 @@ export default function Transactions() {
   const [searchValue, setSearchValue] = useState("");
   const [typeFilter, setTypeFilter] = useState("all");
   const [categoryFilter, setCategoryFilter] = useState("all");
+  const [cardFilter, setCardFilter] = useState("all");
   const [confirmDelete, setConfirmDelete] = useState<{ open: boolean; id: string | null }>({
     open: false,
     id: null,
@@ -1201,6 +1204,24 @@ export default function Transactions() {
                 ))}
             </SelectContent>
           </Select>
+
+          {/* Filtro tarjeta */}
+          {creditCards.length > 0 && (
+            <Select value={cardFilter} onValueChange={setCardFilter}>
+              <SelectTrigger className="w-[160px] sm:w-[180px]">
+                <SelectValue placeholder="Tarjeta" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">Todas las tarjetas</SelectItem>
+                <SelectItem value="none">Sin tarjeta</SelectItem>
+                {creditCards.map(card => (
+                  <SelectItem key={card.id} value={card.id}>
+                    {card.name}{card.last_4_digits ? ` ···${card.last_4_digits}` : ""}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          )}
         </div>
 
         <TransactionsTable
@@ -1219,6 +1240,8 @@ export default function Transactions() {
           onTypeFilterChange={setTypeFilter}
           categoryFilter={categoryFilter}
           onCategoryFilterChange={setCategoryFilter}
+          cardFilter={cardFilter}
+          onCardFilterChange={setCardFilter}
         />
       </div>
 
