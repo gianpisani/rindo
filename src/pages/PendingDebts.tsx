@@ -24,6 +24,17 @@ import { LoadingScreen } from "@/components/LoadingScreen";
 
 const fmt = (n: number) => `$${new Intl.NumberFormat("es-CL").format(n)}`;
 
+const formatCurrency = (value: string) => {
+  const number = value.replace(/\D/g, "");
+  if (!number) return "";
+  return `$${new Intl.NumberFormat("es-CL").format(parseInt(number))}`;
+};
+
+const parseRawAmount = (value: string) => {
+  const clean = value.replace(/[$.,\s]/g, "");
+  return parseFloat(clean) || 0;
+};
+
 export default function PendingDebts() {
   const {
     pendingByDebtor,
@@ -45,11 +56,12 @@ export default function PendingDebts() {
   const [showPaid, setShowPaid] = useState(false);
   const [newDebt, setNewDebt] = useState({ name: "", amount: "", detail: "" });
   const nameInputRef = useRef<HTMLInputElement>(null);
+  const amountInputRef = useRef<HTMLInputElement>(null);
 
-  // Focus name input when modal opens
+  // Focus amount input when modal opens
   useEffect(() => {
     if (showAddModal) {
-      setTimeout(() => nameInputRef.current?.focus(), 100);
+      setTimeout(() => amountInputRef.current?.focus(), 100);
     }
   }, [showAddModal]);
 
@@ -65,7 +77,7 @@ export default function PendingDebts() {
   };
 
   const handleAddDebt = async () => {
-    const amount = parseFloat(newDebt.amount);
+    const amount = parseRawAmount(newDebt.amount);
     if (!newDebt.name.trim() || !amount || amount <= 0) return;
     await addQuickDebt.mutateAsync({
       debtorName: newDebt.name.trim(),
@@ -197,7 +209,7 @@ export default function PendingDebts() {
                         <div
                           key={expense.id}
                           className={cn(
-                            "group flex items-center gap-3 px-4 py-2.5 hover:bg-accent/30 transition-colors",
+                            "flex items-center gap-3 px-4 py-2.5 hover:bg-accent/30 transition-colors",
                             i < expenses.length - 1 && "border-b border-border/20"
                           )}
                         >
@@ -226,8 +238,8 @@ export default function PendingDebts() {
                           >
                             {fmt(expense.amount_owed)}
                           </span>
-                          {/* Actions - visible on hover */}
-                          <div className="flex items-center gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity shrink-0">
+                          {/* Actions */}
+                          <div className="flex items-center gap-0.5 shrink-0">
                             <button
                               className="h-7 w-7 rounded-full flex items-center justify-center hover:bg-success/10 transition-colors"
                               title="Marcar como pagado"
@@ -351,14 +363,15 @@ export default function PendingDebts() {
         }}
         title="Nueva deuda"
         maxWidth="sm"
+        variant="expense"
         footer={
           <Button
-            className="w-full rounded-full"
+            className="w-full rounded-full bg-destructive hover:bg-destructive/90"
             onClick={handleAddDebt}
             disabled={
               !newDebt.name.trim() ||
               !newDebt.amount ||
-              parseFloat(newDebt.amount) <= 0 ||
+              parseRawAmount(newDebt.amount) <= 0 ||
               addQuickDebt.isPending
             }
           >
@@ -366,7 +379,27 @@ export default function PendingDebts() {
           </Button>
         }
       >
-        <div className="space-y-4">
+        <div className="space-y-5">
+          {/* Big amount input - Rindo style */}
+          <div>
+            <Input
+              ref={amountInputRef}
+              type="text"
+              inputMode="numeric"
+              autoComplete="off"
+              placeholder="$0"
+              value={newDebt.amount}
+              onChange={(e) =>
+                setNewDebt({ ...newDebt, amount: formatCurrency(e.target.value) })
+              }
+              onKeyDown={(e) => {
+                if (e.key === "Enter") handleAddDebt();
+              }}
+              style={{ fontSize: "clamp(1.5rem, 5vw, 2.25rem)" }}
+              className="h-24 text-center font-bold font-mono rounded-3xl border-2 border-destructive/30 focus:border-destructive focus:ring-4 focus:ring-destructive/20 transition-all bg-transparent placeholder:text-muted-foreground/50 focus-visible:ring-transparent"
+            />
+          </div>
+
           <div className="space-y-1.5">
             <Label className="text-sm font-medium">Nombre</Label>
             <Input
@@ -374,16 +407,6 @@ export default function PendingDebts() {
               placeholder="ej. Juan"
               value={newDebt.name}
               onChange={(e) => setNewDebt({ ...newDebt, name: e.target.value })}
-              className="h-11 rounded-full px-5"
-            />
-          </div>
-          <div className="space-y-1.5">
-            <Label className="text-sm font-medium">Monto</Label>
-            <Input
-              type="number"
-              placeholder="ej. 15000"
-              value={newDebt.amount}
-              onChange={(e) => setNewDebt({ ...newDebt, amount: e.target.value })}
               className="h-11 rounded-full px-5"
               onKeyDown={(e) => {
                 if (e.key === "Enter") handleAddDebt();
