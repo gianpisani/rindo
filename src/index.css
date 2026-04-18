@@ -461,12 +461,15 @@ Based on Indigo, Blue, Cyan palette
     display: flex;
     align-items: center;
     justify-content: space-around;
-    height: 64px;
-    background: hsl(var(--background) / 0.82);
+    height: 60px;
+    background: hsl(var(--background) / 0.85);
     backdrop-filter: blur(24px) saturate(180%);
     -webkit-backdrop-filter: blur(24px) saturate(180%);
-    border-top: 1px solid hsl(var(--border) / 0.3);
+    border: 1px solid hsl(var(--border) / 0.25);
+    border-radius: 22px;
+    margin: 0 12px 8px;
     padding: 0 4px;
+    box-shadow: 0 2px 20px hsl(var(--background) / 0.3), 0 0 0 0.5px hsl(var(--border) / 0.1);
   }
 
   .mobile-tab-item {

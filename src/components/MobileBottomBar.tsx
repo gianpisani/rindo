@@ -61,7 +61,7 @@ export function MobileBottomBar() {
       {/* Bottom Tab Bar */}
       <nav
         className="fixed bottom-0 inset-x-0 z-50 md:hidden"
-        style={{ paddingBottom: "env(safe-area-inset-bottom, 0px)" }}
+        style={{ paddingBottom: "env(safe-area-inset-bottom, 4px)" }}
       >
         <div className="mobile-tab-bar">
           {/* Dynamic tabs from preferences */}
