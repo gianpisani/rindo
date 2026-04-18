@@ -9,6 +9,7 @@ import { useMonthlySummary } from "@/hooks/useMonthlySummary";
 import { useGlobalDrawers } from "@/hooks/useGlobalDrawers";
 import { TrendingUp, TrendingDown, PiggyBank, Receipt, Eye, Variable, Play } from "lucide-react";
 import { useNavigate } from "react-router-dom";
+import { Skeleton } from "@/components/ui/skeleton";
 import { format, startOfMonth, endOfMonth, subMonths, isToday, isYesterday } from "date-fns";
 import { es } from "date-fns/locale";
 import { cn } from "@/lib/utils";
@@ -21,7 +22,7 @@ import { useUserProfile } from "@/hooks/useUserProfile";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 
 const Index = () => {
-  const { transactions } = useTransactions();
+  const { transactions, isLoading } = useTransactions();
   const { categories } = useCategories();
   const { limits } = useCategoryLimits();
   const navigate = useNavigate();
@@ -140,39 +141,39 @@ const Index = () => {
 
   return (
     <Layout>
-      <div className="space-y-6">
-        {/* Greeting */}
-        <div className="flex items-center gap-3">
+      <div className="space-y-4">
+        {/* Greeting — compact */}
+        <div className="flex items-center gap-2.5">
           {displayName && (
             <button onClick={() => openProfileEdit()} className="focus:outline-none group">
               <div className="rounded-full p-[2px] accent-gradient-bg transition-all duration-300 group-hover:scale-105 group-hover:shadow-[0_0_16px_var(--primary)]">
-                <Avatar className="size-10">
+                <Avatar className="size-8">
                   {avatarUrl && <AvatarImage src={avatarUrl} className="object-cover" />}
-                  <AvatarFallback className="bg-background text-primary text-sm font-semibold">
+                  <AvatarFallback className="bg-background text-primary text-xs font-semibold">
                     {greetingInitials}
                   </AvatarFallback>
                 </Avatar>
               </div>
             </button>
           )}
-          <h1 className="text-2xl font-bold tracking-tight">
+          <h1 className="text-xl font-bold tracking-tight">
             {getGreeting()}{displayName ? <>, <span className="animated-gradient-text">{displayName}</span></> : ""}
           </h1>
         </div>
 
         {/* Hero: Balance (izq) + Quick Actions 2x2 (der) */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          {/* Balance Card */}
+        <div className="grid grid-cols-1 md:grid-cols-[1fr,auto] gap-3">
+          {/* Balance Card — compact */}
           <Card className="border-border/50 flex flex-col overflow-hidden">
             <div className="h-[2px] accent-gradient-bg" />
-            <div className="p-6 md:p-7 flex flex-col">
+            <div className="px-5 py-4 flex flex-col">
             <div className="flex items-center justify-between">
-              <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Balance Total</span>
-              <span className="text-xs text-muted-foreground font-mono tabular-nums capitalize">
+              <span className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider">Balance Total</span>
+              <span className="text-[10px] text-muted-foreground font-mono tabular-nums capitalize">
                 {format(now, "MMMM yyyy", { locale: es })}
               </span>
             </div>
-            <div className={cn("mt-4 text-4xl md:text-5xl font-bold font-mono tabular-nums tracking-tight", isPrivacyMode && "privacy-blur")}>
+            <div className={cn("mt-2 text-3xl md:text-4xl font-bold font-mono tabular-nums tracking-tight", isPrivacyMode && "privacy-blur")}>
               $<NumberFlow
                 value={totalBalance}
                 format={{
@@ -183,106 +184,56 @@ const Index = () => {
                 locales="es-CL"
               />
             </div>
-            <div className="mt-5 pt-4 border-t border-border/50 space-y-3">
-              <p className="text-xs text-muted-foreground font-medium capitalize">
-                Este mes ({format(now, "MMM yyyy", { locale: es })})
-              </p>
-              <div className="grid grid-cols-3 gap-3">
-                <div className="space-y-1">
-                  <div className="flex items-center gap-1 text-success">
-                    <TrendingUp className="h-3.5 w-3.5" />
-                    <span className="text-xs font-medium">Ingresos</span>
-                  </div>
-                  <p className={cn("text-sm font-semibold font-mono tabular-nums", isPrivacyMode && "privacy-blur")}>
-                    $<NumberFlow
-                      value={currentIncome}
-                      format={{
-                        style: "decimal",
-                        minimumFractionDigits: 0,
-                        maximumFractionDigits: 0
-                      }}
-                      locales="es-CL"
-                    />
-                  </p>
+            <div className="mt-3 pt-3 border-t border-border/50">
+              <div className="flex items-center gap-4 md:gap-6">
+                <div className="flex items-center gap-1.5">
+                  <TrendingUp className="h-3 w-3 text-success" />
+                  <span className={cn("text-sm font-semibold font-mono tabular-nums", isPrivacyMode && "privacy-blur")}>
+                    ${new Intl.NumberFormat("es-CL").format(currentIncome)}
+                  </span>
                   {incomeChange !== 0 && (
-                    <p className={cn(
-                      "text-xs",
+                    <span className={cn(
+                      "text-[10px]",
                       incomeChange > 0 ? "text-success" : "text-destructive",
                       isPrivacyMode && "privacy-blur"
                     )}>
-                      {incomeChange > 0 ? "+" : ""}
-                      <NumberFlow
-                        value={incomeChange}
-                        format={{
-                          style: "decimal",
-                          minimumFractionDigits: 0,
-                          maximumFractionDigits: 0
-                        }}
-                      />%
-                    </p>
+                      {incomeChange > 0 ? "+" : ""}{Math.round(incomeChange)}%
+                    </span>
                   )}
                 </div>
-                <div className="space-y-1">
-                  <div className="flex items-center gap-1 text-destructive">
-                    <TrendingDown className="h-3.5 w-3.5" />
-                    <span className="text-xs font-medium">Gastos</span>
-                  </div>
-                  <p className={cn("text-sm font-semibold font-mono tabular-nums", isPrivacyMode && "privacy-blur")}>
-                    $<NumberFlow
-                      value={currentExpenses}
-                      format={{
-                        style: "decimal",
-                        minimumFractionDigits: 0,
-                        maximumFractionDigits: 0
-                      }}
-                      locales="es-CL"
-                    />
-                  </p>
+                <div className="flex items-center gap-1.5">
+                  <TrendingDown className="h-3 w-3 text-destructive" />
+                  <span className={cn("text-sm font-semibold font-mono tabular-nums", isPrivacyMode && "privacy-blur")}>
+                    ${new Intl.NumberFormat("es-CL").format(currentExpenses)}
+                  </span>
                   {expenseChange !== 0 && (
-                    <p className={cn(
-                      "text-xs",
+                    <span className={cn(
+                      "text-[10px]",
                       expenseChange > 0 ? "text-destructive" : "text-success",
                       isPrivacyMode && "privacy-blur"
                     )}>
-                      {expenseChange > 0 ? "+" : ""}
-                      <NumberFlow
-                        value={expenseChange}
-                        format={{
-                          style: "decimal",
-                          minimumFractionDigits: 0,
-                          maximumFractionDigits: 0
-                        }}
-                      />%
-                    </p>
+                      {expenseChange > 0 ? "+" : ""}{Math.round(expenseChange)}%
+                    </span>
                   )}
                 </div>
-                <div className="space-y-1">
-                  <div className="flex items-center gap-1 text-blue">
-                    <PiggyBank className="h-3.5 w-3.5" />
-                    <span className="text-xs font-medium">Inversiones</span>
+                {currentInvestments > 0 && (
+                  <div className="flex items-center gap-1.5">
+                    <PiggyBank className="h-3 w-3 text-blue" />
+                    <span className={cn("text-sm font-semibold font-mono tabular-nums", isPrivacyMode && "privacy-blur")}>
+                      ${new Intl.NumberFormat("es-CL").format(currentInvestments)}
+                    </span>
                   </div>
-                  <p className={cn("text-sm font-semibold font-mono tabular-nums", isPrivacyMode && "privacy-blur")}>
-                    $<NumberFlow
-                      value={currentInvestments}
-                      format={{
-                        style: "decimal",
-                        minimumFractionDigits: 0,
-                        maximumFractionDigits: 0
-                      }}
-                      locales="es-CL"
-                    />
-                  </p>
-                </div>
+                )}
               </div>
               {(lastMonthIncome > 0 || lastMonthExpenses > 0) && (
                 <p className={cn(
-                  "text-[11px] text-muted-foreground/70 font-mono tabular-nums pt-1",
+                  "text-[10px] text-muted-foreground font-mono tabular-nums mt-2",
                   isPrivacyMode && "privacy-blur"
                 )}>
                   <span className="capitalize">{format(lastMonth, "MMM", { locale: es })}</span>
-                  <span className="mx-1.5 text-muted-foreground/40">·</span>
+                  <span className="mx-1 text-muted-foreground/40">·</span>
                   <span className="text-success/80">+{formatCurrency(lastMonthIncome)}</span>
-                  <span className="mx-1.5 text-muted-foreground/40">·</span>
+                  <span className="mx-1 text-muted-foreground/40">·</span>
                   <span className="text-destructive/80">−{formatCurrency(lastMonthExpenses)}</span>
                 </p>
               )}
@@ -290,36 +241,36 @@ const Index = () => {
             </div>
           </Card>
 
-          {/* Quick Actions 2x2 */}
-          <div className="grid grid-cols-2 grid-rows-2 gap-3 min-h-[180px] md:min-h-0">
+          {/* Quick Actions 2x2 — compact */}
+          <div className="grid grid-cols-4 md:grid-cols-2 gap-2 md:w-[240px]">
             <Button
               onClick={() => handleQuickAdd("Ingreso")}
-              className="h-full min-h-[72px] flex-col gap-1.5 border border-success/20 text-success hover:bg-success/10 hover:border-success/30 hover:shadow-sm bg-transparent transition-all"
+              className="h-auto py-3 md:py-4 flex-col gap-1 border border-success/20 text-success hover:bg-success/10 hover:border-success/30 hover:shadow-sm bg-transparent transition-all"
             >
-              <TrendingUp className="h-5 w-5" />
-              <span className="text-xs font-semibold">Ingreso</span>
+              <TrendingUp className="h-4 w-4" />
+              <span className="text-[11px] font-semibold">Ingreso</span>
             </Button>
             <Button
               onClick={() => handleQuickAdd("Gasto")}
-              className="h-full min-h-[72px] flex-col gap-1.5 border border-destructive/20 text-destructive hover:bg-destructive/10 hover:border-destructive/30 hover:shadow-sm bg-transparent transition-all"
+              className="h-auto py-3 md:py-4 flex-col gap-1 border border-destructive/20 text-destructive hover:bg-destructive/10 hover:border-destructive/30 hover:shadow-sm bg-transparent transition-all"
             >
-              <TrendingDown className="h-5 w-5" />
-              <span className="text-xs font-semibold">Gasto</span>
+              <TrendingDown className="h-4 w-4" />
+              <span className="text-[11px] font-semibold">Gasto</span>
             </Button>
             <Button
               onClick={() => handleQuickAdd("Inversión")}
-              className="h-full min-h-[72px] flex-col gap-1.5 border border-blue/20 text-blue hover:bg-blue/10 hover:border-blue/30 hover:shadow-sm bg-transparent transition-all"
+              className="h-auto py-3 md:py-4 flex-col gap-1 border border-blue/20 text-blue hover:bg-blue/10 hover:border-blue/30 hover:shadow-sm bg-transparent transition-all"
             >
-              <PiggyBank className="h-5 w-5" />
-              <span className="text-xs font-semibold">Inversión</span>
+              <PiggyBank className="h-4 w-4" />
+              <span className="text-[11px] font-semibold">Inversión</span>
             </Button>
             <Button
               onClick={() => openReconciliation()}
               variant="outline"
-              className="h-full min-h-[72px] flex-col gap-1.5 hover:bg-muted hover:border-border hover:shadow-sm transition-all"
+              className="h-auto py-3 md:py-4 flex-col gap-1 hover:bg-muted hover:border-border hover:shadow-sm transition-all"
             >
-              <Variable className="h-5 w-5" />
-              <span className="text-xs font-semibold">Conciliar</span>
+              <Variable className="h-4 w-4" />
+              <span className="text-[11px] font-semibold">Conciliar</span>
             </Button>
           </div>
         </div>
@@ -346,16 +297,31 @@ const Index = () => {
             </Button>
           </div>
 
-          {recentTransactions.length === 0 ? (
+          {isLoading ? (
+            <div className="px-5 pb-4 space-y-3">
+              {Array.from({ length: 6 }).map((_, i) => (
+                <div key={i} className="flex items-center justify-between py-1.5">
+                  <div className="flex items-center gap-3 flex-1">
+                    <Skeleton className="w-[3px] h-[28px] rounded-full" />
+                    <div className="space-y-1.5 flex-1">
+                      <Skeleton className="h-3.5 w-24" />
+                      <Skeleton className="h-3 w-36" />
+                    </div>
+                  </div>
+                  <Skeleton className="h-4 w-20" />
+                </div>
+              ))}
+            </div>
+          ) : recentTransactions.length === 0 ? (
             <div className="py-14 text-center px-5 pb-5">
               <div className="inline-flex items-center justify-center size-16 rounded-2xl bg-muted/50 mb-4">
                 <Receipt className="h-7 w-7 text-muted-foreground/40" />
               </div>
               <p className="text-sm font-medium text-muted-foreground">No hay transacciones aún</p>
-              <p className="text-xs text-muted-foreground/60 mt-1">Agrega tu primera transacción arriba</p>
+              <p className="text-xs text-muted-foreground mt-1">Agrega tu primera transacción arriba</p>
             </div>
           ) : (
-            <div className="overflow-y-auto max-h-[360px] pb-2">
+            <div className="overflow-y-auto max-h-[450px] pb-2">
               {sortedDateKeys.map((dateKey) => (
                 <div key={dateKey}>
                   {/* Sticky date header */}

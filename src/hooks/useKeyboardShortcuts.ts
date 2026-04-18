@@ -62,19 +62,17 @@ export function useKeyboardShortcuts({
 
         case "ArrowUp": {
           e.preventDefault();
-          const currentIndex = routes.indexOf(location.pathname);
-          if (currentIndex > 0) {
-            navigate(routes[currentIndex - 1]);
-          }
+          const upIndex = routes.indexOf(location.pathname);
+          const prevIndex = upIndex <= 0 ? routes.length - 1 : upIndex - 1;
+          navigate(routes[prevIndex]);
           break;
         }
 
         case "ArrowDown": {
           e.preventDefault();
-          const currentIndex = routes.indexOf(location.pathname);
-          if (currentIndex < routes.length - 1) {
-            navigate(routes[currentIndex + 1]);
-          }
+          const downIndex = routes.indexOf(location.pathname);
+          const nextIndex = downIndex >= routes.length - 1 ? 0 : downIndex + 1;
+          navigate(routes[nextIndex]);
           break;
         }
 
