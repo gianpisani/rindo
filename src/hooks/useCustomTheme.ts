@@ -25,6 +25,63 @@ export interface ThemePreset {
   dark: PaletteVars;
 }
 
+// ── Custom theme settings (stored as JSON in accent_color_2) ────────
+export interface CustomThemeSettings {
+  hue?: number;     // 0-360
+  font?: string;    // font option id
+  radius?: number;  // rem value
+}
+
+// ── Font options ────────────────────────────────────────────────────
+export const FONT_OPTIONS = [
+  { id: "default", name: "Jakarta", family: "'Plus Jakarta Sans', sans-serif" },
+  { id: "inter", name: "Inter", family: "'Inter', sans-serif" },
+  { id: "dm-sans", name: "DM Sans", family: "'DM Sans', sans-serif" },
+  { id: "nunito", name: "Nunito", family: "'Nunito', sans-serif" },
+  { id: "space-grotesk", name: "Space Grotesk", family: "'Space Grotesk', sans-serif" },
+  { id: "outfit", name: "Outfit", family: "'Outfit', sans-serif" },
+  { id: "sora", name: "Sora", family: "'Sora', sans-serif" },
+  { id: "bricolage", name: "Bricolage", family: "'Bricolage Grotesque', sans-serif" },
+];
+
+// ── Generate palette from any hue ───────────────────────────────────
+export function generatePaletteFromHue(
+  hue: number,
+  mode: "light" | "dark"
+): PaletteVars {
+  const h = ((hue % 360) + 360) % 360;
+  if (mode === "light") {
+    return {
+      background: `oklch(0.97 0.01 ${h})`,
+      foreground: `oklch(0.18 0.04 ${h})`,
+      card: `oklch(0.99 0.005 ${h})`,
+      primary: `oklch(0.55 0.2 ${h})`,
+      primaryForeground: `oklch(0.98 0.005 ${h})`,
+      muted: `oklch(0.93 0.02 ${h})`,
+      mutedForeground: `oklch(0.5 0.04 ${h})`,
+      border: `oklch(0.88 0.025 ${h})`,
+      input: `oklch(0.88 0.025 ${h})`,
+      ring: `oklch(0.6 0.18 ${h + 20})`,
+      sidebar: `oklch(0.95 0.015 ${h})`,
+      sidebarBorder: `oklch(0.88 0.025 ${h})`,
+    };
+  }
+  return {
+    background: `oklch(0.14 0.03 ${h})`,
+    foreground: `oklch(0.93 0.01 ${h})`,
+    card: `oklch(0.17 0.035 ${h})`,
+    primary: `oklch(0.7 0.17 ${h})`,
+    primaryForeground: `oklch(0.13 0.03 ${h})`,
+    muted: `oklch(0.22 0.03 ${h})`,
+    mutedForeground: `oklch(0.65 0.04 ${h})`,
+    border: `oklch(0.28 0.03 ${h})`,
+    input: `oklch(0.25 0.03 ${h})`,
+    ring: `oklch(0.6 0.15 ${h + 20})`,
+    sidebar: `oklch(0.12 0.035 ${h})`,
+    sidebarBorder: `oklch(0.25 0.03 ${h})`,
+  };
+}
+
 // ── Theme presets ───────────────────────────────────────────────────
 
 export const THEME_PRESETS: ThemePreset[] = [
@@ -332,6 +389,8 @@ function clearAllOverrides(root: HTMLElement) {
   for (const v of CSS_VARS) {
     root.style.removeProperty(v);
   }
+  root.style.removeProperty("--radius");
+  document.body.style.fontFamily = "";
   setMetaThemeColor("#000000");
 }
 
@@ -387,13 +446,24 @@ function applyPalette(root: HTMLElement, p: PaletteVars) {
 
 export function applyThemePreview(
   themeId: string | null,
-  mode: "light" | "dark"
+  mode: "light" | "dark",
+  customSettings?: CustomThemeSettings | null
 ) {
   const root = document.documentElement;
-  if (!themeId) {
-    clearAllOverrides(root);
+
+  if (themeId === "custom" && customSettings?.hue != null) {
+    applyPalette(root, generatePaletteFromHue(customSettings.hue, mode));
     return;
   }
+
+  if (!themeId) {
+    clearAllOverrides(root);
+    // Re-apply font/radius if they exist
+    if (customSettings?.font) applyFontPreview(customSettings.font);
+    if (customSettings?.radius != null) applyRadiusPreview(customSettings.radius);
+    return;
+  }
+
   const preset = THEME_PRESETS.find((t) => t.id === themeId);
   if (!preset) {
     clearAllOverrides(root);
@@ -402,18 +472,53 @@ export function applyThemePreview(
   applyPalette(root, mode === "dark" ? preset.dark : preset.light);
 }
 
+export function applyFontPreview(fontId: string | null) {
+  const fontOption = FONT_OPTIONS.find((f) => f.id === fontId);
+  if (fontOption && fontOption.id !== "default") {
+    document.body.style.fontFamily = fontOption.family;
+  } else {
+    document.body.style.fontFamily = "";
+  }
+}
+
+export function applyRadiusPreview(radius: number) {
+  document.documentElement.style.setProperty("--radius", `${radius}rem`);
+}
+
 export function clearThemeOverrides() {
   clearAllOverrides(document.documentElement);
 }
 
-// ── localStorage cache key ───────────────────────────────────────────
+// ── localStorage cache keys ─────────────────────────────────────────
 const THEME_CACHE_KEY = "rindo-theme-id";
+const CUSTOM_SETTINGS_CACHE_KEY = "rindo-custom-settings";
 
 export function getCachedThemeId(): string | null {
   try {
     return localStorage.getItem(THEME_CACHE_KEY);
   } catch {
     return null;
+  }
+}
+
+export function getCachedCustomSettings(): CustomThemeSettings | null {
+  try {
+    const raw = localStorage.getItem(CUSTOM_SETTINGS_CACHE_KEY);
+    return raw ? JSON.parse(raw) : null;
+  } catch {
+    return null;
+  }
+}
+
+// ── Parse custom settings from profile ──────────────────────────────
+export function parseCustomSettings(
+  raw: string | null | undefined
+): CustomThemeSettings {
+  if (!raw) return {};
+  try {
+    return JSON.parse(raw);
+  } catch {
+    return {};
   }
 }
 
@@ -426,26 +531,43 @@ export function useCustomTheme() {
   useEffect(() => {
     const root = document.documentElement;
     const themeId = profile?.accent_color_1;
+    const customSettings = parseCustomSettings(profile?.accent_color_2);
 
     // Cache for instant load next time
     try {
       if (themeId) localStorage.setItem(THEME_CACHE_KEY, themeId);
       else localStorage.removeItem(THEME_CACHE_KEY);
+
+      const settingsJson = profile?.accent_color_2;
+      if (settingsJson) localStorage.setItem(CUSTOM_SETTINGS_CACHE_KEY, settingsJson);
+      else localStorage.removeItem(CUSTOM_SETTINGS_CACHE_KEY);
     } catch {}
 
-    if (!themeId) {
+    // Apply color theme
+    if (themeId === "custom" && customSettings.hue != null) {
+      const mode = resolvedTheme === "dark" ? "dark" : "light";
+      applyPalette(root, generatePaletteFromHue(customSettings.hue, mode));
+    } else if (themeId) {
+      const preset = THEME_PRESETS.find((t) => t.id === themeId);
+      if (preset) {
+        const palette =
+          resolvedTheme === "dark" ? preset.dark : preset.light;
+        applyPalette(root, palette);
+      } else {
+        clearAllOverrides(root);
+      }
+    } else {
       clearAllOverrides(root);
-      return;
     }
 
-    const preset = THEME_PRESETS.find((t) => t.id === themeId);
-    if (!preset) {
-      clearAllOverrides(root);
-      return;
-    }
+    // Apply font (works with any color theme)
+    applyFontPreview(customSettings.font ?? null);
 
-    const palette =
-      resolvedTheme === "dark" ? preset.dark : preset.light;
-    applyPalette(root, palette);
-  }, [profile?.accent_color_1, resolvedTheme]);
+    // Apply radius (works with any color theme)
+    if (customSettings.radius != null) {
+      root.style.setProperty("--radius", `${customSettings.radius}rem`);
+    } else {
+      root.style.removeProperty("--radius");
+    }
+  }, [profile?.accent_color_1, profile?.accent_color_2, resolvedTheme]);
 }

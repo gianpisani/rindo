@@ -4,18 +4,23 @@ import "./index.css";
 import { injectSpeedInsights } from '@vercel/speed-insights';
 import { inject } from '@vercel/analytics';
 import { ThemeProvider } from "next-themes";
-import { applyThemePreview, getCachedThemeId } from "./hooks/useCustomTheme";
+import { applyThemePreview, applyFontPreview, applyRadiusPreview, getCachedThemeId, getCachedCustomSettings } from "./hooks/useCustomTheme";
 
 injectSpeedInsights();
 inject();
 
 // Apply cached theme instantly to avoid flash of default colors
 const cachedTheme = getCachedThemeId();
-if (cachedTheme) {
+const cachedSettings = getCachedCustomSettings();
+{
   const prefersDark = window.matchMedia("(prefers-color-scheme: dark)").matches;
   const storedTheme = localStorage.getItem("theme");
   const mode = storedTheme === "light" ? "light" : storedTheme === "dark" ? "dark" : prefersDark ? "dark" : "light";
-  applyThemePreview(cachedTheme, mode);
+  if (cachedTheme) {
+    applyThemePreview(cachedTheme, mode, cachedSettings);
+  }
+  if (cachedSettings?.font) applyFontPreview(cachedSettings.font);
+  if (cachedSettings?.radius != null) applyRadiusPreview(cachedSettings.radius);
 }
 
 createRoot(document.getElementById("root")!).render(
