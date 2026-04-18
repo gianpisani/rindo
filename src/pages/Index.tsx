@@ -162,7 +162,7 @@ const Index = () => {
         </div>
 
         {/* Hero: Balance (izq) + Quick Actions 2x2 (der) */}
-        <div className="grid grid-cols-1 md:grid-cols-[1fr,auto] gap-3">
+        <div className="grid grid-cols-1 md:grid-cols-[3fr,2fr] gap-3">
           {/* Balance Card — compact */}
           <Card className="border-border/50 flex flex-col overflow-hidden">
             <div className="h-[2px] accent-gradient-bg" />
@@ -241,8 +241,8 @@ const Index = () => {
             </div>
           </Card>
 
-          {/* Quick Actions 2x2 — compact */}
-          <div className="grid grid-cols-4 md:grid-cols-2 gap-2 md:w-[240px]">
+          {/* Quick Actions 2x2 */}
+          <div className="grid grid-cols-4 md:grid-cols-2 gap-2">
             <Button
               onClick={() => handleQuickAdd("Ingreso")}
               className="h-auto py-3 md:py-4 flex-col gap-1 border border-success/20 text-success hover:bg-success/10 hover:border-success/30 hover:shadow-sm bg-transparent transition-all"
@@ -277,11 +277,11 @@ const Index = () => {
 
         {/* Recent Transactions */}
         <Card className="overflow-hidden">
-          <div className="flex items-center justify-between px-5 pt-5 pb-3">
-            <div className="flex items-center gap-2.5">
-              <h2 className="text-base font-semibold">Recientes</h2>
+          <div className="flex items-center justify-between px-4 pt-3 pb-2">
+            <div className="flex items-center gap-2">
+              <h2 className="text-sm font-semibold">Recientes</h2>
               {recentTransactions.length > 0 && (
-                <span className="text-[10px] font-semibold bg-muted text-muted-foreground rounded-full px-2 py-0.5 tabular-nums">
+                <span className="text-[10px] font-medium text-muted-foreground tabular-nums">
                   {recentTransactions.length}
                 </span>
               )}
@@ -290,10 +290,10 @@ const Index = () => {
               onClick={() => navigate("/transactions")}
               variant="ghost"
               size="sm"
-              className="gap-1.5 text-xs h-7 px-2.5 -mr-1"
+              className="gap-1 text-[11px] h-6 px-2 -mr-1"
             >
               Ver todo
-              <Eye className="h-3.5 w-3.5" />
+              <Eye className="h-3 w-3" />
             </Button>
           </div>
 
