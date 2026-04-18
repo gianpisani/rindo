@@ -27,7 +27,7 @@ import { format } from "date-fns";
 import { es } from "date-fns/locale";
 import { Badge } from "@/components/ui/badge";
 import { Kbd } from "@/components/ui/kbd";
-import { APP_ROUTES } from "@/lib/routes-config";
+import { useNavPreferences } from "@/hooks/useNavPreferences";
 
 interface CommandBarProps {
   open: boolean;
@@ -54,6 +54,8 @@ export function CommandBar({ open, onOpenChange, onAddTransaction, onConciliate,
   const navigate = useNavigate();
   const { transactions } = useTransactions();
   const { playSelect } = useSoundFX();
+  const { getVisibleRoutes } = useNavPreferences();
+  const navRoutes = getVisibleRoutes();
 
   // Fuzzy search
   const searchResults = useFuzzySearch(transactions, search);
@@ -181,8 +183,9 @@ export function CommandBar({ open, onOpenChange, onAddTransaction, onConciliate,
         <CommandSeparator />
 
         <CommandGroup heading="Navegación">
-          {APP_ROUTES.map((route) => {
+          {navRoutes.map((route, index) => {
             const Icon = route.icon;
+            const shortcut = index < 9 ? String(index + 1) : undefined;
             return (
               <CommandItem key={route.url} onSelect={() => runCommand(() => navigate(route.url))}>
                 {route.customIcon ? (
@@ -192,8 +195,8 @@ export function CommandBar({ open, onOpenChange, onAddTransaction, onConciliate,
                 )}
                 <div className="flex items-center justify-between flex-1">
                   <span>{route.title}</span>
-                  {route.shortcut && (
-                    <Kbd>{route.shortcut}</Kbd>
+                  {shortcut && (
+                    <Kbd>{shortcut}</Kbd>
                   )}
                 </div>
               </CommandItem>

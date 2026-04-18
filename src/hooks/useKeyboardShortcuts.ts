@@ -1,7 +1,7 @@
 import { useEffect } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
-import { getAllRoutePaths, getMaxShortcutNumber } from "@/lib/routes-config";
 import { usePrivacyMode } from "@/hooks/usePrivacyMode";
+import { useNavPreferences } from "@/hooks/useNavPreferences";
 
 interface UseKeyboardShortcutsOptions {
   onToggleCommandBar: () => void;
@@ -17,9 +17,11 @@ export function useKeyboardShortcuts({
   const navigate = useNavigate();
   const location = useLocation();
   const { togglePrivacyMode } = usePrivacyMode();
+  const { getVisibleRoutes } = useNavPreferences();
 
-  const routes = getAllRoutePaths();
-  const maxShortcut = getMaxShortcutNumber();
+  const visibleRoutes = getVisibleRoutes();
+  const routePaths = visibleRoutes.map((r) => r.url);
+  const maxShortcut = Math.min(routePaths.length, 9);
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -62,27 +64,27 @@ export function useKeyboardShortcuts({
 
         case "ArrowUp": {
           e.preventDefault();
-          const upIndex = routes.indexOf(location.pathname);
-          const prevIndex = upIndex <= 0 ? routes.length - 1 : upIndex - 1;
-          navigate(routes[prevIndex]);
+          const upIndex = routePaths.indexOf(location.pathname);
+          const prevIndex = upIndex <= 0 ? routePaths.length - 1 : upIndex - 1;
+          navigate(routePaths[prevIndex]);
           break;
         }
 
         case "ArrowDown": {
           e.preventDefault();
-          const downIndex = routes.indexOf(location.pathname);
-          const nextIndex = downIndex >= routes.length - 1 ? 0 : downIndex + 1;
-          navigate(routes[nextIndex]);
+          const downIndex = routePaths.indexOf(location.pathname);
+          const nextIndex = downIndex >= routePaths.length - 1 ? 0 : downIndex + 1;
+          navigate(routePaths[nextIndex]);
           break;
         }
 
         default:
-          // 1-8 → Navigate to section
-          if (e.key >= "1" && e.key <= maxShortcut.toString()) {
-            e.preventDefault();
+          // 1-9 → Navigate to section (dynamic based on visible order)
+          if (e.key >= "1" && e.key <= "9") {
             const index = parseInt(e.key) - 1;
-            if (routes[index]) {
-              navigate(routes[index]);
+            if (index < maxShortcut && routePaths[index]) {
+              e.preventDefault();
+              navigate(routePaths[index]);
             }
           }
           break;
@@ -94,7 +96,7 @@ export function useKeyboardShortcuts({
   }, [
     navigate,
     location.pathname,
-    routes,
+    routePaths,
     maxShortcut,
     onToggleCommandBar,
     onToggleShortcutsPopover,

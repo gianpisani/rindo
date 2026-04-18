@@ -108,3 +108,4 @@ export const getMaxShortcutNumber = () => {
   const shortcuts = APP_ROUTES.map(r => r.shortcut).filter(Boolean).map(Number);
   return Math.max(...shortcuts, 0);
 };
+export const getRouteMap = () => new Map(APP_ROUTES.map(r => [r.url, r]));

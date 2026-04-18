@@ -1,12 +1,13 @@
 import { useCallback, useState, ComponentType } from "react";
 import { Link, useLocation } from "react-router-dom";
-import { Plus, ChevronUp, UserPen } from "lucide-react";
+import { Plus, ChevronUp, UserPen, Sparkles } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { useGlobalDrawers } from "@/hooks/useGlobalDrawers";
 import { useSoundFX } from "@/hooks/useSoundFX";
 import { useUserProfile } from "@/hooks/useUserProfile";
-import { getMainRoutes, getToolRoutes, type RouteConfig } from "@/lib/routes-config";
+import { useNavPreferences } from "@/hooks/useNavPreferences";
+import { APP_ROUTES, type RouteConfig } from "@/lib/routes-config";
 import {
   Drawer,
   DrawerContent,
@@ -14,6 +15,7 @@ import {
 } from "@/components/ui/drawer";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import { LucideIcon } from "lucide-react";
+import { CustomizeNavDrawer } from "./CustomizeNavDrawer";
 
 function RouteIcon({ route, className }: { route: RouteConfig; className?: string }) {
   if (route.customIcon) {
@@ -29,13 +31,22 @@ export function MobileBottomBar() {
   const { openQuickAdd, openProfileEdit } = useGlobalDrawers();
   const { playToggleOn } = useSoundFX();
   const { profile, avatarUrl } = useUserProfile();
+  const { mobileTabs } = useNavPreferences();
   const [drawerOpen, setDrawerOpen] = useState(false);
+  const [customizeOpen, setCustomizeOpen] = useState(false);
 
   const displayName = profile?.nickname || profile?.full_name || null;
   const userInitials = (displayName || "U").slice(0, 2).toUpperCase();
 
-  const mainRoutes = getMainRoutes();
-  const toolRoutes = getToolRoutes();
+  // Get mobile tab routes from preferences
+  const tabRoutes = mobileTabs
+    .map((url) => APP_ROUTES.find((r) => r.url === url))
+    .filter(Boolean) as RouteConfig[];
+
+  // Tool routes for the drawer = all routes NOT in mobile tabs
+  const drawerRoutes = APP_ROUTES.filter(
+    (r) => !mobileTabs.includes(r.url)
+  );
 
   const handleQuickAdd = useCallback(() => {
     playToggleOn();
@@ -53,8 +64,8 @@ export function MobileBottomBar() {
         style={{ paddingBottom: "env(safe-area-inset-bottom, 0px)" }}
       >
         <div className="mobile-tab-bar">
-          {/* Main 4 tabs */}
-          {mainRoutes.map((route) => {
+          {/* Dynamic tabs from preferences */}
+          {tabRoutes.map((route) => {
             const isActive = location.pathname === route.url;
             return (
               <Link
@@ -140,9 +151,9 @@ export function MobileBottomBar() {
             {/* Divider */}
             <div className="my-2 mx-6 h-px bg-border/40" />
 
-            {/* Tool routes - Grid layout */}
+            {/* Routes not in bottom bar */}
             <div className="mobile-drawer-grid">
-              {toolRoutes.map((route) => {
+              {drawerRoutes.map((route) => {
                 const isActive = location.pathname === route.url;
                 return (
                   <Link
@@ -176,32 +187,58 @@ export function MobileBottomBar() {
             {/* Divider */}
             <div className="my-2 mx-6 h-px bg-border/40" />
 
-            {/* Profile */}
-            <button
-              onClick={() => {
-                setDrawerOpen(false);
-                openProfileEdit();
-              }}
-              className="flex items-center gap-3 w-full px-4 py-3 rounded-xl active:bg-muted/50 transition-colors"
-            >
-              <Avatar className="size-9 ring-1 ring-border/50">
-                {avatarUrl && <AvatarImage src={avatarUrl} className="object-cover" />}
-                <AvatarFallback className="bg-primary/10 text-primary text-xs font-semibold">
-                  {userInitials}
-                </AvatarFallback>
-              </Avatar>
-              <div className="flex-1 text-left">
-                <p className="text-sm font-medium">{displayName || "Mi perfil"}</p>
-                <p className="text-[11px] text-muted-foreground">Editar perfil y tema</p>
-              </div>
-              <UserPen className="size-4 text-muted-foreground" />
-            </button>
+            {/* Customize + Profile */}
+            <div className="space-y-1">
+              {/* Customize bar button */}
+              <button
+                onClick={() => {
+                  setDrawerOpen(false);
+                  setTimeout(() => setCustomizeOpen(true), 300);
+                }}
+                className="flex items-center gap-3 w-full px-4 py-3 rounded-xl active:bg-muted/50 transition-colors"
+              >
+                <div className="size-9 rounded-full bg-primary/10 flex items-center justify-center">
+                  <Sparkles className="size-4 text-primary" />
+                </div>
+                <div className="flex-1 text-left">
+                  <p className="text-sm font-medium">Personalizar barra</p>
+                  <p className="text-[11px] text-muted-foreground">Elige tus accesos rápidos</p>
+                </div>
+              </button>
+
+              {/* Profile */}
+              <button
+                onClick={() => {
+                  setDrawerOpen(false);
+                  openProfileEdit();
+                }}
+                className="flex items-center gap-3 w-full px-4 py-3 rounded-xl active:bg-muted/50 transition-colors"
+              >
+                <Avatar className="size-9 ring-1 ring-border/50">
+                  {avatarUrl && <AvatarImage src={avatarUrl} className="object-cover" />}
+                  <AvatarFallback className="bg-primary/10 text-primary text-xs font-semibold">
+                    {userInitials}
+                  </AvatarFallback>
+                </Avatar>
+                <div className="flex-1 text-left">
+                  <p className="text-sm font-medium">{displayName || "Mi perfil"}</p>
+                  <p className="text-[11px] text-muted-foreground">Editar perfil y tema</p>
+                </div>
+                <UserPen className="size-4 text-muted-foreground" />
+              </button>
+            </div>
           </div>
 
           {/* Safe area spacer */}
           <div style={{ height: "env(safe-area-inset-bottom, 8px)", minHeight: 8 }} />
         </DrawerContent>
       </Drawer>
+
+      {/* Customize Nav Drawer */}
+      <CustomizeNavDrawer
+        open={customizeOpen}
+        onOpenChange={setCustomizeOpen}
+      />
     </>
   );
 }

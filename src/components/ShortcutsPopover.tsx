@@ -10,7 +10,7 @@ import {
   EyeOff,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { APP_ROUTES } from "@/lib/routes-config";
+import { useNavPreferences } from "@/hooks/useNavPreferences";
 
 const isMac = typeof navigator !== 'undefined' && /Mac|iPhone|iPad|iPod/.test(navigator.userAgent);
 const cmdKey = isMac ? "⌘" : "Ctrl";
@@ -21,6 +21,9 @@ interface ShortcutsPopoverProps {
 }
 
 const useShortcuts = () => {
+  const { getVisibleRoutes } = useNavPreferences();
+  const visibleRoutes = getVisibleRoutes();
+
   return useMemo(() => [
     {
       category: "Acciones Rápidas",
@@ -63,13 +66,13 @@ const useShortcuts = () => {
       category: "Ir a Sección",
       icon: Home,
       color: "text-primary",
-      items: APP_ROUTES.filter(route => route.shortcut).map(route => ({
-        keys: [route.shortcut!],
+      items: visibleRoutes.slice(0, 9).map((route, index) => ({
+        keys: [String(index + 1)],
         description: route.title,
         icon: route.icon,
       }))
     },
-  ], []);
+  ], [visibleRoutes]);
 };
 
 export function ShortcutsPopover({ isVisible, onClose }: ShortcutsPopoverProps) {
