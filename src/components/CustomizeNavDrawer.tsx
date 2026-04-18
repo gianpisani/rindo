@@ -1,5 +1,5 @@
 import { useState, useCallback, ComponentType } from "react";
-import { motion, AnimatePresence, Reorder } from "framer-motion";
+import { Reorder } from "framer-motion";
 import { Plus, X, RotateCcw, Eye, EyeOff, GripVertical, PanelBottom, ListOrdered } from "lucide-react";
 import { LucideIcon } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -137,47 +137,29 @@ export function CustomizeNavDrawer({ open, onOpenChange }: CustomizeNavDrawerPro
             </button>
           </div>
 
-          {/* Tab content */}
-          <AnimatePresence mode="wait" initial={false}>
-            {activeTab === "bar" ? (
-              <motion.div
-                key="bar"
-                initial={{ opacity: 0, x: -10 }}
-                animate={{ opacity: 1, x: 0 }}
-                exit={{ opacity: 0, x: -10 }}
-                transition={{ duration: 0.15 }}
-              >
-                <BarTab
-                  localTabs={localTabs}
-                  setLocalTabs={setLocalTabs}
-                  availableRoutes={availableRoutes}
-                  onAdd={handleAddTab}
-                  onRemove={handleRemoveTab}
-                  playSelect={playSelect}
-                />
-              </motion.div>
-            ) : (
-              <motion.div
-                key="sections"
-                initial={{ opacity: 0, x: 10 }}
-                animate={{ opacity: 1, x: 0 }}
-                exit={{ opacity: 0, x: 10 }}
-                transition={{ duration: 0.15 }}
-              >
-                <SectionsTab
-                  sidebarOrder={sidebarOrder}
-                  orderedRoutes={orderedRoutes}
-                  hiddenRoutes={hiddenRoutes}
-                  onReorder={(newOrder) => { setSidebarOrder(newOrder); playSelect(); }}
-                  onToggleVisibility={(url) => {
-                    const isHidden = hiddenRoutes.includes(url);
-                    toggleRouteVisibility(url);
-                    if (isHidden) playToggleOn(); else playToggleOff();
-                  }}
-                />
-              </motion.div>
-            )}
-          </AnimatePresence>
+          {/* Tab content — instant switch, no exit delay */}
+          {activeTab === "bar" ? (
+            <BarTab
+              localTabs={localTabs}
+              setLocalTabs={setLocalTabs}
+              availableRoutes={availableRoutes}
+              onAdd={handleAddTab}
+              onRemove={handleRemoveTab}
+              playSelect={playSelect}
+            />
+          ) : (
+            <SectionsTab
+              sidebarOrder={sidebarOrder}
+              orderedRoutes={orderedRoutes}
+              hiddenRoutes={hiddenRoutes}
+              onReorder={(newOrder) => { setSidebarOrder(newOrder); playSelect(); }}
+              onToggleVisibility={(url) => {
+                const isHidden = hiddenRoutes.includes(url);
+                toggleRouteVisibility(url);
+                if (isHidden) playToggleOn(); else playToggleOff();
+              }}
+            />
+          )}
         </div>
 
         <div style={{ height: "env(safe-area-inset-bottom, 8px)", minHeight: 8 }} />
@@ -220,23 +202,23 @@ function BarTab({
           const route = APP_ROUTES.find((r) => r.url === url);
           if (!route) return null;
           return (
-            <Reorder.Item as="div" key={url} value={url} className="flex-1">
-              <motion.div
-                layout
-                className="relative flex flex-col items-center gap-1.5 py-3 px-2 rounded-xl bg-primary/5 border border-primary/20 cursor-grab active:cursor-grabbing"
-                whileDrag={{ scale: 1.05, boxShadow: "0 8px 25px -5px rgba(0,0,0,0.15)" }}
+            <Reorder.Item
+              as="div"
+              key={url}
+              value={url}
+              className="flex-1 relative flex flex-col items-center gap-1.5 py-3 px-2 rounded-xl bg-primary/5 border border-primary/20 cursor-grab active:cursor-grabbing"
+              whileDrag={{ scale: 1.04, boxShadow: "0 4px 16px -4px rgba(0,0,0,0.12)" }}
+            >
+              <button
+                onClick={(e) => { e.stopPropagation(); onRemove(url); }}
+                className="absolute -top-1.5 -right-1.5 size-5 rounded-full bg-destructive/90 text-destructive-foreground flex items-center justify-center shadow-sm"
               >
-                <button
-                  onClick={(e) => { e.stopPropagation(); onRemove(url); }}
-                  className="absolute -top-1.5 -right-1.5 size-5 rounded-full bg-destructive/90 text-destructive-foreground flex items-center justify-center shadow-sm"
-                >
-                  <X className="size-3" />
-                </button>
-                <div className="size-8 rounded-lg bg-primary/10 flex items-center justify-center">
-                  <RouteIcon route={route} className="size-4.5 text-primary" />
-                </div>
-                <span className="text-[11px] font-medium text-center leading-tight">{route.title}</span>
-              </motion.div>
+                <X className="size-3" />
+              </button>
+              <div className="size-8 rounded-lg bg-primary/10 flex items-center justify-center">
+                <RouteIcon route={route} className="size-4.5 text-primary" />
+              </div>
+              <span className="text-[11px] font-medium text-center leading-tight">{route.title}</span>
             </Reorder.Item>
           );
         })}
@@ -252,27 +234,23 @@ function BarTab({
 
       {/* Available chips */}
       <div className="flex gap-1.5 flex-wrap">
-        <AnimatePresence mode="popLayout">
-          {availableRoutes.map((route) => {
-            const isFull = localTabs.length >= 3;
-            return (
-              <motion.button
-                key={route.url}
-                layout
-                initial={{ opacity: 0, scale: 0.8 }}
-                animate={{ opacity: isFull ? 0.35 : 1, scale: 1 }}
-                exit={{ opacity: 0, scale: 0.8 }}
-                transition={{ duration: 0.15 }}
-                onClick={() => onAdd(route.url)}
-                disabled={isFull}
-                className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-muted/40 active:bg-muted active:scale-95 transition-all"
-              >
-                <RouteIcon route={route} className="size-3.5 text-muted-foreground" />
-                <span className="text-[11px] font-medium text-foreground/70">{route.title}</span>
-              </motion.button>
-            );
-          })}
-        </AnimatePresence>
+        {availableRoutes.map((route) => {
+          const isFull = localTabs.length >= 3;
+          return (
+            <button
+              key={route.url}
+              onClick={() => onAdd(route.url)}
+              disabled={isFull}
+              className={cn(
+                "flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-muted/40 active:bg-muted active:scale-95 transition-all",
+                isFull && "opacity-35 pointer-events-none"
+              )}
+            >
+              <RouteIcon route={route} className="size-3.5 text-muted-foreground" />
+              <span className="text-[11px] font-medium text-foreground/70">{route.title}</span>
+            </button>
+          );
+        })}
       </div>
     </div>
   );
@@ -308,47 +286,46 @@ function SectionsTab({
         {orderedRoutes.map((route) => {
           const isHidden = hiddenRoutes.includes(route.url);
           return (
-            <Reorder.Item as="div" key={route.url} value={route.url}>
-              <motion.div
-                layout
+            <Reorder.Item
+              as="div"
+              key={route.url}
+              value={route.url}
+              className={cn(
+                "flex items-center gap-2.5 pl-1.5 pr-1 py-1.5 rounded-xl cursor-grab active:cursor-grabbing transition-opacity",
+                isHidden ? "opacity-35" : "opacity-100",
+              )}
+              whileDrag={{
+                scale: 1.02,
+                boxShadow: "0 4px 12px -2px rgba(0,0,0,0.1)",
+              }}
+            >
+              <GripVertical className="size-3.5 text-muted-foreground/30 shrink-0" />
+              <div className={cn(
+                "size-7 rounded-lg flex items-center justify-center shrink-0",
+                isHidden ? "bg-muted/20" : "bg-muted/50"
+              )}>
+                <RouteIcon
+                  route={route}
+                  className={cn("size-3.5", isHidden ? "text-muted-foreground/30" : "text-foreground/60")}
+                />
+              </div>
+              <span className={cn(
+                "text-[13px] font-medium truncate flex-1",
+                isHidden && "text-muted-foreground/40 line-through decoration-muted-foreground/20"
+              )}>
+                {route.title}
+              </span>
+              <button
+                onClick={(e) => { e.stopPropagation(); onToggleVisibility(route.url); }}
                 className={cn(
-                  "flex items-center gap-2.5 pl-1.5 pr-1 py-1.5 rounded-xl cursor-grab active:cursor-grabbing",
-                  isHidden ? "opacity-35" : "opacity-100",
+                  "size-7 rounded-lg flex items-center justify-center shrink-0 transition-colors",
+                  isHidden
+                    ? "text-muted-foreground/25 active:bg-muted/50"
+                    : "text-primary/50 active:bg-primary/10"
                 )}
-                whileDrag={{
-                  scale: 1.02,
-                  boxShadow: "0 8px 25px -5px rgba(0,0,0,0.12)",
-                  backgroundColor: "hsl(var(--muted))",
-                }}
               >
-                <GripVertical className="size-3.5 text-muted-foreground/30 shrink-0" />
-                <div className={cn(
-                  "size-7 rounded-lg flex items-center justify-center shrink-0",
-                  isHidden ? "bg-muted/20" : "bg-muted/50"
-                )}>
-                  <RouteIcon
-                    route={route}
-                    className={cn("size-3.5", isHidden ? "text-muted-foreground/30" : "text-foreground/60")}
-                  />
-                </div>
-                <span className={cn(
-                  "text-[13px] font-medium truncate flex-1",
-                  isHidden && "text-muted-foreground/40 line-through decoration-muted-foreground/20"
-                )}>
-                  {route.title}
-                </span>
-                <button
-                  onClick={(e) => { e.stopPropagation(); onToggleVisibility(route.url); }}
-                  className={cn(
-                    "size-7 rounded-lg flex items-center justify-center shrink-0 transition-colors",
-                    isHidden
-                      ? "text-muted-foreground/25 active:bg-muted/50"
-                      : "text-primary/50 active:bg-primary/10"
-                  )}
-                >
-                  {isHidden ? <EyeOff className="size-3.5" /> : <Eye className="size-3.5" />}
-                </button>
-              </motion.div>
+                {isHidden ? <EyeOff className="size-3.5" /> : <Eye className="size-3.5" />}
+              </button>
             </Reorder.Item>
           );
         })}

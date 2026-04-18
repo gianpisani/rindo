@@ -31,7 +31,7 @@ export function MobileBottomBar() {
   const { openQuickAdd, openProfileEdit } = useGlobalDrawers();
   const { playToggleOn } = useSoundFX();
   const { profile, avatarUrl } = useUserProfile();
-  const { mobileTabs } = useNavPreferences();
+  const { mobileTabs, hiddenRoutes } = useNavPreferences();
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [customizeOpen, setCustomizeOpen] = useState(false);
 
@@ -43,9 +43,9 @@ export function MobileBottomBar() {
     .map((url) => APP_ROUTES.find((r) => r.url === url))
     .filter(Boolean) as RouteConfig[];
 
-  // Tool routes for the drawer = all routes NOT in mobile tabs
+  // Tool routes for the drawer = not in bottom bar AND not hidden
   const drawerRoutes = APP_ROUTES.filter(
-    (r) => !mobileTabs.includes(r.url)
+    (r) => !mobileTabs.includes(r.url) && !hiddenRoutes.includes(r.url)
   );
 
   const handleQuickAdd = useCallback(() => {
