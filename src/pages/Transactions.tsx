@@ -1199,7 +1199,7 @@ export default function Transactions() {
                 .filter(cat => cat && cat.trim().length > 0)
                 .map(cat => (
                   <SelectItem key={cat} value={cat}>
-                    {getCategoryIcon(cat)} {cat}
+                    {categories.find(c => c.name === cat)?.icon || getCategoryIcon(cat)} {cat}
                   </SelectItem>
                 ))}
             </SelectContent>
