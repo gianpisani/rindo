@@ -1234,10 +1234,29 @@ export default function Transactions() {
         onOpenChange={(open) => setConfirmDelete({ open, id: null })}
         onConfirm={confirmDeleteAction}
         title="¿Eliminar transacción?"
-        description="Esta acción no se puede deshacer. La transacción será eliminada permanentemente."
+        description="Esta acción no se puede deshacer."
         confirmText="Eliminar"
         cancelText="Cancelar"
-      />
+      >
+        {confirmDelete.id && (() => {
+          const tx = transactions.find(t => t.id === confirmDelete.id);
+          if (!tx) return null;
+          return (
+            <div className="rounded-lg border bg-muted/50 p-3 space-y-1 text-sm">
+              <div className="flex items-center justify-between">
+                <span className="font-medium">{tx.detail || "Sin detalle"}</span>
+                <span className={`font-bold font-mono tabular-nums ${tx.type === "Ingreso" ? "text-success" : tx.type === "Inversión" ? "text-info" : "text-destructive"}`}>
+                  {formatCurrency(tx.amount)}
+                </span>
+              </div>
+              <div className="flex items-center justify-between text-xs text-muted-foreground">
+                <span>{tx.category_name}</span>
+                <span>{format(new Date(tx.date), "dd/MM/yyyy")}</span>
+              </div>
+            </div>
+          );
+        })()}
+      </ConfirmDialog>
 
       <ConfirmDialog
         open={confirmDeleteMultiple.open}

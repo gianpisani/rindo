@@ -118,12 +118,21 @@ export function useTransactions() {
 
   const deleteTransaction = useMutation({
     mutationFn: async (id: string) => {
+      const toDelete = allTransactions.find(t => t.id === id);
+      if (toDelete) lastDeletedRef.current = [toDelete];
+
       const { error } = await supabase.from("transactions").delete().eq("id", id);
       if (error) throw error;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["transactions"] });
-      toast.success("Transacción eliminada");
+      toast.success("Transacción eliminada", {
+        action: {
+          label: "Deshacer",
+          onClick: () => undoDelete(),
+        },
+        duration: 8000,
+      });
     },
   });
 
@@ -144,7 +153,13 @@ export function useTransactions() {
     },
     onSuccess: (count) => {
       queryClient.invalidateQueries({ queryKey: ["transactions"] });
-      toast.success(`${count} transacciones eliminadas`);
+      toast.success(`${count} transacciones eliminadas`, {
+        action: {
+          label: "Deshacer",
+          onClick: () => undoDelete(),
+        },
+        duration: 8000,
+      });
     },
     onError: (error: Error) => {
       toast.error(error.message);

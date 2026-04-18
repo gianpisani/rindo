@@ -13,6 +13,7 @@ import { toast } from "sonner";
 import { FingerPrintIcon } from "@heroicons/react/24/outline";
 import { Checkbox } from "./ui/checkbox";
 import SharedExpenseDrawer from "./SharedExpenseDrawer";
+import { usePrivacyMode } from "@/hooks/usePrivacyMode";
 
 interface QuickTransactionFormProps {
   onSuccess?: () => void;
@@ -38,11 +39,13 @@ export default function QuickTransactionForm({ onSuccess, defaultType = "Gasto" 
   const [isShared, setIsShared] = useState(false);
   const [sharedDrawerOpen, setSharedDrawerOpen] = useState(false);
   const [pendingTransaction, setPendingTransaction] = useState<{ id: string; amount: number } | null>(null);
+  const [amountError, setAmountError] = useState("");
 
   const { categories } = useCategories();
   const queryClient = useQueryClient();
   const { addTransaction } = useTransactions();
   const { playToggleOff, playTap } = useSoundFX();
+  const { isPrivacyMode } = usePrivacyMode();
   const { addSharedExpenses } = useSharedExpenses();
   const detailInputRef = useRef<HTMLInputElement>(null);
   const amountInputRef = useRef<HTMLInputElement>(null);
@@ -101,6 +104,17 @@ export default function QuickTransactionForm({ onSuccess, defaultType = "Gasto" 
       
     } catch (error) {
       console.error('Error en auto-categorización:', error);
+      // Revertir placeholder y notificar al usuario
+      if (transactionId) {
+        try {
+          await supabase
+            .from("transactions")
+            .update({ category_name: "Sin categoría" })
+            .eq("id", transactionId);
+          queryClient.invalidateQueries({ queryKey: ["transactions"] });
+        } catch {}
+      }
+      toast.error("No se pudo categorizar automáticamente");
     }
   };
 
@@ -109,8 +123,13 @@ export default function QuickTransactionForm({ onSuccess, defaultType = "Gasto" 
     
     const cleanAmount = amount.replace(/[$.,\s]/g, "");
     const parsedAmount = parseFloat(cleanAmount);
-    
-    if (isNaN(parsedAmount) || parsedAmount <= 0) return;
+
+    if (isNaN(parsedAmount) || parsedAmount <= 0) {
+      setAmountError("Ingresa un monto válido");
+      amountInputRef.current?.focus();
+      return;
+    }
+    setAmountError("");
 
     setIsSubmitting(true);
 
@@ -234,11 +253,12 @@ export default function QuickTransactionForm({ onSuccess, defaultType = "Gasto" 
               onChange={(e) => {
                 const formatted = formatCurrency(e.target.value);
                 setAmount(formatted);
+                if (amountError) setAmountError("");
                 playTap();
               }}
               onKeyDown={handleAmountKeyDown}
               style={{ fontSize: "clamp(2rem, 6vw, 3rem)" }}
-              className={`h-32 sm:h-40 text-center font-bold font-mono rounded-3xl border-2 transition-all bg-background placeholder:text-muted-foreground/50 focus-visible:ring-transparent bg-transparent ${
+              className={`h-32 sm:h-40 text-center font-bold font-mono rounded-3xl border-2 transition-all bg-background placeholder:text-muted-foreground/50 focus-visible:ring-transparent bg-transparent ${isPrivacyMode && amount ? "privacy-blur" : ""} ${
                 defaultType === "Ingreso"
                   ? "border-success/30 focus:border-success focus:ring-4 focus:ring-success/20"
                   : defaultType === "Inversión"
@@ -246,7 +266,12 @@ export default function QuickTransactionForm({ onSuccess, defaultType = "Gasto" 
                     : "border-destructive/30 focus:border-destructive focus:ring-4 focus:ring-destructive/20"
               }`}
             />
-            {showKeyboardHints && (
+            {amountError && (
+              <p className="text-center text-sm font-medium text-destructive animate-in fade-in slide-in-from-top-1 duration-200">
+                {amountError}
+              </p>
+            )}
+            {showKeyboardHints && !amountError && (
               <p className="text-center text-xs text-muted-foreground flex items-center justify-center gap-1.5">
                 <ArrowRightToLine className="h-3.5 w-3.5" />
                 <span><span className="font-bold">Tab</span> para continuar</span>

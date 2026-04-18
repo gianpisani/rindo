@@ -309,6 +309,9 @@ export function OnboardingModal({
       }
     >
       {/* Step indicators */}
+      <p className="text-center text-xs text-muted-foreground mb-2">
+        Paso {step + 1} de {STEPS.length}
+      </p>
       <div className="flex items-center justify-center gap-2 mb-6">
         {STEPS.map((s, i) => {
           const Icon = s.icon;

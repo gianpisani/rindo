@@ -25,10 +25,10 @@ export const useGlobalDrawers = create<GlobalDrawersState>((set) => ({
   closeQuickAdd: () =>
     set({ quickAddOpen: false, quickAddDefaultType: undefined }),
   setQuickAddOpen: (open) =>
-    set({
+    set((state) => ({
       quickAddOpen: open,
-      ...(open ? {} : { quickAddDefaultType: undefined }),
-    }),
+      ...(open ? {} : { quickAddDefaultType: state.quickAddDefaultType }),
+    })),
   openReconciliation: () => set({ reconciliationOpen: true }),
   closeReconciliation: () => set({ reconciliationOpen: false }),
   setReconciliationOpen: (open) => set({ reconciliationOpen: open }),

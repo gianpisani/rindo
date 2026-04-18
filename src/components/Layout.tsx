@@ -132,7 +132,7 @@ export default function Layout({ children }: LayoutProps) {
   }, []);
 
   return (
-    <TooltipProvider delayDuration={300}>
+    <TooltipProvider delayDuration={200}>
       <SidebarProvider>
         {/* Command Bar - Global (controlled) */}
         <CommandBar
@@ -212,6 +212,7 @@ export default function Layout({ children }: LayoutProps) {
                         disabled={pushLoading}
                         variant="ghost"
                         size="sm"
+                        aria-label={pushSubscribed ? "Desactivar notificaciones" : "Activar notificaciones"}
                         className={cn(
                           "rounded-full h-8 w-8 p-0 transition-all duration-200",
                           pushSubscribed
@@ -242,6 +243,7 @@ export default function Layout({ children }: LayoutProps) {
                       }}
                       variant="ghost"
                       size="sm"
+                      aria-label={soundEnabled ? "Desactivar sonidos" : "Activar sonidos"}
                       className={cn(
                         "rounded-full h-8 w-8 p-0 transition-all duration-200",
                         soundEnabled
@@ -268,6 +270,7 @@ export default function Layout({ children }: LayoutProps) {
                       onClick={togglePrivacyMode}
                       variant="ghost"
                       size="sm"
+                      aria-label={isPrivacyMode ? "Desactivar modo privado" : "Activar modo privado"}
                       className={cn(
                         "rounded-full h-8 w-8 p-0 transition-all duration-200",
                         isPrivacyMode
@@ -320,7 +323,7 @@ export default function Layout({ children }: LayoutProps) {
                     <p className="text-[11px] text-muted-foreground leading-relaxed">
                       {atmosphere.description}
                     </p>
-                    <p className="text-[10px] text-muted-foreground/60 leading-relaxed border-t border-border/50 pt-1.5">
+                    <p className="text-[11px] text-muted-foreground leading-relaxed border-t border-border/50 pt-1.5">
                       El color de fondo de la app cambia sutilmente según tu salud financiera del mes. Verde = ingresos superan gastos, rojo = gastos superan ingresos.
                     </p>
                   </TooltipContent>
@@ -353,7 +356,7 @@ export default function Layout({ children }: LayoutProps) {
           <main
             className={cn(
               "flex flex-1 flex-col gap-4 p-4 sm:p-6 overflow-x-clip max-w-full",
-              isMobile && "pb-28"
+              isMobile && "pb-28 pb-safe"
             )}
             data-scrollable
           >

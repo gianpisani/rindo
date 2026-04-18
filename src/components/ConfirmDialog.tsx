@@ -1,3 +1,4 @@
+import { ReactNode } from "react";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "./ui/dialog";
 import { Button } from "./ui/button";
 import { AlertTriangle } from "lucide-react";
@@ -9,6 +10,7 @@ interface ConfirmDialogProps {
   onConfirm: () => void;
   title: string;
   description: string;
+  children?: ReactNode;
   confirmText?: string;
   cancelText?: string;
   variant?: "default" | "destructive";
@@ -20,6 +22,7 @@ export default function ConfirmDialog({
   onConfirm,
   title,
   description,
+  children,
   confirmText = "Confirmar",
   cancelText = "Cancelar",
   variant = "destructive",
@@ -46,6 +49,11 @@ export default function ConfirmDialog({
             {description}
           </DialogDescription>
         </DialogHeader>
+        {children && (
+          <div className="px-6 pb-4">
+            {children}
+          </div>
+        )}
         <DialogFooter className="flex-row gap-2 sm:gap-2 px-6 pb-6">
           <Button
             variant="outline"

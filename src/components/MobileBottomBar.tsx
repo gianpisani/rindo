@@ -60,6 +60,7 @@ export function MobileBottomBar() {
               <Link
                 key={route.url}
                 to={route.url}
+                aria-current={isActive ? "page" : undefined}
                 className={cn(
                   "mobile-tab-item",
                   isActive && "mobile-tab-active"
@@ -81,10 +82,10 @@ export function MobileBottomBar() {
                 </div>
                 <span
                   className={cn(
-                    "text-[10px] font-medium tracking-wide transition-all duration-300 mt-0.5",
+                    "text-[11px] font-medium tracking-wide transition-all duration-300 mt-0.5",
                     isActive
-                      ? "text-primary opacity-100"
-                      : "text-muted-foreground/70 opacity-80"
+                      ? "text-primary"
+                      : "text-muted-foreground"
                   )}
                 >
                   {route.title}
@@ -103,7 +104,7 @@ export function MobileBottomBar() {
                 className="h-[22px] w-[22px] text-muted-foreground transition-all duration-300"
               />
             </div>
-            <span className="text-[10px] font-medium tracking-wide text-muted-foreground/70 opacity-80 mt-0.5">
+            <span className="text-[11px] font-medium tracking-wide text-muted-foreground mt-0.5">
               Más
             </span>
           </button>
@@ -131,7 +132,7 @@ export function MobileBottomBar() {
               <span className="text-[13px] font-semibold text-foreground mt-3 tracking-tight">
                 Agregar movimiento
               </span>
-              <span className="text-[11px] text-muted-foreground/60 mt-0.5">
+              <span className="text-[11px] text-muted-foreground mt-0.5">
                 Ingreso o gasto rápido
               </span>
             </div>
