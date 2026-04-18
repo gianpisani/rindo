@@ -4,7 +4,6 @@ import { GlassCard } from "@/components/GlassCard";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Badge } from "@/components/ui/badge";
 import { BaseModal } from "@/components/BaseModal";
 import ConfirmDialog from "@/components/ConfirmDialog";
 import { useSharedExpenses } from "@/hooks/useSharedExpenses";
@@ -15,7 +14,6 @@ import {
   CheckCircle2,
   Trash2,
   Users,
-  Clock,
   ChevronDown,
   DollarSign,
   Receipt,
@@ -52,10 +50,13 @@ export default function PendingDebts() {
     amount: number;
     detail?: string;
   } | null>(null);
+  const [confirmDelete, setConfirmDelete] = useState<{ open: boolean; id: string | null }>({
+    open: false,
+    id: null,
+  });
   const [showAddModal, setShowAddModal] = useState(false);
   const [showPaid, setShowPaid] = useState(false);
   const [newDebt, setNewDebt] = useState({ name: "", amount: "", detail: "" });
-  const nameInputRef = useRef<HTMLInputElement>(null);
   const amountInputRef = useRef<HTMLInputElement>(null);
 
   // Focus amount input when modal opens
@@ -74,6 +75,12 @@ export default function PendingDebts() {
       transactionDetail: confirmPaid.detail,
     });
     setConfirmPaid(null);
+  };
+
+  const handleConfirmDelete = async () => {
+    if (confirmDelete.id) {
+      await deleteSharedExpense.mutateAsync(confirmDelete.id);
+    }
   };
 
   const handleAddDebt = async () => {
@@ -209,7 +216,7 @@ export default function PendingDebts() {
                         <div
                           key={expense.id}
                           className={cn(
-                            "flex items-center gap-3 px-4 py-2.5 hover:bg-accent/30 transition-colors",
+                            "flex items-center gap-2 px-4 py-2.5 hover:bg-accent/30 transition-colors",
                             i < expenses.length - 1 && "border-b border-border/20"
                           )}
                         >
@@ -239,9 +246,9 @@ export default function PendingDebts() {
                             {fmt(expense.amount_owed)}
                           </span>
                           {/* Actions */}
-                          <div className="flex items-center gap-0.5 shrink-0">
+                          <div className="flex items-center gap-1 shrink-0">
                             <button
-                              className="h-7 w-7 rounded-full flex items-center justify-center hover:bg-success/10 transition-colors"
+                              className="h-9 w-9 rounded-full flex items-center justify-center hover:bg-success/10 active:bg-success/20 transition-colors"
                               title="Marcar como pagado"
                               onClick={() =>
                                 setConfirmPaid({
@@ -252,40 +259,18 @@ export default function PendingDebts() {
                                 })
                               }
                             >
-                              <CheckCircle2 className="h-4 w-4 text-success" />
+                              <CheckCircle2 className="h-[18px] w-[18px] text-success" />
                             </button>
                             <button
-                              className="h-7 w-7 rounded-full flex items-center justify-center hover:bg-destructive/10 transition-colors"
+                              className="h-9 w-9 rounded-full flex items-center justify-center hover:bg-destructive/10 active:bg-destructive/20 transition-colors"
                               title="Eliminar"
-                              onClick={() => deleteSharedExpense.mutate(expense.id)}
+                              onClick={() => setConfirmDelete({ open: true, id: expense.id })}
                             >
-                              <Trash2 className="h-3.5 w-3.5 text-destructive" />
+                              <Trash2 className="h-4 w-4 text-muted-foreground hover:text-destructive transition-colors" />
                             </button>
                           </div>
                         </div>
                       ))}
-                    </div>
-                  )}
-
-                  {/* Quick "Mark all paid" for multi-expense debtors */}
-                  {expenses.length > 1 && (
-                    <div className="border-t border-border/40 px-4 py-2">
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        className="w-full text-xs text-success hover:text-success hover:bg-success/10 h-8"
-                        onClick={() =>
-                          setConfirmPaid({
-                            id: expenses[0].id,
-                            name: debtor.debtor_name,
-                            amount: expenses[0].amount_owed,
-                            detail: expenses[0].transaction_detail || undefined,
-                          })
-                        }
-                      >
-                        <CheckCircle2 className="h-3.5 w-3.5 mr-1.5" />
-                        Cobrar primero
-                      </Button>
                     </div>
                   )}
                 </GlassCard>
@@ -323,8 +308,8 @@ export default function PendingDebts() {
                         {expense.debtor_name.charAt(0).toUpperCase()}
                       </span>
                     </div>
-                    <div className="flex-1 min-w-0">
-                      <span className="truncate">
+                    <div className="flex-1 min-w-0 truncate">
+                      <span>
                         {expense.debtor_name}
                       </span>
                       <span className="mx-1.5">·</span>
@@ -403,7 +388,6 @@ export default function PendingDebts() {
           <div className="space-y-1.5">
             <Label className="text-sm font-medium">Nombre</Label>
             <Input
-              ref={nameInputRef}
               placeholder="ej. Juan"
               value={newDebt.name}
               onChange={(e) => setNewDebt({ ...newDebt, name: e.target.value })}
@@ -444,6 +428,17 @@ export default function PendingDebts() {
         confirmText="Pagado"
         cancelText="Cancelar"
         variant="default"
+      />
+
+      {/* Confirm Delete Dialog */}
+      <ConfirmDialog
+        open={confirmDelete.open}
+        onOpenChange={(open) => setConfirmDelete({ open, id: null })}
+        onConfirm={handleConfirmDelete}
+        title="Eliminar deuda"
+        description="Esta acción no se puede deshacer."
+        confirmText="Eliminar"
+        cancelText="Cancelar"
       />
     </Layout>
   );
