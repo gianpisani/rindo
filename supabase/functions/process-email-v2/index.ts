@@ -369,6 +369,7 @@ Deno.serve(async (req) => {
       parsed.bank = bank
     }
 
+    const bankDescription = parsed.detail
     parsed.detail = `🤖 ${parsed.detail}`
 
     console.log('💰 Parseado:', parsed)
@@ -435,6 +436,7 @@ Deno.serve(async (req) => {
         user_id: user_id,
         date: transactionDate,
         detail: parsed.detail,
+        bank_description: bankDescription,
         category_name: categoryName,
         type: parsed.type,
         amount: parsed.amount,
