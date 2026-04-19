@@ -628,15 +628,25 @@ export function TransactionsTable({
                 )}
               </div>
               {/* Text */}
-              <EditableTextCell
-                value={clean}
-                onSave={(newDetail) => {
-                  const prefix = isBot ? "🤖 " : "";
-                  handleInlineUpdate(row.original.id, "detail", newDetail ? prefix + newDetail : null);
-                }}
-                placeholder="Agregar detalle..."
-                className="text-sm text-muted-foreground flex-1 min-w-0"
-              />
+              <div className="flex flex-col min-w-0 flex-1">
+                <EditableTextCell
+                  value={clean}
+                  onSave={(newDetail) => {
+                    const prefix = isBot ? "🤖 " : "";
+                    handleInlineUpdate(row.original.id, "detail", newDetail ? prefix + newDetail : null);
+                  }}
+                  placeholder="Agregar detalle..."
+                  className="text-sm text-muted-foreground"
+                />
+                {row.original.bank_description && row.original.bank_description !== clean && (
+                  <p
+                    className="text-[10px] text-muted-foreground/50 truncate leading-none mt-0.5"
+                    title={row.original.bank_description}
+                  >
+                    {row.original.bank_description}
+                  </p>
+                )}
+              </div>
             </div>
           );
         },

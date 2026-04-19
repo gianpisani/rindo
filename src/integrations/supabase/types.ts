@@ -590,6 +590,7 @@ export type Database = {
           card_id: string | null
           installment_id: string | null
           reimbursement_for_category: string | null
+          bank_description: string | null
         }
         Insert: {
           amount: number
@@ -603,6 +604,7 @@ export type Database = {
           card_id?: string | null
           installment_id?: string | null
           reimbursement_for_category?: string | null
+          bank_description?: string | null
         }
         Update: {
           amount?: number
@@ -616,6 +618,7 @@ export type Database = {
           card_id?: string | null
           installment_id?: string | null
           reimbursement_for_category?: string | null
+          bank_description?: string | null
         }
         Relationships: [
           {

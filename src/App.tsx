@@ -21,6 +21,7 @@ import Auth from "./components/Auth";
 import { OnboardingModal } from "./components/OnboardingModal";
 import { useCustomTheme } from "./hooks/useCustomTheme";
 import { useUserProfile } from "./hooks/useUserProfile";
+import { BankSyncProvider } from "./contexts/BankSyncContext";
 
 const queryClient = new QueryClient();
 
@@ -162,7 +163,7 @@ function AuthenticatedApp() {
   }, [isLoading, profile]);
 
   return (
-    <>
+    <BankSyncProvider>
       <OnboardingModal
         open={onboardingOpen}
         onOpenChange={setOnboardingOpen}
@@ -183,7 +184,7 @@ function AuthenticatedApp() {
           <Route path="*" element={<NotFound />} />
         </Routes>
       </BrowserRouter>
-    </>
+    </BankSyncProvider>
   );
 }
 

@@ -15,6 +15,7 @@ export interface Transaction {
   card_id: string | null;
   installment_id: string | null;
   reimbursement_for_category: string | null;
+  bank_description: string | null;
 }
 
 export function useTransactions() {
