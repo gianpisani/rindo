@@ -148,6 +148,7 @@ Deno.serve(async (req) => {
         user_id: usuario,
         date: transactionDate,
         detail: detail,
+        bank_description: `${comercio}${divisaSuffix}`,
         category_name: categoryName,
         type: 'Gasto',
         amount: parsedAmount,

@@ -217,16 +217,21 @@ Deno.serve(async (req) => {
         // there are already multiple duplicates in the DB (maybeSingle returns
         // { data: null } for 2+ rows, which would incorrectly allow another insert).
 
-        // 1. Skip if a bank-imported transaction with the same description already exists
+        // 1. Skip if a bank-imported transaction with a similar description already exists
+        // (check if any stored bank_description is contained within the incoming description)
         const { data: existingBankRows } = await supabaseClient
           .from('transactions')
-          .select('id')
+          .select('id, bank_description')
           .eq('user_id', userId)
           .gte('date', isoDate)
           .lt('date', nextDayStr)
           .eq('amount', absAmount)
-          .eq('bank_description', description)
-          .limit(1)
+          .not('bank_description', 'is', null)
+          .limit(10)
+
+        const bankDuplicate = existingBankRows?.some(
+          row => row.bank_description && description.includes(row.bank_description)
+        )
 
         // 2. Skip if a manually entered transaction (no bank_description) matches by date+amount
         const { data: existingManualRows } = await supabaseClient
@@ -239,7 +244,7 @@ Deno.serve(async (req) => {
           .is('bank_description', null)
           .limit(1)
 
-        if ((existingBankRows && existingBankRows.length > 0) || (existingManualRows && existingManualRows.length > 0)) {
+        if (bankDuplicate || (existingManualRows && existingManualRows.length > 0)) {
           skipped++
           continue
         }
