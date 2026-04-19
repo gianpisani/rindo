@@ -20,13 +20,15 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { Plus, Download, TrendingUp, TrendingDown, PiggyBank, Upload, X, Sparkles, Info, Trash2, Search, CalendarClock, Users, CheckCircle2, Clock, Pencil, ArrowLeftRight } from "lucide-react";
+import { Plus, Download, TrendingUp, TrendingDown, PiggyBank, Upload, X, Sparkles, Info, Trash2, Search, CalendarClock, Users, CheckCircle2, Clock, Pencil, ArrowLeftRight, Building2, RefreshCw } from "lucide-react";
 import { useTransactions, Transaction } from "@/hooks/useTransactions";
 import { useCategories } from "@/hooks/useCategories";
 import { useCreditCards } from "@/hooks/useCreditCards";
 import { useSharedExpenses } from "@/hooks/useSharedExpenses";
 import { Checkbox } from "@/components/ui/checkbox";
 import SharedExpenseDrawer from "@/components/SharedExpenseDrawer";
+import { BankSyncModal } from "@/components/BankSyncModal";
+import { useBankSyncContext } from "@/contexts/BankSyncContext";
 import { format, parse } from "date-fns";
 import Papa from "papaparse";
 import { supabase } from "@/integrations/supabase/client";
@@ -70,8 +72,10 @@ export default function Transactions() {
   const { categories } = useCategories();
   const { creditCards } = useCreditCards();
   const { addSharedExpenses, updateSharedExpenseAmount, getSharedExpensesByTransaction, markAsPaid, linkExistingTransaction, deleteSharedExpense, sharedExpenses, sharedExpensesWithTransaction } = useSharedExpenses();
+  const bankSync = useBankSyncContext();
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [showFuture, setShowFuture] = useState(false);
+  const [isBankSyncOpen, setIsBankSyncOpen] = useState(false);
 
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [isImportDialogOpen, setIsImportDialogOpen] = useState(false);
@@ -1080,6 +1084,16 @@ export default function Transactions() {
           </BaseModal>
         </div>
 
+        <BankSyncModal
+          open={isBankSyncOpen}
+          onOpenChange={setIsBankSyncOpen}
+          syncStep={bankSync.step}
+          pollStatus={bankSync.pollStatus}
+          result={bankSync.result}
+          onStart={bankSync.startSync}
+          onReset={bankSync.reset}
+        />
+
         {/* Toolbar unificada */}
         <div className="flex flex-wrap items-center gap-2">
           {/* Acciones izq */}
@@ -1133,6 +1147,22 @@ export default function Transactions() {
           <Button onClick={handleExportCSV} variant="outline" size="sm" className="rounded-full gap-2">
             <Download className="h-4 w-4" />
             <span className="hidden sm:inline">Exportar</span>
+          </Button>
+
+          <Button
+            variant="outline"
+            size="sm"
+            className="rounded-full gap-2"
+            onClick={() => setIsBankSyncOpen(true)}
+          >
+            {bankSync.isRunning ? (
+              <RefreshCw className="h-4 w-4 animate-spin" />
+            ) : (
+              <Building2 className="h-4 w-4" />
+            )}
+            <span className="hidden sm:inline">
+              {bankSync.isRunning ? "Sincronizando..." : "Sincronizar Banco"}
+            </span>
           </Button>
 
           {/* Cuotas futuras como botón compacto */}
