@@ -1,4 +1,4 @@
-import { useState, useCallback, useMemo, memo, useEffect } from "react";
+import { useState, useCallback, useMemo, useEffect, useRef } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "./ui/button";
 import { Input } from "./ui/input";
@@ -7,6 +7,8 @@ import { toast } from "sonner";
 import { CheckCircleIcon } from "@heroicons/react/24/outline";
 import { AnimatePresence, motion } from "framer-motion";
 import { RindoLogo } from "./RindoLogo";
+
+// ── Email domain helpers ────────────────────────────────────────────────────
 
 const EMAIL_DOMAINS = [
   "gmail.com",
@@ -35,11 +37,116 @@ function getVisibleDomains(email: string): string[] {
   return EMAIL_DOMAINS.filter((d) => d.startsWith(partial) && d !== partial).slice(0, 4);
 }
 
+// ── Rotating words ──────────────────────────────────────────────────────────
+
+const ROTATING_WORDS = [
+  "Ordena tus finanzas",
+  "Sincroniza tu banco",
+  "Controla tu presupuesto",
+  "Proyecta tu futuro",
+  "Maneja tus deudas",
+  "Trackea cada peso",
+];
+
+function RotatingText() {
+  const [index, setIndex] = useState(0);
+
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setIndex((i) => (i + 1) % ROTATING_WORDS.length);
+    }, 3000);
+    return () => clearInterval(interval);
+  }, []);
+
+  return (
+    <div className="h-7 overflow-hidden relative">
+      <AnimatePresence mode="wait">
+        <motion.p
+          key={index}
+          initial={{ opacity: 0, y: 16, filter: "blur(4px)" }}
+          animate={{ opacity: 1, y: 0, filter: "blur(0px)" }}
+          exit={{ opacity: 0, y: -16, filter: "blur(4px)" }}
+          transition={{ duration: 0.5, ease: "easeInOut" }}
+          className="text-sm text-white/30 font-light tracking-wide absolute inset-0 text-center"
+        >
+          {ROTATING_WORDS[index]}
+        </motion.p>
+      </AnimatePresence>
+    </div>
+  );
+}
+
+// ── Floating shortcut badges ────────────────────────────────────────────────
+
+const SHORTCUTS = [
+  { keys: "N", label: "nuevo gasto", x: "8%", y: "18%" },
+  { keys: "R", label: "conciliar", x: "78%", y: "22%" },
+  { keys: "P", label: "presupuesto", x: "5%", y: "75%" },
+  { keys: "⌘K", label: "buscar", x: "82%", y: "70%" },
+];
+
+function FloatingShortcuts() {
+  return (
+    <>
+      {SHORTCUTS.map((s, i) => (
+        <motion.div
+          key={s.keys}
+          initial={{ opacity: 0 }}
+          animate={{
+            opacity: [0, 0.12, 0.08, 0.12],
+            y: [0, -6, 0, 6, 0],
+          }}
+          transition={{
+            opacity: { duration: 2, delay: 1.5 + i * 0.3 },
+            y: { duration: 8 + i * 2, repeat: Infinity, ease: "easeInOut" },
+          }}
+          className="absolute hidden lg:flex items-center gap-1.5 pointer-events-none select-none"
+          style={{ left: s.x, top: s.y }}
+        >
+          <kbd className="px-1.5 py-0.5 text-[10px] font-mono rounded border border-white/10 bg-white/[0.03] text-white/40">
+            {s.keys}
+          </kbd>
+          <span className="text-[10px] text-white/20">{s.label}</span>
+        </motion.div>
+      ))}
+    </>
+  );
+}
+
+// ── Ambient orbs ────────────────────────────────────────────────────────────
+
+function AmbientBackground() {
+  return (
+    <div className="absolute inset-0 overflow-hidden pointer-events-none">
+      {/* Radial gradient center glow */}
+      <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] rounded-full bg-white/[0.012] blur-[120px]" />
+      {/* Subtle primary accent */}
+      <motion.div
+        animate={{ opacity: [0.015, 0.03, 0.015] }}
+        transition={{ duration: 8, repeat: Infinity, ease: "easeInOut" }}
+        className="absolute top-1/3 left-1/2 -translate-x-1/2 w-[400px] h-[400px] rounded-full blur-[100px]"
+        style={{ backgroundColor: "hsl(var(--primary))" }}
+      />
+      {/* Noise texture */}
+      <div
+        className="absolute inset-0 opacity-[0.015]"
+        style={{
+          backgroundImage: `url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='1'/%3E%3C/svg%3E")`,
+        }}
+      />
+    </div>
+  );
+}
+
+// ── Form transition variants ────────────────────────────────────────────────
+
 const formVariants = {
   enter: { opacity: 0, y: 20, filter: "blur(2px)" },
   center: { opacity: 1, y: 0, filter: "blur(0px)" },
   exit: { opacity: 0, y: -20, filter: "blur(2px)" },
 };
+
+// ── Main component ──────────────────────────────────────────────────────────
 
 export default function Auth() {
   const [isLogin, setIsLogin] = useState(true);
@@ -113,24 +220,22 @@ export default function Auth() {
 
   return (
     <div className="min-h-screen bg-black flex items-center justify-center relative overflow-hidden">
-      {/* Subtle noise texture */}
-      <div className="absolute inset-0 opacity-[0.015]" style={{
-        backgroundImage: `url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='1'/%3E%3C/svg%3E")`,
-      }} />
+      <AmbientBackground />
+      <FloatingShortcuts />
 
       <div className="relative z-10 w-full max-w-[360px] px-6">
-        {/* Logo + Brand */}
+        {/* ── Logo + Brand ────────────────────────────────────────────────── */}
         <motion.div
           initial={{ opacity: 0, y: -12 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.8, ease: "easeOut" }}
-          className="text-center mb-12"
+          className="text-center mb-10"
         >
           <motion.div
             initial={{ opacity: 0, scale: 0.8 }}
             animate={{ opacity: 1, scale: 1 }}
             transition={{ duration: 0.6, delay: 0.1 }}
-            className="mb-6"
+            className="mb-5"
           >
             <RindoLogo size={56} className="text-white mx-auto" />
           </motion.div>
@@ -138,12 +243,27 @@ export default function Auth() {
           <h1 className="text-3xl font-bold text-white tracking-tight">
             rindo<span className="text-primary">.</span>
           </h1>
-          <p className="text-sm text-white/20 mt-2 font-light tracking-wide">
-            Tu banco no te juzga. Yo sí.
-          </p>
+
+          {/* Rotating capabilities */}
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={{ delay: 0.6, duration: 0.8 }}
+            className="mt-3"
+          >
+            <RotatingText />
+          </motion.div>
         </motion.div>
 
-        {/* Form / Email Sent */}
+        {/* ── Separator line ──────────────────────────────────────────────── */}
+        <motion.div
+          initial={{ scaleX: 0, opacity: 0 }}
+          animate={{ scaleX: 1, opacity: 1 }}
+          transition={{ delay: 0.8, duration: 0.6, ease: "easeOut" }}
+          className="h-px bg-gradient-to-r from-transparent via-white/[0.06] to-transparent mb-8"
+        />
+
+        {/* ── Form / Email Sent ───────────────────────────────────────────── */}
         <AnimatePresence mode="wait">
           {!emailSent ? (
             <motion.form
@@ -300,7 +420,7 @@ export default function Auth() {
           )}
         </AnimatePresence>
 
-        {/* Toggle */}
+        {/* ── Toggle ──────────────────────────────────────────────────────── */}
         {!emailSent && (
           <motion.div
             initial={{ opacity: 0 }}
@@ -321,6 +441,16 @@ export default function Auth() {
             </button>
           </motion.div>
         )}
+
+        {/* ── Bottom tagline ──────────────────────────────────────────────── */}
+        <motion.p
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ delay: 1.2, duration: 1 }}
+          className="text-center text-[10px] text-white/10 mt-12 font-light tracking-wider"
+        >
+          Tu banco no te juzga. Yo sí.
+        </motion.p>
       </div>
     </div>
   );
