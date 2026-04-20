@@ -33,6 +33,7 @@ import {
   CheckCircle,
   Lightbulb,
   BarChart3,
+  SlidersHorizontal,
 } from "lucide-react";
 import { format, addMonths, subMonths } from "date-fns";
 import { es } from "date-fns/locale";
@@ -51,6 +52,12 @@ import {
   SelectTrigger,
   SelectValue,
 } from "./ui/select";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "./ui/popover";
+import { Checkbox } from "./ui/checkbox";
 import {
   LineChart,
   Line,
@@ -161,6 +168,7 @@ export function CategoryInsightsView() {
   const [selectedMonth, setSelectedMonth] = useState(new Date());
   const [isLimitDialogOpen, setIsLimitDialogOpen] = useState(false);
   const [editingBudget, setEditingBudget] = useState(false);
+  const [selectedChartCategories, setSelectedChartCategories] = useState<Set<string>>(new Set());
   const [budgetInput, setBudgetInput] = useState("");
   const [limitFormData, setLimitFormData] = useState({
     category: "",
@@ -272,6 +280,20 @@ export function CategoryInsightsView() {
       .map((c) => c.category);
   }, [categorySpending, monthlyComparison]);
 
+  const availableChartCategories = useMemo(() => {
+    return categorySpending
+      .filter((cat) =>
+        monthlyComparison.some((m) => (m.categories[cat.category] || 0) > 0)
+      )
+      .map((c) => c.category);
+  }, [categorySpending, monthlyComparison]);
+
+  const activeChartCategories = useMemo(() => {
+    return selectedChartCategories.size > 0
+      ? availableChartCategories.filter((c) => selectedChartCategories.has(c))
+      : top5Categories;
+  }, [selectedChartCategories, availableChartCategories, top5Categories]);
+
   // Insights
   const alertInsights = insights.filter((i) => i.type === "alert");
   const achievementInsights = insights.filter((i) => i.type === "achievement");
@@ -289,12 +311,12 @@ export function CategoryInsightsView() {
   // Category colors for chart lines
   const categoryLineColors = useMemo(() => {
     const colors: Record<string, string> = {};
-    top5Categories.forEach((cat) => {
+    availableChartCategories.forEach((cat) => {
       const catObj = categories.find((c) => c.name === cat);
       colors[cat] = catObj?.color || `hsl(${Math.random() * 360}, 70%, 50%)`;
     });
     return colors;
-  }, [top5Categories, categories]);
+  }, [availableChartCategories, categories]);
 
   return (
     <div className="space-y-6">
@@ -966,11 +988,72 @@ export function CategoryInsightsView() {
       )}
 
       {/* ─── Evolution Chart ────────────────────────────── */}
-      {comparisonChartData.length > 1 && top5Categories.length > 0 && (
+      {comparisonChartData.length > 1 && availableChartCategories.length > 0 && (
         <SectionCard
           title="Evolución de Categorías"
           icon={BarChart3}
-          tooltip="Top 5 categorías con mayor actividad en los últimos 6 meses"
+          tooltip={
+            selectedChartCategories.size > 0
+              ? `${selectedChartCategories.size} ${selectedChartCategories.size === 1 ? "categoría seleccionada" : "categorías seleccionadas"}`
+              : "Top 5 categorías con mayor actividad en los últimos 6 meses"
+          }
+          action={
+            <Popover>
+              <PopoverTrigger asChild>
+                <button className={cn(
+                  "flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-medium transition-colors border",
+                  selectedChartCategories.size > 0
+                    ? "bg-primary/10 text-primary border-primary/30"
+                    : "bg-muted/50 text-muted-foreground border-border/50 hover:bg-accent"
+                )}>
+                  <SlidersHorizontal className="h-3 w-3" />
+                  {selectedChartCategories.size > 0
+                    ? `${selectedChartCategories.size} seleccionada${selectedChartCategories.size > 1 ? "s" : ""}`
+                    : "Top 5"}
+                </button>
+              </PopoverTrigger>
+              <PopoverContent align="end" className="w-52 p-2">
+                <div className="flex items-center justify-between px-2 pb-2 mb-1 border-b border-border/40">
+                  <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Categorías</span>
+                  {selectedChartCategories.size > 0 && (
+                    <button
+                      onClick={() => setSelectedChartCategories(new Set())}
+                      className="text-xs text-muted-foreground hover:text-foreground transition-colors"
+                    >
+                      Limpiar
+                    </button>
+                  )}
+                </div>
+                <div className="max-h-56 overflow-y-auto space-y-0.5">
+                  {availableChartCategories.map((cat) => {
+                    const checked = selectedChartCategories.has(cat);
+                    return (
+                      <label
+                        key={cat}
+                        className="flex items-center gap-2 px-2 py-1.5 rounded-md hover:bg-accent cursor-pointer"
+                      >
+                        <Checkbox
+                          checked={checked}
+                          onCheckedChange={(v) => {
+                            setSelectedChartCategories((prev) => {
+                              const next = new Set(prev);
+                              if (v) next.add(cat);
+                              else next.delete(cat);
+                              return next;
+                            });
+                          }}
+                        />
+                        <span className="text-sm leading-none shrink-0">
+                          {categories.find((c) => c.name === cat)?.icon || "🏷️"}
+                        </span>
+                        <span className="text-xs text-foreground truncate">{cat}</span>
+                      </label>
+                    );
+                  })}
+                </div>
+              </PopoverContent>
+            </Popover>
+          }
         >
           <div className={cn(isPrivacyMode && "privacy-blur")}>
             <ResponsiveContainer width="100%" height={280}>
@@ -994,7 +1077,7 @@ export function CategoryInsightsView() {
                 <Legend
                   wrapperStyle={{ fontSize: "11px", paddingTop: "8px" }}
                 />
-                {top5Categories.map((cat) => (
+                {activeChartCategories.map((cat) => (
                   <Line
                     key={cat}
                     type="monotone"
