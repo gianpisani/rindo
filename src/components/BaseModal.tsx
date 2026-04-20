@@ -49,21 +49,21 @@ const variantStyles = {
   },
 };
 
-export function BaseModal({
-  open,
-  onOpenChange,
-  title,
-  description,
+export function BaseModal({ 
+  open, 
+  onOpenChange, 
+  title, 
+  description, 
   children,
   footer,
   maxWidth = "lg",
   variant = "default"
 }: BaseModalProps) {
   const styles = variantStyles[variant];
-
+  
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent
+      <DialogContent 
         className={cn(
           maxWidthClasses[maxWidth],
           "w-[92vw] max-h-[90vh] flex flex-col p-0 gap-0 rounded-2xl",
@@ -86,7 +86,7 @@ export function BaseModal({
             </DialogDescription>
           )}
         </DialogHeader>
-
+        
         <div className="flex-1 overflow-y-auto overflow-x-hidden px-6 pb-6 min-h-0">
           {children}
         </div>
