@@ -8,7 +8,6 @@ import { Input } from "@/components/ui/input";
 import { Dialog, DialogTrigger } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Drawer, DrawerContent, DrawerHeader, DrawerTitle, DrawerFooter } from "@/components/ui/drawer";
 import { Badge } from "@/components/ui/badge";
 import {
   AlertDialog,
@@ -21,7 +20,7 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { Plus, Download, TrendingUp, TrendingDown, PiggyBank, Upload, X, Sparkles, Info, Trash2, Search, CalendarClock, Users, CheckCircle2, Clock, Pencil, ArrowLeftRight, Building2, RefreshCw, ChevronDown, Check } from "lucide-react";
+import { Plus, Download, TrendingUp, TrendingDown, PiggyBank, Upload, X, Sparkles, Info, Trash2, Search, CalendarClock, Users, CheckCircle2, Clock, Pencil, ArrowLeftRight, Building2, RefreshCw } from "lucide-react";
 import { useTransactions, Transaction } from "@/hooks/useTransactions";
 import { useCategories } from "@/hooks/useCategories";
 import { useCreditCards } from "@/hooks/useCreditCards";
@@ -79,7 +78,6 @@ export default function Transactions() {
   const [isBankSyncOpen, setIsBankSyncOpen] = useState(false);
 
   const [isDialogOpen, setIsDialogOpen] = useState(false);
-  const [showCategoryList, setShowCategoryList] = useState(false);
   const [isImportDialogOpen, setIsImportDialogOpen] = useState(false);
   const [editingTransaction, setEditingTransaction] = useState<Transaction | null>(null);
   const [isShared, setIsShared] = useState(false);
@@ -531,7 +529,7 @@ export default function Transactions() {
             </DialogTrigger>
           </Dialog>
 
-          <Drawer
+          <BaseModal
             open={isDialogOpen}
             onOpenChange={(open) => {
               setIsDialogOpen(open);
@@ -539,19 +537,22 @@ export default function Transactions() {
                 setEditingTransaction(null);
                 resetForm();
                 setSuggestion(null);
-                setShowCategoryList(false);
               }
             }}
-            shouldScaleBackground={false}
+            title={`${editingTransaction ? "Editar" : "Agregar"} Transacción`}
+            maxWidth="lg"
+            footer={
+              <Button 
+                type="submit" 
+                form="transaction-form"
+                className="w-full" 
+                disabled={addTransaction.isPending || updateTransaction.isPending}
+              >
+                {editingTransaction ? "Guardar Cambios" : "Agregar"}
+              </Button>
+            }
           >
-            <DrawerContent className="max-h-[92dvh] flex flex-col">
-              <DrawerHeader className="flex-shrink-0">
-                <DrawerTitle className="text-2xl text-center font-bold">
-                  {editingTransaction ? "Editar" : "Agregar"} Transacción
-                </DrawerTitle>
-              </DrawerHeader>
-              <div className="flex-1 overflow-y-auto px-6 pb-2 min-h-0">
-            <form id="transaction-form" onSubmit={handleSubmit} className="space-y-4 pb-2">
+            <form id="transaction-form" onSubmit={handleSubmit} className="space-y-4">
                 <div className="space-y-2">
                   <Label className="text-sm font-medium">Fecha y Hora</Label>
                   <DateTimePicker
@@ -567,7 +568,6 @@ export default function Transactions() {
                     value={formData.type}
                     onValueChange={(value: "Ingreso" | "Gasto" | "Inversión" | "Reembolso") => {
                       setFormData({ ...formData, type: value, category_name: "" });
-                      setShowCategoryList(false);
                       if (value !== "Ingreso" && value !== "Reembolso") setDebtToLink(null);
                     }}
                   >
@@ -584,39 +584,23 @@ export default function Transactions() {
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="category" className="text-sm font-medium">Categoría</Label>
-                  <button
-                    type="button"
-                    className="flex h-10 w-full items-center justify-between rounded-lg border border-input bg-background px-6 py-2 text-sm ring-offset-background focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2"
-                    onClick={() => setShowCategoryList(v => !v)}
+                  <Select
+                    value={formData.category_name}
+                    onValueChange={(value) => setFormData({ ...formData, category_name: value })}
                   >
-                    <span className={formData.category_name ? "" : "text-muted-foreground"}>
-                      {formData.category_name
-                        ? `${filteredCategories.find(c => c.name === formData.category_name)?.icon || getCategoryIcon(formData.category_name)} ${formData.category_name}`
-                        : "Selecciona una categoría"}
-                    </span>
-                    <ChevronDown className={`h-4 w-4 opacity-50 transition-transform duration-200 ${showCategoryList ? "rotate-180" : ""}`} />
-                  </button>
-                  {showCategoryList && (
-                    <div className="rounded-lg border bg-popover text-popover-foreground shadow-md overflow-hidden">
+                    <SelectTrigger className="h-10 rounded-lg px-6">
+                      <SelectValue placeholder="Selecciona una categoría" />
+                    </SelectTrigger>
+                    <SelectContent>
                       {filteredCategories
                         .filter(cat => cat.name && cat.name.trim().length > 0)
                         .map((cat) => (
-                          <button
-                            key={cat.id}
-                            type="button"
-                            className="flex w-full items-center gap-2 px-6 py-2.5 text-sm hover:bg-accent text-left"
-                            onClick={() => {
-                              setFormData({ ...formData, category_name: cat.name });
-                              setShowCategoryList(false);
-                            }}
-                          >
-                            <span>{cat.icon || getCategoryIcon(cat.name)}</span>
-                            <span>{cat.name}</span>
-                            {formData.category_name === cat.name && <Check className="ml-auto h-4 w-4" />}
-                          </button>
+                          <SelectItem key={cat.id} value={cat.name}>
+                            {cat.icon || getCategoryIcon(cat.name)} {cat.name}
+                          </SelectItem>
                         ))}
-                    </div>
-                  )}
+                    </SelectContent>
+                  </Select>
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="amount" className="text-sm font-medium">Monto</Label>
@@ -1097,19 +1081,7 @@ export default function Transactions() {
                   );
                 })()}
               </form>
-              </div>
-              <DrawerFooter className="flex-shrink-0 border-t border-border/50 pt-4">
-                <Button
-                  type="submit"
-                  form="transaction-form"
-                  className="w-full"
-                  disabled={addTransaction.isPending || updateTransaction.isPending}
-                >
-                  {editingTransaction ? "Guardar Cambios" : "Agregar"}
-                </Button>
-              </DrawerFooter>
-            </DrawerContent>
-          </Drawer>
+          </BaseModal>
         </div>
 
         <BankSyncModal
