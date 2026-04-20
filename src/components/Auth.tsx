@@ -149,26 +149,26 @@ function FloatingActivity() {
       const card: FloatingCard = {
         id: counterRef.current++,
         item: pick.item,
-        x: 4 + Math.random() * 10, // 4-14% from edge
-        duration: 22 + Math.random() * 8, // 22-30s drift
+        x: 3 + Math.random() * 12, // 3-15% from edge
+        duration: 14 + Math.random() * 4, // 14-18s drift
       };
 
-      setCards((prev) => [...prev.slice(-4), card]); // max 5 visible
+      setCards((prev) => [...prev.slice(-5), card]); // max 6 visible
     }
 
-    // Gentle staggered entrance — one at a time, well spaced
+    // Staggered entrance
     const initialTimers = [
-      setTimeout(() => spawnCard(), 2500),
-      setTimeout(() => spawnCard(), 8000),
+      setTimeout(() => spawnCard(), 2000),
+      setTimeout(() => spawnCard(), 6000),
     ];
 
-    // Continuous spawn — one every 6-9 seconds
+    // Continuous spawn — one every 4.5-7 seconds
     const spawn = () => {
       spawnCard();
-      const nextDelay = 6000 + Math.random() * 3000;
+      const nextDelay = 4500 + Math.random() * 2500;
       timerId = setTimeout(spawn, nextDelay);
     };
-    let timerId = setTimeout(spawn, 13000);
+    let timerId = setTimeout(spawn, 10000);
 
     return () => {
       initialTimers.forEach(clearTimeout);
@@ -182,34 +182,35 @@ function FloatingActivity() {
         {cards.map((card) => (
           <motion.div
             key={card.id}
-            initial={{ opacity: 0, y: -20, scale: 0.97 }}
-            animate={{ opacity: [0, 0.45, 0.45, 0.35, 0], y: ["0%", "80vh"], scale: 1 }}
+            initial={{ opacity: 0, y: -10 }}
+            animate={{ opacity: [0, 0.5, 0.5, 0.3, 0], y: ["0%", "85vh"] }}
             exit={{ opacity: 0 }}
             transition={{
               duration: card.duration,
-              ease: "linear",
-              opacity: { duration: card.duration, times: [0, 0.06, 0.65, 0.88, 1] },
-              scale: { duration: 0.8, ease: "easeOut" },
+              ease: [0.25, 0.1, 0.25, 1],
+              opacity: { duration: card.duration, times: [0, 0.08, 0.6, 0.85, 1] },
             }}
-            className="absolute flex items-center gap-2.5 select-none"
+            className="absolute select-none"
             style={{
               [card.item.side === "left" ? "left" : "right"]: `${card.x}%`,
-              top: "-40px",
+              top: "-50px",
             }}
           >
-            <div className="flex items-center gap-2 px-3 py-2 rounded-xl border border-white/[0.06] bg-white/[0.03] backdrop-blur-sm">
-              {card.item.shortcut && (
-                <kbd className="px-1.5 py-0.5 text-[9px] font-mono font-medium rounded border border-white/10 bg-white/[0.06] text-white/30 self-center shrink-0">
+            <div className="flex items-center gap-2.5 pl-2.5 pr-3.5 py-2 rounded-2xl border border-white/[0.08] bg-gradient-to-r from-white/[0.04] to-white/[0.02] backdrop-blur-md shadow-[0_4px_20px_rgba(0,0,0,0.3)]">
+              {card.item.shortcut ? (
+                <kbd className="w-6 h-6 flex items-center justify-center text-[10px] font-mono font-semibold rounded-lg border border-white/[0.12] bg-white/[0.06] text-white/40 shrink-0">
                   {card.item.shortcut}
                 </kbd>
+              ) : (
+                <span className="text-base leading-none shrink-0">{card.item.icon}</span>
               )}
-              <span className="text-sm leading-none">{card.item.icon}</span>
-              <div className="flex flex-col">
-                <span className="text-[11px] text-white/40 font-medium leading-tight whitespace-nowrap">
+              <div className="flex flex-col gap-0.5">
+                <span className="text-[11px] text-white/50 font-medium leading-none whitespace-nowrap tracking-wide">
+                  {card.item.shortcut && <span className="mr-1.5 text-white/25">{card.item.icon}</span>}
                   {card.item.text}
                 </span>
                 {card.item.detail && (
-                  <span className={`text-[10px] leading-tight whitespace-nowrap ${card.item.color} opacity-60`}>
+                  <span className={`text-[10px] leading-none whitespace-nowrap font-mono ${card.item.color} opacity-50`}>
                     {card.item.detail}
                   </span>
                 )}
