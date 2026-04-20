@@ -41,17 +41,9 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { DateTimePicker } from "@/components/ui/date-time-picker";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
-import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Checkbox } from "@/components/ui/checkbox";
 import {
-  Shield,
+  Lock,
   Smartphone,
   CheckCircle2,
   XCircle,
@@ -63,6 +55,7 @@ import {
   ArrowUpCircle,
   SkipForward,
   Plus,
+  ChevronLeft,
 } from "lucide-react";
 import type { SyncStep, SyncResult, SyncMovementItem } from "@/contexts/BankSyncContext";
 import { cn } from "@/lib/utils";
@@ -70,37 +63,17 @@ import { cn } from "@/lib/utils";
 // ── Bank list with brand colors ──────────────────────────────────────────────
 
 const BANKS = [
-  { value: "bancosecurity", label: "Banco Security", color: "#1B3A6B", abbr: "BS", logo: true },
-  { value: "bchile", label: "Banco de Chile", color: "#D4001A", abbr: "BC", logo: true },
-  { value: "bci", label: "BCI", color: "#F47920", abbr: "BC", logo: true },
-  { value: "bestado", label: "BancoEstado", color: "#007A3D", abbr: "BE", logo: true },
-  { value: "bice", label: "BICE", color: "#003B71", abbr: "BI", logo: true },
-  { value: "edwards", label: "Banco Edwards", color: "#002D72", abbr: "ED", logo: true },
-  { value: "falabella", label: "Banco Falabella", color: "#8CC63F", abbr: "BF", logo: true },
-  { value: "itau", label: "Itaú", color: "#EC7000", abbr: "IT", logo: true },
-  { value: "santander", label: "Santander", color: "#EC0000", abbr: "SA", logo: true },
-  { value: "scotiabank", label: "Scotiabank", color: "#EC1C24", abbr: "SB", logo: true },
+  { value: "bancosecurity", label: "Banco Security", color: "#1B3A6B" },
+  { value: "bchile", label: "Banco de Chile", color: "#D4001A" },
+  { value: "bci", label: "BCI", color: "#F47920" },
+  { value: "bestado", label: "BancoEstado", color: "#007A3D" },
+  { value: "bice", label: "BICE", color: "#003B71" },
+  { value: "edwards", label: "Banco Edwards", color: "#002D72" },
+  { value: "falabella", label: "Banco Falabella", color: "#8CC63F" },
+  { value: "itau", label: "Itaú", color: "#EC7000" },
+  { value: "santander", label: "Santander", color: "#EC0000" },
+  { value: "scotiabank", label: "Scotiabank", color: "#EC1C24" },
 ];
-
-function BankAvatar({ bank }: { bank: (typeof BANKS)[number] }) {
-  if (bank.logo) {
-    return (
-      <img
-        src={`/banks/${bank.value}.png`}
-        alt={bank.label}
-        className="w-6 h-6 rounded-md object-contain shrink-0"
-      />
-    );
-  }
-  return (
-    <div
-      className="flex items-center justify-center w-6 h-6 rounded-md text-[10px] font-bold text-white shrink-0"
-      style={{ backgroundColor: bank.color }}
-    >
-      {bank.abbr}
-    </div>
-  );
-}
 
 // ── Status labels during polling ─────────────────────────────────────────────
 
@@ -117,10 +90,8 @@ function formatAmount(amount: number): string {
 }
 
 function formatMovDate(dateStr: string): string {
-  // "DD-MM-YYYY" → "DD/MM"
   const parts = dateStr.split("-");
   if (parts.length === 3 && parts[0].length <= 2) return `${parts[0]}/${parts[1]}`;
-  // Already ISO: "YYYY-MM-DD" → "DD/MM"
   if (parts.length === 3 && parts[0].length === 4) return `${parts[2]}/${parts[1]}`;
   return dateStr;
 }
@@ -230,103 +201,165 @@ export function BankSyncModal({
   const activeStep: "form" | "polling" | "result" =
     showResult ? "result" : showPolling ? "polling" : "form";
 
+  // Dynamic title/description based on selected bank
+  const modalTitle = activeStep === "form" && selectedBank
+    ? selectedBank.label
+    : "Sincronizar Banco";
+  const modalDescription = activeStep === "form" && selectedBank
+    ? "Ingresa tus credenciales para sincronizar"
+    : "Selecciona tu banco para comenzar";
+
   return (
     <BaseModal
       open={open}
       onOpenChange={onOpenChange}
-      title="Sincronizar Banco"
-      description="Importa tus movimientos directamente desde tu banco"
+      title={modalTitle}
+      description={modalDescription}
       maxWidth={activeStep === "result" && result && !("error" in result) ? "lg" : "md"}
     >
       {/* ── STEP 1: Form ──────────────────────────────────────────────────── */}
-      {activeStep === "form" && (
-        <form onSubmit={handleSubmit} className="space-y-5 pt-2">
-          {/* Bank selector */}
-          <div className="space-y-2">
-            <Label className="text-sm font-medium">Banco</Label>
-            <Select value={bank} onValueChange={setBank} required>
-              <SelectTrigger className="h-11 rounded-xl cursor-pointer">
-                <SelectValue placeholder="Selecciona tu banco">
-                  {selectedBank && (
-                    <span className="flex items-center gap-2.5">
-                      <BankAvatar bank={selectedBank} />
-                      <span>{selectedBank.label}</span>
-                    </span>
-                  )}
-                </SelectValue>
-              </SelectTrigger>
-              <SelectContent>
-                {BANKS.map((b) => (
-                  <SelectItem key={b.value} value={b.value} className="cursor-pointer">
-                    <span className="flex items-center gap-2.5">
-                      <BankAvatar bank={b} />
-                      <span>{b.label}</span>
-                    </span>
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+      {activeStep === "form" && !selectedBank && (
+        <div className="grid grid-cols-2 gap-2.5 pt-1">
+          {BANKS.map((b) => (
+            <button
+              key={b.value}
+              type="button"
+              onClick={() => setBank(b.value)}
+              className={cn(
+                "group relative flex items-center gap-3 p-3 rounded-xl",
+                "border border-border/50 bg-card",
+                "hover:border-primary/40 hover:bg-accent/50",
+                "transition-all duration-200 cursor-pointer",
+                "focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-1"
+              )}
+            >
+              <img
+                src={`/banks/${b.value}.png`}
+                alt={b.label}
+                className="w-8 h-8 rounded-lg object-contain shrink-0"
+              />
+              <span className="text-sm font-medium text-left">{b.label}</span>
+            </button>
+          ))}
+        </div>
+      )}
+
+      {activeStep === "form" && selectedBank && (
+        <form onSubmit={handleSubmit} className="space-y-5 pt-1">
+          {/* ── Dynamic bank header ──────────────────────────────────────── */}
+          <div
+            className="relative flex items-center gap-4 p-4 rounded-2xl overflow-hidden"
+            style={{
+              background: `linear-gradient(135deg, ${selectedBank.color}18 0%, ${selectedBank.color}08 100%)`,
+            }}
+          >
+            {/* Subtle glow */}
+            <div
+              className="absolute -top-8 -left-8 w-24 h-24 rounded-full blur-2xl opacity-30"
+              style={{ backgroundColor: selectedBank.color }}
+            />
+            <button
+              type="button"
+              onClick={() => setBank("")}
+              className="relative z-10 flex items-center justify-center w-8 h-8 rounded-lg bg-background/80 backdrop-blur-sm hover:bg-background transition-colors shrink-0 cursor-pointer"
+            >
+              <ChevronLeft className="h-4 w-4 text-muted-foreground" />
+            </button>
+            <img
+              src={`/banks/${selectedBank.value}.png`}
+              alt={selectedBank.label}
+              className="relative z-10 w-10 h-10 rounded-xl object-contain shrink-0"
+            />
+            <div className="relative z-10 flex-1 min-w-0">
+              <p className="font-semibold text-base">{selectedBank.label}</p>
+              <p className="text-xs text-muted-foreground">Conexión segura</p>
+            </div>
+            {/* Brand color accent line */}
+            <div
+              className="absolute bottom-0 left-0 right-0 h-[2px]"
+              style={{
+                background: `linear-gradient(90deg, ${selectedBank.color}60, ${selectedBank.color}10)`,
+              }}
+            />
           </div>
 
-          {/* Credentials section */}
-          <div className="space-y-4 rounded-xl border border-border/50 bg-muted/20 p-4">
-            <div className="flex items-center gap-2 text-xs text-muted-foreground">
-              <Shield className="h-3.5 w-3.5 text-amber-500" />
-              <span>Tus credenciales nunca son almacenadas</span>
-            </div>
-
-            <div className="space-y-1.5">
-              <Label htmlFor="bank-rut" className="text-sm">RUT</Label>
-              <Input
-                id="bank-rut"
-                placeholder="20799959-8"
-                value={rut}
-                onChange={handleRutChange}
-                onBlur={() => setRutTouched(true)}
-                required
-                autoComplete="username"
-                className={cn(
-                  "rounded-xl h-10",
-                  showRutError && "border-destructive focus-visible:ring-destructive"
-                )}
-              />
-              {showRutError && (
-                <p className="text-xs text-destructive">RUT inválido</p>
-              )}
-            </div>
-
-            <div className="space-y-1.5">
-              <Label htmlFor="bank-password" className="text-sm">Clave de internet</Label>
-              <div className="relative">
-                <Input
-                  id="bank-password"
-                  type={showPassword ? "text" : "password"}
-                  placeholder="••••••••"
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  required
-                  autoComplete="current-password"
-                  className="rounded-xl pr-10 h-10"
-                />
-                <Button
-                  type="button"
-                  variant="ghost"
-                  size="sm"
-                  className="absolute right-0 top-0 h-full px-3 hover:bg-transparent"
-                  onClick={() => setShowPassword((v) => !v)}
-                  tabIndex={-1}
+          {/* ── Secure credentials zone ──────────────────────────────────── */}
+          <div className="relative">
+            {/* Gradient border wrapper */}
+            <div
+              className="absolute -inset-[1px] rounded-2xl opacity-40"
+              style={{
+                background: `linear-gradient(135deg, ${selectedBank.color}50, transparent 50%, ${selectedBank.color}20)`,
+              }}
+            />
+            <div className="relative rounded-2xl bg-background/95 backdrop-blur-xl p-4 space-y-4">
+              {/* Lock header */}
+              <div className="flex items-center gap-2.5">
+                <div
+                  className="flex items-center justify-center w-7 h-7 rounded-lg"
+                  style={{ backgroundColor: `${selectedBank.color}15` }}
                 >
-                  {showPassword ? (
-                    <EyeOff className="h-4 w-4 text-muted-foreground" />
-                  ) : (
-                    <Eye className="h-4 w-4 text-muted-foreground" />
+                  <Lock className="h-3.5 w-3.5" style={{ color: selectedBank.color }} />
+                </div>
+                <div>
+                  <p className="text-sm font-medium">Credenciales de acceso</p>
+                  <p className="text-[11px] text-muted-foreground">Encriptadas y nunca almacenadas</p>
+                </div>
+              </div>
+
+              <div className="space-y-1.5">
+                <Label htmlFor="bank-rut" className="text-sm">RUT</Label>
+                <Input
+                  id="bank-rut"
+                  placeholder="20799959-8"
+                  value={rut}
+                  onChange={handleRutChange}
+                  onBlur={() => setRutTouched(true)}
+                  required
+                  autoComplete="username"
+                  className={cn(
+                    "rounded-xl h-10 bg-muted/30 border-border/40",
+                    showRutError && "border-destructive focus-visible:ring-destructive"
                   )}
-                </Button>
+                />
+                {showRutError && (
+                  <p className="text-xs text-destructive">RUT inválido</p>
+                )}
+              </div>
+
+              <div className="space-y-1.5">
+                <Label htmlFor="bank-password" className="text-sm">Clave de internet</Label>
+                <div className="relative">
+                  <Input
+                    id="bank-password"
+                    type={showPassword ? "text" : "password"}
+                    placeholder="••••••••"
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    required
+                    autoComplete="current-password"
+                    className="rounded-xl pr-10 h-10 bg-muted/30 border-border/40"
+                  />
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    className="absolute right-0 top-0 h-full px-3 hover:bg-transparent cursor-pointer"
+                    onClick={() => setShowPassword((v) => !v)}
+                    tabIndex={-1}
+                  >
+                    {showPassword ? (
+                      <EyeOff className="h-4 w-4 text-muted-foreground" />
+                    ) : (
+                      <Eye className="h-4 w-4 text-muted-foreground" />
+                    )}
+                  </Button>
+                </div>
               </div>
             </div>
           </div>
 
-          {/* Date picker */}
+          {/* ── Date picker ──────────────────────────────────────────────── */}
           <div className="space-y-2">
             <Label className="text-sm font-medium">
               Importar desde{" "}
@@ -345,7 +378,7 @@ export function BankSyncModal({
             </p>
           </div>
 
-          {/* Actions */}
+          {/* ── Actions ──────────────────────────────────────────────────── */}
           <div className="flex gap-3 pt-1">
             <Button
               type="button"
@@ -357,8 +390,12 @@ export function BankSyncModal({
             </Button>
             <Button
               type="submit"
-              disabled={syncStep === "submitting" || !bank || !rut || !rutValid || !password}
+              disabled={syncStep === "submitting" || !rut || !rutValid || !password}
               className="flex-1 rounded-xl h-10"
+              style={{
+                backgroundColor: selectedBank.color,
+                borderColor: selectedBank.color,
+              }}
             >
               {syncStep === "submitting" && (
                 <Loader2 className="h-4 w-4 animate-spin mr-2" />
@@ -534,7 +571,7 @@ export function BankSyncModal({
                       <button
                         type="button"
                         onClick={() => toggleAllSkipped(result.skippedItems)}
-                        className="text-xs text-primary hover:underline"
+                        className="text-xs text-primary hover:underline cursor-pointer"
                       >
                         {(() => {
                           const creatableIndexes = result.skippedItems
@@ -561,7 +598,7 @@ export function BankSyncModal({
                             <Checkbox
                               checked={selectedSkipped.has(i)}
                               onCheckedChange={() => toggleSkipped(i)}
-                              className="shrink-0"
+                              className="shrink-0 cursor-pointer"
                             />
                           ) : (
                             <div className="w-4 shrink-0" />
