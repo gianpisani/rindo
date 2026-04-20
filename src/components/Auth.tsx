@@ -88,20 +88,21 @@ interface ActivityItem {
 }
 
 const ACTIVITY_ITEMS: ActivityItem[] = [
-  // ── La app trabaja sola ──
+  // ── Sync con bancos ──
   { icon: "🏦", text: "Sync Banco de Chile", detail: "12 movimientos importados", color: "text-blue-400", side: "left" },
+  { icon: "🏦", text: "Sync Santander", detail: "8 movimientos importados", color: "text-red-400", side: "right" },
+  { icon: "🏦", text: "Sync BancoEstado", detail: "5 movimientos importados", color: "text-orange-400", side: "left" },
+  // ── IA y automatización ──
   { icon: "🤖", text: "IA categorizó 8 gastos", detail: "Comida, Transporte, Hogar...", color: "text-purple-400", side: "right" },
   { icon: "📈", text: "Proyección 12 meses", detail: "Tendrás ahorrado $15.820.000", color: "text-emerald-400", side: "left" },
   { icon: "⚠️", text: "Presupuesto excedido", detail: "Transporte +$15k", color: "text-red-400", side: "right" },
   { icon: "📱", text: "Categorizado con IA", detail: "Spotify → Suscripciones", color: "text-purple-400", side: "left" },
   { icon: "🔔", text: "Cuota 3/12 detectada", detail: "Bicicleta · −$133.250", color: "text-orange-400", side: "right" },
   { icon: "📊", text: "Presupuesto Comida", detail: "78% usado · quedan 11 días", color: "text-amber-400", side: "left" },
-  // ── Pero tú tienes el control ──
+  // ── Control con shortcuts ──
   { icon: "🍔", text: "Pago Uber Eats", detail: "−$12.500 · Comida", color: "text-red-400", side: "right", shortcut: "N" },
   { icon: "💰", text: "Ingreso Sueldo", detail: "+$1.850.000", color: "text-emerald-400", side: "left", shortcut: "N" },
-  { icon: "🔄", text: "Devolución Churros", detail: "+$2.250 · Reembolso", color: "text-emerald-400", side: "right", shortcut: "N" },
-  { icon: "🔍", text: "Buscar transacción", detail: '"arriendo mayo"', color: "text-white/60", side: "left", shortcut: "⌘K" },
-  { icon: "☕", text: "Think Coffee Bar", detail: "−$3.600 · Comida", color: "text-red-400", side: "right", shortcut: "N" },
+  { icon: "🔍", text: "Buscar transacción", detail: '"arriendo mayo"', color: "text-white/60", side: "right", shortcut: "⌘K" },
   { icon: "🏠", text: "Pago Arriendo", detail: "−$450.000 · Hogar", color: "text-red-400", side: "left", shortcut: "N" },
   { icon: "📋", text: "Conciliación rápida", detail: "3 pendientes", color: "text-blue-400", side: "right", shortcut: "R" },
 ];
@@ -245,6 +246,60 @@ function AmbientBackground() {
         }}
       />
     </div>
+  );
+}
+
+// ── Bank logos strip ────────────────────────────────────────────────────────
+
+const LANDING_BANKS = [
+  { value: "bchile", label: "Banco de Chile" },
+  { value: "bci", label: "BCI" },
+  { value: "santander", label: "Santander" },
+  { value: "bestado", label: "BancoEstado" },
+  { value: "scotiabank", label: "Scotiabank" },
+  { value: "itau", label: "Itaú" },
+  { value: "falabella", label: "Falabella" },
+  { value: "bice", label: "BICE" },
+  { value: "bancosecurity", label: "Security", initials: "BS", color: "#7B2D8E" },
+  { value: "edwards", label: "Edwards", initials: "BE", color: "#00897B" },
+];
+
+function BankStrip() {
+  return (
+    <motion.div
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      transition={{ delay: 1.5, duration: 1 }}
+      className="flex flex-col items-center gap-3"
+    >
+      <p className="text-[10px] text-white/15 uppercase tracking-[0.2em] font-medium">
+        Sincroniza con tu banco
+      </p>
+      <div className="flex items-center gap-2 flex-wrap justify-center">
+        {LANDING_BANKS.map((bank) => (
+          <div
+            key={bank.value}
+            className="relative group"
+            title={bank.label}
+          >
+            {bank.initials ? (
+              <div
+                className="w-7 h-7 rounded-lg flex items-center justify-center text-[8px] font-bold text-white/60 border border-white/[0.06] opacity-30 hover:opacity-50 transition-opacity duration-300"
+                style={{ backgroundColor: bank.color }}
+              >
+                {bank.initials}
+              </div>
+            ) : (
+              <img
+                src={`/banks/${bank.value}.png`}
+                alt={bank.label}
+                className="w-7 h-7 rounded-lg object-contain opacity-30 hover:opacity-50 transition-opacity duration-300 brightness-0 invert"
+              />
+            )}
+          </div>
+        ))}
+      </div>
+    </motion.div>
   );
 }
 
@@ -552,12 +607,17 @@ export default function Auth() {
           </motion.div>
         )}
 
+        {/* ── Bank logos ────────────────────────────────────────────────────── */}
+        <div className="mt-10">
+          <BankStrip />
+        </div>
+
         {/* ── Bottom tagline ──────────────────────────────────────────────── */}
         <motion.p
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
-          transition={{ delay: 1.2, duration: 1 }}
-          className="text-center text-[10px] text-white/10 mt-12 font-light tracking-wider"
+          transition={{ delay: 1.8, duration: 1 }}
+          className="text-center text-[10px] text-white/10 mt-6 font-light tracking-wider"
         >
           Tu banco no te juzga. Yo sí.
         </motion.p>
