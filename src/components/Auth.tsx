@@ -79,37 +79,41 @@ function RotatingText() {
 // ── Floating shortcut badges ────────────────────────────────────────────────
 
 const SHORTCUTS = [
-  { keys: "N", label: "nuevo gasto", x: "8%", y: "18%" },
-  { keys: "R", label: "conciliar", x: "78%", y: "22%" },
-  { keys: "P", label: "presupuesto", x: "5%", y: "75%" },
-  { keys: "⌘K", label: "buscar", x: "82%", y: "70%" },
+  { keys: "N", label: "nuevo gasto", x: "10%", y: "20%" },
+  { keys: "R", label: "conciliar", x: "80%", y: "25%" },
+  { keys: "P", label: "presupuesto", x: "7%", y: "72%" },
+  { keys: "⌘K", label: "buscar", x: "83%", y: "68%" },
+  { keys: "1-8", label: "navegar", x: "12%", y: "45%" },
+  { keys: "?", label: "shortcuts", x: "85%", y: "48%" },
 ];
 
 function FloatingShortcuts() {
   return (
-    <>
+    <div className="absolute inset-0 overflow-hidden pointer-events-none">
       {SHORTCUTS.map((s, i) => (
         <motion.div
           key={s.keys}
-          initial={{ opacity: 0 }}
+          initial={{ opacity: 0, scale: 0.9 }}
           animate={{
-            opacity: [0, 0.12, 0.08, 0.12],
-            y: [0, -6, 0, 6, 0],
+            opacity: [0, 0.6, 0.4, 0.6],
+            scale: 1,
+            y: [0, -8, 0, 8, 0],
           }}
           transition={{
-            opacity: { duration: 2, delay: 1.5 + i * 0.3 },
-            y: { duration: 8 + i * 2, repeat: Infinity, ease: "easeInOut" },
+            opacity: { duration: 3, delay: 2 + i * 0.4, ease: "easeOut" },
+            scale: { duration: 0.5, delay: 2 + i * 0.4 },
+            y: { duration: 10 + i * 1.5, repeat: Infinity, ease: "easeInOut", delay: 2 + i * 0.4 },
           }}
-          className="absolute hidden lg:flex items-center gap-1.5 pointer-events-none select-none"
+          className="absolute hidden lg:flex items-center gap-2 select-none"
           style={{ left: s.x, top: s.y }}
         >
-          <kbd className="px-1.5 py-0.5 text-[10px] font-mono rounded border border-white/10 bg-white/[0.03] text-white/40">
+          <kbd className="px-2 py-1 text-[11px] font-mono font-medium rounded-md border border-white/15 bg-white/[0.05] text-white/50 backdrop-blur-sm shadow-[0_0_10px_rgba(255,255,255,0.03)]">
             {s.keys}
           </kbd>
-          <span className="text-[10px] text-white/20">{s.label}</span>
+          <span className="text-[11px] text-white/25 font-light">{s.label}</span>
         </motion.div>
       ))}
-    </>
+    </div>
   );
 }
 
