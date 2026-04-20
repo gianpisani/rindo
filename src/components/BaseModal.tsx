@@ -6,7 +6,6 @@ import {
   DialogTitle,
 } from "./ui/dialog";
 import { ReactNode } from "react";
-import React from "react";
 import { cn } from "@/lib/utils";
 
 interface BaseModalProps {
@@ -88,10 +87,7 @@ export function BaseModal({
           )}
         </DialogHeader>
         
-        <div
-          className="flex-1 overflow-y-auto overflow-x-hidden px-6 pb-6 min-h-0"
-          style={{ WebkitOverflowScrolling: "touch" } as React.CSSProperties}
-        >
+        <div className="flex-1 overflow-y-auto overflow-x-hidden px-6 pb-6 min-h-0">
           {children}
         </div>
 
