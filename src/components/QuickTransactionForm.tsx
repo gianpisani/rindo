@@ -1,8 +1,7 @@
 import { useState, useRef } from "react";
 import { Button } from "./ui/button";
 import { Input } from "./ui/input";
-import { Card, CardContent } from "./ui/card";
-import { ArrowRightToLine, CornerDownLeft, Cpu, Sparkles, Users } from "lucide-react";
+import { CornerDownLeft, Sparkles, Users } from "lucide-react";
 import { useCategories } from "@/hooks/useCategories";
 import { useTransactions } from "@/hooks/useTransactions";
 import { useSharedExpenses } from "@/hooks/useSharedExpenses";
@@ -13,6 +12,7 @@ import { toast } from "sonner";
 import { Checkbox } from "./ui/checkbox";
 import SharedExpenseDrawer from "./SharedExpenseDrawer";
 import { usePrivacyMode } from "@/hooks/usePrivacyMode";
+import { cn } from "@/lib/utils";
 
 interface QuickTransactionFormProps {
   onSuccess?: () => void;
@@ -20,15 +20,9 @@ interface QuickTransactionFormProps {
 }
 
 const typeTexts = {
-  "Ingreso": {
-    placeholder: "¿De dónde salió esta plata?",
-  },
-  "Gasto": {
-    placeholder: "¿En qué te lo gastaste?",
-  },
-  "Inversión": {
-    placeholder: "¿Dónde pusiste la plata?",
-  },
+  "Ingreso": { placeholder: "¿De dónde salió esta plata?" },
+  "Gasto": { placeholder: "¿En qué te lo gastaste?" },
+  "Inversión": { placeholder: "¿Dónde pusiste la plata?" },
 };
 
 export default function QuickTransactionForm({ onSuccess, defaultType = "Gasto" }: QuickTransactionFormProps) {
@@ -48,30 +42,21 @@ export default function QuickTransactionForm({ onSuccess, defaultType = "Gasto" 
   const { addSharedExpenses } = useSharedExpenses();
   const detailInputRef = useRef<HTMLInputElement>(null);
   const amountInputRef = useRef<HTMLInputElement>(null);
-  
+
   const typeConfig = typeTexts[defaultType];
 
-  // Llamar a Edge Function para auto-categorizar
   const autoCategorizeInBackground = async (transactionId: string, detail: string, userId: string) => {
     try {
       const categoryNames = categories.map(c => c.name);
-      
+
       const { data: { session } } = await supabase.auth.getSession();
       if (!session) {
         console.error('No hay sesión activa');
         return;
       }
 
-      const payload = {
-        transactionId,
-        detail,
-        userId,
-        existingCategories: categoryNames,
-      };
+      const payload = { transactionId, detail, userId, existingCategories: categoryNames };
 
-      console.log('Payload a enviar:', payload);
-
-      // Llamar a Edge Function de forma asíncrona
       const response = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/auto-categorize`, {
         method: 'POST',
         headers: {
@@ -82,14 +67,10 @@ export default function QuickTransactionForm({ onSuccess, defaultType = "Gasto" 
       });
 
       const result = await response.json();
-      console.log('Respuesta de auto-categorize:', result);
-      
-      // Actualizar la UI inmediatamente
+
       if (result.success && result.category) {
-        // Invalidar queries para refrescar
         queryClient.invalidateQueries({ queryKey: ["transactions"] });
-        
-        // Mostrar toast con el resultado
+
         if (result.category !== "Sin categoría") {
           const methodLabels: Record<string, string> = {
             'exact_history': 'historial exacto',
@@ -100,10 +81,8 @@ export default function QuickTransactionForm({ onSuccess, defaultType = "Gasto" 
           toast.success(`Categorizado: ${result.category} (${result.confidence}% · ${methodLabel})`);
         }
       }
-      
     } catch (error) {
       console.error('Error en auto-categorización:', error);
-      // Revertir placeholder y notificar al usuario
       if (transactionId) {
         try {
           await supabase
@@ -119,7 +98,7 @@ export default function QuickTransactionForm({ onSuccess, defaultType = "Gasto" 
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    
+
     const cleanAmount = amount.replace(/[$.,\s]/g, "");
     const parsedAmount = parseFloat(cleanAmount);
 
@@ -129,14 +108,12 @@ export default function QuickTransactionForm({ onSuccess, defaultType = "Gasto" 
       return;
     }
     setAmountError("");
-
     setIsSubmitting(true);
 
     try {
       const { data: userData } = await supabase.auth.getUser();
       if (!userData.user) return;
 
-      // 1. GUARDAR con estado especial si va a analizar
       const willAnalyze = detail && detail.trim().length >= 3;
       const transaction = await addTransaction.mutateAsync({
         amount: parsedAmount,
@@ -146,26 +123,20 @@ export default function QuickTransactionForm({ onSuccess, defaultType = "Gasto" 
         date: new Date().toISOString(),
       });
 
-      // 2. Si hay detalle, auto-categorizar en background con Edge Function
       if (willAnalyze && transaction?.id) {
-        console.log('Llamando auto-categorize con:', { transactionId: transaction.id, detail, userId: userData.user.id });
         autoCategorizeInBackground(transaction.id, detail, userData.user.id);
       }
 
-      // 3. Si es gasto compartido, abrir drawer para dividir
       if (isShared && defaultType === "Gasto" && transaction?.id) {
         setPendingTransaction({ id: transaction.id, amount: parsedAmount });
         setSharedDrawerOpen(true);
         setIsSubmitting(false);
-        return; // No reset aún
+        return;
       }
 
-      // Reset form
       setAmount("");
       setDetail("");
       setIsShared(false);
-      
-      // Focus back to amount for next entry
       setTimeout(() => amountInputRef.current?.focus(), 100);
 
       playToggleOff();
@@ -191,12 +162,10 @@ export default function QuickTransactionForm({ onSuccess, defaultType = "Gasto" 
 
       toast.success(`Gasto compartido dividido entre ${debtors.length} personas`);
 
-      // Reset form
       setAmount("");
       setDetail("");
       setIsShared(false);
       setPendingTransaction(null);
-      
       setTimeout(() => amountInputRef.current?.focus(), 100);
       onSuccess?.();
     } catch (error) {
@@ -204,7 +173,6 @@ export default function QuickTransactionForm({ onSuccess, defaultType = "Gasto" 
     }
   };
 
-  // Handle keyboard navigation (solo desktop)
   const handleAmountKeyDown = (e: React.KeyboardEvent) => {
     if ((e.key === "Tab" || e.key === "Enter") && !isMobile()) {
       e.preventDefault();
@@ -233,124 +201,123 @@ export default function QuickTransactionForm({ onSuccess, defaultType = "Gasto" 
     return `$${formatted}`;
   };
 
-  const showKeyboardHints = !isMobile();
+  const accentColor =
+    defaultType === "Ingreso" ? "text-success" :
+    defaultType === "Inversión" ? "text-blue-400" :
+    "text-destructive";
+
+  const buttonColor =
+    defaultType === "Ingreso" ? "bg-success hover:bg-success/90" :
+    defaultType === "Inversión" ? "bg-blue-500 hover:bg-blue-500/90" :
+    "bg-destructive hover:bg-destructive/90";
 
   return (
-    <Card className="border-0 shadow-none bg-transparent dark:from-slate-900 dark:to-slate-800 overflow-hidden">
-      <CardContent className="p-6 sm:p-8">
-        <form onSubmit={handleSubmit} className="space-y-6">
-          {/* Amount Input - MÁS GRANDE */}
-          <div className="space-y-2">
-            <Input
-              ref={amountInputRef}
-              id="amount"
-              type="text"
-              inputMode="numeric"
-              autoComplete="off"
-              placeholder="$0"
-              value={amount}
-              onChange={(e) => {
-                const formatted = formatCurrency(e.target.value);
-                setAmount(formatted);
-                if (amountError) setAmountError("");
-                playTap();
-              }}
-              onKeyDown={handleAmountKeyDown}
-              style={{ fontSize: "clamp(2rem, 6vw, 3rem)" }}
-              className={`h-32 sm:h-40 text-center font-bold font-mono rounded-3xl border-2 transition-all bg-background placeholder:text-muted-foreground/50 focus-visible:ring-transparent bg-transparent ${isPrivacyMode && amount ? "privacy-blur" : ""} ${
-                defaultType === "Ingreso"
-                  ? "border-success/30 focus:border-success focus:ring-4 focus:ring-success/20"
-                  : defaultType === "Inversión"
-                    ? "border-blue-500/30 focus:border-blue-500 focus:ring-4 focus:ring-blue-500/20"
-                    : "border-destructive/30 focus:border-destructive focus:ring-4 focus:ring-destructive/20"
-              }`}
-            />
-            {amountError && (
-              <p className="text-center text-sm font-medium text-destructive animate-in fade-in slide-in-from-top-1 duration-200">
-                {amountError}
-              </p>
+    <>
+      <form onSubmit={handleSubmit} className="space-y-5 pt-1">
+        {/* Amount — borderless, floating number */}
+        <div className="space-y-1">
+          <Input
+            ref={amountInputRef}
+            type="text"
+            inputMode="numeric"
+            autoComplete="off"
+            autoFocus
+            placeholder="$0"
+            value={amount}
+            onChange={(e) => {
+              const formatted = formatCurrency(e.target.value);
+              setAmount(formatted);
+              if (amountError) setAmountError("");
+              playTap();
+            }}
+            onKeyDown={handleAmountKeyDown}
+            style={{ fontSize: "clamp(2.5rem, 7vw, 3.5rem)" }}
+            className={cn(
+              "h-28 sm:h-32 text-center font-bold font-mono",
+              "border-0 bg-transparent shadow-none",
+              "placeholder:text-muted-foreground/20",
+              "focus-visible:ring-0 focus-visible:ring-offset-0",
+              "transition-colors duration-200",
+              isPrivacyMode && amount ? "privacy-blur" : "",
+              amount ? accentColor : "",
             )}
-            {showKeyboardHints && !amountError && (
-              <p className="text-center text-xs text-muted-foreground flex items-center justify-center gap-1.5">
-                <ArrowRightToLine className="h-3.5 w-3.5" />
-                <span><span className="font-bold">Tab</span> para continuar</span>
-              </p>
-            )}
-          </div>
-
-          {/* Detail Input - Texto dinámico según tipo */}
-          <div className="space-y-3">
-            <div className="relative">
-              <Input
-                ref={detailInputRef}
-                id="detail"
-                placeholder={`${typeConfig.placeholder} (opcional)`}
-                value={detail}
-                onChange={(e) => { setDetail(e.target.value); playTap(); }}
-                onKeyDown={handleDetailKeyDown}
-                className="h-14 text-lg rounded-2xl px-5 border-2 border-input focus:border-primary focus:ring-4 focus:ring-primary/20 transition-all bg-background placeholder:text-muted-foreground text-center"
-              />
-            </div>
-            
-            <p className="text-center text-[11px] text-muted-foreground/60 flex items-center justify-center gap-1">
-              <Sparkles className="h-3 w-3" />
-              <span>Categorización automática</span>
+          />
+          {amountError && (
+            <p className="text-center text-xs font-medium text-destructive animate-in fade-in slide-in-from-top-1 duration-200">
+              {amountError}
             </p>
-          </div>
-
-          {/* Gasto Compartido Checkbox - Solo para Gastos */}
-          {defaultType === "Gasto" && (
-            <div className="flex items-center justify-center gap-2 p-3 rounded-xl border-2 border-dashed border-input hover:border-primary/50 transition-colors">
-              <Checkbox 
-                id="shared" 
-                checked={isShared}
-                onCheckedChange={(checked) => setIsShared(checked as boolean)}
-              />
-              <label
-                htmlFor="shared"
-                className="text-sm font-medium leading-none cursor-pointer flex items-center gap-2"
-              >
-                <Users className="h-4 w-4 text-primary" />
-                Gasto compartido con amigos
-              </label>
-            </div>
           )}
+        </div>
 
-          {/* Submit Button - Color según tipo */}
-          <Button
-            type="submit"
-            size="lg"
-            className={`w-full h-14 text-base font-semibold rounded-2xl transition-all duration-200 ${
-              defaultType === "Ingreso"
-                ? "bg-success hover:bg-success/90"
-                : defaultType === "Inversión"
-                  ? "bg-blue-500 hover:bg-blue-500/90"
-                  : "bg-destructive hover:bg-destructive/90"
-            }`}
-            disabled={!amount || isSubmitting}
-          >
-            {isSubmitting ? (
-              <span className="flex items-center gap-2">
-                <Sparkles className="h-4 w-4 animate-spin" />
-                Guardando...
-              </span>
-            ) : (
-              <span className="flex items-center gap-2">
-                Agregar {amount && `${amount}`}
-                <CornerDownLeft className="h-4 w-4 opacity-60" />
-              </span>
+        {/* Detail — clean ghost input */}
+        <div className="space-y-2 px-2">
+          <Input
+            ref={detailInputRef}
+            placeholder={typeConfig.placeholder}
+            value={detail}
+            onChange={(e) => { setDetail(e.target.value); playTap(); }}
+            onKeyDown={handleDetailKeyDown}
+            className={cn(
+              "h-12 text-sm rounded-xl px-4 text-center",
+              "border border-white/[0.06] bg-white/[0.02]",
+              "focus:border-white/15 focus-visible:ring-0 focus-visible:ring-offset-0",
+              "placeholder:text-muted-foreground/30",
+              "transition-all duration-200",
             )}
-          </Button>
-        </form>
-      </CardContent>
+          />
+          <p className="text-center text-[10px] text-muted-foreground/35 tracking-wide">
+            <Sparkles className="inline h-2.5 w-2.5 mr-1 -translate-y-px" />
+            categorización automática
+          </p>
+        </div>
 
-      {/* Shared Expense Drawer */}
+        {/* Shared expense — subtle toggle */}
+        {defaultType === "Gasto" && (
+          <div className="flex items-center justify-center gap-2 py-1">
+            <Checkbox
+              id="shared"
+              checked={isShared}
+              onCheckedChange={(checked) => setIsShared(checked as boolean)}
+            />
+            <label
+              htmlFor="shared"
+              className="text-xs text-muted-foreground/60 cursor-pointer flex items-center gap-1.5 hover:text-muted-foreground transition-colors"
+            >
+              <Users className="h-3 w-3" />
+              Compartido
+            </label>
+          </div>
+        )}
+
+        {/* Submit */}
+        <Button
+          type="submit"
+          className={cn(
+            "w-full h-12 text-sm font-medium rounded-xl transition-all duration-200",
+            buttonColor,
+          )}
+          disabled={!amount || isSubmitting}
+        >
+          {isSubmitting ? (
+            <span className="flex items-center gap-2">
+              <Sparkles className="h-3.5 w-3.5 animate-spin" />
+              Guardando...
+            </span>
+          ) : (
+            <span className="flex items-center gap-2">
+              Agregar{amount ? ` ${amount}` : ""}
+              <CornerDownLeft className="h-3.5 w-3.5 opacity-40" />
+            </span>
+          )}
+        </Button>
+      </form>
+
       <SharedExpenseDrawer
         open={sharedDrawerOpen}
         onOpenChange={setSharedDrawerOpen}
         totalAmount={pendingTransaction?.amount || 0}
         onConfirm={handleSharedExpenseConfirm}
       />
-    </Card>
+    </>
   );
 }
