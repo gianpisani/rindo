@@ -70,7 +70,7 @@ import { cn } from "@/lib/utils";
 // ── Bank list with brand colors ──────────────────────────────────────────────
 
 const BANKS = [
-  { value: "bancosecurity", label: "Banco Security", color: "#1B3A6B", abbr: "BS", logo: false },
+  { value: "bancosecurity", label: "Banco Security", color: "#1B3A6B", abbr: "BS", logo: true },
   { value: "bchile", label: "Banco de Chile", color: "#D4001A", abbr: "BC", logo: true },
   { value: "bci", label: "BCI", color: "#F47920", abbr: "BC", logo: true },
   { value: "bestado", label: "BancoEstado", color: "#007A3D", abbr: "BE", logo: true },
@@ -245,7 +245,7 @@ export function BankSyncModal({
           <div className="space-y-2">
             <Label className="text-sm font-medium">Banco</Label>
             <Select value={bank} onValueChange={setBank} required>
-              <SelectTrigger className="h-11 rounded-xl">
+              <SelectTrigger className="h-11 rounded-xl cursor-pointer">
                 <SelectValue placeholder="Selecciona tu banco">
                   {selectedBank && (
                     <span className="flex items-center gap-2.5">
@@ -257,7 +257,7 @@ export function BankSyncModal({
               </SelectTrigger>
               <SelectContent>
                 {BANKS.map((b) => (
-                  <SelectItem key={b.value} value={b.value}>
+                  <SelectItem key={b.value} value={b.value} className="cursor-pointer">
                     <span className="flex items-center gap-2.5">
                       <BankAvatar bank={b} />
                       <span>{b.label}</span>
