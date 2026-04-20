@@ -5,7 +5,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "./ui/dialog";
-import { ReactNode } from "react";
+import { useRef, useEffect, ReactNode } from "react";
 import { cn } from "@/lib/utils";
 
 interface BaseModalProps {
@@ -49,18 +49,33 @@ const variantStyles = {
   },
 };
 
-export function BaseModal({ 
-  open, 
-  onOpenChange, 
-  title, 
-  description, 
+export function BaseModal({
+  open,
+  onOpenChange,
+  title,
+  description,
   children,
   footer,
   maxWidth = "lg",
   variant = "default"
 }: BaseModalProps) {
   const styles = variantStyles[variant];
-  
+  const scrollRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!open) return;
+    const raf = requestAnimationFrame(() => {
+      const el = scrollRef.current;
+      if (!el) return;
+      // Activate iOS WebKit scroll context so react-remove-scroll's
+      // locationCouldBeScrolled check (scrollHeight > clientHeight) passes
+      // after the dialog entry animation completes.
+      el.scrollTop = 1;
+      el.scrollTop = 0;
+    });
+    return () => cancelAnimationFrame(raf);
+  }, [open]);
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent 
@@ -87,7 +102,11 @@ export function BaseModal({
           )}
         </DialogHeader>
         
-        <div className="flex-1 overflow-y-auto overflow-x-hidden px-6 pb-6 min-h-0">
+        <div
+          ref={scrollRef}
+          className="flex-1 overflow-y-auto overflow-x-hidden px-6 pb-6 min-h-0"
+          style={{ touchAction: "pan-y" }}
+        >
           {children}
         </div>
 
