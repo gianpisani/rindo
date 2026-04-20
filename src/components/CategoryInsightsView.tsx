@@ -769,10 +769,9 @@ export function CategoryInsightsView() {
                       {/* Header */}
                       <div className="flex items-center justify-between mb-3">
                         <div className="flex items-center gap-2 min-w-0">
-                          <div
-                            className="w-2.5 h-2.5 rounded-full shrink-0"
-                            style={{ backgroundColor: color }}
-                          />
+                          <span className="text-base leading-none shrink-0">
+                            {catObj?.icon || "🏷️"}
+                          </span>
                           <span className="text-sm font-medium truncate">
                             {cat.category}
                           </span>
@@ -981,10 +980,9 @@ export function CategoryInsightsView() {
                   onClick={() => handleSetLimit(cat.category)}
                   className="flex items-center gap-2.5 p-3 rounded-lg border border-border/50 bg-card hover:border-primary/20 hover:bg-accent/50 transition-all text-left group"
                 >
-                  <div
-                    className="w-2.5 h-2.5 rounded-full shrink-0"
-                    style={{ backgroundColor: color }}
-                  />
+                  <span className="text-base leading-none shrink-0">
+                    {catObj?.icon || "🏷️"}
+                  </span>
                   <div className="flex-1 min-w-0">
                     <span className="text-xs font-medium truncate block">
                       {cat.category}
