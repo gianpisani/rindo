@@ -106,24 +106,26 @@ function SectionCard({
 }) {
   return (
     <GlassCard className={cn("flex flex-col", className)}>
-      <div className="flex items-center gap-2 px-6 pt-5 pb-2 border-b border-border/20">
-        {Icon && <Icon className="h-3.5 w-3.5 text-primary/60" />}
-        <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
-          {title}
-        </h3>
-        {tooltip && (
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <Info className="h-3.5 w-3.5 text-muted-foreground/40 hover:text-muted-foreground transition-colors cursor-help" />
-            </TooltipTrigger>
-            <TooltipContent side="top" className="max-w-xs">
-              {tooltip}
-            </TooltipContent>
-          </Tooltip>
-        )}
-        {action && <div className="ml-auto">{action}</div>}
+      <div className="flex flex-col sm:flex-row sm:items-center gap-y-2 px-4 sm:px-6 pt-4 sm:pt-5 pb-2 border-b border-border/20">
+        <div className="flex items-center gap-2">
+          {Icon && <Icon className="h-3.5 w-3.5 text-primary/60" />}
+          <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
+            {title}
+          </h3>
+          {tooltip && (
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Info className="h-3.5 w-3.5 text-muted-foreground/40 hover:text-muted-foreground transition-colors cursor-help" />
+              </TooltipTrigger>
+              <TooltipContent side="top" className="max-w-xs">
+                {tooltip}
+              </TooltipContent>
+            </Tooltip>
+          )}
+        </div>
+        {action && <div className="sm:ml-auto">{action}</div>}
       </div>
-      <div className="flex-1 p-6 pt-4">{children}</div>
+      <div className="flex-1 p-4 sm:p-6 pt-3 sm:pt-4">{children}</div>
     </GlassCard>
   );
 }
@@ -1059,7 +1061,7 @@ export function CategoryInsightsView() {
                     : "Top 5"}
                 </button>
               </PopoverTrigger>
-              <PopoverContent align="end" className="w-52 p-2">
+              <PopoverContent align="end" collisionPadding={8} className="w-52 p-2">
                 <div className="flex items-center justify-between px-2 pb-2 mb-1 border-b border-border/40">
                   <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Categorías</span>
                   {selectedChartCategories.size > 0 && (
