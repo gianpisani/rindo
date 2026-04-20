@@ -78,21 +78,32 @@ function RotatingText() {
 
 // ── Floating activity feed ───────────────────────────────────────────────────
 
-const ACTIVITY_ITEMS: { icon: string; text: string; detail?: string; color: string; side: "left" | "right" }[] = [
-  { icon: "🍔", text: "Pago Uber Eats", detail: "−$12.500 · Comida", color: "text-red-400", side: "left" },
-  { icon: "📊", text: "Presupuesto Comida", detail: "78% usado", color: "text-amber-400", side: "right" },
-  { icon: "🏦", text: "Sync Banco de Chile", detail: "12 movimientos", color: "text-blue-400", side: "left" },
-  { icon: "💰", text: "Ingreso Sueldo", detail: "+$1.850.000", color: "text-emerald-400", side: "right" },
-  { icon: "🚕", text: "Pago Uber", detail: "−$4.200 · Transporte", color: "text-red-400", side: "left" },
-  { icon: "📈", text: "Proyección 12 meses", detail: "Tendrás ahorrado $15.820.000", color: "text-emerald-400", side: "right" },
-  { icon: "💳", text: "Cuota 3/12", detail: "−$133.250 · Bicicleta", color: "text-orange-400", side: "left" },
+interface ActivityItem {
+  icon: string;
+  text: string;
+  detail?: string;
+  color: string;
+  side: "left" | "right";
+  shortcut?: string; // keyboard shortcut that triggered it
+}
+
+const ACTIVITY_ITEMS: ActivityItem[] = [
+  // ── La app trabaja sola ──
+  { icon: "🏦", text: "Sync Banco de Chile", detail: "12 movimientos importados", color: "text-blue-400", side: "left" },
+  { icon: "🤖", text: "IA categorizó 8 gastos", detail: "Comida, Transporte, Hogar...", color: "text-purple-400", side: "right" },
+  { icon: "📈", text: "Proyección 12 meses", detail: "Tendrás ahorrado $15.820.000", color: "text-emerald-400", side: "left" },
   { icon: "⚠️", text: "Presupuesto excedido", detail: "Transporte +$15k", color: "text-red-400", side: "right" },
-  { icon: "🔄", text: "Devolución Churros", detail: "+$2.250 · Reembolso", color: "text-emerald-400", side: "left" },
-  { icon: "☕", text: "Think Coffee Bar", detail: "−$3.600 · Comida", color: "text-red-400", side: "right" },
-  { icon: "🎯", text: "Meta Ahorro", detail: "62% completado", color: "text-blue-400", side: "left" },
-  { icon: "🏠", text: "Pago Arriendo", detail: "−$450.000 · Hogar", color: "text-red-400", side: "right" },
   { icon: "📱", text: "Categorizado con IA", detail: "Spotify → Suscripciones", color: "text-purple-400", side: "left" },
-  { icon: "💸", text: "Transferencia", detail: "−$25.000 · Amigos", color: "text-orange-400", side: "right" },
+  { icon: "🔔", text: "Cuota 3/12 detectada", detail: "Bicicleta · −$133.250", color: "text-orange-400", side: "right" },
+  { icon: "📊", text: "Presupuesto Comida", detail: "78% usado · quedan 11 días", color: "text-amber-400", side: "left" },
+  // ── Pero tú tienes el control ──
+  { icon: "🍔", text: "Pago Uber Eats", detail: "−$12.500 · Comida", color: "text-red-400", side: "right", shortcut: "N" },
+  { icon: "💰", text: "Ingreso Sueldo", detail: "+$1.850.000", color: "text-emerald-400", side: "left", shortcut: "N" },
+  { icon: "🔄", text: "Devolución Churros", detail: "+$2.250 · Reembolso", color: "text-emerald-400", side: "right", shortcut: "N" },
+  { icon: "🔍", text: "Buscar transacción", detail: '"arriendo mayo"', color: "text-white/60", side: "left", shortcut: "⌘K" },
+  { icon: "☕", text: "Think Coffee Bar", detail: "−$3.600 · Comida", color: "text-red-400", side: "right", shortcut: "N" },
+  { icon: "🏠", text: "Pago Arriendo", detail: "−$450.000 · Hogar", color: "text-red-400", side: "left", shortcut: "N" },
+  { icon: "📋", text: "Conciliación rápida", detail: "3 pendientes", color: "text-blue-400", side: "right", shortcut: "R" },
 ];
 
 interface FloatingCard {
@@ -175,6 +186,11 @@ function FloatingActivity() {
             }}
           >
             <div className="flex items-center gap-2 px-3 py-2 rounded-xl border border-white/[0.06] bg-white/[0.03] backdrop-blur-sm">
+              {card.item.shortcut && (
+                <kbd className="px-1.5 py-0.5 text-[9px] font-mono font-medium rounded border border-white/10 bg-white/[0.06] text-white/30 self-center shrink-0">
+                  {card.item.shortcut}
+                </kbd>
+              )}
               <span className="text-sm leading-none">{card.item.icon}</span>
               <div className="flex flex-col">
                 <span className="text-[11px] text-white/40 font-medium leading-tight whitespace-nowrap">
