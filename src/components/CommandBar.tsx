@@ -110,7 +110,7 @@ export function CommandBar({ open, onOpenChange, onAddTransaction, onConciliate,
                     key={transaction.id}
                     value={transaction.id}
                     onSelect={() =>
-                      runCommand(() => navigate(`/transactions?search=${encodeURIComponent(search)}`))
+                      runCommand(() => navigate(`/transactions?search=${encodeURIComponent(search)}&highlight=${transaction.id}`))
                     }
                     className="flex items-start gap-3 py-3 cursor-pointer"
                   >

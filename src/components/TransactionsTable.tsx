@@ -534,6 +534,7 @@ interface TransactionsTableProps {
   onSearchChange?: (v: string) => void;
   typeFilter?: string;
   onTypeFilterChange?: (v: string) => void;
+  highlightId?: string | null;
   categoryFilter?: string;
   onCategoryFilterChange?: (v: string) => void;
   cardFilter?: string;
@@ -556,6 +557,7 @@ export function TransactionsTable({
   onSearchChange,
   typeFilter: externalTypeFilter,
   onTypeFilterChange,
+  highlightId,
   categoryFilter: externalCategoryFilter,
   onCategoryFilterChange,
   cardFilter: externalCardFilter,
@@ -595,6 +597,18 @@ export function TransactionsTable({
   useEffect(() => {
     setRowSelection({});
   }, [transactions.length]);
+
+  // Scroll to highlighted row from ⌘K
+  useEffect(() => {
+    if (!highlightId || !tbodyRef.current) return;
+    const timer = setTimeout(() => {
+      const row = tbodyRef.current?.querySelector(`[data-transaction-id="${highlightId}"]`);
+      if (row) {
+        row.scrollIntoView({ behavior: "smooth", block: "center" });
+      }
+    }, 150);
+    return () => clearTimeout(timer);
+  }, [highlightId]);
 
   const formatCurrency = (amount: number) =>
     new Intl.NumberFormat("es-CL", { style: "currency", currency: "CLP", minimumFractionDigits: 0 }).format(amount);
@@ -1755,15 +1769,18 @@ export function TransactionsTable({
                           </tr>
                           {group.rows.map((row, i) => {
                             const isMissing = row.original.category_name === "Sin categoría";
+                            const isHighlighted = highlightId === row.original.id;
                             return (
                               <tr
                                 key={row.id}
                                 data-row-index={flatOffset + i}
+                                data-transaction-id={row.original.id}
                                 data-state={row.getIsSelected() && "selected"}
                                 className={cn(
                                   "hover:bg-muted/40 transition-colors",
                                   row.getIsSelected() && "bg-primary/5 hover:bg-primary/10",
-                                  isMissing && "border-l-2 border-l-amber-400/70"
+                                  isMissing && "border-l-2 border-l-amber-400/70",
+                                  isHighlighted && "tx-highlight-pulse"
                                 )}
                                 onMouseDown={(e) => handleRowMouseDown(e, flatOffset + i)}
                               >
@@ -1781,15 +1798,18 @@ export function TransactionsTable({
                   ) : (
                     table.getRowModel().rows.map((row, i) => {
                       const isMissing = row.original.category_name === "Sin categoría";
+                      const isHighlighted = highlightId === row.original.id;
                       return (
                         <tr
                           key={row.id}
                           data-row-index={i}
+                          data-transaction-id={row.original.id}
                           data-state={row.getIsSelected() && "selected"}
                           className={cn(
                             "hover:bg-muted/40 transition-colors",
                             row.getIsSelected() && "bg-primary/5 hover:bg-primary/10",
-                            isMissing && "border-l-2 border-l-amber-400/70"
+                            isMissing && "border-l-2 border-l-amber-400/70",
+                            isHighlighted && "tx-highlight-pulse"
                           )}
                           onMouseDown={(e) => handleRowMouseDown(e, i)}
                         >

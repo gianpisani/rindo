@@ -1,4 +1,5 @@
 import { useState, useRef, useCallback, useEffect } from "react";
+import { useSearchParams } from "react-router-dom";
 import Layout from "@/components/Layout";
 import ConfirmDialog from "@/components/ConfirmDialog";
 import { BaseModal } from "@/components/BaseModal";
@@ -91,10 +92,29 @@ export default function Transactions() {
   const [editingDebtorAmount, setEditingDebtorAmount] = useState("");
   const [debtToLink, setDebtToLink] = useState<{ id: string; debtorName: string; amount: number; transactionDetail?: string } | null>(null);
   const [isImporting, setIsImporting] = useState(false);
-  const [searchValue, setSearchValue] = useState("");
+  const [searchParams, setSearchParams] = useSearchParams();
+  const [searchValue, setSearchValue] = useState(searchParams.get("search") || "");
+  const [highlightId, setHighlightId] = useState<string | null>(searchParams.get("highlight"));
   const [typeFilter, setTypeFilter] = useState("all");
   const [categoryFilter, setCategoryFilter] = useState("all");
   const [cardFilter, setCardFilter] = useState("all");
+
+  // Sync from URL params (e.g. coming from ⌘K)
+  useEffect(() => {
+    const urlSearch = searchParams.get("search");
+    const urlHighlight = searchParams.get("highlight");
+    if (urlSearch) {
+      setSearchValue(urlSearch);
+      // Clean URL params without triggering re-render loop
+      setSearchParams({}, { replace: true });
+    }
+    if (urlHighlight) {
+      setHighlightId(urlHighlight);
+      // Clear highlight after animation
+      const timer = setTimeout(() => setHighlightId(null), 3000);
+      return () => clearTimeout(timer);
+    }
+  }, []);
   const [confirmDelete, setConfirmDelete] = useState<{ open: boolean; id: string | null }>({
     open: false,
     id: null,
@@ -1273,6 +1293,7 @@ export default function Transactions() {
           onCategoryFilterChange={setCategoryFilter}
           cardFilter={cardFilter}
           onCardFilterChange={setCardFilter}
+          highlightId={highlightId}
         />
       </div>
 
