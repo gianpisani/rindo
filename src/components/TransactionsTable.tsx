@@ -683,67 +683,69 @@ export function TransactionsTable({
           const expenseCategories = categories.filter(c => c.type === "Gasto");
 
           return (
-            <div className={cn("overflow-hidden space-y-0.5", isPrivacyMode && "privacy-blur")}>
-              <CategoryCombobox
-                value={categoryName}
-                options={filteredCats.map(c => ({
-                  value: c.name,
-                  label: c.name,
-                  emoji: c.icon || getCategoryIcon(c.name),
-                  color: c.color,
-                }))}
-                onSave={(newCategory) => handleInlineUpdate(row.original.id, "category_name", newCategory)}
-                renderValue={(val) => (
-                  <div className="flex items-center gap-1.5 min-w-0">
-                    <span className="text-base leading-none flex-shrink-0">{emoji}</span>
-                    {dotColor && (
-                      <div
-                        className="w-1.5 h-1.5 rounded-full flex-shrink-0"
-                        style={{ backgroundColor: dotColor }}
-                      />
-                    )}
-                    <span
-                      className={cn(
-                        "font-medium text-sm truncate",
-                        isMissing && "text-amber-500"
-                      )}
-                      title={val}
-                    >
-                      {val}
-                    </span>
-                  </div>
-                )}
-                className="max-w-full overflow-hidden"
-              />
-              {/* Reimbursement link for Reembolsos */}
-              {isReimbursement && (
+            <div className={cn("overflow-hidden", isPrivacyMode && "privacy-blur")}>
+              <div className="flex items-center gap-1.5 min-w-0">
                 <CategoryCombobox
-                  value={linkedCategory || ""}
-                  options={[
-                    { value: "", label: "Sin vincular", emoji: "🔗" },
-                    ...expenseCategories.map(c => ({
-                      value: c.name,
-                      label: c.name,
-                      emoji: c.icon || getCategoryIcon(c.name),
-                      color: c.color,
-                    })),
-                  ]}
-                  onSave={(val) => handleInlineUpdate(row.original.id, "reimbursement_for_category", val || null)}
-                  placeholder="Buscar gasto..."
+                  value={categoryName}
+                  options={filteredCats.map(c => ({
+                    value: c.name,
+                    label: c.name,
+                    emoji: c.icon || getCategoryIcon(c.name),
+                    color: c.color,
+                  }))}
+                  onSave={(newCategory) => handleInlineUpdate(row.original.id, "category_name", newCategory)}
                   renderValue={(val) => (
-                    <div className="flex items-center gap-1 min-w-0">
-                      <Undo2 className="h-3 w-3 flex-shrink-0 text-emerald-500" />
-                      <span className={cn(
-                        "text-[11px] truncate",
-                        val ? "text-emerald-600 font-medium" : "text-muted-foreground/60 italic"
-                      )}>
-                        {val || "Vincular a gasto..."}
+                    <div className="flex items-center gap-1.5 min-w-0">
+                      <span className="text-base leading-none flex-shrink-0">{emoji}</span>
+                      {dotColor && (
+                        <div
+                          className="w-1.5 h-1.5 rounded-full flex-shrink-0"
+                          style={{ backgroundColor: dotColor }}
+                        />
+                      )}
+                      <span
+                        className={cn(
+                          "font-medium text-sm truncate",
+                          isMissing && "text-amber-500"
+                        )}
+                        title={val}
+                      >
+                        {val}
                       </span>
                     </div>
                   )}
-                  className="max-w-full overflow-hidden px-1"
+                  className="max-w-full overflow-hidden"
                 />
-              )}
+                {/* Reimbursement linked category — inline badge */}
+                {isReimbursement && (
+                  <CategoryCombobox
+                    value={linkedCategory || ""}
+                    options={[
+                      { value: "", label: "Sin vincular", emoji: "🔗" },
+                      ...expenseCategories.map(c => ({
+                        value: c.name,
+                        label: c.name,
+                        emoji: c.icon || getCategoryIcon(c.name),
+                        color: c.color,
+                      })),
+                    ]}
+                    onSave={(val) => handleInlineUpdate(row.original.id, "reimbursement_for_category", val || null)}
+                    placeholder="Buscar gasto..."
+                    renderValue={(val) => (
+                      <span className={cn(
+                        "inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[11px] leading-tight flex-shrink-0",
+                        val
+                          ? "bg-emerald-500/15 text-emerald-400 font-medium"
+                          : "bg-muted text-muted-foreground/60 italic"
+                      )}>
+                        <Undo2 className="h-2.5 w-2.5 flex-shrink-0" />
+                        {val || "Vincular..."}
+                      </span>
+                    )}
+                    className="overflow-hidden flex-shrink-0"
+                  />
+                )}
+              </div>
             </div>
           );
         },
