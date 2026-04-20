@@ -447,6 +447,76 @@ function CategoryCombobox({ value, options, onSave, renderValue, className, plac
   );
 }
 
+// ── Reimbursement Pill (inline clickable badge with own popover) ─────────
+
+interface ReimbursementPillProps {
+  value: string;
+  options: CategoryComboboxOption[];
+  onSave: (value: string) => void;
+}
+
+function ReimbursementPill({ value, options, onSave }: ReimbursementPillProps) {
+  const [open, setOpen] = useState(false);
+
+  return (
+    <Popover open={open} onOpenChange={setOpen}>
+      <PopoverTrigger asChild>
+        <button
+          className={cn(
+            "inline-flex items-center gap-1 rounded-full px-1.5 py-0.5 text-[10px] leading-none flex-shrink-0",
+            "cursor-pointer transition-all hover:brightness-125",
+            "focus:outline-none",
+            value
+              ? "bg-emerald-500/15 text-emerald-400 font-medium"
+              : "bg-white/5 text-muted-foreground/40 italic hover:text-muted-foreground/60"
+          )}
+          onClick={(e) => e.stopPropagation()}
+        >
+          <Undo2 className="h-2 w-2 flex-shrink-0" />
+          {value || "vincular"}
+        </button>
+      </PopoverTrigger>
+      <PopoverContent className="w-[220px] p-0 border-0 shadow-lg shadow-black/10 dark:shadow-black/30 rounded-lg overflow-hidden" align="start" side="bottom" sideOffset={4}>
+        <Command className="rounded-lg">
+          <CommandInput placeholder="Buscar gasto..." className="h-8 text-xs border-0 ring-0 focus:ring-0" />
+          <CommandList>
+            <CommandEmpty className="py-3 text-center text-xs text-muted-foreground">
+              Sin resultados
+            </CommandEmpty>
+            <CommandGroup>
+              {options.map((option) => (
+                <CommandItem
+                  key={option.value}
+                  value={option.label}
+                  onSelect={() => {
+                    if (option.value !== value) onSave(option.value);
+                    setOpen(false);
+                  }}
+                  className="flex items-center gap-2 cursor-pointer"
+                >
+                  {option.emoji && (
+                    <span className="text-base leading-none flex-shrink-0">{option.emoji}</span>
+                  )}
+                  {option.color && (
+                    <div
+                      className="w-2 h-2 rounded-full flex-shrink-0"
+                      style={{ backgroundColor: option.color }}
+                    />
+                  )}
+                  <span className="truncate text-sm">{option.label}</span>
+                  {option.value === value && (
+                    <Check className="h-3.5 w-3.5 ml-auto flex-shrink-0 text-primary" />
+                  )}
+                </CommandItem>
+              ))}
+            </CommandGroup>
+          </CommandList>
+        </Command>
+      </PopoverContent>
+    </Popover>
+  );
+}
+
 // ── Props ──────────────────────────────────────────────────────────────────
 
 interface TransactionsTableProps {
@@ -682,70 +752,57 @@ export function TransactionsTable({
           const filteredCats = categories.filter(c => c.type === type);
           const expenseCategories = categories.filter(c => c.type === "Gasto");
 
+          const reimbursementOptions = isReimbursement ? [
+            { value: "", label: "Sin vincular", emoji: "🔗" },
+            ...expenseCategories.map(c => ({
+              value: c.name,
+              label: c.name,
+              emoji: c.icon || getCategoryIcon(c.name),
+              color: c.color,
+            })),
+          ] : [];
+
           return (
-            <div className={cn("overflow-hidden", isPrivacyMode && "privacy-blur")}>
-              <div className="flex items-center gap-1.5 min-w-0">
-                <CategoryCombobox
-                  value={categoryName}
-                  options={filteredCats.map(c => ({
-                    value: c.name,
-                    label: c.name,
-                    emoji: c.icon || getCategoryIcon(c.name),
-                    color: c.color,
-                  }))}
-                  onSave={(newCategory) => handleInlineUpdate(row.original.id, "category_name", newCategory)}
-                  renderValue={(val) => (
-                    <div className="flex items-center gap-1.5 min-w-0">
-                      <span className="text-base leading-none flex-shrink-0">{emoji}</span>
-                      {dotColor && (
-                        <div
-                          className="w-1.5 h-1.5 rounded-full flex-shrink-0"
-                          style={{ backgroundColor: dotColor }}
-                        />
-                      )}
-                      <span
-                        className={cn(
-                          "font-medium text-sm truncate",
-                          isMissing && "text-amber-500"
-                        )}
-                        title={val}
-                      >
-                        {val}
-                      </span>
-                    </div>
-                  )}
-                  className="max-w-full overflow-hidden"
-                />
-                {/* Reimbursement linked category — inline badge */}
-                {isReimbursement && (
-                  <CategoryCombobox
-                    value={linkedCategory || ""}
-                    options={[
-                      { value: "", label: "Sin vincular", emoji: "🔗" },
-                      ...expenseCategories.map(c => ({
-                        value: c.name,
-                        label: c.name,
-                        emoji: c.icon || getCategoryIcon(c.name),
-                        color: c.color,
-                      })),
-                    ]}
-                    onSave={(val) => handleInlineUpdate(row.original.id, "reimbursement_for_category", val || null)}
-                    placeholder="Buscar gasto..."
-                    renderValue={(val) => (
-                      <span className={cn(
-                        "inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[11px] leading-tight flex-shrink-0",
-                        val
-                          ? "bg-emerald-500/15 text-emerald-400 font-medium"
-                          : "bg-muted text-muted-foreground/60 italic"
-                      )}>
-                        <Undo2 className="h-2.5 w-2.5 flex-shrink-0" />
-                        {val || "Vincular..."}
-                      </span>
+            <div className={cn("flex items-center gap-1 overflow-hidden", isPrivacyMode && "privacy-blur")}>
+              <CategoryCombobox
+                value={categoryName}
+                options={filteredCats.map(c => ({
+                  value: c.name,
+                  label: c.name,
+                  emoji: c.icon || getCategoryIcon(c.name),
+                  color: c.color,
+                }))}
+                onSave={(newCategory) => handleInlineUpdate(row.original.id, "category_name", newCategory)}
+                renderValue={(val) => (
+                  <div className="flex items-center gap-1.5 min-w-0">
+                    <span className="text-base leading-none flex-shrink-0">{emoji}</span>
+                    {dotColor && (
+                      <div
+                        className="w-1.5 h-1.5 rounded-full flex-shrink-0"
+                        style={{ backgroundColor: dotColor }}
+                      />
                     )}
-                    className="overflow-hidden flex-shrink-0"
-                  />
+                    <span
+                      className={cn(
+                        "font-medium text-sm truncate",
+                        isMissing && "text-amber-500"
+                      )}
+                      title={val}
+                    >
+                      {val}
+                    </span>
+                  </div>
                 )}
-              </div>
+                className="max-w-full overflow-hidden"
+              />
+              {/* Reimbursement linked category — compact inline pill with its own popover */}
+              {isReimbursement && (
+                <ReimbursementPill
+                  value={linkedCategory || ""}
+                  options={reimbursementOptions}
+                  onSave={(val) => handleInlineUpdate(row.original.id, "reimbursement_for_category", val || null)}
+                />
+              )}
             </div>
           );
         },
