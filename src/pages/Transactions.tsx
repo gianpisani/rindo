@@ -20,7 +20,7 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { Plus, Download, TrendingUp, TrendingDown, PiggyBank, Upload, X, Sparkles, Info, Trash2, Search, CalendarClock, Users, CheckCircle2, Clock, Pencil, ArrowLeftRight, Building2, RefreshCw } from "lucide-react";
+import { Plus, Download, TrendingUp, TrendingDown, PiggyBank, Upload, X, Sparkles, Info, Trash2, Search, CalendarClock, Users, CheckCircle2, Clock, Pencil, ArrowLeftRight, Building2, RefreshCw, ChevronDown, Check } from "lucide-react";
 import { useTransactions, Transaction } from "@/hooks/useTransactions";
 import { useCategories } from "@/hooks/useCategories";
 import { useCreditCards } from "@/hooks/useCreditCards";
@@ -78,6 +78,7 @@ export default function Transactions() {
   const [isBankSyncOpen, setIsBankSyncOpen] = useState(false);
 
   const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const [showCategoryList, setShowCategoryList] = useState(false);
   const [isImportDialogOpen, setIsImportDialogOpen] = useState(false);
   const [editingTransaction, setEditingTransaction] = useState<Transaction | null>(null);
   const [isShared, setIsShared] = useState(false);
@@ -537,6 +538,7 @@ export default function Transactions() {
                 setEditingTransaction(null);
                 resetForm();
                 setSuggestion(null);
+                setShowCategoryList(false);
               }
             }}
             title={`${editingTransaction ? "Editar" : "Agregar"} Transacción`}
@@ -568,6 +570,7 @@ export default function Transactions() {
                     value={formData.type}
                     onValueChange={(value: "Ingreso" | "Gasto" | "Inversión" | "Reembolso") => {
                       setFormData({ ...formData, type: value, category_name: "" });
+                      setShowCategoryList(false);
                       if (value !== "Ingreso" && value !== "Reembolso") setDebtToLink(null);
                     }}
                   >
@@ -584,23 +587,39 @@ export default function Transactions() {
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="category" className="text-sm font-medium">Categoría</Label>
-                  <Select
-                    value={formData.category_name}
-                    onValueChange={(value) => setFormData({ ...formData, category_name: value })}
+                  <button
+                    type="button"
+                    className="flex h-10 w-full items-center justify-between rounded-lg border border-input bg-background px-6 py-2 text-sm ring-offset-background focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2"
+                    onClick={() => setShowCategoryList(v => !v)}
                   >
-                    <SelectTrigger className="h-10 rounded-lg px-6">
-                      <SelectValue placeholder="Selecciona una categoría" />
-                    </SelectTrigger>
-                    <SelectContent>
+                    <span className={formData.category_name ? "" : "text-muted-foreground"}>
+                      {formData.category_name
+                        ? `${filteredCategories.find(c => c.name === formData.category_name)?.icon || getCategoryIcon(formData.category_name)} ${formData.category_name}`
+                        : "Selecciona una categoría"}
+                    </span>
+                    <ChevronDown className={`h-4 w-4 opacity-50 transition-transform duration-200 ${showCategoryList ? "rotate-180" : ""}`} />
+                  </button>
+                  {showCategoryList && (
+                    <div className="rounded-lg border bg-popover text-popover-foreground shadow-md overflow-hidden">
                       {filteredCategories
                         .filter(cat => cat.name && cat.name.trim().length > 0)
                         .map((cat) => (
-                          <SelectItem key={cat.id} value={cat.name}>
-                            {cat.icon || getCategoryIcon(cat.name)} {cat.name}
-                          </SelectItem>
+                          <button
+                            key={cat.id}
+                            type="button"
+                            className="flex w-full items-center gap-2 px-6 py-2.5 text-sm hover:bg-accent text-left"
+                            onClick={() => {
+                              setFormData({ ...formData, category_name: cat.name });
+                              setShowCategoryList(false);
+                            }}
+                          >
+                            <span>{cat.icon || getCategoryIcon(cat.name)}</span>
+                            <span>{cat.name}</span>
+                            {formData.category_name === cat.name && <Check className="ml-auto h-4 w-4" />}
+                          </button>
                         ))}
-                    </SelectContent>
-                  </Select>
+                    </div>
+                  )}
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="amount" className="text-sm font-medium">Monto</Label>
