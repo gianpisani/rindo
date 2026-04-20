@@ -232,8 +232,7 @@ export function CategoryInsightsView() {
   const expenseCategories = useMemo(() => {
     return categories
       .filter((c) => c.type === "Gasto")
-      .map((c) => c.name)
-      .sort();
+      .sort((a, b) => a.name.localeCompare(b.name));
   }, [categories]);
 
   const isCurrentMonth =
@@ -1185,8 +1184,11 @@ export function CategoryInsightsView() {
                   </SelectTrigger>
                   <SelectContent>
                     {expenseCategories.map((cat) => (
-                      <SelectItem key={cat} value={cat}>
-                        {cat}
+                      <SelectItem key={cat.name} value={cat.name}>
+                        <span className="flex items-center gap-2">
+                          <span className="text-base leading-none">{cat.icon || "🏷️"}</span>
+                          {cat.name}
+                        </span>
                       </SelectItem>
                     ))}
                   </SelectContent>
