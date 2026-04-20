@@ -8,6 +8,7 @@ import { Input } from "@/components/ui/input";
 import { Dialog, DialogTrigger } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Drawer, DrawerContent, DrawerHeader, DrawerTitle, DrawerFooter } from "@/components/ui/drawer";
 import { Badge } from "@/components/ui/badge";
 import {
   AlertDialog,
@@ -530,7 +531,7 @@ export default function Transactions() {
             </DialogTrigger>
           </Dialog>
 
-          <BaseModal
+          <Drawer
             open={isDialogOpen}
             onOpenChange={(open) => {
               setIsDialogOpen(open);
@@ -541,20 +542,16 @@ export default function Transactions() {
                 setShowCategoryList(false);
               }
             }}
-            title={`${editingTransaction ? "Editar" : "Agregar"} Transacción`}
-            maxWidth="lg"
-            footer={
-              <Button 
-                type="submit" 
-                form="transaction-form"
-                className="w-full" 
-                disabled={addTransaction.isPending || updateTransaction.isPending}
-              >
-                {editingTransaction ? "Guardar Cambios" : "Agregar"}
-              </Button>
-            }
+            shouldScaleBackground={false}
           >
-            <form id="transaction-form" onSubmit={handleSubmit} className="space-y-4">
+            <DrawerContent className="max-h-[92dvh] flex flex-col">
+              <DrawerHeader className="flex-shrink-0">
+                <DrawerTitle className="text-2xl text-center font-bold">
+                  {editingTransaction ? "Editar" : "Agregar"} Transacción
+                </DrawerTitle>
+              </DrawerHeader>
+              <div className="flex-1 overflow-y-auto px-6 pb-2 min-h-0">
+            <form id="transaction-form" onSubmit={handleSubmit} className="space-y-4 pb-2">
                 <div className="space-y-2">
                   <Label className="text-sm font-medium">Fecha y Hora</Label>
                   <DateTimePicker
@@ -1100,7 +1097,19 @@ export default function Transactions() {
                   );
                 })()}
               </form>
-          </BaseModal>
+              </div>
+              <DrawerFooter className="flex-shrink-0 border-t border-border/50 pt-4">
+                <Button
+                  type="submit"
+                  form="transaction-form"
+                  className="w-full"
+                  disabled={addTransaction.isPending || updateTransaction.isPending}
+                >
+                  {editingTransaction ? "Guardar Cambios" : "Agregar"}
+                </Button>
+              </DrawerFooter>
+            </DrawerContent>
+          </Drawer>
         </div>
 
         <BankSyncModal
