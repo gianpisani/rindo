@@ -275,7 +275,7 @@ function BankStrip() {
       <p className="text-[10px] text-white/15 uppercase tracking-[0.2em] font-medium">
         Sincroniza con tu banco
       </p>
-      <div className="flex items-center gap-1.5 flex-wrap justify-center">
+      <div className="flex items-center gap-1 justify-center">
         {LANDING_BANKS.map((bank) => (
           <div
             key={bank.value}
@@ -284,7 +284,7 @@ function BankStrip() {
           >
             {bank.initials ? (
               <div
-                className="w-7 h-7 rounded-lg flex items-center justify-center text-[8px] font-bold text-white opacity-40 hover:opacity-60 transition-opacity duration-300"
+                className="w-6 h-6 rounded-md flex items-center justify-center text-[7px] font-bold text-white opacity-40 hover:opacity-60 transition-opacity duration-300"
                 style={{ backgroundColor: bank.color }}
               >
                 {bank.initials}
@@ -293,7 +293,7 @@ function BankStrip() {
               <img
                 src={`/banks/${bank.value}.png`}
                 alt={bank.label}
-                className="w-7 h-7 rounded-lg object-contain opacity-40 hover:opacity-60 transition-opacity duration-300"
+                className="w-6 h-6 rounded-md object-contain opacity-40 hover:opacity-60 transition-opacity duration-300"
               />
             )}
           </div>
