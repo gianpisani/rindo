@@ -70,25 +70,34 @@ import { cn } from "@/lib/utils";
 // ── Bank list with brand colors ──────────────────────────────────────────────
 
 const BANKS = [
-  { value: "bancosecurity", label: "Banco Security", color: "#1B3A6B", abbr: "BS" },
-  { value: "bchile", label: "Banco de Chile", color: "#D4001A", abbr: "BCH" },
-  { value: "bci", label: "BCI", color: "#F47920", abbr: "BCI" },
-  { value: "bestado", label: "BancoEstado", color: "#007A3D", abbr: "BE" },
-  { value: "bice", label: "BICE", color: "#003B71", abbr: "BI" },
-  { value: "edwards", label: "Banco Edwards", color: "#002D72", abbr: "ED" },
-  { value: "falabella", label: "Banco Falabella", color: "#8CC63F", abbr: "BF" },
-  { value: "itau", label: "Itaú", color: "#EC7000", abbr: "IT" },
-  { value: "santander", label: "Santander", color: "#EC0000", abbr: "SAN" },
-  { value: "scotiabank", label: "Scotiabank", color: "#EC1C24", abbr: "SB" },
+  { value: "bancosecurity", label: "Banco Security", color: "#1B3A6B", abbr: "BS", logo: false },
+  { value: "bchile", label: "Banco de Chile", color: "#D4001A", abbr: "BC", logo: true },
+  { value: "bci", label: "BCI", color: "#F47920", abbr: "BC", logo: true },
+  { value: "bestado", label: "BancoEstado", color: "#007A3D", abbr: "BE", logo: true },
+  { value: "bice", label: "BICE", color: "#003B71", abbr: "BI", logo: true },
+  { value: "edwards", label: "Banco Edwards", color: "#002D72", abbr: "ED", logo: true },
+  { value: "falabella", label: "Banco Falabella", color: "#8CC63F", abbr: "BF", logo: true },
+  { value: "itau", label: "Itaú", color: "#EC7000", abbr: "IT", logo: true },
+  { value: "santander", label: "Santander", color: "#EC0000", abbr: "SA", logo: true },
+  { value: "scotiabank", label: "Scotiabank", color: "#EC1C24", abbr: "SB", logo: true },
 ];
 
 function BankAvatar({ bank }: { bank: (typeof BANKS)[number] }) {
+  if (bank.logo) {
+    return (
+      <img
+        src={`/banks/${bank.value}.png`}
+        alt={bank.label}
+        className="w-6 h-6 rounded-md object-contain shrink-0"
+      />
+    );
+  }
   return (
     <div
       className="flex items-center justify-center w-6 h-6 rounded-md text-[10px] font-bold text-white shrink-0"
       style={{ backgroundColor: bank.color }}
     >
-      {bank.abbr.slice(0, 2)}
+      {bank.abbr}
     </div>
   );
 }
