@@ -81,7 +81,7 @@ const SelectContent = React.forwardRef<
           position === "popper" &&
             "h-[var(--radix-select-content-available-height)] w-full min-w-[var(--radix-select-trigger-width)]",
         )}
-        style={{ WebkitOverflowScrolling: "touch" } as React.CSSProperties}
+        style={{ touchAction: "pan-y" }}
       >
         {children}
       </SelectPrimitive.Viewport>
