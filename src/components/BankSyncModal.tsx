@@ -2,15 +2,10 @@ import { useState, useCallback } from "react";
 
 // ── RUT helpers ───────────────────────────────────────────────────────────────
 
-/** Strip everything except digits and 'k'/'K' */
 function cleanRut(value: string): string {
   return value.replace(/[^0-9kK]/g, "");
 }
 
-/**
- * Format a raw RUT string as the user types.
- * Output: "20799959-8" (no dots, hyphen before verifier).
- */
 function formatRut(raw: string): string {
   const clean = cleanRut(raw);
   if (clean.length === 0) return "";
@@ -20,10 +15,6 @@ function formatRut(raw: string): string {
   return `${body}-${verifier}`;
 }
 
-/**
- * Validate a RUT using modulo 11.
- * Accepts formatted ("20799959-8") or clean ("207999598") strings.
- */
 function validateRut(value: string): boolean {
   const clean = cleanRut(value);
   if (clean.length < 2) return false;
@@ -44,10 +35,12 @@ function validateRut(value: string): boolean {
 
   return verifier === expected;
 }
+
 import { BaseModal } from "@/components/BaseModal";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { DateTimePicker } from "@/components/ui/date-time-picker";
 import {
   Select,
   SelectContent,
@@ -56,6 +49,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Alert, AlertDescription } from "@/components/ui/alert";
+import { Checkbox } from "@/components/ui/checkbox";
 import {
   Shield,
   Smartphone,
@@ -65,25 +59,41 @@ import {
   Loader2,
   Eye,
   EyeOff,
+  ArrowDownCircle,
+  ArrowUpCircle,
+  SkipForward,
+  Plus,
 } from "lucide-react";
-import type { SyncStep, SyncResult } from "@/contexts/BankSyncContext";
+import type { SyncStep, SyncResult, SyncMovementItem } from "@/contexts/BankSyncContext";
+import { cn } from "@/lib/utils";
 
-// ── Bank list ─────────────────────────────────────────────────────────────────
+// ── Bank list with brand colors ──────────────────────────────────────────────
 
 const BANKS = [
-  { value: "bancosecurity", label: "Banco Security" },
-  { value: "bchile", label: "Banco de Chile" },
-  { value: "bci", label: "BCI" },
-  { value: "bestado", label: "BancoEstado" },
-  { value: "bice", label: "BICE" },
-  { value: "edwards", label: "Banco Edwards" },
-  { value: "falabella", label: "Banco Falabella" },
-  { value: "itau", label: "Itaú" },
-  { value: "santander", label: "Santander" },
-  { value: "scotiabank", label: "Scotiabank" },
+  { value: "bancosecurity", label: "Banco Security", color: "#1B3A6B", abbr: "BS" },
+  { value: "bchile", label: "Banco de Chile", color: "#D4001A", abbr: "BCH" },
+  { value: "bci", label: "BCI", color: "#F47920", abbr: "BCI" },
+  { value: "bestado", label: "BancoEstado", color: "#007A3D", abbr: "BE" },
+  { value: "bice", label: "BICE", color: "#003B71", abbr: "BI" },
+  { value: "edwards", label: "Banco Edwards", color: "#002D72", abbr: "ED" },
+  { value: "falabella", label: "Banco Falabella", color: "#8CC63F", abbr: "BF" },
+  { value: "itau", label: "Itaú", color: "#EC7000", abbr: "IT" },
+  { value: "santander", label: "Santander", color: "#EC0000", abbr: "SAN" },
+  { value: "scotiabank", label: "Scotiabank", color: "#EC1C24", abbr: "SB" },
 ];
 
-// ── Status labels during polling ──────────────────────────────────────────────
+function BankAvatar({ bank }: { bank: (typeof BANKS)[number] }) {
+  return (
+    <div
+      className="flex items-center justify-center w-6 h-6 rounded-md text-[10px] font-bold text-white shrink-0"
+      style={{ backgroundColor: bank.color }}
+    >
+      {bank.abbr.slice(0, 2)}
+    </div>
+  );
+}
+
+// ── Status labels during polling ─────────────────────────────────────────────
 
 const STATUS_MESSAGES: Record<string, string> = {
   queued: "En cola, iniciando conexión...",
@@ -91,20 +101,41 @@ const STATUS_MESSAGES: Record<string, string> = {
   awaiting_2fa: "Esperando aprobación 2FA en tu app del banco...",
 };
 
-// ── Props ─────────────────────────────────────────────────────────────────────
+// ── Helpers ──────────────────────────────────────────────────────────────────
+
+function formatAmount(amount: number): string {
+  return new Intl.NumberFormat("es-CL", { style: "currency", currency: "CLP", maximumFractionDigits: 0 }).format(amount);
+}
+
+function formatMovDate(dateStr: string): string {
+  // "DD-MM-YYYY" → "DD/MM"
+  const parts = dateStr.split("-");
+  if (parts.length === 3 && parts[0].length <= 2) return `${parts[0]}/${parts[1]}`;
+  // Already ISO: "YYYY-MM-DD" → "DD/MM"
+  if (parts.length === 3 && parts[0].length === 4) return `${parts[2]}/${parts[1]}`;
+  return dateStr;
+}
+
+const SKIP_REASON_LABELS: Record<string, string> = {
+  bank_duplicate: "Ya importada",
+  manual_duplicate: "Ingresada manualmente",
+  zero_amount: "Monto $0",
+};
+
+// ── Props ────────────────────────────────────────────────────────────────────
 
 interface BankSyncModalProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  // Sync state owned by the parent (survives modal close)
   syncStep: SyncStep;
   pollStatus: string;
   result: SyncResult | null;
   onStart: (params: { bank: string; rut: string; password: string; fromDate?: string }) => void;
+  onImportSkipped: (movements: SyncMovementItem[]) => Promise<number>;
   onReset: () => void;
 }
 
-// ── Component ─────────────────────────────────────────────────────────────────
+// ── Component ────────────────────────────────────────────────────────────────
 
 export function BankSyncModal({
   open,
@@ -113,18 +144,25 @@ export function BankSyncModal({
   pollStatus,
   result,
   onStart,
+  onImportSkipped,
   onReset,
 }: BankSyncModalProps) {
-  // Form-only local state — these don't need to survive modal close
   const [bank, setBank] = useState("");
   const [rut, setRut] = useState("");
   const [rutTouched, setRutTouched] = useState(false);
   const [password, setPassword] = useState("");
-  const [fromDate, setFromDate] = useState(new Date().toISOString().split("T")[0]);
+  const [fromDate, setFromDate] = useState<Date | undefined>(new Date());
   const [showPassword, setShowPassword] = useState(false);
+
+  // Result step state
+  const [selectedSkipped, setSelectedSkipped] = useState<Set<number>>(new Set());
+  const [isImporting, setIsImporting] = useState(false);
+  const [importedSkippedCount, setImportedSkippedCount] = useState(0);
 
   const rutValid = validateRut(rut);
   const showRutError = rutTouched && rut.length > 0 && !rutValid;
+
+  const selectedBank = BANKS.find((b) => b.value === bank);
 
   const handleRutChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
     setRut(formatRut(e.target.value));
@@ -134,20 +172,52 @@ export function BankSyncModal({
     e.preventDefault();
     setRutTouched(true);
     if (!bank || !rut || !password || !rutValid) return;
-    onStart({ bank, rut, password, fromDate: fromDate || undefined });
+    const dateStr = fromDate ? fromDate.toISOString().split("T")[0] : undefined;
+    onStart({ bank, rut, password, fromDate: dateStr });
   }
 
   function handleRetry() {
     onReset();
     setPassword("");
+    setSelectedSkipped(new Set());
+    setImportedSkippedCount(0);
   }
 
-  // Determine which step to show
+  function toggleSkipped(index: number) {
+    setSelectedSkipped((prev) => {
+      const next = new Set(prev);
+      if (next.has(index)) next.delete(index);
+      else next.add(index);
+      return next;
+    });
+  }
+
+  function toggleAllSkipped(skippedItems: SyncMovementItem[]) {
+    const creatableIndexes = skippedItems
+      .map((item, i) => (item.reason !== "zero_amount" ? i : -1))
+      .filter((i) => i !== -1);
+    setSelectedSkipped((prev) => {
+      const allSelected = creatableIndexes.every((i) => prev.has(i));
+      if (allSelected) return new Set();
+      return new Set(creatableIndexes);
+    });
+  }
+
+  async function handleImportSelected() {
+    if (!result || "error" in result) return;
+    const movements = result.skippedItems.filter((_, i) => selectedSkipped.has(i));
+    if (movements.length === 0) return;
+    setIsImporting(true);
+    const count = await onImportSkipped(movements);
+    setImportedSkippedCount(count);
+    setSelectedSkipped(new Set());
+    setIsImporting(false);
+  }
+
   const showForm = syncStep === "idle" || syncStep === "failed";
   const showPolling = syncStep === "submitting" || syncStep === "polling";
   const showResult = syncStep === "completed" || (syncStep === "failed" && result !== null);
 
-  // When reopening after completion/failure, show result if available
   const activeStep: "form" | "polling" | "result" =
     showResult ? "result" : showPolling ? "polling" : "form";
 
@@ -157,112 +227,128 @@ export function BankSyncModal({
       onOpenChange={onOpenChange}
       title="Sincronizar Banco"
       description="Importa tus movimientos directamente desde tu banco"
-      maxWidth="md"
+      maxWidth={activeStep === "result" && result && !("error" in result) ? "lg" : "md"}
     >
       {/* ── STEP 1: Form ──────────────────────────────────────────────────── */}
       {activeStep === "form" && (
-        <form onSubmit={handleSubmit} className="space-y-4 pt-2">
-          <Alert className="border-amber-500/30 bg-amber-500/5">
-            <Shield className="h-4 w-4 text-amber-500" />
-            <AlertDescription className="text-sm text-muted-foreground ml-2">
-              <strong className="text-foreground">Privacidad:</strong> Tus credenciales
-              se usan solo para obtener los movimientos y nunca son almacenadas.
-            </AlertDescription>
-          </Alert>
-
+        <form onSubmit={handleSubmit} className="space-y-5 pt-2">
+          {/* Bank selector */}
           <div className="space-y-2">
-            <Label>Banco</Label>
+            <Label className="text-sm font-medium">Banco</Label>
             <Select value={bank} onValueChange={setBank} required>
-              <SelectTrigger className="h-10 rounded-xl">
-                <SelectValue placeholder="Selecciona tu banco" />
+              <SelectTrigger className="h-11 rounded-xl">
+                <SelectValue placeholder="Selecciona tu banco">
+                  {selectedBank && (
+                    <span className="flex items-center gap-2.5">
+                      <BankAvatar bank={selectedBank} />
+                      <span>{selectedBank.label}</span>
+                    </span>
+                  )}
+                </SelectValue>
               </SelectTrigger>
               <SelectContent>
                 {BANKS.map((b) => (
                   <SelectItem key={b.value} value={b.value}>
-                    {b.label}
+                    <span className="flex items-center gap-2.5">
+                      <BankAvatar bank={b} />
+                      <span>{b.label}</span>
+                    </span>
                   </SelectItem>
                 ))}
               </SelectContent>
             </Select>
           </div>
 
-          <div className="space-y-2">
-            <Label htmlFor="bank-rut">RUT</Label>
-            <Input
-              id="bank-rut"
-              placeholder="20799959-8"
-              value={rut}
-              onChange={handleRutChange}
-              onBlur={() => setRutTouched(true)}
-              required
-              autoComplete="username"
-              className={`rounded-xl ${showRutError ? "border-destructive focus-visible:ring-destructive" : ""}`}
-            />
-            {showRutError && (
-              <p className="text-xs text-destructive">RUT inválido</p>
-            )}
-          </div>
+          {/* Credentials section */}
+          <div className="space-y-4 rounded-xl border border-border/50 bg-muted/20 p-4">
+            <div className="flex items-center gap-2 text-xs text-muted-foreground">
+              <Shield className="h-3.5 w-3.5 text-amber-500" />
+              <span>Tus credenciales nunca son almacenadas</span>
+            </div>
 
-          <div className="space-y-2">
-            <Label htmlFor="bank-password">Clave de internet</Label>
-            <div className="relative">
+            <div className="space-y-1.5">
+              <Label htmlFor="bank-rut" className="text-sm">RUT</Label>
               <Input
-                id="bank-password"
-                type={showPassword ? "text" : "password"}
-                placeholder="••••••••"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
+                id="bank-rut"
+                placeholder="20799959-8"
+                value={rut}
+                onChange={handleRutChange}
+                onBlur={() => setRutTouched(true)}
                 required
-                autoComplete="current-password"
-                className="rounded-xl pr-10"
-              />
-              <Button
-                type="button"
-                variant="ghost"
-                size="sm"
-                className="absolute right-0 top-0 h-full px-3 hover:bg-transparent"
-                onClick={() => setShowPassword((v) => !v)}
-                tabIndex={-1}
-              >
-                {showPassword ? (
-                  <EyeOff className="h-4 w-4 text-muted-foreground" />
-                ) : (
-                  <Eye className="h-4 w-4 text-muted-foreground" />
+                autoComplete="username"
+                className={cn(
+                  "rounded-xl h-10",
+                  showRutError && "border-destructive focus-visible:ring-destructive"
                 )}
-              </Button>
+              />
+              {showRutError && (
+                <p className="text-xs text-destructive">RUT inválido</p>
+              )}
+            </div>
+
+            <div className="space-y-1.5">
+              <Label htmlFor="bank-password" className="text-sm">Clave de internet</Label>
+              <div className="relative">
+                <Input
+                  id="bank-password"
+                  type={showPassword ? "text" : "password"}
+                  placeholder="••••••••"
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  required
+                  autoComplete="current-password"
+                  className="rounded-xl pr-10 h-10"
+                />
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  className="absolute right-0 top-0 h-full px-3 hover:bg-transparent"
+                  onClick={() => setShowPassword((v) => !v)}
+                  tabIndex={-1}
+                >
+                  {showPassword ? (
+                    <EyeOff className="h-4 w-4 text-muted-foreground" />
+                  ) : (
+                    <Eye className="h-4 w-4 text-muted-foreground" />
+                  )}
+                </Button>
+              </div>
             </div>
           </div>
 
+          {/* Date picker */}
           <div className="space-y-2">
-            <Label htmlFor="bank-from-date">
+            <Label className="text-sm font-medium">
               Importar desde{" "}
               <span className="text-muted-foreground font-normal">(opcional)</span>
             </Label>
-            <Input
-              id="bank-from-date"
-              type="date"
+            <DateTimePicker
               value={fromDate}
-              onChange={(e) => setFromDate(e.target.value)}
-              className="rounded-xl"
+              onChange={(d) => setFromDate(d)}
+              showTime={false}
+              placeholder="Seleccionar fecha"
+              className="w-full rounded-xl h-10"
             />
             <p className="text-xs text-muted-foreground">
               Si no se indica, se importan todos los movimientos disponibles.
             </p>
           </div>
 
+          {/* Actions */}
           <div className="flex gap-3 pt-1">
             <Button
               type="button"
               variant="outline"
               onClick={() => onOpenChange(false)}
-              className="flex-1 rounded-xl"
+              className="flex-1 rounded-xl h-10"
             >
               Cancelar
             </Button>
             <Button
               type="submit"
               disabled={syncStep === "submitting" || !bank || !rut || !rutValid || !password}
-              className="flex-1 rounded-xl"
+              className="flex-1 rounded-xl h-10"
             >
               {syncStep === "submitting" && (
                 <Loader2 className="h-4 w-4 animate-spin mr-2" />
@@ -331,9 +417,9 @@ export function BankSyncModal({
 
       {/* ── STEP 3: Result ─────────────────────────────────────────────────── */}
       {activeStep === "result" && result && (
-        <div className="flex flex-col items-center py-8 space-y-5">
+        <div className="space-y-4">
           {"error" in result ? (
-            <>
+            <div className="flex flex-col items-center py-8 space-y-5">
               <XCircle className="h-14 w-14 text-destructive" />
               <div className="text-center space-y-1">
                 <p className="text-lg font-semibold">Error en la sincronización</p>
@@ -351,23 +437,184 @@ export function BankSyncModal({
                   Reintentar
                 </Button>
               </div>
-            </>
+            </div>
           ) : (
             <>
-              <CheckCircle2 className="h-14 w-14 text-green-500" />
-              <div className="text-center space-y-1">
-                <p className="text-lg font-semibold">¡Sincronización completada!</p>
-                <p className="text-sm text-muted-foreground">
-                  {result.imported === 0
-                    ? "No se encontraron transacciones nuevas."
-                    : `${result.imported} transacción${result.imported !== 1 ? "es" : ""} importada${result.imported !== 1 ? "s" : ""}`}
-                  {result.skipped > 0 &&
-                    `, ${result.skipped} omitida${result.skipped !== 1 ? "s" : ""} (duplicadas)`}
-                </p>
+              {/* Summary header */}
+              <div className="flex items-center gap-3 py-3">
+                <div className="flex items-center justify-center h-10 w-10 rounded-full bg-green-500/10">
+                  <CheckCircle2 className="h-5 w-5 text-green-500" />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <p className="font-semibold">Sincronización completada</p>
+                  <p className="text-sm text-muted-foreground">
+                    {result.imported + result.skipped} movimiento{(result.imported + result.skipped) !== 1 ? "s" : ""} procesado{(result.imported + result.skipped) !== 1 ? "s" : ""}
+                  </p>
+                </div>
               </div>
+
+              {/* Stats pills */}
+              <div className="flex gap-2">
+                {result.imported > 0 && (
+                  <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-green-500/10 text-green-600 dark:text-green-400 text-sm font-medium">
+                    <CheckCircle2 className="h-3.5 w-3.5" />
+                    {result.imported} importada{result.imported !== 1 ? "s" : ""}
+                  </div>
+                )}
+                {result.skipped > 0 && (
+                  <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-muted text-muted-foreground text-sm font-medium">
+                    <SkipForward className="h-3.5 w-3.5" />
+                    {result.skipped} omitida{result.skipped !== 1 ? "s" : ""}
+                  </div>
+                )}
+                {importedSkippedCount > 0 && (
+                  <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-blue-500/10 text-blue-600 dark:text-blue-400 text-sm font-medium">
+                    <Plus className="h-3.5 w-3.5" />
+                    {importedSkippedCount} recuperada{importedSkippedCount !== 1 ? "s" : ""}
+                  </div>
+                )}
+              </div>
+
+              {/* Imported transactions list */}
+              {result.importedItems.length > 0 && (
+                <div className="space-y-2">
+                  <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
+                    Importadas
+                  </p>
+                  <div className="rounded-xl border border-border/50 divide-y divide-border/30 max-h-[200px] overflow-y-auto">
+                    {result.importedItems.map((item, i) => (
+                      <div
+                        key={i}
+                        className="flex items-center gap-3 px-3 py-2.5 text-sm"
+                      >
+                        <div className={cn(
+                          "flex items-center justify-center w-7 h-7 rounded-lg shrink-0",
+                          item.type === "Ingreso" ? "bg-green-500/10" : "bg-red-500/10"
+                        )}>
+                          {item.type === "Ingreso" ? (
+                            <ArrowDownCircle className="h-4 w-4 text-green-500" />
+                          ) : (
+                            <ArrowUpCircle className="h-4 w-4 text-red-500" />
+                          )}
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <p className="truncate font-medium text-sm">{item.description}</p>
+                          <p className="text-xs text-muted-foreground">{formatMovDate(item.date)}</p>
+                        </div>
+                        <span className={cn(
+                          "text-sm font-semibold tabular-nums shrink-0",
+                          item.type === "Ingreso" ? "text-green-600 dark:text-green-400" : "text-foreground"
+                        )}>
+                          {item.type === "Ingreso" ? "+" : "-"}{formatAmount(item.amount)}
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Skipped transactions list with checkboxes */}
+              {result.skippedItems.length > 0 && importedSkippedCount === 0 && (
+                <div className="space-y-2">
+                  <div className="flex items-center justify-between">
+                    <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
+                      Omitidas
+                    </p>
+                    {result.skippedItems.some((s) => s.reason !== "zero_amount") && (
+                      <button
+                        type="button"
+                        onClick={() => toggleAllSkipped(result.skippedItems)}
+                        className="text-xs text-primary hover:underline"
+                      >
+                        {(() => {
+                          const creatableIndexes = result.skippedItems
+                            .map((s, i) => (s.reason !== "zero_amount" ? i : -1))
+                            .filter((i) => i !== -1);
+                          const allSelected = creatableIndexes.length > 0 && creatableIndexes.every((i) => selectedSkipped.has(i));
+                          return allSelected ? "Deseleccionar todo" : "Seleccionar todo";
+                        })()}
+                      </button>
+                    )}
+                  </div>
+                  <div className="rounded-xl border border-border/50 divide-y divide-border/30 max-h-[200px] overflow-y-auto">
+                    {result.skippedItems.map((item, i) => {
+                      const isZero = item.reason === "zero_amount";
+                      return (
+                        <div
+                          key={i}
+                          className={cn(
+                            "flex items-center gap-3 px-3 py-2.5 text-sm",
+                            isZero && "opacity-40"
+                          )}
+                        >
+                          {!isZero ? (
+                            <Checkbox
+                              checked={selectedSkipped.has(i)}
+                              onCheckedChange={() => toggleSkipped(i)}
+                              className="shrink-0"
+                            />
+                          ) : (
+                            <div className="w-4 shrink-0" />
+                          )}
+                          <div className={cn(
+                            "flex items-center justify-center w-7 h-7 rounded-lg shrink-0",
+                            item.type === "Ingreso" ? "bg-green-500/10" : "bg-red-500/10"
+                          )}>
+                            {item.type === "Ingreso" ? (
+                              <ArrowDownCircle className="h-4 w-4 text-green-500" />
+                            ) : (
+                              <ArrowUpCircle className="h-4 w-4 text-red-500" />
+                            )}
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <p className="truncate font-medium text-sm">{item.description}</p>
+                            <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                              <span>{formatMovDate(item.date)}</span>
+                              <span className="px-1.5 py-0.5 rounded bg-muted text-[10px] font-medium">
+                                {SKIP_REASON_LABELS[item.reason ?? ""] ?? "Omitida"}
+                              </span>
+                            </div>
+                          </div>
+                          <span className={cn(
+                            "text-sm font-semibold tabular-nums shrink-0",
+                            item.type === "Ingreso" ? "text-green-600 dark:text-green-400" : "text-foreground"
+                          )}>
+                            {item.type === "Ingreso" ? "+" : "-"}{formatAmount(item.amount)}
+                          </span>
+                        </div>
+                      );
+                    })}
+                  </div>
+
+                  {selectedSkipped.size > 0 && (
+                    <Button
+                      onClick={handleImportSelected}
+                      disabled={isImporting}
+                      className="w-full rounded-xl h-10"
+                      variant="outline"
+                    >
+                      {isImporting ? (
+                        <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                      ) : (
+                        <Plus className="h-4 w-4 mr-2" />
+                      )}
+                      Importar {selectedSkipped.size} seleccionada{selectedSkipped.size !== 1 ? "s" : ""}
+                    </Button>
+                  )}
+                </div>
+              )}
+
+              {/* No transactions at all */}
+              {result.imported === 0 && result.skipped === 0 && (
+                <p className="text-center text-sm text-muted-foreground py-4">
+                  No se encontraron transacciones nuevas.
+                </p>
+              )}
+
+              {/* Close button */}
               <Button
                 onClick={() => { onReset(); onOpenChange(false); }}
-                className="w-full rounded-xl"
+                className="w-full rounded-xl h-10"
               >
                 Listo
               </Button>

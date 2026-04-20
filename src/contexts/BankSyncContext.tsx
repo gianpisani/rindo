@@ -7,8 +7,17 @@ import { useQueryClient } from "@tanstack/react-query";
 
 export type SyncStep = "idle" | "submitting" | "polling" | "completed" | "failed";
 
+export interface SyncMovementItem {
+  date: string;
+  description: string;
+  amount: number;
+  type: string;
+  reason?: string;
+  card?: string;
+}
+
 export type SyncResult =
-  | { imported: number; skipped: number }
+  | { imported: number; skipped: number; importedItems: SyncMovementItem[]; skippedItems: SyncMovementItem[] }
   | { error: string };
 
 // "YYYY-MM-DD" (native date input) → "DD-MM-YYYY" (API format)
@@ -25,6 +34,7 @@ interface BankSyncContextValue {
   result: SyncResult | null;
   isRunning: boolean;
   startSync: (params: { bank: string; rut: string; password: string; fromDate?: string }) => void;
+  importSkipped: (movements: SyncMovementItem[]) => Promise<number>;
   reset: () => void;
 }
 
@@ -96,7 +106,12 @@ export function BankSyncProvider({ children }: { children: ReactNode }) {
 
         if (data.status === "completed") {
           stopPolling();
-          const res = { imported: data.imported as number, skipped: data.skipped as number };
+          const res = {
+            imported: data.imported as number,
+            skipped: data.skipped as number,
+            importedItems: (data.importedItems ?? []) as SyncMovementItem[],
+            skippedItems: (data.skippedItems ?? []) as SyncMovementItem[],
+          };
           setResult(res);
           setStep("completed");
           queryClient.invalidateQueries({ queryKey: ["transactions"] });
@@ -171,6 +186,30 @@ export function BankSyncProvider({ children }: { children: ReactNode }) {
     [queryClient]
   );
 
+  const importSkipped = useCallback(
+    async (movements: SyncMovementItem[]): Promise<number> => {
+      try {
+        const { data, error } = await supabase.functions.invoke("bank-sync", {
+          body: { action: "import-skipped", movements },
+        });
+        if (error || !data) {
+          toast.error("Error al importar transacciones");
+          return 0;
+        }
+        const created = data.created as number;
+        if (created > 0) {
+          queryClient.invalidateQueries({ queryKey: ["transactions"] });
+          toast.success(`${created} transacción${created !== 1 ? "es" : ""} importada${created !== 1 ? "s" : ""}`);
+        }
+        return created;
+      } catch {
+        toast.error("Error de red al importar transacciones");
+        return 0;
+      }
+    },
+    [queryClient]
+  );
+
   return (
     <BankSyncContext.Provider
       value={{
@@ -179,6 +218,7 @@ export function BankSyncProvider({ children }: { children: ReactNode }) {
         result,
         isRunning: step === "submitting" || step === "polling",
         startSync,
+        importSkipped,
         reset,
       }}
     >

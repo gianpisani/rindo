@@ -178,6 +178,8 @@ Deno.serve(async (req) => {
       let imported = 0
       let skipped = 0
       const toAutoCategorize: { id: string; detail: string }[] = []
+      const importedItems: { date: string; description: string; amount: number; type: string }[] = []
+      const skippedItems: { date: string; description: string; amount: number; type: string; reason: string; card?: string }[] = []
 
       // Merge all movements and deduplicate in-memory first
       // (the API may return the same movement from multiple accounts/cards)
@@ -196,10 +198,12 @@ Deno.serve(async (req) => {
 
       for (const movement of allMovements) {
         const absAmount = Math.abs(movement.amount)
+        const type = movement.amount > 0 ? 'Ingreso' : 'Gasto'
 
         // Skip zero-amount movements (would violate CHECK amount > 0)
         if (absAmount === 0) {
           skipped++
+          skippedItems.push({ date: movement.date, description: movement.description, amount: absAmount, type, reason: 'zero_amount' })
           continue
         }
 
@@ -213,15 +217,10 @@ Deno.serve(async (req) => {
         const nextDayStr = nextDay.toISOString().split('T')[0]
 
         const description = movement.description
-        const type = movement.amount > 0 ? 'Ingreso' : 'Gasto'
 
         // Deduplication — compare only year-month-day (date is TIMESTAMPTZ).
-        // Use .limit(1) instead of .maybeSingle() to avoid PGRST116 errors when
-        // there are already multiple duplicates in the DB (maybeSingle returns
-        // { data: null } for 2+ rows, which would incorrectly allow another insert).
 
         // 1. Skip if a bank-imported transaction with a similar description already exists
-        // (check if any stored bank_description is contained within the incoming description)
         const { data: existingBankRows } = await supabaseClient
           .from('transactions')
           .select('id, bank_description')
@@ -249,6 +248,8 @@ Deno.serve(async (req) => {
 
         if (bankDuplicate || (existingManualRows && existingManualRows.length > 0)) {
           skipped++
+          const reason = bankDuplicate ? 'bank_duplicate' : 'manual_duplicate'
+          skippedItems.push({ date: movement.date, description, amount: absAmount, type, reason, card: movement.card })
           continue
         }
 
@@ -291,6 +292,7 @@ Deno.serve(async (req) => {
           console.error('Insert error for movement:', movement.date, movement.description, insertError)
         } else {
           imported++
+          importedItems.push({ date: movement.date, description, amount: absAmount, type })
           toAutoCategorize.push({ id: inserted.id, detail: description })
         }
       }
@@ -322,13 +324,103 @@ Deno.serve(async (req) => {
       console.log(`Bank sync complete for user ${userId}: imported=${imported}, skipped=${skipped}`)
 
       return new Response(
-        JSON.stringify({ status: 'completed', imported, skipped }),
+        JSON.stringify({ status: 'completed', imported, skipped, importedItems, skippedItems }),
+        { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      )
+    }
+
+    // ── ACTION: import-skipped ───────────────────────────────────────────────
+    // Force-create transactions that were previously skipped (user chose to import them)
+
+    if (action === 'import-skipped') {
+      const { movements } = body as {
+        movements: { date: string; description: string; amount: number; type: string; card?: string }[]
+      }
+
+      if (!movements || !Array.isArray(movements) || movements.length === 0) {
+        return new Response(
+          JSON.stringify({ error: 'movements array es requerido' }),
+          { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 400 }
+        )
+      }
+
+      const syncDate = new Date().toISOString().split('T')[0]
+      let created = 0
+      const toAutoCategorize: { id: string; detail: string }[] = []
+
+      for (const m of movements) {
+        const isoDate = convertDate(m.date, syncDate)
+        const now = new Date()
+        const insertDate = `${isoDate}T${now.toISOString().slice(11, 19)}`
+
+        let cardId: string | null = null
+        if (m.card) {
+          const lastFour = m.card.replace(/\*/g, '')
+          const { data: card } = await supabaseClient
+            .from('credit_cards')
+            .select('id')
+            .eq('user_id', userId)
+            .eq('last_4_digits', lastFour)
+            .eq('is_active', true)
+            .maybeSingle()
+          if (card) cardId = card.id
+        }
+
+        const { data: inserted, error: insertError } = await supabaseClient
+          .from('transactions')
+          .insert({
+            user_id: userId,
+            date: insertDate,
+            detail: `🤖 ${m.description}`,
+            bank_description: m.description,
+            type: m.type,
+            amount: m.amount,
+            category_name: 'Sin categoría',
+            card_id: cardId,
+            installment_id: null,
+            reimbursement_for_category: null,
+          })
+          .select('id')
+          .single()
+
+        if (insertError) {
+          console.error('Import-skipped insert error:', m.description, insertError)
+        } else {
+          created++
+          toAutoCategorize.push({ id: inserted.id, detail: m.description })
+        }
+      }
+
+      if (toAutoCategorize.length > 0) {
+        const supabaseUrl = Deno.env.get('SUPABASE_URL')!
+        const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? Deno.env.get('SUPABASE_ANON_KEY')!
+        await Promise.all(
+          toAutoCategorize.map(({ id, detail }) =>
+            fetch(`${supabaseUrl}/functions/v1/auto-categorize`, {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${supabaseKey}`,
+              },
+              body: JSON.stringify({
+                transactionId: id,
+                detail: `🤖 ${detail}`,
+                userId,
+                existingCategories: [],
+              }),
+            }).catch(e => console.error('Auto-categorize error for', detail, e))
+          )
+        )
+      }
+
+      return new Response(
+        JSON.stringify({ created }),
         { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       )
     }
 
     return new Response(
-      JSON.stringify({ error: 'Acción inválida. Use "start" o "check".' }),
+      JSON.stringify({ error: 'Acción inválida. Use "start", "check" o "import-skipped".' }),
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 400 }
     )
 
