@@ -12,7 +12,6 @@ import {
 import {
   Plus,
   Calculator,
-  Search,
   Receipt,
   TrendingDown,
   PiggyBank,
@@ -83,15 +82,11 @@ export function CommandBar({ open, onOpenChange, onAddTransaction, onConciliate,
 
   return (
     <CommandDialog open={open} onOpenChange={onOpenChange}>
-      <div className="flex items-center border-b px-3">
-        <Search className="mr-2 h-4 w-4 shrink-0 opacity-50" />
-        <CommandInput
-          placeholder="Busca transacciones o navega..."
-          value={search}
-          onValueChange={setSearch}
-          className="border-0 focus:ring-0"
-        />
-      </div>
+      <CommandInput
+        placeholder="Buscar transacciones, navegar, acciones..."
+        value={search}
+        onValueChange={setSearch}
+      />
       <CommandList>
         <CommandEmpty>
           {showTransactions
@@ -108,7 +103,7 @@ export function CommandBar({ open, onOpenChange, onAddTransaction, onConciliate,
                 return (
                   <CommandItem
                     key={transaction.id}
-                    value={transaction.id}
+                    value={`${transaction.detail || ""} ${transaction.category_name} ${transaction.id}`}
                     onSelect={() =>
                       runCommand(() => navigate(`/transactions?search=${encodeURIComponent(search)}&highlight=${transaction.id}`))
                     }
@@ -141,7 +136,7 @@ export function CommandBar({ open, onOpenChange, onAddTransaction, onConciliate,
 
               {searchResults.length > 8 && (
                 <CommandItem
-                  value="ver-todas"
+                  value={`ver todas transacciones ${search}`}
                   onSelect={() =>
                     runCommand(() => navigate(`/transactions?search=${encodeURIComponent(search)}`))
                   }
