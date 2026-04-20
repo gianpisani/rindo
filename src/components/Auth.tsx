@@ -84,14 +84,14 @@ const ACTIVITY_ITEMS: { icon: string; text: string; detail?: string; color: stri
   { icon: "🏦", text: "Sync Banco de Chile", detail: "12 movimientos", color: "text-blue-400", side: "left" },
   { icon: "💰", text: "Ingreso Sueldo", detail: "+$1.850.000", color: "text-emerald-400", side: "right" },
   { icon: "🚕", text: "Pago Uber", detail: "−$4.200 · Transporte", color: "text-red-400", side: "left" },
-  { icon: "📈", text: "Proyección Junio", detail: "Superávit $340k", color: "text-emerald-400", side: "right" },
+  { icon: "📈", text: "Proyección 12 meses", detail: "Superávit $340k en dic.", color: "text-emerald-400", side: "right" },
   { icon: "💳", text: "Cuota 3/12", detail: "−$133.250 · Bicicleta", color: "text-orange-400", side: "left" },
   { icon: "⚠️", text: "Presupuesto excedido", detail: "Transporte +$15k", color: "text-red-400", side: "right" },
   { icon: "🔄", text: "Devolución Churros", detail: "+$2.250 · Reembolso", color: "text-emerald-400", side: "left" },
   { icon: "☕", text: "Think Coffee Bar", detail: "−$3.600 · Comida", color: "text-red-400", side: "right" },
   { icon: "🎯", text: "Meta Ahorro", detail: "62% completado", color: "text-blue-400", side: "left" },
   { icon: "🏠", text: "Pago Arriendo", detail: "−$450.000 · Hogar", color: "text-red-400", side: "right" },
-  { icon: "📱", text: "Categorizado con IA", detail: "Spotify → Entretención", color: "text-purple-400", side: "left" },
+  { icon: "📱", text: "Categorizado con IA", detail: "Spotify → Suscripciones", color: "text-purple-400", side: "left" },
   { icon: "💸", text: "Transferencia", detail: "−$25.000 · Amigos", color: "text-orange-400", side: "right" },
 ];
 
