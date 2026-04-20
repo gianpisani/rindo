@@ -338,6 +338,7 @@ export function BankSyncModal({
               showTime={false}
               placeholder="Seleccionar fecha"
               className="w-full rounded-xl h-10"
+              maxDate={new Date()}
             />
             <p className="text-xs text-muted-foreground">
               Si no se indica, se importan todos los movimientos disponibles.
