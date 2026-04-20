@@ -8,6 +8,7 @@ import {
   Home,
   Lightbulb,
   EyeOff,
+  Plus,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useNavPreferences } from "@/hooks/useNavPreferences";
@@ -35,8 +36,13 @@ const useShortcuts = () => {
           icon: Command,
         },
         {
+          keys: ["N"],
+          description: "Agregar registro",
+          icon: Plus,
+        },
+        {
           keys: ["W"],
-          description: "Whisper",
+          description: "Whisper — registro por voz",
           icon: MessageSquare,
         },
         {
