@@ -48,7 +48,8 @@ interface JobResponse {
 
 // ── Helper: "DD-MM-YYYY" → "YYYY-MM-DD" ─────────────────────────────────────
 
-function convertDate(ddmmyyyy: string): string {
+function convertDate(ddmmyyyy: string, fallbackDate: string): string {
+  if (ddmmyyyy.toLowerCase() === 'pendiente') return fallbackDate
   const [dd, mm, yyyy] = ddmmyyyy.split('-')
   return `${yyyy}-${mm}-${dd}`
 }
@@ -191,6 +192,8 @@ Deno.serve(async (req) => {
         return true
       })
 
+      const syncDate = new Date().toISOString().split('T')[0]
+
       for (const movement of allMovements) {
         const absAmount = Math.abs(movement.amount)
 
@@ -200,7 +203,7 @@ Deno.serve(async (req) => {
           continue
         }
 
-        const isoDate = convertDate(movement.date)
+        const isoDate = convertDate(movement.date, syncDate)
         // Use movement date + current execution time so the timestamp is closer to real
         const now = new Date()
         const insertDate = `${isoDate}T${now.toISOString().slice(11, 19)}`
