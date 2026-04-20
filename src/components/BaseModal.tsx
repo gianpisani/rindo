@@ -87,7 +87,7 @@ export function BaseModal({
           )}
         </DialogHeader>
         
-        <div className="flex-1 overflow-y-auto overflow-x-hidden px-6 pb-6">
+        <div className="flex-1 overflow-y-auto overflow-x-hidden px-6 pb-6 min-h-0">
           {children}
         </div>
 
