@@ -33,7 +33,7 @@ interface BankSyncContextValue {
   pollStatus: string;
   result: SyncResult | null;
   isRunning: boolean;
-  startSync: (params: { bank: string; rut: string; password: string; fromDate?: string }) => void;
+  startSync: (params: { bank: string; rut: string; password: string; fromDate?: string; toDate?: string }) => void;
   importSkipped: (movements: SyncMovementItem[]) => Promise<number>;
   reset: () => void;
 }
@@ -145,7 +145,7 @@ export function BankSyncProvider({ children }: { children: ReactNode }) {
   // ── Start ────────────────────────────────────────────────────────────────
 
   const startSync = useCallback(
-    async (params: { bank: string; rut: string; password: string; fromDate?: string }) => {
+    async (params: { bank: string; rut: string; password: string; fromDate?: string; toDate?: string }) => {
       setStep("submitting");
 
       try {
@@ -156,6 +156,7 @@ export function BankSyncProvider({ children }: { children: ReactNode }) {
           password: params.password,
         };
         if (params.fromDate) body.fromDate = toApiDate(params.fromDate);
+        if (params.toDate) body.toDate = toApiDate(params.toDate);
 
         const { data, error } = await supabase.functions.invoke("bank-sync", { body });
 

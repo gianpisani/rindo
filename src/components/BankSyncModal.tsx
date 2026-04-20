@@ -63,17 +63,40 @@ import { cn } from "@/lib/utils";
 // ── Bank list with brand colors ──────────────────────────────────────────────
 
 const BANKS = [
-  { value: "bancosecurity", label: "Banco Security", color: "#1B3A6B" },
+  { value: "bancosecurity", label: "Banco Security", color: "#1B3A6B", initials: "BS" },
   { value: "bchile", label: "Banco de Chile", color: "#D4001A" },
   { value: "bci", label: "BCI", color: "#F47920" },
   { value: "bestado", label: "BancoEstado", color: "#007A3D" },
   { value: "bice", label: "BICE", color: "#003B71" },
-  { value: "edwards", label: "Banco Edwards", color: "#002D72" },
+  { value: "edwards", label: "Banco Edwards", color: "#002D72", initials: "BE" },
   { value: "falabella", label: "Banco Falabella", color: "#8CC63F" },
   { value: "itau", label: "Itaú", color: "#EC7000" },
   { value: "santander", label: "Santander", color: "#EC0000" },
   { value: "scotiabank", label: "Scotiabank", color: "#EC1C24" },
 ];
+
+/** Renders bank logo or colored initials fallback */
+function BankLogo({ bank, size = "sm" }: { bank: typeof BANKS[number]; size?: "sm" | "md" }) {
+  const px = size === "sm" ? "w-8 h-8" : "w-10 h-10";
+  const textSize = size === "sm" ? "text-xs" : "text-sm";
+  if (bank.initials) {
+    return (
+      <div
+        className={cn(px, "rounded-lg flex items-center justify-center font-bold text-white shrink-0", textSize)}
+        style={{ backgroundColor: bank.color }}
+      >
+        {bank.initials}
+      </div>
+    );
+  }
+  return (
+    <img
+      src={`/banks/${bank.value}.png`}
+      alt={bank.label}
+      className={cn(px, "rounded-lg object-contain shrink-0")}
+    />
+  );
+}
 
 // ── Status labels during polling ─────────────────────────────────────────────
 
@@ -110,7 +133,7 @@ interface BankSyncModalProps {
   syncStep: SyncStep;
   pollStatus: string;
   result: SyncResult | null;
-  onStart: (params: { bank: string; rut: string; password: string; fromDate?: string }) => void;
+  onStart: (params: { bank: string; rut: string; password: string; fromDate?: string; toDate?: string }) => void;
   onImportSkipped: (movements: SyncMovementItem[]) => Promise<number>;
   onReset: () => void;
 }
@@ -132,6 +155,7 @@ export function BankSyncModal({
   const [rutTouched, setRutTouched] = useState(false);
   const [password, setPassword] = useState("");
   const [fromDate, setFromDate] = useState<Date | undefined>(new Date());
+  const [toDate, setToDate] = useState<Date | undefined>(new Date());
   const [showPassword, setShowPassword] = useState(false);
 
   // Result step state
@@ -152,8 +176,9 @@ export function BankSyncModal({
     e.preventDefault();
     setRutTouched(true);
     if (!bank || !rut || !password || !rutValid) return;
-    const dateStr = fromDate ? fromDate.toISOString().split("T")[0] : undefined;
-    onStart({ bank, rut, password, fromDate: dateStr });
+    const fromStr = fromDate ? fromDate.toISOString().split("T")[0] : undefined;
+    const toStr = toDate ? toDate.toISOString().split("T")[0] : undefined;
+    onStart({ bank, rut, password, fromDate: fromStr, toDate: toStr });
   }
 
   function handleRetry() {
@@ -233,11 +258,7 @@ export function BankSyncModal({
                 "focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-1"
               )}
             >
-              <img
-                src={`/banks/${b.value}.png`}
-                alt={b.label}
-                className="w-8 h-8 rounded-lg object-contain shrink-0"
-              />
+              <BankLogo bank={b} size="sm" />
               <span className="text-sm font-medium text-left">{b.label}</span>
             </button>
           ))}
@@ -265,11 +286,9 @@ export function BankSyncModal({
             >
               <ChevronLeft className="h-4 w-4 text-muted-foreground" />
             </button>
-            <img
-              src={`/banks/${selectedBank.value}.png`}
-              alt={selectedBank.label}
-              className="relative z-10 w-10 h-10 rounded-xl object-contain shrink-0"
-            />
+            <div className="relative z-10">
+              <BankLogo bank={selectedBank} size="md" />
+            </div>
             <div className="relative z-10 flex-1 min-w-0">
               <p className="font-semibold text-base">{selectedBank.label}</p>
               <p className="text-xs text-muted-foreground">Conexión segura</p>
@@ -359,20 +378,32 @@ export function BankSyncModal({
             </div>
           </div>
 
-          {/* ── Date picker ──────────────────────────────────────────────── */}
+          {/* ── Date range picker ─────────────────────────────────────── */}
           <div className="space-y-2">
             <Label className="text-sm font-medium">
-              Importar desde{" "}
+              Rango de fechas{" "}
               <span className="text-muted-foreground font-normal">(opcional)</span>
             </Label>
-            <DateTimePicker
-              value={fromDate}
-              onChange={(d) => setFromDate(d)}
-              showTime={false}
-              placeholder="Seleccionar fecha"
-              className="w-full rounded-xl h-10"
-              maxDate={new Date()}
-            />
+            <div className="flex items-center gap-2">
+              <DateTimePicker
+                value={fromDate}
+                onChange={(d) => setFromDate(d)}
+                showTime={false}
+                placeholder="Desde"
+                className="flex-1 rounded-xl h-10"
+                maxDate={toDate || new Date()}
+              />
+              <span className="text-xs text-muted-foreground shrink-0">→</span>
+              <DateTimePicker
+                value={toDate}
+                onChange={(d) => setToDate(d)}
+                showTime={false}
+                placeholder="Hasta"
+                className="flex-1 rounded-xl h-10"
+                minDate={fromDate}
+                maxDate={new Date()}
+              />
+            </div>
             <p className="text-xs text-muted-foreground">
               Si no se indica, se importan todos los movimientos disponibles.
             </p>

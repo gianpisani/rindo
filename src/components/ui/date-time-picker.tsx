@@ -23,6 +23,7 @@ interface DateTimePickerProps {
   className?: string;
   disabled?: boolean;
   maxDate?: Date;
+  minDate?: Date;
 }
 
 export function DateTimePicker({
@@ -33,6 +34,7 @@ export function DateTimePicker({
   className,
   disabled = false,
   maxDate,
+  minDate,
 }: DateTimePickerProps) {
   const [open, setOpen] = React.useState(false);
   const [internalDate, setInternalDate] = React.useState<Date | undefined>(value);
@@ -110,7 +112,10 @@ export function DateTimePicker({
             locale={es}
             initialFocus
             className="rounded-t-md border-b"
-            disabled={maxDate ? { after: maxDate } : undefined}
+            disabled={[
+              ...(maxDate ? [{ after: maxDate }] : []),
+              ...(minDate ? [{ before: minDate }] : []),
+            ]}
           />
           {showTime && (
             <div className="p-3 border-t bg-muted/30">
