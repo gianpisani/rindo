@@ -297,28 +297,33 @@ Deno.serve(async (req) => {
         }
       }
 
-      // Auto-categorize all inserted transactions in parallel reusing the existing
-      // auto-categorize edge function (exact history → fuzzy Jaccard → keywords)
+      // Auto-categorize via single batch call (instead of N parallel fetches)
       if (toAutoCategorize.length > 0) {
         const supabaseUrl = Deno.env.get('SUPABASE_URL')!
         const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? Deno.env.get('SUPABASE_ANON_KEY')!
-        await Promise.all(
-          toAutoCategorize.map(({ id, detail }) =>
-            fetch(`${supabaseUrl}/functions/v1/auto-categorize`, {
-              method: 'POST',
-              headers: {
-                'Content-Type': 'application/json',
-                'Authorization': `Bearer ${supabaseKey}`,
-              },
-              body: JSON.stringify({
-                transactionId: id,
-                detail: `🤖 ${detail}`,
-                userId,
-                existingCategories: [],
-              }),
-            }).catch(e => console.error('Auto-categorize error for', detail, e))
-          )
-        )
+
+        // Fetch user's existing categories for better keyword matching
+        const { data: userCategories } = await supabaseClient
+          .from('categories')
+          .select('name')
+          .eq('user_id', userId)
+        const existingCategories = (userCategories ?? []).map((c: { name: string }) => c.name)
+
+        await fetch(`${supabaseUrl}/functions/v1/auto-categorize`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${supabaseKey}`,
+          },
+          body: JSON.stringify({
+            transactions: toAutoCategorize.map(({ id, detail }) => ({
+              id,
+              detail: `🤖 ${detail}`,
+            })),
+            userId,
+            existingCategories,
+          }),
+        }).catch(e => console.error('Batch auto-categorize error:', e))
       }
 
       console.log(`Bank sync complete for user ${userId}: imported=${imported}, skipped=${skipped}`)
@@ -394,23 +399,28 @@ Deno.serve(async (req) => {
       if (toAutoCategorize.length > 0) {
         const supabaseUrl = Deno.env.get('SUPABASE_URL')!
         const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? Deno.env.get('SUPABASE_ANON_KEY')!
-        await Promise.all(
-          toAutoCategorize.map(({ id, detail }) =>
-            fetch(`${supabaseUrl}/functions/v1/auto-categorize`, {
-              method: 'POST',
-              headers: {
-                'Content-Type': 'application/json',
-                'Authorization': `Bearer ${supabaseKey}`,
-              },
-              body: JSON.stringify({
-                transactionId: id,
-                detail: `🤖 ${detail}`,
-                userId,
-                existingCategories: [],
-              }),
-            }).catch(e => console.error('Auto-categorize error for', detail, e))
-          )
-        )
+
+        const { data: userCategories } = await supabaseClient
+          .from('categories')
+          .select('name')
+          .eq('user_id', userId)
+        const existingCategories = (userCategories ?? []).map((c: { name: string }) => c.name)
+
+        await fetch(`${supabaseUrl}/functions/v1/auto-categorize`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${supabaseKey}`,
+          },
+          body: JSON.stringify({
+            transactions: toAutoCategorize.map(({ id, detail }) => ({
+              id,
+              detail: `🤖 ${detail}`,
+            })),
+            userId,
+            existingCategories,
+          }),
+        }).catch(e => console.error('Batch auto-categorize error:', e))
       }
 
       return new Response(

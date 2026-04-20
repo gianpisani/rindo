@@ -13,6 +13,19 @@ interface CategorizationRequest {
   existingCategories: string[]
 }
 
+interface BatchCategorizationRequest {
+  transactions: { id: string; detail: string }[]
+  userId: string
+  existingCategories: string[]
+}
+
+interface CategorizationResult {
+  transactionId: string
+  category: string
+  confidence: number
+  method: string
+}
+
 // Categorías a ignorar en el historial
 const IGNORED_CATEGORIES = ['Sin categoría', '⚡ Analizando...']
 
@@ -294,6 +307,155 @@ function calculateKeywordScore(text: string, keywords: string[]): number {
 }
 
 // ═══════════════════════════════════════════════════════
+// CORE: Categoriza 1 transacción usando las 3 capas
+// ═══════════════════════════════════════════════════════
+async function categorizeOne(
+  supabaseClient: SupabaseClient,
+  userId: string,
+  transactionId: string,
+  detail: string,
+  existingCategories: string[],
+  // Pre-fetched history for batch mode (skip individual DB queries)
+  prefetchedHistory?: { category_name: string; detail: string; created_at: string }[] | null,
+): Promise<CategorizationResult> {
+
+  // ─── CAPA 1: Match exacto ───
+  if (prefetchedHistory) {
+    // Use prefetched data instead of DB query
+    const normalizedDetail = normalizeText(detail)
+    const counts: Record<string, number> = {}
+    for (const tx of prefetchedHistory) {
+      if (normalizeText(tx.detail) === normalizedDetail) {
+        counts[tx.category_name] = (counts[tx.category_name] || 0) + 1
+      }
+    }
+    const entries = Object.entries(counts)
+    if (entries.length > 0) {
+      const [bestCategory, maxCount] = entries.reduce((a, b) => b[1] > a[1] ? b : a)
+      const confidence = Math.min(98, 95 + maxCount)
+      console.log('✅ Capa 1 - Match exacto:', bestCategory, `(${maxCount} matches, ${confidence}% confianza)`)
+      return { transactionId, category: bestCategory, confidence, method: 'exact_history' }
+    }
+  } else {
+    const exactMatch = await findExactMatch(supabaseClient, userId, detail)
+    if (exactMatch) {
+      console.log('✅ Capa 1 - Match exacto:', exactMatch.category, `(${exactMatch.count} matches, ${exactMatch.confidence}% confianza)`)
+      return { transactionId, category: exactMatch.category, confidence: exactMatch.confidence, method: 'exact_history' }
+    }
+  }
+
+  // ─── CAPA 2: Match fuzzy histórico ───
+  if (prefetchedHistory) {
+    // Use prefetched data for fuzzy matching
+    const categoryStats: Record<string, { totalScore: number; count: number; maxSimilarity: number }> = {}
+    for (const tx of prefetchedHistory) {
+      if (!tx.detail) continue
+      const jaccard = calculateJaccardSimilarity(detail, tx.detail)
+      const substringBonus = calculateSubstringBonus(detail, tx.detail)
+      const baseSimilarity = Math.min(1.0, jaccard + substringBonus)
+      if (baseSimilarity < 0.3) continue
+      const recency = recencyWeight(tx.created_at)
+      const weightedScore = baseSimilarity * recency
+      if (!categoryStats[tx.category_name]) {
+        categoryStats[tx.category_name] = { totalScore: 0, count: 0, maxSimilarity: 0 }
+      }
+      const stats = categoryStats[tx.category_name]
+      stats.totalScore += weightedScore
+      stats.count++
+      stats.maxSimilarity = Math.max(stats.maxSimilarity, baseSimilarity)
+    }
+
+    let bestCategory: string | null = null
+    let bestScore = 0
+    let bestMaxSim = 0
+    let bestCount = 0
+    for (const [category, stats] of Object.entries(categoryStats)) {
+      const meetsThreshold =
+        stats.maxSimilarity > 0.7 ||
+        (stats.maxSimilarity > 0.4 && stats.count >= 2) ||
+        (stats.maxSimilarity > 0.3 && stats.count >= 3)
+      if (!meetsThreshold) continue
+      const compositeScore = stats.maxSimilarity * 2 + stats.totalScore
+      if (compositeScore > bestScore) {
+        bestScore = compositeScore
+        bestCategory = category
+        bestMaxSim = stats.maxSimilarity
+        bestCount = stats.count
+      }
+    }
+    if (bestCategory) {
+      const simComponent = bestMaxSim * 50
+      const countComponent = Math.min(20, bestCount * 5)
+      const confidence = Math.min(90, Math.floor(50 + simComponent * 0.6 + countComponent))
+      console.log('✅ Capa 2 - Match fuzzy:', bestCategory, `(${bestCount} matches, sim=${bestMaxSim.toFixed(2)}, ${confidence}% confianza)`)
+      return { transactionId, category: bestCategory, confidence, method: 'fuzzy_history' }
+    }
+  } else {
+    const fuzzyMatch = await findFuzzyHistoricalMatch(supabaseClient, userId, detail)
+    if (fuzzyMatch) {
+      console.log('✅ Capa 2 - Match fuzzy:', fuzzyMatch.category, `(${fuzzyMatch.matchCount} matches, sim=${fuzzyMatch.maxSimilarity.toFixed(2)}, ${fuzzyMatch.confidence}% confianza)`)
+      return { transactionId, category: fuzzyMatch.category, confidence: fuzzyMatch.confidence, method: 'fuzzy_history' }
+    }
+  }
+
+  // ─── CAPA 3: Keywords fallback ───
+  const normalizedDetail = normalizeText(detail)
+  const categoryScores: Record<string, { score: number; hasExactMatch: boolean }> = {}
+
+  for (const [category, keywords] of Object.entries(EXTENDED_CATEGORY_KEYWORDS)) {
+    const score = calculateKeywordScore(detail, keywords)
+    if (score > 0) {
+      const hasExactMatch = keywords.some(kw =>
+        normalizedDetail.includes(normalizeText(kw))
+      )
+      categoryScores[category] = { score, hasExactMatch }
+    }
+  }
+
+  const candidateCategories = Object.entries(categoryScores)
+    .filter(([_, data]) => data.hasExactMatch)
+    .sort((a, b) => b[1].score - a[1].score)
+
+  let finalCategory = 'Sin categoría'
+  let bestScore = 0
+
+  if (candidateCategories.length > 0) {
+    for (const [category, data] of candidateCategories) {
+      const existingMatch = existingCategories.find(
+        existing => normalizeText(existing) === normalizeText(category)
+      )
+      if (existingMatch && data.hasExactMatch) {
+        data.score += 15
+        if (data.score > bestScore) {
+          finalCategory = existingMatch
+          bestScore = data.score
+        }
+      }
+    }
+
+    if (finalCategory === 'Sin categoría') {
+      const [category] = candidateCategories[0]
+      const existingMatch = existingCategories.find(
+        existing => normalizeText(existing) === normalizeText(category)
+      )
+      if (existingMatch) {
+        finalCategory = existingMatch
+        bestScore = candidateCategories[0][1].score
+      }
+    }
+  }
+
+  if (finalCategory !== 'Sin categoría') {
+    const confidence = Math.min(70, 30 + bestScore * 2)
+    console.log('✅ Capa 3 - Keywords:', finalCategory, `(${confidence}% confianza)`)
+    return { transactionId, category: finalCategory, confidence, method: 'keywords' }
+  }
+
+  console.log('❌ No se pudo categorizar, queda como "Sin categoría"')
+  return { transactionId, category: 'Sin categoría', confidence: 0, method: 'none' }
+}
+
+// ═══════════════════════════════════════════════════════
 // HANDLER PRINCIPAL
 // ═══════════════════════════════════════════════════════
 Deno.serve(async (req) => {
@@ -312,140 +474,81 @@ Deno.serve(async (req) => {
       }
     )
 
-    const { transactionId, detail, userId, existingCategories } = await req.json() as CategorizationRequest
+    const body = await req.json()
+
+    // ─── BATCH MODE: { transactions, userId, existingCategories } ───
+    if (body.transactions && Array.isArray(body.transactions)) {
+      const { transactions, userId, existingCategories = [] } = body as BatchCategorizationRequest
+
+      console.log(`📦 Batch auto-categorize: ${transactions.length} transacciones`)
+
+      // 1 solo query de historial para todas las transacciones
+      const { data: history } = await supabaseClient
+        .from('transactions')
+        .select('category_name, detail, created_at')
+        .eq('user_id', userId)
+        .not('category_name', 'in', `(${IGNORED_CATEGORIES.join(',')})`)
+        .not('detail', 'is', null)
+        .order('created_at', { ascending: false })
+        .limit(500)
+
+      const results: CategorizationResult[] = []
+      const updates: { id: string; category_name: string }[] = []
+
+      for (const tx of transactions) {
+        const result = await categorizeOne(
+          supabaseClient, userId, tx.id, tx.detail,
+          existingCategories, history,
+        )
+        results.push(result)
+        updates.push({ id: tx.id, category_name: result.category })
+      }
+
+      // Batch update todas las transacciones
+      // Supabase no soporta bulk update nativo, usamos upsert por chunks
+      const CHUNK_SIZE = 50
+      for (let i = 0; i < updates.length; i += CHUNK_SIZE) {
+        const chunk = updates.slice(i, i + CHUNK_SIZE)
+        await Promise.all(
+          chunk.map(u =>
+            supabaseClient
+              .from('transactions')
+              .update({ category_name: u.category_name })
+              .eq('id', u.id)
+          )
+        )
+      }
+
+      const categorized = results.filter(r => r.method !== 'none').length
+      console.log(`📦 Batch complete: ${categorized}/${transactions.length} categorizadas`)
+
+      return new Response(
+        JSON.stringify({ success: true, results }),
+        { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      )
+    }
+
+    // ─── SINGLE MODE: { transactionId, detail, userId, existingCategories } ───
+    const { transactionId, detail, userId, existingCategories = [] } = body as CategorizationRequest
 
     console.log('Auto-categorizando:', { transactionId, detail })
 
-    // ─── CAPA 1: Match exacto ───
-    const exactMatch = await findExactMatch(supabaseClient, userId, detail);
+    const result = await categorizeOne(
+      supabaseClient, userId, transactionId, detail, existingCategories,
+    )
 
-    if (exactMatch) {
-      await supabaseClient
-        .from('transactions')
-        .update({ category_name: exactMatch.category })
-        .eq('id', transactionId)
-
-      console.log('✅ Capa 1 - Match exacto:', exactMatch.category, `(${exactMatch.count} matches, ${exactMatch.confidence}% confianza)`)
-
-      return new Response(
-        JSON.stringify({
-          success: true,
-          category: exactMatch.category,
-          confidence: exactMatch.confidence,
-          method: 'exact_history',
-        }),
-        { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      )
-    }
-
-    // ─── CAPA 2: Match fuzzy histórico ───
-    const fuzzyMatch = await findFuzzyHistoricalMatch(supabaseClient, userId, detail);
-
-    if (fuzzyMatch) {
-      await supabaseClient
-        .from('transactions')
-        .update({ category_name: fuzzyMatch.category })
-        .eq('id', transactionId)
-
-      console.log('✅ Capa 2 - Match fuzzy:', fuzzyMatch.category, `(${fuzzyMatch.matchCount} matches, sim=${fuzzyMatch.maxSimilarity.toFixed(2)}, ${fuzzyMatch.confidence}% confianza)`)
-
-      return new Response(
-        JSON.stringify({
-          success: true,
-          category: fuzzyMatch.category,
-          confidence: fuzzyMatch.confidence,
-          method: 'fuzzy_history',
-        }),
-        { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      )
-    }
-
-    // ─── CAPA 3: Keywords fallback ───
-    const normalizedDetail = normalizeText(detail);
-    const categoryScores: Record<string, { score: number; hasExactMatch: boolean }> = {};
-
-    for (const [category, keywords] of Object.entries(EXTENDED_CATEGORY_KEYWORDS)) {
-      const score = calculateKeywordScore(detail, keywords);
-
-      if (score > 0) {
-        const hasExactMatch = keywords.some(kw =>
-          normalizedDetail.includes(normalizeText(kw))
-        );
-        categoryScores[category] = { score, hasExactMatch };
-      }
-    }
-
-    // Priorizar matches exactos
-    const candidateCategories = Object.entries(categoryScores)
-      .filter(([_, data]) => data.hasExactMatch)
-      .sort((a, b) => b[1].score - a[1].score);
-
-    let finalCategory = 'Sin categoría';
-    let bestScore = 0;
-
-    if (candidateCategories.length > 0) {
-      for (const [category, data] of candidateCategories) {
-        const existingMatch = existingCategories.find(
-          existing => normalizeText(existing) === normalizeText(category)
-        );
-
-        if (existingMatch && data.hasExactMatch) {
-          data.score += 15;
-          if (data.score > bestScore) {
-            finalCategory = existingMatch;
-            bestScore = data.score;
-          }
-        }
-      }
-
-      // Si no hay match con categorías del usuario, usar la mejor
-      if (finalCategory === 'Sin categoría') {
-        const [category] = candidateCategories[0];
-        const existingMatch = existingCategories.find(
-          existing => normalizeText(existing) === normalizeText(category)
-        );
-        if (existingMatch) {
-          finalCategory = existingMatch;
-          bestScore = candidateCategories[0][1].score;
-        }
-      }
-    }
-
-    if (finalCategory !== 'Sin categoría') {
-      await supabaseClient
-        .from('transactions')
-        .update({ category_name: finalCategory })
-        .eq('id', transactionId)
-
-      const confidence = Math.min(70, 30 + bestScore * 2);
-      console.log('✅ Capa 3 - Keywords:', finalCategory, `(${confidence}% confianza)`)
-
-      return new Response(
-        JSON.stringify({
-          success: true,
-          category: finalCategory,
-          confidence,
-          method: 'keywords',
-        }),
-        { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      )
-    }
-
-    // ─── Sin categoría ───
-    // Actualizar para limpiar el estado "⚡ Analizando..."
+    // Update en DB
     await supabaseClient
       .from('transactions')
-      .update({ category_name: 'Sin categoría' })
+      .update({ category_name: result.category })
       .eq('id', transactionId)
-
-    console.log('❌ No se pudo categorizar, queda como "Sin categoría"')
 
     return new Response(
       JSON.stringify({
         success: true,
-        category: 'Sin categoría',
-        confidence: 0,
-        method: 'none',
+        category: result.category,
+        confidence: result.confidence,
+        method: result.method,
       }),
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     )
