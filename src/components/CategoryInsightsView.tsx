@@ -33,6 +33,7 @@ import {
   CheckCircle,
   Lightbulb,
   BarChart3,
+  SlidersHorizontal,
 } from "lucide-react";
 import { format, addMonths, subMonths } from "date-fns";
 import { es } from "date-fns/locale";
@@ -51,6 +52,12 @@ import {
   SelectTrigger,
   SelectValue,
 } from "./ui/select";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "./ui/popover";
+import { Checkbox } from "./ui/checkbox";
 import {
   LineChart,
   Line,
@@ -161,6 +168,9 @@ export function CategoryInsightsView() {
   const [selectedMonth, setSelectedMonth] = useState(new Date());
   const [isLimitDialogOpen, setIsLimitDialogOpen] = useState(false);
   const [editingBudget, setEditingBudget] = useState(false);
+  const [selectedChartCategories, setSelectedChartCategories] = useState<Set<string>>(new Set());
+  const [chartMonths, setChartMonths] = useState(6);
+  const [showAverage, setShowAverage] = useState(false);
   const [budgetInput, setBudgetInput] = useState("");
   const [limitFormData, setLimitFormData] = useState({
     category: "",
@@ -169,7 +179,7 @@ export function CategoryInsightsView() {
   });
 
   const { categorySpending, monthlyComparison, insights, totalSpending } =
-    useCategoryInsights(transactions, limits, selectedMonth);
+    useCategoryInsights(transactions, limits, selectedMonth, chartMonths);
 
   // Budget management
   const totalAllocated = limits.reduce((s, l) => s + l.monthly_limit, 0);
@@ -222,8 +232,7 @@ export function CategoryInsightsView() {
   const expenseCategories = useMemo(() => {
     return categories
       .filter((c) => c.type === "Gasto")
-      .map((c) => c.name)
-      .sort();
+      .sort((a, b) => a.name.localeCompare(b.name));
   }, [categories]);
 
   const isCurrentMonth =
@@ -248,15 +257,6 @@ export function CategoryInsightsView() {
     });
   }, [totalBudget, categoriesWithLimits, categories]);
 
-  // Chart data
-  const comparisonChartData = monthlyComparison.map((month) => {
-    const data: Record<string, string | number> = { month: month.month };
-    categorySpending.forEach((cat) => {
-      data[cat.category] = month.categories[cat.category] || 0;
-    });
-    return data;
-  });
-
   const top5Categories = useMemo(() => {
     const categorySums = categorySpending.map((cat) => {
       const total = monthlyComparison.reduce(
@@ -271,6 +271,46 @@ export function CategoryInsightsView() {
       .slice(0, 5)
       .map((c) => c.category);
   }, [categorySpending, monthlyComparison]);
+
+  const availableChartCategories = useMemo(() => {
+    return categorySpending
+      .filter((cat) =>
+        monthlyComparison.some((m) => (m.categories[cat.category] || 0) > 0)
+      )
+      .map((c) => c.category);
+  }, [categorySpending, monthlyComparison]);
+
+  const activeChartCategories = useMemo(() => {
+    return selectedChartCategories.size > 0
+      ? availableChartCategories.filter((c) => selectedChartCategories.has(c))
+      : top5Categories;
+  }, [selectedChartCategories, availableChartCategories, top5Categories]);
+
+  const categoryAverages = useMemo(() => {
+    const avgs: Record<string, number> = {};
+    activeChartCategories.forEach((cat) => {
+      const values = monthlyComparison
+        .map((m) => m.categories[cat] || 0)
+        .filter((v) => v > 0);
+      avgs[cat] = values.length > 0 ? values.reduce((a, b) => a + b, 0) / values.length : 0;
+    });
+    return avgs;
+  }, [activeChartCategories, monthlyComparison]);
+
+  const comparisonChartData = useMemo(() => {
+    return monthlyComparison.map((month) => {
+      const data: Record<string, string | number> = { month: month.month };
+      categorySpending.forEach((cat) => {
+        data[cat.category] = month.categories[cat.category] || 0;
+      });
+      if (showAverage) {
+        activeChartCategories.forEach((cat) => {
+          data[`${cat}_avg`] = categoryAverages[cat] || 0;
+        });
+      }
+      return data;
+    });
+  }, [monthlyComparison, categorySpending, showAverage, activeChartCategories, categoryAverages]);
 
   // Insights
   const alertInsights = insights.filter((i) => i.type === "alert");
@@ -289,12 +329,12 @@ export function CategoryInsightsView() {
   // Category colors for chart lines
   const categoryLineColors = useMemo(() => {
     const colors: Record<string, string> = {};
-    top5Categories.forEach((cat) => {
+    availableChartCategories.forEach((cat) => {
       const catObj = categories.find((c) => c.name === cat);
       colors[cat] = catObj?.color || `hsl(${Math.random() * 360}, 70%, 50%)`;
     });
     return colors;
-  }, [top5Categories, categories]);
+  }, [availableChartCategories, categories]);
 
   return (
     <div className="space-y-6">
@@ -728,10 +768,9 @@ export function CategoryInsightsView() {
                       {/* Header */}
                       <div className="flex items-center justify-between mb-3">
                         <div className="flex items-center gap-2 min-w-0">
-                          <div
-                            className="w-2.5 h-2.5 rounded-full shrink-0"
-                            style={{ backgroundColor: color }}
-                          />
+                          <span className="text-base leading-none shrink-0">
+                            {catObj?.icon || "🏷️"}
+                          </span>
                           <span className="text-sm font-medium truncate">
                             {cat.category}
                           </span>
@@ -940,10 +979,9 @@ export function CategoryInsightsView() {
                   onClick={() => handleSetLimit(cat.category)}
                   className="flex items-center gap-2.5 p-3 rounded-lg border border-border/50 bg-card hover:border-primary/20 hover:bg-accent/50 transition-all text-left group"
                 >
-                  <div
-                    className="w-2.5 h-2.5 rounded-full shrink-0"
-                    style={{ backgroundColor: color }}
-                  />
+                  <span className="text-base leading-none shrink-0">
+                    {catObj?.icon || "🏷️"}
+                  </span>
                   <div className="flex-1 min-w-0">
                     <span className="text-xs font-medium truncate block">
                       {cat.category}
@@ -966,11 +1004,104 @@ export function CategoryInsightsView() {
       )}
 
       {/* ─── Evolution Chart ────────────────────────────── */}
-      {comparisonChartData.length > 1 && top5Categories.length > 0 && (
+      {comparisonChartData.length > 1 && availableChartCategories.length > 0 && (
         <SectionCard
           title="Evolución de Categorías"
           icon={BarChart3}
-          tooltip="Top 5 categorías con mayor actividad en los últimos 6 meses"
+          tooltip={
+            selectedChartCategories.size > 0
+              ? `${selectedChartCategories.size} ${selectedChartCategories.size === 1 ? "categoría seleccionada" : "categorías seleccionadas"}`
+              : "Top 5 categorías con mayor actividad en los últimos 6 meses"
+          }
+          action={
+            <div className="flex items-center gap-1.5">
+              {/* Period selector */}
+              <div className="flex items-center gap-0.5 bg-muted/50 rounded-lg p-0.5 border border-border/50">
+                {[3, 6, 12].map((m) => (
+                  <button
+                    key={m}
+                    onClick={() => setChartMonths(m)}
+                    className={cn(
+                      "px-2 py-0.5 rounded-md text-xs font-medium transition-colors",
+                      chartMonths === m
+                        ? "bg-background text-foreground shadow-sm"
+                        : "text-muted-foreground hover:text-foreground"
+                    )}
+                  >
+                    {m}M
+                  </button>
+                ))}
+              </div>
+              {/* Average toggle */}
+              <button
+                onClick={() => setShowAverage((v) => !v)}
+                className={cn(
+                  "flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-medium transition-colors border",
+                  showAverage
+                    ? "bg-primary/10 text-primary border-primary/30"
+                    : "bg-muted/50 text-muted-foreground border-border/50 hover:bg-accent"
+                )}
+              >
+                <span className="text-[10px]">∼</span>
+                Promedio
+              </button>
+            <Popover>
+              <PopoverTrigger asChild>
+                <button className={cn(
+                  "flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-medium transition-colors border",
+                  selectedChartCategories.size > 0
+                    ? "bg-primary/10 text-primary border-primary/30"
+                    : "bg-muted/50 text-muted-foreground border-border/50 hover:bg-accent"
+                )}>
+                  <SlidersHorizontal className="h-3 w-3" />
+                  {selectedChartCategories.size > 0
+                    ? `${selectedChartCategories.size} seleccionada${selectedChartCategories.size > 1 ? "s" : ""}`
+                    : "Top 5"}
+                </button>
+              </PopoverTrigger>
+              <PopoverContent align="end" className="w-52 p-2">
+                <div className="flex items-center justify-between px-2 pb-2 mb-1 border-b border-border/40">
+                  <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Categorías</span>
+                  {selectedChartCategories.size > 0 && (
+                    <button
+                      onClick={() => setSelectedChartCategories(new Set())}
+                      className="text-xs text-muted-foreground hover:text-foreground transition-colors"
+                    >
+                      Limpiar
+                    </button>
+                  )}
+                </div>
+                <div className="max-h-56 overflow-y-auto space-y-0.5">
+                  {availableChartCategories.map((cat) => {
+                    const checked = selectedChartCategories.has(cat);
+                    return (
+                      <label
+                        key={cat}
+                        className="flex items-center gap-2 px-2 py-1.5 rounded-md hover:bg-accent cursor-pointer"
+                      >
+                        <Checkbox
+                          checked={checked}
+                          onCheckedChange={(v) => {
+                            setSelectedChartCategories((prev) => {
+                              const next = new Set(prev);
+                              if (v) next.add(cat);
+                              else next.delete(cat);
+                              return next;
+                            });
+                          }}
+                        />
+                        <span className="text-sm leading-none shrink-0">
+                          {categories.find((c) => c.name === cat)?.icon || "🏷️"}
+                        </span>
+                        <span className="text-xs text-foreground truncate">{cat}</span>
+                      </label>
+                    );
+                  })}
+                </div>
+              </PopoverContent>
+            </Popover>
+            </div>
+          }
         >
           <div className={cn(isPrivacyMode && "privacy-blur")}>
             <ResponsiveContainer width="100%" height={280}>
@@ -994,7 +1125,7 @@ export function CategoryInsightsView() {
                 <Legend
                   wrapperStyle={{ fontSize: "11px", paddingTop: "8px" }}
                 />
-                {top5Categories.map((cat) => (
+                {activeChartCategories.map((cat) => (
                   <Line
                     key={cat}
                     type="monotone"
@@ -1003,6 +1134,20 @@ export function CategoryInsightsView() {
                     strokeWidth={2}
                     dot={{ r: 3, strokeWidth: 2 }}
                     activeDot={{ r: 5 }}
+                  />
+                ))}
+                {showAverage && activeChartCategories.map((cat) => (
+                  <Line
+                    key={`${cat}_avg`}
+                    type="monotone"
+                    dataKey={`${cat}_avg`}
+                    stroke={categoryLineColors[cat]}
+                    strokeWidth={1.5}
+                    strokeDasharray="5 4"
+                    dot={false}
+                    activeDot={false}
+                    legendType="none"
+                    tooltipType="none"
                   />
                 ))}
               </LineChart>
@@ -1039,8 +1184,11 @@ export function CategoryInsightsView() {
                   </SelectTrigger>
                   <SelectContent>
                     {expenseCategories.map((cat) => (
-                      <SelectItem key={cat} value={cat}>
-                        {cat}
+                      <SelectItem key={cat.name} value={cat.name}>
+                        <span className="flex items-center gap-2">
+                          <span className="text-base leading-none">{cat.icon || "🏷️"}</span>
+                          {cat.name}
+                        </span>
                       </SelectItem>
                     ))}
                   </SelectContent>
