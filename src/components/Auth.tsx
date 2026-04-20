@@ -76,43 +76,120 @@ function RotatingText() {
   );
 }
 
-// ── Floating shortcut badges ────────────────────────────────────────────────
+// ── Floating activity feed ───────────────────────────────────────────────────
 
-const SHORTCUTS = [
-  { keys: "N", label: "nuevo gasto", x: "10%", y: "20%" },
-  { keys: "R", label: "conciliar", x: "80%", y: "25%" },
-  { keys: "P", label: "presupuesto", x: "7%", y: "72%" },
-  { keys: "⌘K", label: "buscar", x: "83%", y: "68%" },
-  { keys: "1-8", label: "navegar", x: "12%", y: "45%" },
-  { keys: "?", label: "shortcuts", x: "85%", y: "48%" },
+const ACTIVITY_ITEMS: { icon: string; text: string; detail?: string; color: string; side: "left" | "right" }[] = [
+  { icon: "🍔", text: "Pago Uber Eats", detail: "−$12.500 · Comida", color: "text-red-400", side: "left" },
+  { icon: "📊", text: "Presupuesto Comida", detail: "78% usado", color: "text-amber-400", side: "right" },
+  { icon: "🏦", text: "Sync Banco de Chile", detail: "12 movimientos", color: "text-blue-400", side: "left" },
+  { icon: "💰", text: "Ingreso Sueldo", detail: "+$1.850.000", color: "text-emerald-400", side: "right" },
+  { icon: "🚕", text: "Pago Uber", detail: "−$4.200 · Transporte", color: "text-red-400", side: "left" },
+  { icon: "📈", text: "Proyección Junio", detail: "Superávit $340k", color: "text-emerald-400", side: "right" },
+  { icon: "💳", text: "Cuota 3/12", detail: "−$133.250 · Bicicleta", color: "text-orange-400", side: "left" },
+  { icon: "⚠️", text: "Presupuesto excedido", detail: "Transporte +$15k", color: "text-red-400", side: "right" },
+  { icon: "🔄", text: "Devolución Churros", detail: "+$2.250 · Reembolso", color: "text-emerald-400", side: "left" },
+  { icon: "☕", text: "Think Coffee Bar", detail: "−$3.600 · Comida", color: "text-red-400", side: "right" },
+  { icon: "🎯", text: "Meta Ahorro", detail: "62% completado", color: "text-blue-400", side: "left" },
+  { icon: "🏠", text: "Pago Arriendo", detail: "−$450.000 · Hogar", color: "text-red-400", side: "right" },
+  { icon: "📱", text: "Categorizado con IA", detail: "Spotify → Entretención", color: "text-purple-400", side: "left" },
+  { icon: "💸", text: "Transferencia", detail: "−$25.000 · Amigos", color: "text-orange-400", side: "right" },
 ];
 
-function FloatingShortcuts() {
+interface FloatingCard {
+  id: number;
+  item: typeof ACTIVITY_ITEMS[number];
+  x: number; // percentage from side
+  startDelay: number;
+}
+
+function FloatingActivity() {
+  const [cards, setCards] = useState<FloatingCard[]>([]);
+  const counterRef = useRef(0);
+  const usedIndexes = useRef<Set<number>>(new Set());
+
+  useEffect(() => {
+    function spawnCard() {
+      // Pick a random item we haven't used recently
+      let idx: number;
+      do {
+        idx = Math.floor(Math.random() * ACTIVITY_ITEMS.length);
+      } while (usedIndexes.current.has(idx) && usedIndexes.current.size < ACTIVITY_ITEMS.length);
+
+      usedIndexes.current.add(idx);
+      if (usedIndexes.current.size > ACTIVITY_ITEMS.length / 2) {
+        usedIndexes.current.clear();
+      }
+
+      const item = ACTIVITY_ITEMS[idx];
+      const x = item.side === "left"
+        ? 3 + Math.random() * 12  // 3-15% from left
+        : 3 + Math.random() * 12; // 3-15% from right
+
+      const card: FloatingCard = {
+        id: counterRef.current++,
+        item,
+        x,
+        startDelay: 0,
+      };
+
+      setCards((prev) => [...prev.slice(-6), card]); // keep max 7 visible
+    }
+
+    // Initial staggered spawn
+    const initialTimers = [
+      setTimeout(() => spawnCard(), 2000),
+      setTimeout(() => spawnCard(), 3500),
+      setTimeout(() => spawnCard(), 5500),
+    ];
+
+    // Continuous spawn
+    const interval = setInterval(() => {
+      spawnCard();
+    }, 4000 + Math.random() * 2000);
+
+    return () => {
+      initialTimers.forEach(clearTimeout);
+      clearInterval(interval);
+    };
+  }, []);
+
   return (
-    <div className="absolute inset-0 overflow-hidden pointer-events-none">
-      {SHORTCUTS.map((s, i) => (
-        <motion.div
-          key={s.keys}
-          initial={{ opacity: 0, scale: 0.9 }}
-          animate={{
-            opacity: [0, 0.6, 0.4, 0.6],
-            scale: 1,
-            y: [0, -8, 0, 8, 0],
-          }}
-          transition={{
-            opacity: { duration: 3, delay: 2 + i * 0.4, ease: "easeOut" },
-            scale: { duration: 0.5, delay: 2 + i * 0.4 },
-            y: { duration: 10 + i * 1.5, repeat: Infinity, ease: "easeInOut", delay: 2 + i * 0.4 },
-          }}
-          className="absolute hidden lg:flex items-center gap-2 select-none"
-          style={{ left: s.x, top: s.y }}
-        >
-          <kbd className="px-2 py-1 text-[11px] font-mono font-medium rounded-md border border-white/15 bg-white/[0.05] text-white/50 backdrop-blur-sm shadow-[0_0_10px_rgba(255,255,255,0.03)]">
-            {s.keys}
-          </kbd>
-          <span className="text-[11px] text-white/25 font-light">{s.label}</span>
-        </motion.div>
-      ))}
+    <div className="absolute inset-0 overflow-hidden pointer-events-none hidden lg:block">
+      <AnimatePresence>
+        {cards.map((card) => (
+          <motion.div
+            key={card.id}
+            initial={{ opacity: 0, y: -20, scale: 0.95 }}
+            animate={{ opacity: [0, 0.55, 0.55, 0.45, 0], y: ["0%", "85vh"], scale: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{
+              duration: 18 + Math.random() * 6,
+              ease: "linear",
+              opacity: { duration: 18, times: [0, 0.05, 0.7, 0.9, 1] },
+              scale: { duration: 0.5 },
+            }}
+            className="absolute flex items-center gap-2.5 select-none"
+            style={{
+              [card.item.side === "left" ? "left" : "right"]: `${card.x}%`,
+              top: "-40px",
+            }}
+          >
+            <div className="flex items-center gap-2 px-3 py-2 rounded-xl border border-white/[0.06] bg-white/[0.03] backdrop-blur-sm">
+              <span className="text-sm leading-none">{card.item.icon}</span>
+              <div className="flex flex-col">
+                <span className="text-[11px] text-white/40 font-medium leading-tight whitespace-nowrap">
+                  {card.item.text}
+                </span>
+                {card.item.detail && (
+                  <span className={`text-[10px] leading-tight whitespace-nowrap ${card.item.color} opacity-60`}>
+                    {card.item.detail}
+                  </span>
+                )}
+              </div>
+            </div>
+          </motion.div>
+        ))}
+      </AnimatePresence>
     </div>
   );
 }
@@ -225,7 +302,7 @@ export default function Auth() {
   return (
     <div className="min-h-screen bg-black flex items-center justify-center relative overflow-hidden">
       <AmbientBackground />
-      <FloatingShortcuts />
+      <FloatingActivity />
 
       <div className="relative z-10 w-full max-w-[360px] px-6">
         {/* ── Logo + Brand ────────────────────────────────────────────────── */}
