@@ -109,58 +109,70 @@ const ACTIVITY_ITEMS: ActivityItem[] = [
 interface FloatingCard {
   id: number;
   item: typeof ACTIVITY_ITEMS[number];
-  x: number; // percentage from side
-  startDelay: number;
+  x: number;
+  duration: number;
 }
 
 function FloatingActivity() {
   const [cards, setCards] = useState<FloatingCard[]>([]);
   const counterRef = useRef(0);
+  const lastSideRef = useRef<"left" | "right">("right");
   const usedIndexes = useRef<Set<number>>(new Set());
 
   useEffect(() => {
     function spawnCard() {
-      // Pick a random item we haven't used recently
-      let idx: number;
-      do {
-        idx = Math.floor(Math.random() * ACTIVITY_ITEMS.length);
-      } while (usedIndexes.current.has(idx) && usedIndexes.current.size < ACTIVITY_ITEMS.length);
+      // Pick a random item, alternating sides strictly
+      const targetSide = lastSideRef.current === "left" ? "right" : "left";
+      lastSideRef.current = targetSide;
 
-      usedIndexes.current.add(idx);
-      if (usedIndexes.current.size > ACTIVITY_ITEMS.length / 2) {
+      // Find items on the target side that haven't been used recently
+      const candidates = ACTIVITY_ITEMS
+        .map((item, i) => ({ item, i }))
+        .filter(({ item, i }) => item.side === targetSide && !usedIndexes.current.has(i));
+
+      // Fallback to any unused item if no candidates on target side
+      const pool = candidates.length > 0
+        ? candidates
+        : ACTIVITY_ITEMS.map((item, i) => ({ item, i })).filter(({ i }) => !usedIndexes.current.has(i));
+
+      if (pool.length === 0) {
+        usedIndexes.current.clear();
+        return;
+      }
+
+      const pick = pool[Math.floor(Math.random() * pool.length)];
+      usedIndexes.current.add(pick.i);
+      if (usedIndexes.current.size > ACTIVITY_ITEMS.length * 0.6) {
         usedIndexes.current.clear();
       }
 
-      const item = ACTIVITY_ITEMS[idx];
-      const x = item.side === "left"
-        ? 3 + Math.random() * 12  // 3-15% from left
-        : 3 + Math.random() * 12; // 3-15% from right
-
       const card: FloatingCard = {
         id: counterRef.current++,
-        item,
-        x,
-        startDelay: 0,
+        item: pick.item,
+        x: 4 + Math.random() * 10, // 4-14% from edge
+        duration: 22 + Math.random() * 8, // 22-30s drift
       };
 
-      setCards((prev) => [...prev.slice(-6), card]); // keep max 7 visible
+      setCards((prev) => [...prev.slice(-4), card]); // max 5 visible
     }
 
-    // Initial staggered spawn
+    // Gentle staggered entrance — one at a time, well spaced
     const initialTimers = [
-      setTimeout(() => spawnCard(), 2000),
-      setTimeout(() => spawnCard(), 3500),
-      setTimeout(() => spawnCard(), 5500),
+      setTimeout(() => spawnCard(), 2500),
+      setTimeout(() => spawnCard(), 8000),
     ];
 
-    // Continuous spawn
-    const interval = setInterval(() => {
+    // Continuous spawn — one every 6-9 seconds
+    const spawn = () => {
       spawnCard();
-    }, 4000 + Math.random() * 2000);
+      const nextDelay = 6000 + Math.random() * 3000;
+      timerId = setTimeout(spawn, nextDelay);
+    };
+    let timerId = setTimeout(spawn, 13000);
 
     return () => {
       initialTimers.forEach(clearTimeout);
-      clearInterval(interval);
+      clearTimeout(timerId);
     };
   }, []);
 
@@ -170,14 +182,14 @@ function FloatingActivity() {
         {cards.map((card) => (
           <motion.div
             key={card.id}
-            initial={{ opacity: 0, y: -20, scale: 0.95 }}
-            animate={{ opacity: [0, 0.55, 0.55, 0.45, 0], y: ["0%", "85vh"], scale: 1 }}
+            initial={{ opacity: 0, y: -20, scale: 0.97 }}
+            animate={{ opacity: [0, 0.45, 0.45, 0.35, 0], y: ["0%", "80vh"], scale: 1 }}
             exit={{ opacity: 0 }}
             transition={{
-              duration: 18 + Math.random() * 6,
+              duration: card.duration,
               ease: "linear",
-              opacity: { duration: 18, times: [0, 0.05, 0.7, 0.9, 1] },
-              scale: { duration: 0.5 },
+              opacity: { duration: card.duration, times: [0, 0.06, 0.65, 0.88, 1] },
+              scale: { duration: 0.8, ease: "easeOut" },
             }}
             className="absolute flex items-center gap-2.5 select-none"
             style={{
