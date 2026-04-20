@@ -63,12 +63,12 @@ import { cn } from "@/lib/utils";
 // ── Bank list with brand colors ──────────────────────────────────────────────
 
 const BANKS = [
-  { value: "bancosecurity", label: "Banco Security", color: "#7B2D8E", initials: "BS" },
+  { value: "bancosecurity", label: "Banco Security", color: "#7B2D8E" },
   { value: "bchile", label: "Banco de Chile", color: "#0066CC" },
   { value: "bci", label: "BCI", color: "#4CAF50" },
   { value: "bestado", label: "BancoEstado", color: "#F57C00" },
   { value: "bice", label: "BICE", color: "#5B9BD5" },
-  { value: "edwards", label: "Banco Edwards", color: "#00897B", initials: "BE" },
+  { value: "edwards", label: "Banco Edwards", color: "#00897B" },
   { value: "falabella", label: "Banco Falabella", color: "#8CC63F" },
   { value: "itau", label: "Itaú", color: "#EC7000" },
   { value: "santander", label: "Santander", color: "#EC0000" },

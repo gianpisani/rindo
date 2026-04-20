@@ -260,8 +260,8 @@ const LANDING_BANKS = [
   { value: "itau", label: "Itaú" },
   { value: "falabella", label: "Falabella" },
   { value: "bice", label: "BICE" },
-  { value: "bancosecurity", label: "Security", initials: "BS", color: "#7B2D8E" },
-  { value: "edwards", label: "Edwards", initials: "BE", color: "#00897B" },
+  { value: "bancosecurity", label: "Security" },
+  { value: "edwards", label: "Edwards" },
 ];
 
 function BankStrip() {
@@ -277,26 +277,13 @@ function BankStrip() {
       </p>
       <div className="flex items-center gap-1 justify-center">
         {LANDING_BANKS.map((bank) => (
-          <div
+          <img
             key={bank.value}
-            className="relative"
+            src={`/banks/${bank.value}.png`}
+            alt={bank.label}
             title={bank.label}
-          >
-            {bank.initials ? (
-              <div
-                className="w-6 h-6 rounded-md flex items-center justify-center text-[7px] font-bold text-white opacity-40 hover:opacity-60 transition-opacity duration-300"
-                style={{ backgroundColor: bank.color }}
-              >
-                {bank.initials}
-              </div>
-            ) : (
-              <img
-                src={`/banks/${bank.value}.png`}
-                alt={bank.label}
-                className="w-6 h-6 rounded-md object-contain opacity-40 hover:opacity-60 transition-opacity duration-300"
-              />
-            )}
-          </div>
+            className="w-6 h-6 rounded-md object-contain opacity-40 hover:opacity-60 transition-opacity duration-300"
+          />
         ))}
       </div>
     </motion.div>
