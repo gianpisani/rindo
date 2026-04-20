@@ -42,7 +42,7 @@ const useShortcuts = () => {
         },
         {
           keys: ["W"],
-          description: "Whisper — registro por voz",
+          description: "Whisper — registro rápido",
           icon: MessageSquare,
         },
         {
