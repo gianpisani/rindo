@@ -22,7 +22,7 @@ export function QuickAddDrawer({ open, onOpenChange, defaultType = "Gasto" }: Qu
     <BaseModal
       open={open}
       onOpenChange={onOpenChange}
-      title={`Agregar ${typeText}`}
+      title={`Agregar ${typeTextLower}`}
       description={`Completa los detalles de tu ${typeTextLower}`}
       maxWidth="lg"
       variant={variant}

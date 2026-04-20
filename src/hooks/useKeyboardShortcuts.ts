@@ -7,12 +7,14 @@ interface UseKeyboardShortcutsOptions {
   onToggleCommandBar: () => void;
   onToggleShortcutsPopover: () => void;
   onToggleWhisper: () => void;
+  onQuickAdd: () => void;
 }
 
 export function useKeyboardShortcuts({
   onToggleCommandBar,
   onToggleShortcutsPopover,
   onToggleWhisper,
+  onQuickAdd,
 }: UseKeyboardShortcutsOptions) {
   const navigate = useNavigate();
   const location = useLocation();
@@ -45,6 +47,12 @@ export function useKeyboardShortcuts({
       if (e.metaKey || e.ctrlKey || e.altKey) return;
 
       switch (e.key) {
+        case "n":
+        case "N":
+          e.preventDefault();
+          onQuickAdd();
+          break;
+
         case "w":
         case "W":
           e.preventDefault();
@@ -101,6 +109,7 @@ export function useKeyboardShortcuts({
     onToggleCommandBar,
     onToggleShortcutsPopover,
     onToggleWhisper,
+    onQuickAdd,
     togglePrivacyMode,
   ]);
 }

@@ -80,6 +80,7 @@ export default function Layout({ children }: LayoutProps) {
     onToggleCommandBar: toggleCommandBar,
     onToggleShortcutsPopover: toggleShortcutsPopover,
     onToggleWhisper: toggleWhisper,
+    onQuickAdd: () => openQuickAdd("Gasto"),
   });
 
   // Close popover when clicking outside

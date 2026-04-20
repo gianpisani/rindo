@@ -2,7 +2,7 @@ import { useState, useRef } from "react";
 import { Button } from "./ui/button";
 import { Input } from "./ui/input";
 import { Card, CardContent } from "./ui/card";
-import { ArrowRightToLine, CornerDownLeft, CornerDownLeftIcon, Cpu, Sparkles, Zap, Users } from "lucide-react";
+import { ArrowRightToLine, CornerDownLeft, Cpu, Sparkles, Users } from "lucide-react";
 import { useCategories } from "@/hooks/useCategories";
 import { useTransactions } from "@/hooks/useTransactions";
 import { useSharedExpenses } from "@/hooks/useSharedExpenses";
@@ -10,7 +10,6 @@ import { useSoundFX } from "@/hooks/useSoundFX";
 import { supabase } from "@/integrations/supabase/client";
 import { useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
-import { FingerPrintIcon } from "@heroicons/react/24/outline";
 import { Checkbox } from "./ui/checkbox";
 import SharedExpenseDrawer from "./SharedExpenseDrawer";
 import { usePrivacyMode } from "@/hooks/usePrivacyMode";
@@ -293,9 +292,9 @@ export default function QuickTransactionForm({ onSuccess, defaultType = "Gasto" 
               />
             </div>
             
-            <p className="text-center text-xs text-muted-foreground flex items-center justify-center gap-1.5">
-              <Cpu className="h-3.5 w-3.5" />
-              <span>Lo categorizaremos nosotros por ti</span>
+            <p className="text-center text-[11px] text-muted-foreground/60 flex items-center justify-center gap-1">
+              <Sparkles className="h-3 w-3" />
+              <span>Categorización automática</span>
             </p>
           </div>
 
@@ -337,18 +336,11 @@ export default function QuickTransactionForm({ onSuccess, defaultType = "Gasto" 
               </span>
             ) : (
               <span className="flex items-center gap-2">
-                <FingerPrintIcon className="h-4 w-4" />
                 Agregar {amount && `${amount}`}
+                <CornerDownLeft className="h-4 w-4 opacity-60" />
               </span>
             )}
           </Button>
-          
-          {showKeyboardHints && (
-            <p className="text-center text-xs text-muted-foreground flex items-center justify-center gap-1.5">
-              <CornerDownLeft className="h-3.5 w-3.5" />
-              <span><span className="font-bold">Enter</span> para guardar</span>
-            </p>
-          )}
         </form>
       </CardContent>
 
