@@ -5,7 +5,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "./ui/dialog";
-import { ReactNode, useRef, useEffect } from "react";
+import { ReactNode } from "react";
 import { cn } from "@/lib/utils";
 
 interface BaseModalProps {
@@ -60,24 +60,10 @@ export function BaseModal({
   variant = "default"
 }: BaseModalProps) {
   const styles = variantStyles[variant];
-  const scrollRef = useRef<HTMLDivElement>(null);
 
-  // iOS PWA: the dialog open animation (200ms) prevents iOS from recognizing the
-  // scroll container on first render. Activate it programmatically after animation.
-  useEffect(() => {
-    if (!open) return;
-    const el = scrollRef.current;
-    if (!el) return;
-    const timer = setTimeout(() => {
-      el.scrollTop = 1;
-      el.scrollTop = 0;
-    }, 250);
-    return () => clearTimeout(timer);
-  }, [open]);
-  
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent 
+      <DialogContent
         className={cn(
           maxWidthClasses[maxWidth],
           "w-[92vw] max-h-[90vh] flex flex-col p-0 gap-0 rounded-2xl",
@@ -100,8 +86,8 @@ export function BaseModal({
             </DialogDescription>
           )}
         </DialogHeader>
-        
-        <div ref={scrollRef} className="flex-1 overflow-y-auto overflow-x-hidden px-6 pb-6 min-h-0">
+
+        <div className="flex-1 overflow-y-auto overflow-x-hidden px-6 pb-6 min-h-0">
           {children}
         </div>
 
