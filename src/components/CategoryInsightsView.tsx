@@ -170,7 +170,7 @@ export function CategoryInsightsView() {
   const [editingBudget, setEditingBudget] = useState(false);
   const [selectedChartCategories, setSelectedChartCategories] = useState<Set<string>>(new Set());
   const [chartMonths, setChartMonths] = useState(6);
-  const [showAverage, setShowAverage] = useState(true);
+  const [showAverage, setShowAverage] = useState(false);
   const [budgetInput, setBudgetInput] = useState("");
   const [limitFormData, setLimitFormData] = useState({
     category: "",
