@@ -570,7 +570,7 @@ export function TransactionsTable({
       // ── Fecha ────────────────────────────────────────────────────────────
       {
         accessorKey: "date",
-        size: 150, minSize: 150, maxSize: 150,
+        size: 120, minSize: 120, maxSize: 120,
         header: ({ column }) => (
           <div
             className="flex items-center cursor-pointer hover:bg-muted rounded px-2 py-1"
@@ -599,7 +599,7 @@ export function TransactionsTable({
       // ── Detalle (avatar + texto limpio) ──────────────────────────────────
       {
         accessorKey: "detail",
-        size: 280, minSize: 200,
+        size: 310, minSize: 220,
         header: "Detalle",
         cell: ({ row }) => {
           const raw = row.original.detail || "";
@@ -655,7 +655,7 @@ export function TransactionsTable({
       // ── Categoría (icono + color dot + nombre + reimbursement link) ────
       {
         accessorKey: "category_name",
-        size: 180, minSize: 160, maxSize: 220,
+        size: 200, minSize: 170, maxSize: 240,
         header: ({ column }) => (
           <div
             className="flex items-center cursor-pointer hover:bg-muted rounded px-2 py-1"
@@ -755,7 +755,7 @@ export function TransactionsTable({
       // ── Tarjeta ──────────────────────────────────────────────────────────
       ...(creditCards.length > 0 ? [{
         id: "card",
-        size: 110, minSize: 90, maxSize: 130,
+        size: 90, minSize: 80, maxSize: 110,
         header: () => (
           <div className="flex items-center gap-1 text-xs font-semibold">
             <CreditCard className="h-3.5 w-3.5" />
@@ -1656,7 +1656,7 @@ export function TransactionsTable({
                       {headerGroup.headers.map((header) => (
                         <th
                           key={header.id}
-                          className="px-4 py-1.5 text-left text-xs font-semibold text-foreground uppercase tracking-wide"
+                          className="px-3 py-1.5 text-left text-xs font-semibold text-foreground uppercase tracking-wide"
                           style={{
                             width: header.column.columnDef.size,
                             minWidth: header.column.columnDef.minSize,
@@ -1711,7 +1711,7 @@ export function TransactionsTable({
                                 onMouseDown={(e) => handleRowMouseDown(e, flatOffset + i)}
                               >
                                 {row.getVisibleCells().map((cell) => (
-                                  <td key={cell.id} className={cn("px-4 py-1.5 overflow-hidden", isMissing && "bg-amber-400/5")}>
+                                  <td key={cell.id} className={cn("px-3 py-1.5 overflow-hidden", isMissing && "bg-amber-400/5")}>
                                     {flexRender(cell.column.columnDef.cell, cell.getContext())}
                                   </td>
                                 ))}
@@ -1737,7 +1737,7 @@ export function TransactionsTable({
                           onMouseDown={(e) => handleRowMouseDown(e, i)}
                         >
                           {row.getVisibleCells().map((cell) => (
-                            <td key={cell.id} className={cn("px-4 py-1.5 overflow-hidden", isMissing && "bg-amber-400/5")}>
+                            <td key={cell.id} className={cn("px-3 py-1.5 overflow-hidden", isMissing && "bg-amber-400/5")}>
                               {flexRender(cell.column.columnDef.cell, cell.getContext())}
                             </td>
                           ))}
@@ -1751,7 +1751,7 @@ export function TransactionsTable({
 
             {/* ── Summary Footer (Excel-style) ─────────────────────────────── */}
             {summaryStats && (
-              <div className="border-t border-border/50 bg-muted/20 px-4 py-1.5 flex items-center justify-end gap-6">
+              <div className="border-t border-border/50 bg-muted/20 px-3 py-1.5 flex items-center justify-end gap-6">
                 {hasSelection && (
                   <span className="text-[11px] text-muted-foreground/60 mr-auto">
                     {summaryStats.count} seleccionada{summaryStats.count > 1 ? "s" : ""}
