@@ -8,6 +8,7 @@ import { Input } from "@/components/ui/input";
 import { Dialog, DialogTrigger } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Drawer, DrawerContent, DrawerHeader, DrawerTitle, DrawerTrigger, DrawerClose } from "@/components/ui/drawer";
 import { Badge } from "@/components/ui/badge";
 import {
   AlertDialog,
@@ -20,7 +21,7 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { Plus, Download, TrendingUp, TrendingDown, PiggyBank, Upload, X, Sparkles, Info, Trash2, Search, CalendarClock, Users, CheckCircle2, Clock, Pencil, ArrowLeftRight, Building2, RefreshCw } from "lucide-react";
+import { Plus, Download, TrendingUp, TrendingDown, PiggyBank, Upload, X, Sparkles, Info, Trash2, Search, CalendarClock, Users, CheckCircle2, Clock, Pencil, ArrowLeftRight, Building2, RefreshCw, ChevronDown, Check } from "lucide-react";
 import { useTransactions, Transaction } from "@/hooks/useTransactions";
 import { useCategories } from "@/hooks/useCategories";
 import { useCreditCards } from "@/hooks/useCreditCards";
@@ -78,6 +79,7 @@ export default function Transactions() {
   const [isBankSyncOpen, setIsBankSyncOpen] = useState(false);
 
   const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const [isCategoryDrawerOpen, setIsCategoryDrawerOpen] = useState(false);
   const [isImportDialogOpen, setIsImportDialogOpen] = useState(false);
   const [editingTransaction, setEditingTransaction] = useState<Transaction | null>(null);
   const [isShared, setIsShared] = useState(false);
@@ -584,23 +586,45 @@ export default function Transactions() {
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="category" className="text-sm font-medium">Categoría</Label>
-                  <Select
-                    value={formData.category_name}
-                    onValueChange={(value) => setFormData({ ...formData, category_name: value })}
-                  >
-                    <SelectTrigger className="h-10 rounded-lg px-6">
-                      <SelectValue placeholder="Selecciona una categoría" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {filteredCategories
-                        .filter(cat => cat.name && cat.name.trim().length > 0)
-                        .map((cat) => (
-                          <SelectItem key={cat.id} value={cat.name}>
-                            {cat.icon || getCategoryIcon(cat.name)} {cat.name}
-                          </SelectItem>
-                        ))}
-                    </SelectContent>
-                  </Select>
+                  <Drawer open={isCategoryDrawerOpen} onOpenChange={setIsCategoryDrawerOpen}>
+                    <DrawerTrigger asChild>
+                      <button
+                        type="button"
+                        className="flex h-10 w-full items-center justify-between rounded-lg border border-input bg-background px-6 py-2 text-sm ring-offset-background focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2"
+                      >
+                        <span className={formData.category_name ? "" : "text-muted-foreground"}>
+                          {formData.category_name
+                            ? `${filteredCategories.find(c => c.name === formData.category_name)?.icon || getCategoryIcon(formData.category_name)} ${formData.category_name}`
+                            : "Selecciona una categoría"}
+                        </span>
+                        <ChevronDown className="h-4 w-4 opacity-50" />
+                      </button>
+                    </DrawerTrigger>
+                    <DrawerContent className="max-h-[70vh]">
+                      <DrawerHeader>
+                        <DrawerTitle>Categoría</DrawerTitle>
+                      </DrawerHeader>
+                      <div className="overflow-y-auto px-4 pb-8">
+                        {filteredCategories
+                          .filter(cat => cat.name && cat.name.trim().length > 0)
+                          .map((cat) => (
+                            <DrawerClose asChild key={cat.id}>
+                              <button
+                                type="button"
+                                className="flex w-full items-center gap-3 rounded-md px-3 py-3 text-sm hover:bg-accent"
+                                onClick={() => setFormData({ ...formData, category_name: cat.name })}
+                              >
+                                <span>{cat.icon || getCategoryIcon(cat.name)}</span>
+                                <span>{cat.name}</span>
+                                {formData.category_name === cat.name && (
+                                  <Check className="ml-auto h-4 w-4" />
+                                )}
+                              </button>
+                            </DrawerClose>
+                          ))}
+                      </div>
+                    </DrawerContent>
+                  </Drawer>
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="amount" className="text-sm font-medium">Monto</Label>
