@@ -169,6 +169,8 @@ export function CategoryInsightsView() {
   const [isLimitDialogOpen, setIsLimitDialogOpen] = useState(false);
   const [editingBudget, setEditingBudget] = useState(false);
   const [selectedChartCategories, setSelectedChartCategories] = useState<Set<string>>(new Set());
+  const [chartMonths, setChartMonths] = useState(6);
+  const [showAverage, setShowAverage] = useState(true);
   const [budgetInput, setBudgetInput] = useState("");
   const [limitFormData, setLimitFormData] = useState({
     category: "",
@@ -177,7 +179,7 @@ export function CategoryInsightsView() {
   });
 
   const { categorySpending, monthlyComparison, insights, totalSpending } =
-    useCategoryInsights(transactions, limits, selectedMonth);
+    useCategoryInsights(transactions, limits, selectedMonth, chartMonths);
 
   // Budget management
   const totalAllocated = limits.reduce((s, l) => s + l.monthly_limit, 0);
@@ -256,15 +258,6 @@ export function CategoryInsightsView() {
     });
   }, [totalBudget, categoriesWithLimits, categories]);
 
-  // Chart data
-  const comparisonChartData = monthlyComparison.map((month) => {
-    const data: Record<string, string | number> = { month: month.month };
-    categorySpending.forEach((cat) => {
-      data[cat.category] = month.categories[cat.category] || 0;
-    });
-    return data;
-  });
-
   const top5Categories = useMemo(() => {
     const categorySums = categorySpending.map((cat) => {
       const total = monthlyComparison.reduce(
@@ -293,6 +286,32 @@ export function CategoryInsightsView() {
       ? availableChartCategories.filter((c) => selectedChartCategories.has(c))
       : top5Categories;
   }, [selectedChartCategories, availableChartCategories, top5Categories]);
+
+  const categoryAverages = useMemo(() => {
+    const avgs: Record<string, number> = {};
+    activeChartCategories.forEach((cat) => {
+      const values = monthlyComparison
+        .map((m) => m.categories[cat] || 0)
+        .filter((v) => v > 0);
+      avgs[cat] = values.length > 0 ? values.reduce((a, b) => a + b, 0) / values.length : 0;
+    });
+    return avgs;
+  }, [activeChartCategories, monthlyComparison]);
+
+  const comparisonChartData = useMemo(() => {
+    return monthlyComparison.map((month) => {
+      const data: Record<string, string | number> = { month: month.month };
+      categorySpending.forEach((cat) => {
+        data[cat.category] = month.categories[cat.category] || 0;
+      });
+      if (showAverage) {
+        activeChartCategories.forEach((cat) => {
+          data[`${cat}_avg`] = categoryAverages[cat] || 0;
+        });
+      }
+      return data;
+    });
+  }, [monthlyComparison, categorySpending, showAverage, activeChartCategories, categoryAverages]);
 
   // Insights
   const alertInsights = insights.filter((i) => i.type === "alert");
@@ -998,6 +1017,37 @@ export function CategoryInsightsView() {
               : "Top 5 categorías con mayor actividad en los últimos 6 meses"
           }
           action={
+            <div className="flex items-center gap-1.5">
+              {/* Period selector */}
+              <div className="flex items-center gap-0.5 bg-muted/50 rounded-lg p-0.5 border border-border/50">
+                {[3, 6, 12].map((m) => (
+                  <button
+                    key={m}
+                    onClick={() => setChartMonths(m)}
+                    className={cn(
+                      "px-2 py-0.5 rounded-md text-xs font-medium transition-colors",
+                      chartMonths === m
+                        ? "bg-background text-foreground shadow-sm"
+                        : "text-muted-foreground hover:text-foreground"
+                    )}
+                  >
+                    {m}M
+                  </button>
+                ))}
+              </div>
+              {/* Average toggle */}
+              <button
+                onClick={() => setShowAverage((v) => !v)}
+                className={cn(
+                  "flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-medium transition-colors border",
+                  showAverage
+                    ? "bg-primary/10 text-primary border-primary/30"
+                    : "bg-muted/50 text-muted-foreground border-border/50 hover:bg-accent"
+                )}
+              >
+                <span className="text-[10px]">∼</span>
+                Promedio
+              </button>
             <Popover>
               <PopoverTrigger asChild>
                 <button className={cn(
@@ -1053,6 +1103,7 @@ export function CategoryInsightsView() {
                 </div>
               </PopoverContent>
             </Popover>
+            </div>
           }
         >
           <div className={cn(isPrivacyMode && "privacy-blur")}>
@@ -1086,6 +1137,20 @@ export function CategoryInsightsView() {
                     strokeWidth={2}
                     dot={{ r: 3, strokeWidth: 2 }}
                     activeDot={{ r: 5 }}
+                  />
+                ))}
+                {showAverage && activeChartCategories.map((cat) => (
+                  <Line
+                    key={`${cat}_avg`}
+                    type="monotone"
+                    dataKey={`${cat}_avg`}
+                    stroke={categoryLineColors[cat]}
+                    strokeWidth={1.5}
+                    strokeDasharray="5 4"
+                    dot={false}
+                    activeDot={false}
+                    legendType="none"
+                    tooltipType="none"
                   />
                 ))}
               </LineChart>

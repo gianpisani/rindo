@@ -39,7 +39,8 @@ export interface CategoryInsight {
 export function useCategoryInsights(
   transactions: Transaction[],
   limits: CategoryLimit[],
-  selectedMonth?: Date
+  selectedMonth?: Date,
+  months: number = 6
 ) {
   const currentMonth = selectedMonth || new Date();
   const monthStart = startOfMonth(currentMonth);
@@ -190,10 +191,10 @@ export function useCategoryInsights(
     });
   }, [currentMonthTransactions, previousMonthTransactions, limits, allCategories, reimbursementMap]);
 
-  // Get last 6 months comparison
+  // Get last N months comparison
   const monthlyComparison = useMemo((): MonthlyComparison[] => {
     const last6Months = eachMonthOfInterval({
-      start: subMonths(currentMonth, 5),
+      start: subMonths(currentMonth, months - 1),
       end: currentMonth,
     });
 
@@ -217,7 +218,7 @@ export function useCategoryInsights(
         categories,
       };
     });
-  }, [transactions, currentMonth]);
+  }, [transactions, currentMonth, months]);
 
   // Generate insights
   const insights = useMemo((): CategoryInsight[] => {
