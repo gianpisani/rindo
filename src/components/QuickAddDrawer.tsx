@@ -9,9 +9,9 @@ interface QuickAddDrawerProps {
 }
 
 const typeConfig = {
-  Ingreso: { label: "ingreso", dot: "bg-success", accent: "text-success" },
-  Gasto: { label: "gasto", dot: "bg-destructive", accent: "text-destructive" },
-  Inversión: { label: "inversión", dot: "bg-blue-500", accent: "text-blue-500" },
+  Ingreso: { label: "ingreso", prefix: "Nuevo", dot: "bg-success", accent: "text-success" },
+  Gasto: { label: "gasto", prefix: "Nuevo", dot: "bg-destructive", accent: "text-destructive" },
+  Inversión: { label: "inversión", prefix: "Nueva", dot: "bg-blue-500", accent: "text-blue-500" },
 } as const;
 
 export function QuickAddDrawer({ open, onOpenChange, defaultType = "Gasto" }: QuickAddDrawerProps) {
@@ -26,7 +26,7 @@ export function QuickAddDrawer({ open, onOpenChange, defaultType = "Gasto" }: Qu
           <DialogTitle className="flex items-center justify-center gap-2">
             <span className={cn("h-1.5 w-1.5 rounded-full animate-pulse", config.dot)} />
             <span className={cn("text-xs font-semibold uppercase tracking-[0.15em]", config.accent)}>
-              Nuevo {config.label}
+              {config.prefix} {config.label}
             </span>
           </DialogTitle>
           <DialogDescription className="sr-only">
