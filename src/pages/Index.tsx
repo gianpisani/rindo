@@ -7,7 +7,9 @@ import { useCategories } from "@/hooks/useCategories";
 import { useCategoryLimits } from "@/hooks/useCategoryLimits";
 import { useMonthlySummary } from "@/hooks/useMonthlySummary";
 import { useGlobalDrawers } from "@/hooks/useGlobalDrawers";
-import { TrendingUp, TrendingDown, PiggyBank, Receipt, Eye, Variable, Play } from "lucide-react";
+import { TrendingUp, TrendingDown, PiggyBank, Receipt, Eye, Variable, Play, Building2 } from "lucide-react";
+import { BankSyncModal } from "@/components/BankSyncModal";
+import { useBankSyncContext } from "@/contexts/BankSyncContext";
 import { useNavigate } from "react-router-dom";
 import { Skeleton } from "@/components/ui/skeleton";
 import { format, startOfMonth, endOfMonth, subMonths, isToday, isYesterday } from "date-fns";
@@ -29,6 +31,8 @@ const Index = () => {
   const { openQuickAdd, openReconciliation, openProfileEdit } = useGlobalDrawers();
   const { isPrivacyMode } = usePrivacyMode();
   const [storyOpen, setStoryOpen] = useState(false);
+  const [isBankSyncOpen, setIsBankSyncOpen] = useState(false);
+  const bankSync = useBankSyncContext();
   const { sessions: todaySessions, nextRace, isLoading: trainingLoading, markCompleted, markSkipped } = useTodayTraining();
   const { profile: userProfile, avatarUrl } = useUserProfile();
 
@@ -241,28 +245,28 @@ const Index = () => {
             </div>
           </Card>
 
-          {/* Quick Actions 2x2 */}
-          <div className="grid grid-cols-4 md:grid-cols-2 gap-2">
+          {/* Quick Actions */}
+          <div className="grid grid-cols-5 md:grid-cols-5 gap-1.5">
             <Button
               onClick={() => handleQuickAdd("Ingreso")}
               className="h-auto py-3 md:py-4 flex-col gap-1 border border-success/20 text-success hover:bg-success/10 hover:border-success/30 hover:shadow-sm bg-transparent transition-all"
             >
               <TrendingUp className="h-4 w-4" />
-              <span className="text-[11px] font-semibold">Ingreso</span>
+              <span className="text-[10px] font-semibold">Ingreso</span>
             </Button>
             <Button
               onClick={() => handleQuickAdd("Gasto")}
               className="h-auto py-3 md:py-4 flex-col gap-1 border border-destructive/20 text-destructive hover:bg-destructive/10 hover:border-destructive/30 hover:shadow-sm bg-transparent transition-all"
             >
               <TrendingDown className="h-4 w-4" />
-              <span className="text-[11px] font-semibold">Gasto</span>
+              <span className="text-[10px] font-semibold">Gasto</span>
             </Button>
             <Button
               onClick={() => handleQuickAdd("Inversión")}
               className="h-auto py-3 md:py-4 flex-col gap-1 border border-blue/20 text-blue hover:bg-blue/10 hover:border-blue/30 hover:shadow-sm bg-transparent transition-all"
             >
               <PiggyBank className="h-4 w-4" />
-              <span className="text-[11px] font-semibold">Inversión</span>
+              <span className="text-[10px] font-semibold">Inversión</span>
             </Button>
             <Button
               onClick={() => openReconciliation()}
@@ -270,10 +274,28 @@ const Index = () => {
               className="h-auto py-3 md:py-4 flex-col gap-1 hover:bg-muted hover:border-border hover:shadow-sm transition-all"
             >
               <Variable className="h-4 w-4" />
-              <span className="text-[11px] font-semibold">Conciliar</span>
+              <span className="text-[10px] font-semibold">Conciliar</span>
+            </Button>
+            <Button
+              onClick={() => setIsBankSyncOpen(true)}
+              className="h-auto py-3 md:py-4 flex-col gap-1 border border-primary/20 text-primary hover:bg-primary/10 hover:border-primary/30 hover:shadow-sm bg-transparent transition-all"
+            >
+              <Building2 className="h-4 w-4" />
+              <span className="text-[10px] font-semibold">Banco</span>
             </Button>
           </div>
         </div>
+
+        <BankSyncModal
+          open={isBankSyncOpen}
+          onOpenChange={setIsBankSyncOpen}
+          syncStep={bankSync.step}
+          pollStatus={bankSync.pollStatus}
+          result={bankSync.result}
+          onStart={bankSync.startSync}
+          onImportSkipped={bankSync.importSkipped}
+          onReset={bankSync.reset}
+        />
 
         {/* Recent Transactions */}
         <Card className="overflow-hidden">

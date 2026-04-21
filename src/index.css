@@ -114,9 +114,9 @@ Based on Indigo, Blue, Cyan palette
 
 @layer base {
   :root {
-    /* Theme Rose - Warm Finance */
+    /* Theme Rose - Warm Finance (Light) */
     --radius: 0.65rem;
-    --background: oklch(1 0 0);
+    --background: oklch(0.985 0.002 286);
     --foreground: oklch(0.141 0.005 285.823);
     --card: oklch(1 0 0);
     --card-foreground: oklch(0.141 0.005 285.823);
@@ -124,16 +124,16 @@ Based on Indigo, Blue, Cyan palette
     --popover-foreground: oklch(0.141 0.005 285.823);
     --primary: oklch(0.586 0.253 17.585);
     --primary-foreground: oklch(0.969 0.015 12.422);
-    --secondary: oklch(0.967 0.001 286.375);
+    --secondary: oklch(0.93 0.003 286);
     --secondary-foreground: oklch(0.21 0.006 285.885);
-    --muted: oklch(0.967 0.001 286.375);
-    --muted-foreground: oklch(0.552 0.016 285.938);
-    --accent: oklch(0.967 0.001 286.375);
+    --muted: oklch(0.93 0.003 286);
+    --muted-foreground: oklch(0.446 0.016 285.938);
+    --accent: oklch(0.93 0.003 286);
     --accent-foreground: oklch(0.21 0.006 285.885);
     --destructive: 0.577 0.245 27.325;
     --destructive-foreground: oklch(0.985 0 0);
-    --border: oklch(0.92 0.004 286.32);
-    --input: oklch(0.92 0.004 286.32);
+    --border: oklch(0.87 0.006 286);
+    --input: oklch(0.87 0.006 286);
     --ring: oklch(0.712 0.194 13.428);
 
     /* Additional functional colors (HSL for compatibility) */
@@ -160,13 +160,13 @@ Based on Indigo, Blue, Cyan palette
     --chart-5: oklch(0.455 0.188 13.697);
 
     /* Sidebar */
-    --sidebar: oklch(0.985 0 0);
+    --sidebar: oklch(0.97 0.002 286);
     --sidebar-foreground: oklch(0.141 0.005 285.823);
     --sidebar-primary: oklch(0.586 0.253 17.585);
     --sidebar-primary-foreground: oklch(0.969 0.015 12.422);
-    --sidebar-accent: oklch(0.967 0.001 286.375);
+    --sidebar-accent: oklch(0.92 0.004 286);
     --sidebar-accent-foreground: oklch(0.21 0.006 285.885);
-    --sidebar-border: oklch(0.92 0.004 286.32);
+    --sidebar-border: oklch(0.87 0.006 286);
     --sidebar-ring: oklch(0.712 0.194 13.428);
   }
 
