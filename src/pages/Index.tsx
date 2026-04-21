@@ -270,23 +270,23 @@ const Index = () => {
             </Button>
             <Button
               onClick={() => setIsBankSyncOpen(true)}
-              className="h-auto py-2.5 md:py-3.5 flex-col gap-1.5 border border-border/60 hover:bg-muted/50 hover:border-border hover:shadow-sm bg-transparent transition-all group"
+              className="h-auto py-3 md:py-4 flex-col gap-1 border border-border/60 hover:bg-muted/50 hover:border-border hover:shadow-sm bg-transparent transition-all group overflow-hidden"
             >
               {/* Stacked bank logos */}
-              <div className="flex items-center justify-center h-5">
-                <div className="flex -space-x-1.5">
-                  {["/banks/bchile.png", "/banks/santander.png", "/banks/bci.png", "/banks/bestado.png", "/banks/scotiabank.png"].map((logo, i) => (
+              <div className="flex items-center justify-center">
+                <div className="flex -space-x-[5px]">
+                  {["/banks/bchile.png", "/banks/santander.png", "/banks/bci.png", "/banks/bestado.png", "/banks/itau.png", "/banks/scotiabank.png", "/banks/falabella.png"].map((logo, i) => (
                     <img
                       key={logo}
                       src={logo}
                       alt=""
-                      className="size-5 rounded-full ring-2 ring-card object-contain bg-card group-hover:translate-y-[-1px] transition-transform"
-                      style={{ zIndex: 5 - i, transitionDelay: `${i * 30}ms` }}
+                      className="size-[14px] md:size-[18px] rounded-full ring-[1.5px] ring-card object-contain bg-card"
+                      style={{ zIndex: 7 - i }}
                     />
                   ))}
                 </div>
               </div>
-              <span className="text-[11px] font-semibold text-foreground/80 group-hover:text-foreground transition-colors">Sincronizar</span>
+              <span className="text-[11px] font-semibold text-muted-foreground">Sincronizar</span>
             </Button>
           </div>
         </div>
