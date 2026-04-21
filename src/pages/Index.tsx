@@ -270,7 +270,7 @@ const Index = () => {
             </Button>
             <Button
               onClick={() => setIsBankSyncOpen(true)}
-              className="h-auto py-2.5 md:py-5 flex-col gap-0.5 md:gap-1.5 border border-border/60 hover:bg-muted/50 hover:border-border hover:shadow-sm bg-transparent transition-all group overflow-hidden"
+              className="h-auto py-2.5 md:py-5 flex-col gap-0.5 md:gap-1.5 border border-primary/20 text-primary hover:bg-primary/10 hover:border-primary/30 hover:shadow-sm bg-transparent transition-all group overflow-hidden"
             >
               {/* Stacked bank logos */}
               <div className="flex items-center justify-center h-4 md:h-5">
@@ -286,7 +286,7 @@ const Index = () => {
                   ))}
                 </div>
               </div>
-              <span className="text-[10px] md:text-xs font-semibold text-muted-foreground">Sincronizar</span>
+              <span className="text-[10px] md:text-xs font-semibold">Sincronizar</span>
             </Button>
           </div>
         </div>
