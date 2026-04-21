@@ -7,7 +7,7 @@ import { useCategories } from "@/hooks/useCategories";
 import { useCategoryLimits } from "@/hooks/useCategoryLimits";
 import { useMonthlySummary } from "@/hooks/useMonthlySummary";
 import { useGlobalDrawers } from "@/hooks/useGlobalDrawers";
-import { TrendingUp, TrendingDown, PiggyBank, Receipt, Eye, Variable, Play, Building2 } from "lucide-react";
+import { TrendingUp, TrendingDown, PiggyBank, Receipt, Eye, Play } from "lucide-react";
 import { BankSyncModal } from "@/components/BankSyncModal";
 import { useBankSyncContext } from "@/contexts/BankSyncContext";
 import { useNavigate } from "react-router-dom";
@@ -28,7 +28,7 @@ const Index = () => {
   const { categories } = useCategories();
   const { limits } = useCategoryLimits();
   const navigate = useNavigate();
-  const { openQuickAdd, openReconciliation, openProfileEdit } = useGlobalDrawers();
+  const { openQuickAdd, openProfileEdit } = useGlobalDrawers();
   const { isPrivacyMode } = usePrivacyMode();
   const [storyOpen, setStoryOpen] = useState(false);
   const [isBankSyncOpen, setIsBankSyncOpen] = useState(false);
@@ -246,42 +246,47 @@ const Index = () => {
           </Card>
 
           {/* Quick Actions */}
-          <div className="grid grid-cols-5 md:grid-cols-5 gap-1.5">
+          <div className="grid grid-cols-4 md:grid-cols-2 gap-2">
             <Button
               onClick={() => handleQuickAdd("Ingreso")}
               className="h-auto py-3 md:py-4 flex-col gap-1 border border-success/20 text-success hover:bg-success/10 hover:border-success/30 hover:shadow-sm bg-transparent transition-all"
             >
               <TrendingUp className="h-4 w-4" />
-              <span className="text-[10px] font-semibold">Ingreso</span>
+              <span className="text-[11px] font-semibold">Ingreso</span>
             </Button>
             <Button
               onClick={() => handleQuickAdd("Gasto")}
               className="h-auto py-3 md:py-4 flex-col gap-1 border border-destructive/20 text-destructive hover:bg-destructive/10 hover:border-destructive/30 hover:shadow-sm bg-transparent transition-all"
             >
               <TrendingDown className="h-4 w-4" />
-              <span className="text-[10px] font-semibold">Gasto</span>
+              <span className="text-[11px] font-semibold">Gasto</span>
             </Button>
             <Button
               onClick={() => handleQuickAdd("Inversión")}
               className="h-auto py-3 md:py-4 flex-col gap-1 border border-blue/20 text-blue hover:bg-blue/10 hover:border-blue/30 hover:shadow-sm bg-transparent transition-all"
             >
               <PiggyBank className="h-4 w-4" />
-              <span className="text-[10px] font-semibold">Inversión</span>
-            </Button>
-            <Button
-              onClick={() => openReconciliation()}
-              variant="outline"
-              className="h-auto py-3 md:py-4 flex-col gap-1 hover:bg-muted hover:border-border hover:shadow-sm transition-all"
-            >
-              <Variable className="h-4 w-4" />
-              <span className="text-[10px] font-semibold">Conciliar</span>
+              <span className="text-[11px] font-semibold">Inversión</span>
             </Button>
             <Button
               onClick={() => setIsBankSyncOpen(true)}
-              className="h-auto py-3 md:py-4 flex-col gap-1 border border-primary/20 text-primary hover:bg-primary/10 hover:border-primary/30 hover:shadow-sm bg-transparent transition-all"
+              className="h-auto py-2.5 md:py-3.5 flex-col gap-1.5 border border-border/60 hover:bg-muted/50 hover:border-border hover:shadow-sm bg-transparent transition-all group"
             >
-              <Building2 className="h-4 w-4" />
-              <span className="text-[10px] font-semibold">Banco</span>
+              {/* Stacked bank logos */}
+              <div className="flex items-center justify-center h-5">
+                <div className="flex -space-x-1.5">
+                  {["/banks/bchile.png", "/banks/santander.png", "/banks/bci.png", "/banks/bestado.png", "/banks/scotiabank.png"].map((logo, i) => (
+                    <img
+                      key={logo}
+                      src={logo}
+                      alt=""
+                      className="size-5 rounded-full ring-2 ring-card object-contain bg-card group-hover:translate-y-[-1px] transition-transform"
+                      style={{ zIndex: 5 - i, transitionDelay: `${i * 30}ms` }}
+                    />
+                  ))}
+                </div>
+              </div>
+              <span className="text-[11px] font-semibold text-foreground/80 group-hover:text-foreground transition-colors">Sincronizar</span>
             </Button>
           </div>
         </div>
