@@ -30,7 +30,7 @@ export function FloatingActionButton({ onClick, className }: FloatingActionButto
           "hover:shadow-[0_12px_40px_rgb(79,70,229,0.6)]",
           "transition-all duration-300",
           "active:scale-95",
-          "border-2 border-white/10"
+          "border-2 border-primary/20 dark:border-white/10"
         )}
       >
         <Plus className="h-6 w-6 text-primary-foreground drop-shadow-lg" strokeWidth={2.5} />

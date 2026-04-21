@@ -28,7 +28,7 @@ const maxWidthClasses = {
 
 const variantStyles = {
   default: {
-    border: "border-white/10",
+    border: "border-border/60 dark:border-white/10",
     header: "",
     accent: "",
   },

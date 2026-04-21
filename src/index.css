@@ -116,24 +116,24 @@ Based on Indigo, Blue, Cyan palette
   :root {
     /* Theme Rose - Warm Finance (Light) */
     --radius: 0.65rem;
-    --background: oklch(0.985 0.002 286);
-    --foreground: oklch(0.141 0.005 285.823);
-    --card: oklch(1 0 0);
-    --card-foreground: oklch(0.141 0.005 285.823);
-    --popover: oklch(1 0 0);
-    --popover-foreground: oklch(0.141 0.005 285.823);
+    --background: oklch(0.965 0.002 286);
+    --foreground: oklch(0.13 0.005 285.823);
+    --card: oklch(0.995 0 0);
+    --card-foreground: oklch(0.13 0.005 285.823);
+    --popover: oklch(0.995 0 0);
+    --popover-foreground: oklch(0.13 0.005 285.823);
     --primary: oklch(0.586 0.253 17.585);
     --primary-foreground: oklch(0.969 0.015 12.422);
-    --secondary: oklch(0.93 0.003 286);
-    --secondary-foreground: oklch(0.21 0.006 285.885);
-    --muted: oklch(0.93 0.003 286);
-    --muted-foreground: oklch(0.446 0.016 285.938);
-    --accent: oklch(0.93 0.003 286);
-    --accent-foreground: oklch(0.21 0.006 285.885);
+    --secondary: oklch(0.935 0.003 286);
+    --secondary-foreground: oklch(0.18 0.006 285.885);
+    --muted: oklch(0.935 0.003 286);
+    --muted-foreground: oklch(0.385 0.016 285.938);
+    --accent: oklch(0.935 0.003 286);
+    --accent-foreground: oklch(0.18 0.006 285.885);
     --destructive: 0.577 0.245 27.325;
     --destructive-foreground: oklch(0.985 0 0);
-    --border: oklch(0.87 0.006 286);
-    --input: oklch(0.87 0.006 286);
+    --border: oklch(0.835 0.008 286);
+    --input: oklch(0.835 0.008 286);
     --ring: oklch(0.712 0.194 13.428);
 
     /* Additional functional colors (HSL for compatibility) */
@@ -149,8 +149,8 @@ Based on Indigo, Blue, Cyan palette
     --color-expense: #e11d48;
     --color-investment: #0ea5e9;
     --color-balance: #f59e0b;
-    --color-muted-axis: #94a3b8;
-    --color-grid: #e2e8f0;
+    --color-muted-axis: #64748b;
+    --color-grid: #d1d5db;
 
     /* Charts - OKLCH */
     --chart-1: oklch(0.81 0.117 11.638);
@@ -160,13 +160,13 @@ Based on Indigo, Blue, Cyan palette
     --chart-5: oklch(0.455 0.188 13.697);
 
     /* Sidebar */
-    --sidebar: oklch(0.97 0.002 286);
-    --sidebar-foreground: oklch(0.141 0.005 285.823);
+    --sidebar: oklch(0.955 0.002 286);
+    --sidebar-foreground: oklch(0.13 0.005 285.823);
     --sidebar-primary: oklch(0.586 0.253 17.585);
     --sidebar-primary-foreground: oklch(0.969 0.015 12.422);
-    --sidebar-accent: oklch(0.92 0.004 286);
-    --sidebar-accent-foreground: oklch(0.21 0.006 285.885);
-    --sidebar-border: oklch(0.87 0.006 286);
+    --sidebar-accent: oklch(0.91 0.004 286);
+    --sidebar-accent-foreground: oklch(0.18 0.006 285.885);
+    --sidebar-border: oklch(0.835 0.008 286);
     --sidebar-ring: oklch(0.712 0.194 13.428);
   }
 
@@ -454,6 +454,18 @@ Based on Indigo, Blue, Cyan palette
     backdrop-filter: blur(20px) saturate(180%);
     -webkit-backdrop-filter: blur(20px) saturate(180%);
     border: 1px solid rgba(255, 255, 255, 0.05);
+  }
+
+  :root .nav-glass {
+    background: rgba(255, 255, 255, 0.82);
+    border: 1px solid rgba(0, 0, 0, 0.06);
+    box-shadow: 0 -1px 20px rgba(0, 0, 0, 0.06);
+  }
+
+  .dark .nav-glass {
+    background: rgba(0, 0, 0, 0.75);
+    border: 1px solid rgba(255, 255, 255, 0.05);
+    box-shadow: none;
   }
   
   /* ── Mobile Bottom Tab Bar ── */
