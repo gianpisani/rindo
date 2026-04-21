@@ -165,128 +165,128 @@ const Index = () => {
           </h1>
         </div>
 
-        {/* Hero: Balance (izq) + Quick Actions 2x2 (der) */}
+        {/* Hero: Balance + Quick Actions */}
         <div className="grid grid-cols-1 md:grid-cols-[3fr,2fr] gap-3">
-          {/* Balance Card — compact */}
+          {/* Balance Card */}
           <Card className="border-border/50 flex flex-col overflow-hidden">
             <div className="h-[2px] accent-gradient-bg" />
-            <div className="px-5 py-4 flex flex-col">
-            <div className="flex items-center justify-between">
-              <span className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider">Balance Total</span>
-              <span className="text-[10px] text-muted-foreground font-mono tabular-nums capitalize">
-                {format(now, "MMMM yyyy", { locale: es })}
-              </span>
-            </div>
-            <div className={cn("mt-2 text-3xl md:text-4xl font-bold font-mono tabular-nums tracking-tight", isPrivacyMode && "privacy-blur")}>
-              $<NumberFlow
-                value={totalBalance}
-                format={{
-                  style: "decimal",
-                  minimumFractionDigits: 0,
-                  maximumFractionDigits: 0
-                }}
-                locales="es-CL"
-              />
-            </div>
-            <div className="mt-3 pt-3 border-t border-border/50">
-              <div className="flex items-center gap-4 md:gap-6">
-                <div className="flex items-center gap-1.5">
-                  <TrendingUp className="h-3 w-3 text-success" />
-                  <span className={cn("text-sm font-semibold font-mono tabular-nums", isPrivacyMode && "privacy-blur")}>
-                    ${new Intl.NumberFormat("es-CL").format(currentIncome)}
-                  </span>
-                  {incomeChange !== 0 && (
-                    <span className={cn(
-                      "text-[10px]",
-                      incomeChange > 0 ? "text-success" : "text-destructive",
-                      isPrivacyMode && "privacy-blur"
-                    )}>
-                      {incomeChange > 0 ? "+" : ""}{Math.round(incomeChange)}%
+            <div className="px-4 py-3 md:px-5 md:py-4 flex flex-col">
+              <div className="flex items-center justify-between">
+                <span className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider">Balance Total</span>
+                <span className="text-[10px] text-muted-foreground font-mono tabular-nums capitalize">
+                  {format(now, "MMMM yyyy", { locale: es })}
+                </span>
+              </div>
+              <div className={cn("mt-1.5 md:mt-2 text-[28px] md:text-4xl font-bold font-mono tabular-nums tracking-tight leading-none", isPrivacyMode && "privacy-blur")}>
+                $<NumberFlow
+                  value={totalBalance}
+                  format={{
+                    style: "decimal",
+                    minimumFractionDigits: 0,
+                    maximumFractionDigits: 0
+                  }}
+                  locales="es-CL"
+                />
+              </div>
+              <div className="mt-2.5 pt-2.5 md:mt-3 md:pt-3 border-t border-border/50">
+                <div className="flex items-center gap-3 md:gap-6 flex-wrap">
+                  <div className="flex items-center gap-1">
+                    <TrendingUp className="h-3 w-3 text-success shrink-0" />
+                    <span className={cn("text-xs md:text-sm font-semibold font-mono tabular-nums", isPrivacyMode && "privacy-blur")}>
+                      ${new Intl.NumberFormat("es-CL").format(currentIncome)}
                     </span>
-                  )}
-                </div>
-                <div className="flex items-center gap-1.5">
-                  <TrendingDown className="h-3 w-3 text-destructive" />
-                  <span className={cn("text-sm font-semibold font-mono tabular-nums", isPrivacyMode && "privacy-blur")}>
-                    ${new Intl.NumberFormat("es-CL").format(currentExpenses)}
-                  </span>
-                  {expenseChange !== 0 && (
-                    <span className={cn(
-                      "text-[10px]",
-                      expenseChange > 0 ? "text-destructive" : "text-success",
-                      isPrivacyMode && "privacy-blur"
-                    )}>
-                      {expenseChange > 0 ? "+" : ""}{Math.round(expenseChange)}%
-                    </span>
-                  )}
-                </div>
-                {currentInvestments > 0 && (
-                  <div className="flex items-center gap-1.5">
-                    <PiggyBank className="h-3 w-3 text-blue" />
-                    <span className={cn("text-sm font-semibold font-mono tabular-nums", isPrivacyMode && "privacy-blur")}>
-                      ${new Intl.NumberFormat("es-CL").format(currentInvestments)}
-                    </span>
+                    {incomeChange !== 0 && (
+                      <span className={cn(
+                        "text-[9px] md:text-[10px]",
+                        incomeChange > 0 ? "text-success" : "text-destructive",
+                        isPrivacyMode && "privacy-blur"
+                      )}>
+                        {incomeChange > 0 ? "+" : ""}{Math.round(incomeChange)}%
+                      </span>
+                    )}
                   </div>
+                  <div className="flex items-center gap-1">
+                    <TrendingDown className="h-3 w-3 text-destructive shrink-0" />
+                    <span className={cn("text-xs md:text-sm font-semibold font-mono tabular-nums", isPrivacyMode && "privacy-blur")}>
+                      ${new Intl.NumberFormat("es-CL").format(currentExpenses)}
+                    </span>
+                    {expenseChange !== 0 && (
+                      <span className={cn(
+                        "text-[9px] md:text-[10px]",
+                        expenseChange > 0 ? "text-destructive" : "text-success",
+                        isPrivacyMode && "privacy-blur"
+                      )}>
+                        {expenseChange > 0 ? "+" : ""}{Math.round(expenseChange)}%
+                      </span>
+                    )}
+                  </div>
+                  {currentInvestments > 0 && (
+                    <div className="flex items-center gap-1">
+                      <PiggyBank className="h-3 w-3 text-blue shrink-0" />
+                      <span className={cn("text-xs md:text-sm font-semibold font-mono tabular-nums", isPrivacyMode && "privacy-blur")}>
+                        ${new Intl.NumberFormat("es-CL").format(currentInvestments)}
+                      </span>
+                    </div>
+                  )}
+                </div>
+                {(lastMonthIncome > 0 || lastMonthExpenses > 0) && (
+                  <p className={cn(
+                    "text-[10px] text-muted-foreground font-mono tabular-nums mt-1.5 md:mt-2",
+                    isPrivacyMode && "privacy-blur"
+                  )}>
+                    <span className="capitalize">{format(lastMonth, "MMM", { locale: es })}</span>
+                    <span className="mx-1 text-muted-foreground/40">&middot;</span>
+                    <span className="text-success/80">+{formatCurrency(lastMonthIncome)}</span>
+                    <span className="mx-1 text-muted-foreground/40">&middot;</span>
+                    <span className="text-destructive/80">&minus;{formatCurrency(lastMonthExpenses)}</span>
+                  </p>
                 )}
               </div>
-              {(lastMonthIncome > 0 || lastMonthExpenses > 0) && (
-                <p className={cn(
-                  "text-[10px] text-muted-foreground font-mono tabular-nums mt-2",
-                  isPrivacyMode && "privacy-blur"
-                )}>
-                  <span className="capitalize">{format(lastMonth, "MMM", { locale: es })}</span>
-                  <span className="mx-1 text-muted-foreground/40">·</span>
-                  <span className="text-success/80">+{formatCurrency(lastMonthIncome)}</span>
-                  <span className="mx-1 text-muted-foreground/40">·</span>
-                  <span className="text-destructive/80">−{formatCurrency(lastMonthExpenses)}</span>
-                </p>
-              )}
-            </div>
             </div>
           </Card>
 
           {/* Quick Actions */}
-          <div className="grid grid-cols-4 md:grid-cols-2 gap-2">
+          <div className="grid grid-cols-4 md:grid-cols-2 gap-1.5 md:gap-2">
             <Button
               onClick={() => handleQuickAdd("Ingreso")}
-              className="h-auto py-3 md:py-5 flex-col gap-1 md:gap-1.5 border border-success/20 text-success hover:bg-success/10 hover:border-success/30 hover:shadow-sm bg-transparent transition-all"
+              className="h-auto py-2.5 md:py-5 flex-col gap-0.5 md:gap-1.5 border border-success/20 text-success hover:bg-success/10 hover:border-success/30 hover:shadow-sm bg-transparent transition-all"
             >
               <TrendingUp className="h-4 w-4 md:h-5 md:w-5" />
-              <span className="text-[11px] md:text-xs font-semibold">Ingreso</span>
+              <span className="text-[10px] md:text-xs font-semibold">Ingreso</span>
             </Button>
             <Button
               onClick={() => handleQuickAdd("Gasto")}
-              className="h-auto py-3 md:py-5 flex-col gap-1 md:gap-1.5 border border-destructive/20 text-destructive hover:bg-destructive/10 hover:border-destructive/30 hover:shadow-sm bg-transparent transition-all"
+              className="h-auto py-2.5 md:py-5 flex-col gap-0.5 md:gap-1.5 border border-destructive/20 text-destructive hover:bg-destructive/10 hover:border-destructive/30 hover:shadow-sm bg-transparent transition-all"
             >
               <TrendingDown className="h-4 w-4 md:h-5 md:w-5" />
-              <span className="text-[11px] md:text-xs font-semibold">Gasto</span>
+              <span className="text-[10px] md:text-xs font-semibold">Gasto</span>
             </Button>
             <Button
               onClick={() => handleQuickAdd("Inversión")}
-              className="h-auto py-3 md:py-5 flex-col gap-1 md:gap-1.5 border border-blue/20 text-blue hover:bg-blue/10 hover:border-blue/30 hover:shadow-sm bg-transparent transition-all"
+              className="h-auto py-2.5 md:py-5 flex-col gap-0.5 md:gap-1.5 border border-blue/20 text-blue hover:bg-blue/10 hover:border-blue/30 hover:shadow-sm bg-transparent transition-all"
             >
               <PiggyBank className="h-4 w-4 md:h-5 md:w-5" />
-              <span className="text-[11px] md:text-xs font-semibold">Inversión</span>
+              <span className="text-[10px] md:text-xs font-semibold">Inversión</span>
             </Button>
             <Button
               onClick={() => setIsBankSyncOpen(true)}
-              className="h-auto py-3 md:py-5 flex-col gap-1 md:gap-1.5 border border-border/60 hover:bg-muted/50 hover:border-border hover:shadow-sm bg-transparent transition-all group overflow-hidden"
+              className="h-auto py-2.5 md:py-5 flex-col gap-0.5 md:gap-1.5 border border-border/60 hover:bg-muted/50 hover:border-border hover:shadow-sm bg-transparent transition-all group overflow-hidden"
             >
               {/* Stacked bank logos */}
-              <div className="flex items-center justify-center">
-                <div className="flex -space-x-[5px] md:-space-x-[6px]">
-                  {["/banks/bchile.png", "/banks/santander.png", "/banks/bci.png", "/banks/bestado.png", "/banks/itau.png", "/banks/scotiabank.png", "/banks/falabella.png"].map((logo, i) => (
+              <div className="flex items-center justify-center h-4 md:h-5">
+                <div className="flex -space-x-1.5 md:-space-x-[6px]">
+                  {["/banks/bchile.png", "/banks/santander.png", "/banks/bci.png", "/banks/bestado.png", "/banks/itau.png"].map((logo, i) => (
                     <img
                       key={logo}
                       src={logo}
                       alt=""
-                      className="size-[14px] md:size-5 rounded-full ring-[1.5px] ring-card object-contain bg-card"
-                      style={{ zIndex: 7 - i }}
+                      className="size-4 md:size-5 rounded-full ring-[1.5px] ring-card object-contain bg-card"
+                      style={{ zIndex: 5 - i }}
                     />
                   ))}
                 </div>
               </div>
-              <span className="text-[11px] md:text-xs font-semibold text-muted-foreground">Sincronizar</span>
+              <span className="text-[10px] md:text-xs font-semibold text-muted-foreground">Sincronizar</span>
             </Button>
           </div>
         </div>
