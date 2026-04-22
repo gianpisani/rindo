@@ -372,9 +372,9 @@ const Index = () => {
           <p className="text-xs text-muted-foreground">Sin gastos</p>
         </div>
       ) : (
-        <div className="flex-1 flex items-center gap-2 px-2 pb-2 min-h-0">
-          {/* Donut — fixed size, pushed left */}
-          <div className="relative shrink-0 w-[90px] h-[90px]">
+        <div className="flex-1 flex items-center justify-center gap-3 px-3 pb-2 min-h-0">
+          {/* Donut */}
+          <div className="relative shrink-0 w-[80px] h-[80px]">
             <ResponsiveContainer width="100%" height="100%">
               <PieChart>
                 <Pie
@@ -383,8 +383,8 @@ const Index = () => {
                   nameKey="category"
                   cx="50%"
                   cy="50%"
-                  innerRadius={24}
-                  outerRadius={40}
+                  innerRadius={22}
+                  outerRadius={36}
                   paddingAngle={2}
                   strokeWidth={0}
                   className={cn(isPrivacyMode && "privacy-blur")}
@@ -402,7 +402,7 @@ const Index = () => {
             </ResponsiveContainer>
             <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
               <p className={cn(
-                "text-[9px] font-bold font-mono tabular-nums",
+                "text-[8px] font-bold font-mono tabular-nums",
                 isPrivacyMode && "privacy-blur"
               )}>
                 {formatCompact(donutTotal)}
@@ -410,7 +410,7 @@ const Index = () => {
             </div>
           </div>
           {/* Legend */}
-          <div className="flex-1 space-y-0.5 overflow-hidden">
+          <div className="space-y-0.5 overflow-hidden">
             {donutData.map((cat) => (
               <div key={cat.category} className="flex items-center gap-1.5 min-w-0">
                 <span className="size-1.5 rounded-full shrink-0" style={{ backgroundColor: cat.color }} />
