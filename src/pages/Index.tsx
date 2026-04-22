@@ -361,52 +361,50 @@ const Index = () => {
 
   // ─── Donut Chart Card (desktop top row) ────────────────
   const donutCard = (
-    <Card className="border-border/50 overflow-hidden flex flex-col">
-      <div className="px-3 pt-3 pb-1">
+    <Card className="border-border/50 overflow-hidden flex flex-col h-full">
+      <div className="px-3 pt-2.5 pb-0">
         <span className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider">
           Gastos del mes
         </span>
       </div>
       {donutData.length === 0 ? (
-        <div className="flex-1 flex items-center justify-center p-3">
+        <div className="flex-1 flex items-center justify-center">
           <p className="text-xs text-muted-foreground">Sin gastos</p>
         </div>
       ) : (
-        <div className="flex-1 flex items-center justify-center p-2">
-          <div className="relative w-full" style={{ maxWidth: 140, aspectRatio: "1" }}>
-            <ResponsiveContainer width="100%" height="100%">
-              <PieChart>
-                <Pie
-                  data={donutData}
-                  dataKey="amount"
-                  nameKey="category"
-                  cx="50%"
-                  cy="50%"
-                  innerRadius="45%"
-                  outerRadius="80%"
-                  paddingAngle={2}
-                  strokeWidth={0}
-                  className={cn(isPrivacyMode && "privacy-blur")}
-                >
-                  {donutData.map((entry, i) => (
-                    <Cell
-                      key={i}
-                      fill={entry.color}
-                      className="transition-opacity hover:opacity-80 cursor-pointer"
-                    />
-                  ))}
-                </Pie>
-                <ChartTooltip content={<DonutTooltip />} />
-              </PieChart>
-            </ResponsiveContainer>
-            <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-              <p className={cn(
-                "text-[10px] font-bold font-mono tabular-nums",
-                isPrivacyMode && "privacy-blur"
-              )}>
-                {formatCompact(donutTotal)}
-              </p>
-            </div>
+        <div className="flex-1 relative min-h-0">
+          <ResponsiveContainer width="100%" height="100%">
+            <PieChart>
+              <Pie
+                data={donutData}
+                dataKey="amount"
+                nameKey="category"
+                cx="50%"
+                cy="50%"
+                innerRadius="38%"
+                outerRadius="70%"
+                paddingAngle={2}
+                strokeWidth={0}
+                className={cn(isPrivacyMode && "privacy-blur")}
+              >
+                {donutData.map((entry, i) => (
+                  <Cell
+                    key={i}
+                    fill={entry.color}
+                    className="transition-opacity hover:opacity-80 cursor-pointer"
+                  />
+                ))}
+              </Pie>
+              <ChartTooltip content={<DonutTooltip />} />
+            </PieChart>
+          </ResponsiveContainer>
+          <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+            <p className={cn(
+              "text-[10px] font-bold font-mono tabular-nums",
+              isPrivacyMode && "privacy-blur"
+            )}>
+              {formatCompact(donutTotal)}
+            </p>
           </div>
         </div>
       )}
@@ -604,12 +602,12 @@ const Index = () => {
           {/* Top row: Balance | Donut | Quick Actions */}
           <div className="grid grid-cols-12 gap-3 items-stretch">
             <div className="col-span-5">{balanceCard}</div>
-            <div className="col-span-3">{donutCard}</div>
+            <div className="col-span-3 min-h-0">{donutCard}</div>
             <div className="col-span-4">{quickActions}</div>
           </div>
 
-          {/* Bottom row: Transactions | Insights */}
-          <div className="grid grid-cols-12 gap-3 items-stretch" style={{ height: "calc(100vh - 280px)", minHeight: 320, maxHeight: 520 }}>
+          {/* Bottom row: Transactions | Insights — fills remaining viewport */}
+          <div className="grid grid-cols-12 gap-3 items-stretch" style={{ height: "calc(100vh - 320px)", minHeight: 280 }}>
             <div className="col-span-7 min-h-0">{transactionsCard}</div>
             <div className="col-span-5 min-h-0">{insightsPanel}</div>
           </div>
