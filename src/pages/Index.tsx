@@ -351,23 +351,23 @@ const Index = () => {
     </div>
   );
 
-  // ─── Donut Chart Card (desktop — horizontal layout) ──
+  // ─── Donut Chart Card (desktop) ────────────────────────
   const donutCard = (
-    <Card className="border-border/50 overflow-hidden">
+    <Card className="border-border/50 overflow-hidden flex flex-col">
       <div className="px-4 pt-3 pb-1">
         <span className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider">
           Gastos del mes
         </span>
       </div>
       {donutData.length === 0 ? (
-        <div className="flex items-center justify-center p-4">
+        <div className="flex-1 flex items-center justify-center p-4">
           <p className="text-xs text-muted-foreground">Sin gastos</p>
         </div>
       ) : (
-        <div className="flex items-center gap-4 px-4 pb-3">
+        <div className="flex-1 flex flex-col px-3 pb-3">
           {/* Donut */}
-          <div className="relative shrink-0 w-[120px] h-[120px]">
-            <ResponsiveContainer width="100%" height="100%">
+          <div className="relative mx-auto w-full max-w-[140px]">
+            <ResponsiveContainer width="100%" height={130}>
               <PieChart>
                 <Pie
                   data={donutData}
@@ -375,8 +375,8 @@ const Index = () => {
                   nameKey="category"
                   cx="50%"
                   cy="50%"
-                  innerRadius={32}
-                  outerRadius={52}
+                  innerRadius={35}
+                  outerRadius={55}
                   paddingAngle={3}
                   strokeWidth={0}
                   className={cn(isPrivacyMode && "privacy-blur")}
@@ -402,17 +402,17 @@ const Index = () => {
             </div>
           </div>
           {/* Legend */}
-          <div className="flex-1 grid grid-cols-2 gap-x-4 gap-y-1">
+          <div className="space-y-0.5 mt-1">
             {donutData.map((cat) => (
               <div key={cat.category} className="flex items-center gap-1.5 min-w-0">
                 <span
                   className="size-2 rounded-full shrink-0"
                   style={{ backgroundColor: cat.color }}
                 />
-                <span className="text-[11px] text-muted-foreground truncate">
+                <span className="text-[10px] text-muted-foreground truncate flex-1">
                   {getCatEmoji(cat.category)} {cat.category}
                 </span>
-                <span className={cn("text-[11px] font-semibold tabular-nums ml-auto shrink-0", isPrivacyMode && "privacy-blur")}>
+                <span className={cn("text-[10px] font-semibold tabular-nums shrink-0", isPrivacyMode && "privacy-blur")}>
                   {cat.percentage.toFixed(0)}%
                 </span>
               </div>
@@ -424,7 +424,7 @@ const Index = () => {
   );
 
   // ─── Insights Panel (desktop) ─────────────────────────
-  const topInsights = insights.slice(0, 6);
+  const topInsights = insights.slice(0, 4);
   const insightsPanel = (
     <Card className="border-border/50 overflow-hidden flex flex-col">
       <div className="flex items-center justify-between px-4 pt-3 pb-2">
@@ -457,20 +457,20 @@ const Index = () => {
           </div>
         </div>
       ) : (
-        <div className="flex-1 overflow-y-auto max-h-[450px] px-3 pb-3 space-y-1.5">
+        <div className="flex-1 overflow-y-auto px-3 pb-3 space-y-1.5">
           {topInsights.map((insight, i) => {
             const style = insightStyle[insight.type];
             const Icon = style.icon;
             return (
               <div
                 key={i}
-                className="flex items-start gap-2.5 rounded-lg border border-border/30 p-2.5 hover:bg-muted/30 transition-colors"
+                className="flex items-start gap-2 rounded-lg border border-border/30 p-2 hover:bg-muted/30 transition-colors"
               >
-                <div className={cn("flex items-center justify-center size-7 rounded-lg shrink-0 mt-0.5", style.bg)}>
-                  <Icon className={cn("h-3.5 w-3.5", style.color)} />
+                <div className={cn("flex items-center justify-center size-6 rounded-md shrink-0 mt-0.5", style.bg)}>
+                  <Icon className={cn("h-3 w-3", style.color)} />
                 </div>
                 <div className="min-w-0 flex-1">
-                  <p className="text-xs font-medium leading-snug">{insight.title}</p>
+                  <p className="text-[11px] font-medium leading-snug">{insight.title}</p>
                   <p className={cn("text-[10px] text-muted-foreground leading-snug mt-0.5", isPrivacyMode && "privacy-blur")}>
                     {insight.description}
                   </p>
@@ -623,13 +623,11 @@ const Index = () => {
             {quickActions}
           </div>
 
-          {/* Bottom row: Transactions | Donut + Insights */}
+          {/* Bottom row: Transactions | Donut | Insights */}
           <div className="grid grid-cols-12 gap-3">
-            <div className="col-span-5">{transactionsCard}</div>
-            <div className="col-span-7 flex flex-col gap-3">
-              {donutCard}
-              {insightsPanel}
-            </div>
+            <div className="col-span-4">{transactionsCard}</div>
+            <div className="col-span-3">{donutCard}</div>
+            <div className="col-span-5">{insightsPanel}</div>
           </div>
         </div>
 
