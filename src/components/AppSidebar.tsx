@@ -229,6 +229,7 @@ export function AppSidebar() {
                 sideOffset={4}
               >
                 <DropdownMenuItem
+                  onSelect={(e) => e.preventDefault()}
                   onClick={togglePrivacyMode}
                   className="gap-2 p-2 cursor-pointer"
                 >
@@ -238,6 +239,7 @@ export function AppSidebar() {
                   </div>
                 </DropdownMenuItem>
                 <DropdownMenuItem
+                  onSelect={(e) => e.preventDefault()}
                   onClick={() => setTheme(theme === "light" ? "dark" : theme === "dark" ? "system" : "light")}
                   className="gap-2 p-2 cursor-pointer"
                 >
@@ -245,6 +247,7 @@ export function AppSidebar() {
                   <div className="font-medium flex-1">{getThemeLabel()}</div>
                 </DropdownMenuItem>
                 <DropdownMenuItem
+                  onSelect={(e) => e.preventDefault()}
                   onClick={() => {
                     toggleSound();
                     if (soundEnabled) playToggleOff(); else playToggleOn();
@@ -479,6 +482,7 @@ export function AppSidebar() {
                 </div>
                 <DropdownMenuSeparator />
                 <DropdownMenuItem
+                  onSelect={(e) => e.preventDefault()}
                   onClick={togglePrivacyMode}
                   className="gap-2 px-3 py-2 cursor-pointer"
                 >
@@ -486,6 +490,7 @@ export function AppSidebar() {
                   {isPrivacyMode ? "Desactivar" : "Activar"} privacidad
                 </DropdownMenuItem>
                 <DropdownMenuItem
+                  onSelect={(e) => e.preventDefault()}
                   onClick={() => {
                     toggleSound();
                     if (soundEnabled) playToggleOff(); else playToggleOn();
@@ -497,6 +502,7 @@ export function AppSidebar() {
                 </DropdownMenuItem>
                 {isSupported && (
                   <DropdownMenuItem
+                    onSelect={(e) => e.preventDefault()}
                     onClick={isSubscribed ? unsubscribe : subscribe}
                     disabled={isLoading}
                     className="gap-2 px-3 py-2 cursor-pointer"
