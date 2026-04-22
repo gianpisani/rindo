@@ -15,11 +15,7 @@ import {
   Receipt,
   Eye,
   Play,
-  AlertTriangle,
-  Trophy,
   Lightbulb,
-  ArrowUpRight,
-  ArrowDownRight,
 } from "lucide-react";
 import { BankSyncModal } from "@/components/BankSyncModal";
 import { useBankSyncContext } from "@/contexts/BankSyncContext";
@@ -226,12 +222,18 @@ const Index = () => {
     }).format(value);
   };
 
-  // Insight icon/color mapping
-  const insightStyle = {
-    alert: { icon: AlertTriangle, color: "text-amber-500", bg: "bg-amber-500/10" },
-    achievement: { icon: Trophy, color: "text-success", bg: "bg-success/10" },
-    opportunity: { icon: Lightbulb, color: "text-blue", bg: "bg-blue/10" },
-    pattern: { icon: ArrowUpRight, color: "text-primary", bg: "bg-primary/10" },
+  // Insight type → gradient color for icon background
+  const insightGradient: Record<string, string> = {
+    alert: "from-amber-500/25 to-transparent",
+    achievement: "from-emerald-500/25 to-transparent",
+    opportunity: "from-sky-500/25 to-transparent",
+    pattern: "from-violet-500/25 to-transparent",
+  };
+  const insightBorder: Record<string, string> = {
+    alert: "border-amber-500/20",
+    achievement: "border-emerald-500/20",
+    opportunity: "border-sky-500/20",
+    pattern: "border-violet-500/20",
   };
 
   // ─── Balance Card (shared between mobile/desktop) ─────
@@ -455,15 +457,19 @@ const Index = () => {
       ) : (
         <div className="flex-1 overflow-y-auto px-3 pb-3 space-y-1.5">
           {topInsights.map((insight, i) => {
-            const style = insightStyle[insight.type];
-            const Icon = style.icon;
+            const emoji = insight.category ? getCatEmoji(insight.category) : "💡";
+            const gradient = insightGradient[insight.type] || insightGradient.pattern;
+            const border = insightBorder[insight.type] || insightBorder.pattern;
             return (
               <div
                 key={i}
-                className="flex items-start gap-2.5 rounded-lg border border-border/30 p-2.5 hover:bg-muted/30 transition-colors"
+                className={cn(
+                  "flex items-start gap-2.5 rounded-lg border p-2.5 transition-colors hover:brightness-110",
+                  border
+                )}
               >
-                <div className={cn("flex items-center justify-center size-6 rounded-md shrink-0 mt-0.5", style.bg)}>
-                  <Icon className={cn("h-3 w-3", style.color)} />
+                <div className={cn("flex items-center justify-center size-7 rounded-lg shrink-0 bg-gradient-to-br", gradient)}>
+                  <span className="text-sm leading-none">{emoji}</span>
                 </div>
                 <div className="min-w-0 flex-1">
                   <p className="text-[11px] font-medium leading-snug">{insight.title}</p>
