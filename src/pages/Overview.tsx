@@ -492,17 +492,25 @@ export default function Overview() {
 
   // ─── Histórico data ───────────────────────────────────
 
-  const last6Months = useMemo(
-    () =>
-      eachMonthOfInterval({
+  const allMonths = useMemo(() => {
+    if (transactions.length === 0) {
+      return eachMonthOfInterval({
         start: subMonths(new Date(), 5),
         end: new Date(),
-      }),
-    []
-  );
+      });
+    }
+    const earliest = transactions.reduce((min, t) => {
+      const d = new Date(t.date);
+      return d < min ? d : min;
+    }, new Date());
+    return eachMonthOfInterval({
+      start: startOfMonth(earliest),
+      end: new Date(),
+    });
+  }, [transactions]);
 
   const monthlyData = useMemo(() => {
-    return last6Months.map((month) => {
+    return allMonths.map((month) => {
       const monthStart = startOfMonth(month);
       const monthEnd = endOfMonth(month);
       const monthTxns = transactions.filter((t) => {
@@ -519,14 +527,14 @@ export default function Overview() {
         .filter((t) => t.type === "Inversión")
         .reduce((sum, t) => sum + Number(t.amount), 0);
       return {
-        month: format(month, "MMM", { locale: es }),
+        month: format(month, "MMM yy", { locale: es }),
         Ingresos: income,
         Gastos: expenses,
         Inversiones: investments,
         Balance: income - expenses - investments,
       };
     });
-  }, [last6Months, transactions]);
+  }, [allMonths, transactions]);
 
   // Historical aggregate stats (independent of selectedMonth)
   const historicalStats = useMemo(() => {
@@ -1394,7 +1402,7 @@ export default function Overview() {
                 {/* Monthly Evolution */}
                 <SectionCard
                   title="Evolución Mensual"
-                  tooltip="Tendencia de ingresos, gastos e inversiones en los últimos 6 meses"
+                  tooltip="Tendencia de ingresos, gastos e inversiones a lo largo de todo tu historial"
                 >
                   <MonthlyEvolutionChart data={monthlyData} />
                 </SectionCard>
