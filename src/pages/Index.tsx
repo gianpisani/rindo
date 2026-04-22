@@ -18,8 +18,6 @@ import { cn } from "@/lib/utils";
 import NumberFlow from "@number-flow/react";
 import { usePrivacyMode } from "@/hooks/usePrivacyMode";
 import { MonthlyStory } from "@/components/MonthlyStory";
-import { useTodayTraining } from "@/hooks/useTodayTraining";
-import { TrainingBanner } from "@/components/training/TrainingBanner";
 import { useUserProfile } from "@/hooks/useUserProfile";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 
@@ -33,7 +31,6 @@ const Index = () => {
   const [storyOpen, setStoryOpen] = useState(false);
   const [isBankSyncOpen, setIsBankSyncOpen] = useState(false);
   const bankSync = useBankSyncContext();
-  const { sessions: todaySessions, nextRace, isLoading: trainingLoading, markCompleted, markSkipped } = useTodayTraining();
   const { profile: userProfile, avatarUrl } = useUserProfile();
 
   const getGreeting = () => {
@@ -402,17 +399,6 @@ const Index = () => {
             </div>
           )}
         </Card>
-
-        {/* Training Banner */}
-        {!trainingLoading && (todaySessions.length > 0 || nextRace) && (
-          <TrainingBanner
-            sessions={todaySessions}
-            nextRace={nextRace}
-            onViewTraining={() => navigate("/training")}
-            onComplete={(id) => markCompleted.mutate(id)}
-            onSkip={(id) => markSkipped.mutate(id)}
-          />
-        )}
 
         {/* Monthly Story - Last month review */}
         {hasLastMonthData && (

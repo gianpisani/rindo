@@ -14,7 +14,6 @@ import Fintual from "./pages/Fintual";
 import CategoryInsights from "./pages/CategoryInsights";
 import PendingDebts from "./pages/PendingDebts";
 import CreditCards from "./pages/CreditCards";
-import Training from "./pages/Training";
 import TutoringClasses from "./pages/TutoringClasses";
 import NotFound from "./pages/NotFound";
 import Auth from "./components/Auth";
@@ -180,7 +179,6 @@ function AuthenticatedApp() {
           <Route path="/pending-debts" element={<PendingDebts />} />
           <Route path="/credit-cards" element={<CreditCards />} />
           <Route path="/tutoring" element={<TutoringClasses />} />
-          <Route path="/training" element={<Training />} />
           <Route path="*" element={<NotFound />} />
         </Routes>
       </BrowserRouter>
