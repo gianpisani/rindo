@@ -374,7 +374,7 @@ const Index = () => {
       ) : (
         <div className="flex-1 flex items-center justify-center gap-3 px-3 pb-2 min-h-0">
           {/* Donut */}
-          <div className="relative shrink-0 w-[80px] h-[80px]">
+          <div className="relative shrink-0 w-[110px] h-[110px]">
             <ResponsiveContainer width="100%" height="100%">
               <PieChart>
                 <Pie
@@ -383,8 +383,8 @@ const Index = () => {
                   nameKey="category"
                   cx="50%"
                   cy="50%"
-                  innerRadius={22}
-                  outerRadius={36}
+                  innerRadius={30}
+                  outerRadius={50}
                   paddingAngle={2}
                   strokeWidth={0}
                   className={cn(isPrivacyMode && "privacy-blur")}
@@ -402,7 +402,7 @@ const Index = () => {
             </ResponsiveContainer>
             <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
               <p className={cn(
-                "text-[8px] font-bold font-mono tabular-nums",
+                "text-[10px] font-bold font-mono tabular-nums",
                 isPrivacyMode && "privacy-blur"
               )}>
                 {formatCompact(donutTotal)}
