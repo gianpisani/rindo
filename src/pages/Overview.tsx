@@ -68,7 +68,7 @@ import { Link } from "react-router-dom";
 import { getCategoryIcon } from "@/components/TransactionsTable";
 import { Checkbox } from "@/components/ui/checkbox";
 import { CategoryDetailModal } from "@/components/CategoryDetailModal";
-import type { CategorySpending } from "@/hooks/useCategoryInsights";
+import { useCategoryInsights, type CategorySpending } from "@/hooks/useCategoryInsights";
 
 // ─── Formatters ──────────────────────────────────────────
 
@@ -333,6 +333,20 @@ export default function Overview() {
 
   const { kpis, categoryBreakdown, dailySpending, dailyStats, cardSpending, transactionCount, budgetSummary } =
     useMonthlySummary(transactions, categories, limits, selectedMonth, budget?.total_budget, excludedCategories);
+
+  const { insights: storyInsights } = useCategoryInsights(transactions, limits, selectedMonth);
+
+  // Salary for selected month
+  const storySalary = useMemo(() => {
+    const monthStart = startOfMonth(selectedMonth);
+    const monthEnd = endOfMonth(selectedMonth);
+    return transactions
+      .filter((t) => {
+        const d = new Date(t.date);
+        return t.type === "Ingreso" && t.category_name.toLowerCase() === "sueldo" && d >= monthStart && d <= monthEnd;
+      })
+      .reduce((s, t) => s + Number(t.amount), 0);
+  }, [transactions, selectedMonth]);
 
   const isCurrentMonth = isSameMonth(selectedMonth, new Date());
 
@@ -1468,6 +1482,8 @@ export default function Overview() {
         categoryBreakdown={categoryBreakdown}
         dailyStats={dailyStats}
         transactionCount={transactionCount}
+        salary={storySalary}
+        insights={storyInsights}
       />
 
       <CategoryDetailModal

@@ -139,12 +139,20 @@ const Index = () => {
   const currentMonthSummary = useMonthlySummary(transactions, categories, limits, now);
 
   // Category insights
-  const { insights } = useCategoryInsights(transactions, limits, now);
+  const { insights: currentInsights } = useCategoryInsights(transactions, limits, now);
 
   // Last month data for Monthly Story
   const lastMonth = subMonths(now, 1);
   const lastMonthSummary = useMonthlySummary(transactions, categories, limits, lastMonth);
   const hasLastMonthData = lastMonthSummary.transactionCount > 0;
+  const { insights: lastMonthInsights } = useCategoryInsights(transactions, limits, lastMonth);
+
+  // Salary for last month (Sueldo category in income)
+  const lastMonthSalary = useMemo(() => {
+    return lastMonthTransactions
+      .filter((t) => t.type === "Ingreso" && t.category_name.toLowerCase() === "sueldo")
+      .reduce((s, t) => s + Number(t.amount), 0);
+  }, [lastMonthTransactions]);
 
   // Donut chart data (top 5 + others)
   const donutData = useMemo(() => {
@@ -419,15 +427,15 @@ const Index = () => {
   );
 
   // ─── Insights Panel (desktop) ─────────────────────────
-  const topInsights = insights.slice(0, 4);
+  const topInsights = currentInsights.slice(0, 4);
   const insightsPanel = (
     <Card className="border-border/50 overflow-hidden flex flex-col">
       <div className="flex items-center justify-between px-4 pt-3 pb-2">
         <div className="flex items-center gap-2">
           <h2 className="text-sm font-semibold">Insights</h2>
-          {insights.length > 0 && (
+          {currentInsights.length > 0 && (
             <span className="text-[10px] font-medium text-muted-foreground tabular-nums">
-              {insights.length}
+              {currentInsights.length}
             </span>
           )}
         </div>
@@ -661,6 +669,8 @@ const Index = () => {
         categoryBreakdown={lastMonthSummary.categoryBreakdown}
         dailyStats={lastMonthSummary.dailyStats}
         transactionCount={lastMonthSummary.transactionCount}
+        salary={lastMonthSalary}
+        insights={lastMonthInsights}
       />
     </Layout>
   );
