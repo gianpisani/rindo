@@ -105,7 +105,7 @@ export function CustomizeNavDrawer({ open, onOpenChange }: CustomizeNavDrawerPro
               className="flex items-center gap-1.5 text-xs text-muted-foreground active:text-foreground px-2.5 py-1.5 rounded-lg active:bg-muted transition-colors"
             >
               <RotateCcw className="size-3" />
-              Reset
+              Resetear
             </button>
           </div>
 
