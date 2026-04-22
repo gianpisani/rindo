@@ -351,23 +351,22 @@ const Index = () => {
     </div>
   );
 
-  // ─── Donut Chart Card (desktop) ────────────────────────
+  // ─── Donut Chart Card (desktop — horizontal) ───────────
   const donutCard = (
-    <Card className="border-border/50 overflow-hidden flex flex-col">
-      <div className="px-4 pt-3 pb-1">
+    <Card className="border-border/50 overflow-hidden">
+      <div className="flex items-center justify-between px-4 pt-3 pb-2">
         <span className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider">
           Gastos del mes
         </span>
       </div>
       {donutData.length === 0 ? (
-        <div className="flex-1 flex items-center justify-center p-4">
+        <div className="flex items-center justify-center p-4">
           <p className="text-xs text-muted-foreground">Sin gastos</p>
         </div>
       ) : (
-        <div className="flex-1 flex flex-col px-3 pb-3">
-          {/* Donut */}
-          <div className="relative mx-auto w-full max-w-[140px]">
-            <ResponsiveContainer width="100%" height={130}>
+        <div className="flex items-center gap-3 px-4 pb-3">
+          <div className="relative shrink-0 w-[110px] h-[110px]">
+            <ResponsiveContainer width="100%" height="100%">
               <PieChart>
                 <Pie
                   data={donutData}
@@ -375,8 +374,8 @@ const Index = () => {
                   nameKey="category"
                   cx="50%"
                   cy="50%"
-                  innerRadius={35}
-                  outerRadius={55}
+                  innerRadius={30}
+                  outerRadius={48}
                   paddingAngle={3}
                   strokeWidth={0}
                   className={cn(isPrivacyMode && "privacy-blur")}
@@ -394,21 +393,17 @@ const Index = () => {
             </ResponsiveContainer>
             <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
               <p className={cn(
-                "text-[11px] font-bold font-mono tabular-nums",
+                "text-[10px] font-bold font-mono tabular-nums",
                 isPrivacyMode && "privacy-blur"
               )}>
                 {formatCompact(donutTotal)}
               </p>
             </div>
           </div>
-          {/* Legend */}
-          <div className="space-y-0.5 mt-1">
+          <div className="flex-1 space-y-0.5">
             {donutData.map((cat) => (
               <div key={cat.category} className="flex items-center gap-1.5 min-w-0">
-                <span
-                  className="size-2 rounded-full shrink-0"
-                  style={{ backgroundColor: cat.color }}
-                />
+                <span className="size-2 rounded-full shrink-0" style={{ backgroundColor: cat.color }} />
                 <span className="text-[10px] text-muted-foreground truncate flex-1">
                   {getCatEmoji(cat.category)} {cat.category}
                 </span>
@@ -447,34 +442,23 @@ const Index = () => {
         </Button>
       </div>
       {topInsights.length === 0 ? (
-        <div className="flex-1 flex items-center justify-center p-6">
-          <div className="text-center">
-            <div className="inline-flex items-center justify-center size-10 rounded-xl bg-muted/50 mb-2">
-              <Lightbulb className="h-5 w-5 text-muted-foreground/40" />
-            </div>
-            <p className="text-xs text-muted-foreground">Sin insights aún</p>
-            <p className="text-[10px] text-muted-foreground/60 mt-0.5">Se generan con más datos</p>
-          </div>
+        <div className="flex-1 flex items-center justify-center py-4 px-3">
+          <p className="text-xs text-muted-foreground">Sin insights aún</p>
         </div>
       ) : (
-        <div className="flex-1 overflow-y-auto px-3 pb-3 space-y-1.5">
+        <div className="px-3 pb-3 space-y-1">
           {topInsights.map((insight, i) => {
             const style = insightStyle[insight.type];
             const Icon = style.icon;
             return (
-              <div
-                key={i}
-                className="flex items-start gap-2 rounded-lg border border-border/30 p-2 hover:bg-muted/30 transition-colors"
-              >
-                <div className={cn("flex items-center justify-center size-6 rounded-md shrink-0 mt-0.5", style.bg)}>
-                  <Icon className={cn("h-3 w-3", style.color)} />
+              <div key={i} className="flex items-center gap-2 py-1.5 px-2 rounded-md hover:bg-muted/30 transition-colors">
+                <div className={cn("flex items-center justify-center size-5 rounded shrink-0", style.bg)}>
+                  <Icon className={cn("h-2.5 w-2.5", style.color)} />
                 </div>
-                <div className="min-w-0 flex-1">
-                  <p className="text-[11px] font-medium leading-snug">{insight.title}</p>
-                  <p className={cn("text-[10px] text-muted-foreground leading-snug mt-0.5", isPrivacyMode && "privacy-blur")}>
-                    {insight.description}
-                  </p>
-                </div>
+                <p className="text-[11px] leading-snug truncate flex-1">{insight.title}</p>
+                <p className={cn("text-[10px] text-muted-foreground shrink-0 hidden xl:block", isPrivacyMode && "privacy-blur")}>
+                  {insight.description.length > 40 ? insight.description.slice(0, 40) + "…" : insight.description}
+                </p>
               </div>
             );
           })}
@@ -623,11 +607,13 @@ const Index = () => {
             {quickActions}
           </div>
 
-          {/* Bottom row: Transactions | Donut | Insights */}
+          {/* Bottom row: Transactions | Donut + Insights */}
           <div className="grid grid-cols-12 gap-3">
-            <div className="col-span-4">{transactionsCard}</div>
-            <div className="col-span-3">{donutCard}</div>
-            <div className="col-span-5">{insightsPanel}</div>
+            <div className="col-span-5">{transactionsCard}</div>
+            <div className="col-span-7 flex flex-col gap-3">
+              {donutCard}
+              {insightsPanel}
+            </div>
           </div>
         </div>
 
