@@ -43,7 +43,6 @@ import {
   CreditCard,
   ArrowRight,
   Play,
-  BarChart3,
   Trophy,
   Calendar,
 } from "lucide-react";
@@ -531,7 +530,6 @@ export default function Overview() {
 
   // Historical aggregate stats (independent of selectedMonth)
   const historicalStats = useMemo(() => {
-    // Group all transactions by month
     const monthMap = new Map<string, { income: number; expenses: number; investments: number }>();
     for (const t of transactions) {
       const key = format(new Date(t.date), "yyyy-MM");
@@ -554,7 +552,6 @@ export default function Overview() {
       { income: 0, expenses: 0, investments: 0 }
     );
 
-    // Best/worst month by balance
     let bestMonth: { name: string; balance: number } | null = null;
     let worstMonth: { name: string; balance: number } | null = null;
     for (const [key, v] of months) {
@@ -565,10 +562,12 @@ export default function Overview() {
       if (!worstMonth || balance < worstMonth.balance) worstMonth = { name, balance };
     }
 
-    // Patrimonio: liquid + investments (investments are assets, not losses)
     const totalLiquid = totals.income - totals.expenses - totals.investments;
     const totalInvested = totals.investments;
-    const patrimonio = totals.income - totals.expenses; // liquid + invested
+    const patrimonio = totals.income - totals.expenses;
+    const savingsRate = totals.income > 0
+      ? ((totals.income - totals.expenses) / totals.income) * 100
+      : 0;
 
     return {
       monthsWithData: months.length,
@@ -581,6 +580,7 @@ export default function Overview() {
       totalInvested,
       totalIncome: totals.income,
       totalExpenses: totals.expenses,
+      savingsRate,
       bestMonth: months.length >= 2 ? bestMonth : null,
       worstMonth: months.length >= 2 ? worstMonth : null,
     };
@@ -644,36 +644,40 @@ export default function Overview() {
           {/* TAB: MES                                     */}
           {/* ════════════════════════════════════════════ */}
           <TabsContent value="mes" className="mt-4 space-y-4">
-            {/* Month Strip */}
-            <div className="flex items-center gap-2">
+            {/* Month Strip + Story */}
+            <div className="flex items-center gap-3">
               <div
                 ref={monthStripRef}
-                className="flex items-center gap-1.5 overflow-x-auto scrollbar-hide flex-1"
+                className="flex items-center gap-1 overflow-x-auto scrollbar-hide flex-1"
               >
-                {monthPills.map((month) => {
+                {monthPills.map((month, idx) => {
                   const isActive = isSameMonth(month, selectedMonth);
                   const isCurrent = isSameMonth(month, new Date());
+                  const prevMonth = idx > 0 ? monthPills[idx - 1] : null;
+                  const showYear = !prevMonth || month.getFullYear() !== prevMonth.getFullYear();
                   return (
                     <button
                       key={format(month, "yyyy-MM")}
                       data-active={isActive}
                       onClick={() => setSelectedMonth(month)}
                       className={cn(
-                        "relative flex flex-col items-center px-3.5 py-1.5 rounded-lg transition-all duration-200 shrink-0",
-                        "text-center min-w-[72px]",
+                        "relative flex flex-col items-center rounded-xl transition-all duration-200 shrink-0",
+                        "text-center px-3 py-1.5 min-w-0",
                         isActive
-                          ? "bg-primary text-primary-foreground shadow-sm"
+                          ? "bg-primary text-primary-foreground shadow-md shadow-primary/20"
                           : "hover:bg-accent/60 text-muted-foreground hover:text-foreground"
                       )}
                     >
+                      {showYear && (
+                        <span className={cn(
+                          "text-[9px] uppercase tracking-widest font-medium leading-none",
+                          isActive ? "text-primary-foreground/60" : "text-muted-foreground/40"
+                        )}>
+                          {format(month, "yyyy")}
+                        </span>
+                      )}
                       <span className={cn(
-                        "text-[10px] uppercase tracking-wider font-medium",
-                        isActive ? "text-primary-foreground/70" : "text-muted-foreground/60"
-                      )}>
-                        {format(month, "yyyy")}
-                      </span>
-                      <span className={cn(
-                        "text-sm font-semibold capitalize leading-tight",
+                        "text-[13px] font-semibold capitalize leading-tight",
                         isActive ? "text-primary-foreground" : ""
                       )}>
                         {format(month, "MMM", { locale: es })}
@@ -685,15 +689,24 @@ export default function Overview() {
                   );
                 })}
               </div>
-              <Button
-                variant="ghost"
-                size="icon"
-                className="h-8 w-8 rounded-full bg-primary/10 text-primary hover:bg-primary/20 shrink-0"
-                onClick={() => setStoryOpen(true)}
-                disabled={transactionCount === 0}
-              >
-                <Play className="h-3.5 w-3.5 ml-0.5" />
-              </Button>
+
+              {/* Monthly Story trigger */}
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="h-9 w-9 rounded-xl bg-primary/10 text-primary hover:bg-primary/20 shrink-0"
+                    onClick={() => setStoryOpen(true)}
+                    disabled={transactionCount === 0}
+                  >
+                    <Play className="h-3.5 w-3.5 ml-0.5" />
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent side="bottom">
+                  <p className="text-xs">Resumen del mes</p>
+                </TooltipContent>
+              </Tooltip>
             </div>
 
             {isLoading ? (
@@ -1233,145 +1246,127 @@ export default function Overview() {
               </div>
             ) : (
               <>
-                {/* Patrimonio Hero */}
+                {/* ── Patrimonio Card ── unified hero with breakdown */}
                 <GlassCard className="overflow-hidden">
                   <div className="h-[2px] accent-gradient-bg" />
-                  <div className="px-4 py-3 md:px-5 md:py-4">
-                    <div className="flex items-center justify-between">
-                      <span className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider">
-                        Patrimonio Total
-                      </span>
-                      <span className="text-[10px] text-muted-foreground/50 font-mono tabular-nums">
-                        {historicalStats.monthsWithData} {historicalStats.monthsWithData === 1 ? "mes" : "meses"} de historial
-                      </span>
-                    </div>
-                    <div className={cn(
-                      "mt-1.5 md:mt-2 text-[28px] md:text-4xl font-bold font-mono tabular-nums tracking-tight leading-none",
-                      isPrivacyMode && "privacy-blur"
-                    )}>
-                      $<NumberFlow
-                        value={historicalStats.patrimonio}
-                        format={{ style: "decimal", minimumFractionDigits: 0, maximumFractionDigits: 0 }}
-                        locales="es-CL"
-                      />
-                    </div>
-                    <div className="mt-2.5 pt-2.5 md:mt-3 md:pt-3 border-t border-border/50">
-                      <div className="flex items-center gap-3 md:gap-6 flex-wrap">
-                        <div className="flex items-center gap-1.5">
-                          <div className="p-1 rounded-md bg-emerald-500/10">
-                            <Wallet className="h-3 w-3 text-emerald-500" />
-                          </div>
-                          <div>
-                            <p className="text-[9px] text-muted-foreground uppercase tracking-wider">Disponible</p>
-                            <p className={cn("text-xs font-semibold font-mono tabular-nums", isPrivacyMode && "privacy-blur")}>
-                              {formatCompact(historicalStats.totalLiquid)}
-                            </p>
-                          </div>
-                        </div>
-                        <div className="flex items-center gap-1.5">
-                          <div className="p-1 rounded-md bg-sky-500/10">
-                            <PiggyBank className="h-3 w-3 text-sky-500" />
-                          </div>
-                          <div>
-                            <p className="text-[9px] text-muted-foreground uppercase tracking-wider">Invertido</p>
-                            <p className={cn("text-xs font-semibold font-mono tabular-nums", isPrivacyMode && "privacy-blur")}>
-                              {formatCompact(historicalStats.totalInvested)}
-                            </p>
-                          </div>
-                        </div>
-                        <div className="flex items-center gap-1.5">
-                          <div className="p-1 rounded-md bg-rose-500/10">
-                            <TrendingDown className="h-3 w-3 text-rose-500" />
-                          </div>
-                          <div>
-                            <p className="text-[9px] text-muted-foreground uppercase tracking-wider">Total gastado</p>
-                            <p className={cn("text-xs font-semibold font-mono tabular-nums", isPrivacyMode && "privacy-blur")}>
-                              {formatCompact(historicalStats.totalExpenses)}
-                            </p>
-                          </div>
-                        </div>
+                  <div className="px-4 py-4 md:px-5 md:py-5 space-y-4">
+                    {/* Hero number */}
+                    <div>
+                      <div className="flex items-center justify-between mb-1">
+                        <span className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider">
+                          Patrimonio Total
+                        </span>
+                        <span className="text-[10px] text-muted-foreground/40 font-mono tabular-nums">
+                          {historicalStats.monthsWithData} {historicalStats.monthsWithData === 1 ? "mes" : "meses"}
+                        </span>
+                      </div>
+                      <div className={cn(
+                        "text-[32px] md:text-[40px] font-bold font-mono tabular-nums tracking-tight leading-none",
+                        isPrivacyMode && "privacy-blur"
+                      )}>
+                        $<NumberFlow
+                          value={historicalStats.patrimonio}
+                          format={{ style: "decimal", minimumFractionDigits: 0, maximumFractionDigits: 0 }}
+                          locales="es-CL"
+                        />
                       </div>
                     </div>
-                  </div>
-                </GlassCard>
 
-                {/* Aggregate KPIs — true historical averages */}
-                <GlassCard className="overflow-hidden">
-                  <div className="h-[2px] bg-gradient-to-r from-muted-foreground/20 via-muted-foreground/10 to-transparent" />
-                  <div className="px-4 py-3">
-                    <div className="flex items-center gap-2 mb-3">
-                      <BarChart3 className="h-3.5 w-3.5 text-primary/60" />
-                      <span className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider">
+                    {/* Composition: disponible + invertido */}
+                    <div className="flex items-stretch gap-3">
+                      <div className="flex-1 rounded-lg bg-emerald-500/[0.04] border border-emerald-500/10 px-3 py-2">
+                        <div className="flex items-center gap-1.5 mb-0.5">
+                          <Wallet className="h-3 w-3 text-emerald-500" />
+                          <span className="text-[9px] text-emerald-600/70 dark:text-emerald-400/70 uppercase tracking-wider font-medium">Disponible</span>
+                        </div>
+                        <p className={cn("text-sm font-bold font-mono tabular-nums text-emerald-600 dark:text-emerald-400", isPrivacyMode && "privacy-blur")}>
+                          {formatCompact(historicalStats.totalLiquid)}
+                        </p>
+                      </div>
+                      <div className="flex-1 rounded-lg bg-sky-500/[0.04] border border-sky-500/10 px-3 py-2">
+                        <div className="flex items-center gap-1.5 mb-0.5">
+                          <PiggyBank className="h-3 w-3 text-sky-500" />
+                          <span className="text-[9px] text-sky-600/70 dark:text-sky-400/70 uppercase tracking-wider font-medium">Invertido</span>
+                        </div>
+                        <p className={cn("text-sm font-bold font-mono tabular-nums text-sky-600 dark:text-sky-400", isPrivacyMode && "privacy-blur")}>
+                          {formatCompact(historicalStats.totalInvested)}
+                        </p>
+                      </div>
+                      {historicalStats.savingsRate > 0 && (
+                        <div className="flex-1 rounded-lg bg-violet-500/[0.04] border border-violet-500/10 px-3 py-2">
+                          <div className="flex items-center gap-1.5 mb-0.5">
+                            <Target className="h-3 w-3 text-violet-500" />
+                            <span className="text-[9px] text-violet-600/70 dark:text-violet-400/70 uppercase tracking-wider font-medium">Ahorro</span>
+                          </div>
+                          <p className={cn("text-sm font-bold font-mono tabular-nums text-violet-600 dark:text-violet-400", isPrivacyMode && "privacy-blur")}>
+                            {historicalStats.savingsRate.toFixed(1)}%
+                          </p>
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Monthly averages — subtle row */}
+                    <div className="border-t border-border/40 pt-3">
+                      <p className="text-[9px] text-muted-foreground/50 uppercase tracking-widest font-medium mb-2">
                         Promedio mensual
-                      </span>
-                      <span className="text-[10px] text-muted-foreground/50 font-mono tabular-nums">
-                        {historicalStats.monthsWithData} {historicalStats.monthsWithData === 1 ? "mes" : "meses"} de datos
-                      </span>
+                      </p>
+                      <div className="grid grid-cols-2 lg:grid-cols-4 gap-x-4 gap-y-2">
+                        {[
+                          { label: "Ingresos", value: historicalStats.avgIncome, icon: TrendingUp, color: "text-emerald-500", bg: "bg-emerald-500/10" },
+                          { label: "Gastos", value: historicalStats.avgExpenses, icon: TrendingDown, color: "text-rose-500", bg: "bg-rose-500/10" },
+                          { label: "Inversiones", value: historicalStats.avgInvestments, icon: PiggyBank, color: "text-sky-500", bg: "bg-sky-500/10" },
+                          { label: "Balance", value: historicalStats.avgBalance, icon: Wallet, color: historicalStats.avgBalance >= 0 ? "text-emerald-500" : "text-rose-500", bg: historicalStats.avgBalance >= 0 ? "bg-emerald-500/10" : "bg-rose-500/10" },
+                        ].map((item) => {
+                          const Icon = item.icon;
+                          return (
+                            <div key={item.label} className="flex items-center gap-2">
+                              <div className={cn("p-1 rounded-md", item.bg)}>
+                                <Icon className={cn("h-3 w-3", item.color)} />
+                              </div>
+                              <div>
+                                <p className="text-[9px] text-muted-foreground/60 uppercase tracking-wider">
+                                  {item.label}
+                                </p>
+                                <p className={cn(
+                                  "text-xs font-semibold font-mono tabular-nums",
+                                  isPrivacyMode && "privacy-blur"
+                                )}>
+                                  {formatCompact(item.value)}
+                                </p>
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
                     </div>
-                    <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-                      {[
-                        { label: "Ingresos", value: historicalStats.avgIncome, icon: TrendingUp, color: "text-emerald-500", bg: "bg-emerald-500/10" },
-                        { label: "Gastos", value: historicalStats.avgExpenses, icon: TrendingDown, color: "text-rose-500", bg: "bg-rose-500/10" },
-                        { label: "Inversiones", value: historicalStats.avgInvestments, icon: PiggyBank, color: "text-sky-500", bg: "bg-sky-500/10" },
-                        { label: "Balance", value: historicalStats.avgBalance, icon: Wallet, color: historicalStats.avgBalance >= 0 ? "text-emerald-500" : "text-rose-500", bg: historicalStats.avgBalance >= 0 ? "bg-emerald-500/10" : "bg-rose-500/10" },
-                      ].map((item) => {
-                        const Icon = item.icon;
-                        return (
-                          <div key={item.label} className="flex items-center gap-2.5">
-                            <div className={cn("p-1.5 rounded-md", item.bg)}>
-                              <Icon className={cn("h-3.5 w-3.5", item.color)} />
-                            </div>
-                            <div>
-                              <p className="text-[9px] text-muted-foreground uppercase tracking-wider font-medium">
-                                {item.label}
-                              </p>
-                              <p className={cn(
-                                "text-sm font-bold font-mono tabular-nums",
-                                isPrivacyMode && "privacy-blur"
-                              )}>
-                                {formatCompact(item.value)}
-                              </p>
-                            </div>
+
+                    {/* Best & Worst inline */}
+                    {historicalStats.bestMonth && historicalStats.worstMonth && (
+                      <div className="border-t border-border/40 pt-3 grid grid-cols-2 gap-3">
+                        <div className="flex items-center gap-2">
+                          <Trophy className="h-3.5 w-3.5 text-emerald-500 shrink-0" />
+                          <div className="min-w-0">
+                            <p className="text-[9px] text-muted-foreground/50 uppercase tracking-wider">Mejor mes</p>
+                            <p className="text-xs font-semibold capitalize truncate">{historicalStats.bestMonth.name}</p>
                           </div>
-                        );
-                      })}
-                    </div>
+                          <span className={cn("text-[11px] font-bold font-mono tabular-nums text-emerald-600 shrink-0 ml-auto", isPrivacyMode && "privacy-blur")}>
+                            +{formatCompact(historicalStats.bestMonth.balance)}
+                          </span>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <Calendar className="h-3.5 w-3.5 text-rose-500 shrink-0" />
+                          <div className="min-w-0">
+                            <p className="text-[9px] text-muted-foreground/50 uppercase tracking-wider">Peor mes</p>
+                            <p className="text-xs font-semibold capitalize truncate">{historicalStats.worstMonth.name}</p>
+                          </div>
+                          <span className={cn("text-[11px] font-bold font-mono tabular-nums text-rose-600 shrink-0 ml-auto", isPrivacyMode && "privacy-blur")}>
+                            {formatCompact(historicalStats.worstMonth.balance)}
+                          </span>
+                        </div>
+                      </div>
+                    )}
                   </div>
                 </GlassCard>
-
-                {/* Best & Worst month insight */}
-                {historicalStats.bestMonth && historicalStats.worstMonth && (
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                    <div className="flex items-center gap-3 rounded-xl border border-emerald-500/20 bg-emerald-500/[0.03] px-4 py-2.5">
-                      <div className="p-1.5 rounded-md bg-emerald-500/10">
-                        <Trophy className="h-3.5 w-3.5 text-emerald-500" />
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <p className="text-[10px] text-muted-foreground uppercase tracking-wider font-medium">Mejor mes</p>
-                        <p className="text-xs font-semibold capitalize truncate">
-                          {historicalStats.bestMonth.name}
-                        </p>
-                      </div>
-                      <span className={cn("text-xs font-bold font-mono tabular-nums text-emerald-600", isPrivacyMode && "privacy-blur")}>
-                        +{formatCompact(historicalStats.bestMonth.balance)}
-                      </span>
-                    </div>
-                    <div className="flex items-center gap-3 rounded-xl border border-rose-500/20 bg-rose-500/[0.03] px-4 py-2.5">
-                      <div className="p-1.5 rounded-md bg-rose-500/10">
-                        <Calendar className="h-3.5 w-3.5 text-rose-500" />
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <p className="text-[10px] text-muted-foreground uppercase tracking-wider font-medium">Mes más difícil</p>
-                        <p className="text-xs font-semibold capitalize truncate">
-                          {historicalStats.worstMonth.name}
-                        </p>
-                      </div>
-                      <span className={cn("text-xs font-bold font-mono tabular-nums text-rose-600", isPrivacyMode && "privacy-blur")}>
-                        {formatCompact(historicalStats.worstMonth.balance)}
-                      </span>
-                    </div>
-                  </div>
-                )}
 
                 {/* Monthly Evolution */}
                 <SectionCard
