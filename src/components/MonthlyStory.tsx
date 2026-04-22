@@ -51,35 +51,40 @@ const formatCurrency = (value: number) =>
     minimumFractionDigits: 0,
   }).format(value);
 
-function getClosingMessage(savingsRate: number, salary: number, expenses: number) {
+function getClosingMessage(savingsRate: number) {
   if (savingsRate > 50)
     return {
       word: "Impecable",
       subtitle: "No todos pueden decir que ahorraron más de la mitad. Tú sí.",
-      gradient: "from-emerald-500/20 via-emerald-600/10 to-transparent",
+      accent: "#34d399",
+      glowColor: "rgba(52, 211, 153, 0.15)",
     };
   if (savingsRate > 30)
     return {
       word: "Sólido",
       subtitle: "Mes controlado, plata clara. Así se maneja.",
-      gradient: "from-blue-500/20 via-blue-600/10 to-transparent",
+      accent: "#60a5fa",
+      glowColor: "rgba(96, 165, 250, 0.15)",
     };
   if (savingsRate > 10)
     return {
       word: "En control",
       subtitle: "Cada peso en su lugar. Vas bien, sigue así.",
-      gradient: "from-cyan-500/20 via-cyan-600/10 to-transparent",
+      accent: "#22d3ee",
+      glowColor: "rgba(34, 211, 238, 0.12)",
     };
   if (savingsRate > 0)
     return {
       word: "Positivo",
       subtitle: "Cerraste en verde. Eso ya te pone adelante.",
-      gradient: "from-amber-500/20 via-amber-600/10 to-transparent",
+      accent: "#fbbf24",
+      glowColor: "rgba(251, 191, 36, 0.12)",
     };
   return {
     word: "A revancha",
     subtitle: "Un mes complicado, pero ya sabes cómo volver.",
-    gradient: "from-rose-500/20 via-rose-600/10 to-transparent",
+    accent: "#fb7185",
+    glowColor: "rgba(251, 113, 133, 0.12)",
   };
 }
 
@@ -106,7 +111,7 @@ export function MonthlyStory({
   const [currentSlide, setCurrentSlide] = useState(0);
   const [direction, setDirection] = useState(1);
 
-  const closing = getClosingMessage(kpis.savingsRate, salary, kpis.expenses);
+  const closing = getClosingMessage(kpis.savingsRate);
 
   // Use effectiveAmount (reimbursements deducted) when available, fallback to amount
   const effectiveBreakdown = categoryBreakdown
@@ -484,112 +489,202 @@ export function MonthlyStory({
     id: "closing",
     render: () => {
       const savedAmount = kpis.balance;
-      const summaryLines: Array<{ label: string; value: string; color: string }> = [];
+      const incomeSource = salary > 0 ? salary : kpis.income;
 
-      if (salary > 0) {
-        summaryLines.push({
-          label: "Sueldo",
-          value: formatCurrency(salary),
-          color: "text-emerald-400",
-        });
+      // Build flow segments: where each peso went
+      const segments: Array<{ label: string; amount: number; color: string; pct: number }> = [];
+      if (incomeSource > 0) {
+        if (kpis.expenses > 0)
+          segments.push({
+            label: "Gastos",
+            amount: kpis.expenses,
+            color: "#fb7185",
+            pct: Math.min(100, (kpis.expenses / incomeSource) * 100),
+          });
+        if (kpis.investments > 0)
+          segments.push({
+            label: "Inversiones",
+            amount: kpis.investments,
+            color: "#60a5fa",
+            pct: Math.min(100, (kpis.investments / incomeSource) * 100),
+          });
+        if (savedAmount > 0)
+          segments.push({
+            label: "Ahorro",
+            amount: savedAmount,
+            color: "#34d399",
+            pct: Math.min(100, (savedAmount / incomeSource) * 100),
+          });
       }
-      summaryLines.push({
-        label: "Gastos",
-        value: formatCurrency(kpis.expenses),
-        color: "text-rose-400",
-      });
-      if (kpis.investments > 0) {
-        summaryLines.push({
-          label: "Inversiones",
-          value: formatCurrency(kpis.investments),
-          color: "text-blue-400",
-        });
-      }
-      summaryLines.push({
-        label: savedAmount >= 0 ? "Ahorraste" : "Deficit",
-        value: (savedAmount >= 0 ? "+" : "") + formatCurrency(savedAmount),
-        color: savedAmount >= 0 ? "text-emerald-400" : "text-rose-400",
-      });
+
+      // Stacked bar total (cap at 100 for visual)
+      const usedPct = segments.reduce((s, seg) => s + seg.pct, 0);
 
       return (
-        <div className="flex flex-col items-center justify-center h-full gap-6 relative">
+        <div className="flex flex-col items-center justify-center h-full gap-5 relative overflow-hidden w-full max-w-sm mx-auto px-6">
+          {/* Radial glow background */}
           <div
-            className={`absolute inset-0 bg-gradient-to-b ${closing.gradient} pointer-events-none`}
+            className="absolute top-1/4 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[500px] h-[500px] rounded-full blur-[120px] pointer-events-none"
+            style={{ background: closing.glowColor }}
+          />
+          <div
+            className="absolute bottom-0 left-1/2 -translate-x-1/2 w-[400px] h-[300px] rounded-full blur-[100px] pointer-events-none opacity-50"
+            style={{ background: closing.glowColor }}
           />
 
-          {/* Title */}
+          {/* Mood word */}
           <motion.h1
-            className="relative text-5xl md:text-7xl font-bold text-white"
-            initial={{ opacity: 0, scale: 0.8 }}
-            animate={{ opacity: 1, scale: 1 }}
-            transition={{
-              duration: 0.6,
-              type: "spring",
-              stiffness: 200,
-            }}
+            className="relative text-5xl md:text-7xl font-bold text-white tracking-tight"
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.7, type: "spring", stiffness: 120 }}
           >
             {closing.word}
           </motion.h1>
 
+          {/* Accent line */}
+          <motion.div
+            className="h-0.5 rounded-full"
+            style={{ backgroundColor: closing.accent }}
+            initial={{ width: 0, opacity: 0 }}
+            animate={{ width: 48, opacity: 0.6 }}
+            transition={{ delay: 0.3, duration: 0.6, ease: "easeOut" }}
+          />
+
           {/* Subtitle */}
           <motion.p
-            className="relative text-white/50 text-sm max-w-xs text-center leading-relaxed"
+            className="relative text-white/50 text-sm text-center leading-relaxed max-w-[280px]"
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
-            transition={{ delay: 0.4, duration: 0.5 }}
+            transition={{ delay: 0.5, duration: 0.5 }}
           >
             {closing.subtitle}
           </motion.p>
 
-          {/* Mini summary */}
+          {/* Visual flow chart */}
           <motion.div
-            className="relative mt-4 space-y-2 w-full max-w-xs"
-            initial={{ opacity: 0, y: 15 }}
+            className="relative w-full mt-3 space-y-5"
+            initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.6, duration: 0.5 }}
+            transition={{ delay: 0.7, duration: 0.5 }}
           >
-            <div className="bg-white/[0.03] rounded-xl border border-white/[0.06] p-4 space-y-2.5">
-              {summaryLines.map((line, i) => (
-                <div
-                  key={i}
-                  className="flex justify-between items-baseline"
-                >
-                  <span className="text-white/40 text-xs uppercase tracking-wide">
-                    {line.label}
+            {/* Income bar (full width = 100%) */}
+            {incomeSource > 0 && (
+              <div className="space-y-2">
+                <div className="flex justify-between items-baseline">
+                  <span className="text-white/50 text-[11px] font-medium uppercase tracking-wider">
+                    {salary > 0 ? "Sueldo" : "Ingresos"}
                   </span>
-                  <span
-                    className={`${line.color} text-sm font-bold font-mono tabular-nums`}
-                  >
-                    {line.value}
+                  <span className="text-emerald-400 text-sm font-bold font-mono tabular-nums">
+                    {formatCurrency(incomeSource)}
                   </span>
                 </div>
-              ))}
-            </div>
+                <div className="h-3 rounded-full bg-white/[0.04] overflow-hidden">
+                  <motion.div
+                    className="h-full rounded-full bg-emerald-400/80"
+                    initial={{ width: 0 }}
+                    animate={{ width: "100%" }}
+                    transition={{ delay: 0.9, duration: 0.8, ease: "easeOut" }}
+                  />
+                </div>
+              </div>
+            )}
+
+            {/* Stacked distribution bar */}
+            {segments.length > 0 && (
+              <div className="space-y-2">
+                <span className="text-white/30 text-[10px] uppercase tracking-wider">
+                  Distribuci&oacute;n
+                </span>
+                <div className="h-3 rounded-full bg-white/[0.04] overflow-hidden flex">
+                  {segments.map((seg, i) => (
+                    <motion.div
+                      key={seg.label}
+                      className="h-full first:rounded-l-full last:rounded-r-full"
+                      style={{ backgroundColor: seg.color }}
+                      initial={{ width: 0 }}
+                      animate={{
+                        width: `${usedPct > 0 ? (seg.pct / usedPct) * 100 : 0}%`,
+                      }}
+                      transition={{
+                        delay: 1.1 + i * 0.15,
+                        duration: 0.8,
+                        ease: "easeOut",
+                      }}
+                    />
+                  ))}
+                </div>
+
+                {/* Legend */}
+                <div className="flex flex-wrap gap-x-4 gap-y-1.5 mt-1">
+                  {segments.map((seg, i) => (
+                    <motion.div
+                      key={seg.label}
+                      className="flex items-center gap-1.5"
+                      initial={{ opacity: 0 }}
+                      animate={{ opacity: 1 }}
+                      transition={{ delay: 1.4 + i * 0.1 }}
+                    >
+                      <div
+                        className="w-2 h-2 rounded-full shrink-0"
+                        style={{ backgroundColor: seg.color }}
+                      />
+                      <span className="text-white/40 text-[10px]">
+                        {seg.label}
+                      </span>
+                      <span
+                        className="text-[10px] font-bold font-mono tabular-nums"
+                        style={{ color: seg.color }}
+                      >
+                        {seg.pct.toFixed(0)}%
+                      </span>
+                    </motion.div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Balance result */}
+            <motion.div
+              className="flex justify-between items-center pt-3 border-t border-white/[0.06]"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              transition={{ delay: 1.6, duration: 0.4 }}
+            >
+              <span className="text-white/40 text-[11px] font-medium uppercase tracking-wider">
+                {savedAmount >= 0 ? "Ahorraste" : "D\u00e9ficit"}
+              </span>
+              <span
+                className="text-lg font-bold font-mono tabular-nums"
+                style={{ color: savedAmount >= 0 ? "#34d399" : "#fb7185" }}
+              >
+                {savedAmount >= 0 ? "+" : ""}
+                {formatCurrency(savedAmount)}
+              </span>
+            </motion.div>
           </motion.div>
 
-          {/* Month */}
-          <motion.p
-            className="relative text-white/20 text-xs mt-2 capitalize"
+          {/* Month + close */}
+          <motion.div
+            className="relative flex flex-col items-center gap-3 mt-2"
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
-            transition={{ delay: 0.8 }}
+            transition={{ delay: 1.8 }}
           >
-            {format(month, "MMMM yyyy", { locale: es })}
-          </motion.p>
-
-          {/* Close */}
-          <motion.button
-            className="relative mt-4 px-6 py-2.5 rounded-full bg-white/10 text-white/60 text-sm font-medium hover:bg-white/15 transition-colors"
-            onClick={(e) => {
-              e.stopPropagation();
-              onClose();
-            }}
-            initial={{ opacity: 0, y: 10 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 1 }}
-          >
-            Cerrar
-          </motion.button>
+            <p className="text-white/15 text-[10px] capitalize tracking-wider">
+              {format(month, "MMMM yyyy", { locale: es })}
+            </p>
+            <button
+              className="px-5 py-2 rounded-full text-white/50 text-xs font-medium hover:bg-white/5 transition-colors"
+              style={{ border: `1px solid ${closing.accent}30` }}
+              onClick={(e) => {
+                e.stopPropagation();
+                onClose();
+              }}
+            >
+              Cerrar
+            </button>
+          </motion.div>
         </div>
       );
     },
