@@ -169,13 +169,13 @@ export function MobileBottomBar() {
                       "mobile-drawer-item-icon",
                       isActive
                         ? "bg-primary/15 text-primary"
-                        : "bg-muted/50 text-muted-foreground"
+                        : "bg-muted/80 text-foreground/60 dark:bg-muted/50 dark:text-muted-foreground"
                     )}>
                       <RouteIcon route={route} className="h-5 w-5" />
                     </div>
                     <span className={cn(
                       "text-xs font-medium",
-                      isActive ? "text-primary" : "text-foreground/80"
+                      isActive ? "text-primary" : "text-foreground/70"
                     )}>
                       {route.title}
                     </span>
@@ -216,7 +216,7 @@ export function MobileBottomBar() {
                   setDrawerOpen(false);
                   setTimeout(() => setCustomizeOpen(true), 300);
                 }}
-                className="size-11 rounded-xl bg-muted/40 flex items-center justify-center shrink-0 active:bg-muted active:scale-95 transition-all"
+                className="size-11 rounded-xl bg-muted/60 flex items-center justify-center shrink-0 active:bg-muted active:scale-95 transition-all"
               >
                 <SlidersHorizontal className="size-4.5 text-muted-foreground" />
               </button>

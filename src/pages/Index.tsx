@@ -249,28 +249,28 @@ const Index = () => {
           <div className="grid grid-cols-4 md:grid-cols-2 gap-1.5 md:gap-2">
             <Button
               onClick={() => handleQuickAdd("Ingreso")}
-              className="h-auto py-2.5 md:py-5 flex-col gap-0.5 md:gap-1.5 border border-success/20 text-success hover:bg-success/10 hover:border-success/30 hover:shadow-sm bg-transparent transition-all"
+              className="h-auto py-2.5 md:py-5 flex-col gap-0.5 md:gap-1.5 border border-success/30 dark:border-success/20 text-success hover:bg-success/10 hover:border-success/40 hover:shadow-sm bg-transparent transition-all"
             >
               <TrendingUp className="h-4 w-4 md:h-5 md:w-5" />
               <span className="text-[10px] md:text-xs font-semibold">Ingreso</span>
             </Button>
             <Button
               onClick={() => handleQuickAdd("Gasto")}
-              className="h-auto py-2.5 md:py-5 flex-col gap-0.5 md:gap-1.5 border border-destructive/20 text-destructive hover:bg-destructive/10 hover:border-destructive/30 hover:shadow-sm bg-transparent transition-all"
+              className="h-auto py-2.5 md:py-5 flex-col gap-0.5 md:gap-1.5 border border-destructive/30 dark:border-destructive/20 text-destructive hover:bg-destructive/10 hover:border-destructive/40 hover:shadow-sm bg-transparent transition-all"
             >
               <TrendingDown className="h-4 w-4 md:h-5 md:w-5" />
               <span className="text-[10px] md:text-xs font-semibold">Gasto</span>
             </Button>
             <Button
               onClick={() => handleQuickAdd("Inversión")}
-              className="h-auto py-2.5 md:py-5 flex-col gap-0.5 md:gap-1.5 border border-blue/20 text-blue hover:bg-blue/10 hover:border-blue/30 hover:shadow-sm bg-transparent transition-all"
+              className="h-auto py-2.5 md:py-5 flex-col gap-0.5 md:gap-1.5 border border-blue/30 dark:border-blue/20 text-blue hover:bg-blue/10 hover:border-blue/40 hover:shadow-sm bg-transparent transition-all"
             >
               <PiggyBank className="h-4 w-4 md:h-5 md:w-5" />
               <span className="text-[10px] md:text-xs font-semibold">Inversión</span>
             </Button>
             <Button
               onClick={() => setIsBankSyncOpen(true)}
-              className="h-auto py-2.5 md:py-5 flex-col gap-0.5 md:gap-1.5 border border-primary/20 text-primary hover:bg-primary/10 hover:border-primary/30 hover:shadow-sm bg-transparent transition-all group overflow-hidden"
+              className="h-auto py-2.5 md:py-5 flex-col gap-0.5 md:gap-1.5 border border-primary/30 dark:border-primary/20 text-primary hover:bg-primary/10 hover:border-primary/40 hover:shadow-sm bg-transparent transition-all group overflow-hidden"
             >
               {/* Stacked bank logos */}
               <div className="flex items-center justify-center h-4 md:h-5">

@@ -235,7 +235,7 @@ export default function QuickTransactionForm({ onSuccess, defaultType = "Gasto" 
             className={cn(
               "h-28 sm:h-32 text-center font-bold font-mono",
               "border-0 bg-transparent shadow-none",
-              "placeholder:text-muted-foreground/20",
+              "placeholder:text-muted-foreground/40",
               "focus-visible:ring-0 focus-visible:ring-offset-0",
               "transition-colors duration-200",
               isPrivacyMode && amount ? "privacy-blur" : "",
@@ -259,13 +259,13 @@ export default function QuickTransactionForm({ onSuccess, defaultType = "Gasto" 
             onKeyDown={handleDetailKeyDown}
             className={cn(
               "h-12 text-sm rounded-xl px-4 text-center",
-              "border border-white/[0.06] bg-white/[0.02]",
-              "focus:border-white/15 focus-visible:ring-0 focus-visible:ring-offset-0",
-              "placeholder:text-muted-foreground/30",
+              "border border-border/40 dark:border-white/[0.06] bg-muted/30 dark:bg-white/[0.02]",
+              "focus:border-border dark:focus:border-white/15 focus-visible:ring-0 focus-visible:ring-offset-0",
+              "placeholder:text-muted-foreground/50",
               "transition-all duration-200",
             )}
           />
-          <p className="text-center text-[10px] text-muted-foreground/35 tracking-wide">
+          <p className="text-center text-[10px] text-muted-foreground/60 tracking-wide">
             <Sparkles className="inline h-2.5 w-2.5 mr-1 -translate-y-px" />
             categorización automática
           </p>
@@ -281,7 +281,7 @@ export default function QuickTransactionForm({ onSuccess, defaultType = "Gasto" 
             />
             <label
               htmlFor="shared"
-              className="text-xs text-muted-foreground/60 cursor-pointer flex items-center gap-1.5 hover:text-muted-foreground transition-colors"
+              className="text-xs text-muted-foreground cursor-pointer flex items-center gap-1.5 hover:text-foreground transition-colors"
             >
               <Users className="h-3 w-3" />
               Compartido

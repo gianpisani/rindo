@@ -127,7 +127,7 @@ Based on Indigo, Blue, Cyan palette
     --secondary: oklch(0.935 0.003 286);
     --secondary-foreground: oklch(0.18 0.006 285.885);
     --muted: oklch(0.935 0.003 286);
-    --muted-foreground: oklch(0.385 0.016 285.938);
+    --muted-foreground: oklch(0.355 0.016 285.938);
     --accent: oklch(0.935 0.003 286);
     --accent-foreground: oklch(0.18 0.006 285.885);
     --destructive: 0.577 0.245 27.325;
