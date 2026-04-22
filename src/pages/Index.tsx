@@ -359,21 +359,21 @@ const Index = () => {
     </div>
   );
 
-  // ─── Donut Chart Card (desktop — horizontal) ───────────
+  // ─── Donut Chart Card (desktop top row) ────────────────
   const donutCard = (
-    <Card className="border-border/50 overflow-hidden">
-      <div className="flex items-center justify-between px-4 pt-3 pb-2">
+    <Card className="border-border/50 overflow-hidden flex flex-col">
+      <div className="px-3 pt-3 pb-1">
         <span className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider">
           Gastos del mes
         </span>
       </div>
       {donutData.length === 0 ? (
-        <div className="flex items-center justify-center p-4">
+        <div className="flex-1 flex items-center justify-center p-3">
           <p className="text-xs text-muted-foreground">Sin gastos</p>
         </div>
       ) : (
-        <div className="flex items-center gap-3 px-4 pb-3">
-          <div className="relative shrink-0 w-[110px] h-[110px]">
+        <div className="flex-1 flex items-center justify-center p-2">
+          <div className="relative w-full" style={{ maxWidth: 140, aspectRatio: "1" }}>
             <ResponsiveContainer width="100%" height="100%">
               <PieChart>
                 <Pie
@@ -382,9 +382,9 @@ const Index = () => {
                   nameKey="category"
                   cx="50%"
                   cy="50%"
-                  innerRadius={30}
-                  outerRadius={48}
-                  paddingAngle={3}
+                  innerRadius="45%"
+                  outerRadius="80%"
+                  paddingAngle={2}
                   strokeWidth={0}
                   className={cn(isPrivacyMode && "privacy-blur")}
                 >
@@ -392,7 +392,7 @@ const Index = () => {
                     <Cell
                       key={i}
                       fill={entry.color}
-                      className="transition-opacity hover:opacity-80"
+                      className="transition-opacity hover:opacity-80 cursor-pointer"
                     />
                   ))}
                 </Pie>
@@ -408,29 +408,16 @@ const Index = () => {
               </p>
             </div>
           </div>
-          <div className="flex-1 space-y-0.5">
-            {donutData.map((cat) => (
-              <div key={cat.category} className="flex items-center gap-1.5 min-w-0">
-                <span className="size-2 rounded-full shrink-0" style={{ backgroundColor: cat.color }} />
-                <span className="text-[10px] text-muted-foreground truncate flex-1">
-                  {getCatEmoji(cat.category)} {cat.category}
-                </span>
-                <span className={cn("text-[10px] font-semibold tabular-nums shrink-0", isPrivacyMode && "privacy-blur")}>
-                  {cat.percentage.toFixed(0)}%
-                </span>
-              </div>
-            ))}
-          </div>
         </div>
       )}
     </Card>
   );
 
   // ─── Insights Panel (desktop) ─────────────────────────
-  const topInsights = currentInsights.slice(0, 4);
+  const topInsights = currentInsights.slice(0, 6);
   const insightsPanel = (
-    <Card className="border-border/50 overflow-hidden flex flex-col">
-      <div className="flex items-center justify-between px-4 pt-3 pb-2">
+    <Card className="border-border/50 overflow-hidden flex flex-col h-full">
+      <div className="flex items-center justify-between px-4 pt-3 pb-2 shrink-0">
         <div className="flex items-center gap-2">
           <h2 className="text-sm font-semibold">Insights</h2>
           {currentInsights.length > 0 && (
@@ -454,19 +441,24 @@ const Index = () => {
           <p className="text-xs text-muted-foreground">Sin insights aún</p>
         </div>
       ) : (
-        <div className="px-3 pb-3 space-y-1">
+        <div className="flex-1 overflow-y-auto px-3 pb-3 space-y-1.5">
           {topInsights.map((insight, i) => {
             const style = insightStyle[insight.type];
             const Icon = style.icon;
             return (
-              <div key={i} className="flex items-center gap-2 py-1.5 px-2 rounded-md hover:bg-muted/30 transition-colors">
-                <div className={cn("flex items-center justify-center size-5 rounded shrink-0", style.bg)}>
-                  <Icon className={cn("h-2.5 w-2.5", style.color)} />
+              <div
+                key={i}
+                className="flex items-start gap-2.5 rounded-lg border border-border/30 p-2.5 hover:bg-muted/30 transition-colors"
+              >
+                <div className={cn("flex items-center justify-center size-6 rounded-md shrink-0 mt-0.5", style.bg)}>
+                  <Icon className={cn("h-3 w-3", style.color)} />
                 </div>
-                <p className="text-[11px] leading-snug truncate flex-1">{insight.title}</p>
-                <p className={cn("text-[10px] text-muted-foreground shrink-0 hidden xl:block", isPrivacyMode && "privacy-blur")}>
-                  {insight.description.length > 40 ? insight.description.slice(0, 40) + "…" : insight.description}
-                </p>
+                <div className="min-w-0 flex-1">
+                  <p className="text-[11px] font-medium leading-snug">{insight.title}</p>
+                  <p className={cn("text-[10px] text-muted-foreground leading-snug mt-0.5", isPrivacyMode && "privacy-blur")}>
+                    {insight.description}
+                  </p>
+                </div>
               </div>
             );
           })}
@@ -477,8 +469,8 @@ const Index = () => {
 
   // ─── Transactions Card (shared) ───────────────────────
   const transactionsCard = (
-    <Card className="overflow-hidden flex flex-col">
-      <div className="flex items-center justify-between px-4 pt-3 pb-2">
+    <Card className="overflow-hidden flex flex-col h-full">
+      <div className="flex items-center justify-between px-4 pt-3 pb-2 shrink-0">
         <div className="flex items-center gap-2">
           <h2 className="text-sm font-semibold">Recientes</h2>
           {recentTransactions.length > 0 && (
@@ -522,7 +514,7 @@ const Index = () => {
           <p className="text-xs text-muted-foreground mt-1">Agrega tu primera transacción arriba</p>
         </div>
       ) : (
-        <div className="overflow-y-auto max-h-[450px] pb-2">
+        <div className="overflow-y-auto flex-1 pb-2">
           {sortedDateKeys.map((dateKey) => (
             <div key={dateKey}>
               <div className="flex items-center gap-3 px-5 py-1.5 sticky top-0 bg-card z-10 shadow-[0_1px_3px_-1px_rgba(0,0,0,0.1)]">
@@ -608,20 +600,18 @@ const Index = () => {
         </div>
 
         {/* ─── DESKTOP LAYOUT (lg+) ─── */}
-        <div className="hidden lg:block space-y-4">
-          {/* Top row: Balance | Quick Actions */}
-          <div className="grid grid-cols-[3fr,2fr] gap-3">
-            {balanceCard}
-            {quickActions}
+        <div className="hidden lg:block space-y-3">
+          {/* Top row: Balance | Donut | Quick Actions */}
+          <div className="grid grid-cols-12 gap-3 items-stretch">
+            <div className="col-span-5">{balanceCard}</div>
+            <div className="col-span-3">{donutCard}</div>
+            <div className="col-span-4">{quickActions}</div>
           </div>
 
-          {/* Bottom row: Transactions | Donut + Insights */}
-          <div className="grid grid-cols-12 gap-3">
-            <div className="col-span-5">{transactionsCard}</div>
-            <div className="col-span-7 flex flex-col gap-3">
-              {donutCard}
-              {insightsPanel}
-            </div>
+          {/* Bottom row: Transactions | Insights */}
+          <div className="grid grid-cols-12 gap-3 items-stretch" style={{ height: "calc(100vh - 280px)", minHeight: 320, maxHeight: 520 }}>
+            <div className="col-span-7 min-h-0">{transactionsCard}</div>
+            <div className="col-span-5 min-h-0">{insightsPanel}</div>
           </div>
         </div>
 
