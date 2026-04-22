@@ -526,22 +526,27 @@ export function MonthlyStory({
 
       return (
         <div className="relative h-full w-full overflow-hidden">
-          {/* Multi-layer glow background */}
+          {/* Multi-layer glow background — fixed to fill the viewport */}
           <div
-            className="absolute top-1/3 left-1/4 w-[600px] h-[600px] rounded-full blur-[150px] pointer-events-none opacity-60"
-            style={{ background: closing.glowColor }}
-          />
-          <div
-            className="absolute bottom-1/4 right-1/4 w-[500px] h-[500px] rounded-full blur-[130px] pointer-events-none opacity-40"
-            style={{ background: closing.glowColor }}
-          />
-          <div
-            className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[300px] h-[300px] rounded-full blur-[80px] pointer-events-none opacity-30"
-            style={{ background: closing.accent }}
-          />
+            className="fixed inset-0 pointer-events-none"
+            style={{ zIndex: 0 }}
+          >
+            <div
+              className="absolute top-[20%] left-[15%] w-[60vw] h-[60vw] max-w-[800px] max-h-[800px] rounded-full blur-[150px] opacity-60"
+              style={{ background: closing.glowColor }}
+            />
+            <div
+              className="absolute bottom-[10%] right-[10%] w-[50vw] h-[50vw] max-w-[700px] max-h-[700px] rounded-full blur-[130px] opacity-40"
+              style={{ background: closing.glowColor }}
+            />
+            <div
+              className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[30vw] h-[30vw] max-w-[400px] max-h-[400px] rounded-full blur-[100px] opacity-30"
+              style={{ background: closing.accent }}
+            />
+          </div>
 
           {/* Desktop: two-column layout / Mobile: stacked */}
-          <div className="relative h-full flex flex-col md:flex-row items-center justify-center gap-8 md:gap-16 px-8 md:px-16 lg:px-24 py-12">
+          <div className="relative h-full flex flex-col md:flex-row items-center justify-center gap-8 md:gap-16 px-6 md:px-12 lg:px-20 py-12" style={{ zIndex: 1 }}>
 
             {/* LEFT: Mood + subtitle */}
             <div className="flex flex-col items-center md:items-start gap-4 md:flex-1 md:max-w-md">
@@ -886,7 +891,9 @@ export function MonthlyStory({
                 animate="center"
                 exit="exit"
                 transition={{ duration: 0.4, ease: "easeInOut" }}
-                className="w-full h-full flex items-center justify-center px-6"
+                className={`w-full h-full flex items-center justify-center ${
+                  slides[currentSlide].id === "closing" ? "" : "px-6"
+                }`}
               >
                 {slides[currentSlide].render()}
               </motion.div>
