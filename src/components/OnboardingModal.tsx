@@ -597,7 +597,7 @@ export function OnboardingModal({
             {/* ── Color ───────────────────────────────────────── */}
             <div>
               <SectionLabel icon={Palette}>Color</SectionLabel>
-              <div className="grid grid-cols-3 sm:grid-cols-5 gap-2">
+              <div className="grid grid-cols-3 sm:grid-cols-5 gap-2 p-0.5">
                 {/* Default Rindo */}
                 <ThemePreviewCard
                   palette={{
