@@ -229,7 +229,6 @@ const Index = () => {
   // ─── Balance Card (shared between mobile/desktop) ─────
   const balanceCard = (
     <Card className="border-border/50 flex flex-col overflow-hidden">
-      <div className="h-[2px] accent-gradient-bg" />
       <div className="px-4 py-3 md:px-5 md:py-4 flex flex-col">
         <div className="flex items-center justify-between">
           <span className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider">Balance Total</span>
@@ -352,22 +351,23 @@ const Index = () => {
     </div>
   );
 
-  // ─── Donut Chart Card (desktop) ───────────────────────
+  // ─── Donut Chart Card (desktop — horizontal layout) ──
   const donutCard = (
-    <Card className="border-border/50 flex flex-col overflow-hidden">
+    <Card className="border-border/50 overflow-hidden">
       <div className="px-4 pt-3 pb-1">
         <span className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider">
           Gastos del mes
         </span>
       </div>
       {donutData.length === 0 ? (
-        <div className="flex-1 flex items-center justify-center p-4">
+        <div className="flex items-center justify-center p-4">
           <p className="text-xs text-muted-foreground">Sin gastos</p>
         </div>
       ) : (
-        <div className="flex-1 flex flex-col items-center px-3 pb-3">
-          <div className="relative w-full max-w-[180px]">
-            <ResponsiveContainer width="100%" height={160}>
+        <div className="flex items-center gap-4 px-4 pb-3">
+          {/* Donut */}
+          <div className="relative shrink-0 w-[120px] h-[120px]">
+            <ResponsiveContainer width="100%" height="100%">
               <PieChart>
                 <Pie
                   data={donutData}
@@ -375,8 +375,8 @@ const Index = () => {
                   nameKey="category"
                   cx="50%"
                   cy="50%"
-                  innerRadius={45}
-                  outerRadius={70}
+                  innerRadius={32}
+                  outerRadius={52}
                   paddingAngle={3}
                   strokeWidth={0}
                   className={cn(isPrivacyMode && "privacy-blur")}
@@ -393,25 +393,26 @@ const Index = () => {
               </PieChart>
             </ResponsiveContainer>
             <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-              <div className="text-center">
-                <p className="text-[8px] text-muted-foreground uppercase tracking-wider">Total</p>
-                <p className={cn(
-                  "text-sm font-bold font-mono tabular-nums",
-                  isPrivacyMode && "privacy-blur"
-                )}>
-                  {formatCompact(donutTotal)}
-                </p>
-              </div>
+              <p className={cn(
+                "text-[11px] font-bold font-mono tabular-nums",
+                isPrivacyMode && "privacy-blur"
+              )}>
+                {formatCompact(donutTotal)}
+              </p>
             </div>
           </div>
-          <div className="flex flex-wrap justify-center gap-x-2.5 gap-y-0.5 mt-0.5">
-            {donutData.slice(0, 4).map((cat) => (
-              <div key={cat.category} className="flex items-center gap-1">
-                <span className="text-[10px] leading-none">{getCatEmoji(cat.category)}</span>
-                <span className="text-[9px] text-muted-foreground truncate max-w-[60px]">
-                  {cat.category}
+          {/* Legend */}
+          <div className="flex-1 grid grid-cols-2 gap-x-4 gap-y-1">
+            {donutData.map((cat) => (
+              <div key={cat.category} className="flex items-center gap-1.5 min-w-0">
+                <span
+                  className="size-2 rounded-full shrink-0"
+                  style={{ backgroundColor: cat.color }}
+                />
+                <span className="text-[11px] text-muted-foreground truncate">
+                  {getCatEmoji(cat.category)} {cat.category}
                 </span>
-                <span className={cn("text-[9px] font-semibold tabular-nums", isPrivacyMode && "privacy-blur")}>
+                <span className={cn("text-[11px] font-semibold tabular-nums ml-auto shrink-0", isPrivacyMode && "privacy-blur")}>
                   {cat.percentage.toFixed(0)}%
                 </span>
               </div>
@@ -616,17 +617,19 @@ const Index = () => {
 
         {/* ─── DESKTOP LAYOUT (lg+) ─── */}
         <div className="hidden lg:block space-y-4">
-          {/* Top row: Balance | Donut | Quick Actions */}
-          <div className="grid grid-cols-12 gap-3">
-            <div className="col-span-5">{balanceCard}</div>
-            <div className="col-span-3">{donutCard}</div>
-            <div className="col-span-4">{quickActions}</div>
+          {/* Top row: Balance | Quick Actions */}
+          <div className="grid grid-cols-[3fr,2fr] gap-3">
+            {balanceCard}
+            {quickActions}
           </div>
 
-          {/* Bottom row: Transactions | Insights */}
+          {/* Bottom row: Transactions | Donut + Insights */}
           <div className="grid grid-cols-12 gap-3">
-            <div className="col-span-7">{transactionsCard}</div>
-            <div className="col-span-5">{insightsPanel}</div>
+            <div className="col-span-5">{transactionsCard}</div>
+            <div className="col-span-7 flex flex-col gap-3">
+              {donutCard}
+              {insightsPanel}
+            </div>
           </div>
         </div>
 
