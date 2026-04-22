@@ -565,12 +565,22 @@ export default function Overview() {
       if (!worstMonth || balance < worstMonth.balance) worstMonth = { name, balance };
     }
 
+    // Patrimonio: liquid + investments (investments are assets, not losses)
+    const totalLiquid = totals.income - totals.expenses - totals.investments;
+    const totalInvested = totals.investments;
+    const patrimonio = totals.income - totals.expenses; // liquid + invested
+
     return {
       monthsWithData: months.length,
       avgIncome: totals.income / n,
       avgExpenses: totals.expenses / n,
       avgInvestments: totals.investments / n,
       avgBalance: (totals.income - totals.expenses - totals.investments) / n,
+      patrimonio,
+      totalLiquid,
+      totalInvested,
+      totalIncome: totals.income,
+      totalExpenses: totals.expenses,
       bestMonth: months.length >= 2 ? bestMonth : null,
       worstMonth: months.length >= 2 ? worstMonth : null,
     };
@@ -1223,9 +1233,71 @@ export default function Overview() {
               </div>
             ) : (
               <>
-                {/* Aggregate KPIs — true historical averages */}
+                {/* Patrimonio Hero */}
                 <GlassCard className="overflow-hidden">
                   <div className="h-[2px] accent-gradient-bg" />
+                  <div className="px-4 py-3 md:px-5 md:py-4">
+                    <div className="flex items-center justify-between">
+                      <span className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider">
+                        Patrimonio Total
+                      </span>
+                      <span className="text-[10px] text-muted-foreground/50 font-mono tabular-nums">
+                        {historicalStats.monthsWithData} {historicalStats.monthsWithData === 1 ? "mes" : "meses"} de historial
+                      </span>
+                    </div>
+                    <div className={cn(
+                      "mt-1.5 md:mt-2 text-[28px] md:text-4xl font-bold font-mono tabular-nums tracking-tight leading-none",
+                      isPrivacyMode && "privacy-blur"
+                    )}>
+                      $<NumberFlow
+                        value={historicalStats.patrimonio}
+                        format={{ style: "decimal", minimumFractionDigits: 0, maximumFractionDigits: 0 }}
+                        locales="es-CL"
+                      />
+                    </div>
+                    <div className="mt-2.5 pt-2.5 md:mt-3 md:pt-3 border-t border-border/50">
+                      <div className="flex items-center gap-3 md:gap-6 flex-wrap">
+                        <div className="flex items-center gap-1.5">
+                          <div className="p-1 rounded-md bg-emerald-500/10">
+                            <Wallet className="h-3 w-3 text-emerald-500" />
+                          </div>
+                          <div>
+                            <p className="text-[9px] text-muted-foreground uppercase tracking-wider">Disponible</p>
+                            <p className={cn("text-xs font-semibold font-mono tabular-nums", isPrivacyMode && "privacy-blur")}>
+                              {formatCompact(historicalStats.totalLiquid)}
+                            </p>
+                          </div>
+                        </div>
+                        <div className="flex items-center gap-1.5">
+                          <div className="p-1 rounded-md bg-sky-500/10">
+                            <PiggyBank className="h-3 w-3 text-sky-500" />
+                          </div>
+                          <div>
+                            <p className="text-[9px] text-muted-foreground uppercase tracking-wider">Invertido</p>
+                            <p className={cn("text-xs font-semibold font-mono tabular-nums", isPrivacyMode && "privacy-blur")}>
+                              {formatCompact(historicalStats.totalInvested)}
+                            </p>
+                          </div>
+                        </div>
+                        <div className="flex items-center gap-1.5">
+                          <div className="p-1 rounded-md bg-rose-500/10">
+                            <TrendingDown className="h-3 w-3 text-rose-500" />
+                          </div>
+                          <div>
+                            <p className="text-[9px] text-muted-foreground uppercase tracking-wider">Total gastado</p>
+                            <p className={cn("text-xs font-semibold font-mono tabular-nums", isPrivacyMode && "privacy-blur")}>
+                              {formatCompact(historicalStats.totalExpenses)}
+                            </p>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </GlassCard>
+
+                {/* Aggregate KPIs — true historical averages */}
+                <GlassCard className="overflow-hidden">
+                  <div className="h-[2px] bg-gradient-to-r from-muted-foreground/20 via-muted-foreground/10 to-transparent" />
                   <div className="px-4 py-3">
                     <div className="flex items-center gap-2 mb-3">
                       <BarChart3 className="h-3.5 w-3.5 text-primary/60" />
