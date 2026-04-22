@@ -238,7 +238,7 @@ export function AppSidebar() {
                   </div>
                 </DropdownMenuItem>
                 <DropdownMenuItem
-                  onClick={() => setTheme(theme === "dark" ? "light" : "dark")}
+                  onClick={() => setTheme(theme === "light" ? "dark" : theme === "dark" ? "system" : "light")}
                   className="gap-2 p-2 cursor-pointer"
                 >
                   {getThemeIcon()}
@@ -421,7 +421,7 @@ export function AppSidebar() {
                 </button>
               </DropdownMenuTrigger>
               <DropdownMenuContent
-                className="w-[--radix-dropdown-menu-trigger-width] min-w-56 rounded-xl"
+                className="w-[--radix-dropdown-menu-trigger-width] min-w-56 rounded-xl max-h-[calc(var(--radix-dropdown-menu-content-available-height)-16px)] overflow-y-auto"
                 side="top"
                 align="end"
                 sideOffset={4}
@@ -452,19 +452,39 @@ export function AppSidebar() {
                   <UserPen className="size-4 text-muted-foreground" />
                   Editar perfil
                 </DropdownMenuItem>
+                <DropdownMenuSeparator />
+                {/* Theme picker */}
+                <div className="px-3 py-2">
+                  <span className="text-xs font-medium text-muted-foreground">Tema</span>
+                  <div className="flex items-center gap-1 mt-1.5 p-1 rounded-lg bg-muted/50">
+                    {([
+                      { value: "light", icon: Sun, label: "Claro" },
+                      { value: "dark", icon: Moon, label: "Oscuro" },
+                      { value: "system", icon: Monitor, label: "Sistema" },
+                    ] as const).map(({ value, icon: Icon, label }) => (
+                      <button
+                        key={value}
+                        onClick={() => setTheme(value)}
+                        className={cn(
+                          "flex-1 flex items-center justify-center gap-1.5 rounded-md px-2 py-1.5 text-xs font-medium transition-all",
+                          theme === value
+                            ? "bg-background text-foreground shadow-sm"
+                            : "text-muted-foreground hover:text-foreground"
+                        )}
+                      >
+                        <Icon className="size-3.5" />
+                        {label}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+                <DropdownMenuSeparator />
                 <DropdownMenuItem
                   onClick={togglePrivacyMode}
                   className="gap-2 px-3 py-2 cursor-pointer"
                 >
                   {isPrivacyMode ? <Eye className="size-4 text-muted-foreground" /> : <EyeOff className="size-4 text-muted-foreground" />}
                   {isPrivacyMode ? "Desactivar" : "Activar"} privacidad
-                </DropdownMenuItem>
-                <DropdownMenuItem
-                  onClick={() => setTheme(theme === "dark" ? "light" : "dark")}
-                  className="gap-2 px-3 py-2 cursor-pointer"
-                >
-                  {theme === "dark" ? <Sun className="size-4 text-muted-foreground" /> : <Moon className="size-4 text-muted-foreground" />}
-                  {theme === "dark" ? "Modo claro" : "Modo oscuro"}
                 </DropdownMenuItem>
                 <DropdownMenuItem
                   onClick={() => {
