@@ -1,12 +1,14 @@
 import { useCallback, useState, ComponentType } from "react";
 import { Link, useLocation } from "react-router-dom";
-import { Plus, ChevronUp, UserPen, SlidersHorizontal } from "lucide-react";
+import { Plus, ChevronUp, UserPen, SlidersHorizontal, LogOut } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { useGlobalDrawers } from "@/hooks/useGlobalDrawers";
 import { useSoundFX } from "@/hooks/useSoundFX";
 import { useUserProfile } from "@/hooks/useUserProfile";
 import { useNavPreferences } from "@/hooks/useNavPreferences";
+import { supabase } from "@/integrations/supabase/client";
+import { toast } from "sonner";
 import { APP_ROUTES, type RouteConfig } from "@/lib/routes-config";
 import {
   Drawer,
@@ -219,6 +221,18 @@ export function MobileBottomBar() {
                 className="size-11 rounded-xl bg-muted/60 flex items-center justify-center shrink-0 active:bg-muted active:scale-95 transition-all"
               >
                 <SlidersHorizontal className="size-4.5 text-muted-foreground" />
+              </button>
+
+              {/* Logout button */}
+              <button
+                onClick={async () => {
+                  setDrawerOpen(false);
+                  await supabase.auth.signOut();
+                  toast.success("Sesión cerrada exitosamente");
+                }}
+                className="size-11 rounded-xl bg-muted/60 flex items-center justify-center shrink-0 active:bg-destructive/10 active:scale-95 transition-all"
+              >
+                <LogOut className="size-4.5 text-muted-foreground" />
               </button>
             </div>
           </div>
