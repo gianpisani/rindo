@@ -1,4 +1,4 @@
-import { useState, useMemo, useEffect } from "react";
+import { useState, useMemo, useEffect, useRef } from "react";
 import Layout from "@/components/Layout";
 import { GlassCard } from "@/components/GlassCard";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -26,10 +26,10 @@ import NumberFlow from "@number-flow/react";
 import {
   format,
   subMonths,
-  addMonths,
   startOfMonth,
   endOfMonth,
   eachMonthOfInterval,
+  isSameMonth,
 } from "date-fns";
 import { es } from "date-fns/locale";
 import {
@@ -37,14 +37,15 @@ import {
   TrendingDown,
   PiggyBank,
   Wallet,
-  ChevronLeft,
-  ChevronRight,
   CalendarDays,
   Info,
   Target,
   CreditCard,
   ArrowRight,
   Play,
+  BarChart3,
+  Trophy,
+  Calendar,
 } from "lucide-react";
 import { MonthlyStory } from "@/components/MonthlyStory";
 import { MonthlyEvolutionChart } from "@/components/MonthlyEvolutionChart";
@@ -306,12 +307,14 @@ function makeComparison(
 export default function Overview() {
   const [selectedMonth, setSelectedMonth] = useState(new Date());
   const [storyOpen, setStoryOpen] = useState(false);
+  const [activeTab, setActiveTab] = useState("mes");
   const { transactions, isLoading } = useTransactions();
   const { categories } = useCategories();
   const { limits } = useCategoryLimits();
   const { budget } = useMonthlyBudget();
   const { creditCards } = useCreditCards();
   const { isPrivacyMode } = usePrivacyMode();
+  const monthStripRef = useRef<HTMLDivElement>(null);
 
   const [excludedCategories, setExcludedCategories] = useState<Set<string>>(new Set());
   const [selectedCategory, setSelectedCategory] = useState<CategorySpending | null>(null);
@@ -332,15 +335,21 @@ export default function Overview() {
   const { kpis, categoryBreakdown, dailySpending, dailyStats, cardSpending, transactionCount, budgetSummary } =
     useMonthlySummary(transactions, categories, limits, selectedMonth, budget?.total_budget, excludedCategories);
 
-  // Month navigation
-  const changeMonth = (delta: number) => {
-    setSelectedMonth((prev) =>
-      delta > 0 ? addMonths(prev, 1) : subMonths(prev, 1)
-    );
-  };
+  const isCurrentMonth = isSameMonth(selectedMonth, new Date());
 
-  const isCurrentMonth =
-    format(selectedMonth, "yyyy-MM") === format(new Date(), "yyyy-MM");
+  // Month pills — last 6 months
+  const monthPills = useMemo(() => {
+    const now = new Date();
+    return Array.from({ length: 6 }, (_, i) => subMonths(now, 5 - i));
+  }, []);
+
+  // Scroll active pill into view
+  useEffect(() => {
+    if (monthStripRef.current) {
+      const active = monthStripRef.current.querySelector("[data-active=true]");
+      active?.scrollIntoView({ behavior: "smooth", block: "nearest", inline: "center" });
+    }
+  }, [selectedMonth]);
 
   const openCategoryDetail = (cat: (typeof categoryBreakdown)[number]) => {
     const start = startOfMonth(selectedMonth);
@@ -520,6 +529,53 @@ export default function Overview() {
     });
   }, [last6Months, transactions]);
 
+  // Historical aggregate stats (independent of selectedMonth)
+  const historicalStats = useMemo(() => {
+    // Group all transactions by month
+    const monthMap = new Map<string, { income: number; expenses: number; investments: number }>();
+    for (const t of transactions) {
+      const key = format(new Date(t.date), "yyyy-MM");
+      if (!monthMap.has(key)) monthMap.set(key, { income: 0, expenses: 0, investments: 0 });
+      const entry = monthMap.get(key)!;
+      const amount = Number(t.amount);
+      if (t.type === "Ingreso") entry.income += amount;
+      else if (t.type === "Gasto") entry.expenses += amount;
+      else if (t.type === "Inversión") entry.investments += amount;
+    }
+
+    const months = Array.from(monthMap.entries());
+    const n = months.length || 1;
+    const totals = months.reduce(
+      (acc, [, v]) => ({
+        income: acc.income + v.income,
+        expenses: acc.expenses + v.expenses,
+        investments: acc.investments + v.investments,
+      }),
+      { income: 0, expenses: 0, investments: 0 }
+    );
+
+    // Best/worst month by balance
+    let bestMonth: { name: string; balance: number } | null = null;
+    let worstMonth: { name: string; balance: number } | null = null;
+    for (const [key, v] of months) {
+      const balance = v.income - v.expenses - v.investments;
+      const date = new Date(key + "-15");
+      const name = format(date, "MMMM yyyy", { locale: es });
+      if (!bestMonth || balance > bestMonth.balance) bestMonth = { name, balance };
+      if (!worstMonth || balance < worstMonth.balance) worstMonth = { name, balance };
+    }
+
+    return {
+      monthsWithData: months.length,
+      avgIncome: totals.income / n,
+      avgExpenses: totals.expenses / n,
+      avgInvestments: totals.investments / n,
+      avgBalance: (totals.income - totals.expenses - totals.investments) / n,
+      bestMonth: months.length >= 2 ? bestMonth : null,
+      worstMonth: months.length >= 2 ? worstMonth : null,
+    };
+  }, [transactions]);
+
   // Expenses by category (for horizontal bar chart in Histórico tab)
   const expensesByCategory = useMemo(() => {
     return transactions
@@ -548,78 +604,23 @@ export default function Overview() {
     <Layout>
       <div className="space-y-4">
         {/* ─── Header ────────────────────────────────── */}
-        <div className="flex flex-col gap-3">
-          <div className="flex items-center justify-between">
-            <div>
-              <h1 className="text-2xl font-bold tracking-tight mb-1">
-                Finanzas
-              </h1>
-              <p className="text-sm text-muted-foreground">
-                {isLoading
+        <div className="flex items-center justify-between">
+          <div>
+            <h1 className="text-2xl font-bold tracking-tight mb-1">
+              Finanzas
+            </h1>
+            <p className="text-sm text-muted-foreground">
+              {activeTab === "mes"
+                ? isLoading
                   ? "Cargando..."
-                  : `${transactionCount} movimientos en ${format(selectedMonth, "MMMM", { locale: es })}`}
-              </p>
-            </div>
-
-            <div className="flex items-center gap-2">
-              <Button
-                variant="ghost"
-                size="icon"
-                className="h-8 w-8 rounded-full bg-primary/10 text-primary hover:bg-primary/20"
-                onClick={() => setStoryOpen(true)}
-                disabled={transactionCount === 0}
-              >
-                <Play className="h-3.5 w-3.5 ml-0.5" />
-              </Button>
-
-              <div className="flex items-center gap-1">
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  className="h-8 w-8 rounded-lg"
-                  onClick={() => changeMonth(-1)}
-                >
-                  <ChevronLeft className="h-4 w-4" />
-                </Button>
-                <button
-                  onClick={() => !isCurrentMonth && setSelectedMonth(new Date())}
-                  className={cn(
-                    "min-w-[180px] text-center px-3 py-1.5 rounded-lg transition-colors",
-                    !isCurrentMonth
-                      ? "hover:bg-accent cursor-pointer"
-                      : "cursor-default"
-                  )}
-                >
-                  <span className="text-lg font-semibold capitalize">
-                    {format(selectedMonth, "MMMM yyyy", { locale: es })}
-                  </span>
-                </button>
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  className="h-8 w-8 rounded-lg"
-                  onClick={() => changeMonth(1)}
-                  disabled={isCurrentMonth}
-                >
-                  <ChevronRight className="h-4 w-4" />
-                </Button>
-                {!isCurrentMonth && (
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    className="ml-2 text-xs h-7 rounded-lg"
-                    onClick={() => setSelectedMonth(new Date())}
-                  >
-                    Hoy
-                  </Button>
-                )}
-              </div>
-            </div>
+                  : `${transactionCount} movimientos en ${format(selectedMonth, "MMMM", { locale: es })}`
+                : "Visión general de tu historial financiero"}
+            </p>
           </div>
         </div>
 
         {/* ─── Tabs ──────────────────────────────────── */}
-        <Tabs defaultValue="mes" className="w-full">
+        <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
           <TabsList className="h-9 rounded-lg bg-muted/60 p-0.5">
             <TabsTrigger value="mes" className="rounded-md text-xs px-4 data-[state=active]:shadow-sm">
               Mes
@@ -633,6 +634,58 @@ export default function Overview() {
           {/* TAB: MES                                     */}
           {/* ════════════════════════════════════════════ */}
           <TabsContent value="mes" className="mt-4 space-y-4">
+            {/* Month Strip */}
+            <div className="flex items-center gap-2">
+              <div
+                ref={monthStripRef}
+                className="flex items-center gap-1.5 overflow-x-auto scrollbar-hide flex-1"
+              >
+                {monthPills.map((month) => {
+                  const isActive = isSameMonth(month, selectedMonth);
+                  const isCurrent = isSameMonth(month, new Date());
+                  return (
+                    <button
+                      key={format(month, "yyyy-MM")}
+                      data-active={isActive}
+                      onClick={() => setSelectedMonth(month)}
+                      className={cn(
+                        "relative flex flex-col items-center px-3.5 py-1.5 rounded-lg transition-all duration-200 shrink-0",
+                        "text-center min-w-[72px]",
+                        isActive
+                          ? "bg-primary text-primary-foreground shadow-sm"
+                          : "hover:bg-accent/60 text-muted-foreground hover:text-foreground"
+                      )}
+                    >
+                      <span className={cn(
+                        "text-[10px] uppercase tracking-wider font-medium",
+                        isActive ? "text-primary-foreground/70" : "text-muted-foreground/60"
+                      )}>
+                        {format(month, "yyyy")}
+                      </span>
+                      <span className={cn(
+                        "text-sm font-semibold capitalize leading-tight",
+                        isActive ? "text-primary-foreground" : ""
+                      )}>
+                        {format(month, "MMM", { locale: es })}
+                      </span>
+                      {isCurrent && !isActive && (
+                        <span className="absolute -bottom-0.5 left-1/2 -translate-x-1/2 w-1 h-1 rounded-full bg-primary" />
+                      )}
+                    </button>
+                  );
+                })}
+              </div>
+              <Button
+                variant="ghost"
+                size="icon"
+                className="h-8 w-8 rounded-full bg-primary/10 text-primary hover:bg-primary/20 shrink-0"
+                onClick={() => setStoryOpen(true)}
+                disabled={transactionCount === 0}
+              >
+                <Play className="h-3.5 w-3.5 ml-0.5" />
+              </Button>
+            </div>
+
             {isLoading ? (
               <div className="space-y-6">
                 <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
@@ -1164,40 +1217,89 @@ export default function Overview() {
           <TabsContent value="historico" className="mt-4 space-y-4">
             {isLoading ? (
               <div className="space-y-4">
-                <Skeleton className="h-12 rounded-xl" />
+                <Skeleton className="h-24 rounded-xl" />
                 <Skeleton className="h-64 rounded-xl" />
                 <Skeleton className="h-64 rounded-xl" />
               </div>
             ) : (
               <>
-                {/* Compact KPIs */}
-                <GlassCard className="px-4 py-2.5">
-                  <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
-                    {kpiCards.map((card) => {
-                      const Icon = card.icon;
-                      return (
-                        <div key={card.label} className="flex items-center gap-2">
-                          <div className={cn("p-1 rounded-md", card.iconBg)}>
-                            <Icon className={cn("h-3 w-3", card.iconColor)} />
-                          </div>
-                          <div>
-                            <p className="text-[9px] text-muted-foreground uppercase tracking-wider">
-                              {card.label}
-                            </p>
-                            <p
-                              className={cn(
-                                "text-xs font-bold font-mono tabular-nums",
+                {/* Aggregate KPIs — true historical averages */}
+                <GlassCard className="overflow-hidden">
+                  <div className="h-[2px] accent-gradient-bg" />
+                  <div className="px-4 py-3">
+                    <div className="flex items-center gap-2 mb-3">
+                      <BarChart3 className="h-3.5 w-3.5 text-primary/60" />
+                      <span className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider">
+                        Promedio mensual
+                      </span>
+                      <span className="text-[10px] text-muted-foreground/50 font-mono tabular-nums">
+                        {historicalStats.monthsWithData} {historicalStats.monthsWithData === 1 ? "mes" : "meses"} de datos
+                      </span>
+                    </div>
+                    <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+                      {[
+                        { label: "Ingresos", value: historicalStats.avgIncome, icon: TrendingUp, color: "text-emerald-500", bg: "bg-emerald-500/10" },
+                        { label: "Gastos", value: historicalStats.avgExpenses, icon: TrendingDown, color: "text-rose-500", bg: "bg-rose-500/10" },
+                        { label: "Inversiones", value: historicalStats.avgInvestments, icon: PiggyBank, color: "text-sky-500", bg: "bg-sky-500/10" },
+                        { label: "Balance", value: historicalStats.avgBalance, icon: Wallet, color: historicalStats.avgBalance >= 0 ? "text-emerald-500" : "text-rose-500", bg: historicalStats.avgBalance >= 0 ? "bg-emerald-500/10" : "bg-rose-500/10" },
+                      ].map((item) => {
+                        const Icon = item.icon;
+                        return (
+                          <div key={item.label} className="flex items-center gap-2.5">
+                            <div className={cn("p-1.5 rounded-md", item.bg)}>
+                              <Icon className={cn("h-3.5 w-3.5", item.color)} />
+                            </div>
+                            <div>
+                              <p className="text-[9px] text-muted-foreground uppercase tracking-wider font-medium">
+                                {item.label}
+                              </p>
+                              <p className={cn(
+                                "text-sm font-bold font-mono tabular-nums",
                                 isPrivacyMode && "privacy-blur"
-                              )}
-                            >
-                              {formatCompact(card.value)}
-                            </p>
+                              )}>
+                                {formatCompact(item.value)}
+                              </p>
+                            </div>
                           </div>
-                        </div>
-                      );
-                    })}
+                        );
+                      })}
+                    </div>
                   </div>
                 </GlassCard>
+
+                {/* Best & Worst month insight */}
+                {historicalStats.bestMonth && historicalStats.worstMonth && (
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <div className="flex items-center gap-3 rounded-xl border border-emerald-500/20 bg-emerald-500/[0.03] px-4 py-2.5">
+                      <div className="p-1.5 rounded-md bg-emerald-500/10">
+                        <Trophy className="h-3.5 w-3.5 text-emerald-500" />
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <p className="text-[10px] text-muted-foreground uppercase tracking-wider font-medium">Mejor mes</p>
+                        <p className="text-xs font-semibold capitalize truncate">
+                          {historicalStats.bestMonth.name}
+                        </p>
+                      </div>
+                      <span className={cn("text-xs font-bold font-mono tabular-nums text-emerald-600", isPrivacyMode && "privacy-blur")}>
+                        +{formatCompact(historicalStats.bestMonth.balance)}
+                      </span>
+                    </div>
+                    <div className="flex items-center gap-3 rounded-xl border border-rose-500/20 bg-rose-500/[0.03] px-4 py-2.5">
+                      <div className="p-1.5 rounded-md bg-rose-500/10">
+                        <Calendar className="h-3.5 w-3.5 text-rose-500" />
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <p className="text-[10px] text-muted-foreground uppercase tracking-wider font-medium">Mes más difícil</p>
+                        <p className="text-xs font-semibold capitalize truncate">
+                          {historicalStats.worstMonth.name}
+                        </p>
+                      </div>
+                      <span className={cn("text-xs font-bold font-mono tabular-nums text-rose-600", isPrivacyMode && "privacy-blur")}>
+                        {formatCompact(historicalStats.worstMonth.balance)}
+                      </span>
+                    </div>
+                  </div>
+                )}
 
                 {/* Monthly Evolution */}
                 <SectionCard
@@ -1214,11 +1316,11 @@ export default function Overview() {
 
                 {/* Gastos + Tarjetas side by side */}
                 <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-                  {/* Expenses by Category - Compact list with emojis */}
+                  {/* Expenses by Category — historical accumulation */}
                   {expensesByCategory.length > 0 && (
-                    <SectionCard title="Gastos por Categoría" tooltip="Top categorías con mayor gasto acumulado">
+                    <SectionCard title="Gasto Acumulado por Categoría" tooltip="Top categorías con mayor gasto en todo tu historial">
                       <div className="space-y-0.5">
-                        {expensesByCategory.map((cat, i) => {
+                        {expensesByCategory.map((cat) => {
                           const maxVal = expensesByCategory[0]?.value || 1;
                           return (
                             <div
