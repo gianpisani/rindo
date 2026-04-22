@@ -458,22 +458,21 @@ export function AppSidebar() {
                   <span className="text-xs font-medium text-muted-foreground">Tema</span>
                   <div className="flex items-center gap-1 mt-1.5 p-1 rounded-lg bg-muted/50">
                     {([
-                      { value: "light", icon: Sun, label: "Claro" },
-                      { value: "dark", icon: Moon, label: "Oscuro" },
-                      { value: "system", icon: Monitor, label: "Sistema" },
-                    ] as const).map(({ value, icon: Icon, label }) => (
+                      { value: "light", emoji: "☀️" },
+                      { value: "dark", emoji: "🌙" },
+                      { value: "system", emoji: "🖥️" },
+                    ] as const).map(({ value, emoji }) => (
                       <button
                         key={value}
                         onClick={() => setTheme(value)}
                         className={cn(
-                          "flex-1 flex items-center justify-center gap-1.5 rounded-md px-2 py-1.5 text-xs font-medium transition-all",
+                          "flex-1 flex items-center justify-center rounded-md py-1.5 text-base transition-all",
                           theme === value
-                            ? "bg-background text-foreground shadow-sm"
-                            : "text-muted-foreground hover:text-foreground"
+                            ? "bg-primary/15 shadow-sm ring-1 ring-primary/30"
+                            : "hover:bg-muted"
                         )}
                       >
-                        <Icon className="size-3.5" />
-                        {label}
+                        {emoji}
                       </button>
                     ))}
                   </div>
