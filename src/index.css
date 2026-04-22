@@ -276,18 +276,21 @@ Based on Indigo, Blue, Cyan palette
     max-width: 100%;
   }
 
-  /* PWA Splash Screen */
+  /* PWA Splash Screen — matches theme via .dark class applied in main.tsx */
   html {
-    background-color: #000000;
+    background-color: #f0f0f2;
     min-height: 100vh;
     min-height: -webkit-fill-available;
   }
-  
-  /* iOS PWA - Background negro para safe areas */
+  html.dark {
+    background-color: #000000;
+  }
+
+  /* iOS PWA - Background for safe areas */
   @supports (-webkit-touch-callout: none) {
-    html, body {
-      background-color: #000000;
-    }
+    html { background-color: #f0f0f2; }
+    html.dark, html.dark body { background-color: #000000; }
+    body { background-color: #f0f0f2; }
     
     #root {
       padding-top: env(safe-area-inset-top);

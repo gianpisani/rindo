@@ -16,6 +16,8 @@ const cachedSettings = getCachedCustomSettings();
   const prefersDark = window.matchMedia("(prefers-color-scheme: dark)").matches;
   const storedTheme = localStorage.getItem("theme");
   const mode = storedTheme === "light" ? "light" : storedTheme === "dark" ? "dark" : prefersDark ? "dark" : "light";
+  // Apply dark/light class immediately so loading screen uses correct colors
+  document.documentElement.classList.toggle("dark", mode === "dark");
   if (cachedTheme) {
     applyThemePreview(cachedTheme, mode, cachedSettings);
   }
