@@ -5,6 +5,12 @@ import { type RouteConfig } from "@/lib/routes-config";
 import { cn } from "@/lib/utils";
 import { ComponentType } from "react";
 import { LucideIcon } from "lucide-react";
+import { useSidebar } from "@/components/ui/sidebar";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 
 interface SortableNavItemProps {
   route: RouteConfig;
@@ -27,6 +33,9 @@ export function SortableNavItem({
   onClick,
   isMobile,
 }: SortableNavItemProps) {
+  const { state: sidebarState, isMobile: isSidebarMobile } = useSidebar();
+  const isCollapsed = sidebarState === "collapsed" && !isSidebarMobile;
+
   const {
     attributes,
     listeners,
@@ -50,20 +59,21 @@ export function SortableNavItem({
     zIndex: isDragging ? 50 : undefined,
   };
 
-  return (
+  const item = (
     <div
       ref={setNodeRef}
       style={style}
       className={cn(
-        "group relative flex items-center rounded-md text-sm",
+        "group/nav-item relative flex items-center rounded-md text-sm",
         !isDragging && "transition-[background-color] duration-150",
         !isEditMode && isActive && "bg-sidebar-accent text-sidebar-accent-foreground",
         !isEditMode && !isActive && "hover:bg-sidebar-accent/50",
         isEditMode && !isDragging && "hover:bg-sidebar-accent/30",
+        isCollapsed && "justify-center",
       )}
     >
-      {/* Drag handle - only in edit mode */}
-      {isEditMode && (
+      {/* Drag handle - only in edit mode, hidden when collapsed */}
+      {isEditMode && !isCollapsed && (
         <button
           className={cn(
             "flex items-center justify-center w-7 shrink-0 cursor-grab active:cursor-grabbing text-muted-foreground/60 hover:text-muted-foreground touch-none",
@@ -84,42 +94,60 @@ export function SortableNavItem({
           "flex items-center gap-2 flex-1 px-2 py-1.5 min-h-[32px] text-left",
           !isEditMode && "cursor-pointer",
           isEditMode && "cursor-default",
+          isCollapsed && "justify-center px-0 flex-initial",
         )}
       >
         <NavItemIcon route={route} isHidden={isHidden} isEditMode={isEditMode} />
-        <span className={cn(
-          "truncate",
-          isHidden && isEditMode && "text-muted-foreground/50 line-through decoration-muted-foreground/30"
-        )}>
-          {route.title}
-        </span>
+        {!isCollapsed && (
+          <span className={cn(
+            "truncate",
+            isHidden && isEditMode && "text-muted-foreground/50 line-through decoration-muted-foreground/30"
+          )}>
+            {route.title}
+          </span>
+        )}
       </button>
 
-      {/* Right side: shortcut badge or visibility toggle */}
-      {isEditMode ? (
-        <button
-          onClick={(e) => {
-            e.stopPropagation();
-            onToggleVisibility();
-          }}
-          className={cn(
-            "flex items-center justify-center size-7 rounded-md mr-1 shrink-0 transition-colors",
-            isHidden
-              ? "text-muted-foreground/40 hover:text-foreground hover:bg-primary/10"
-              : "text-primary/70 hover:text-primary hover:bg-primary/10"
-          )}
-        >
-          {isHidden ? <EyeOff className="size-3.5" /> : <Eye className="size-3.5" />}
-        </button>
-      ) : (
-        !isMobile && shortcutNumber && (
-          <span className="flex gap-0.5 opacity-60 mr-2 shrink-0 text-[10px] px-1 py-0.5 bg-muted rounded font-mono">
-            {shortcutNumber}
-          </span>
+      {/* Right side: shortcut badge or visibility toggle - hidden when collapsed */}
+      {!isCollapsed && (
+        isEditMode ? (
+          <button
+            onClick={(e) => {
+              e.stopPropagation();
+              onToggleVisibility();
+            }}
+            className={cn(
+              "flex items-center justify-center size-7 rounded-md mr-1 shrink-0 transition-colors",
+              isHidden
+                ? "text-muted-foreground/40 hover:text-foreground hover:bg-primary/10"
+                : "text-primary/70 hover:text-primary hover:bg-primary/10"
+            )}
+          >
+            {isHidden ? <EyeOff className="size-3.5" /> : <Eye className="size-3.5" />}
+          </button>
+        ) : (
+          !isMobile && shortcutNumber && (
+            <span className="flex gap-0.5 opacity-60 mr-2 shrink-0 text-[10px] px-1 py-0.5 bg-muted rounded font-mono">
+              {shortcutNumber}
+            </span>
+          )
         )
       )}
     </div>
   );
+
+  if (isCollapsed && !isEditMode) {
+    return (
+      <Tooltip>
+        <TooltipTrigger asChild>{item}</TooltipTrigger>
+        <TooltipContent side="right" align="center">
+          {route.title}
+        </TooltipContent>
+      </Tooltip>
+    );
+  }
+
+  return item;
 }
 
 // ─── Drag overlay (the "ghost" you see while dragging) ──────
