@@ -350,11 +350,26 @@ export default function Overview() {
 
   const isCurrentMonth = isSameMonth(selectedMonth, new Date());
 
-  // Month pills — last 6 months
-  const monthPills = useMemo(() => {
-    const now = new Date();
-    return Array.from({ length: 6 }, (_, i) => subMonths(now, 5 - i));
-  }, []);
+  // All historical months (from earliest transaction to now)
+  const allMonths = useMemo(() => {
+    if (transactions.length === 0) {
+      return eachMonthOfInterval({
+        start: subMonths(new Date(), 5),
+        end: new Date(),
+      });
+    }
+    const earliest = transactions.reduce((min, t) => {
+      const d = new Date(t.date);
+      return d < min ? d : min;
+    }, new Date());
+    return eachMonthOfInterval({
+      start: startOfMonth(earliest),
+      end: new Date(),
+    });
+  }, [transactions]);
+
+  // Month pills — all historical months
+  const monthPills = allMonths;
 
   // Scroll active pill into view
   useEffect(() => {
@@ -362,7 +377,7 @@ export default function Overview() {
       const active = monthStripRef.current.querySelector("[data-active=true]");
       active?.scrollIntoView({ behavior: "smooth", block: "nearest", inline: "center" });
     }
-  }, [selectedMonth]);
+  }, [selectedMonth, monthPills]);
 
   const openCategoryDetail = (cat: (typeof categoryBreakdown)[number]) => {
     const start = startOfMonth(selectedMonth);
@@ -505,23 +520,6 @@ export default function Overview() {
   }, [kpis, selectedMonth]);
 
   // ─── Histórico data ───────────────────────────────────
-
-  const allMonths = useMemo(() => {
-    if (transactions.length === 0) {
-      return eachMonthOfInterval({
-        start: subMonths(new Date(), 5),
-        end: new Date(),
-      });
-    }
-    const earliest = transactions.reduce((min, t) => {
-      const d = new Date(t.date);
-      return d < min ? d : min;
-    }, new Date());
-    return eachMonthOfInterval({
-      start: startOfMonth(earliest),
-      end: new Date(),
-    });
-  }, [transactions]);
 
   const monthlyData = useMemo(() => {
     return allMonths.map((month) => {
