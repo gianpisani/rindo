@@ -1270,9 +1270,32 @@ export default function Overview() {
                           locales="es-CL"
                         />
                       </div>
+                      {/* Total flow: earned vs spent */}
+                      <div className="flex items-center gap-3 mt-2">
+                        <div className="flex items-center gap-1">
+                          <TrendingUp className="h-3 w-3 text-emerald-500 shrink-0" />
+                          <span className={cn("text-xs font-semibold font-mono tabular-nums", isPrivacyMode && "privacy-blur")}>
+                            +{formatCompact(historicalStats.totalIncome)}
+                          </span>
+                        </div>
+                        <div className="flex items-center gap-1">
+                          <TrendingDown className="h-3 w-3 text-rose-500 shrink-0" />
+                          <span className={cn("text-xs font-semibold font-mono tabular-nums", isPrivacyMode && "privacy-blur")}>
+                            -{formatCompact(historicalStats.totalExpenses)}
+                          </span>
+                        </div>
+                        {historicalStats.totalInvested > 0 && (
+                          <div className="flex items-center gap-1">
+                            <PiggyBank className="h-3 w-3 text-sky-500 shrink-0" />
+                            <span className={cn("text-xs font-semibold font-mono tabular-nums", isPrivacyMode && "privacy-blur")}>
+                              {formatCompact(historicalStats.totalInvested)}
+                            </span>
+                          </div>
+                        )}
+                      </div>
                     </div>
 
-                    {/* Composition: disponible + invertido */}
+                    {/* Composition: disponible + invertido + ahorro */}
                     <div className="flex items-stretch gap-3">
                       <div className="flex-1 rounded-lg bg-emerald-500/[0.04] border border-emerald-500/10 px-3 py-2">
                         <div className="flex items-center gap-1.5 mb-0.5">
