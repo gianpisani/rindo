@@ -468,7 +468,7 @@ const Index = () => {
                   border
                 )}
               >
-                <span className="text-base leading-none shrink-0 mt-0.5">{emoji}</span>
+                <span className="text-base shrink-0 flex items-center justify-center size-7">{emoji}</span>
                 <div className="min-w-0 flex-1">
                   <p className="text-[11px] font-medium leading-snug">{insight.title}</p>
                   <p className={cn("text-[10px] text-muted-foreground leading-snug mt-0.5", isPrivacyMode && "privacy-blur")}>
