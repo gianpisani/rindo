@@ -212,14 +212,14 @@ export function AppSidebar() {
           <SidebarMenuItem>
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
-                <button className="flex items-center gap-2 w-full rounded-md px-2 py-2 text-sm hover:bg-sidebar-accent transition-colors data-[state=open]:bg-sidebar-accent">
-                  <div className="flex aspect-square size-8 items-center justify-center">
+                <button className="flex items-center gap-2 w-full rounded-md px-2 py-2 text-sm hover:bg-sidebar-accent transition-colors data-[state=open]:bg-sidebar-accent group-data-[collapsible=icon]:!size-8 group-data-[collapsible=icon]:!p-0 group-data-[collapsible=icon]:justify-center">
+                  <div className="flex aspect-square size-8 items-center justify-center shrink-0">
                     <RindoLogo size={28} className="text-foreground" />
                   </div>
-                  <div className="grid flex-1 text-left text-sm leading-tight group-data-[state=collapsed]:hidden">
+                  <div className="grid flex-1 text-left text-sm leading-tight group-data-[collapsible=icon]:hidden">
                     <span className="truncate font-semibold">rindo<span className="text-primary">.</span></span>
                   </div>
-                  <ChevronsUpDown className="ml-auto size-4 text-muted-foreground/50 group-data-[state=collapsed]:hidden" />
+                  <ChevronsUpDown className="ml-auto size-4 text-muted-foreground/50 group-data-[collapsible=icon]:hidden" />
                 </button>
               </DropdownMenuTrigger>
               <DropdownMenuContent
@@ -401,7 +401,7 @@ export function AppSidebar() {
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <button
-                  className="flex items-center gap-2 w-full rounded-md px-2 py-2 text-sm hover:bg-sidebar-accent transition-colors data-[state=open]:bg-sidebar-accent sm:mb-0 mb-4"
+                  className="flex items-center gap-2 w-full rounded-md px-2 py-2 text-sm hover:bg-sidebar-accent transition-colors data-[state=open]:bg-sidebar-accent sm:mb-0 mb-4 group-data-[collapsible=icon]:!size-8 group-data-[collapsible=icon]:!p-0 group-data-[collapsible=icon]:justify-center"
                 >
                   <div className="rounded-full p-[2px] accent-gradient-bg shrink-0">
                     <Avatar className="size-7">
@@ -411,13 +411,13 @@ export function AppSidebar() {
                       </AvatarFallback>
                     </Avatar>
                   </div>
-                  <div className="grid flex-1 text-left text-sm leading-tight group-data-[state=collapsed]:hidden">
+                  <div className="grid flex-1 text-left text-sm leading-tight group-data-[collapsible=icon]:hidden">
                     <span className="truncate font-semibold">{displayName}</span>
                     <span className="truncate text-xs text-muted-foreground">
                       {userEmail ?? "Cargando..."}
                     </span>
                   </div>
-                  <ChevronsUpDown className="ml-auto size-4 text-muted-foreground/50 group-data-[state=collapsed]:hidden" />
+                  <ChevronsUpDown className="ml-auto size-4 text-muted-foreground/50 group-data-[collapsible=icon]:hidden" />
                 </button>
               </DropdownMenuTrigger>
               <DropdownMenuContent
@@ -445,23 +445,6 @@ export function AppSidebar() {
                   </div>
                 </DropdownMenuLabel>
                 <DropdownMenuSeparator />
-                {isSupported && (
-                  <>
-                    <DropdownMenuItem
-                      onClick={isSubscribed ? unsubscribe : subscribe}
-                      disabled={isLoading}
-                      className="gap-2 px-3 py-2 cursor-pointer"
-                    >
-                      {isSubscribed ? (
-                        <BellOff className="size-4 text-muted-foreground" />
-                      ) : (
-                        <Bell className="size-4 text-muted-foreground" />
-                      )}
-                      {isLoading ? "Procesando..." : isSubscribed ? "Desactivar notificaciones" : "Activar notificaciones"}
-                    </DropdownMenuItem>
-                    <DropdownMenuSeparator />
-                  </>
-                )}
                 <DropdownMenuItem
                   onClick={() => openProfileEdit()}
                   className="gap-2 px-3 py-2 cursor-pointer"
@@ -469,6 +452,44 @@ export function AppSidebar() {
                   <UserPen className="size-4 text-muted-foreground" />
                   Editar perfil
                 </DropdownMenuItem>
+                <DropdownMenuItem
+                  onClick={togglePrivacyMode}
+                  className="gap-2 px-3 py-2 cursor-pointer"
+                >
+                  {isPrivacyMode ? <Eye className="size-4 text-muted-foreground" /> : <EyeOff className="size-4 text-muted-foreground" />}
+                  {isPrivacyMode ? "Desactivar" : "Activar"} privacidad
+                </DropdownMenuItem>
+                <DropdownMenuItem
+                  onClick={() => setTheme(theme === "dark" ? "light" : "dark")}
+                  className="gap-2 px-3 py-2 cursor-pointer"
+                >
+                  {theme === "dark" ? <Sun className="size-4 text-muted-foreground" /> : <Moon className="size-4 text-muted-foreground" />}
+                  {theme === "dark" ? "Modo claro" : "Modo oscuro"}
+                </DropdownMenuItem>
+                <DropdownMenuItem
+                  onClick={() => {
+                    toggleSound();
+                    if (soundEnabled) playToggleOff(); else playToggleOn();
+                  }}
+                  className="gap-2 px-3 py-2 cursor-pointer"
+                >
+                  {soundEnabled ? <Volume2 className="size-4 text-muted-foreground" /> : <VolumeOff className="size-4 text-muted-foreground" />}
+                  {soundEnabled ? "Desactivar" : "Activar"} sonidos
+                </DropdownMenuItem>
+                {isSupported && (
+                  <DropdownMenuItem
+                    onClick={isSubscribed ? unsubscribe : subscribe}
+                    disabled={isLoading}
+                    className="gap-2 px-3 py-2 cursor-pointer"
+                  >
+                    {isSubscribed ? (
+                      <BellOff className="size-4 text-muted-foreground" />
+                    ) : (
+                      <Bell className="size-4 text-muted-foreground" />
+                    )}
+                    {isLoading ? "Procesando..." : isSubscribed ? "Desactivar notificaciones" : "Activar notificaciones"}
+                  </DropdownMenuItem>
+                )}
                 <DropdownMenuSeparator />
                 <DropdownMenuItem
                   onClick={handleLogout}
