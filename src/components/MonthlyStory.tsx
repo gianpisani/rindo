@@ -491,7 +491,7 @@ export function MonthlyStory({
       const savedAmount = kpis.balance;
       const incomeSource = salary > 0 ? salary : kpis.income;
 
-      // Build flow segments: where each peso went
+      // Build flow segments
       const segments: Array<{ label: string; amount: number; color: string; pct: number }> = [];
       if (incomeSource > 0) {
         if (kpis.expenses > 0)
@@ -517,174 +517,245 @@ export function MonthlyStory({
           });
       }
 
-      // Stacked bar total (cap at 100 for visual)
       const usedPct = segments.reduce((s, seg) => s + seg.pct, 0);
 
+      // SVG donut for the right panel
+      const donutRadius = 70;
+      const donutCircumference = 2 * Math.PI * donutRadius;
+      let donutOffset = 0;
+
       return (
-        <div className="flex flex-col items-center justify-center h-full gap-5 relative overflow-hidden w-full max-w-sm mx-auto px-6">
-          {/* Radial glow background */}
+        <div className="relative h-full w-full overflow-hidden">
+          {/* Multi-layer glow background */}
           <div
-            className="absolute top-1/4 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[500px] h-[500px] rounded-full blur-[120px] pointer-events-none"
+            className="absolute top-1/3 left-1/4 w-[600px] h-[600px] rounded-full blur-[150px] pointer-events-none opacity-60"
             style={{ background: closing.glowColor }}
           />
           <div
-            className="absolute bottom-0 left-1/2 -translate-x-1/2 w-[400px] h-[300px] rounded-full blur-[100px] pointer-events-none opacity-50"
+            className="absolute bottom-1/4 right-1/4 w-[500px] h-[500px] rounded-full blur-[130px] pointer-events-none opacity-40"
             style={{ background: closing.glowColor }}
           />
-
-          {/* Mood word */}
-          <motion.h1
-            className="relative text-5xl md:text-7xl font-bold text-white tracking-tight"
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.7, type: "spring", stiffness: 120 }}
-          >
-            {closing.word}
-          </motion.h1>
-
-          {/* Accent line */}
-          <motion.div
-            className="h-0.5 rounded-full"
-            style={{ backgroundColor: closing.accent }}
-            initial={{ width: 0, opacity: 0 }}
-            animate={{ width: 48, opacity: 0.6 }}
-            transition={{ delay: 0.3, duration: 0.6, ease: "easeOut" }}
+          <div
+            className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[300px] h-[300px] rounded-full blur-[80px] pointer-events-none opacity-30"
+            style={{ background: closing.accent }}
           />
 
-          {/* Subtitle */}
-          <motion.p
-            className="relative text-white/50 text-sm text-center leading-relaxed max-w-[280px]"
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            transition={{ delay: 0.5, duration: 0.5 }}
-          >
-            {closing.subtitle}
-          </motion.p>
+          {/* Desktop: two-column layout / Mobile: stacked */}
+          <div className="relative h-full flex flex-col md:flex-row items-center justify-center gap-8 md:gap-16 px-8 md:px-16 lg:px-24 py-12">
 
-          {/* Visual flow chart */}
-          <motion.div
-            className="relative w-full mt-3 space-y-5"
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.7, duration: 0.5 }}
-          >
-            {/* Income bar (full width = 100%) */}
-            {incomeSource > 0 && (
-              <div className="space-y-2">
-                <div className="flex justify-between items-baseline">
-                  <span className="text-white/50 text-[11px] font-medium uppercase tracking-wider">
-                    {salary > 0 ? "Sueldo" : "Ingresos"}
-                  </span>
-                  <span className="text-emerald-400 text-sm font-bold font-mono tabular-nums">
-                    {formatCurrency(incomeSource)}
-                  </span>
-                </div>
-                <div className="h-3 rounded-full bg-white/[0.04] overflow-hidden">
-                  <motion.div
-                    className="h-full rounded-full bg-emerald-400/80"
-                    initial={{ width: 0 }}
-                    animate={{ width: "100%" }}
-                    transition={{ delay: 0.9, duration: 0.8, ease: "easeOut" }}
-                  />
-                </div>
-              </div>
-            )}
-
-            {/* Stacked distribution bar */}
-            {segments.length > 0 && (
-              <div className="space-y-2">
-                <span className="text-white/30 text-[10px] uppercase tracking-wider">
-                  Distribuci&oacute;n
-                </span>
-                <div className="h-3 rounded-full bg-white/[0.04] overflow-hidden flex">
-                  {segments.map((seg, i) => (
-                    <motion.div
-                      key={seg.label}
-                      className="h-full first:rounded-l-full last:rounded-r-full"
-                      style={{ backgroundColor: seg.color }}
-                      initial={{ width: 0 }}
-                      animate={{
-                        width: `${usedPct > 0 ? (seg.pct / usedPct) * 100 : 0}%`,
-                      }}
-                      transition={{
-                        delay: 1.1 + i * 0.15,
-                        duration: 0.8,
-                        ease: "easeOut",
-                      }}
-                    />
-                  ))}
-                </div>
-
-                {/* Legend */}
-                <div className="flex flex-wrap gap-x-4 gap-y-1.5 mt-1">
-                  {segments.map((seg, i) => (
-                    <motion.div
-                      key={seg.label}
-                      className="flex items-center gap-1.5"
-                      initial={{ opacity: 0 }}
-                      animate={{ opacity: 1 }}
-                      transition={{ delay: 1.4 + i * 0.1 }}
-                    >
-                      <div
-                        className="w-2 h-2 rounded-full shrink-0"
-                        style={{ backgroundColor: seg.color }}
-                      />
-                      <span className="text-white/40 text-[10px]">
-                        {seg.label}
-                      </span>
-                      <span
-                        className="text-[10px] font-bold font-mono tabular-nums"
-                        style={{ color: seg.color }}
-                      >
-                        {seg.pct.toFixed(0)}%
-                      </span>
-                    </motion.div>
-                  ))}
-                </div>
-              </div>
-            )}
-
-            {/* Balance result */}
-            <motion.div
-              className="flex justify-between items-center pt-3 border-t border-white/[0.06]"
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              transition={{ delay: 1.6, duration: 0.4 }}
-            >
-              <span className="text-white/40 text-[11px] font-medium uppercase tracking-wider">
-                {savedAmount >= 0 ? "Ahorraste" : "D\u00e9ficit"}
-              </span>
-              <span
-                className="text-lg font-bold font-mono tabular-nums"
-                style={{ color: savedAmount >= 0 ? "#34d399" : "#fb7185" }}
+            {/* LEFT: Mood + subtitle */}
+            <div className="flex flex-col items-center md:items-start gap-4 md:flex-1 md:max-w-md">
+              <motion.h1
+                className="text-6xl md:text-8xl lg:text-9xl font-bold text-white tracking-tight"
+                initial={{ opacity: 0, y: 30 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.7, type: "spring", stiffness: 100 }}
               >
-                {savedAmount >= 0 ? "+" : ""}
-                {formatCurrency(savedAmount)}
-              </span>
-            </motion.div>
-          </motion.div>
+                {closing.word}
+              </motion.h1>
 
-          {/* Month + close */}
-          <motion.div
-            className="relative flex flex-col items-center gap-3 mt-2"
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            transition={{ delay: 1.8 }}
-          >
-            <p className="text-white/15 text-[10px] capitalize tracking-wider">
-              {format(month, "MMMM yyyy", { locale: es })}
-            </p>
-            <button
-              className="px-5 py-2 rounded-full text-white/50 text-xs font-medium hover:bg-white/5 transition-colors"
-              style={{ border: `1px solid ${closing.accent}30` }}
-              onClick={(e) => {
-                e.stopPropagation();
-                onClose();
-              }}
+              <motion.div
+                className="h-1 rounded-full"
+                style={{ backgroundColor: closing.accent }}
+                initial={{ width: 0, opacity: 0 }}
+                animate={{ width: 64, opacity: 0.7 }}
+                transition={{ delay: 0.3, duration: 0.6, ease: "easeOut" }}
+              />
+
+              <motion.p
+                className="text-white/50 text-sm md:text-base leading-relaxed text-center md:text-left max-w-[300px]"
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                transition={{ delay: 0.5, duration: 0.5 }}
+              >
+                {closing.subtitle}
+              </motion.p>
+
+              <motion.p
+                className="text-white/15 text-[10px] md:text-xs capitalize tracking-wider mt-2"
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                transition={{ delay: 0.7 }}
+              >
+                {format(month, "MMMM yyyy", { locale: es })}
+              </motion.p>
+
+              <motion.button
+                className="mt-2 px-6 py-2.5 rounded-full text-white/50 text-xs font-medium hover:bg-white/5 transition-colors"
+                style={{ border: `1px solid ${closing.accent}40` }}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onClose();
+                }}
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                transition={{ delay: 1.8 }}
+              >
+                Cerrar
+              </motion.button>
+            </div>
+
+            {/* RIGHT: Visual breakdown */}
+            <motion.div
+              className="flex flex-col gap-6 w-full md:flex-1 md:max-w-lg"
+              initial={{ opacity: 0, x: 30 }}
+              animate={{ opacity: 1, x: 0 }}
+              transition={{ delay: 0.4, duration: 0.6 }}
             >
-              Cerrar
-            </button>
-          </motion.div>
+              {/* Donut + metric cards row */}
+              <div className="flex items-center gap-6 md:gap-8">
+                {/* Donut chart */}
+                <motion.div
+                  className="shrink-0"
+                  initial={{ opacity: 0, scale: 0.8 }}
+                  animate={{ opacity: 1, scale: 1 }}
+                  transition={{ delay: 0.6, duration: 0.6 }}
+                >
+                  <svg width="160" height="160" viewBox="0 0 180 180" className="w-28 h-28 md:w-40 md:h-40">
+                    {/* Background ring */}
+                    <circle
+                      cx="90" cy="90" r={donutRadius}
+                      fill="none" stroke="rgba(255,255,255,0.04)" strokeWidth="14"
+                    />
+                    {/* Segments */}
+                    {segments.map((seg, i) => {
+                      const segLength = (seg.pct / 100) * donutCircumference;
+                      const currentOffset = donutOffset;
+                      donutOffset += segLength;
+                      return (
+                        <motion.circle
+                          key={seg.label}
+                          cx="90" cy="90" r={donutRadius}
+                          fill="none"
+                          stroke={seg.color}
+                          strokeWidth="14"
+                          strokeLinecap="butt"
+                          strokeDasharray={`${segLength} ${donutCircumference - segLength}`}
+                          strokeDashoffset={-currentOffset}
+                          className="-rotate-90 origin-center"
+                          initial={{ opacity: 0 }}
+                          animate={{ opacity: 1 }}
+                          transition={{ delay: 0.8 + i * 0.15, duration: 0.5 }}
+                        />
+                      );
+                    })}
+                    {/* Center text */}
+                    <text x="90" y="84" textAnchor="middle" className="fill-white/70 text-[11px] font-medium">
+                      {kpis.savingsRate >= 0 ? "Ahorro" : "D\u00e9ficit"}
+                    </text>
+                    <text
+                      x="90" y="104" textAnchor="middle"
+                      className="text-[16px] font-bold font-mono"
+                      fill={savedAmount >= 0 ? "#34d399" : "#fb7185"}
+                    >
+                      {kpis.savingsRate.toFixed(0)}%
+                    </text>
+                  </svg>
+                </motion.div>
+
+                {/* Metric cards */}
+                <div className="flex flex-col gap-3 flex-1 min-w-0">
+                  {/* Income card */}
+                  {incomeSource > 0 && (
+                    <motion.div
+                      className="rounded-xl bg-white/[0.04] border border-white/[0.06] p-3 md:p-4"
+                      initial={{ opacity: 0, y: 10 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      transition={{ delay: 0.7, duration: 0.4 }}
+                    >
+                      <span className="text-white/35 text-[10px] md:text-[11px] uppercase tracking-wider">
+                        {salary > 0 ? "Sueldo" : "Ingresos"}
+                      </span>
+                      <p className="text-emerald-400 text-lg md:text-xl font-bold font-mono tabular-nums mt-0.5">
+                        {formatCurrency(incomeSource)}
+                      </p>
+                    </motion.div>
+                  )}
+
+                  {/* Balance card */}
+                  <motion.div
+                    className="rounded-xl bg-white/[0.04] border border-white/[0.06] p-3 md:p-4"
+                    initial={{ opacity: 0, y: 10 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ delay: 0.85, duration: 0.4 }}
+                  >
+                    <span className="text-white/35 text-[10px] md:text-[11px] uppercase tracking-wider">
+                      {savedAmount >= 0 ? "Ahorraste" : "D\u00e9ficit"}
+                    </span>
+                    <p
+                      className="text-lg md:text-xl font-bold font-mono tabular-nums mt-0.5"
+                      style={{ color: savedAmount >= 0 ? "#34d399" : "#fb7185" }}
+                    >
+                      {savedAmount >= 0 ? "+" : ""}
+                      {formatCurrency(savedAmount)}
+                    </p>
+                  </motion.div>
+                </div>
+              </div>
+
+              {/* Full-width stacked bar */}
+              {segments.length > 0 && (
+                <motion.div
+                  className="space-y-3"
+                  initial={{ opacity: 0, y: 10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: 1, duration: 0.5 }}
+                >
+                  <span className="text-white/30 text-[10px] md:text-[11px] uppercase tracking-wider">
+                    Distribuci&oacute;n del ingreso
+                  </span>
+                  <div className="h-4 md:h-5 rounded-full bg-white/[0.04] overflow-hidden flex">
+                    {segments.map((seg, i) => (
+                      <motion.div
+                        key={seg.label}
+                        className="h-full first:rounded-l-full last:rounded-r-full"
+                        style={{ backgroundColor: seg.color }}
+                        initial={{ width: 0 }}
+                        animate={{
+                          width: `${usedPct > 0 ? (seg.pct / usedPct) * 100 : 0}%`,
+                        }}
+                        transition={{
+                          delay: 1.2 + i * 0.15,
+                          duration: 0.8,
+                          ease: "easeOut",
+                        }}
+                      />
+                    ))}
+                  </div>
+
+                  {/* Legend row */}
+                  <div className="flex flex-wrap gap-x-5 gap-y-2">
+                    {segments.map((seg, i) => (
+                      <motion.div
+                        key={seg.label}
+                        className="flex items-center gap-2"
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: 1 }}
+                        transition={{ delay: 1.5 + i * 0.1 }}
+                      >
+                        <div
+                          className="w-2.5 h-2.5 rounded-full shrink-0"
+                          style={{ backgroundColor: seg.color }}
+                        />
+                        <span className="text-white/50 text-[11px] md:text-xs">
+                          {seg.label}
+                        </span>
+                        <span
+                          className="text-[11px] md:text-xs font-bold font-mono tabular-nums"
+                          style={{ color: seg.color }}
+                        >
+                          {formatCurrency(seg.amount)}
+                        </span>
+                        <span className="text-white/25 text-[10px] font-mono">
+                          {seg.pct.toFixed(0)}%
+                        </span>
+                      </motion.div>
+                    ))}
+                  </div>
+                </motion.div>
+              )}
+            </motion.div>
+          </div>
         </div>
       );
     },
