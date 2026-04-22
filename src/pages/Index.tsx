@@ -372,39 +372,53 @@ const Index = () => {
           <p className="text-xs text-muted-foreground">Sin gastos</p>
         </div>
       ) : (
-        <div className="flex-1 relative min-h-0">
-          <ResponsiveContainer width="100%" height="100%">
-            <PieChart>
-              <Pie
-                data={donutData}
-                dataKey="amount"
-                nameKey="category"
-                cx="50%"
-                cy="50%"
-                innerRadius="38%"
-                outerRadius="70%"
-                paddingAngle={2}
-                strokeWidth={0}
-                className={cn(isPrivacyMode && "privacy-blur")}
-              >
-                {donutData.map((entry, i) => (
-                  <Cell
-                    key={i}
-                    fill={entry.color}
-                    className="transition-opacity hover:opacity-80 cursor-pointer"
-                  />
-                ))}
-              </Pie>
-              <ChartTooltip content={<DonutTooltip />} />
-            </PieChart>
-          </ResponsiveContainer>
-          <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-            <p className={cn(
-              "text-[10px] font-bold font-mono tabular-nums",
-              isPrivacyMode && "privacy-blur"
-            )}>
-              {formatCompact(donutTotal)}
-            </p>
+        <div className="flex-1 flex items-center gap-2 px-2 pb-2 min-h-0">
+          {/* Donut — fixed size, pushed left */}
+          <div className="relative shrink-0 w-[90px] h-[90px]">
+            <ResponsiveContainer width="100%" height="100%">
+              <PieChart>
+                <Pie
+                  data={donutData}
+                  dataKey="amount"
+                  nameKey="category"
+                  cx="50%"
+                  cy="50%"
+                  innerRadius={24}
+                  outerRadius={40}
+                  paddingAngle={2}
+                  strokeWidth={0}
+                  className={cn(isPrivacyMode && "privacy-blur")}
+                >
+                  {donutData.map((entry, i) => (
+                    <Cell
+                      key={i}
+                      fill={entry.color}
+                      className="transition-opacity hover:opacity-80 cursor-pointer"
+                    />
+                  ))}
+                </Pie>
+                <ChartTooltip content={<DonutTooltip />} />
+              </PieChart>
+            </ResponsiveContainer>
+            <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+              <p className={cn(
+                "text-[9px] font-bold font-mono tabular-nums",
+                isPrivacyMode && "privacy-blur"
+              )}>
+                {formatCompact(donutTotal)}
+              </p>
+            </div>
+          </div>
+          {/* Legend */}
+          <div className="flex-1 space-y-0.5 overflow-hidden">
+            {donutData.map((cat) => (
+              <div key={cat.category} className="flex items-center gap-1.5 min-w-0">
+                <span className="size-1.5 rounded-full shrink-0" style={{ backgroundColor: cat.color }} />
+                <span className="text-[10px] text-muted-foreground truncate">
+                  {getCatEmoji(cat.category)} {cat.category}
+                </span>
+              </div>
+            ))}
           </div>
         </div>
       )}
@@ -607,7 +621,7 @@ const Index = () => {
           </div>
 
           {/* Bottom row: Transactions | Insights — fills remaining viewport */}
-          <div className="grid grid-cols-12 gap-3 items-stretch" style={{ height: "calc(100vh - 320px)", minHeight: 280 }}>
+          <div className="grid grid-cols-12 gap-3 items-stretch" style={{ height: "calc(100vh - 340px)", minHeight: 260 }}>
             <div className="col-span-7 min-h-0">{transactionsCard}</div>
             <div className="col-span-5 min-h-0">{insightsPanel}</div>
           </div>
