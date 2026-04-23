@@ -43,20 +43,24 @@ import { CreditCardModal } from "@/components/CreditCardModal";
 import { InstallmentModal } from "@/components/InstallmentModal";
 import ConfirmDialog from "@/components/ConfirmDialog";
 import { cn } from "@/lib/utils";
-import { format, addMonths, startOfDay } from "date-fns";
+import { format, addMonths } from "date-fns";
 import { es } from "date-fns/locale";
 import { usePrivacyMode } from "@/hooks/usePrivacyMode";
 
+// Banco de Chile billing cutoff: cycles run from 14:00 to 14:00
+const BILLING_CUTOFF_HOUR = 14;
+
 // Helper: Get billing cycle dates for a card
 function getBillingCycle(billingDay: number, cycleOffset: number = 0) {
-  const today = new Date();
-  const currentMonth = today.getMonth();
-  const currentYear = today.getFullYear();
+  const now = new Date();
+  const currentMonth = now.getMonth();
+  const currentYear = now.getFullYear();
 
-  const billingDateThisMonth = new Date(currentYear, currentMonth, billingDay);
+  // Billing cutoff is at 14:00 on the billing day
+  const billingDateThisMonth = new Date(currentYear, currentMonth, billingDay, BILLING_CUTOFF_HOUR, 0, 0);
 
   let cycleEndDate: Date;
-  if (today <= billingDateThisMonth) {
+  if (now < billingDateThisMonth) {
     cycleEndDate = billingDateThisMonth;
   } else {
     cycleEndDate = addMonths(billingDateThisMonth, 1);
@@ -64,13 +68,12 @@ function getBillingCycle(billingDay: number, cycleOffset: number = 0) {
 
   cycleEndDate = addMonths(cycleEndDate, cycleOffset);
   const cycleStartDate = addMonths(cycleEndDate, -1);
-  cycleStartDate.setDate(cycleStartDate.getDate() + 1);
 
-  const isClosed = cycleEndDate < today;
+  const isClosed = cycleEndDate <= now;
 
   return {
-    start: startOfDay(cycleStartDate),
-    end: startOfDay(cycleEndDate),
+    start: cycleStartDate,
+    end: cycleEndDate,
     isClosed,
     label: format(cycleEndDate, "MMMM yyyy", { locale: es }),
   };
@@ -135,8 +138,8 @@ export default function CreditCards() {
     return transactions
       .filter(t => {
         if (t.card_id !== selectedBillingCard.id) return false;
-        const txDate = startOfDay(new Date(t.date));
-        return txDate >= billingCycle.start && txDate <= billingCycle.end;
+        const txTime = new Date(t.date).getTime();
+        return txTime >= billingCycle.start.getTime() && txTime < billingCycle.end.getTime();
       })
       .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
   }, [transactions, selectedBillingCard, billingCycle]);
