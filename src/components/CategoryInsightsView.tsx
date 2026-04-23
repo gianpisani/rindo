@@ -29,9 +29,6 @@ import {
   Wallet,
   TrendingDown,
   TrendingUp,
-  AlertTriangle,
-  CheckCircle,
-  Lightbulb,
   BarChart3,
   SlidersHorizontal,
 } from "lucide-react";
@@ -106,7 +103,7 @@ function SectionCard({
 }) {
   return (
     <GlassCard className={cn("flex flex-col", className)}>
-      <div className="flex flex-col sm:flex-row sm:items-center gap-y-2 px-4 sm:px-6 pt-4 sm:pt-5 pb-2 border-b border-border/20">
+      <div className="flex flex-col sm:flex-row sm:items-center gap-y-2 px-4 pt-3 pb-1.5 border-b border-border/20">
         <div className="flex items-center gap-2">
           {Icon && <Icon className="h-3.5 w-3.5 text-primary/60" />}
           <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
@@ -125,7 +122,7 @@ function SectionCard({
         </div>
         {action && <div className="sm:ml-auto">{action}</div>}
       </div>
-      <div className="flex-1 p-4 sm:p-6 pt-3 sm:pt-4">{children}</div>
+      <div className="flex-1 p-4 pt-3">{children}</div>
     </GlassCard>
   );
 }
@@ -339,7 +336,7 @@ export function CategoryInsightsView() {
   }, [availableChartCategories, categories]);
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4">
       {/* ─── Header ────────────────────────────────────── */}
       <div className="flex items-center justify-between">
         <div>
@@ -400,16 +397,16 @@ export function CategoryInsightsView() {
       </div>
 
       {/* ─── KPI Cards ──────────────────────────────────── */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
         {/* Total Budget */}
-        <GlassCard className="relative overflow-hidden group hover:scale-[1.02] transition-transform duration-200">
+        <GlassCard className="relative overflow-hidden group">
           <div className="absolute inset-0 bg-gradient-to-br from-primary/[0.03] to-transparent" />
-          <div className="relative p-5">
-            <div className="flex items-center gap-2 mb-3">
-              <div className="p-1.5 rounded-lg bg-primary/10">
-                <Target className="h-3.5 w-3.5 text-primary" />
+          <div className="relative px-3 py-3">
+            <div className="flex items-center gap-2 mb-1">
+              <div className="p-1 rounded-md bg-primary/10">
+                <Target className="h-3 w-3 text-primary" />
               </div>
-              <span className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
+              <span className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider">
                 Presupuesto
               </span>
               {!editingBudget && (
@@ -443,31 +440,31 @@ export function CategoryInsightsView() {
                       if (e.key === "Enter") handleSaveBudget();
                       if (e.key === "Escape") setEditingBudget(false);
                     }}
-                    className="pl-6 text-base font-bold font-mono h-8"
+                    className="pl-6 text-sm font-bold font-mono h-7"
                     autoFocus
                   />
                 </div>
                 <Button
                   size="icon"
                   variant="ghost"
-                  className="h-8 w-8 shrink-0"
+                  className="h-7 w-7 shrink-0"
                   onClick={handleSaveBudget}
                 >
-                  <Check className="h-3.5 w-3.5" />
+                  <Check className="h-3 w-3" />
                 </Button>
                 <Button
                   size="icon"
                   variant="ghost"
-                  className="h-8 w-8 shrink-0"
+                  className="h-7 w-7 shrink-0"
                   onClick={() => setEditingBudget(false)}
                 >
-                  <X className="h-3.5 w-3.5" />
+                  <X className="h-3 w-3" />
                 </Button>
               </div>
             ) : (
               <div
                 className={cn(
-                  "text-2xl font-bold font-mono tabular-nums",
+                  "text-lg font-bold font-mono tabular-nums",
                   isPrivacyMode && "privacy-blur"
                 )}
               >
@@ -476,21 +473,16 @@ export function CategoryInsightsView() {
                     onClick={startEditBudget}
                     className="hover:text-primary/80 transition-colors cursor-pointer"
                   >
-                    $
                     <NumberFlow
                       value={totalBudget}
-                      format={{
-                        style: "decimal",
-                        minimumFractionDigits: 0,
-                        maximumFractionDigits: 0,
-                      }}
+                      format={{ style: "currency", currency: "CLP", notation: "compact" }}
                       locales="es-CL"
                     />
                   </button>
                 ) : (
                   <button
                     onClick={startEditBudget}
-                    className="text-base text-muted-foreground hover:text-foreground transition-colors"
+                    className="text-sm text-muted-foreground hover:text-foreground transition-colors"
                   >
                     Definir →
                   </button>
@@ -501,36 +493,31 @@ export function CategoryInsightsView() {
         </GlassCard>
 
         {/* Spent */}
-        <GlassCard className="relative overflow-hidden group hover:scale-[1.02] transition-transform duration-200">
+        <GlassCard className="relative overflow-hidden">
           <div className="absolute inset-0 bg-gradient-to-br from-rose-500/[0.03] to-transparent" />
-          <div className="relative p-5">
-            <div className="flex items-center gap-2 mb-3">
-              <div className="p-1.5 rounded-lg bg-rose-500/10">
-                <TrendingDown className="h-3.5 w-3.5 text-rose-500" />
+          <div className="relative px-3 py-3">
+            <div className="flex items-center gap-2 mb-1">
+              <div className="p-1 rounded-md bg-rose-500/10">
+                <TrendingDown className="h-3 w-3 text-rose-500" />
               </div>
-              <span className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
+              <span className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider">
                 Gastado
               </span>
             </div>
             <div
               className={cn(
-                "text-2xl font-bold font-mono tabular-nums",
+                "text-lg font-bold font-mono tabular-nums",
                 isPrivacyMode && "privacy-blur"
               )}
             >
-              $
               <NumberFlow
                 value={totalSpending}
-                format={{
-                  style: "decimal",
-                  minimumFractionDigits: 0,
-                  maximumFractionDigits: 0,
-                }}
+                format={{ style: "currency", currency: "CLP", notation: "compact" }}
                 locales="es-CL"
               />
             </div>
             {totalBudget > 0 && (
-              <p className="mt-2 text-xs text-muted-foreground">
+              <p className="text-[10px] text-muted-foreground mt-0.5">
                 {usagePercent.toFixed(0)}% del presupuesto
               </p>
             )}
@@ -538,7 +525,7 @@ export function CategoryInsightsView() {
         </GlassCard>
 
         {/* Remaining */}
-        <GlassCard className="relative overflow-hidden group hover:scale-[1.02] transition-transform duration-200">
+        <GlassCard className="relative overflow-hidden">
           <div
             className={cn(
               "absolute inset-0 bg-gradient-to-br to-transparent",
@@ -547,45 +534,40 @@ export function CategoryInsightsView() {
                 : "from-rose-500/[0.03]"
             )}
           />
-          <div className="relative p-5">
-            <div className="flex items-center gap-2 mb-3">
+          <div className="relative px-3 py-3">
+            <div className="flex items-center gap-2 mb-1">
               <div
                 className={cn(
-                  "p-1.5 rounded-lg",
+                  "p-1 rounded-md",
                   remaining >= 0 ? "bg-emerald-500/10" : "bg-rose-500/10"
                 )}
               >
                 <Wallet
                   className={cn(
-                    "h-3.5 w-3.5",
+                    "h-3 w-3",
                     remaining >= 0 ? "text-emerald-500" : "text-rose-500"
                   )}
                 />
               </div>
-              <span className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
+              <span className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider">
                 {remaining >= 0 ? "Restante" : "Excedido"}
               </span>
             </div>
             <div
               className={cn(
-                "text-2xl font-bold font-mono tabular-nums",
+                "text-lg font-bold font-mono tabular-nums",
                 remaining >= 0 ? "" : "text-rose-500",
                 isPrivacyMode && "privacy-blur"
               )}
             >
-              $
               <NumberFlow
                 value={Math.abs(remaining)}
-                format={{
-                  style: "decimal",
-                  minimumFractionDigits: 0,
-                  maximumFractionDigits: 0,
-                }}
+                format={{ style: "currency", currency: "CLP", notation: "compact" }}
                 locales="es-CL"
               />
             </div>
             {totalBudget > 0 && (
-              <p className="mt-2 text-xs text-muted-foreground">
+              <p className="text-[10px] text-muted-foreground mt-0.5">
                 {remaining >= 0
                   ? `${(100 - usagePercent).toFixed(0)}% disponible`
                   : `${(usagePercent - 100).toFixed(0)}% sobre el límite`}
@@ -595,38 +577,33 @@ export function CategoryInsightsView() {
         </GlassCard>
 
         {/* Allocated */}
-        <GlassCard className="relative overflow-hidden group hover:scale-[1.02] transition-transform duration-200">
+        <GlassCard className="relative overflow-hidden">
           <div className="absolute inset-0 bg-gradient-to-br from-sky-500/[0.03] to-transparent" />
-          <div className="relative p-5">
-            <div className="flex items-center gap-2 mb-3">
-              <div className="p-1.5 rounded-lg bg-sky-500/10">
-                <BarChart3 className="h-3.5 w-3.5 text-sky-500" />
+          <div className="relative px-3 py-3">
+            <div className="flex items-center gap-2 mb-1">
+              <div className="p-1 rounded-md bg-sky-500/10">
+                <BarChart3 className="h-3 w-3 text-sky-500" />
               </div>
-              <span className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
+              <span className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider">
                 Asignado
               </span>
             </div>
             <div
               className={cn(
-                "text-2xl font-bold font-mono tabular-nums",
+                "text-lg font-bold font-mono tabular-nums",
                 isPrivacyMode && "privacy-blur"
               )}
             >
-              $
               <NumberFlow
                 value={totalAllocated}
-                format={{
-                  style: "decimal",
-                  minimumFractionDigits: 0,
-                  maximumFractionDigits: 0,
-                }}
+                format={{ style: "currency", currency: "CLP", notation: "compact" }}
                 locales="es-CL"
               />
             </div>
             {totalBudget > 0 && (
               <p
                 className={cn(
-                  "mt-2 text-xs",
+                  "text-[10px] mt-0.5",
                   unallocated < 0
                     ? "text-rose-500"
                     : "text-muted-foreground"
@@ -643,9 +620,9 @@ export function CategoryInsightsView() {
 
       {/* ─── Distribution Bar ───────────────────────────── */}
       {totalBudget > 0 && distributionSegments.length > 0 && (
-        <div className="relative overflow-hidden rounded-xl border border-border/50 bg-card p-4">
-          <div className="space-y-3">
-            <div className="h-3 rounded-full overflow-hidden bg-muted/60 flex">
+        <div className="relative overflow-hidden rounded-xl border border-border/50 bg-card px-4 py-3">
+          <div className="space-y-2">
+            <div className="h-2.5 rounded-full overflow-hidden bg-muted/60 flex">
               {distributionSegments.map((seg) => (
                 <Tooltip key={seg.category}>
                   <TooltipTrigger asChild>
@@ -720,7 +697,7 @@ export function CategoryInsightsView() {
       {/* ─── Category Grid + Insights ───────────────────── */}
       <div
         className={cn(
-          "grid grid-cols-1 gap-6",
+          "grid grid-cols-1 gap-4",
           insights.length > 0 && "lg:grid-cols-12"
         )}
       >
@@ -764,16 +741,16 @@ export function CategoryInsightsView() {
                   return (
                     <div
                       key={cat.category}
-                      className="group relative rounded-xl border border-border/50 bg-card p-4 transition-all hover:border-primary/20 hover:shadow-sm cursor-pointer"
+                      className="group relative rounded-xl border border-border/50 bg-card p-3 transition-all hover:border-primary/20 hover:shadow-sm cursor-pointer"
                       onClick={() => handleSetLimit(cat.category)}
                     >
                       {/* Header */}
-                      <div className="flex items-center justify-between mb-3">
+                      <div className="flex items-center justify-between mb-2">
                         <div className="flex items-center gap-2 min-w-0">
-                          <span className="text-base leading-none shrink-0">
+                          <span className="text-sm leading-none shrink-0">
                             {catObj?.icon || "🏷️"}
                           </span>
-                          <span className="text-sm font-medium truncate">
+                          <span className="text-xs font-medium truncate">
                             {cat.category}
                           </span>
                         </div>
@@ -792,18 +769,18 @@ export function CategoryInsightsView() {
                       </div>
 
                       {/* Amount */}
-                      <div className="flex items-baseline justify-between mb-2">
+                      <div className="flex items-baseline justify-between mb-1.5">
                         <span
                           className={cn(
-                            "text-lg font-bold font-mono tabular-nums",
+                            "text-base font-bold font-mono tabular-nums",
                             isPrivacyMode && "privacy-blur"
                           )}
                         >
-                          {formatCurrency(cat.effectiveAmount)}
+                          {formatCompact(cat.effectiveAmount)}
                         </span>
                         <span
                           className={cn(
-                            "text-xs text-muted-foreground font-mono tabular-nums",
+                            "text-[10px] text-muted-foreground font-mono tabular-nums",
                             isPrivacyMode && "privacy-blur"
                           )}
                         >
@@ -812,7 +789,7 @@ export function CategoryInsightsView() {
                       </div>
 
                       {/* Progress bar */}
-                      <div className="h-2 rounded-full bg-muted/60 overflow-hidden mb-2">
+                      <div className="h-1.5 rounded-full bg-muted/60 overflow-hidden mb-1.5">
                         <div
                           className="h-full rounded-full transition-all duration-500"
                           style={{
@@ -897,70 +874,41 @@ export function CategoryInsightsView() {
           </SectionCard>
         </div>
 
-        {/* Insights */}
+        {/* Insights — Index-style cards */}
         {insights.length > 0 && (
           <div className="lg:col-span-4">
-            <SectionCard
-              title="Insights"
-              icon={Lightbulb}
-              tooltip="Alertas y patrones detectados en tus gastos"
-            >
-              <div className="space-y-3">
-                {/* Alerts */}
-                {alertInsights.map((insight, idx) => (
-                  <div
-                    key={`alert-${idx}`}
-                    className="flex items-start gap-2.5 px-3 py-2.5 rounded-lg bg-rose-500/5 border border-rose-500/20"
-                  >
-                    <AlertTriangle className="h-3.5 w-3.5 text-rose-500 mt-0.5 shrink-0" />
-                    <div className="min-w-0">
-                      <p className="text-xs font-semibold text-rose-600">
-                        {insight.title}
-                      </p>
-                      <p className="text-[11px] text-muted-foreground mt-0.5">
-                        {insight.description}
-                      </p>
-                    </div>
-                  </div>
-                ))}
-
-                {/* Achievements */}
-                {achievementInsights.slice(0, 3).map((insight, idx) => (
-                  <div
-                    key={`ach-${idx}`}
-                    className="flex items-start gap-2.5 px-3 py-2.5 rounded-lg bg-emerald-500/5 border border-emerald-500/20"
-                  >
-                    <CheckCircle className="h-3.5 w-3.5 text-emerald-500 mt-0.5 shrink-0" />
-                    <div className="min-w-0">
-                      <p className="text-xs font-semibold text-emerald-600">
-                        {insight.title}
-                      </p>
-                      <p className="text-[11px] text-muted-foreground mt-0.5">
-                        {insight.description}
-                      </p>
-                    </div>
-                  </div>
-                ))}
-
-                {/* Patterns */}
-                {patternInsights.slice(0, 2).map((insight, idx) => (
-                  <div
-                    key={`pat-${idx}`}
-                    className="flex items-start gap-2.5 px-3 py-2.5 rounded-lg bg-amber-500/5 border border-amber-500/20"
-                  >
-                    <TrendingUp className="h-3.5 w-3.5 text-amber-500 mt-0.5 shrink-0" />
-                    <div className="min-w-0">
-                      <p className="text-xs font-semibold text-amber-600">
-                        {insight.title}
-                      </p>
-                      <p className="text-[11px] text-muted-foreground mt-0.5">
-                        {insight.description}
-                      </p>
-                    </div>
-                  </div>
-                ))}
+            <GlassCard className="flex flex-col overflow-hidden">
+              <div className="flex items-center gap-2 px-4 pt-3 pb-2 shrink-0">
+                <h3 className="text-sm font-semibold">Insights</h3>
+                <span className="text-[10px] font-medium text-muted-foreground tabular-nums">
+                  {insights.length}
+                </span>
               </div>
-            </SectionCard>
+              <div className="flex-1 overflow-y-auto px-3 pb-3 space-y-1.5">
+                {[...alertInsights, ...achievementInsights.slice(0, 3), ...patternInsights.slice(0, 2)].map((insight, idx) => {
+                  const catObj = insight.category ? categories.find((c) => c.name === insight.category) : null;
+                  const emoji = catObj?.icon || (insight.type === "alert" ? "⚠️" : insight.type === "achievement" ? "✅" : "💡");
+                  const borderColor = insight.type === "alert" ? "border-amber-500/20" : insight.type === "achievement" ? "border-emerald-500/20" : "border-violet-500/20";
+                  return (
+                    <div
+                      key={idx}
+                      className={cn(
+                        "flex items-start gap-2.5 rounded-lg border p-2.5 transition-colors hover:brightness-110",
+                        borderColor
+                      )}
+                    >
+                      <span className="text-base shrink-0 flex items-center justify-center size-7">{emoji}</span>
+                      <div className="min-w-0 flex-1">
+                        <p className="text-[11px] font-medium leading-snug">{insight.title}</p>
+                        <p className={cn("text-[10px] text-muted-foreground leading-snug mt-0.5", isPrivacyMode && "privacy-blur")}>
+                          {insight.description}
+                        </p>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </GlassCard>
           </div>
         )}
       </div>
@@ -979,7 +927,7 @@ export function CategoryInsightsView() {
                 <button
                   key={cat.category}
                   onClick={() => handleSetLimit(cat.category)}
-                  className="flex items-center gap-2.5 p-3 rounded-lg border border-border/50 bg-card hover:border-primary/20 hover:bg-accent/50 transition-all text-left group"
+                  className="flex items-center gap-2 p-2.5 rounded-lg border border-border/50 bg-card hover:border-primary/20 hover:bg-accent/50 transition-all text-left group"
                 >
                   <span className="text-base leading-none shrink-0">
                     {catObj?.icon || "🏷️"}
