@@ -626,8 +626,8 @@ const Index = () => {
 
           {/* Bottom row: Transactions | Insights — fills remaining viewport */}
           <div className="grid grid-cols-12 gap-3 items-stretch" style={{ height: "calc(100vh - 340px)", minHeight: 260 }}>
-            <div className="col-span-7 min-h-0">{transactionsCard}</div>
-            <div className="col-span-5 min-h-0">{insightsPanel}</div>
+            <div className="col-span-8 min-h-0">{transactionsCard}</div>
+            <div className="col-span-4 min-h-0">{insightsPanel}</div>
           </div>
         </div>
 
