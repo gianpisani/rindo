@@ -16,6 +16,7 @@ import {
   Eye,
   Play,
   Lightbulb,
+  ChevronRight,
 } from "lucide-react";
 import { BankSyncModal } from "@/components/BankSyncModal";
 import { useBankSyncContext } from "@/contexts/BankSyncContext";
@@ -606,13 +607,42 @@ const Index = () => {
         </div>
 
         {/* ─── MOBILE LAYOUT (< lg) ─── */}
-        <div className="lg:hidden space-y-4">
+        {/* 100dvh minus: header 56px + main-padding 16px + greeting ~36px + gap 16px + bottom-padding 112px */}
+        <div className="lg:hidden flex flex-col gap-3" style={{ height: "calc(100dvh - 236px)" }}>
           {/* Balance + Quick Actions */}
-          <div className="grid grid-cols-1 md:grid-cols-[3fr,2fr] gap-3">
+          <div className="grid grid-cols-1 md:grid-cols-[3fr,2fr] gap-3 shrink-0">
             {balanceCard}
             {quickActions}
           </div>
-          {transactionsCard}
+          {/* Transactions — scrolls internally */}
+          <div className="flex-1 min-h-0">
+            {transactionsCard}
+          </div>
+          {/* Monthly Story — always visible at bottom */}
+          {hasLastMonthData && (
+            <button
+              onClick={() => setStoryOpen(true)}
+              className="shrink-0 w-full group relative overflow-hidden rounded-xl border border-border/50 px-4 py-3 text-left transition-all hover:border-primary/30 hover:shadow-lg hover:shadow-primary/5"
+            >
+              <div className="absolute inset-0 bg-gradient-to-r from-primary/5 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
+              <div className="relative flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <div className="flex items-center justify-center w-8 h-8 rounded-full bg-primary/10 text-primary shrink-0">
+                    <Play className="h-3.5 w-3.5 ml-0.5" />
+                  </div>
+                  <div>
+                    <p className="text-sm font-bold capitalize leading-tight">
+                      Resumen de {format(lastMonth, "MMMM", { locale: es })}
+                    </p>
+                    <p className="text-[11px] text-muted-foreground">
+                      {lastMonthSummary.transactionCount} transacciones
+                    </p>
+                  </div>
+                </div>
+                <ChevronRight className="h-4 w-4 text-muted-foreground" />
+              </div>
+            </button>
+          )}
         </div>
 
         {/* ─── DESKTOP LAYOUT (lg+) ─── */}
@@ -642,11 +672,11 @@ const Index = () => {
           onReset={bankSync.reset}
         />
 
-        {/* Monthly Story - Last month review */}
+        {/* Monthly Story - Last month review (desktop only, mobile version is inline above) */}
         {hasLastMonthData && (
           <button
             onClick={() => setStoryOpen(true)}
-            className="w-full group relative overflow-hidden rounded-xl border border-border/50 p-5 text-left transition-all hover:border-primary/30 hover:shadow-lg hover:shadow-primary/5"
+            className="hidden lg:block w-full group relative overflow-hidden rounded-xl border border-border/50 p-5 text-left transition-all hover:border-primary/30 hover:shadow-lg hover:shadow-primary/5"
           >
             <div className="absolute inset-0 bg-gradient-to-r from-primary/5 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
             <div className="relative flex items-center justify-between">
