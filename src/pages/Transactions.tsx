@@ -137,6 +137,7 @@ export default function Transactions() {
     category_name: "",
     type: "Gasto" as "Ingreso" | "Gasto" | "Inversión" | "Reembolso",
     amount: "",
+    card_id: null as string | null,
   });
 
 
@@ -311,6 +312,7 @@ export default function Transactions() {
       category_name: "",
       type: "Gasto",
       amount: "",
+      card_id: null,
     });
     setSuggestion(null);
     setIsAnalyzing(false);
@@ -334,6 +336,7 @@ export default function Transactions() {
       category_name: transaction.category_name,
       type: transaction.type,
       amount: transaction.amount.toString(),
+      card_id: transaction.card_id,
     });
 
     const existingShared = getSharedExpensesByTransaction(transaction.id);
@@ -622,6 +625,40 @@ export default function Transactions() {
                     </SelectContent>
                   </Select>
                 </div>
+                {formData.type !== "Inversión" && creditCards.length > 0 && (
+                  <div className="space-y-2">
+                    <Label htmlFor="card" className="text-sm font-medium">Tarjeta</Label>
+                    <Select
+                      value={formData.card_id ?? "none"}
+                      onValueChange={(value) =>
+                        setFormData({ ...formData, card_id: value === "none" ? null : value })
+                      }
+                    >
+                      <SelectTrigger className="h-10 rounded-xl px-6">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="none">Cuenta</SelectItem>
+                        {creditCards
+                          .filter((c) => c.is_active)
+                          .map((card) => (
+                            <SelectItem key={card.id} value={card.id}>
+                              <div className="flex items-center gap-2">
+                                <span
+                                  className="inline-block h-3 w-3 rounded-full"
+                                  style={{ backgroundColor: card.color || "#6366f1" }}
+                                />
+                                {card.name}
+                                {card.last_4_digits && (
+                                  <span className="text-muted-foreground">···· {card.last_4_digits}</span>
+                                )}
+                              </div>
+                            </SelectItem>
+                          ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                )}
                 <div className="space-y-2">
                   <Label htmlFor="amount" className="text-sm font-medium">Monto</Label>
                   <div className="relative">
