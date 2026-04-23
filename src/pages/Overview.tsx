@@ -49,7 +49,6 @@ import {
 import { MonthlyStory } from "@/components/MonthlyStory";
 import { MonthlyEvolutionChart } from "@/components/MonthlyEvolutionChart";
 import ProjectionCard from "@/components/ProjectionCard";
-import { CreditCardWidget } from "@/components/CreditCardWidget";
 import {
   PieChart,
   Pie,
@@ -1185,150 +1184,149 @@ export default function Overview() {
               </div>
             ) : (
               <>
-                {/* ── Patrimonio Card ── unified hero with breakdown */}
-                <GlassCard className="overflow-hidden">
-                  <div className="h-[2px] accent-gradient-bg" />
-                  <div className="px-4 py-4 md:px-5 md:py-5 space-y-4">
-                    {/* Hero number */}
-                    <div>
-                      <div className="flex items-center justify-between mb-1">
-                        <span className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider">
-                          Patrimonio Total
-                        </span>
-                        <span className="text-[10px] text-muted-foreground/40 font-mono tabular-nums">
-                          {historicalStats.monthsWithData} {historicalStats.monthsWithData === 1 ? "mes" : "meses"}
-                        </span>
-                      </div>
-                      <div className={cn(
-                        "text-[32px] md:text-[40px] font-bold font-mono tabular-nums tracking-tight leading-none",
-                        isPrivacyMode && "privacy-blur"
-                      )}>
-                        $<NumberFlow
-                          value={historicalStats.patrimonio}
-                          format={{ style: "decimal", minimumFractionDigits: 0, maximumFractionDigits: 0 }}
-                          locales="es-CL"
-                        />
-                      </div>
-                      {/* Total flow: earned vs spent */}
-                      <div className="flex items-center gap-3 mt-2">
-                        <div className="flex items-center gap-1">
-                          <TrendingUp className="h-3 w-3 text-emerald-500 shrink-0" />
-                          <span className={cn("text-xs font-semibold font-mono tabular-nums", isPrivacyMode && "privacy-blur")}>
-                            +{formatCompact(historicalStats.totalIncome)}
-                          </span>
-                        </div>
-                        <div className="flex items-center gap-1">
-                          <TrendingDown className="h-3 w-3 text-rose-500 shrink-0" />
-                          <span className={cn("text-xs font-semibold font-mono tabular-nums", isPrivacyMode && "privacy-blur")}>
-                            -{formatCompact(historicalStats.totalExpenses)}
-                          </span>
-                        </div>
-                        {historicalStats.totalInvested > 0 && (
-                          <div className="flex items-center gap-1">
-                            <PiggyBank className="h-3 w-3 text-sky-500 shrink-0" />
-                            <span className={cn("text-xs font-semibold font-mono tabular-nums", isPrivacyMode && "privacy-blur")}>
-                              {formatCompact(historicalStats.totalInvested)}
-                            </span>
+                {/* ── KPI Cards (promedios mensuales) ── */}
+                <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+                  {[
+                    { label: "Patrimonio", icon: Wallet, value: historicalStats.patrimonio, iconColor: "text-emerald-500", iconBg: "bg-emerald-500/10", gradient: "from-emerald-500/[0.03]" },
+                    { label: "Prom. Ingresos", icon: TrendingUp, value: historicalStats.avgIncome, iconColor: "text-emerald-500", iconBg: "bg-emerald-500/10", gradient: "from-emerald-500/[0.03]" },
+                    { label: "Prom. Gastos", icon: TrendingDown, value: historicalStats.avgExpenses, iconColor: "text-rose-500", iconBg: "bg-rose-500/10", gradient: "from-rose-500/[0.03]" },
+                    { label: "Prom. Balance", icon: CalendarDays, value: historicalStats.avgBalance, iconColor: historicalStats.avgBalance >= 0 ? "text-emerald-500" : "text-rose-500", iconBg: historicalStats.avgBalance >= 0 ? "bg-emerald-500/10" : "bg-rose-500/10", gradient: historicalStats.avgBalance >= 0 ? "from-emerald-500/[0.03]" : "from-rose-500/[0.03]" },
+                  ].map((card) => {
+                    const Icon = card.icon;
+                    return (
+                      <GlassCard key={card.label} className={cn("relative overflow-hidden")}>
+                        <div className={cn("absolute inset-0 bg-gradient-to-br opacity-60 pointer-events-none", card.gradient)} />
+                        <div className="relative px-3 py-3">
+                          <div className="flex items-center gap-2 mb-1">
+                            <div className={cn("p-1 rounded-md", card.iconBg)}>
+                              <Icon className={cn("h-3 w-3", card.iconColor)} />
+                            </div>
+                            <span className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider">{card.label}</span>
                           </div>
-                        )}
-                      </div>
-                    </div>
+                          <div className={cn("text-lg font-bold font-mono tabular-nums", isPrivacyMode && "privacy-blur")}>
+                            <NumberFlow value={card.value} format={{ style: "currency", currency: "CLP", notation: "compact" }} locales="es-CL" />
+                          </div>
+                        </div>
+                      </GlassCard>
+                    );
+                  })}
+                </div>
 
-                    {/* Composition: disponible + invertido + ahorro */}
-                    <div className="flex items-stretch gap-3">
-                      <div className="flex-1 rounded-lg bg-emerald-500/[0.04] border border-emerald-500/10 px-3 py-2">
-                        <div className="flex items-center gap-1.5 mb-0.5">
-                          <Wallet className="h-3 w-3 text-emerald-500" />
-                          <span className="text-[9px] text-emerald-600/70 dark:text-emerald-400/70 uppercase tracking-wider font-medium">Disponible</span>
-                        </div>
-                        <p className={cn("text-sm font-bold font-mono tabular-nums text-emerald-600 dark:text-emerald-400", isPrivacyMode && "privacy-blur")}>
+                {/* ── Insights Row ── */}
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                  {/* Composition: Disponible / Invertido / Ahorro */}
+                  <GlassCard className="p-4">
+                    <p className="text-[10px] text-muted-foreground uppercase tracking-wider font-medium mb-2.5">
+                      Composición
+                    </p>
+                    <div className="space-y-2">
+                      <div className="flex items-center gap-2">
+                        <Wallet className="h-3 w-3 text-emerald-500 shrink-0" />
+                        <span className="text-[11px] text-muted-foreground flex-1">Disponible</span>
+                        <span className={cn("text-xs font-bold font-mono tabular-nums text-emerald-600 dark:text-emerald-400", isPrivacyMode && "privacy-blur")}>
                           {formatCompact(historicalStats.totalLiquid)}
-                        </p>
+                        </span>
                       </div>
-                      <div className="flex-1 rounded-lg bg-sky-500/[0.04] border border-sky-500/10 px-3 py-2">
-                        <div className="flex items-center gap-1.5 mb-0.5">
-                          <PiggyBank className="h-3 w-3 text-sky-500" />
-                          <span className="text-[9px] text-sky-600/70 dark:text-sky-400/70 uppercase tracking-wider font-medium">Invertido</span>
-                        </div>
-                        <p className={cn("text-sm font-bold font-mono tabular-nums text-sky-600 dark:text-sky-400", isPrivacyMode && "privacy-blur")}>
+                      <div className="flex items-center gap-2">
+                        <PiggyBank className="h-3 w-3 text-sky-500 shrink-0" />
+                        <span className="text-[11px] text-muted-foreground flex-1">Invertido</span>
+                        <span className={cn("text-xs font-bold font-mono tabular-nums text-sky-600 dark:text-sky-400", isPrivacyMode && "privacy-blur")}>
                           {formatCompact(historicalStats.totalInvested)}
-                        </p>
+                        </span>
                       </div>
                       {historicalStats.savingsRate > 0 && (
-                        <div className="flex-1 rounded-lg bg-violet-500/[0.04] border border-violet-500/10 px-3 py-2">
-                          <div className="flex items-center gap-1.5 mb-0.5">
-                            <Target className="h-3 w-3 text-violet-500" />
-                            <span className="text-[9px] text-violet-600/70 dark:text-violet-400/70 uppercase tracking-wider font-medium">Ahorro</span>
-                          </div>
-                          <p className={cn("text-sm font-bold font-mono tabular-nums text-violet-600 dark:text-violet-400", isPrivacyMode && "privacy-blur")}>
+                        <div className="flex items-center gap-2">
+                          <Target className="h-3 w-3 text-violet-500 shrink-0" />
+                          <span className="text-[11px] text-muted-foreground flex-1">Tasa ahorro</span>
+                          <span className={cn("text-xs font-bold font-mono tabular-nums text-violet-600 dark:text-violet-400", isPrivacyMode && "privacy-blur")}>
                             {historicalStats.savingsRate.toFixed(1)}%
-                          </p>
+                          </span>
                         </div>
                       )}
                     </div>
+                  </GlassCard>
 
-                    {/* Monthly averages — subtle row */}
-                    <div className="border-t border-border/40 pt-3">
-                      <p className="text-[9px] text-muted-foreground/50 uppercase tracking-widest font-medium mb-2">
-                        Promedio mensual
-                      </p>
-                      <div className="grid grid-cols-2 lg:grid-cols-4 gap-x-4 gap-y-2">
-                        {[
-                          { label: "Ingresos", value: historicalStats.avgIncome, icon: TrendingUp, color: "text-emerald-500", bg: "bg-emerald-500/10" },
-                          { label: "Gastos", value: historicalStats.avgExpenses, icon: TrendingDown, color: "text-rose-500", bg: "bg-rose-500/10" },
-                          { label: "Inversiones", value: historicalStats.avgInvestments, icon: PiggyBank, color: "text-sky-500", bg: "bg-sky-500/10" },
-                          { label: "Balance", value: historicalStats.avgBalance, icon: Wallet, color: historicalStats.avgBalance >= 0 ? "text-emerald-500" : "text-rose-500", bg: historicalStats.avgBalance >= 0 ? "bg-emerald-500/10" : "bg-rose-500/10" },
-                        ].map((item) => {
-                          const Icon = item.icon;
-                          return (
-                            <div key={item.label} className="flex items-center gap-2">
-                              <div className={cn("p-1 rounded-md", item.bg)}>
-                                <Icon className={cn("h-3 w-3", item.color)} />
-                              </div>
-                              <div>
-                                <p className="text-[9px] text-muted-foreground/60 uppercase tracking-wider">
-                                  {item.label}
-                                </p>
-                                <p className={cn(
-                                  "text-xs font-semibold font-mono tabular-nums",
-                                  isPrivacyMode && "privacy-blur"
-                                )}>
-                                  {formatCompact(item.value)}
-                                </p>
-                              </div>
-                            </div>
-                          );
-                        })}
-                      </div>
-                    </div>
-
-                    {/* Best & Worst inline */}
-                    {historicalStats.bestMonth && historicalStats.worstMonth && (
-                      <div className="border-t border-border/40 pt-3 grid grid-cols-2 gap-3">
+                  {/* Best & Worst months */}
+                  <GlassCard className="p-4">
+                    <p className="text-[10px] text-muted-foreground uppercase tracking-wider font-medium mb-2.5">
+                      Hitos
+                    </p>
+                    {historicalStats.bestMonth && historicalStats.worstMonth ? (
+                      <div className="space-y-2.5">
                         <div className="flex items-center gap-2">
                           <Trophy className="h-3.5 w-3.5 text-emerald-500 shrink-0" />
-                          <div className="min-w-0">
-                            <p className="text-[9px] text-muted-foreground/50 uppercase tracking-wider">Mejor mes</p>
+                          <div className="min-w-0 flex-1">
+                            <p className="text-[10px] text-muted-foreground leading-none">Mejor mes</p>
                             <p className="text-xs font-semibold capitalize truncate">{historicalStats.bestMonth.name}</p>
                           </div>
-                          <span className={cn("text-[11px] font-bold font-mono tabular-nums text-emerald-600 shrink-0 ml-auto", isPrivacyMode && "privacy-blur")}>
+                          <span className={cn("text-[11px] font-bold font-mono tabular-nums text-emerald-600 shrink-0", isPrivacyMode && "privacy-blur")}>
                             +{formatCompact(historicalStats.bestMonth.balance)}
                           </span>
                         </div>
                         <div className="flex items-center gap-2">
                           <Calendar className="h-3.5 w-3.5 text-rose-500 shrink-0" />
-                          <div className="min-w-0">
-                            <p className="text-[9px] text-muted-foreground/50 uppercase tracking-wider">Peor mes</p>
+                          <div className="min-w-0 flex-1">
+                            <p className="text-[10px] text-muted-foreground leading-none">Peor mes</p>
                             <p className="text-xs font-semibold capitalize truncate">{historicalStats.worstMonth.name}</p>
                           </div>
-                          <span className={cn("text-[11px] font-bold font-mono tabular-nums text-rose-600 shrink-0 ml-auto", isPrivacyMode && "privacy-blur")}>
+                          <span className={cn("text-[11px] font-bold font-mono tabular-nums text-rose-600 shrink-0", isPrivacyMode && "privacy-blur")}>
                             {formatCompact(historicalStats.worstMonth.balance)}
                           </span>
                         </div>
                       </div>
+                    ) : (
+                      <p className="text-xs text-muted-foreground">Necesitas al menos 2 meses</p>
                     )}
-                  </div>
-                </GlassCard>
+                    <p className="text-[10px] text-muted-foreground/40 font-mono tabular-nums mt-2">
+                      {historicalStats.monthsWithData} {historicalStats.monthsWithData === 1 ? "mes" : "meses"} de datos
+                    </p>
+                  </GlassCard>
+
+                  {/* Credit Cards Mini */}
+                  <GlassCard className="p-4">
+                    <div className="flex items-center justify-between mb-2">
+                      <p className="text-[10px] text-muted-foreground uppercase tracking-wider font-medium">
+                        Tarjetas
+                      </p>
+                      <Link to="/credit-cards" className="text-[10px] text-primary hover:underline">
+                        Ver →
+                      </Link>
+                    </div>
+                    {cardSummaries.length > 0 ? (
+                      <>
+                        {cardTotals.totalLimit > 0 && (
+                          <div className="mb-2">
+                            <div className="flex items-center justify-between text-[10px] text-muted-foreground mb-0.5">
+                              <span>Cupo usado</span>
+                              <span className={cn("font-mono tabular-nums", isPrivacyMode && "privacy-blur")}>
+                                {Math.round((cardTotals.totalUsed / cardTotals.totalLimit) * 100)}%
+                              </span>
+                            </div>
+                            <div className="h-1.5 rounded-full bg-muted/60 overflow-hidden">
+                              <div
+                                className="h-full rounded-full bg-primary/70"
+                                style={{ width: `${Math.min((cardTotals.totalUsed / cardTotals.totalLimit) * 100, 100)}%` }}
+                              />
+                            </div>
+                          </div>
+                        )}
+                        <div className="space-y-1.5">
+                          {cardSummaries.slice(0, 3).map((card) => (
+                            <div key={card.id} className="flex items-center gap-2">
+                              <div className="w-1.5 h-1.5 rounded-full shrink-0" style={{ backgroundColor: card.color || "#6b7280" }} />
+                              <span className="text-[11px] truncate flex-1">{card.name}</span>
+                              <span className={cn("text-[11px] font-mono font-semibold tabular-nums shrink-0", isPrivacyMode && "privacy-blur")}>
+                                {formatCompact(card.total_used_credit)}
+                              </span>
+                            </div>
+                          ))}
+                        </div>
+                      </>
+                    ) : (
+                      <p className="text-xs text-muted-foreground">Sin tarjetas</p>
+                    )}
+                  </GlassCard>
+                </div>
 
                 {/* Monthly Evolution */}
                 <SectionCard
@@ -1338,12 +1336,7 @@ export default function Overview() {
                   <MonthlyEvolutionChart data={monthlyData} />
                 </SectionCard>
 
-                {/* Projection */}
-                <SectionCard title="Proyección Financiera" tooltip="Proyección de patrimonio basada en tu historial">
-                  <ProjectionCard />
-                </SectionCard>
-
-                {/* Gastos + Tarjetas side by side */}
+                {/* Projection + Expenses side by side */}
                 <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
                   {/* Expenses by Category — historical accumulation */}
                   {expensesByCategory.length > 0 && (
@@ -1379,9 +1372,9 @@ export default function Overview() {
                     </SectionCard>
                   )}
 
-                  {/* Credit Cards Detail */}
-                  <SectionCard title="Tarjetas de Crédito" icon={CreditCard}>
-                    <CreditCardWidget />
+                  {/* Projection */}
+                  <SectionCard title="Proyección Financiera" tooltip="Proyección de patrimonio basada en tu historial">
+                    <ProjectionCard />
                   </SectionCard>
                 </div>
               </>
