@@ -231,7 +231,7 @@ export default function QuickTransactionForm({ onSuccess, defaultType = "Gasto" 
               playTap();
             }}
             onKeyDown={handleAmountKeyDown}
-            style={{ fontSize: amount.length > 10 ? "clamp(2.2rem, 8vw, 3.5rem)" : amount.length > 7 ? "clamp(2.8rem, 11vw, 3.5rem)" : "clamp(3.5rem, 15vw, 4rem)" }}
+            style={{ fontSize: amount.length > 10 ? "clamp(2.8rem, 8vw, 3.5rem)" : amount.length > 7 ? "clamp(3.2rem, 11vw, 3.5rem)" : "clamp(3.5rem, 15vw, 4.5rem)" }}
             className={cn(
               "h-28 sm:h-32 text-center font-bold font-mono",
               "border-0 bg-transparent shadow-none",
