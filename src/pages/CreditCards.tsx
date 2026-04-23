@@ -3,6 +3,7 @@ import Layout from "@/components/Layout";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { Card, CardContent } from "@/components/ui/card";
 import {
   Select,
@@ -112,6 +113,7 @@ export default function CreditCards() {
   // Billing state
   const [billingCardId, setBillingCardId] = useState<string | null>(null);
   const [cycleOffset, setCycleOffset] = useState(0);
+  const [billingOpen, setBillingOpen] = useState(true);
 
   const isLoading = isLoadingCards || isLoadingInstallments;
 
@@ -251,48 +253,49 @@ export default function CreditCards() {
           </Card>
         ) : (
           <>
-            {/* ── Overview Banner ── */}
+            {/* ── Overview Strip ── */}
             <Card className="overflow-hidden">
-              <CardContent className="p-5">
-                <div className="flex items-center justify-between mb-3">
-                  <span className="text-sm text-muted-foreground">Cupo utilizado</span>
-                  <span className={cn(
-                    "text-sm font-medium font-mono tabular-nums",
-                    totalUsedPercent > 80 && "text-destructive",
-                    isPrivacyMode && "privacy-blur"
-                  )}>
-                    {Math.round(totalUsedPercent)}%
-                  </span>
-                </div>
-                <Progress
-                  value={totalUsedPercent}
-                  className={cn("h-2.5 mb-3", totalUsedPercent > 80 && "[&>div]:bg-destructive")}
-                />
-                <div className={cn("text-xs text-muted-foreground mb-4 font-mono tabular-nums", isPrivacyMode && "privacy-blur")}>
-                  {formatCurrency(cardTotals.totalUsed)} de {formatCurrency(cardTotals.totalLimit)}
-                </div>
-
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="flex items-center gap-3">
-                    <div className="p-2 rounded-lg bg-success/10">
-                      <Wallet className="h-4 w-4 text-success" />
+              <CardContent className="px-4 py-3">
+                <div className="flex flex-col sm:flex-row sm:items-center gap-3">
+                  {/* Progress section */}
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-2 mb-1">
+                      <span className="text-xs text-muted-foreground">Cupo</span>
+                      <span className={cn(
+                        "text-xs font-semibold font-mono tabular-nums",
+                        totalUsedPercent > 80 && "text-destructive",
+                        isPrivacyMode && "privacy-blur"
+                      )}>
+                        {Math.round(totalUsedPercent)}%
+                      </span>
+                      <span className={cn("text-[10px] text-muted-foreground font-mono tabular-nums ml-auto", isPrivacyMode && "privacy-blur")}>
+                        {formatCurrency(cardTotals.totalUsed)} / {formatCurrency(cardTotals.totalLimit)}
+                      </span>
                     </div>
-                    <div>
-                      <p className="text-xs text-muted-foreground">Disponible</p>
-                      <p className={cn("text-lg font-bold font-mono tabular-nums text-success", isPrivacyMode && "privacy-blur")}>
-                        {formatCurrency(cardTotals.totalAvailable)}
-                      </p>
-                    </div>
+                    <Progress
+                      value={totalUsedPercent}
+                      className={cn("h-2", totalUsedPercent > 80 && "[&>div]:bg-destructive")}
+                    />
                   </div>
-                  <div className="flex items-center gap-3">
-                    <div className="p-2 rounded-lg bg-orange-500/10">
-                      <Calendar className="h-4 w-4 text-orange-500" />
+                  {/* Stats inline */}
+                  <div className="flex items-center gap-4 sm:gap-5 shrink-0 sm:border-l sm:border-border/40 sm:pl-4">
+                    <div className="flex items-center gap-1.5">
+                      <Wallet className="h-3.5 w-3.5 text-success" />
+                      <div>
+                        <p className="text-[10px] text-muted-foreground leading-none">Disponible</p>
+                        <p className={cn("text-sm font-bold font-mono tabular-nums text-success", isPrivacyMode && "privacy-blur")}>
+                          {formatCurrency(cardTotals.totalAvailable)}
+                        </p>
+                      </div>
                     </div>
-                    <div>
-                      <p className="text-xs text-muted-foreground">Pago mensual</p>
-                      <p className={cn("text-lg font-bold font-mono tabular-nums text-orange-500", isPrivacyMode && "privacy-blur")}>
-                        {formatCurrency(installmentTotals.monthlyPayment)}
-                      </p>
+                    <div className="flex items-center gap-1.5">
+                      <Calendar className="h-3.5 w-3.5 text-orange-500" />
+                      <div>
+                        <p className="text-[10px] text-muted-foreground leading-none">Pago</p>
+                        <p className={cn("text-sm font-bold font-mono tabular-nums text-orange-500", isPrivacyMode && "privacy-blur")}>
+                          {formatCurrency(installmentTotals.monthlyPayment)}
+                        </p>
+                      </div>
                     </div>
                   </div>
                 </div>
@@ -304,7 +307,7 @@ export default function CreditCards() {
               <h2 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-3">
                 Mis Tarjetas
               </h2>
-              <div className="grid gap-3 md:grid-cols-2 lg:grid-cols-3">
+              <div className="grid gap-3 md:grid-cols-2">
                 {cardSummaries.map((card) => (
                   <CreditCardItem
                     key={card.id}
@@ -361,10 +364,19 @@ export default function CreditCards() {
             )}
 
             {/* ── Billing / Estado de cuenta ── */}
-            <div>
-              <h2 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-3">
-                Estado de cuenta
-              </h2>
+            <Collapsible open={billingOpen} onOpenChange={setBillingOpen}>
+              <CollapsibleTrigger asChild>
+                <button className="flex items-center gap-2 mb-3 group w-full text-left">
+                  <h2 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
+                    Estado de cuenta
+                  </h2>
+                  <ChevronDown className={cn(
+                    "h-3.5 w-3.5 text-muted-foreground/60 transition-transform",
+                    !billingOpen && "-rotate-90"
+                  )} />
+                </button>
+              </CollapsibleTrigger>
+              <CollapsibleContent>
               <Card>
                 <CardContent className="p-4 space-y-4">
                   {/* Card selector + Cycle navigation */}
@@ -500,7 +512,8 @@ export default function CreditCards() {
                   )}
                 </CardContent>
               </Card>
-            </div>
+              </CollapsibleContent>
+            </Collapsible>
           </>
         )}
       </div>

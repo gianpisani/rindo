@@ -18,7 +18,6 @@ import { usePrivacyMode } from "@/hooks/usePrivacyMode";
 import {
   useMonthlySummary,
   type CategoryBreakdown,
-  type DailySpending,
 } from "@/hooks/useMonthlySummary";
 import { CHART_COLORS } from "@/lib/chart-config";
 import { cn } from "@/lib/utils";
@@ -45,6 +44,7 @@ import {
   Play,
   Trophy,
   Calendar,
+  Flame,
 } from "lucide-react";
 import { MonthlyStory } from "@/components/MonthlyStory";
 import { MonthlyEvolutionChart } from "@/components/MonthlyEvolutionChart";
@@ -54,13 +54,8 @@ import {
   PieChart,
   Pie,
   Cell,
-  BarChart,
-  Bar,
-  XAxis,
-  YAxis,
   Tooltip as ChartTooltip,
   ResponsiveContainer,
-  ReferenceLine,
 } from "recharts";
 import type { TooltipProps } from "recharts";
 import type { LucideIcon } from "lucide-react";
@@ -107,29 +102,6 @@ function DonutTooltip({
       <p className="text-xs text-muted-foreground mt-0.5">
         {data.percentage.toFixed(1)}% del total
       </p>
-    </div>
-  );
-}
-
-function DailyTooltip({
-  active,
-  payload,
-}: TooltipProps<number, string>) {
-  if (!active || !payload?.length) return null;
-  const data = payload[0].payload as DailySpending;
-  return (
-    <div className="bg-card border border-border/50 rounded-xl p-3 shadow-lg">
-      <p className="font-semibold text-sm text-foreground capitalize">
-        {data.dayName} {data.date}
-      </p>
-      <p className="text-sm font-mono tabular-nums font-semibold text-rose-500">
-        {formatCurrency(data.amount)}
-      </p>
-      {data.isWeekend && (
-        <p className="text-[10px] text-muted-foreground mt-0.5">
-          Fin de semana
-        </p>
-      )}
     </div>
   );
 }
@@ -311,7 +283,7 @@ export default function Overview() {
   const { categories } = useCategories();
   const { limits } = useCategoryLimits();
   const { budget } = useMonthlyBudget();
-  const { creditCards } = useCreditCards();
+  const { creditCards, cardSummaries, totals: cardTotals } = useCreditCards();
   const { isPrivacyMode } = usePrivacyMode();
   const monthStripRef = useRef<HTMLDivElement>(null);
 
@@ -767,74 +739,128 @@ export default function Overview() {
                   ))}
                 </div>
 
-                {/* Savings Rate Banner */}
-                {(kpis.income > 0 || kpis.projectedSavingsRate !== null) && (() => {
-                  const isProjected = kpis.projectedSavingsRate !== null && kpis.income === 0;
-                  const displayRate = isProjected ? kpis.projectedSavingsRate! : kpis.savingsRate;
-                  return (
-                    <div className="relative overflow-hidden rounded-xl border border-border/50 bg-gradient-to-r from-violet-500/[0.03] via-card to-card px-4 py-2.5">
-                      <div className="flex items-center justify-between">
-                        <div className="flex items-center gap-2.5">
-                          <div className="p-1.5 rounded-md bg-violet-500/10">
-                            <Target className="h-3.5 w-3.5 text-violet-500" />
-                          </div>
-                          <div>
-                            <p className="text-[10px] text-muted-foreground uppercase tracking-wider font-medium">
-                              {isProjected ? "Tasa de Ahorro (proyectada)" : "Tasa de Ahorro"}
-                            </p>
-                            <div
-                              className={cn(
-                                "text-lg font-bold font-mono tabular-nums",
-                                displayRate >= 0
-                                  ? "text-violet-500"
-                                  : "text-rose-500",
-                                isPrivacyMode && "privacy-blur"
-                              )}
-                            >
-                              {isProjected && <span className="text-xs font-normal text-muted-foreground mr-0.5">~</span>}
-                              <NumberFlow
-                                value={displayRate}
-                                format={{ maximumFractionDigits: 1 }}
+                {/* ── Insights Row ── */}
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                  {/* Savings Rate Ring */}
+                  {(() => {
+                    const showSavings = kpis.income > 0 || kpis.projectedSavingsRate !== null;
+                    if (!showSavings) return <div />;
+                    const isProjected = kpis.projectedSavingsRate !== null && kpis.income === 0;
+                    const displayRate = isProjected ? kpis.projectedSavingsRate! : kpis.savingsRate;
+                    const absRate = Math.min(Math.abs(displayRate), 100);
+                    const circumference = 2 * Math.PI * 28;
+                    const strokeDash = (absRate / 100) * circumference;
+                    return (
+                      <GlassCard className="p-4">
+                        <div className="flex items-center gap-3">
+                          <div className="relative w-[68px] h-[68px] shrink-0">
+                            <svg viewBox="0 0 64 64" className="w-full h-full -rotate-90">
+                              <circle cx="32" cy="32" r="28" fill="none" stroke="currentColor" strokeWidth="5" className="text-muted/30" />
+                              <circle
+                                cx="32" cy="32" r="28" fill="none" strokeWidth="5" strokeLinecap="round"
+                                stroke={displayRate >= 0 ? "#8b5cf6" : "#f43f5e"}
+                                strokeDasharray={`${strokeDash} ${circumference}`}
                               />
-                              %
+                            </svg>
+                            <div className="absolute inset-0 flex items-center justify-center">
+                              <span className={cn(
+                                "text-sm font-bold font-mono tabular-nums",
+                                displayRate >= 0 ? "text-violet-500" : "text-rose-500",
+                                isPrivacyMode && "privacy-blur"
+                              )}>
+                                {displayRate.toFixed(0)}%
+                              </span>
                             </div>
                           </div>
+                          <div className="min-w-0">
+                            <p className="text-[10px] text-muted-foreground uppercase tracking-wider font-medium">
+                              {isProjected ? "Ahorro (proy.)" : "Tasa de Ahorro"}
+                            </p>
+                            <div className={cn(
+                              "text-lg font-bold font-mono tabular-nums",
+                              displayRate >= 0 ? "text-violet-500" : "text-rose-500",
+                              isPrivacyMode && "privacy-blur"
+                            )}>
+                              <NumberFlow value={displayRate} format={{ maximumFractionDigits: 1 }} />%
+                            </div>
+                            {kpis.prevSavingsRate !== 0 && (
+                              <p className={cn("text-[10px] text-muted-foreground font-mono tabular-nums", isPrivacyMode && "privacy-blur")}>
+                                Ant: {kpis.prevSavingsRate.toFixed(1)}%
+                              </p>
+                            )}
+                          </div>
                         </div>
-                        <div className="text-right">
-                          {isProjected && kpis.expectedSalary ? (
-                            <>
-                              <p className="text-[10px] text-muted-foreground">
-                                Sueldo esperado
-                              </p>
-                              <p
-                                className={cn(
-                                  "text-xs font-mono tabular-nums text-muted-foreground",
-                                  isPrivacyMode && "privacy-blur"
-                                )}
-                              >
-                                {formatCompact(kpis.expectedSalary)}
-                              </p>
-                            </>
-                          ) : kpis.prevSavingsRate !== 0 ? (
-                            <>
-                              <p className="text-[10px] text-muted-foreground">
-                                Mes anterior
-                              </p>
-                              <p
-                                className={cn(
-                                  "text-xs font-mono tabular-nums text-muted-foreground",
-                                  isPrivacyMode && "privacy-blur"
-                                )}
-                              >
-                                {kpis.prevSavingsRate.toFixed(1)}%
-                              </p>
-                            </>
-                          ) : null}
-                        </div>
+                      </GlassCard>
+                    );
+                  })()}
+
+                  {/* Daily Spending Stats */}
+                  {dailySpending.length > 0 ? (
+                    <GlassCard className="p-4">
+                      <p className="text-[10px] text-muted-foreground uppercase tracking-wider font-medium mb-1.5">
+                        Gasto Diario
+                      </p>
+                      <div className={cn("text-lg font-bold font-mono tabular-nums", isPrivacyMode && "privacy-blur")}>
+                        {formatCompact(dailyStats.avgDaily)}
+                        <span className="text-xs font-normal text-muted-foreground">/día</span>
                       </div>
-                    </div>
-                  );
-                })()}
+                      <div className="flex items-center gap-3 mt-2 text-[11px] text-muted-foreground">
+                        {dailyStats.peakDay && (
+                          <span className="flex items-center gap-1">
+                            <Flame className="h-3 w-3 text-orange-500" />
+                            <span className={cn("font-semibold text-foreground font-mono tabular-nums", isPrivacyMode && "privacy-blur")}>
+                              {formatCompact(dailyStats.peakDay.amount)}
+                            </span>
+                          </span>
+                        )}
+                        <span>
+                          📅 {dailyStats.daysWithSpending}/{dailyStats.totalDays} días
+                        </span>
+                      </div>
+                    </GlassCard>
+                  ) : <div />}
+
+                  {/* Credit Cards Mini */}
+                  {monthlyCardSpending.length > 0 ? (
+                    <GlassCard className="p-4">
+                      <div className="flex items-center justify-between mb-1.5">
+                        <p className="text-[10px] text-muted-foreground uppercase tracking-wider font-medium">
+                          Tarjetas
+                        </p>
+                        <Link to="/credit-cards" className="text-[10px] text-primary hover:underline">
+                          Ver →
+                        </Link>
+                      </div>
+                      {cardTotals.totalLimit > 0 && (
+                        <div className="mb-2">
+                          <div className="flex items-center justify-between text-[10px] text-muted-foreground mb-0.5">
+                            <span>Cupo usado</span>
+                            <span className={cn("font-mono tabular-nums", isPrivacyMode && "privacy-blur")}>
+                              {Math.round((cardTotals.totalUsed / cardTotals.totalLimit) * 100)}%
+                            </span>
+                          </div>
+                          <div className="h-1.5 rounded-full bg-muted/60 overflow-hidden">
+                            <div
+                              className="h-full rounded-full bg-primary/70"
+                              style={{ width: `${Math.min((cardTotals.totalUsed / cardTotals.totalLimit) * 100, 100)}%` }}
+                            />
+                          </div>
+                        </div>
+                      )}
+                      <div className="space-y-1.5">
+                        {monthlyCardSpending.slice(0, 3).map((card) => (
+                          <div key={card.id} className="flex items-center gap-2">
+                            <div className="w-1.5 h-1.5 rounded-full shrink-0" style={{ backgroundColor: card.color || "#6b7280" }} />
+                            <span className="text-[11px] truncate flex-1">{card.name}</span>
+                            <span className={cn("text-[11px] font-mono font-semibold tabular-nums shrink-0", isPrivacyMode && "privacy-blur")}>
+                              {formatCompact(card.spent)}
+                            </span>
+                          </div>
+                        ))}
+                      </div>
+                    </GlassCard>
+                  ) : <div />}
+                </div>
 
                 {/* Donut + Comparison */}
                 <div className="grid grid-cols-1 lg:grid-cols-12 gap-4">
@@ -1003,76 +1029,6 @@ export default function Overview() {
                   </div>
                 </div>
 
-                {/* Gasto Diario */}
-                {dailySpending.length > 0 && (
-                  <SectionCard
-                    title="Gasto Diario"
-                    tooltip="Gasto por día del mes. La línea punteada es el promedio diario"
-                  >
-                    <div>
-                      <ResponsiveContainer width="100%" height={160}>
-                        <BarChart
-                          data={dailySpending}
-                          className={cn(isPrivacyMode && "privacy-blur")}
-                        >
-                          <XAxis
-                            dataKey="day"
-                            fontSize={9}
-                            tickLine={false}
-                            axisLine={false}
-                            stroke={CHART_COLORS.mutedAxis}
-                            interval="preserveStartEnd"
-                          />
-                          <YAxis
-                            fontSize={9}
-                            tickLine={false}
-                            axisLine={false}
-                            stroke={CHART_COLORS.mutedAxis}
-                            tickFormatter={formatCompact}
-                            width={45}
-                          />
-                          <ChartTooltip content={<DailyTooltip />} />
-                          <ReferenceLine
-                            y={dailyStats.avgDaily}
-                            stroke={CHART_COLORS.balance}
-                            strokeDasharray="4 4"
-                            strokeWidth={1.5}
-                          />
-                          <Bar dataKey="amount" radius={[3, 3, 0, 0]} maxBarSize={14}>
-                            {dailySpending.map((entry, i) => (
-                              <Cell
-                                key={i}
-                                fill={CHART_COLORS.expense}
-                                opacity={
-                                  entry.amount === 0 ? 0.08 : entry.isWeekend ? 0.55 : 1
-                                }
-                              />
-                            ))}
-                          </Bar>
-                        </BarChart>
-                      </ResponsiveContainer>
-                      <div className="flex items-center gap-4 mt-2 text-[11px] text-muted-foreground">
-                        <span>
-                          📊 Prom:{" "}
-                          <span className={cn("font-semibold text-foreground font-mono tabular-nums", isPrivacyMode && "privacy-blur")}>
-                            {formatCompact(dailyStats.avgDaily)}/día
-                          </span>
-                        </span>
-                        {dailyStats.peakDay && (
-                          <span>
-                            🔺 Pico:{" "}
-                            <span className={cn("font-semibold text-foreground font-mono tabular-nums", isPrivacyMode && "privacy-blur")}>
-                              {formatCompact(dailyStats.peakDay.amount)}
-                            </span>
-                          </span>
-                        )}
-                        <span>
-                          📅 {dailyStats.daysWithSpending}/{dailyStats.totalDays} días
-                        </span>
-                      </div>
-                    </div>
-                  </SectionCard>
-                )}
 
                 {/* Gastos + Presupuesto side by side */}
                 {categoryBreakdown.length > 0 && (
@@ -1213,43 +1169,6 @@ export default function Overview() {
                   </div>
                 )}
 
-                {/* Tarjetas (compact) */}
-                {monthlyCardSpending.length > 0 && (
-                  <SectionCard title="Tarjetas" icon={CreditCard}>
-                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
-                      {monthlyCardSpending.map((card) => {
-                        const usage = card.credit_limit > 0 ? (card.spent / card.credit_limit) * 100 : 0;
-                        return (
-                          <div key={card.id} className="flex items-center gap-2.5 py-1">
-                            <div
-                              className="w-2 h-2 rounded-full shrink-0"
-                              style={{ backgroundColor: card.color || "#6b7280" }}
-                            />
-                            <div className="flex-1 min-w-0">
-                              <div className="flex items-center justify-between gap-2">
-                                <span className="text-xs font-medium truncate">{card.name}</span>
-                                <span className={cn("text-xs font-mono font-semibold tabular-nums shrink-0", isPrivacyMode && "privacy-blur")}>
-                                  {formatCompact(card.spent)}
-                                </span>
-                              </div>
-                              <div className="flex items-center gap-2 mt-0.5">
-                                <div className="flex-1 h-1 rounded-full bg-muted/60 overflow-hidden">
-                                  <div
-                                    className="h-full rounded-full"
-                                    style={{ width: `${Math.min(usage, 100)}%`, backgroundColor: card.color || "#6b7280" }}
-                                  />
-                                </div>
-                                <span className={cn("text-[9px] text-muted-foreground tabular-nums shrink-0", isPrivacyMode && "privacy-blur")}>
-                                  {usage.toFixed(0)}%
-                                </span>
-                              </div>
-                            </div>
-                          </div>
-                        );
-                      })}
-                    </div>
-                  </SectionCard>
-                )}
               </>
             )}
           </TabsContent>
