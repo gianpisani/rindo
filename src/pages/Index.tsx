@@ -654,10 +654,36 @@ const Index = () => {
             <div className="col-span-4">{quickActions}</div>
           </div>
 
-          {/* Bottom row: Transactions | Insights — fills remaining viewport */}
+          {/* Bottom row: Transactions | Insights + Wrapped — fills remaining viewport */}
           <div className="grid grid-cols-12 gap-3 items-stretch" style={{ height: "calc(100vh - 340px)", minHeight: 260 }}>
             <div className="col-span-8 min-h-0">{transactionsCard}</div>
-            <div className="col-span-4 min-h-0">{insightsPanel}</div>
+            <div className="col-span-4 min-h-0 flex flex-col gap-3">
+              <div className="flex-1 min-h-0">{insightsPanel}</div>
+              {hasLastMonthData && (
+                <button
+                  onClick={() => setStoryOpen(true)}
+                  className="shrink-0 group relative overflow-hidden rounded-xl border border-border/50 text-left transition-all hover:border-primary/30 hover:shadow-lg hover:shadow-primary/5"
+                >
+                  {/* Subtle animated gradient background */}
+                  <div className="absolute inset-0 bg-gradient-to-br from-primary/8 via-primary/3 to-transparent" />
+                  <div className="absolute inset-0 bg-gradient-to-r from-primary/5 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
+                  <div className="relative px-4 py-3 flex items-center gap-3">
+                    <div className="flex items-center justify-center size-9 rounded-full bg-primary/10 text-primary group-hover:bg-primary/20 group-hover:scale-105 transition-all duration-300">
+                      <Play className="h-3.5 w-3.5 ml-0.5" />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-[11px] font-medium text-muted-foreground uppercase tracking-wider leading-none">
+                        Resumen
+                      </p>
+                      <p className="text-sm font-bold capitalize leading-tight mt-0.5">
+                        {format(lastMonth, "MMMM yyyy", { locale: es })}
+                      </p>
+                    </div>
+                    <ChevronRight className="h-4 w-4 text-muted-foreground group-hover:text-primary group-hover:translate-x-0.5 transition-all" />
+                  </div>
+                </button>
+              )}
+            </div>
           </div>
         </div>
 
@@ -672,29 +698,6 @@ const Index = () => {
           onReset={bankSync.reset}
         />
 
-        {/* Monthly Story - Last month review (desktop only, mobile version is inline above) */}
-        {hasLastMonthData && (
-          <button
-            onClick={() => setStoryOpen(true)}
-            className="hidden lg:block w-full group relative overflow-hidden rounded-xl border border-border/50 p-5 text-left transition-all hover:border-primary/30 hover:shadow-lg hover:shadow-primary/5"
-          >
-            <div className="absolute inset-0 bg-gradient-to-r from-primary/5 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
-            <div className="relative flex items-center justify-between">
-              <div className="space-y-1">
-                <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Tu resumen de</p>
-                <p className="text-lg font-bold capitalize">
-                  {format(lastMonth, "MMMM yyyy", { locale: es })}
-                </p>
-                <p className="text-xs text-muted-foreground">
-                  {lastMonthSummary.transactionCount} transacciones &middot; Toca para ver
-                </p>
-              </div>
-              <div className="flex items-center justify-center w-10 h-10 rounded-full bg-primary/10 text-primary group-hover:bg-primary/20 transition-colors">
-                <Play className="h-4 w-4 ml-0.5" />
-              </div>
-            </div>
-          </button>
-        )}
       </div>
 
       <MonthlyStory
