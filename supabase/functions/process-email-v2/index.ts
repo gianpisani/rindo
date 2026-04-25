@@ -1,5 +1,6 @@
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.39.3'
 import { corsHeaders } from '../_shared/cors.ts'
+import { sendNotificationEmail } from '../_shared/email-notification.ts'
 
 interface EmailPayload {
   subject: string
@@ -528,6 +529,27 @@ Deno.serve(async (req) => {
       })
     } catch (pushError) {
       console.error('⚠️ Push notification error:', pushError)
+    }
+
+    // Email notification via Resend
+    try {
+      const { data: userData } = await supabase.auth.admin.getUserById(user_id)
+      const userEmail = userData?.user?.email
+      if (userEmail) {
+        await sendNotificationEmail({
+          to: userEmail,
+          amount: parsed.amount,
+          detail: parsed.detail,
+          category: categoryName,
+          bank: parsed.bank,
+          type: parsed.type,
+          weeklyStats,
+        })
+      } else {
+        console.warn('⚠️ No email found for user', user_id)
+      }
+    } catch (emailError) {
+      console.error('⚠️ Email notification error:', emailError)
     }
 
     return new Response(

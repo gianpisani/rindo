@@ -162,7 +162,7 @@ export async function sendNotificationEmail(params: EmailParams): Promise<void> 
       'Content-Type': 'application/json',
     },
     body: JSON.stringify({
-      from: 'rindo. <onboarding@resend.dev>',
+      from: 'rindo. <notificaciones@notificaciones.rindo.cl>',
       to: [to],
       subject,
       html,
@@ -176,4 +176,111 @@ export async function sendNotificationEmail(params: EmailParams): Promise<void> 
   }
 
   console.log('📧 Email enviado a', to)
+}
+
+interface BatchTransaction {
+  date: string
+  description: string
+  amount: number
+  type: string
+}
+
+interface BatchEmailParams {
+  to: string
+  bank: string
+  transactions: BatchTransaction[]
+}
+
+function buildBatchNotificationHtml(params: Omit<BatchEmailParams, 'to'>): string {
+  const { bank, transactions } = params
+
+  const totalAmount = transactions.reduce((sum, t) => sum + t.amount, 0)
+  const totalStr = '$' + Number(totalAmount).toLocaleString('es-CL')
+  const count = transactions.length
+
+  const logoSvg =
+    '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" width="32" height="32">' +
+    '<rect width="32" height="32" rx="6" fill="#e11d48"/>' +
+    '<g transform="translate(16,16)">' +
+    '<rect x="-11" y="-2.2" width="22" height="4.5" rx="1" fill="#fff" transform="rotate(-32)"/>' +
+    '<rect x="-9.2" y="-2.2" width="18.5" height="4.5" rx="1" fill="#fff" transform="rotate(38)" opacity="0.55"/>' +
+    '</g></svg>'
+
+  let rowsHtml = ''
+  for (const tx of transactions) {
+    const amtStr = '$' + Number(tx.amount).toLocaleString('es-CL')
+    const typeColor = tx.type === 'Ingreso' ? '#22c55e' : '#e11d48'
+    const dateParts = tx.date.split('T')[0].split('-')
+    const dateLabel = dateParts.length === 3 ? `${dateParts[2]}/${dateParts[1]}` : tx.date.split('T')[0]
+    rowsHtml +=
+      '<tr style="border-bottom:1px solid #1a1a1e">' +
+      `<td style="color:#71717a;padding:8px 0;font-size:11px;white-space:nowrap;padding-right:12px">${dateLabel}</td>` +
+      `<td style="color:#d4d4d8;padding:8px 0;font-size:12px">${tx.description}</td>` +
+      `<td style="color:${typeColor};text-align:right;padding:8px 0;font-size:13px;font-weight:600;white-space:nowrap;padding-left:12px">${amtStr}</td>` +
+      '</tr>'
+  }
+
+  return (
+    '<div style="font-family:-apple-system,BlinkMacSystemFont,\'Segoe UI\',Roboto,sans-serif;max-width:480px;margin:0 auto;padding:20px 0">' +
+    '<table width="100%" cellpadding="0" cellspacing="0" style="background:#09090b;border-radius:16px;overflow:hidden">' +
+    '<tr><td style="padding:28px 28px 0">' +
+    '  <table cellpadding="0" cellspacing="0"><tr>' +
+    `    <td style="padding-right:10px;vertical-align:middle">${logoSvg}</td>` +
+    '    <td style="vertical-align:middle;font-size:18px;font-weight:700;color:#fafafa;letter-spacing:-0.3px">rindo<span style="color:#e11d48">.</span></td>' +
+    '  </tr></table>' +
+    '</td></tr>' +
+    '<tr><td style="padding:24px 28px 8px">' +
+    `  <div style="font-size:11px;text-transform:uppercase;letter-spacing:1px;color:#71717a;margin-bottom:6px">Sync bancario &mdash; ${bank}</div>` +
+    `  <div style="font-size:36px;font-weight:800;color:#fafafa;letter-spacing:-1px;line-height:1">${totalStr}</div>` +
+    '</td></tr>' +
+    '<tr><td style="padding:4px 28px 20px">' +
+    `  <div style="font-size:13px;color:#71717a">${count} transacci${count === 1 ? 'ón importada' : 'ones importadas'}</div>` +
+    '</td></tr>' +
+    '<tr><td style="padding:0 28px"><div style="border-top:1px solid #27272a"></div></td></tr>' +
+    '<tr><td style="padding:16px 28px 24px">' +
+    `  <table width="100%" cellpadding="0" cellspacing="0">${rowsHtml}</table>` +
+    '</td></tr>' +
+    '</table>' +
+    '<div style="text-align:center;padding:14px 0 0;font-size:11px;color:#52525b">Registrado automáticamente por rindo</div>' +
+    '</div>'
+  )
+}
+
+export async function sendBatchNotificationEmail(params: BatchEmailParams): Promise<void> {
+  const resendApiKey = Deno.env.get('RESEND_API_KEY')
+  if (!resendApiKey) {
+    console.warn('⚠️ RESEND_API_KEY not set, skipping email notification')
+    return
+  }
+
+  const { to, bank, transactions } = params
+  const count = transactions.length
+  const totalAmount = transactions.reduce((sum, t) => sum + t.amount, 0)
+  const totalStr = '$' + Number(totalAmount).toLocaleString('es-CL')
+  const subject = `rindo. | Sync ${bank}: ${count} transacci${count === 1 ? 'ón' : 'ones'} (${totalStr})`
+
+  const html = buildBatchNotificationHtml(params)
+  const plainText = transactions.map(t => `${t.date.split('T')[0]} ${t.description} $${t.amount}`).join('\n')
+
+  const res = await fetch('https://api.resend.com/emails', {
+    method: 'POST',
+    headers: {
+      'Authorization': `Bearer ${resendApiKey}`,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({
+      from: 'rindo. <notificaciones@notificaciones.rindo.cl>',
+      to: [to],
+      subject,
+      html,
+      text: plainText,
+    }),
+  })
+
+  if (!res.ok) {
+    const body = await res.text()
+    throw new Error(`Resend error ${res.status}: ${body}`)
+  }
+
+  console.log('📧 Batch email enviado a', to, `(${count} transacciones)`)
 }

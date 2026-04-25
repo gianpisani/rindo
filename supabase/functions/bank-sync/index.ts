@@ -1,5 +1,6 @@
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.39.3'
 import { corsHeaders } from '../_shared/cors.ts'
+import { sendBatchNotificationEmail } from '../_shared/email-notification.ts'
 
 const OPEN_BANKING_BASE = 'https://open-banking-api-98187240066.southamerica-west1.run.app'
 
@@ -328,6 +329,27 @@ Deno.serve(async (req) => {
 
       console.log(`Bank sync complete for user ${userId}: imported=${imported}, skipped=${skipped}`)
 
+      // Email con lista de transacciones importadas
+      if (imported > 0) {
+        try {
+          const serviceRoleClient = createClient(
+            Deno.env.get('SUPABASE_URL')!,
+            Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
+          )
+          const { data: userData } = await serviceRoleClient.auth.admin.getUserById(userId)
+          const userEmail = userData?.user?.email
+          if (userEmail) {
+            await sendBatchNotificationEmail({
+              to: userEmail,
+              bank: result.bank ?? 'Banco',
+              transactions: importedItems,
+            })
+          }
+        } catch (emailError) {
+          console.error('⚠️ Email notification error (bank-sync check):', emailError)
+        }
+      }
+
       return new Response(
         JSON.stringify({ status: 'completed', imported, skipped, importedItems, skippedItems }),
         { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
@@ -421,6 +443,32 @@ Deno.serve(async (req) => {
             existingCategories,
           }),
         }).catch(e => console.error('Batch auto-categorize error:', e))
+      }
+
+      // Email con lista de transacciones importadas
+      if (created > 0) {
+        try {
+          const serviceRoleClient = createClient(
+            Deno.env.get('SUPABASE_URL')!,
+            Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
+          )
+          const { data: userData } = await serviceRoleClient.auth.admin.getUserById(userId)
+          const userEmail = userData?.user?.email
+          if (userEmail) {
+            await sendBatchNotificationEmail({
+              to: userEmail,
+              bank: 'Banco',
+              transactions: movements.map((m: { date: string; description: string; amount: number; type: string }) => ({
+                date: m.date,
+                description: m.description,
+                amount: m.amount,
+                type: m.type,
+              })),
+            })
+          }
+        } catch (emailError) {
+          console.error('⚠️ Email notification error (bank-sync import-skipped):', emailError)
+        }
       }
 
       return new Response(
