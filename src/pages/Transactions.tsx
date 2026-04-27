@@ -1148,6 +1148,7 @@ export default function Transactions() {
           pollStatus={bankSync.pollStatus}
           result={bankSync.result}
           onStart={bankSync.startSync}
+          onStartStored={bankSync.startSyncStored}
           onImportSkipped={bankSync.importSkipped}
           onReset={bankSync.reset}
         />

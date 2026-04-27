@@ -92,6 +92,7 @@ interface BankSyncModalProps {
   pollStatus: string;
   result: SyncResult | null;
   onStart: (params: { bank: string; rut: string; password: string; fromDate?: string; toDate?: string }) => void;
+  onStartStored: (params: { bank: string; fromDate?: string; toDate?: string }) => void;
   onImportSkipped: (movements: SyncMovementItem[]) => Promise<number>;
   onReset: () => void;
 }
@@ -109,6 +110,7 @@ export function BankSyncModal({
   pollStatus,
   result,
   onStart,
+  onStartStored,
   onImportSkipped,
   onReset,
 }: BankSyncModalProps) {
@@ -143,12 +145,20 @@ export function BankSyncModal({
     setRut(formatRut(e.target.value));
   }, []);
 
+  const storedCred = existingCredentials?.find((c) => c.bank === bank);
+
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
-    setRutTouched(true);
-    if (!bank || !rut || !password || !rutValid) return;
     const fromStr = fromDate ? fromDate.toISOString().split("T")[0] : undefined;
     const toStr = toDate ? toDate.toISOString().split("T")[0] : undefined;
+
+    if (storedCred) {
+      onStartStored({ bank, fromDate: fromStr, toDate: toStr });
+      return;
+    }
+
+    setRutTouched(true);
+    if (!bank || !rut || !password || !rutValid) return;
     onStart({ bank, rut, password, fromDate: fromStr, toDate: toStr });
   }
 
@@ -234,6 +244,7 @@ export function BankSyncModal({
 
   const modalDescription = tab === "settings" ? "Gestiona tus bancos configurados"
     : tab === "history" ? "Sincronizaciones recientes"
+    : activeStep === "form" && selectedBank && storedCred ? "Credenciales guardadas · Elige el rango a sincronizar"
     : activeStep === "form" && selectedBank ? "Ingresa tus credenciales para sincronizar"
     : "Selecciona tu banco para comenzar";
 
@@ -289,23 +300,34 @@ export function BankSyncModal({
           {/* ── STEP 1: Form ───────────────────────────────────────────── */}
           {activeStep === "form" && !selectedBank && (
             <div className="grid grid-cols-2 gap-2.5 pt-1">
-              {BANKS.map((b) => (
-                <button
-                  key={b.value}
-                  type="button"
-                  onClick={() => setBank(b.value)}
-                  className={cn(
-                    "group relative flex items-center gap-3 p-3 rounded-xl",
-                    "border border-border/50 bg-card",
-                    "hover:border-primary/40 hover:bg-accent/50",
-                    "transition-all duration-200 cursor-pointer",
-                    "focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-1",
-                  )}
-                >
-                  <BankLogo bank={b} size="sm" />
-                  <span className="text-sm font-medium text-left">{b.label}</span>
-                </button>
-              ))}
+              {BANKS.map((b) => {
+                const isConfigured = existingCredentials?.some((c) => c.bank === b.value);
+                return (
+                  <button
+                    key={b.value}
+                    type="button"
+                    onClick={() => setBank(b.value)}
+                    className={cn(
+                      "group relative flex items-center gap-3 p-3 rounded-xl",
+                      "border bg-card transition-all duration-200 cursor-pointer",
+                      "focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-1",
+                      isConfigured
+                        ? "border-primary/30 hover:border-primary/60 hover:bg-accent/50"
+                        : "border-border/50 hover:border-primary/40 hover:bg-accent/50",
+                    )}
+                  >
+                    <BankLogo bank={b} size="sm" />
+                    <div className="flex-1 text-left min-w-0">
+                      <span className="text-sm font-medium">{b.label}</span>
+                      {isConfigured && (
+                        <p className="text-[10px] text-primary font-medium flex items-center gap-1 mt-0.5">
+                          <CalendarClock className="h-2.5 w-2.5" /> Auto-sync activo
+                        </p>
+                      )}
+                    </div>
+                  </button>
+                );
+              })}
             </div>
           )}
 
@@ -329,67 +351,89 @@ export function BankSyncModal({
                 </div>
                 <div className="relative z-10 flex-1 min-w-0">
                   <p className="font-semibold text-base">{selectedBank.label}</p>
-                  <p className="text-xs text-muted-foreground">Conexión segura · Encriptación de extremo a extremo</p>
+                  <p className="text-xs text-muted-foreground">
+                    {storedCred ? "Auto-sync configurado · Credenciales guardadas" : "Conexión segura · Encriptación de extremo a extremo"}
+                  </p>
                 </div>
+                {storedCred && (
+                  <div className="relative z-10 flex items-center justify-center w-7 h-7 rounded-full bg-primary/10 shrink-0">
+                    <CheckCircle2 className="h-4 w-4 text-primary" />
+                  </div>
+                )}
                 <div className="absolute bottom-0 left-0 right-0 h-[2px]" style={{ background: `linear-gradient(90deg, ${selectedBank.color}60, ${selectedBank.color}10)` }} />
               </div>
 
-              {/* ── Credentials ─────────────────────────────────────────── */}
-              <div className="relative">
-                <div className="absolute -inset-[1px] rounded-2xl opacity-40" style={{ background: `linear-gradient(135deg, ${selectedBank.color}50, transparent 50%, ${selectedBank.color}20)` }} />
-                <div className="relative rounded-2xl bg-background/95 backdrop-blur-xl p-4 space-y-4">
-                  <div className="flex items-center gap-2.5">
-                    <div className="flex items-center justify-center w-7 h-7 rounded-lg" style={{ backgroundColor: `${selectedBank.color}15` }}>
-                      <Lock className="h-3.5 w-3.5" style={{ color: selectedBank.color }} />
-                    </div>
-                    <div>
-                      <p className="text-sm font-medium">Credenciales de acceso</p>
-                      <p className="text-[11px] text-muted-foreground">Encriptadas de extremo a extremo</p>
-                    </div>
+              {/* ── Stored credentials notice ────────────────────────────── */}
+              {storedCred && (
+                <div className="flex items-start gap-3 p-3 rounded-xl bg-primary/5 border border-primary/20">
+                  <Lock className="h-4 w-4 text-primary shrink-0 mt-0.5" />
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-medium">Credenciales guardadas</p>
+                    <p className="text-xs text-muted-foreground mt-0.5">
+                      RUT {storedCred.rut} · Contraseña encriptada. No es necesario ingresarlas de nuevo.
+                    </p>
                   </div>
+                </div>
+              )}
 
-                  <div className="space-y-1.5">
-                    <Label htmlFor="bank-rut" className="text-sm">RUT</Label>
-                    <Input
-                      id="bank-rut"
-                      placeholder="20799959-8"
-                      value={rut}
-                      onChange={handleRutChange}
-                      onBlur={() => setRutTouched(true)}
-                      required
-                      autoComplete="username"
-                      className={cn("rounded-xl h-10 bg-muted/30 border-border/40", showRutError && "border-destructive focus-visible:ring-destructive")}
-                    />
-                    {showRutError && <p className="text-xs text-destructive">RUT inválido</p>}
-                  </div>
+              {/* ── Credentials (only when no stored creds) ─────────────── */}
+              {!storedCred && (
+                <div className="relative">
+                  <div className="absolute -inset-[1px] rounded-2xl opacity-40" style={{ background: `linear-gradient(135deg, ${selectedBank.color}50, transparent 50%, ${selectedBank.color}20)` }} />
+                  <div className="relative rounded-2xl bg-background/95 backdrop-blur-xl p-4 space-y-4">
+                    <div className="flex items-center gap-2.5">
+                      <div className="flex items-center justify-center w-7 h-7 rounded-lg" style={{ backgroundColor: `${selectedBank.color}15` }}>
+                        <Lock className="h-3.5 w-3.5" style={{ color: selectedBank.color }} />
+                      </div>
+                      <div>
+                        <p className="text-sm font-medium">Credenciales de acceso</p>
+                        <p className="text-[11px] text-muted-foreground">Encriptadas de extremo a extremo</p>
+                      </div>
+                    </div>
 
-                  <div className="space-y-1.5">
-                    <Label htmlFor="bank-password" className="text-sm">Clave de internet</Label>
-                    <div className="relative">
+                    <div className="space-y-1.5">
+                      <Label htmlFor="bank-rut" className="text-sm">RUT</Label>
                       <Input
-                        id="bank-password"
-                        type={showPassword ? "text" : "password"}
-                        placeholder="••••••••"
-                        value={password}
-                        onChange={(e) => setPassword(e.target.value)}
+                        id="bank-rut"
+                        placeholder="20799959-8"
+                        value={rut}
+                        onChange={handleRutChange}
+                        onBlur={() => setRutTouched(true)}
                         required
-                        autoComplete="current-password"
-                        className="rounded-xl pr-10 h-10 bg-muted/30 border-border/40"
+                        autoComplete="username"
+                        className={cn("rounded-xl h-10 bg-muted/30 border-border/40", showRutError && "border-destructive focus-visible:ring-destructive")}
                       />
-                      <Button
-                        type="button"
-                        variant="ghost"
-                        size="sm"
-                        className="absolute right-0 top-0 h-full px-3 hover:bg-transparent cursor-pointer"
-                        onClick={() => setShowPassword((v) => !v)}
-                        tabIndex={-1}
-                      >
-                        {showPassword ? <EyeOff className="h-4 w-4 text-muted-foreground" /> : <Eye className="h-4 w-4 text-muted-foreground" />}
-                      </Button>
+                      {showRutError && <p className="text-xs text-destructive">RUT inválido</p>}
+                    </div>
+
+                    <div className="space-y-1.5">
+                      <Label htmlFor="bank-password" className="text-sm">Clave de internet</Label>
+                      <div className="relative">
+                        <Input
+                          id="bank-password"
+                          type={showPassword ? "text" : "password"}
+                          placeholder="••••••••"
+                          value={password}
+                          onChange={(e) => setPassword(e.target.value)}
+                          required
+                          autoComplete="current-password"
+                          className="rounded-xl pr-10 h-10 bg-muted/30 border-border/40"
+                        />
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="sm"
+                          className="absolute right-0 top-0 h-full px-3 hover:bg-transparent cursor-pointer"
+                          onClick={() => setShowPassword((v) => !v)}
+                          tabIndex={-1}
+                        >
+                          {showPassword ? <EyeOff className="h-4 w-4 text-muted-foreground" /> : <Eye className="h-4 w-4 text-muted-foreground" />}
+                        </Button>
+                      </div>
                     </div>
                   </div>
                 </div>
-              </div>
+              )}
 
               {/* ── Date range ──────────────────────────────────────────── */}
               <div className="space-y-2">
@@ -456,7 +500,7 @@ export function BankSyncModal({
                 </Button>
                 <Button
                   type="submit"
-                  disabled={syncStep === "submitting" || !rut || !rutValid || !password}
+                  disabled={syncStep === "submitting" || (!storedCred && (!rut || !rutValid || !password))}
                   className="flex-1 rounded-xl h-10"
                   style={{ backgroundColor: selectedBank.color, borderColor: selectedBank.color }}
                 >

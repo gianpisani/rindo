@@ -34,6 +34,7 @@ interface BankSyncContextValue {
   result: SyncResult | null;
   isRunning: boolean;
   startSync: (params: { bank: string; rut: string; password: string; fromDate?: string; toDate?: string }) => void;
+  startSyncStored: (params: { bank: string; fromDate?: string; toDate?: string }) => void;
   importSkipped: (movements: SyncMovementItem[]) => Promise<number>;
   reset: () => void;
 }
@@ -187,6 +188,44 @@ export function BankSyncProvider({ children }: { children: ReactNode }) {
     [queryClient]
   );
 
+  const startSyncStored = useCallback(
+    async (params: { bank: string; fromDate?: string; toDate?: string }) => {
+      setStep("submitting");
+
+      try {
+        const body: Record<string, string> = {
+          action: "start-stored",
+          bank: params.bank,
+        };
+        if (params.fromDate) body.fromDate = toApiDate(params.fromDate);
+        if (params.toDate) body.toDate = toApiDate(params.toDate);
+
+        const { data, error } = await supabase.functions.invoke("bank-sync", { body });
+
+        if (error) {
+          setResult({ error: error.message || "Error al llamar la función de sincronización." });
+          setStep("failed");
+          return;
+        }
+        if (!data?.jobId) {
+          setResult({ error: data?.error || "La API no devolvió un jobId." });
+          setStep("failed");
+          return;
+        }
+
+        setPollStatus(data.status ?? "queued");
+        setStep("polling");
+        startPolling(data.jobId);
+      } catch (e) {
+        const msg = e instanceof Error ? e.message : "Error de red. Intenta de nuevo.";
+        setResult({ error: msg });
+        setStep("failed");
+      }
+    },
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [queryClient]
+  );
+
   const importSkipped = useCallback(
     async (movements: SyncMovementItem[]): Promise<number> => {
       try {
@@ -219,6 +258,7 @@ export function BankSyncProvider({ children }: { children: ReactNode }) {
         result,
         isRunning: step === "submitting" || step === "polling",
         startSync,
+        startSyncStored,
         importSkipped,
         reset,
       }}

@@ -56,21 +56,10 @@ Deno.serve(async (req) => {
     const body = await req.json()
     const { action } = body
 
-    // ── ACTION: start ─────────────────────────────────────────────────────────
+    // ── Shared scrape helper ──────────────────────────────────────────────────
 
-    if (action === 'start') {
-      const { bank, rut, password, fromDate } = body
-
-      if (!bank || !rut || !password) {
-        return new Response(
-          JSON.stringify({ error: 'bank, rut y password son requeridos' }),
-          { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 400 },
-        )
-      }
-
-      // Encrypt credentials for transit — they never travel in plaintext to the API
+    async function startScrapeJob(rut: string, password: string, bank: string, fromDate?: string): Promise<Response> {
       const encryptedCredentials = await encryptForTransit(rut, password)
-
       const scrapeBody: Record<string, string> = { bank, encryptedCredentials }
       if (fromDate) scrapeBody.fromDate = fromDate
 
@@ -94,6 +83,51 @@ Deno.serve(async (req) => {
         JSON.stringify({ jobId, status }),
         { headers: { ...corsHeaders, 'Content-Type': 'application/json' } },
       )
+    }
+
+    // ── ACTION: start (credenciales manuales) ─────────────────────────────────
+
+    if (action === 'start') {
+      const { bank, rut, password, fromDate } = body
+
+      if (!bank || !rut || !password) {
+        return new Response(
+          JSON.stringify({ error: 'bank, rut y password son requeridos' }),
+          { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 400 },
+        )
+      }
+
+      return startScrapeJob(rut, password, bank, fromDate)
+    }
+
+    // ── ACTION: start-stored (usa credenciales guardadas) ─────────────────────
+
+    if (action === 'start-stored') {
+      const { bank, fromDate } = body
+
+      if (!bank) {
+        return new Response(
+          JSON.stringify({ error: 'bank es requerido' }),
+          { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 400 },
+        )
+      }
+
+      const { data: cred, error: credError } = await supabaseClient
+        .from('bank_sync_credentials')
+        .select('rut, encrypted_password')
+        .eq('user_id', userId)
+        .eq('bank', bank)
+        .maybeSingle()
+
+      if (credError || !cred) {
+        return new Response(
+          JSON.stringify({ error: 'No hay credenciales guardadas para este banco' }),
+          { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 404 },
+        )
+      }
+
+      const password = await decryptPassword(cred.encrypted_password)
+      return startScrapeJob(cred.rut, password, bank, fromDate)
     }
 
     // ── ACTION: check ─────────────────────────────────────────────────────────
