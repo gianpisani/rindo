@@ -15,7 +15,8 @@ import {
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { cn } from "@/lib/utils";
-import { getBankById, BankLogo } from "@/lib/banks";
+import { getBankById } from "@/lib/banks";
+import { BankLogo } from "@/components/BankLogo";
 import { supabase } from "@/integrations/supabase/client";
 
 // ── Types ──────────────────────────────────────────────────────────────────────

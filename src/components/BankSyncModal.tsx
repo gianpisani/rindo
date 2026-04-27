@@ -36,10 +36,10 @@ import { cn } from "@/lib/utils";
 import {
   BANKS,
   SYNC_SCHEDULES,
-  BankLogo,
   formatRut,
   validateRut,
 } from "@/lib/banks";
+import { BankLogo } from "@/components/BankLogo";
 import { useSaveCredentials, useBankSyncCredentials } from "@/hooks/useBankSyncCredentials";
 import type { SyncScheduleId } from "@/lib/banks";
 import { BankSyncSettings } from "@/components/BankSyncSettings";

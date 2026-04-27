@@ -21,7 +21,8 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { cn } from "@/lib/utils";
-import { BankLogo, SYNC_SCHEDULES, getBankById } from "@/lib/banks";
+import { SYNC_SCHEDULES, getBankById } from "@/lib/banks";
+import { BankLogo } from "@/components/BankLogo";
 import {
   useBankSyncCredentials,
   useDeleteCredentials,

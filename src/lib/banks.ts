@@ -1,5 +1,3 @@
-import React from "react";
-import { cn } from "@/lib/utils";
 
 // ── Bank data ─────────────────────────────────────────────────────────────────
 
@@ -84,20 +82,3 @@ export function maskRut(rut: string): string {
   return `${masked}${visible}-${verifier}`;
 }
 
-// ── BankLogo component ────────────────────────────────────────────────────────
-
-interface BankLogoProps {
-  bank: Bank;
-  size?: "sm" | "md";
-}
-
-export function BankLogo({ bank, size = "sm" }: BankLogoProps): JSX.Element {
-  const px = size === "sm" ? "w-8 h-8" : "w-10 h-10";
-  return (
-    <img
-      src={`/banks/${bank.value}.png`}
-      alt={bank.label}
-      className={cn(px, "rounded-lg object-contain shrink-0")}
-    />
-  );
-}
