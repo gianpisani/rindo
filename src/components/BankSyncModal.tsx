@@ -39,6 +39,8 @@ import {
   SYNC_SCHEDULES,
   formatRut,
   validateRut,
+  isCustomSchedule,
+  getCustomHour,
 } from "@/lib/banks";
 import { BankLogo } from "@/components/BankLogo";
 import { useSaveCredentials, useBankSyncCredentials } from "@/hooks/useBankSyncCredentials";
@@ -74,6 +76,10 @@ const SKIP_REASON_LABELS: Record<string, string> = {
 };
 
 function getScheduleTimeLabel(id: string): string {
+  if (isCustomSchedule(id)) {
+    const h = getCustomHour(id);
+    return `las ${h}:00`;
+  }
   const labels: Record<string, string> = {
     daily_08: "las 8:00",
     daily_14: "las 14:00",
@@ -515,18 +521,46 @@ export function BankSyncModal({
                   {saveCredentials && (
                     <div className="space-y-1.5">
                       <Label className="text-xs text-muted-foreground">Horario de sincronización</Label>
-                      <Select value={syncSchedule} onValueChange={(v) => setSyncSchedule(v as SyncScheduleId)}>
-                        <SelectTrigger className="h-8 text-xs rounded-lg">
-                          <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {SYNC_SCHEDULES.filter((s) => s.value !== "disabled").map((s) => (
-                            <SelectItem key={s.value} value={s.value} className="text-xs">
-                              {s.label}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
+                      <div className="flex gap-2">
+                        <Select
+                          value={isCustomSchedule(syncSchedule) ? "custom" : syncSchedule}
+                          onValueChange={(v) => {
+                            if (v === "custom") {
+                              setSyncSchedule("custom_08" as SyncScheduleId);
+                            } else {
+                              setSyncSchedule(v as SyncScheduleId);
+                            }
+                          }}
+                        >
+                          <SelectTrigger className="h-8 text-xs rounded-lg flex-1">
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {SYNC_SCHEDULES.filter((s) => s.value !== "disabled").map((s) => (
+                              <SelectItem key={s.value} value={s.value} className="text-xs">
+                                {s.label}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                        {isCustomSchedule(syncSchedule) && (
+                          <Select
+                            value={String(getCustomHour(syncSchedule))}
+                            onValueChange={(h) => setSyncSchedule(`custom_${h.padStart(2, "0")}` as SyncScheduleId)}
+                          >
+                            <SelectTrigger className="h-8 text-xs rounded-lg w-20 shrink-0">
+                              <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent>
+                              {Array.from({ length: 24 }, (_, i) => (
+                                <SelectItem key={i} value={String(i)} className="text-xs">
+                                  {String(i).padStart(2, "0")}:00
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                        )}
+                      </div>
                     </div>
                   )}
                 </div>

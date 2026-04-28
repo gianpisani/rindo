@@ -28,16 +28,33 @@ export const SYNC_SCHEDULES = [
   { value: "daily_14",    label: "Diario a las 14:00",         shortLabel: "14:00" },
   { value: "daily_20",    label: "Diario a las 20:00",         shortLabel: "20:00" },
   { value: "twice_daily", label: "2 veces al día (8:00/20:00)", shortLabel: "2x/día" },
+  { value: "custom",      label: "Hora personalizada",          shortLabel: "Custom" },
   { value: "disabled",   label: "Solo manual",                 shortLabel: "Manual" },
 ] as const;
 
-export type SyncScheduleId = typeof SYNC_SCHEDULES[number]["value"];
+export type SyncScheduleId = typeof SYNC_SCHEDULES[number]["value"] | `custom_${string}`;
+
+export function isCustomSchedule(id: string): boolean {
+  return id.startsWith("custom_");
+}
+
+export function getCustomHour(id: string): number {
+  return parseInt(id.split("_")[1], 10);
+}
 
 export function getScheduleLabel(id: string): string {
+  if (isCustomSchedule(id)) {
+    const h = getCustomHour(id);
+    return `Diario a las ${h}:00`;
+  }
   return SYNC_SCHEDULES.find((s) => s.value === id)?.label ?? id;
 }
 
 export function getScheduleShortLabel(id: string): string {
+  if (isCustomSchedule(id)) {
+    const h = getCustomHour(id);
+    return `${h}:00`;
+  }
   return SYNC_SCHEDULES.find((s) => s.value === id)?.shortLabel ?? id;
 }
 

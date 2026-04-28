@@ -29,11 +29,13 @@ function getSchedulesForCurrentHour(): string[] {
   const chileHourDst = (utcHour + 24 - 4) % 24   // UTC-4
 
   const schedules: string[] = []
+  const pad = (n: number) => n.toString().padStart(2, '0')
 
   for (const hour of new Set([chileHourStd, chileHourDst])) {
     if (hour === 8)  schedules.push('daily_08', 'twice_daily')
     if (hour === 14) schedules.push('daily_14')
     if (hour === 20) schedules.push('daily_20', 'twice_daily')
+    schedules.push(`custom_${pad(hour)}`)
   }
 
   return [...new Set(schedules)]
