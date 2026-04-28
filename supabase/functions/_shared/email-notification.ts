@@ -284,3 +284,58 @@ export async function sendBatchNotificationEmail(params: BatchEmailParams): Prom
 
   console.log('📧 Batch email enviado a', to, `(${count} transacciones)`)
 }
+
+// ── Bank sync failure notification ───────────────────────────────────────────
+
+interface BankSyncFailureParams {
+  to: string
+  bank: string
+  reason: 'circuit_breaker' | 'invalid_credentials' | '2fa_blocked'
+}
+
+export async function sendBankSyncFailureEmail(params: BankSyncFailureParams): Promise<void> {
+  const resendApiKey = Deno.env.get('RESEND_API_KEY')
+  if (!resendApiKey) return
+
+  const { to, bank, reason } = params
+
+  const reasonMessages: Record<string, string> = {
+    circuit_breaker: `La sincronización automática con <strong>${bank}</strong> fue desactivada tras 5 fallos consecutivos. Revisa tus credenciales en la sección de Bancos.`,
+    invalid_credentials: `Las credenciales de <strong>${bank}</strong> son inválidas. Actualiza tu contraseña en la sección de Bancos.`,
+    '2fa_blocked': `La sincronización automática con <strong>${bank}</strong> requiere verificación en dos pasos (2FA). La sincronización automática fue pausada. Puedes sincronizar manualmente cuando necesites.`,
+  }
+
+  const subject = `rindo. | Auto-sync ${bank} desactivado`
+  const message = reasonMessages[reason] ?? `Hubo un problema con la sincronización de ${bank}.`
+
+  const html =
+    '<div style="font-family:-apple-system,BlinkMacSystemFont,\'Segoe UI\',Roboto,sans-serif;max-width:440px;margin:0 auto;padding:20px 0">' +
+    '<table width="100%" cellpadding="0" cellspacing="0" style="background:#09090b;border-radius:16px;overflow:hidden">' +
+    '<tr><td style="padding:28px 28px 0">' +
+    '<table cellpadding="0" cellspacing="0"><tr>' +
+    '<td style="padding-right:10px;vertical-align:middle"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" width="32" height="32"><rect width="32" height="32" rx="6" fill="#e11d48"/><g transform="translate(16,16)"><rect x="-11" y="-2.2" width="22" height="4.5" rx="1" fill="#fff" transform="rotate(-32)"/><rect x="-9.2" y="-2.2" width="18.5" height="4.5" rx="1" fill="#fff" transform="rotate(38)" opacity="0.55"/></g></svg></td>' +
+    '<td style="vertical-align:middle;font-size:18px;font-weight:700;color:#fafafa;letter-spacing:-0.3px">rindo<span style="color:#e11d48">.</span></td>' +
+    '</tr></table>' +
+    '</td></tr>' +
+    '<tr><td style="padding:24px 28px 16px">' +
+    '<div style="font-size:11px;text-transform:uppercase;letter-spacing:1px;color:#71717a;margin-bottom:8px">Auto-sync desactivado</div>' +
+    `<div style="font-size:15px;color:#d4d4d8;line-height:1.6">${message}</div>` +
+    '</td></tr>' +
+    '</table>' +
+    '<div style="text-align:center;padding:14px 0 0;font-size:11px;color:#52525b">rindo · notificaciones automáticas</div>' +
+    '</div>'
+
+  await fetch('https://api.resend.com/emails', {
+    method: 'POST',
+    headers: { 'Authorization': `Bearer ${resendApiKey}`, 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      from: 'rindo. <notificaciones@notificaciones.rindo.cl>',
+      to: [to],
+      subject,
+      html,
+      text: message.replace(/<[^>]+>/g, ''),
+    }),
+  }).then((r) => {
+    if (r.ok) console.log('📧 Failure email enviado a', to)
+  }).catch((e) => console.error('⚠️ Failure email error:', e))
+}
