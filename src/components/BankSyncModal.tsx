@@ -26,6 +26,7 @@ import {
   ArrowUpCircle,
   SkipForward,
   Plus,
+  Trash2,
   ChevronLeft,
   History,
   Settings2,
@@ -94,6 +95,7 @@ interface BankSyncModalProps {
   onStart: (params: { bank: string; rut: string; password: string; fromDate?: string; toDate?: string }) => void;
   onStartStored: (params: { bank: string; fromDate?: string; toDate?: string }) => void;
   onImportSkipped: (movements: SyncMovementItem[]) => Promise<number>;
+  onDeleteImported: (ids: string[]) => Promise<number>;
   onReset: () => void;
 }
 
@@ -112,6 +114,7 @@ export function BankSyncModal({
   onStart,
   onStartStored,
   onImportSkipped,
+  onDeleteImported,
   onReset,
 }: BankSyncModalProps) {
   const [tab, setTab] = useState<ModalTab>("sync");
@@ -134,6 +137,9 @@ export function BankSyncModal({
   const [selectedSkipped, setSelectedSkipped] = useState<Set<number>>(new Set());
   const [isImporting, setIsImporting] = useState(false);
   const [importedSkippedCount, setImportedSkippedCount] = useState(0);
+  const [selectedImported, setSelectedImported] = useState<Set<number>>(new Set());
+  const [isDeleting, setIsDeleting] = useState(false);
+  const [deletedImportedCount, setDeletedImportedCount] = useState(0);
   const [credentialsSaved, setCredentialsSaved] = useState(false);
 
   const rutValid = validateRut(rut);
@@ -186,6 +192,8 @@ export function BankSyncModal({
     setPassword("");
     setSelectedSkipped(new Set());
     setImportedSkippedCount(0);
+    setSelectedImported(new Set());
+    setDeletedImportedCount(0);
     setCredentialsSaved(false);
     setSaveTriggered(false);
   }
@@ -225,6 +233,37 @@ export function BankSyncModal({
     setImportedSkippedCount(count);
     setSelectedSkipped(new Set());
     setIsImporting(false);
+  }
+
+  function toggleImported(index: number) {
+    setSelectedImported((prev) => {
+      const next = new Set(prev);
+      if (next.has(index)) next.delete(index);
+      else next.add(index);
+      return next;
+    });
+  }
+
+  function toggleAllImported(importedItems: SyncMovementItem[]) {
+    const allIndexes = importedItems.map((_, i) => i);
+    setSelectedImported((prev) => {
+      const allSelected = allIndexes.every((i) => prev.has(i));
+      if (allSelected) return new Set();
+      return new Set(allIndexes);
+    });
+  }
+
+  async function handleDeleteSelected() {
+    if (!result || "error" in result) return;
+    const ids = result.importedItems
+      .filter((item, i) => selectedImported.has(i) && item.id)
+      .map((item) => item.id as string);
+    if (ids.length === 0) return;
+    setIsDeleting(true);
+    const count = await onDeleteImported(ids);
+    setDeletedImportedCount(count);
+    setSelectedImported(new Set());
+    setIsDeleting(false);
   }
 
   const showForm = syncStep === "idle" || syncStep === "failed";
@@ -598,6 +637,11 @@ export function BankSyncModal({
                         <Plus className="h-3.5 w-3.5" />{importedSkippedCount} recuperada{importedSkippedCount !== 1 ? "s" : ""}
                       </div>
                     )}
+                    {deletedImportedCount > 0 && (
+                      <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-red-500/10 text-red-600 dark:text-red-400 text-sm font-medium">
+                        <Trash2 className="h-3.5 w-3.5" />{deletedImportedCount} eliminada{deletedImportedCount !== 1 ? "s" : ""}
+                      </div>
+                    )}
                   </div>
 
                   {/* Auto-sync confirmation message */}
@@ -613,12 +657,28 @@ export function BankSyncModal({
                   )}
 
                   {/* Imported transactions list */}
-                  {result.importedItems.length > 0 && (
+                  {result.importedItems.length > 0 && deletedImportedCount === 0 && (
                     <div className="space-y-2">
-                      <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Importadas</p>
+                      <div className="flex items-center justify-between">
+                        <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Importadas</p>
+                        {result.importedItems.some((item) => item.id) && (
+                          <button
+                            type="button"
+                            onClick={() => toggleAllImported(result.importedItems)}
+                            className="text-xs text-primary hover:underline cursor-pointer"
+                          >
+                            {result.importedItems.every((_, i) => selectedImported.has(i)) ? "Deseleccionar todo" : "Seleccionar todo"}
+                          </button>
+                        )}
+                      </div>
                       <div className="rounded-xl border border-border/50 divide-y divide-border/30 max-h-[200px] overflow-y-auto">
                         {result.importedItems.map((item, i) => (
                           <div key={i} className="flex items-center gap-3 px-3 py-2.5 text-sm">
+                            {item.id ? (
+                              <Checkbox checked={selectedImported.has(i)} onCheckedChange={() => toggleImported(i)} className="shrink-0 cursor-pointer" />
+                            ) : (
+                              <div className="w-4 shrink-0" />
+                            )}
                             <div className={cn("flex items-center justify-center w-7 h-7 rounded-lg shrink-0", item.type === "Ingreso" ? "bg-green-500/10" : "bg-red-500/10")}>
                               {item.type === "Ingreso" ? <ArrowDownCircle className="h-4 w-4 text-green-500" /> : <ArrowUpCircle className="h-4 w-4 text-red-500" />}
                             </div>
@@ -632,6 +692,12 @@ export function BankSyncModal({
                           </div>
                         ))}
                       </div>
+                      {selectedImported.size > 0 && (
+                        <Button onClick={handleDeleteSelected} disabled={isDeleting} className="w-full rounded-xl h-10" variant="outline">
+                          {isDeleting ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Trash2 className="h-4 w-4 mr-2" />}
+                          Eliminar {selectedImported.size} seleccionada{selectedImported.size !== 1 ? "s" : ""}
+                        </Button>
+                      )}
                     </div>
                   )}
 

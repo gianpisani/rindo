@@ -696,6 +696,7 @@ const Index = () => {
           onStart={bankSync.startSync}
           onStartStored={bankSync.startSyncStored}
           onImportSkipped={bankSync.importSkipped}
+          onDeleteImported={bankSync.deleteImported}
           onReset={bankSync.reset}
         />
 

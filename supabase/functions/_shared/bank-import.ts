@@ -57,7 +57,16 @@ export interface ImportResult {
   skippedItems: SkippedItem[]
 }
 
-// ── Helper ────────────────────────────────────────────────────────────────────
+// ── Helpers ───────────────────────────────────────────────────────────────────
+
+/**
+ * Normalizes a bank description for fuzzy comparison.
+ * Strips all non-alphanumeric characters and lowercases so that
+ * "MERCADOPAGO*SICILY Las Condes CL" matches "Mercadopagosicily las condes cl".
+ */
+function normalizeBankDescription(desc: string): string {
+  return desc.toLowerCase().replace(/[^a-z0-9áéíóúñ]/gi, '').toLowerCase()
+}
 
 function convertDate(ddmmyyyy: string, fallbackDate: string): string {
   if (ddmmyyyy.toLowerCase() === 'pendiente') return fallbackDate
@@ -132,9 +141,12 @@ export async function importBankMovements(params: {
       .not('bank_description', 'is', null)
       .limit(10)
 
-    const bankDuplicate = existingBankRows?.some(
-      (row) => row.bank_description && description.includes(row.bank_description),
-    )
+    const bankDuplicate = existingBankRows?.some((row) => {
+      if (!row.bank_description) return false
+      const a = normalizeBankDescription(description)
+      const b = normalizeBankDescription(row.bank_description)
+      return a.includes(b) || b.includes(a)
+    })
 
     // Deduplication check — manually entered rows
     const { data: existingManualRows } = await supabaseClient
@@ -195,7 +207,7 @@ export async function importBankMovements(params: {
       console.error('Insert error for movement:', movement.date, movement.description, insertError)
     } else {
       imported++
-      importedItems.push({ date: movement.date, description, amount: absAmount, type })
+      importedItems.push({ id: inserted.id, date: movement.date, description, amount: absAmount, type })
       toAutoCategorize.push({ id: inserted.id, detail: description })
     }
   }

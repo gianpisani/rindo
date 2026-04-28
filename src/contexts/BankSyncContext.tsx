@@ -8,6 +8,7 @@ import { useQueryClient } from "@tanstack/react-query";
 export type SyncStep = "idle" | "submitting" | "polling" | "completed" | "failed";
 
 export interface SyncMovementItem {
+  id?: string;
   date: string;
   description: string;
   amount: number;
@@ -36,6 +37,7 @@ interface BankSyncContextValue {
   startSync: (params: { bank: string; rut: string; password: string; fromDate?: string; toDate?: string }) => void;
   startSyncStored: (params: { bank: string; fromDate?: string; toDate?: string }) => void;
   importSkipped: (movements: SyncMovementItem[]) => Promise<number>;
+  deleteImported: (ids: string[]) => Promise<number>;
   reset: () => void;
 }
 
@@ -250,6 +252,30 @@ export function BankSyncProvider({ children }: { children: ReactNode }) {
     [queryClient]
   );
 
+  const deleteImported = useCallback(
+    async (ids: string[]): Promise<number> => {
+      try {
+        const { data, error } = await supabase.functions.invoke("bank-sync", {
+          body: { action: "delete-imported", ids },
+        });
+        if (error || !data) {
+          toast.error("Error al eliminar transacciones");
+          return 0;
+        }
+        const deleted = data.deleted as number;
+        if (deleted > 0) {
+          queryClient.invalidateQueries({ queryKey: ["transactions"] });
+          toast.success(`${deleted} transacción${deleted !== 1 ? "es" : ""} eliminada${deleted !== 1 ? "s" : ""}`);
+        }
+        return deleted;
+      } catch {
+        toast.error("Error de red al eliminar transacciones");
+        return 0;
+      }
+    },
+    [queryClient]
+  );
+
   return (
     <BankSyncContext.Provider
       value={{
@@ -260,6 +286,7 @@ export function BankSyncProvider({ children }: { children: ReactNode }) {
         startSync,
         startSyncStored,
         importSkipped,
+        deleteImported,
         reset,
       }}
     >
