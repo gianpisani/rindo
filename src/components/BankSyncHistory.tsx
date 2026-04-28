@@ -294,9 +294,12 @@ export function BankSyncHistory() {
   const { data: entries, isLoading } = useQuery<SyncLogEntry[]>({
     queryKey: ["bank-sync-log"],
     queryFn: async () => {
+      const { data: userData } = await supabase.auth.getUser();
+      if (!userData.user) return [];
       const { data, error } = await supabase
         .from("bank_sync_log")
         .select("*")
+        .eq("user_id", userData.user.id)
         .order("sync_date", { ascending: false })
         .limit(50);
       if (error) throw error;
