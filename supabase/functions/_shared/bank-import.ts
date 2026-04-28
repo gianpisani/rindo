@@ -195,7 +195,7 @@ export async function importBankMovements(params: {
       console.error('Insert error for movement:', movement.date, movement.description, insertError)
     } else {
       imported++
-      importedItems.push({ date: movement.date, description, amount: absAmount, type })
+      importedItems.push({ id: inserted.id, date: movement.date, description, amount: absAmount, type })
       toAutoCategorize.push({ id: inserted.id, detail: description })
     }
   }

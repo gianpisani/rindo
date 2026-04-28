@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   CheckCircle2,
   XCircle,
@@ -11,6 +11,7 @@ import {
   Plus,
   SkipForward,
   Loader2,
+  Trash2,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -22,6 +23,7 @@ import { supabase } from "@/integrations/supabase/client";
 // ── Types ──────────────────────────────────────────────────────────────────────
 
 interface ImportedItem {
+  id?: string;
   date: string;
   description: string;
   amount: number;
@@ -72,9 +74,13 @@ const SKIP_REASON_LABELS: Record<string, string> = {
 // ── Expanded entry detail ─────────────────────────────────────────────────────
 
 function EntryDetail({ entry }: { entry: SyncLogEntry }) {
+  const queryClient = useQueryClient();
   const [selectedSkipped, setSelectedSkipped] = useState<Set<number>>(new Set());
   const [isImporting, setIsImporting] = useState(false);
   const [importedCount, setImportedCount] = useState(0);
+  const [selectedImported, setSelectedImported] = useState<Set<number>>(new Set());
+  const [isDeleting, setIsDeleting] = useState(false);
+  const [deletedCount, setDeletedCount] = useState(0);
 
   const importedItems = entry.imported_items ?? [];
   const skippedItems = entry.skipped_items ?? [];
@@ -106,21 +112,73 @@ function EntryDetail({ entry }: { entry: SyncLogEntry }) {
     if (data?.created) {
       setImportedCount((c) => c + data.created);
       setSelectedSkipped(new Set());
+      queryClient.invalidateQueries({ queryKey: ["transactions"] });
     }
     setIsImporting(false);
+  }
+
+  function toggleImported(i: number) {
+    setSelectedImported((prev) => {
+      const next = new Set(prev);
+      if (next.has(i)) next.delete(i);
+      else next.add(i);
+      return next;
+    });
+  }
+
+  function toggleAllImported() {
+    const allIndexes = importedItems.map((_, i) => i);
+    const allSelected = allIndexes.every((i) => selectedImported.has(i));
+    setSelectedImported(allSelected ? new Set() : new Set(allIndexes));
+  }
+
+  async function handleDelete() {
+    if (!selectedImported.size) return;
+    setIsDeleting(true);
+    const ids = importedItems
+      .filter((item, i) => selectedImported.has(i) && item.id)
+      .map((item) => item.id as string);
+    if (ids.length === 0) { setIsDeleting(false); return; }
+    const { data } = await supabase.functions.invoke("bank-sync", {
+      body: { action: "delete-imported", ids },
+    });
+    if (data?.deleted) {
+      setDeletedCount((c) => c + data.deleted);
+      setSelectedImported(new Set());
+      queryClient.invalidateQueries({ queryKey: ["transactions"] });
+    }
+    setIsDeleting(false);
   }
 
   return (
     <div className="space-y-3 pt-1">
       {/* Imported list */}
-      {importedItems.length > 0 && (
+      {importedItems.length > 0 && deletedCount === 0 && (
         <div className="space-y-1.5">
-          <p className="text-[11px] font-medium text-muted-foreground uppercase tracking-wider">
-            Importadas ({importedItems.length})
-          </p>
+          <div className="flex items-center justify-between">
+            <p className="text-[11px] font-medium text-muted-foreground uppercase tracking-wider">
+              Importadas ({importedItems.length})
+            </p>
+            {importedItems.some((item) => item.id) && (
+              <button
+                type="button"
+                onClick={toggleAllImported}
+                className="text-[11px] text-primary hover:underline cursor-pointer"
+              >
+                {importedItems.every((_, i) => selectedImported.has(i)) ? "Deseleccionar todo" : "Seleccionar todo"}
+              </button>
+            )}
+          </div>
           <div className="rounded-xl border border-border/50 divide-y divide-border/30 max-h-[180px] overflow-y-auto">
             {importedItems.map((item, i) => (
               <div key={i} className="flex items-center gap-2.5 px-3 py-2 text-sm">
+                {item.id ? (
+                  <Checkbox
+                    checked={selectedImported.has(i)}
+                    onCheckedChange={() => toggleImported(i)}
+                    className="shrink-0 cursor-pointer"
+                  />
+                ) : <div className="w-4 shrink-0" />}
                 <div className={cn("flex items-center justify-center w-6 h-6 rounded-lg shrink-0",
                   item.type === "Ingreso" ? "bg-green-500/10" : "bg-red-500/10")}>
                   {item.type === "Ingreso"
@@ -138,7 +196,24 @@ function EntryDetail({ entry }: { entry: SyncLogEntry }) {
               </div>
             ))}
           </div>
+          {selectedImported.size > 0 && (
+            <Button
+              onClick={handleDelete}
+              disabled={isDeleting}
+              size="sm"
+              variant="outline"
+              className="w-full rounded-xl h-8 text-xs"
+            >
+              {isDeleting ? <Loader2 className="h-3.5 w-3.5 animate-spin mr-1.5" /> : <Trash2 className="h-3.5 w-3.5 mr-1.5" />}
+              Eliminar {selectedImported.size} seleccionada{selectedImported.size !== 1 ? "s" : ""}
+            </Button>
+          )}
         </div>
+      )}
+      {deletedCount > 0 && (
+        <p className="text-xs text-red-600 dark:text-red-400 text-center">
+          {deletedCount} transacción{deletedCount !== 1 ? "es" : ""} eliminada{deletedCount !== 1 ? "s" : ""} correctamente.
+        </p>
       )}
 
       {/* Skipped list with import option */}

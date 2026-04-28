@@ -291,6 +291,40 @@ Deno.serve(async (req) => {
       )
     }
 
+    // ── ACTION: delete-imported ──────────────────────────────────────────────
+
+    if (action === 'delete-imported') {
+      const { ids } = body as { ids: string[] }
+
+      if (!ids || !Array.isArray(ids) || ids.length === 0) {
+        return new Response(
+          JSON.stringify({ error: 'ids array es requerido' }),
+          { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 400 },
+        )
+      }
+
+      const { data: deleted, error: deleteError } = await supabaseClient
+        .from('transactions')
+        .delete()
+        .in('id', ids)
+        .eq('user_id', userId)
+        .not('bank_description', 'is', null)
+        .select('id')
+
+      if (deleteError) {
+        console.error('Delete-imported error:', deleteError)
+        return new Response(
+          JSON.stringify({ error: deleteError.message }),
+          { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 500 },
+        )
+      }
+
+      return new Response(
+        JSON.stringify({ deleted: deleted?.length ?? 0 }),
+        { headers: { ...corsHeaders, 'Content-Type': 'application/json' } },
+      )
+    }
+
     // ── ACTION: save-credentials ──────────────────────────────────────────────
 
     if (action === 'save-credentials') {
