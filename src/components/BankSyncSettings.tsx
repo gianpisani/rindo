@@ -21,7 +21,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { cn } from "@/lib/utils";
-import { SYNC_SCHEDULES, getBankById } from "@/lib/banks";
+import { SYNC_SCHEDULES, getBankById, isCustomSchedule, getCustomHour } from "@/lib/banks";
 import { BankLogo } from "@/components/BankLogo";
 import {
   useBankSyncCredentials,
@@ -119,8 +119,14 @@ function CredentialRow({
       {/* Schedule + delete */}
       <div className="flex items-center gap-2">
         <Select
-          value={cred.sync_schedule}
-          onValueChange={(v) => onScheduleChange(cred.bank, v as SyncScheduleId)}
+          value={isCustomSchedule(cred.sync_schedule) ? "custom" : cred.sync_schedule}
+          onValueChange={(v) => {
+            if (v === "custom") {
+              onScheduleChange(cred.bank, "custom_08" as SyncScheduleId);
+            } else {
+              onScheduleChange(cred.bank, v as SyncScheduleId);
+            }
+          }}
           disabled={!cred.is_active}
         >
           <SelectTrigger className="h-8 text-xs rounded-lg flex-1">
@@ -135,6 +141,24 @@ function CredentialRow({
             ))}
           </SelectContent>
         </Select>
+        {isCustomSchedule(cred.sync_schedule) && (
+          <Select
+            value={String(getCustomHour(cred.sync_schedule))}
+            onValueChange={(h) => onScheduleChange(cred.bank, `custom_${h.padStart(2, "0")}` as SyncScheduleId)}
+            disabled={!cred.is_active}
+          >
+            <SelectTrigger className="h-8 text-xs rounded-lg w-20 shrink-0">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              {Array.from({ length: 24 }, (_, i) => (
+                <SelectItem key={i} value={String(i)} className="text-xs">
+                  {String(i).padStart(2, "0")}:00
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        )}
 
         {confirmDelete ? (
           <div className="flex gap-1.5 shrink-0">
