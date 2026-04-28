@@ -132,9 +132,12 @@ export async function importBankMovements(params: {
       .not('bank_description', 'is', null)
       .limit(10)
 
-    const bankDuplicate = existingBankRows?.some(
-      (row) => row.bank_description && description.includes(row.bank_description),
-    )
+    const bankDuplicate = existingBankRows?.some((row) => {
+      if (!row.bank_description) return false
+      const a = description.toLowerCase()
+      const b = row.bank_description.toLowerCase()
+      return a.includes(b) || b.includes(a)
+    })
 
     // Deduplication check — manually entered rows
     const { data: existingManualRows } = await supabaseClient
