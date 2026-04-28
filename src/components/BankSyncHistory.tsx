@@ -301,7 +301,7 @@ export function BankSyncHistory() {
         .select("*")
         .eq("user_id", userData.user.id)
         .order("sync_date", { ascending: false })
-        .limit(50);
+        .limit(10);
       if (error) throw error;
       return data ?? [];
     },
