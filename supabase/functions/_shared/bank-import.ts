@@ -57,7 +57,16 @@ export interface ImportResult {
   skippedItems: SkippedItem[]
 }
 
-// ── Helper ────────────────────────────────────────────────────────────────────
+// ── Helpers ───────────────────────────────────────────────────────────────────
+
+/**
+ * Normalizes a bank description for fuzzy comparison.
+ * Strips all non-alphanumeric characters and lowercases so that
+ * "MERCADOPAGO*SICILY Las Condes CL" matches "Mercadopagosicily las condes cl".
+ */
+function normalizeBankDescription(desc: string): string {
+  return desc.toLowerCase().replace(/[^a-z0-9áéíóúñ]/gi, '').toLowerCase()
+}
 
 function convertDate(ddmmyyyy: string, fallbackDate: string): string {
   if (ddmmyyyy.toLowerCase() === 'pendiente') return fallbackDate
@@ -134,8 +143,8 @@ export async function importBankMovements(params: {
 
     const bankDuplicate = existingBankRows?.some((row) => {
       if (!row.bank_description) return false
-      const a = description.toLowerCase()
-      const b = row.bank_description.toLowerCase()
+      const a = normalizeBankDescription(description)
+      const b = normalizeBankDescription(row.bank_description)
       return a.includes(b) || b.includes(a)
     })
 

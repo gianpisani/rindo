@@ -17,6 +17,7 @@ interface ParsedTransaction {
   detail: string
   bank: string
   cardLastFour?: string
+  bankDescription?: string
 }
 
 // ── Text normalization ──────────────────────────────────────────────
@@ -96,6 +97,7 @@ function parseCompraTarjeta(text: string): ParsedTransaction | null {
       detail: `${comercio} (****${tarjeta})`,
       bank: 'Banco de Chile',
       cardLastFour: tarjeta,
+      bankDescription: match[3].trim(),
     }
   }
 
@@ -370,7 +372,7 @@ Deno.serve(async (req) => {
       parsed.bank = bank
     }
 
-    const bankDescription = parsed.detail
+    const bankDescription = parsed.bankDescription ?? parsed.detail
     parsed.detail = `🤖 ${parsed.detail}`
 
     console.log('💰 Parseado:', parsed)
