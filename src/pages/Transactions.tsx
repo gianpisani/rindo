@@ -71,7 +71,7 @@ export default function Transactions() {
     duplicateTransactions,
   } = useTransactions();
   const { categories } = useCategories();
-  const { creditCards } = useCreditCards();
+  const { creditCards, isLoading: isLoadingCards } = useCreditCards();
   const { addSharedExpenses, updateSharedExpenseAmount, getSharedExpensesByTransaction, markAsPaid, linkExistingTransaction, deleteSharedExpense, sharedExpenses, sharedExpensesWithTransaction } = useSharedExpenses();
   const bankSync = useBankSyncContext();
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -1296,8 +1296,8 @@ export default function Transactions() {
           </Select>
 
           {/* Filtro tarjeta */}
-          {creditCards.length > 0 && (
-            <Select value={cardFilter} onValueChange={setCardFilter}>
+          {(isLoadingCards || creditCards.length > 0) && (
+            <Select value={cardFilter} onValueChange={setCardFilter} disabled={isLoadingCards}>
               <SelectTrigger className="w-[160px] sm:w-[180px]">
                 <SelectValue placeholder="Tarjeta" />
               </SelectTrigger>

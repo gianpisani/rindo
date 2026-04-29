@@ -576,7 +576,7 @@ export function TransactionsTable({
   const rowDragRef = React.useRef<{ active: boolean; startIdx: number; currentIdx: number; initialSelection: RowSelectionState } | null>(null);
   const tbodyRef = React.useRef<HTMLTableSectionElement>(null);
   const { isPrivacyMode } = usePrivacyMode();
-  const { creditCards } = useCreditCards();
+  const { creditCards, isLoading: isLoadingCards } = useCreditCards();
   const isMobile = useIsMobile();
 
   const isControlled = externalSearch !== undefined;
@@ -824,7 +824,7 @@ export function TransactionsTable({
       },
 
       // ── Tarjeta ──────────────────────────────────────────────────────────
-      ...(creditCards.length > 0 ? [{
+      ...((isLoadingCards || creditCards.length > 0) ? [{
         id: "card",
         size: 90, minSize: 80, maxSize: 110,
         header: () => (
