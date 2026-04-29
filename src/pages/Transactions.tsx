@@ -1159,9 +1159,8 @@ export default function Transactions() {
           {/* Acciones izq */}
           <Dialog open={isImportDialogOpen} onOpenChange={setIsImportDialogOpen}>
             <DialogTrigger asChild>
-              <Button variant="outline" size="sm" className="rounded-full gap-2">
+              <Button variant="outline" size="icon" className="rounded-full h-8 w-8">
                 <Upload className="h-4 w-4" />
-                <span className="hidden sm:inline">Importar</span>
               </Button>
             </DialogTrigger>
           </Dialog>
@@ -1204,9 +1203,8 @@ export default function Transactions() {
             </div>
           </BaseModal>
 
-          <Button onClick={handleExportCSV} variant="outline" size="sm" className="rounded-full gap-2">
+          <Button onClick={handleExportCSV} variant="outline" size="icon" className="rounded-full h-8 w-8">
             <Download className="h-4 w-4" />
-            <span className="hidden sm:inline">Exportar</span>
           </Button>
 
           <Button
@@ -1221,7 +1219,7 @@ export default function Transactions() {
               <Building2 className="h-4 w-4" />
             )}
             <span className="hidden sm:inline">
-              {bankSync.isRunning ? "Sincronizando..." : "Sincronizar Banco"}
+              {bankSync.isRunning ? "Sincronizando..." : "Sync Banco"}
             </span>
           </Button>
 
@@ -1262,6 +1260,24 @@ export default function Transactions() {
             )}
           </div>
 
+          {/* Filtro tarjeta */}
+          {(isLoadingCards || creditCards.length > 0) && (
+            <Select value={cardFilter} onValueChange={setCardFilter} disabled={isLoadingCards}>
+              <SelectTrigger className="w-[160px] sm:w-[180px]">
+                <SelectValue placeholder="Tarjeta" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">Todas las tarjetas</SelectItem>
+                <SelectItem value="none">Sin tarjeta</SelectItem>
+                {creditCards.map(card => (
+                  <SelectItem key={card.id} value={card.id}>
+                    {card.name}{card.last_4_digits ? ` ···${card.last_4_digits}` : ""}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          )}
+
           {/* Filtro tipo */}
           <Select value={typeFilter} onValueChange={setTypeFilter}>
             <SelectTrigger className="w-[140px] sm:w-[160px]">
@@ -1294,24 +1310,6 @@ export default function Transactions() {
                 ))}
             </SelectContent>
           </Select>
-
-          {/* Filtro tarjeta */}
-          {(isLoadingCards || creditCards.length > 0) && (
-            <Select value={cardFilter} onValueChange={setCardFilter} disabled={isLoadingCards}>
-              <SelectTrigger className="w-[160px] sm:w-[180px]">
-                <SelectValue placeholder="Tarjeta" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">Todas las tarjetas</SelectItem>
-                <SelectItem value="none">Sin tarjeta</SelectItem>
-                {creditCards.map(card => (
-                  <SelectItem key={card.id} value={card.id}>
-                    {card.name}{card.last_4_digits ? ` ···${card.last_4_digits}` : ""}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          )}
         </div>
 
         <TransactionsTable
