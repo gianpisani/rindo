@@ -246,14 +246,16 @@ export function CategoryInsightsView() {
   // Distribution bar segments
   const distributionSegments = useMemo(() => {
     if (!totalBudget) return [];
-    return categoriesWithLimits.map((cat) => {
-      const catObj = categories.find((c) => c.name === cat.category);
-      return {
-        category: cat.category,
-        percentage: (cat.limit! / totalBudget) * 100,
-        color: catObj?.color || "#6b7280",
-      };
-    });
+    return categoriesWithLimits
+      .map((cat) => {
+        const catObj = categories.find((c) => c.name === cat.category);
+        return {
+          category: cat.category,
+          percentage: (cat.limit! / totalBudget) * 100,
+          color: catObj?.color || "#6b7280",
+        };
+      })
+      .sort((a, b) => b.percentage - a.percentage);
   }, [totalBudget, categoriesWithLimits, categories]);
 
   const top5Categories = useMemo(() => {
