@@ -1,10 +1,10 @@
 import { CHART_COLORS } from "@/lib/chart-config"
 import { useMemo, useState, useCallback } from 'react'
-import { 
-  XAxis, 
-  YAxis, 
-  Tooltip, 
-  ResponsiveContainer, 
+import {
+  XAxis,
+  YAxis,
+  Tooltip,
+  ResponsiveContainer,
   TooltipProps,
   ComposedChart,
   Line,
@@ -25,17 +25,21 @@ interface MonthlyDataPoint {
   Gastos: number
   Inversiones: number
   Balance: number
+  Patrimonio: number
 }
 
 interface MonthlyEvolutionChartProps {
   data: MonthlyDataPoint[]
 }
 
+const PATRIMONIO_COLOR = "#8b5cf6" // violet-500
+
 const COLORS = {
   get Ingresos() { return CHART_COLORS.income; },
   get Gastos() { return CHART_COLORS.expense; },
   get Inversiones() { return CHART_COLORS.investment; },
   get Balance() { return CHART_COLORS.balance; },
+  Patrimonio: PATRIMONIO_COLOR,
 };
 
 const formatCurrencyFull = (value: number) => {
@@ -47,17 +51,26 @@ const formatCurrencyFull = (value: number) => {
   }).format(value)
 }
 
+const formatCurrencyCompact = (value: number) => {
+  return new Intl.NumberFormat("es-CL", {
+    style: "currency",
+    currency: "CLP",
+    notation: "compact",
+    maximumFractionDigits: 1,
+  }).format(value)
+}
+
 const CustomTooltip = ({ active, payload, label }: TooltipProps<number, string>) => {
   if (!active || !payload || !payload.length) return null
 
-  // Obtener valores directamente por dataKey (evita duplicados)
   const ingresos = payload.find(p => p.dataKey === 'Ingresos')?.value as number || 0
   const gastos = payload.find(p => p.dataKey === 'Gastos')?.value as number || 0
   const inversiones = payload.find(p => p.dataKey === 'Inversiones')?.value as number || 0
+  const patrimonio = payload.find(p => p.dataKey === 'Patrimonio')?.value as number || 0
   const ahorro = ingresos - gastos
 
   return (
-    <div className="bg-card/95 backdrop-blur-sm border border-border/50 rounded-xl p-4 shadow-xl min-w-[220px]">
+    <div className="bg-card/95 backdrop-blur-sm border border-border/50 rounded-xl p-4 shadow-xl min-w-[240px]">
       <p className="font-semibold text-sm text-foreground mb-3 pb-2 border-b border-border">{label}</p>
       <div className="space-y-2">
         <div className="flex items-center justify-between gap-4">
@@ -87,9 +100,23 @@ const CustomTooltip = ({ active, payload, label }: TooltipProps<number, string>)
             {formatCurrencyFull(inversiones)}
           </span>
         </div>
-        
+
+        {/* Patrimonio acumulado */}
+        <div className="flex items-center justify-between gap-4 pt-2 mt-1 border-t border-border/50">
+          <div className="flex items-center gap-2">
+            <div className="w-3 h-3 rounded-full" style={{ backgroundColor: PATRIMONIO_COLOR }} />
+            <span className="text-xs text-muted-foreground">Patrimonio:</span>
+          </div>
+          <span className={cn(
+            "text-sm font-bold font-mono tabular-nums",
+            patrimonio >= 0 ? "text-violet-500" : "text-destructive"
+          )}>
+            {formatCurrencyFull(patrimonio)}
+          </span>
+        </div>
+
         {/* Ahorro = Ingresos - Gastos */}
-        <div className="flex items-center justify-between gap-4 pt-2 mt-2 border-t border-border">
+        <div className="flex items-center justify-between gap-4 pt-2 mt-1 border-t border-border/50">
           <div className="flex items-center gap-2">
             <div className="w-3 h-3 rounded-full bg-amber-500" />
             <span className="text-xs text-muted-foreground">Ahorro:</span>
@@ -108,35 +135,23 @@ const CustomTooltip = ({ active, payload, label }: TooltipProps<number, string>)
 
 export function MonthlyEvolutionChart({ data }: MonthlyEvolutionChartProps) {
   const { isPrivacyMode } = usePrivacyMode()
-  
-  // Estado para zoom
+
   const [refAreaLeft, setRefAreaLeft] = useState<string | null>(null)
   const [refAreaRight, setRefAreaRight] = useState<string | null>(null)
   const [isSelecting, setIsSelecting] = useState(false)
   const [zoomDomain, setZoomDomain] = useState<{ start: number; end: number } | null>(null)
 
-  // Agregar índice a los datos
   const chartData = useMemo(() => {
     return data.map((item, idx) => ({ ...item, index: idx }))
   }, [data])
 
-  const formatCurrency = (value: number) => {
-    return new Intl.NumberFormat("es-CL", {
-      style: "currency",
-      currency: "CLP",
-      notation: "compact",
-      maximumFractionDigits: 1,
-    }).format(value)
-  }
-
-  // Calcular dominio del eje Y
+  // Y domain for left axis (monthly values)
   const yDomain = useMemo(() => {
-    const dataToUse = zoomDomain 
+    const dataToUse = zoomDomain
       ? chartData.slice(zoomDomain.start, zoomDomain.end + 1)
       : chartData
-      
+
     const values: number[] = []
-    
     dataToUse.forEach(d => {
       values.push(d.Ingresos, d.Gastos, d.Inversiones)
     })
@@ -147,41 +162,51 @@ export function MonthlyEvolutionChart({ data }: MonthlyEvolutionChartProps) {
     const max = Math.max(...values)
     const range = max - min
     const padding = range * 0.1
-    
+
     return [
       Math.floor(Math.max(0, min - padding)),
       Math.ceil(max + padding)
     ]
   }, [chartData, zoomDomain])
 
-  // Calcular estadísticas
+  // Y domain for right axis (patrimonio - cumulative)
+  const yDomainRight = useMemo(() => {
+    const dataToUse = zoomDomain
+      ? chartData.slice(zoomDomain.start, zoomDomain.end + 1)
+      : chartData
+
+    const values = dataToUse.map(d => d.Patrimonio)
+    if (values.length === 0) return ['auto', 'auto']
+
+    const min = Math.min(...values)
+    const max = Math.max(...values)
+    const range = max - min || Math.abs(max) || 1
+    const padding = range * 0.15
+
+    return [
+      Math.floor(min - padding),
+      Math.ceil(max + padding)
+    ]
+  }, [chartData, zoomDomain])
+
   const stats = useMemo(() => {
     if (chartData.length === 0) return null
-    
+
     const totalIngresos = chartData.reduce((sum, d) => sum + d.Ingresos, 0)
     const totalGastos = chartData.reduce((sum, d) => sum + d.Gastos, 0)
     const totalInversiones = chartData.reduce((sum, d) => sum + d.Inversiones, 0)
-    const avgBalance = chartData.reduce((sum, d) => sum + (d.Ingresos - d.Gastos - d.Inversiones), 0) / chartData.length
-    
-    // Mejor mes
-    const bestMonth = chartData.reduce((best, current) => {
-      const currentBalance = current.Ingresos - current.Gastos - current.Inversiones
-      const bestBalance = best.Ingresos - best.Gastos - best.Inversiones
-      return currentBalance > bestBalance ? current : best
-    }, chartData[0])
-    
+    const patrimonio = chartData[chartData.length - 1]?.Patrimonio ?? 0
+    const tasaAhorro = totalIngresos > 0 ? ((totalIngresos - totalGastos) / totalIngresos) * 100 : 0
+
     return {
       totalIngresos,
       totalGastos,
       totalInversiones,
-      avgBalance,
-      bestMonth: bestMonth.month,
-      bestBalance: bestMonth.Ingresos - bestMonth.Gastos - bestMonth.Inversiones,
-      tasaAhorro: totalIngresos > 0 ? ((totalIngresos - totalGastos) / totalIngresos) * 100 : 0
+      patrimonio,
+      tasaAhorro,
     }
   }, [chartData])
 
-  // Handlers para zoom
   const handleMouseDown = useCallback((e: { activeLabel?: string }) => {
     if (e.activeLabel) {
       setRefAreaLeft(e.activeLabel)
@@ -199,17 +224,17 @@ export function MonthlyEvolutionChart({ data }: MonthlyEvolutionChartProps) {
     if (refAreaLeft && refAreaRight) {
       const leftIdx = chartData.findIndex(d => d.month === refAreaLeft)
       const rightIdx = chartData.findIndex(d => d.month === refAreaRight)
-      
+
       if (leftIdx !== -1 && rightIdx !== -1) {
         const start = Math.min(leftIdx, rightIdx)
         const end = Math.max(leftIdx, rightIdx)
-        
+
         if (end - start >= 1) {
           setZoomDomain({ start, end })
         }
       }
     }
-    
+
     setRefAreaLeft(null)
     setRefAreaRight(null)
     setIsSelecting(false)
@@ -227,7 +252,6 @@ export function MonthlyEvolutionChart({ data }: MonthlyEvolutionChartProps) {
     }
   }, [])
 
-  // Datos visibles según zoom
   const visibleData = useMemo(() => {
     if (!zoomDomain) return chartData
     return chartData.slice(zoomDomain.start, zoomDomain.end + 1)
@@ -243,19 +267,35 @@ export function MonthlyEvolutionChart({ data }: MonthlyEvolutionChartProps) {
 
   return (
     <div className={cn("w-full space-y-4", isPrivacyMode && "privacy-blur")}>
-      {/* Stats cards */}
+      {/* Stats cards — 5 boxes */}
       {stats && (
-        <div className="grid grid-cols-2 md:grid-cols-3 gap-2">
-          <div className="bg-success/10 rounded-lg p-2.5 text-center">
-            <p className="text-[10px] text-success font-medium">Total Ingresos</p>
-            <p className="text-sm font-bold font-mono tabular-nums text-success">{formatCurrency(stats.totalIngresos)}</p>
+        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-2">
+          <div className="bg-success/10 rounded-xl p-3 text-center">
+            <p className="text-[10px] text-success font-semibold uppercase tracking-wider mb-1">Total Ingresos</p>
+            <p className="text-sm font-bold font-mono tabular-nums text-success">{formatCurrencyFull(stats.totalIngresos)}</p>
           </div>
-          <div className="bg-destructive/10 rounded-lg p-2.5 text-center">
-            <p className="text-[10px] text-destructive font-medium">Total Gastos</p>
-            <p className="text-sm font-bold font-mono tabular-nums text-destructive">{formatCurrency(stats.totalGastos)}</p>
+          <div className="bg-destructive/10 rounded-xl p-3 text-center">
+            <p className="text-[10px] text-destructive font-semibold uppercase tracking-wider mb-1">Total Gastos</p>
+            <p className="text-sm font-bold font-mono tabular-nums text-destructive">{formatCurrencyFull(stats.totalGastos)}</p>
           </div>
-          <div className="bg-blue-500/10 rounded-lg p-2.5 text-center">
-            <p className={`text-[10px] ${stats.tasaAhorro >= 35 ? "text-success" : stats.tasaAhorro >= 10 ? "text-amber-500" : "text-destructive"} font-medium`}>Tasa Ahorro</p>
+          <div className="bg-sky-500/10 rounded-xl p-3 text-center">
+            <p className="text-[10px] text-sky-500 font-semibold uppercase tracking-wider mb-1">Total Inversión</p>
+            <p className="text-sm font-bold font-mono tabular-nums text-sky-500">{formatCurrencyFull(stats.totalInversiones)}</p>
+          </div>
+          <div className="bg-violet-500/10 rounded-xl p-3 text-center">
+            <p className="text-[10px] text-violet-500 font-semibold uppercase tracking-wider mb-1">Patrimonio</p>
+            <p className={cn(
+              "text-sm font-bold font-mono tabular-nums",
+              stats.patrimonio >= 0 ? "text-violet-500" : "text-destructive"
+            )}>
+              {formatCurrencyFull(stats.patrimonio)}
+            </p>
+          </div>
+          <div className="col-span-2 sm:col-span-1 bg-amber-500/10 rounded-xl p-3 text-center">
+            <p className={cn(
+              "text-[10px] font-semibold uppercase tracking-wider mb-1",
+              stats.tasaAhorro >= 35 ? "text-success" : stats.tasaAhorro >= 10 ? "text-amber-500" : "text-destructive"
+            )}>Tasa Ahorro</p>
             <p className={cn(
               "text-sm font-bold font-mono tabular-nums",
               stats.tasaAhorro >= 35 ? "text-success" : stats.tasaAhorro >= 10 ? "text-amber-500" : "text-destructive"
@@ -266,12 +306,12 @@ export function MonthlyEvolutionChart({ data }: MonthlyEvolutionChartProps) {
         </div>
       )}
 
-      {/* Controles */}
+      {/* Controls */}
       <div className="flex items-center justify-end">
         {zoomDomain && (
-          <Button 
-            variant="outline" 
-            size="sm" 
+          <Button
+            variant="outline"
+            size="sm"
             onClick={handleZoomOut}
             className="h-7 text-xs gap-1"
           >
@@ -281,10 +321,10 @@ export function MonthlyEvolutionChart({ data }: MonthlyEvolutionChartProps) {
         )}
       </div>
 
-      {/* Gráfico principal */}
+      {/* Main chart */}
       <div className="select-none cursor-crosshair">
-        <ResponsiveContainer width="100%" height={280}>
-          <ComposedChart 
+        <ResponsiveContainer width="100%" height={300}>
+          <ComposedChart
             data={visibleData}
             onMouseDown={handleMouseDown}
             onMouseMove={handleMouseMove}
@@ -304,15 +344,19 @@ export function MonthlyEvolutionChart({ data }: MonthlyEvolutionChartProps) {
               <stop offset="5%" stopColor={COLORS.Inversiones} stopOpacity={0.3}/>
               <stop offset="95%" stopColor={COLORS.Inversiones} stopOpacity={0}/>
             </linearGradient>
+            <linearGradient id="gradientPatrimonio" x1="0" y1="0" x2="0" y2="1">
+              <stop offset="5%" stopColor={PATRIMONIO_COLOR} stopOpacity={0.15}/>
+              <stop offset="95%" stopColor={PATRIMONIO_COLOR} stopOpacity={0}/>
+            </linearGradient>
           </defs>
 
-          <CartesianGrid 
-            strokeDasharray="3 3" 
+          <CartesianGrid
+            strokeDasharray="3 3"
             stroke={CHART_COLORS.grid}
             opacity={0.2}
             vertical={false}
           />
-          
+
           <XAxis
             dataKey="month"
             stroke={CHART_COLORS.mutedAxis}
@@ -321,30 +365,47 @@ export function MonthlyEvolutionChart({ data }: MonthlyEvolutionChartProps) {
             axisLine={false}
             tickMargin={8}
           />
-          
+
+          {/* Left Y axis — monthly values */}
           <YAxis
+            yAxisId="left"
             stroke={CHART_COLORS.mutedAxis}
-            tickFormatter={formatCurrency} 
-            fontSize={11}
+            tickFormatter={formatCurrencyCompact}
+            fontSize={10}
             tickLine={false}
             axisLine={false}
             domain={yDomain}
-            tickMargin={8}
+            tickMargin={4}
           />
-          
-          <Tooltip 
+
+          {/* Right Y axis — cumulative patrimonio */}
+          <YAxis
+            yAxisId="right"
+            orientation="right"
+            stroke={PATRIMONIO_COLOR}
+            tickFormatter={formatCurrencyCompact}
+            fontSize={10}
+            tickLine={false}
+            axisLine={false}
+            domain={yDomainRight}
+            tickMargin={4}
+            opacity={0.7}
+          />
+
+          <Tooltip
             content={<CustomTooltip />}
             cursor={{ stroke: CHART_COLORS.mutedAxis, strokeWidth: 1, strokeDasharray: '4 4' }}
           />
-          
-          <Legend 
+
+          <Legend
             wrapperStyle={{ fontSize: '11px', paddingTop: '10px' }}
             iconType="circle"
             iconSize={8}
           />
-          
-          {/* Áreas con gradiente - name vacío para que no aparezcan en leyenda ni tooltip */}
+
+          {/* Area fills */}
           <Area
+            yAxisId="left"
             type="monotone"
             dataKey="Ingresos"
             name=""
@@ -355,6 +416,7 @@ export function MonthlyEvolutionChart({ data }: MonthlyEvolutionChartProps) {
             legendType="none"
           />
           <Area
+            yAxisId="left"
             type="monotone"
             dataKey="Gastos"
             name=""
@@ -365,6 +427,7 @@ export function MonthlyEvolutionChart({ data }: MonthlyEvolutionChartProps) {
             legendType="none"
           />
           <Area
+            yAxisId="left"
             type="monotone"
             dataKey="Inversiones"
             name=""
@@ -374,9 +437,21 @@ export function MonthlyEvolutionChart({ data }: MonthlyEvolutionChartProps) {
             animationDuration={1000}
             legendType="none"
           />
-          
-          {/* Líneas */}
+          <Area
+            yAxisId="right"
+            type="monotone"
+            dataKey="Patrimonio"
+            name=""
+            stroke="none"
+            fill="url(#gradientPatrimonio)"
+            fillOpacity={1}
+            animationDuration={1200}
+            legendType="none"
+          />
+
+          {/* Lines */}
           <Line
+            yAxisId="left"
             type="monotone"
             dataKey="Ingresos"
             stroke={COLORS.Ingresos}
@@ -386,6 +461,7 @@ export function MonthlyEvolutionChart({ data }: MonthlyEvolutionChartProps) {
             animationDuration={1000}
           />
           <Line
+            yAxisId="left"
             type="monotone"
             dataKey="Gastos"
             stroke={COLORS.Gastos}
@@ -395,6 +471,7 @@ export function MonthlyEvolutionChart({ data }: MonthlyEvolutionChartProps) {
             animationDuration={1000}
           />
           <Line
+            yAxisId="left"
             type="monotone"
             dataKey="Inversiones"
             stroke={COLORS.Inversiones}
@@ -403,10 +480,23 @@ export function MonthlyEvolutionChart({ data }: MonthlyEvolutionChartProps) {
             activeDot={{ r: 6, fill: COLORS.Inversiones, stroke: "#ffffff", strokeWidth: 2 }}
             animationDuration={1000}
           />
+          {/* Patrimonio — dashed line on right axis */}
+          <Line
+            yAxisId="right"
+            type="monotone"
+            dataKey="Patrimonio"
+            stroke={PATRIMONIO_COLOR}
+            strokeWidth={2.5}
+            strokeDasharray="6 3"
+            dot={{ fill: PATRIMONIO_COLOR, strokeWidth: 2, r: 3, stroke: "#ffffff" }}
+            activeDot={{ r: 6, fill: PATRIMONIO_COLOR, stroke: "#ffffff", strokeWidth: 2 }}
+            animationDuration={1200}
+          />
 
-          {/* Área de selección para zoom */}
+          {/* Zoom selection area */}
           {isSelecting && refAreaLeft && refAreaRight && (
             <ReferenceArea
+              yAxisId="left"
               x1={refAreaLeft}
               x2={refAreaRight}
               strokeOpacity={0.3}
@@ -447,11 +537,10 @@ export function MonthlyEvolutionChart({ data }: MonthlyEvolutionChartProps) {
           </ResponsiveContainer>
         </div>
       )}
-      
+
       <p className="text-[10px] text-muted-foreground text-center">
         Arrastra en el gráfico para hacer zoom • Usa el selector de abajo para navegar
       </p>
     </div>
   )
 }
-

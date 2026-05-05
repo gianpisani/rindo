@@ -493,6 +493,7 @@ export default function Overview() {
   // ─── Histórico data ───────────────────────────────────
 
   const monthlyData = useMemo(() => {
+    let cumulativePatrimonio = 0;
     return allMonths.map((month) => {
       const monthStart = startOfMonth(month);
       const monthEnd = endOfMonth(month);
@@ -509,12 +510,14 @@ export default function Overview() {
       const investments = monthTxns
         .filter((t) => t.type === "Inversión")
         .reduce((sum, t) => sum + Number(t.amount), 0);
+      cumulativePatrimonio += income - expenses;
       return {
         month: format(month, "MMM yy", { locale: es }),
         Ingresos: income,
         Gastos: expenses,
         Inversiones: investments,
         Balance: income - expenses - investments,
+        Patrimonio: cumulativePatrimonio,
       };
     });
   }, [allMonths, transactions]);
@@ -1204,7 +1207,7 @@ export default function Overview() {
                             <span className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider">{card.label}</span>
                           </div>
                           <div className={cn("text-lg font-bold font-mono tabular-nums", isPrivacyMode && "privacy-blur")}>
-                            <NumberFlow value={card.value} format={{ style: "currency", currency: "CLP", notation: "compact" }} locales="es-CL" />
+                            <NumberFlow value={card.value} format={{ style: "currency", currency: "CLP", minimumFractionDigits: 0, maximumFractionDigits: 0 }} locales="es-CL" />
                           </div>
                         </div>
                       </GlassCard>
@@ -1224,14 +1227,14 @@ export default function Overview() {
                         <Wallet className="h-3 w-3 text-emerald-500 shrink-0" />
                         <span className="text-[11px] text-muted-foreground flex-1">Disponible</span>
                         <span className={cn("text-xs font-bold font-mono tabular-nums text-emerald-600 dark:text-emerald-400", isPrivacyMode && "privacy-blur")}>
-                          {formatCompact(historicalStats.totalLiquid)}
+                          {formatCurrency(historicalStats.totalLiquid)}
                         </span>
                       </div>
                       <div className="flex items-center gap-2">
                         <PiggyBank className="h-3 w-3 text-sky-500 shrink-0" />
                         <span className="text-[11px] text-muted-foreground flex-1">Invertido</span>
                         <span className={cn("text-xs font-bold font-mono tabular-nums text-sky-600 dark:text-sky-400", isPrivacyMode && "privacy-blur")}>
-                          {formatCompact(historicalStats.totalInvested)}
+                          {formatCurrency(historicalStats.totalInvested)}
                         </span>
                       </div>
                       {historicalStats.savingsRate > 0 && (
@@ -1260,7 +1263,7 @@ export default function Overview() {
                             <p className="text-xs font-semibold capitalize truncate">{historicalStats.bestMonth.name}</p>
                           </div>
                           <span className={cn("text-[11px] font-bold font-mono tabular-nums text-emerald-600 shrink-0", isPrivacyMode && "privacy-blur")}>
-                            +{formatCompact(historicalStats.bestMonth.balance)}
+                            +{formatCurrency(historicalStats.bestMonth.balance)}
                           </span>
                         </div>
                         <div className="flex items-center gap-2">
@@ -1270,7 +1273,7 @@ export default function Overview() {
                             <p className="text-xs font-semibold capitalize truncate">{historicalStats.worstMonth.name}</p>
                           </div>
                           <span className={cn("text-[11px] font-bold font-mono tabular-nums text-rose-600 shrink-0", isPrivacyMode && "privacy-blur")}>
-                            {formatCompact(historicalStats.worstMonth.balance)}
+                            {formatCurrency(historicalStats.worstMonth.balance)}
                           </span>
                         </div>
                       </div>
@@ -1363,7 +1366,7 @@ export default function Overview() {
                                 "text-xs font-mono font-semibold tabular-nums shrink-0 w-[72px] text-right",
                                 isPrivacyMode && "privacy-blur"
                               )}>
-                                {formatCompact(cat.value)}
+                                {formatCurrency(cat.value)}
                               </span>
                             </div>
                           );
