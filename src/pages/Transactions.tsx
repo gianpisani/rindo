@@ -1,8 +1,9 @@
-import { useState, useRef, useCallback, useEffect } from "react";
+import { useState, useCallback, useEffect } from "react";
 import { useSearchParams } from "react-router-dom";
 import Layout from "@/components/Layout";
 import ConfirmDialog from "@/components/ConfirmDialog";
 import { BaseModal } from "@/components/BaseModal";
+import { ImportCSVModal } from "@/components/ImportCSVModal";
 import { TransactionsTable, getCategoryIcon } from "@/components/TransactionsTable";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -74,7 +75,7 @@ export default function Transactions() {
   const { creditCards, isLoading: isLoadingCards } = useCreditCards();
   const { addSharedExpenses, updateSharedExpenseAmount, getSharedExpensesByTransaction, markAsPaid, linkExistingTransaction, deleteSharedExpense, sharedExpenses, sharedExpensesWithTransaction } = useSharedExpenses();
   const bankSync = useBankSyncContext();
-  const fileInputRef = useRef<HTMLInputElement>(null);
+
   const [showFuture, setShowFuture] = useState(false);
   const [isBankSyncOpen, setIsBankSyncOpen] = useState(false);
 
@@ -1165,43 +1166,12 @@ export default function Transactions() {
             </DialogTrigger>
           </Dialog>
 
-          <BaseModal
+          <ImportCSVModal
             open={isImportDialogOpen}
             onOpenChange={setIsImportDialogOpen}
-            title="Importar Transacciones desde CSV"
-            description="Sube tu archivo CSV con el formato indicado"
-            maxWidth="md"
-          >
-            <div className="space-y-4">
-              <div className="space-y-2">
-                <p className="font-medium text-sm">Formato requerido:</p>
-                <div className="bg-muted p-3 rounded-xl text-xs font-mono">
-                  Fecha,Detalle,Categoría,Tipo,Monto
-                </div>
-              </div>
-              <div className="space-y-2">
-                <p className="font-medium text-sm">Descripción de columnas:</p>
-                <ul className="text-xs space-y-1 list-disc list-inside">
-                  <li><strong>Fecha:</strong> formato DD/MM/YYYY</li>
-                  <li><strong>Detalle:</strong> descripción opcional</li>
-                  <li><strong>Categoría:</strong> se creará si no existe</li>
-                  <li><strong>Tipo:</strong> Ingreso, Gasto o Inversión</li>
-                  <li><strong>Monto:</strong> número positivo</li>
-                </ul>
-              </div>
-              <div className="pt-2">
-                <Input
-                  ref={fileInputRef}
-                  type="file"
-                  accept=".csv"
-                  onChange={(e) => { const file = e.target.files?.[0]; if (file) handleImportCSV(file); }}
-                  className="h-12"
-                  disabled={isImporting}
-                />
-                {isImporting && <p className="text-sm text-muted-foreground animate-pulse mt-2">Importando...</p>}
-              </div>
-            </div>
-          </BaseModal>
+            isImporting={isImporting}
+            onImport={handleImportCSV}
+          />
 
           <Button onClick={handleExportCSV} variant="outline" size="icon" className="rounded-full h-8 w-8">
             <Download className="h-4 w-4" />
