@@ -34,6 +34,8 @@ export interface CategoryInsight {
   description: string;
   category?: string;
   impact?: number;
+  /** Budget usage 0–100+ (only for insights that have a limit) */
+  percentage?: number;
 }
 
 export function useCategoryInsights(
@@ -226,20 +228,23 @@ export function useCategoryInsights(
 
     // Alerts for over limit (using effectiveAmount)
     categorySpending.forEach((spending) => {
+      const pct = Math.round((spending.effectiveAmount / (spending.limit || 1)) * 100);
       if (spending.isOverLimit) {
         insights.push({
           type: "alert",
           title: `Límite superado en ${spending.category}`,
-          description: `Has gastado $${spending.effectiveAmount.toLocaleString("es-CL")} de $${spending.limit?.toLocaleString("es-CL")} (${((spending.effectiveAmount / (spending.limit || 1)) * 100).toFixed(0)}%)`,
+          description: `Has gastado $${spending.effectiveAmount.toLocaleString("es-CL")} de $${spending.limit?.toLocaleString("es-CL")} (${pct}%)`,
           category: spending.category,
           impact: spending.effectiveAmount - (spending.limit || 0),
+          percentage: pct,
         });
       } else if (spending.isNearLimit) {
         insights.push({
           type: "alert",
           title: `Cerca del límite en ${spending.category}`,
-          description: `Has gastado $${spending.effectiveAmount.toLocaleString("es-CL")} de $${spending.limit?.toLocaleString("es-CL")} (${((spending.effectiveAmount / (spending.limit || 1)) * 100).toFixed(0)}%)`,
+          description: `Has gastado $${spending.effectiveAmount.toLocaleString("es-CL")} de $${spending.limit?.toLocaleString("es-CL")} (${pct}%)`,
           category: spending.category,
+          percentage: pct,
         });
       }
     });
@@ -247,11 +252,13 @@ export function useCategoryInsights(
     // Achievements for staying under budget (using effectiveAmount)
     categorySpending.forEach((spending) => {
       if (spending.limit && spending.effectiveAmount < spending.limit * 0.9) {
+        const pct = Math.round((spending.effectiveAmount / spending.limit) * 100);
         insights.push({
           type: "achievement",
           title: `Bien hecho en ${spending.category}`,
           description: `Te quedan $${(spending.limit - spending.effectiveAmount).toLocaleString("es-CL")} del presupuesto`,
           category: spending.category,
+          percentage: pct,
         });
       }
     });

@@ -459,18 +459,44 @@ const Index = () => {
         <div className="flex-1 overflow-y-auto px-3 pb-3 space-y-1.5">
           {topInsights.map((insight, i) => {
             const emoji = insight.category ? getCatEmoji(insight.category) : "💡";
-            const gradient = insightGradient[insight.type] || insightGradient.pattern;
             const border = insightBorder[insight.type] || insightBorder.pattern;
+            const hasProgress = insight.percentage != null;
+            const pct = hasProgress ? Math.min(insight.percentage!, 100) : 0;
+            const isOver = (insight.percentage ?? 0) > 100;
+
+            // Progress bar fill color per type
+            const fillColor = isOver
+              ? "bg-red-500/20"
+              : insight.type === "alert"
+                ? "bg-amber-500/15"
+                : insight.type === "achievement"
+                  ? "bg-emerald-500/15"
+                  : insight.type === "opportunity"
+                    ? "bg-sky-500/15"
+                    : "bg-violet-500/15";
+
             return (
               <div
                 key={i}
                 className={cn(
-                  "flex items-start gap-2.5 rounded-lg border p-2.5 transition-colors hover:brightness-110",
-                  border
+                  "relative flex items-start gap-2.5 rounded-lg border p-2.5 transition-all hover:brightness-110 overflow-hidden",
+                  border,
+                  isOver && "border-red-500/30"
                 )}
               >
-                <span className="text-base shrink-0 flex items-center justify-center size-7">{emoji}</span>
-                <div className="min-w-0 flex-1">
+                {/* Progress bar background fill */}
+                {hasProgress && (
+                  <div
+                    className={cn(
+                      "absolute inset-y-0 left-0 transition-all duration-700 ease-out rounded-l-lg",
+                      fillColor,
+                      isOver && "rounded-r-lg"
+                    )}
+                    style={{ width: `${pct}%` }}
+                  />
+                )}
+                <span className="relative text-base shrink-0 flex items-center justify-center size-7">{emoji}</span>
+                <div className="relative min-w-0 flex-1">
                   <p className="text-[11px] font-medium leading-snug">{insight.title}</p>
                   <p className={cn("text-[10px] text-muted-foreground leading-snug mt-0.5", isPrivacyMode && "privacy-blur")}>
                     {insight.description}
