@@ -68,9 +68,11 @@ function normalizeBankDescription(desc: string): string {
   return desc.toLowerCase().replace(/[^a-z0-9áéíóúñ]/gi, '').toLowerCase()
 }
 
-function convertDate(ddmmyyyy: string, fallbackDate: string): string {
-  if (ddmmyyyy.toLowerCase() === 'pendiente') return fallbackDate
-  const [dd, mm, yyyy] = ddmmyyyy.split('-')
+function convertDate(dateStr: string, fallbackDate: string): string {
+  if (dateStr.toLowerCase() === 'pendiente') return fallbackDate
+  const parts = dateStr.split('-')
+  if (parts[0].length === 4) return dateStr
+  const [dd, mm, yyyy] = parts
   return `${yyyy}-${mm}-${dd}`
 }
 
