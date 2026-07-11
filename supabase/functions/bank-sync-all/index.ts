@@ -13,6 +13,25 @@ const POLL_INTERVAL_MS = 5_000
 const POLL_MAX_ATTEMPTS = 24  // 24 × 5s = 120s max per job
 const CIRCUIT_BREAKER_LIMIT = 5
 const INVALID_CREDS_LIMIT = 3
+const BATCH_SIZE = 4
+
+// ── Helpers ───────────────────────────────────────────────────────────────────
+
+function chunk<T>(arr: T[], size: number): T[][] {
+  const chunks: T[][] = []
+  for (let i = 0; i < arr.length; i += size) {
+    chunks.push(arr.slice(i, i + size))
+  }
+  return chunks
+}
+
+interface ProcessResult {
+  banksSynced: number
+  transactionsImported: number
+  errorsCount: number
+  twoFaBlocked: number
+  detail: unknown
+}
 
 // ── Schedule resolution ───────────────────────────────────────────────────────
 
@@ -142,7 +161,8 @@ Deno.serve(async (req) => {
     )
   }
 
-  console.log(`Procesando ${credentials.length} banco(s)...`)
+  const batches = chunk(credentials, BATCH_SIZE)
+  console.log(`Procesando ${credentials.length} banco(s) en ${batches.length} batch(es) de ${BATCH_SIZE}...`)
 
   let banksSynced = 0
   let transactionsImported = 0
@@ -150,143 +170,26 @@ Deno.serve(async (req) => {
   let twoFaBlocked = 0
   const details: unknown[] = []
 
-  // Process each credential sequentially to respect rate limits
-  for (const cred of credentials) {
-    const { id: credId, user_id: userId, bank, rut, encrypted_password, consecutive_failures } = cred
+  for (let batchIdx = 0; batchIdx < batches.length; batchIdx++) {
+    const batch = batches[batchIdx]
+    console.log(`Batch ${batchIdx + 1}/${batches.length}: procesando ${batch.length} banco(s) en paralelo`)
 
-    try {
-      // Decrypt password from at-rest storage
-      const password = await decryptPassword(encrypted_password)
+    const results = await Promise.allSettled(
+      batch.map(cred => processCredential(cred, supabase, apiKey))
+    )
 
-      // Encrypt for transit to the Open Banking API
-      const encryptedCredentials = await encryptForTransit(rut, password)
-
-      // Calculate yesterday's date for fromDate
-      const yesterday = new Date()
-      yesterday.setDate(yesterday.getDate() - 1)
-      const dd = String(yesterday.getDate()).padStart(2, '0')
-      const mm = String(yesterday.getMonth() + 1).padStart(2, '0')
-      const yyyy = yesterday.getFullYear()
-      const fromDate = `${dd}-${mm}-${yyyy}`
-
-      // Start scraping job
-      const scrapeRes = await fetch(`${OPEN_BANKING_BASE}/api/v1/scrape`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${apiKey}` },
-        body: JSON.stringify({ bank, encryptedCredentials, fromDate }),
-      })
-
-      if (!scrapeRes.ok) {
-        const errText = await scrapeRes.text()
-        throw new Error(`Scrape API error ${scrapeRes.status}: ${errText}`)
-      }
-
-      const { jobId } = await scrapeRes.json()
-      console.log(`Usuario ${userId} banco ${bank}: job ${jobId} iniciado`)
-
-      // Poll for result
-      const pollResult = await pollJob(jobId, apiKey)
-
-      if (pollResult.status === 'awaiting_2fa') {
-        twoFaBlocked++
-        await updateCredentialStatus(supabase, credId, userId, bank, '2fa_blocked', consecutive_failures + 1, '2FA requerida')
-        details.push({ userId, bank, status: '2fa_blocked' })
-
-        // Notify user and deactivate if they keep requiring 2FA
-        const getUserEmail = async () => {
-          const { data } = await supabase.auth.admin.getUserById(userId)
-          return data?.user?.email
-        }
-        const userEmail = await getUserEmail()
-        if (userEmail) {
-          await sendBankSyncFailureEmail({ to: userEmail, bank, reason: '2fa_blocked' }).catch(() => {})
-        }
-        // Deactivate for 2FA permanently — user needs to re-enable manually
-        await supabase
-          .from('bank_sync_credentials')
-          .update({ is_active: false })
-          .eq('id', credId)
-        continue
-      }
-
-      if (pollResult.status === 'failed') {
+    for (const result of results) {
+      if (result.status === 'fulfilled') {
+        banksSynced += result.value.banksSynced
+        transactionsImported += result.value.transactionsImported
+        errorsCount += result.value.errorsCount
+        twoFaBlocked += result.value.twoFaBlocked
+        details.push(result.value.detail)
+      } else {
+        // Unexpected rejection (processCredential should handle its own errors)
         errorsCount++
-        const isInvalidCreds = (pollResult.error ?? '').toLowerCase().includes('incorrecto') ||
-          (pollResult.error ?? '').toLowerCase().includes('bloqueado') ||
-          (pollResult.error ?? '').toLowerCase().includes('inválido')
-
-        const newFailures = consecutive_failures + 1
-        const newStatus = isInvalidCreds ? 'invalid_credentials' : 'failed'
-
-        await updateCredentialStatus(supabase, credId, userId, bank, newStatus, newFailures, pollResult.error)
-
-        // Circuit breaker — deactivate after too many failures
-        if (newFailures >= CIRCUIT_BREAKER_LIMIT || (isInvalidCreds && newFailures >= INVALID_CREDS_LIMIT)) {
-          await supabase
-            .from('bank_sync_credentials')
-            .update({ is_active: false })
-            .eq('id', credId)
-
-          const { data } = await supabase.auth.admin.getUserById(userId)
-          const userEmail = data?.user?.email
-          if (userEmail) {
-            await sendBankSyncFailureEmail({
-              to: userEmail,
-              bank,
-              reason: isInvalidCreds ? 'invalid_credentials' : 'circuit_breaker',
-            }).catch(() => {})
-          }
-        }
-
-        details.push({ userId, bank, status: newStatus, error: pollResult.error })
-        continue
+        details.push({ status: 'failed', error: String(result.reason) })
       }
-
-      // Completed — import movements
-      const importResult = await importBankMovements({
-        supabaseClient: supabase,
-        userId,
-        result: pollResult.result!,
-        trigger: 'cron',
-        sendEmail: true,
-      })
-
-      // Write to bank_sync_log
-      await supabase.from('bank_sync_log').insert({
-        user_id: userId,
-        bank,
-        trigger: 'cron',
-        imported: importResult.imported,
-        skipped: importResult.skipped,
-        status: 'success',
-        imported_items: importResult.importedItems,
-        skipped_items: importResult.skippedItems,
-      })
-
-      // Reset failures on success
-      await supabase
-        .from('bank_sync_credentials')
-        .update({
-          last_sync_at: new Date().toISOString(),
-          last_sync_status: 'success',
-          last_error: null,
-          consecutive_failures: 0,
-          updated_at: new Date().toISOString(),
-        })
-        .eq('id', credId)
-
-      banksSynced++
-      transactionsImported += importResult.imported
-      details.push({ userId, bank, status: 'success', imported: importResult.imported, skipped: importResult.skipped })
-      console.log(`Usuario ${userId} banco ${bank}: ${importResult.imported} importadas, ${importResult.skipped} ignoradas`)
-
-    } catch (err: unknown) {
-      const message = err instanceof Error ? err.message : String(err)
-      console.error(`Error procesando ${userId}/${bank}:`, message)
-      errorsCount++
-      const newFailures = cred.consecutive_failures + 1
-      await updateCredentialStatus(supabase, credId, userId, bank, 'failed', newFailures, message)
-      details.push({ userId, bank, status: 'failed', error: message })
     }
   }
 
@@ -302,6 +205,147 @@ Deno.serve(async (req) => {
     { headers: { ...corsHeaders, 'Content-Type': 'application/json' } },
   )
 })
+
+// ── Credential processor ──────────────────────────────────────────────────────
+
+async function processCredential(
+  cred: { id: string; user_id: string; bank: string; rut: string; encrypted_password: string; consecutive_failures: number },
+  supabase: ReturnType<typeof createClient>,
+  apiKey: string,
+): Promise<ProcessResult> {
+  const { id: credId, user_id: userId, bank, rut, encrypted_password, consecutive_failures } = cred
+
+  try {
+    // Decrypt password from at-rest storage
+    const password = await decryptPassword(encrypted_password)
+
+    // Encrypt for transit to the Open Banking API
+    const encryptedCredentials = await encryptForTransit(rut, password)
+
+    // Calculate yesterday's date for fromDate
+    const yesterday = new Date()
+    yesterday.setDate(yesterday.getDate() - 1)
+    const dd = String(yesterday.getDate()).padStart(2, '0')
+    const mm = String(yesterday.getMonth() + 1).padStart(2, '0')
+    const yyyy = yesterday.getFullYear()
+    const fromDate = `${dd}-${mm}-${yyyy}`
+
+    // Start scraping job
+    const scrapeRes = await fetch(`${OPEN_BANKING_BASE}/api/v1/scrape`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${apiKey}` },
+      body: JSON.stringify({ bank, encryptedCredentials, fromDate }),
+    })
+
+    if (!scrapeRes.ok) {
+      const errText = await scrapeRes.text()
+      throw new Error(`Scrape API error ${scrapeRes.status}: ${errText}`)
+    }
+
+    const { jobId } = await scrapeRes.json()
+    console.log(`Usuario ${userId} banco ${bank}: job ${jobId} iniciado`)
+
+    // Poll for result
+    const pollResult = await pollJob(jobId, apiKey)
+
+    if (pollResult.status === 'awaiting_2fa') {
+      await updateCredentialStatus(supabase, credId, userId, bank, '2fa_blocked', consecutive_failures + 1, '2FA requerida')
+
+      const { data } = await supabase.auth.admin.getUserById(userId)
+      const userEmail = data?.user?.email
+      if (userEmail) {
+        await sendBankSyncFailureEmail({ to: userEmail, bank, reason: '2fa_blocked' }).catch(() => {})
+      }
+      // Deactivate for 2FA permanently — user needs to re-enable manually
+      await supabase
+        .from('bank_sync_credentials')
+        .update({ is_active: false })
+        .eq('id', credId)
+
+      return { banksSynced: 0, transactionsImported: 0, errorsCount: 0, twoFaBlocked: 1, detail: { userId, bank, status: '2fa_blocked' } }
+    }
+
+    if (pollResult.status === 'failed') {
+      const isInvalidCreds = (pollResult.error ?? '').toLowerCase().includes('incorrecto') ||
+        (pollResult.error ?? '').toLowerCase().includes('bloqueado') ||
+        (pollResult.error ?? '').toLowerCase().includes('inválido')
+
+      const newFailures = consecutive_failures + 1
+      const newStatus = isInvalidCreds ? 'invalid_credentials' : 'failed'
+
+      await updateCredentialStatus(supabase, credId, userId, bank, newStatus, newFailures, pollResult.error)
+
+      // Circuit breaker — deactivate after too many failures
+      if (newFailures >= CIRCUIT_BREAKER_LIMIT || (isInvalidCreds && newFailures >= INVALID_CREDS_LIMIT)) {
+        await supabase
+          .from('bank_sync_credentials')
+          .update({ is_active: false })
+          .eq('id', credId)
+
+        const { data } = await supabase.auth.admin.getUserById(userId)
+        const userEmail = data?.user?.email
+        if (userEmail) {
+          await sendBankSyncFailureEmail({
+            to: userEmail,
+            bank,
+            reason: isInvalidCreds ? 'invalid_credentials' : 'circuit_breaker',
+          }).catch(() => {})
+        }
+      }
+
+      return { banksSynced: 0, transactionsImported: 0, errorsCount: 1, twoFaBlocked: 0, detail: { userId, bank, status: newStatus, error: pollResult.error } }
+    }
+
+    // Completed — import movements
+    const importResult = await importBankMovements({
+      supabaseClient: supabase,
+      userId,
+      result: pollResult.result!,
+      trigger: 'cron',
+      sendEmail: true,
+    })
+
+    // Write to bank_sync_log
+    await supabase.from('bank_sync_log').insert({
+      user_id: userId,
+      bank,
+      trigger: 'cron',
+      imported: importResult.imported,
+      skipped: importResult.skipped,
+      status: 'success',
+      imported_items: importResult.importedItems,
+      skipped_items: importResult.skippedItems,
+    })
+
+    // Reset failures on success
+    await supabase
+      .from('bank_sync_credentials')
+      .update({
+        last_sync_at: new Date().toISOString(),
+        last_sync_status: 'success',
+        last_error: null,
+        consecutive_failures: 0,
+        updated_at: new Date().toISOString(),
+      })
+      .eq('id', credId)
+
+    console.log(`Usuario ${userId} banco ${bank}: ${importResult.imported} importadas, ${importResult.skipped} ignoradas`)
+    return {
+      banksSynced: 1,
+      transactionsImported: importResult.imported,
+      errorsCount: 0,
+      twoFaBlocked: 0,
+      detail: { userId, bank, status: 'success', imported: importResult.imported, skipped: importResult.skipped },
+    }
+
+  } catch (err: unknown) {
+    const message = err instanceof Error ? err.message : String(err)
+    console.error(`Error procesando ${userId}/${bank}:`, message)
+    const newFailures = consecutive_failures + 1
+    await updateCredentialStatus(supabase, credId, userId, bank, 'failed', newFailures, message)
+    return { banksSynced: 0, transactionsImported: 0, errorsCount: 1, twoFaBlocked: 0, detail: { userId, bank, status: 'failed', error: message } }
+  }
+}
 
 // ── Helper ────────────────────────────────────────────────────────────────────
 
