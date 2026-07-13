@@ -50,8 +50,11 @@ import {
   GripVertical,
   ChevronRight,
   Minimize2,
+  SearchX,
+  Inbox,
 } from "lucide-react";
 import { Transaction } from "@/hooks/useTransactions";
+import NumberFlow, { type Format } from "@number-flow/react";
 import { useFuzzySearch } from "@/hooks/useFuzzySearch";
 import { useCreditCards } from "@/hooks/useCreditCards";
 import { format, subDays } from "date-fns";
@@ -214,6 +217,14 @@ const typeAmountColors = {
 const typeSign = (type: Transaction["type"]) =>
   type === "Gasto" || type === "Inversión" ? -1 : 1;
 
+// Formato para NumberFlow en las stats del resumen (dígitos animados)
+const SIGNED_CLP: Format = {
+  style: "currency",
+  currency: "CLP",
+  maximumFractionDigits: 0,
+  signDisplay: "exceptZero",
+};
+
 // ── Editable cell components ───────────────────────────────────────────────
 
 interface EditableCellProps {
@@ -371,6 +382,34 @@ function SelectableCell<T extends string>({ value, options, onSave, renderValue,
         ))}
       </DropdownMenuContent>
     </DropdownMenu>
+  );
+}
+
+// ── Empty state ──────────────────────────────────────────────────────────
+
+function EmptyState({ hasFilters, onClear }: { hasFilters: boolean; onClear: () => void }) {
+  const Icon = hasFilters ? SearchX : Inbox;
+  return (
+    <div className="flex flex-col items-center gap-3 py-14 text-center">
+      <div className="flex h-12 w-12 items-center justify-center rounded-full bg-muted/60">
+        <Icon className="h-5 w-5 text-muted-foreground/70" />
+      </div>
+      <div className="space-y-1">
+        <p className="text-sm font-medium">
+          {hasFilters ? "Nada con estos filtros" : "Sin transacciones todavía"}
+        </p>
+        <p className="text-xs text-muted-foreground">
+          {hasFilters
+            ? "Prueba ajustar la búsqueda o los filtros"
+            : "Agrega la primera con el botón + o la tecla N"}
+        </p>
+      </div>
+      {hasFilters && (
+        <Button variant="outline" size="sm" className="h-8 rounded-full text-xs" onClick={onClear}>
+          Limpiar filtros
+        </Button>
+      )}
+    </div>
   );
 }
 
@@ -606,6 +645,15 @@ export function TransactionsTable({
   const cardFilter = isControlled ? (externalCardFilter ?? "all") : internalCardFilter;
   const setCardFilter = isControlled ? (onCardFilterChange ?? setInternalCardFilter) : setInternalCardFilter;
 
+  const hasActiveFilters =
+    Boolean(globalFilter) || typeFilter !== "all" || categoryFilter !== "all" || cardFilter !== "all";
+  const clearFilters = () => {
+    setGlobalFilter("");
+    setTypeFilter("all");
+    setCategoryFilter("all");
+    setCardFilter("all");
+  };
+
   useEffect(() => {
     const searchFromUrl = searchParams.get("search");
     if (searchFromUrl && !isControlled) setInternalSearch(searchFromUrl);
@@ -629,9 +677,6 @@ export function TransactionsTable({
 
   const formatCurrency = (amount: number) =>
     new Intl.NumberFormat("es-CL", { style: "currency", currency: "CLP", minimumFractionDigits: 0 }).format(amount);
-
-  const formatSigned = (amount: number) =>
-    amount > 0 ? `+${formatCurrency(amount)}` : formatCurrency(amount);
 
   const signColor = (amount: number) =>
     amount > 0 ? "text-emerald-500" : amount < 0 ? "text-rose-500" : "";
@@ -1407,25 +1452,25 @@ export function TransactionsTable({
                     <div className="flex items-center justify-between">
                       <span className="text-[10px] text-muted-foreground/60 uppercase tracking-wide">Suma</span>
                       <span className={cn("text-[11px] font-mono font-bold tabular-nums", signColor(summaryStats.sum), isPrivacyMode && "privacy-blur")}>
-                        {formatSigned(summaryStats.sum)}
+                        <NumberFlow value={summaryStats.sum} locales="es-CL" format={SIGNED_CLP} />
                       </span>
                     </div>
                     <div className="flex items-center justify-between">
                       <span className="text-[10px] text-muted-foreground/60 uppercase tracking-wide">Prom</span>
                       <span className={cn("text-[11px] font-mono font-semibold tabular-nums", signColor(summaryStats.avg), isPrivacyMode && "privacy-blur")}>
-                        {formatSigned(summaryStats.avg)}
+                        <NumberFlow value={summaryStats.avg} locales="es-CL" format={SIGNED_CLP} />
                       </span>
                     </div>
                     <div className="flex items-center justify-between">
                       <span className="text-[10px] text-muted-foreground/60 uppercase tracking-wide">Min</span>
                       <span className={cn("text-[11px] font-mono tabular-nums", signColor(summaryStats.min), isPrivacyMode && "privacy-blur")}>
-                        {formatSigned(summaryStats.min)}
+                        <NumberFlow value={summaryStats.min} locales="es-CL" format={SIGNED_CLP} />
                       </span>
                     </div>
                     <div className="flex items-center justify-between">
                       <span className="text-[10px] text-muted-foreground/60 uppercase tracking-wide">Max</span>
                       <span className={cn("text-[11px] font-mono tabular-nums", signColor(summaryStats.max), isPrivacyMode && "privacy-blur")}>
-                        {formatSigned(summaryStats.max)}
+                        <NumberFlow value={summaryStats.max} locales="es-CL" format={SIGNED_CLP} />
                       </span>
                     </div>
                   </div>
@@ -1462,9 +1507,7 @@ export function TransactionsTable({
         <>
           <div className="mobile-tx-list">
             {table.getRowModel().rows.length === 0 ? (
-              <div className="py-16 text-center text-sm text-muted-foreground">
-                No se encontraron transacciones
-              </div>
+              <EmptyState hasFilters={hasActiveFilters} onClear={clearFilters} />
             ) : groupedRows ? (
               groupedRows.map((group) => (
                 <React.Fragment key={group.dayKey}>
@@ -1782,8 +1825,8 @@ export function TransactionsTable({
                 <tbody ref={tbodyRef} className="divide-y divide-border/50 bg-card">
                   {table.getRowModel().rows.length === 0 ? (
                     <tr>
-                      <td colSpan={columns.length} className="px-4 py-12 text-center text-sm text-muted-foreground">
-                        No se encontraron transacciones
+                      <td colSpan={columns.length}>
+                        <EmptyState hasFilters={hasActiveFilters} onClear={clearFilters} />
                       </td>
                     </tr>
                   ) : groupedRows ? (
@@ -1892,25 +1935,25 @@ export function TransactionsTable({
                 <div className="flex items-center gap-1">
                   <span className="text-[11px] text-muted-foreground/60 uppercase tracking-wide">Min</span>
                   <span className={cn("text-xs font-mono font-semibold tabular-nums", signColor(summaryStats.min), isPrivacyMode && "privacy-blur")}>
-                    {formatSigned(summaryStats.min)}
+                    <NumberFlow value={summaryStats.min} locales="es-CL" format={SIGNED_CLP} />
                   </span>
                 </div>
                 <div className="flex items-center gap-1">
                   <span className="text-[11px] text-muted-foreground/60 uppercase tracking-wide">Max</span>
                   <span className={cn("text-xs font-mono font-semibold tabular-nums", signColor(summaryStats.max), isPrivacyMode && "privacy-blur")}>
-                    {formatSigned(summaryStats.max)}
+                    <NumberFlow value={summaryStats.max} locales="es-CL" format={SIGNED_CLP} />
                   </span>
                 </div>
                 <div className="flex items-center gap-1">
                   <span className="text-[11px] text-muted-foreground/60 uppercase tracking-wide">Prom</span>
                   <span className={cn("text-xs font-mono font-semibold tabular-nums", signColor(summaryStats.avg), isPrivacyMode && "privacy-blur")}>
-                    {formatSigned(summaryStats.avg)}
+                    <NumberFlow value={summaryStats.avg} locales="es-CL" format={SIGNED_CLP} />
                   </span>
                 </div>
                 <div className="flex items-center gap-1">
                   <span className="text-[11px] text-muted-foreground/60 uppercase tracking-wide">Suma</span>
                   <span className={cn("text-xs font-mono font-bold tabular-nums", signColor(summaryStats.sum), isPrivacyMode && "privacy-blur")}>
-                    {formatSigned(summaryStats.sum)}
+                    <NumberFlow value={summaryStats.sum} locales="es-CL" format={SIGNED_CLP} />
                   </span>
                 </div>
               </div>

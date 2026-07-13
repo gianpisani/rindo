@@ -312,17 +312,20 @@ export const THEME_PRESETS: ThemePreset[] = [
   {
     id: "grafito",
     name: "Grafito",
+    // Superficies monocromas + acento rose en primary/ring: lo sobrio de
+    // grafito sin el botón primario deslavado. El chroma referencia
+    // --accent-chroma (la perilla global del sistema).
     light: {
       background: "oklch(0.97 0.003 260)",
       foreground: "oklch(0.2 0.01 260)",
       card: "oklch(0.99 0.002 260)",
-      primary: "oklch(0.45 0.03 260)",
-      primaryForeground: "oklch(0.97 0.003 260)",
+      primary: "oklch(0.58 var(--accent-chroma) 18)",
+      primaryForeground: "oklch(0.98 0.005 18)",
       muted: "oklch(0.93 0.005 260)",
       mutedForeground: "oklch(0.5 0.015 260)",
       border: "oklch(0.88 0.005 260)",
       input: "oklch(0.88 0.005 260)",
-      ring: "oklch(0.5 0.03 260)",
+      ring: "oklch(0.58 var(--accent-chroma) 18)",
       sidebar: "oklch(0.95 0.004 260)",
       sidebarBorder: "oklch(0.88 0.005 260)",
     },
@@ -330,13 +333,13 @@ export const THEME_PRESETS: ThemePreset[] = [
       background: "oklch(0.14 0.008 260)",
       foreground: "oklch(0.88 0.005 260)",
       card: "oklch(0.17 0.01 260)",
-      primary: "oklch(0.7 0.03 260)",
-      primaryForeground: "oklch(0.14 0.008 260)",
+      primary: "oklch(0.68 var(--accent-chroma) 18)",
+      primaryForeground: "oklch(0.98 0.005 18)",
       muted: "oklch(0.22 0.008 260)",
       mutedForeground: "oklch(0.6 0.01 260)",
       border: "oklch(0.28 0.008 260)",
       input: "oklch(0.25 0.008 260)",
-      ring: "oklch(0.6 0.03 260)",
+      ring: "oklch(0.68 var(--accent-chroma) 18)",
       sidebar: "oklch(0.12 0.01 260)",
       sidebarBorder: "oklch(0.25 0.008 260)",
     },
@@ -395,7 +398,12 @@ function clearAllOverrides(root: HTMLElement) {
 }
 
 function extractHue(oklchStr: string): number {
-  const match = oklchStr.match(/oklch\(\s*[\d.]+\s+[\d.]+\s+([\d.]+)/);
+  // Soporta chroma numérico ("oklch(0.7 0.17 220)") y chroma como var()
+  // ("oklch(0.68 var(--accent-chroma) 18)"): el hue es el último número
+  // antes del paréntesis de cierre (los primary no llevan alpha).
+  const match =
+    oklchStr.match(/oklch\(\s*[\d.]+\s+[\d.]+\s+([\d.]+)\s*\)/) ||
+    oklchStr.match(/([\d.]+)\s*\)\s*$/);
   return match ? parseFloat(match[1]) : 0;
 }
 

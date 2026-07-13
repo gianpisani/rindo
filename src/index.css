@@ -135,7 +135,10 @@ Based on Indigo, Blue, Cyan palette
 
     /* Accent palette (OKLCH triplets) — remapped Tailwind -500 shades.
        Light usa los valores stock exactos; .dark los reemplaza por
-       versiones más luminosas y saturadas que no se lavan sobre negro */
+       versiones más luminosas y saturadas que no se lavan sobre negro.
+       --accent-chroma vive también en :root para que los presets (p. ej.
+       Grafito) puedan referenciarlo en modo claro. */
+    --accent-chroma: 0.19;
     --accent-rose: 0.645 0.215 16.4;     /* = #f43f5e (rose-500) */
     --accent-emerald: 0.696 0.149 162.5; /* = #10b981 (emerald-500) */
     --accent-blue: 0.623 0.188 259.8;    /* = #3b82f6 (blue-500) */
@@ -211,7 +214,9 @@ Based on Indigo, Blue, Cyan palette
 
     --border: oklch(1 0 0 / 8%);
     --input: oklch(1 0 0 / 12%);
-    --ring: oklch(0.41 0.159 10.272);
+    /* Focus ring con el acento del sistema — visible de verdad para
+       navegación por teclado, referencia al accent (nada duplicado) */
+    --ring: oklch(var(--accent-rose) / 0.7);
 
     /* Additional functional colors (HSL for compatibility) */
     --success: 160 78% 49%; /* más luminoso que emerald-500 para fondos oscuros */
@@ -682,7 +687,7 @@ Based on Indigo, Blue, Cyan palette
     align-items: center;
     padding: 12px 4px;
     border-bottom: 1px solid color-mix(in oklch, var(--border) 30%, transparent);
-    transition: background 0.15s ease;
+    transition: background 0.15s ease, transform 0.15s ease;
     -webkit-tap-highlight-color: transparent;
     touch-action: manipulation;
     cursor: pointer;
@@ -690,6 +695,15 @@ Based on Indigo, Blue, Cyan palette
 
   .mobile-tx-card:active {
     background: color-mix(in oklch, var(--muted) 40%, transparent);
+    transform: scale(0.98);
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .mobile-tx-card,
+    .mobile-tx-card:active {
+      transform: none;
+      transition: background 0.15s ease;
+    }
   }
 
   .mobile-tx-card-selected {
