@@ -36,7 +36,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { categorizeTransaction, debounce } from "@/lib/categorizer";
 import { cn } from "@/lib/utils";
-import { CategorySelect } from "@/components/CategorySelect";
+import { CategorySelect, CategoryPickerInline } from "@/components/CategorySelect";
 import { DateTimePicker } from "@/components/ui/date-time-picker";
 
 const typeIcons = {
@@ -121,6 +121,7 @@ export default function Transactions() {
   const [isBankSyncOpen, setIsBankSyncOpen] = useState(false);
 
   const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const [isCategoryPickerOpen, setIsCategoryPickerOpen] = useState(false);
   const [isImportDialogOpen, setIsImportDialogOpen] = useState(false);
   const [editingTransaction, setEditingTransaction] = useState<Transaction | null>(null);
   const [isShared, setIsShared] = useState(false);
@@ -186,6 +187,13 @@ export default function Transactions() {
 
 
   const filteredCategories = categories.filter((cat) => cat.type === formData.type);
+  const categoryOptions = filteredCategories
+    .filter((cat) => cat.name && cat.name.trim().length > 0)
+    .map((cat) => ({
+      value: cat.name,
+      label: cat.name,
+      emoji: cat.icon || getCategoryIcon(cat.name),
+    }));
 
   // Función para categorizar con debounce
   const debouncedCategorize = useCallback(
@@ -604,11 +612,16 @@ export default function Transactions() {
                 setEditingTransaction(null);
                 resetForm();
                 setSuggestion(null);
+                setIsCategoryPickerOpen(false);
               }
             }}
-            title={editingTransaction ? "Editar transacción" : "Nueva transacción"}
+            title={
+              isCategoryPickerOpen
+                ? "Elegir categoría"
+                : editingTransaction ? "Editar transacción" : "Nueva transacción"
+            }
             maxWidth="lg"
-            footer={
+            footer={isCategoryPickerOpen ? undefined : (
               <Button
                 type="submit"
                 form="transaction-form"
@@ -627,8 +640,19 @@ export default function Transactions() {
                   ⏎
                 </kbd>
               </Button>
-            }
+            )}
           >
+            {isCategoryPickerOpen ? (
+              <CategoryPickerInline
+                value={formData.category_name}
+                options={categoryOptions}
+                onSelect={(value) => {
+                  setFormData({ ...formData, category_name: value });
+                  setIsCategoryPickerOpen(false);
+                }}
+                onBack={() => setIsCategoryPickerOpen(false)}
+              />
+            ) : (
             <form id="transaction-form" onSubmit={handleSubmit} className="space-y-4 pt-2">
                 {/* Tipo — segmented control */}
                 <div className="grid grid-cols-4 gap-1.5" role="radiogroup" aria-label="Tipo de transacción">
@@ -745,13 +769,8 @@ export default function Transactions() {
                     <CategorySelect
                       value={formData.category_name}
                       onChange={(value) => setFormData({ ...formData, category_name: value })}
-                      options={filteredCategories
-                        .filter(cat => cat.name && cat.name.trim().length > 0)
-                        .map((cat) => ({
-                          value: cat.name,
-                          label: cat.name,
-                          emoji: cat.icon || getCategoryIcon(cat.name),
-                        }))}
+                      options={categoryOptions}
+                      onOpenMobile={() => setIsCategoryPickerOpen(true)}
                     />
                   </div>
                   {formData.type !== "Inversión" && creditCards.length > 0 && (
@@ -1160,6 +1179,7 @@ export default function Transactions() {
                   );
                 })()}
               </form>
+            )}
           </BaseModal>
         </div>
 

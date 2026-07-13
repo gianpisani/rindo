@@ -1,7 +1,6 @@
-import { useEffect, useRef, useState } from "react";
-import { Check, ChevronDown } from "lucide-react";
+import { useState } from "react";
+import { ArrowLeft, Check, ChevronDown } from "lucide-react";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { Drawer, DrawerContent, DrawerHeader, DrawerTitle, DrawerTrigger } from "@/components/ui/drawer";
 import {
   Command,
   CommandEmpty,
@@ -26,12 +25,15 @@ interface CategorySelectProps {
   placeholder?: string;
   searchPlaceholder?: string;
   className?: string;
+  /** En mobile, en vez de abrir un popover, delega la apertura (p. ej.
+   * para mostrar un picker inline dentro del modal, que scrollea con
+   * el contenedor del modal y evita overlays anidados). */
+  onOpenMobile?: () => void;
 }
 
 /**
- * Selector de categoría con búsqueda. En desktop es un popover tipo
- * combobox; en mobile es un bottom sheet con targets grandes y scroll
- * nativo (el Select de Radix dentro de un Dialog no scrollea en iOS).
+ * Selector de categoría con búsqueda. En desktop es un combobox
+ * (popover); en mobile delega a un picker inline vía onOpenMobile.
  */
 export function CategorySelect({
   value,
@@ -40,40 +42,15 @@ export function CategorySelect({
   placeholder = "Seleccionar",
   searchPlaceholder = "Buscar categoría...",
   className,
+  onOpenMobile,
 }: CategorySelectProps) {
   const [open, setOpen] = useState(false);
   const isMobile = useIsMobile();
-  const listRef = useRef<HTMLDivElement>(null);
 
   const selected = options.find((o) => o.value === value);
 
-  // Igual que BaseModal: activar el contexto de scroll de iOS WebKit
-  // para que react-remove-scroll permita scrollear la lista una vez
-  // terminada la animación de entrada.
-  useEffect(() => {
-    if (!open) return;
-    const timer = setTimeout(() => {
-      const el = listRef.current;
-      if (!el) return;
-      el.scrollTop = 1;
-      el.scrollTop = 0;
-    }, 350);
-    return () => clearTimeout(timer);
-  }, [open]);
-
-  const trigger = (
-    <button
-      type="button"
-      role="combobox"
-      aria-expanded={open}
-      className={cn(
-        "flex h-10 w-full items-center justify-between rounded-xl border border-input bg-background px-3 text-sm",
-        "focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2",
-        "disabled:cursor-not-allowed disabled:opacity-50",
-        !selected && "text-muted-foreground",
-        className
-      )}
-    >
+  const triggerContent = (
+    <>
       <span className="truncate">
         {selected ? (
           <>
@@ -85,76 +62,127 @@ export function CategorySelect({
         )}
       </span>
       <ChevronDown className="h-4 w-4 shrink-0 opacity-50" />
-    </button>
+    </>
   );
 
-  const optionsList = (
-    <Command>
-      <CommandInput placeholder={searchPlaceholder} className={cn(isMobile ? "h-12 text-base" : "h-9 text-sm")} />
-      <CommandList
-        ref={listRef}
-        className={cn("overscroll-contain", isMobile ? "max-h-[50vh]" : "max-h-[280px]")}
-        style={{ touchAction: "pan-y", WebkitOverflowScrolling: "touch" }}
-      >
-        <CommandEmpty className="py-6 text-center text-sm text-muted-foreground">
-          Sin resultados
-        </CommandEmpty>
-        <CommandGroup>
-          {options.map((option) => (
-            <CommandItem
-              key={option.value}
-              value={option.label}
-              onSelect={() => {
-                onChange(option.value);
-                setOpen(false);
-              }}
-              className={cn(
-                "flex cursor-pointer items-center gap-2.5",
-                isMobile ? "px-3 py-3 text-base" : "py-2 text-sm"
-              )}
-            >
-              {option.emoji && (
-                <span className={cn("shrink-0 leading-none", isMobile ? "text-xl" : "text-base")}>
-                  {option.emoji}
-                </span>
-              )}
-              <span className="truncate">{option.label}</span>
-              {option.value === value && (
-                <Check className="ml-auto h-4 w-4 shrink-0 text-primary" />
-              )}
-            </CommandItem>
-          ))}
-        </CommandGroup>
-      </CommandList>
-    </Command>
+  const triggerClasses = cn(
+    "flex h-10 w-full items-center justify-between rounded-xl border border-input bg-background px-3 text-sm",
+    "focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2",
+    "disabled:cursor-not-allowed disabled:opacity-50",
+    !selected && "text-muted-foreground",
+    className
   );
 
-  if (isMobile) {
+  if (isMobile && onOpenMobile) {
     return (
-      <Drawer open={open} onOpenChange={setOpen}>
-        <DrawerTrigger asChild>{trigger}</DrawerTrigger>
-        <DrawerContent className="max-h-[75vh]">
-          <DrawerHeader className="pb-1 pt-3">
-            <DrawerTitle className="text-sm font-medium text-muted-foreground">
-              Categoría
-            </DrawerTitle>
-          </DrawerHeader>
-          <div className="px-2 pb-safe mb-2">{optionsList}</div>
-        </DrawerContent>
-      </Drawer>
+      <button type="button" className={triggerClasses} onClick={onOpenMobile}>
+        {triggerContent}
+      </button>
     );
   }
 
   return (
     <Popover open={open} onOpenChange={setOpen} modal>
-      <PopoverTrigger asChild>{trigger}</PopoverTrigger>
+      <PopoverTrigger asChild>
+        <button type="button" role="combobox" aria-expanded={open} className={triggerClasses}>
+          {triggerContent}
+        </button>
+      </PopoverTrigger>
       <PopoverContent
         className="w-[var(--radix-popover-trigger-width)] min-w-[220px] rounded-xl border-border/60 p-0 shadow-lg shadow-black/10 dark:shadow-black/30"
         align="start"
         sideOffset={4}
       >
-        {optionsList}
+        <Command>
+          <CommandInput placeholder={searchPlaceholder} className="h-9 text-sm" />
+          <CommandList className="max-h-[280px] overscroll-contain">
+            <CommandEmpty className="py-6 text-center text-sm text-muted-foreground">
+              Sin resultados
+            </CommandEmpty>
+            <CommandGroup>
+              {options.map((option) => (
+                <CommandItem
+                  key={option.value}
+                  value={option.label}
+                  onSelect={() => {
+                    onChange(option.value);
+                    setOpen(false);
+                  }}
+                  className="flex cursor-pointer items-center gap-2.5 py-2 text-sm"
+                >
+                  {option.emoji && (
+                    <span className="shrink-0 text-base leading-none">{option.emoji}</span>
+                  )}
+                  <span className="truncate">{option.label}</span>
+                  {option.value === value && (
+                    <Check className="ml-auto h-4 w-4 shrink-0 text-primary" />
+                  )}
+                </CommandItem>
+              ))}
+            </CommandGroup>
+          </CommandList>
+        </Command>
       </PopoverContent>
     </Popover>
+  );
+}
+
+interface CategoryPickerInlineProps {
+  value: string;
+  options: CategorySelectOption[];
+  onSelect: (value: string) => void;
+  onBack: () => void;
+  searchPlaceholder?: string;
+}
+
+/**
+ * Picker inline para mobile: se renderiza en el flujo normal del modal
+ * (sin portal ni overlay), así la lista scrollea con el contenedor del
+ * modal, que sí funciona en iOS. La lista no tiene scroll propio.
+ */
+export function CategoryPickerInline({
+  value,
+  options,
+  onSelect,
+  onBack,
+  searchPlaceholder = "Buscar categoría...",
+}: CategoryPickerInlineProps) {
+  return (
+    <div className="pt-1">
+      <button
+        type="button"
+        onClick={onBack}
+        className="mb-2 flex items-center gap-1.5 rounded-lg px-1 py-1 text-sm text-muted-foreground transition-colors hover:text-foreground"
+      >
+        <ArrowLeft className="h-4 w-4" />
+        Volver
+      </button>
+      <Command className="bg-transparent">
+        <CommandInput placeholder={searchPlaceholder} className="h-11 text-base" />
+        <CommandList className="max-h-none overflow-visible pt-1">
+          <CommandEmpty className="py-8 text-center text-sm text-muted-foreground">
+            Sin resultados
+          </CommandEmpty>
+          <CommandGroup>
+            {options.map((option) => (
+              <CommandItem
+                key={option.value}
+                value={option.label}
+                onSelect={() => onSelect(option.value)}
+                className="flex cursor-pointer items-center gap-3 rounded-xl px-3 py-3 text-base"
+              >
+                {option.emoji && (
+                  <span className="shrink-0 text-xl leading-none">{option.emoji}</span>
+                )}
+                <span className="truncate">{option.label}</span>
+                {option.value === value && (
+                  <Check className="ml-auto h-4 w-4 shrink-0 text-primary" />
+                )}
+              </CommandItem>
+            ))}
+          </CommandGroup>
+        </CommandList>
+      </Command>
+    </div>
   );
 }
