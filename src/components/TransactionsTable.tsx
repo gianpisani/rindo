@@ -583,6 +583,19 @@ export function TransactionsTable({
   const { creditCards, isLoading: isLoadingCards } = useCreditCards();
   const isMobile = useIsMobile();
 
+  // Touch-through guard: en iOS, al tocar un item del menú "..." el menú se
+  // desmonta y el click del navegador aterriza en la card que quedó debajo,
+  // abriendo el modal de editar sin querer. Ignoramos clicks en cards
+  // durante una ventana corta después de cerrar cualquier menú.
+  const lastMenuCloseRef = useRef(0);
+  const trackMenuClose = (open: boolean) => {
+    if (!open) lastMenuCloseRef.current = Date.now();
+  };
+  const guardedEdit = (t: Transaction) => {
+    if (Date.now() - lastMenuCloseRef.current < 400) return;
+    onEdit(t);
+  };
+
   const isControlled = externalSearch !== undefined;
   const globalFilter = isControlled ? externalSearch! : internalSearch;
   const setGlobalFilter = isControlled ? onSearchChange! : setInternalSearch;
@@ -1481,7 +1494,7 @@ export function TransactionsTable({
                           isSelected && "mobile-tx-card-selected",
                           isMissing && "mobile-tx-card-missing"
                         )}
-                        onClick={() => onEdit(t)}
+                        onClick={() => guardedEdit(t)}
                       >
                         {/* Selection checkbox */}
                         <div
@@ -1555,7 +1568,7 @@ export function TransactionsTable({
 
                         {/* Actions */}
                         <div className="flex-shrink-0 ml-1">
-                          <DropdownMenu>
+                          <DropdownMenu onOpenChange={trackMenuClose}>
                             <DropdownMenuTrigger asChild>
                               <button
                                 className="mobile-tx-actions-btn"
@@ -1612,7 +1625,7 @@ export function TransactionsTable({
                       isSelected && "mobile-tx-card-selected",
                       isMissing && "mobile-tx-card-missing"
                     )}
-                    onClick={() => onEdit(t)}
+                    onClick={() => guardedEdit(t)}
                   >
                     <div
                       className="mobile-tx-checkbox"
@@ -1676,7 +1689,7 @@ export function TransactionsTable({
                     </div>
 
                     <div className="flex-shrink-0 ml-1">
-                      <DropdownMenu>
+                      <DropdownMenu onOpenChange={trackMenuClose}>
                         <DropdownMenuTrigger asChild>
                           <button
                             className="mobile-tx-actions-btn"
