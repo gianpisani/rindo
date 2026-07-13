@@ -132,6 +132,15 @@ Based on Indigo, Blue, Cyan palette
     --accent-foreground: oklch(0.18 0.006 285.885);
     --destructive: 0.577 0.245 27.325;
     --destructive-foreground: oklch(0.985 0 0);
+
+    /* Accent palette (OKLCH triplets) — remapped Tailwind -500 shades.
+       Light usa los valores stock exactos; .dark los reemplaza por
+       versiones más luminosas y saturadas que no se lavan sobre negro */
+    --accent-rose: 0.645 0.215 16.4;     /* = #f43f5e (rose-500) */
+    --accent-emerald: 0.696 0.149 162.5; /* = #10b981 (emerald-500) */
+    --accent-blue: 0.623 0.188 259.8;    /* = #3b82f6 (blue-500) */
+    --accent-amber: 0.769 0.165 70.1;    /* = #f59e0b (amber-500) */
+
     --border: oklch(0.835 0.008 286);
     --input: oklch(0.835 0.008 286);
     --ring: oklch(0.712 0.194 13.428);
@@ -185,25 +194,32 @@ Based on Indigo, Blue, Cyan palette
     --muted-foreground: oklch(0.705 0.015 286.067);
     --accent: oklch(0.21 0.006 285.885);
     --accent-foreground: oklch(0.985 0 0);
-    --destructive: 0.704 0.191 22.216;
+    --destructive: 0.66 0.222 25; /* #fd4346 — rojo vivo, chroma al límite del gamut */
     --destructive-foreground: oklch(0.985 0 0);
+
+    /* Accent palette — versiones vibrantes para fondos oscuros */
+    --accent-rose: 0.68 0.205 18;    /* #fd5367 */
+    --accent-emerald: 0.8 0.171 162; /* #1ddf9b */
+    --accent-blue: 0.66 0.177 259;   /* #498ffc */
+    --accent-amber: 0.83 0.154 78;   /* #feb93c */
+
     --border: oklch(1 0 0 / 8%);
     --input: oklch(1 0 0 / 12%);
     --ring: oklch(0.41 0.159 10.272);
 
     /* Additional functional colors (HSL for compatibility) */
-    --success: 158 64% 52%; /* #10b981 - Emerald 500 */
+    --success: 160 78% 49%; /* más luminoso que emerald-500 para fondos oscuros */
     --success-foreground: 0 0% 100%;
-    --warning: 38 92% 55%;
+    --warning: 40 98% 58%;
     --warning-foreground: 0 0% 0%;
-    --info: 188 86% 50%;
+    --info: 190 92% 55%;
     --info-foreground: 0 0% 100%;
 
     /* Semantic chart colors (hex for Recharts compatibility) */
-    --color-income: #34d399;
-    --color-expense: #fb7185;
-    --color-investment: #38bdf8;
-    --color-balance: #fbbf24;
+    --color-income: #1ddf9b;
+    --color-expense: #fd5367;
+    --color-investment: #55b3fc;
+    --color-balance: #feb93c;
     --color-muted-axis: #64748b;
     --color-grid: #374151;
 

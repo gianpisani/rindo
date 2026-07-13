@@ -1,4 +1,5 @@
 import type { Config } from "tailwindcss";
+import defaultColors from "tailwindcss/colors";
 
 export default {
   darkMode: ["class"],
@@ -25,18 +26,30 @@ export default {
   		},
 		colors: {
 			blue: {
-				DEFAULT: 'hsl(217 91% 60%)',
+				DEFAULT: 'oklch(var(--accent-blue) / <alpha-value>)',
 				50: 'hsl(214 95% 93%)',
 				100: 'hsl(214 95% 85%)',
 				200: 'hsl(213 97% 77%)',
 				300: 'hsl(212 96% 68%)',
 				400: 'hsl(213 94% 60%)',
-				500: 'hsl(217 91% 60%)',
+				500: 'oklch(var(--accent-blue) / <alpha-value>)',
 				600: 'hsl(221 83% 53%)',
 				700: 'hsl(224 76% 48%)',
 				800: 'hsl(226 71% 40%)',
 				900: 'hsl(224 64% 33%)',
 				950: 'hsl(226 57% 21%)'
+			},
+			rose: {
+				...defaultColors.rose,
+				500: 'oklch(var(--accent-rose) / <alpha-value>)'
+			},
+			emerald: {
+				...defaultColors.emerald,
+				500: 'oklch(var(--accent-emerald) / <alpha-value>)'
+			},
+			amber: {
+				...defaultColors.amber,
+				500: 'oklch(var(--accent-amber) / <alpha-value>)'
 			},
 			cyan: 'hsl(188 86% 43%)',
 			violet: 'hsl(258 90% 66%)',
