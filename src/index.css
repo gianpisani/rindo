@@ -199,7 +199,7 @@ Based on Indigo, Blue, Cyan palette
        Es LA perilla del sistema: subir para más punch, bajar para más
        elegancia. Si algún hue no alcanza ese chroma en la pantalla, el
        gamut mapping de CSS Color 4 lo reduce solo (preservando L y H). */
-    --accent-chroma: 0.16;
+    --accent-chroma: 0.19;
     --accent-rose: 0.68 var(--accent-chroma) 18;
     --accent-emerald: 0.8 var(--accent-chroma) 162;
     --accent-blue: 0.66 var(--accent-chroma) 259;
