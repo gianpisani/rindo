@@ -194,7 +194,7 @@ Based on Indigo, Blue, Cyan palette
     --muted-foreground: oklch(0.705 0.015 286.067);
     --accent: oklch(0.21 0.006 285.885);
     --accent-foreground: oklch(0.985 0 0);
-    --destructive: 0.66 0.222 25; /* #fd4346 — rojo vivo, chroma al límite del gamut */
+    --destructive: 0.68 0.205 18; /* #fd5367 — mismo rojo que --accent-rose para que todos los rojos del dark coincidan */
     --destructive-foreground: oklch(0.985 0 0);
 
     /* Accent palette — versiones vibrantes para fondos oscuros */

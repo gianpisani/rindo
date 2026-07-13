@@ -39,27 +39,6 @@ import { cn } from "@/lib/utils";
 import { CategorySelect, CategoryPickerInline } from "@/components/CategorySelect";
 import { DateTimePicker } from "@/components/ui/date-time-picker";
 
-const typeIcons = {
-  Ingreso: TrendingUp,
-  Gasto: TrendingDown,
-  Inversión: PiggyBank,
-  Reembolso: ArrowLeftRight,
-};
-
-const typeColors = {
-  Ingreso: "text-success",
-  Gasto: "text-destructive",
-  Inversión: "text-info",
-  Reembolso: "text-amber-500",
-};
-
-const typeBg = {
-  Ingreso: "bg-success/5",
-  Gasto: "bg-destructive/5",
-  Inversión: "bg-info/5",
-  Reembolso: "bg-amber-500/5",
-};
-
 // ── Add/Edit modal: type segmented control + hero amount ───────────
 type TransactionType = "Ingreso" | "Gasto" | "Inversión" | "Reembolso";
 
@@ -1389,7 +1368,7 @@ export default function Transactions() {
             <div className="rounded-lg border bg-muted/50 p-3 space-y-1 text-sm">
               <div className="flex items-center justify-between">
                 <span className="font-medium">{tx.detail || "Sin detalle"}</span>
-                <span className={`font-bold font-mono tabular-nums ${tx.type === "Ingreso" ? "text-success" : tx.type === "Inversión" ? "text-info" : "text-destructive"}`}>
+                <span className={`font-bold font-mono tabular-nums ${tx.type === "Ingreso" ? "text-emerald-500" : tx.type === "Inversión" ? "text-blue-500" : tx.type === "Reembolso" ? "text-amber-500" : "text-rose-500"}`}>
                   {formatCurrency(tx.amount)}
                 </span>
               </div>
