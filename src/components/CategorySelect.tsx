@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { ArrowLeft, Check, ChevronDown } from "lucide-react";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import {
@@ -147,8 +147,30 @@ export function CategoryPickerInline({
   onBack,
   searchPlaceholder = "Buscar categoría...",
 }: CategoryPickerInlineProps) {
+  const rootRef = useRef<HTMLDivElement>(null);
+
+  // El nudge de BaseModal corre solo al abrir el modal, cuando el form
+  // suele caber sin scroll. Al montar el picker el contenido crece, así
+  // que hay que reactivar el contexto de scroll de iOS WebKit en el
+  // ancestro scrolleable para que react-remove-scroll permita el touch.
+  useEffect(() => {
+    const raf = requestAnimationFrame(() => {
+      let el: HTMLElement | null = rootRef.current?.parentElement ?? null;
+      while (el) {
+        const overflowY = getComputedStyle(el).overflowY;
+        if (overflowY === "auto" || overflowY === "scroll") {
+          el.scrollTop = 1;
+          el.scrollTop = 0;
+          break;
+        }
+        el = el.parentElement;
+      }
+    });
+    return () => cancelAnimationFrame(raf);
+  }, []);
+
   return (
-    <div className="pt-1">
+    <div ref={rootRef} className="pt-1">
       <button
         type="button"
         onClick={onBack}
@@ -159,7 +181,11 @@ export function CategoryPickerInline({
       </button>
       <Command className="bg-transparent">
         <CommandInput placeholder={searchPlaceholder} className="h-11 text-base" />
-        <CommandList className="max-h-none overflow-visible pt-1">
+        {/* max-h-full (parent altura auto) = sin tope: la lista crece y
+            scrollea el contenedor del modal, no ella misma. Ojo: la
+            versión de tailwind-merge del proyecto NO resuelve el
+            conflicto max-h-[300px] vs max-h-none, por eso max-h-full. */}
+        <CommandList className="max-h-full pt-1">
           <CommandEmpty className="py-8 text-center text-sm text-muted-foreground">
             Sin resultados
           </CommandEmpty>
