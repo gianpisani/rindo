@@ -10,7 +10,6 @@ import { Input } from "@/components/ui/input";
 import { Dialog, DialogTrigger } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Badge } from "@/components/ui/badge";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -21,8 +20,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { Alert, AlertDescription } from "@/components/ui/alert";
-import { Plus, Download, TrendingUp, TrendingDown, PiggyBank, Upload, X, Sparkles, Info, Trash2, Search, CalendarClock, Users, CheckCircle2, Clock, Pencil, ArrowLeftRight, Building2, RefreshCw } from "lucide-react";
+import { Plus, Download, TrendingUp, TrendingDown, PiggyBank, Upload, X, Sparkles, Trash2, Search, CalendarClock, Users, CheckCircle2, Clock, Pencil, ArrowLeftRight, Building2, RefreshCw } from "lucide-react";
 import { useTransactions, Transaction } from "@/hooks/useTransactions";
 import { useSearchFocusShortcut } from "@/hooks/useSearchFocusShortcut";
 import { useCategories } from "@/hooks/useCategories";
@@ -37,6 +35,7 @@ import Papa from "papaparse";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { categorizeTransaction, debounce } from "@/lib/categorizer";
+import { cn } from "@/lib/utils";
 import { DateTimePicker } from "@/components/ui/date-time-picker";
 
 const typeIcons = {
@@ -58,6 +57,53 @@ const typeBg = {
   Gasto: "bg-destructive/5",
   Inversión: "bg-info/5",
   Reembolso: "bg-amber-500/5",
+};
+
+// ── Add/Edit modal: type segmented control + hero amount ───────────
+type TransactionType = "Ingreso" | "Gasto" | "Inversión" | "Reembolso";
+
+const TYPE_OPTIONS: {
+  value: TransactionType;
+  label: string;
+  icon: typeof TrendingUp;
+  active: string;
+  amount: string;
+}[] = [
+  {
+    value: "Gasto",
+    label: "Gasto",
+    icon: TrendingDown,
+    active: "border-rose-500/40 bg-rose-500/10 text-rose-500",
+    amount: "text-rose-500",
+  },
+  {
+    value: "Ingreso",
+    label: "Ingreso",
+    icon: TrendingUp,
+    active: "border-emerald-500/40 bg-emerald-500/10 text-emerald-500",
+    amount: "text-emerald-500",
+  },
+  {
+    value: "Inversión",
+    label: "Inversión",
+    icon: PiggyBank,
+    active: "border-blue-500/40 bg-blue-500/10 text-blue-500",
+    amount: "text-blue-500",
+  },
+  {
+    value: "Reembolso",
+    label: "Reembolso",
+    icon: ArrowLeftRight,
+    active: "border-amber-500/40 bg-amber-500/10 text-amber-500",
+    amount: "text-amber-500",
+  },
+];
+
+const MODAL_VARIANT: Record<TransactionType, "income" | "expense" | "investment" | "default"> = {
+  Ingreso: "income",
+  Gasto: "expense",
+  Inversión: "investment",
+  Reembolso: "default",
 };
 
 export default function Transactions() {
@@ -566,221 +612,206 @@ export default function Transactions() {
                 setSuggestion(null);
               }
             }}
-            title={`${editingTransaction ? "Editar" : "Agregar"} Transacción`}
+            title={editingTransaction ? "Editar transacción" : "Nueva transacción"}
             maxWidth="lg"
+            variant={MODAL_VARIANT[formData.type]}
             footer={
-              <Button 
-                type="submit" 
+              <Button
+                type="submit"
                 form="transaction-form"
-                className="w-full" 
+                className="w-full h-11 text-[15px] font-semibold gap-2"
                 disabled={addTransaction.isPending || updateTransaction.isPending}
               >
-                {editingTransaction ? "Guardar Cambios" : "Agregar"}
+                <span>
+                  {editingTransaction ? "Guardar cambios" : "Agregar"}
+                  {formData.amount && (
+                    <span className="font-mono tabular-nums">
+                      {" "}· ${parseInt(formData.amount).toLocaleString("es-CL")}
+                    </span>
+                  )}
+                </span>
+                <kbd className="hidden sm:inline-flex h-5 items-center rounded border border-primary-foreground/25 bg-primary-foreground/10 px-1.5 font-mono text-[10px] leading-none">
+                  ⏎
+                </kbd>
               </Button>
             }
           >
             <form id="transaction-form" onSubmit={handleSubmit} className="space-y-4">
+                {/* Tipo — segmented control */}
+                <div className="grid grid-cols-4 gap-1.5" role="radiogroup" aria-label="Tipo de transacción">
+                  {TYPE_OPTIONS.map((opt) => {
+                    const Icon = opt.icon;
+                    const isActive = formData.type === opt.value;
+                    return (
+                      <button
+                        key={opt.value}
+                        type="button"
+                        role="radio"
+                        aria-checked={isActive}
+                        onClick={() => {
+                          setFormData({ ...formData, type: opt.value, category_name: "" });
+                          if (opt.value !== "Ingreso" && opt.value !== "Reembolso") setDebtToLink(null);
+                        }}
+                        className={cn(
+                          "flex flex-col items-center gap-1 rounded-xl border py-2.5 px-1 transition-all",
+                          "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
+                          isActive
+                            ? cn(opt.active, "font-semibold")
+                            : "border-border/60 text-muted-foreground hover:border-border hover:bg-muted/50"
+                        )}
+                      >
+                        <Icon className="h-4 w-4" />
+                        <span className="text-[11px] leading-none">{opt.label}</span>
+                      </button>
+                    );
+                  })}
+                </div>
+
+                {/* Monto — protagonista */}
+                <div className="py-1">
+                  <Label htmlFor="amount" className="sr-only">Monto</Label>
+                  <input
+                    id="amount"
+                    type="text"
+                    inputMode="numeric"
+                    autoComplete="off"
+                    placeholder="$0"
+                    required
+                    value={formData.amount ? `$${parseInt(formData.amount).toLocaleString("es-CL")}` : ""}
+                    onChange={(e) => {
+                      const number = e.target.value.replace(/\D/g, "");
+                      setFormData({ ...formData, amount: number });
+                    }}
+                    className={cn(
+                      "w-full bg-transparent text-center font-mono text-4xl font-bold tabular-nums tracking-tight",
+                      "border-0 outline-none placeholder:text-muted-foreground/25",
+                      "transition-colors duration-200",
+                      TYPE_OPTIONS.find((o) => o.value === formData.type)?.amount
+                    )}
+                  />
+                </div>
+
+                {/* Detalle + sugerencia IA */}
                 <div className="space-y-2">
-                  <Label className="text-sm font-medium">Fecha y Hora</Label>
+                  <Label htmlFor="detail" className="text-xs font-medium text-muted-foreground">
+                    Detalle
+                  </Label>
+                  <Input
+                    id="detail"
+                    placeholder="¿En qué fue? (ayuda a categorizar)"
+                    value={formData.detail}
+                    onChange={(e) => setFormData({ ...formData, detail: e.target.value })}
+                    className="h-10 rounded-xl px-4"
+                  />
+
+                  {isAnalyzing && (
+                    <div className="flex items-center gap-2 px-1 text-xs text-muted-foreground">
+                      <Sparkles className="h-3.5 w-3.5 animate-pulse text-primary" />
+                      <span className="animate-pulse">Buscando categoría…</span>
+                    </div>
+                  )}
+
+                  {suggestion && !isAnalyzing && (
+                    <div className="flex items-center gap-2 rounded-xl border border-primary/25 bg-primary/5 py-1.5 pl-3 pr-1.5 animate-in fade-in slide-in-from-top-1 duration-200">
+                      <Sparkles className="h-3.5 w-3.5 shrink-0 text-primary" />
+                      <span className="min-w-0 flex-1 truncate text-xs">
+                        <span className="font-semibold">
+                          {categories.find((c) => c.name === suggestion.category)?.icon || getCategoryIcon(suggestion.category)}{" "}
+                          {suggestion.category}
+                        </span>
+                        <span className="text-muted-foreground"> · {suggestion.confidence}% seguro</span>
+                      </span>
+                      <Button
+                        type="button"
+                        size="sm"
+                        onClick={applySuggestion}
+                        className="h-7 rounded-lg px-2.5 text-xs"
+                      >
+                        Aplicar
+                      </Button>
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="sm"
+                        onClick={dismissSuggestion}
+                        className="h-7 w-7 shrink-0 rounded-lg p-0 text-muted-foreground"
+                      >
+                        <X className="h-3.5 w-3.5" />
+                      </Button>
+                    </div>
+                  )}
+                </div>
+
+                {/* Categoría + Tarjeta */}
+                <div className="grid grid-cols-2 gap-3">
+                  <div className={cn(
+                    "space-y-2",
+                    (formData.type === "Inversión" || creditCards.length === 0) && "col-span-2"
+                  )}>
+                    <Label htmlFor="category" className="text-xs font-medium text-muted-foreground">Categoría</Label>
+                    <Select
+                      value={formData.category_name}
+                      onValueChange={(value) => setFormData({ ...formData, category_name: value })}
+                    >
+                      <SelectTrigger className="h-10 rounded-xl px-3">
+                        <SelectValue placeholder="Seleccionar" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {filteredCategories
+                          .filter(cat => cat.name && cat.name.trim().length > 0)
+                          .map((cat) => (
+                            <SelectItem key={cat.id} value={cat.name}>
+                              {cat.icon || getCategoryIcon(cat.name)} {cat.name}
+                            </SelectItem>
+                          ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  {formData.type !== "Inversión" && creditCards.length > 0 && (
+                    <div className="space-y-2">
+                      <Label htmlFor="card" className="text-xs font-medium text-muted-foreground">Tarjeta</Label>
+                      <Select
+                        value={formData.card_id ?? "none"}
+                        onValueChange={(value) =>
+                          setFormData({ ...formData, card_id: value === "none" ? null : value })
+                        }
+                      >
+                        <SelectTrigger className="h-10 rounded-xl px-3">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="none">Cuenta</SelectItem>
+                          {creditCards
+                            .filter((c) => c.is_active)
+                            .map((card) => (
+                              <SelectItem key={card.id} value={card.id}>
+                                <div className="flex items-center gap-2">
+                                  <span
+                                    className="inline-block h-3 w-3 rounded-full"
+                                    style={{ backgroundColor: card.color || "#6366f1" }}
+                                  />
+                                  {card.name}
+                                  {card.last_4_digits && (
+                                    <span className="text-muted-foreground">···· {card.last_4_digits}</span>
+                                  )}
+                                </div>
+                              </SelectItem>
+                            ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  )}
+                </div>
+
+                {/* Fecha */}
+                <div className="space-y-2">
+                  <Label className="text-xs font-medium text-muted-foreground">Fecha y hora</Label>
                   <DateTimePicker
                     value={formData.date}
                     onChange={(date) => date && setFormData({ ...formData, date })}
                     showTime={true}
                     className="w-full h-10 rounded-xl"
                   />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="type" className="text-sm font-medium">Tipo</Label>
-                  <Select
-                    value={formData.type}
-                    onValueChange={(value: "Ingreso" | "Gasto" | "Inversión" | "Reembolso") => {
-                      setFormData({ ...formData, type: value, category_name: "" });
-                      if (value !== "Ingreso" && value !== "Reembolso") setDebtToLink(null);
-                    }}
-                  >
-                    <SelectTrigger className="h-10 rounded-xl px-6">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="Ingreso">Ingreso</SelectItem>
-                      <SelectItem value="Gasto">Gasto</SelectItem>
-                      <SelectItem value="Inversión">Inversión</SelectItem>
-                      <SelectItem value="Reembolso">Reembolso</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="category" className="text-sm font-medium">Categoría</Label>
-                  <Select
-                    value={formData.category_name}
-                    onValueChange={(value) => setFormData({ ...formData, category_name: value })}
-                  >
-                    <SelectTrigger className="h-10 rounded-lg px-6">
-                      <SelectValue placeholder="Selecciona una categoría" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {filteredCategories
-                        .filter(cat => cat.name && cat.name.trim().length > 0)
-                        .map((cat) => (
-                          <SelectItem key={cat.id} value={cat.name}>
-                            {cat.icon || getCategoryIcon(cat.name)} {cat.name}
-                          </SelectItem>
-                        ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-                {formData.type !== "Inversión" && creditCards.length > 0 && (
-                  <div className="space-y-2">
-                    <Label htmlFor="card" className="text-sm font-medium">Tarjeta</Label>
-                    <Select
-                      value={formData.card_id ?? "none"}
-                      onValueChange={(value) =>
-                        setFormData({ ...formData, card_id: value === "none" ? null : value })
-                      }
-                    >
-                      <SelectTrigger className="h-10 rounded-xl px-6">
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="none">Cuenta</SelectItem>
-                        {creditCards
-                          .filter((c) => c.is_active)
-                          .map((card) => (
-                            <SelectItem key={card.id} value={card.id}>
-                              <div className="flex items-center gap-2">
-                                <span
-                                  className="inline-block h-3 w-3 rounded-full"
-                                  style={{ backgroundColor: card.color || "#6366f1" }}
-                                />
-                                {card.name}
-                                {card.last_4_digits && (
-                                  <span className="text-muted-foreground">···· {card.last_4_digits}</span>
-                                )}
-                              </div>
-                            </SelectItem>
-                          ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
-                )}
-                <div className="space-y-2">
-                  <Label htmlFor="amount" className="text-sm font-medium">Monto</Label>
-                  <div className="relative">
-                    <span className="absolute left-4 top-1/2 -translate-y-1/2 text-muted-foreground">$</span>
-                  <Input
-                    id="amount"
-                    type="text"
-                      inputMode="numeric"
-                      autoComplete="off"
-                      placeholder="0"
-                      value={formData.amount ? parseInt(formData.amount).toLocaleString("es-CL") : ""}
-                    onChange={(e) => {
-                      const number = e.target.value.replace(/\D/g, "");
-                      setFormData({ ...formData, amount: number });
-                    }}
-                      className="h-10 rounded-xl pl-8 pr-6"
-                    required
-                  />
-                  </div>
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="detail" className="text-sm font-medium">
-                    Detalle {!formData.category_name && "(ayuda a categorizar)"}
-                  </Label>
-                  <Input
-                    id="detail"
-                    placeholder="Descripción de la transacción"
-                    value={formData.detail}
-                    onChange={(e) => setFormData({ ...formData, detail: e.target.value })}
-                    className="h-10 rounded-xl px-6"
-                  />
-                  
-                  {isAnalyzing && (
-                    <Alert className="rounded-2xl border-blue-200 bg-gradient-to-r from-blue-50/50 to-purple-50/50 dark:from-blue-950/20 dark:to-purple-950/20 shadow-sm">
-                      <div className="relative">
-                        <Sparkles className="h-4 w-4 text-blue-600 animate-pulse" />
-                        <div className="absolute inset-0 h-4 w-4 bg-blue-400 rounded-full animate-ping opacity-20" />
-                      </div>
-                      <AlertDescription className="text-sm text-blue-900 dark:text-blue-100 font-medium flex items-center gap-2">
-                        <span className="inline-block animate-pulse">🤖</span>
-                        Analizando con IA...
-                      </AlertDescription>
-                    </Alert>
-                  )}
-                  
-                  {!isAnalyzing && formData.detail && formData.detail.length >= 3 && !suggestion && !formData.category_name && !editingTransaction && (
-                    <Alert className="rounded-2xl border-gray-200 bg-gray-50/50 dark:bg-gray-950/20">
-                      <Info className="h-4 w-4 text-gray-600" />
-                      <AlertDescription className="text-xs text-gray-700 dark:text-gray-300">
-                        💡 No encontré una categoría sugerida. Intenta ser más específico o selecciona manualmente.
-                      </AlertDescription>
-                    </Alert>
-                  )}
-                  
-                  {suggestion && !isAnalyzing && (
-                    <Alert className="rounded-2xl border-purple-300 bg-gradient-to-r from-purple-50/80 to-pink-50/80 dark:from-purple-950/30 dark:to-pink-950/30 relative shadow-lg animate-in fade-in slide-in-from-top-2 duration-300">
-                      <div className="relative">
-                        <Sparkles className="h-4 w-4 text-purple-600 animate-pulse" />
-                        <div className="absolute -inset-1 bg-purple-400 rounded-full blur opacity-30 animate-pulse" />
-                      </div>
-                      <AlertDescription className="text-sm pr-8">
-                        <div className="space-y-3">
-                          <div className="flex items-center gap-2">
-                            <span className="text-lg">🎯</span>
-                            <p className="font-bold text-purple-900 dark:text-purple-100">
-                              Sugerencia IA ({suggestion.confidence}% confianza)
-                            </p>
-                          </div>
-                          <div className="flex flex-wrap gap-2 items-center">
-                            {!editingTransaction && !formData.type && (
-                              <Badge variant="default" className="rounded-full bg-purple-600 hover:bg-purple-700 shadow-sm">
-                                {suggestion.type}
-                              </Badge>
-                            )}
-                            <Badge variant="default" className="rounded-full bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 shadow-sm font-semibold">
-                              {suggestion.category}
-                            </Badge>
-                          </div>
-                          <p className="text-xs text-purple-800 dark:text-purple-200 italic">
-                            💡 {suggestion.reasons[0]}
-                          </p>
-                          {editingTransaction && (
-                            <p className="text-xs text-yellow-600 dark:text-yellow-400 font-medium">
-                              ⚠️ Solo se cambiará la categoría, no el tipo
-                            </p>
-                          )}
-                          <div className="flex gap-2 mt-3">
-                            <Button
-                              type="button"
-                              size="sm"
-                              onClick={applySuggestion}
-                              className="rounded-full h-9 text-xs font-semibold bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 shadow-md hover:shadow-lg transition-all"
-                            >
-                              ✨ Aplicar categoría
-                            </Button>
-                            <Button
-                              type="button"
-                              size="sm"
-                              variant="ghost"
-                              onClick={dismissSuggestion}
-                              className="rounded-full h-9 text-xs hover:bg-purple-100 dark:hover:bg-purple-900"
-                            >
-                              Ignorar
-                            </Button>
-                          </div>
-                        </div>
-                      </AlertDescription>
-                      <Button
-                        type="button"
-                        variant="ghost"
-                        size="sm"
-                        onClick={dismissSuggestion}
-                        className="absolute top-2 right-2 h-6 w-6 p-0 rounded-full hover:bg-purple-200 dark:hover:bg-purple-800"
-                      >
-                        <X className="h-3 w-3" />
-                      </Button>
-                    </Alert>
-                  )}
                 </div>
 
                 {/* Vincular a deuda pendiente — para Ingreso/Reembolso */}
