@@ -99,13 +99,6 @@ const TYPE_OPTIONS: {
   },
 ];
 
-const MODAL_VARIANT: Record<TransactionType, "income" | "expense" | "investment" | "default"> = {
-  Ingreso: "income",
-  Gasto: "expense",
-  Inversión: "investment",
-  Reembolso: "default",
-};
-
 export default function Transactions() {
   const {
     transactions,
@@ -614,7 +607,6 @@ export default function Transactions() {
             }}
             title={editingTransaction ? "Editar transacción" : "Nueva transacción"}
             maxWidth="lg"
-            variant={MODAL_VARIANT[formData.type]}
             footer={
               <Button
                 type="submit"
@@ -636,7 +628,7 @@ export default function Transactions() {
               </Button>
             }
           >
-            <form id="transaction-form" onSubmit={handleSubmit} className="space-y-4">
+            <form id="transaction-form" onSubmit={handleSubmit} className="space-y-4 pt-2">
                 {/* Tipo — segmented control */}
                 <div className="grid grid-cols-4 gap-1.5" role="radiogroup" aria-label="Tipo de transacción">
                   {TYPE_OPTIONS.map((opt) => {
