@@ -1,4 +1,4 @@
-import React, { useState, useCallback, useMemo, useEffect } from "react";
+import React, { useState, useCallback, useMemo, useEffect, useRef } from "react";
 import Layout from "@/components/Layout";
 import ConfirmDialog from "@/components/ConfirmDialog";
 import { BaseModal } from "@/components/BaseModal";
@@ -68,6 +68,7 @@ import { DateTimePicker, InlineDateTimePicker } from "@/components/ui/date-time-
 import { es } from "date-fns/locale";
 import { cn } from "@/lib/utils";
 import { usePrivacyMode } from "@/hooks/usePrivacyMode";
+import { useSearchFocusShortcut } from "@/hooks/useSearchFocusShortcut";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { useSoundFX } from "@/hooks/useSoundFX";
 import { ChevronDoubleLeftIcon, ChevronDoubleRightIcon } from "@heroicons/react/24/outline";
@@ -137,6 +138,8 @@ export default function TutoringClasses() {
   const [isStudentDialogOpen, setIsStudentDialogOpen] = useState(false);
   const [newStudentName, setNewStudentName] = useState("");
   const [searchValue, setSearchValue] = useState("");
+  const searchInputRef = useRef<HTMLInputElement>(null);
+  useSearchFocusShortcut(searchInputRef);
   const [statusFilter, setStatusFilter] = useState("all");
   const [studentFilter, setStudentFilter] = useState("all");
   const [paidFilter, setPaidFilter] = useState("all");
@@ -845,9 +848,13 @@ export default function TutoringClasses() {
             <div className="relative flex-shrink-0">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
               <Input
+                ref={searchInputRef}
                 placeholder="Buscar..."
                 value={searchValue}
                 onChange={(e) => setSearchValue(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === "Escape") e.currentTarget.blur();
+                }}
                 className="pl-9 w-36 sm:w-56"
               />
               {searchValue && (

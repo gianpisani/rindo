@@ -1,4 +1,4 @@
-import { useState, useCallback, useEffect } from "react";
+import { useState, useCallback, useEffect, useRef } from "react";
 import { useSearchParams } from "react-router-dom";
 import Layout from "@/components/Layout";
 import ConfirmDialog from "@/components/ConfirmDialog";
@@ -24,6 +24,7 @@ import {
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Plus, Download, TrendingUp, TrendingDown, PiggyBank, Upload, X, Sparkles, Info, Trash2, Search, CalendarClock, Users, CheckCircle2, Clock, Pencil, ArrowLeftRight, Building2, RefreshCw } from "lucide-react";
 import { useTransactions, Transaction } from "@/hooks/useTransactions";
+import { useSearchFocusShortcut } from "@/hooks/useSearchFocusShortcut";
 import { useCategories } from "@/hooks/useCategories";
 import { useCreditCards } from "@/hooks/useCreditCards";
 import { useSharedExpenses } from "@/hooks/useSharedExpenses";
@@ -95,6 +96,8 @@ export default function Transactions() {
   const [isImporting, setIsImporting] = useState(false);
   const [searchParams, setSearchParams] = useSearchParams();
   const [searchValue, setSearchValue] = useState(searchParams.get("search") || "");
+  const searchInputRef = useRef<HTMLInputElement>(null);
+  useSearchFocusShortcut(searchInputRef);
   const [highlightId, setHighlightId] = useState<string | null>(searchParams.get("highlight"));
   const [typeFilter, setTypeFilter] = useState("all");
   const [categoryFilter, setCategoryFilter] = useState("all");
@@ -1213,9 +1216,13 @@ export default function Transactions() {
           <div className="relative">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
             <Input
+              ref={searchInputRef}
               placeholder="Buscar..."
               value={searchValue}
               onChange={(e) => setSearchValue(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === "Escape") e.currentTarget.blur();
+              }}
               className="pl-9 w-48 sm:w-64"
             />
             {searchValue && (
@@ -1351,7 +1358,14 @@ export default function Transactions() {
         variant="destructive"
       />
       <AlertDialog open={!!confirmPaid} onOpenChange={() => setConfirmPaid(null)}>
-        <AlertDialogContent>
+        <AlertDialogContent
+          onKeyDown={(e) => {
+            if (e.key === "Enter") {
+              e.preventDefault();
+              handleMarkAsPaid();
+            }
+          }}
+        >
           <AlertDialogHeader>
             <AlertDialogTitle>¿Confirmar pago?</AlertDialogTitle>
             <AlertDialogDescription>

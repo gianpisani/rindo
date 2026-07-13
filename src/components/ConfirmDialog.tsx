@@ -1,4 +1,4 @@
-import { ReactNode } from "react";
+import { KeyboardEvent, ReactNode } from "react";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "./ui/dialog";
 import { Button } from "./ui/button";
 import { AlertTriangle } from "lucide-react";
@@ -35,9 +35,18 @@ export default function ConfirmDialog({
     onOpenChange(false);
   };
 
+  // Keyboard-first: Enter siempre ejecuta la acción primaria, sin importar
+  // qué botón tenga el foco (Radix enfoca "Cancelar" por defecto)
+  const handleKeyDown = (e: KeyboardEvent) => {
+    if (e.key === "Enter") {
+      e.preventDefault();
+      handleConfirm();
+    }
+  };
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[400px] w-[92vw] p-0 gap-0">
+      <DialogContent className="sm:max-w-[400px] w-[92vw] p-0 gap-0" onKeyDown={handleKeyDown}>
         <DialogHeader className="px-6 pt-6 pb-4 gap-3">
           {variant === "destructive" && (
             <div className="flex items-center justify-center w-12 h-12 rounded-full bg-destructive/10 mx-auto">

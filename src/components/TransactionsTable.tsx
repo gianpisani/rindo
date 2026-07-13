@@ -210,6 +210,10 @@ const typeAmountColors = {
   Reembolso: "text-amber-500",
 };
 
+// Signo contable de cada tipo (mismo criterio que balance = ingresos − gastos − inversiones)
+const typeSign = (type: Transaction["type"]) =>
+  type === "Gasto" || type === "Inversión" ? -1 : 1;
+
 // ── Editable cell components ───────────────────────────────────────────────
 
 interface EditableCellProps {
@@ -612,6 +616,12 @@ export function TransactionsTable({
 
   const formatCurrency = (amount: number) =>
     new Intl.NumberFormat("es-CL", { style: "currency", currency: "CLP", minimumFractionDigits: 0 }).format(amount);
+
+  const formatSigned = (amount: number) =>
+    amount > 0 ? `+${formatCurrency(amount)}` : formatCurrency(amount);
+
+  const signColor = (amount: number) =>
+    amount > 0 ? "text-emerald-500" : amount < 0 ? "text-rose-500" : "";
 
   const handleInlineUpdate = useCallback(async (id: string, field: keyof Transaction, value: unknown) => {
     await onUpdateSilent(id, { [field]: value });
@@ -1076,14 +1086,20 @@ export function TransactionsTable({
       ? selectedRows.map(r => r.original)
       : table.getRowModel().rows.map(r => r.original);
     if (rows.length === 0) return null;
-    const amounts = rows.map(r => r.amount);
+    // Montos con signo: Gasto/Inversión restan, Ingreso/Reembolso suman
+    const amounts = rows.map(r => typeSign(r.type) * r.amount);
     const sum = amounts.reduce((a, b) => a + b, 0);
+    const income = rows.reduce((a, r) => a + (typeSign(r.type) > 0 ? r.amount : 0), 0);
+    const expense = rows.reduce((a, r) => a + (typeSign(r.type) < 0 ? r.amount : 0), 0);
     return {
       count: rows.length,
       sum,
       avg: Math.round(sum / amounts.length),
       min: Math.min(...amounts),
       max: Math.max(...amounts),
+      income,
+      expense,
+      mixed: income > 0 && expense > 0,
     };
   }, [hasSelection, selectedRows, table.getRowModel().rows]);
 
@@ -1377,29 +1393,39 @@ export function TransactionsTable({
                   <div className="grid grid-cols-2 gap-x-4 gap-y-1">
                     <div className="flex items-center justify-between">
                       <span className="text-[10px] text-muted-foreground/60 uppercase tracking-wide">Suma</span>
-                      <span className={cn("text-[11px] font-mono font-bold tabular-nums", isPrivacyMode && "privacy-blur")}>
-                        {formatCurrency(summaryStats.sum)}
+                      <span className={cn("text-[11px] font-mono font-bold tabular-nums", signColor(summaryStats.sum), isPrivacyMode && "privacy-blur")}>
+                        {formatSigned(summaryStats.sum)}
                       </span>
                     </div>
                     <div className="flex items-center justify-between">
                       <span className="text-[10px] text-muted-foreground/60 uppercase tracking-wide">Prom</span>
-                      <span className={cn("text-[11px] font-mono font-semibold tabular-nums", isPrivacyMode && "privacy-blur")}>
-                        {formatCurrency(summaryStats.avg)}
+                      <span className={cn("text-[11px] font-mono font-semibold tabular-nums", signColor(summaryStats.avg), isPrivacyMode && "privacy-blur")}>
+                        {formatSigned(summaryStats.avg)}
                       </span>
                     </div>
                     <div className="flex items-center justify-between">
                       <span className="text-[10px] text-muted-foreground/60 uppercase tracking-wide">Min</span>
-                      <span className={cn("text-[11px] font-mono tabular-nums", isPrivacyMode && "privacy-blur")}>
-                        {formatCurrency(summaryStats.min)}
+                      <span className={cn("text-[11px] font-mono tabular-nums", signColor(summaryStats.min), isPrivacyMode && "privacy-blur")}>
+                        {formatSigned(summaryStats.min)}
                       </span>
                     </div>
                     <div className="flex items-center justify-between">
                       <span className="text-[10px] text-muted-foreground/60 uppercase tracking-wide">Max</span>
-                      <span className={cn("text-[11px] font-mono tabular-nums", isPrivacyMode && "privacy-blur")}>
-                        {formatCurrency(summaryStats.max)}
+                      <span className={cn("text-[11px] font-mono tabular-nums", signColor(summaryStats.max), isPrivacyMode && "privacy-blur")}>
+                        {formatSigned(summaryStats.max)}
                       </span>
                     </div>
                   </div>
+                  {summaryStats.mixed && (
+                    <div className="flex items-center justify-between mt-1.5 pt-1.5 border-t border-border/30">
+                      <span className={cn("text-[10px] font-mono tabular-nums text-emerald-500", isPrivacyMode && "privacy-blur")}>
+                        +{formatCurrency(summaryStats.income)}
+                      </span>
+                      <span className={cn("text-[10px] font-mono tabular-nums text-rose-500", isPrivacyMode && "privacy-blur")}>
+                        −{formatCurrency(summaryStats.expense)}
+                      </span>
+                    </div>
+                  )}
                 </div>
               )}
 
@@ -1834,28 +1860,44 @@ export function TransactionsTable({
                     {summaryStats.count} seleccionada{summaryStats.count > 1 ? "s" : ""}
                   </span>
                 )}
+                {summaryStats.mixed && (
+                  <>
+                    <div className="flex items-center gap-1">
+                      <span className="text-[11px] text-muted-foreground/60 uppercase tracking-wide">Ingresos</span>
+                      <span className={cn("text-xs font-mono font-semibold tabular-nums text-emerald-500", isPrivacyMode && "privacy-blur")}>
+                        +{formatCurrency(summaryStats.income)}
+                      </span>
+                    </div>
+                    <div className="flex items-center gap-1">
+                      <span className="text-[11px] text-muted-foreground/60 uppercase tracking-wide">Gastos</span>
+                      <span className={cn("text-xs font-mono font-semibold tabular-nums text-rose-500", isPrivacyMode && "privacy-blur")}>
+                        −{formatCurrency(summaryStats.expense)}
+                      </span>
+                    </div>
+                  </>
+                )}
                 <div className="flex items-center gap-1">
                   <span className="text-[11px] text-muted-foreground/60 uppercase tracking-wide">Min</span>
-                  <span className={cn("text-xs font-mono font-semibold tabular-nums", isPrivacyMode && "privacy-blur")}>
-                    {formatCurrency(summaryStats.min)}
+                  <span className={cn("text-xs font-mono font-semibold tabular-nums", signColor(summaryStats.min), isPrivacyMode && "privacy-blur")}>
+                    {formatSigned(summaryStats.min)}
                   </span>
                 </div>
                 <div className="flex items-center gap-1">
                   <span className="text-[11px] text-muted-foreground/60 uppercase tracking-wide">Max</span>
-                  <span className={cn("text-xs font-mono font-semibold tabular-nums", isPrivacyMode && "privacy-blur")}>
-                    {formatCurrency(summaryStats.max)}
+                  <span className={cn("text-xs font-mono font-semibold tabular-nums", signColor(summaryStats.max), isPrivacyMode && "privacy-blur")}>
+                    {formatSigned(summaryStats.max)}
                   </span>
                 </div>
                 <div className="flex items-center gap-1">
                   <span className="text-[11px] text-muted-foreground/60 uppercase tracking-wide">Prom</span>
-                  <span className={cn("text-xs font-mono font-semibold tabular-nums", isPrivacyMode && "privacy-blur")}>
-                    {formatCurrency(summaryStats.avg)}
+                  <span className={cn("text-xs font-mono font-semibold tabular-nums", signColor(summaryStats.avg), isPrivacyMode && "privacy-blur")}>
+                    {formatSigned(summaryStats.avg)}
                   </span>
                 </div>
                 <div className="flex items-center gap-1">
                   <span className="text-[11px] text-muted-foreground/60 uppercase tracking-wide">Suma</span>
-                  <span className={cn("text-xs font-mono font-bold tabular-nums", isPrivacyMode && "privacy-blur")}>
-                    {formatCurrency(summaryStats.sum)}
+                  <span className={cn("text-xs font-mono font-bold tabular-nums", signColor(summaryStats.sum), isPrivacyMode && "privacy-blur")}>
+                    {formatSigned(summaryStats.sum)}
                   </span>
                 </div>
               </div>
