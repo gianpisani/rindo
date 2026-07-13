@@ -194,14 +194,20 @@ Based on Indigo, Blue, Cyan palette
     --muted-foreground: oklch(0.705 0.015 286.067);
     --accent: oklch(0.21 0.006 285.885);
     --accent-foreground: oklch(0.985 0 0);
-    --destructive: 0.68 0.205 18; /* #fd5367 — mismo rojo que --accent-rose para que todos los rojos del dark coincidan */
-    --destructive-foreground: oklch(0.985 0 0);
+    /* Accent palette — colores vivos con el chroma AL LÍMITE DEL GAMUT.
+       El chroma nominal (--chroma-max) es imposible a propósito: el
+       navegador lo reduce hasta el borde real del gamut de la pantalla
+       (CSS Color 4 gamut mapping) preservando luminosidad y hue. Nada
+       precalculado: en pantallas P3 llega aún más lejos que en sRGB. */
+    --chroma-max: 0.37;
+    --accent-rose: 0.68 var(--chroma-max) 18;
+    --accent-emerald: 0.8 var(--chroma-max) 162;
+    --accent-blue: 0.66 var(--chroma-max) 259;
+    --accent-amber: 0.83 var(--chroma-max) 78;
 
-    /* Accent palette — versiones vibrantes para fondos oscuros */
-    --accent-rose: 0.68 0.205 18;    /* #fd5367 */
-    --accent-emerald: 0.8 0.171 162; /* #1ddf9b */
-    --accent-blue: 0.66 0.177 259;   /* #498ffc */
-    --accent-amber: 0.83 0.154 78;   /* #feb93c */
+    /* Un solo rojo en dark: destructive ES el rose accent */
+    --destructive: var(--accent-rose);
+    --destructive-foreground: oklch(0.985 0 0);
 
     --border: oklch(1 0 0 / 8%);
     --input: oklch(1 0 0 / 12%);
@@ -215,11 +221,11 @@ Based on Indigo, Blue, Cyan palette
     --info: 190 92% 55%;
     --info-foreground: 0 0% 100%;
 
-    /* Semantic chart colors (hex for Recharts compatibility) */
-    --color-income: #1ddf9b;
-    --color-expense: #fd5367;
-    --color-investment: #55b3fc;
-    --color-balance: #feb93c;
+    /* Semantic chart colors — referencian los accents, sin duplicar valores */
+    --color-income: oklch(var(--accent-emerald));
+    --color-expense: oklch(var(--accent-rose));
+    --color-investment: oklch(var(--accent-blue));
+    --color-balance: oklch(var(--accent-amber));
     --color-muted-axis: #64748b;
     --color-grid: #374151;
 
