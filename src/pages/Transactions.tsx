@@ -36,6 +36,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { categorizeTransaction, debounce } from "@/lib/categorizer";
 import { cn } from "@/lib/utils";
+import { CategorySelect } from "@/components/CategorySelect";
 import { DateTimePicker } from "@/components/ui/date-time-picker";
 
 const typeIcons = {
@@ -741,23 +742,17 @@ export default function Transactions() {
                     (formData.type === "Inversión" || creditCards.length === 0) && "col-span-2"
                   )}>
                     <Label htmlFor="category" className="text-xs font-medium text-muted-foreground">Categoría</Label>
-                    <Select
+                    <CategorySelect
                       value={formData.category_name}
-                      onValueChange={(value) => setFormData({ ...formData, category_name: value })}
-                    >
-                      <SelectTrigger className="h-10 rounded-xl px-3">
-                        <SelectValue placeholder="Seleccionar" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {filteredCategories
-                          .filter(cat => cat.name && cat.name.trim().length > 0)
-                          .map((cat) => (
-                            <SelectItem key={cat.id} value={cat.name}>
-                              {cat.icon || getCategoryIcon(cat.name)} {cat.name}
-                            </SelectItem>
-                          ))}
-                      </SelectContent>
-                    </Select>
+                      onChange={(value) => setFormData({ ...formData, category_name: value })}
+                      options={filteredCategories
+                        .filter(cat => cat.name && cat.name.trim().length > 0)
+                        .map((cat) => ({
+                          value: cat.name,
+                          label: cat.name,
+                          emoji: cat.icon || getCategoryIcon(cat.name),
+                        }))}
+                    />
                   </div>
                   {formData.type !== "Inversión" && creditCards.length > 0 && (
                     <div className="space-y-2">
