@@ -378,7 +378,19 @@ export default function Transactions() {
     setDebtToLink(null);
   };
 
+  // Ghost click de iOS: al tocar "Eliminar" (en el menú de una card, el
+  // panel de selección o el propio diálogo de confirmación) el overlay se
+  // desmonta y el click retrasado del navegador aterriza en la card que
+  // quedó debajo, abriendo Editar sin querer. Cualquier paso del flujo de
+  // eliminar arma esta ventana y handleEdit la respeta.
+  const editGhostGuardRef = useRef(0);
+  const armEditGuard = () => {
+    editGhostGuardRef.current = Date.now();
+  };
+
   const handleEdit = (transaction: Transaction) => {
+    if (Date.now() - editGhostGuardRef.current < 800) return;
+    if (confirmDelete.open || confirmDeleteMultiple.open) return;
     setEditingTransaction(transaction);
     const dateObj = new Date(transaction.date);
 
@@ -398,6 +410,7 @@ export default function Transactions() {
   };
 
   const handleDelete = (id: string) => {
+    armEditGuard();
     setConfirmDelete({ open: true, id });
   };
 
@@ -414,6 +427,7 @@ export default function Transactions() {
 
   // Delete multiple handler
   const handleDeleteMultiple = useCallback(async (ids: string[]) => {
+    armEditGuard();
     setConfirmDeleteMultiple({ open: true, ids });
   }, []);
 
@@ -1358,7 +1372,10 @@ export default function Transactions() {
 
       <ConfirmDialog
         open={confirmDelete.open}
-        onOpenChange={(open) => setConfirmDelete({ open, id: null })}
+        onOpenChange={(open) => {
+          if (!open) armEditGuard();
+          setConfirmDelete({ open, id: open ? confirmDelete.id : null });
+        }}
         onConfirm={confirmDeleteAction}
         title="¿Eliminar transacción?"
         description="Esta acción no se puede deshacer."
@@ -1387,7 +1404,10 @@ export default function Transactions() {
 
       <ConfirmDialog
         open={confirmDeleteMultiple.open}
-        onOpenChange={(open) => setConfirmDeleteMultiple({ open, ids: open ? confirmDeleteMultiple.ids : [] })}
+        onOpenChange={(open) => {
+          if (!open) armEditGuard();
+          setConfirmDeleteMultiple({ open, ids: open ? confirmDeleteMultiple.ids : [] });
+        }}
         onConfirm={confirmDeleteMultipleAction}
         title={`¿Eliminar ${confirmDeleteMultiple.ids.length} transacciones?`}
         description="Esta acción eliminará las transacciones seleccionadas. Podrás deshacerlo desde el toast de confirmación."
