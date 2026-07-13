@@ -194,16 +194,16 @@ Based on Indigo, Blue, Cyan palette
     --muted-foreground: oklch(0.705 0.015 286.067);
     --accent: oklch(0.21 0.006 285.885);
     --accent-foreground: oklch(0.985 0 0);
-    /* Accent palette — colores vivos con el chroma AL LÍMITE DEL GAMUT.
-       El chroma nominal (--chroma-max) es imposible a propósito: el
-       navegador lo reduce hasta el borde real del gamut de la pantalla
-       (CSS Color 4 gamut mapping) preservando luminosidad y hue. Nada
-       precalculado: en pantallas P3 llega aún más lejos que en sRGB. */
-    --chroma-max: 0.37;
-    --accent-rose: 0.68 var(--chroma-max) 18;
-    --accent-emerald: 0.8 var(--chroma-max) 162;
-    --accent-blue: 0.66 var(--chroma-max) 259;
-    --accent-amber: 0.83 var(--chroma-max) 78;
+    /* Accent palette — un solo token de saturación para todos los accents:
+       mismo chroma OKLCH = viveza perceptualmente pareja entre colores.
+       Es LA perilla del sistema: subir para más punch, bajar para más
+       elegancia. Si algún hue no alcanza ese chroma en la pantalla, el
+       gamut mapping de CSS Color 4 lo reduce solo (preservando L y H). */
+    --accent-chroma: 0.16;
+    --accent-rose: 0.68 var(--accent-chroma) 18;
+    --accent-emerald: 0.8 var(--accent-chroma) 162;
+    --accent-blue: 0.66 var(--accent-chroma) 259;
+    --accent-amber: 0.83 var(--accent-chroma) 78;
 
     /* Un solo rojo en dark: destructive ES el rose accent */
     --destructive: var(--accent-rose);
