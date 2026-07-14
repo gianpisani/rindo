@@ -12,7 +12,7 @@ import {
 import { useCategoryInsights } from "@/hooks/useCategoryInsights";
 import { useCategoryLimits } from "@/hooks/useCategoryLimits";
 import { useMonthlyBudget } from "@/hooks/useMonthlyBudget";
-import { useTransactions } from "@/hooks/useTransactions";
+import { useTransactions, Transaction } from "@/hooks/useTransactions";
 import { useCategories } from "@/hooks/useCategories";
 import { usePrivacyMode } from "@/hooks/usePrivacyMode";
 import { cn } from "@/lib/utils";
@@ -32,7 +32,14 @@ import {
   BarChart3,
   SlidersHorizontal,
 } from "lucide-react";
-import { format, addMonths, subMonths, getDaysInMonth } from "date-fns";
+import {
+  format,
+  addMonths,
+  subMonths,
+  getDaysInMonth,
+  isSameMonth,
+  setDate,
+} from "date-fns";
 import { es } from "date-fns/locale";
 import {
   Dialog,
@@ -56,10 +63,13 @@ import {
 } from "./ui/popover";
 import { Checkbox } from "./ui/checkbox";
 import {
+  ComposedChart,
   LineChart,
   Line,
+  Area,
   XAxis,
   YAxis,
+  ReferenceLine,
   Tooltip as ChartTooltip,
   ResponsiveContainer,
   Legend,
@@ -85,6 +95,8 @@ const formatCompact = (value: number) =>
   }).format(value);
 
 const FALLBACK_COLOR = "#6b7280";
+const ROSE = "oklch(var(--accent-rose))";
+const AMBER = "oklch(var(--accent-amber))";
 
 // ─── Section Card ────────────────────────────────────────
 
@@ -129,7 +141,7 @@ function SectionCard({
   );
 }
 
-// ─── Custom Chart Tooltip ────────────────────────────────
+// ─── Evolution Chart Tooltip ─────────────────────────────
 
 function EvolutionTooltip({
   active,
@@ -158,6 +170,83 @@ function EvolutionTooltip({
   );
 }
 
+// ─── Envelope Sparkline ──────────────────────────────────
+// Mini burn-down: cumulative category spending vs the ideal
+// diagonal towards its limit. Pure SVG, no chart lib overhead.
+
+function EnvelopeSparkline({
+  txs,
+  daysInMonth,
+  endDay,
+  limit,
+  color,
+}: {
+  txs: Transaction[];
+  daysInMonth: number;
+  endDay: number;
+  limit: number;
+  color: string;
+}) {
+  const points = useMemo(() => {
+    const daily = new Array(daysInMonth + 1).fill(0);
+    txs.forEach((t) => {
+      const day = new Date(t.date).getDate();
+      if (day >= 1 && day <= daysInMonth) daily[day] += Number(t.amount);
+    });
+    const cumulative = [0];
+    let cum = 0;
+    for (let d = 1; d <= daysInMonth; d++) {
+      cum += daily[d];
+      cumulative.push(cum);
+    }
+    return cumulative;
+  }, [txs, daysInMonth]);
+
+  const W = 100;
+  const H = 28;
+  const scale = Math.max(limit, points[daysInMonth]) || 1;
+  const x = (d: number) => (d / daysInMonth) * W;
+  const y = (v: number) => H - 2 - (v / scale) * (H - 4);
+
+  const actual = Array.from({ length: endDay + 1 }, (_, d) =>
+    `${x(d).toFixed(1)},${y(points[d]).toFixed(1)}`
+  ).join(" ");
+
+  return (
+    <svg
+      viewBox={`0 0 ${W} ${H}`}
+      preserveAspectRatio="none"
+      className="w-full h-7"
+      aria-hidden="true"
+    >
+      {/* Ideal pace towards the limit */}
+      <line
+        x1={0}
+        y1={y(0)}
+        x2={W}
+        y2={y(limit)}
+        stroke="currentColor"
+        strokeDasharray="3 3"
+        vectorEffect="non-scaling-stroke"
+        className="text-border"
+      />
+      <polygon
+        points={`0,${H} ${actual} ${x(endDay).toFixed(1)},${H}`}
+        fill={color}
+        opacity={0.08}
+      />
+      <polyline
+        points={actual}
+        fill="none"
+        stroke={color}
+        strokeWidth={1.5}
+        strokeLinejoin="round"
+        vectorEffect="non-scaling-stroke"
+      />
+    </svg>
+  );
+}
+
 // ─── Main Component ──────────────────────────────────────
 
 export function CategoryInsightsView() {
@@ -169,45 +258,146 @@ export function CategoryInsightsView() {
   const [selectedMonth, setSelectedMonth] = useState(new Date());
   const [isLimitDialogOpen, setIsLimitDialogOpen] = useState(false);
   const [editingBudget, setEditingBudget] = useState(false);
-  const [hoveredCategory, setHoveredCategory] = useState<string | null>(null);
+  const [budgetInput, setBudgetInput] = useState("");
+  const [simInput, setSimInput] = useState("");
+  const [simCategory, setSimCategory] = useState<string>("none");
   const [selectedChartCategories, setSelectedChartCategories] = useState<Set<string>>(new Set());
   const [chartMonths, setChartMonths] = useState(6);
   const [showAverage, setShowAverage] = useState(false);
-  const [budgetInput, setBudgetInput] = useState("");
   const [limitFormData, setLimitFormData] = useState({
     category: "",
     limit: "",
     alertPercentage: 80,
   });
 
-  const { categorySpending, monthlyComparison, totalSpending } =
-    useCategoryInsights(transactions, limits, selectedMonth, chartMonths);
+  const { categorySpending, monthlyComparison } = useCategoryInsights(
+    transactions,
+    limits,
+    selectedMonth,
+    chartMonths
+  );
 
-  // Budget management
   const totalAllocated = limits.reduce((s, l) => s + l.monthly_limit, 0);
   const totalBudget = budget?.total_budget || 0;
   const unallocated = totalBudget - totalAllocated;
-  const usagePercent = totalBudget > 0 ? (totalSpending / totalBudget) * 100 : 0;
-  const remaining = totalBudget - totalSpending;
 
   const isCurrentMonth =
     format(selectedMonth, "yyyy-MM") === format(new Date(), "yyyy-MM");
 
-  // Month pace: how far into the month we are (only meaningful for the current month)
-  const elapsedFraction = useMemo(() => {
-    const now = new Date();
-    return Math.min(now.getDate() / getDaysInMonth(now), 1);
-  }, []);
-  const elapsedPercent = elapsedFraction * 100;
+  // ── Month clock ──
+  const daysInMonth = getDaysInMonth(selectedMonth);
+  const todayDay = isCurrentMonth ? new Date().getDate() : daysInMonth;
+  const daysLeft = Math.max(daysInMonth - todayDay + 1, 1); // includes today
 
-  // Projected month-end spending at the current pace
-  const projectedSpending =
-    isCurrentMonth && elapsedFraction > 0.08 && totalSpending > 0
-      ? totalSpending / elapsedFraction
+  // ── Daily net spending (Gastos minus reimbursements, by day) ──
+  const dailyNet = useMemo(() => {
+    const arr = new Array(daysInMonth + 1).fill(0);
+    transactions.forEach((t) => {
+      const d = new Date(t.date);
+      if (!isSameMonth(d, selectedMonth)) return;
+      const day = d.getDate();
+      if (t.type === "Gasto") arr[day] += Number(t.amount);
+      else if (t.type === "Ingreso" && t.reimbursement_for_category)
+        arr[day] -= Number(t.amount);
+    });
+    return arr;
+  }, [transactions, selectedMonth, daysInMonth]);
+
+  // ── Simulation ("¿Me alcanza?") ──
+  const simAmount = parseInt(simInput.replace(/\D/g, ""), 10) || 0;
+  const isSimulating = isCurrentMonth && simAmount > 0;
+
+  // ── Burn-down series ──
+  const {
+    chartData,
+    spent,
+    projectedEnd,
+    maxY,
+  } = useMemo(() => {
+    let cum = 0;
+    let cumAtToday = 0;
+    for (let day = 1; day <= todayDay; day++) cum += dailyNet[day];
+    cumAtToday = cum;
+    for (let day = todayDay + 1; day <= daysInMonth; day++) cum += dailyNet[day];
+    const cumEnd = cum;
+
+    const pace = todayDay > 0 ? cumAtToday / todayDay : 0;
+    const sim = isCurrentMonth ? simAmount : 0;
+    const projectedEnd = isCurrentMonth
+      ? cumAtToday + sim + pace * (daysInMonth - todayDay)
       : null;
-  const projectionOnTrack =
-    projectedSpending !== null && projectedSpending <= totalBudget;
 
+    const rows = [];
+    let running = 0;
+    for (let day = 1; day <= daysInMonth; day++) {
+      running += dailyNet[day];
+      rows.push({
+        day,
+        spentDay: dailyNet[day],
+        actual: !isCurrentMonth || day <= todayDay ? running : null,
+        ideal: totalBudget > 0 ? (totalBudget * day) / daysInMonth : null,
+        projected:
+          isCurrentMonth && day >= todayDay
+            ? cumAtToday + sim + pace * (day - todayDay)
+            : null,
+      });
+    }
+
+    const spent = isCurrentMonth ? cumAtToday : cumEnd;
+    const maxY =
+      Math.max(totalBudget, cumEnd, projectedEnd ?? 0, 1) * 1.06;
+
+    return { chartData: rows, spent, projectedEnd, maxY };
+  }, [dailyNet, daysInMonth, todayDay, isCurrentMonth, totalBudget, simAmount]);
+
+  const remaining = totalBudget - spent;
+  const usagePercent = totalBudget > 0 ? (spent / totalBudget) * 100 : 0;
+  const perDay = Math.max(0, remaining) / daysLeft;
+  const perDayAfterSim = Math.max(0, remaining - simAmount) / daysLeft;
+  const heroPerDay = isSimulating ? perDayAfterSim : perDay;
+  const projectionOnTrack =
+    projectedEnd !== null && totalBudget > 0 && projectedEnd <= totalBudget;
+
+  // ── Simulation verdict ──
+  const simEnvelope =
+    simCategory !== "none"
+      ? categorySpending.find((c) => c.category === simCategory && c.limit)
+      : undefined;
+
+  const simVerdict = useMemo(() => {
+    if (!isSimulating || totalBudget <= 0) return null;
+    const afterRemaining = remaining - simAmount;
+    const envelopeAfter = simEnvelope
+      ? simEnvelope.effectiveAmount + simAmount
+      : null;
+    const envelopeBreaks =
+      simEnvelope && envelopeAfter! > simEnvelope.limit!;
+
+    if (afterRemaining < 0) {
+      return {
+        tone: "rose" as const,
+        text: `No alcanza: te pasarías del presupuesto por ${formatCompact(-afterRemaining)}.`,
+      };
+    }
+    if (envelopeBreaks) {
+      return {
+        tone: "amber" as const,
+        text: `Alcanza, pero ${simEnvelope!.category} quedaría excedida en ${formatCompact(envelopeAfter! - simEnvelope!.limit!)}. Tu día baja a ${formatCurrency(Math.round(perDayAfterSim))}.`,
+      };
+    }
+    if (perDayAfterSim < perDay * 0.55) {
+      return {
+        tone: "amber" as const,
+        text: `Alcanza, pero aprieta: tu día baja de ${formatCurrency(Math.round(perDay))} a ${formatCurrency(Math.round(perDayAfterSim))}.`,
+      };
+    }
+    return {
+      tone: "emerald" as const,
+      text: `Te alcanza. Tu día queda en ${formatCurrency(Math.round(perDayAfterSim))}${simEnvelope ? ` y ${simEnvelope.category} al ${Math.round((envelopeAfter! / simEnvelope.limit!) * 100)}%` : ""}.`,
+    };
+  }, [isSimulating, totalBudget, remaining, simAmount, simEnvelope, perDay, perDayAfterSim]);
+
+  // ── Budget CRUD ──
   const handleSaveBudget = async () => {
     const value = parseInt(budgetInput.replace(/\D/g, ""), 10);
     if (!isNaN(value) && value > 0) {
@@ -221,7 +411,7 @@ export function CategoryInsightsView() {
     setEditingBudget(true);
   };
 
-  // Limit CRUD
+  // ── Limit CRUD ──
   const handleSetLimit = (category: string) => {
     const existingLimit = limits.find((l) => l.category_name === category);
     setLimitFormData({
@@ -265,42 +455,18 @@ export function CategoryInsightsView() {
   const categoryEmoji = (name: string) =>
     categories.find((c) => c.name === name)?.icon || "🏷️";
 
-  // Categories with limits, most pressured first
-  const categoriesWithLimits = useMemo(() => {
+  // Envelopes: categories with limits, most pressured first
+  const envelopes = useMemo(() => {
     return categorySpending
       .filter((c) => c.limit)
-      .sort((a, b) => {
-        const usageA = a.effectiveAmount / a.limit!;
-        const usageB = b.effectiveAmount / b.limit!;
-        return usageB - usageA;
-      });
+      .sort(
+        (a, b) => b.effectiveAmount / b.limit! - a.effectiveAmount / a.limit!
+      );
   }, [categorySpending]);
 
   const categoriesWithoutLimits = categorySpending.filter(
     (c) => !c.limit && c.count > 0
   );
-
-  // Hero runway: spending segments per category against the total budget.
-  // When overspent, the scale grows so segments always fit the track.
-  const runwayScale = Math.max(totalBudget, totalSpending);
-  const runwaySegments = useMemo(() => {
-    if (runwayScale <= 0) return [];
-    return categorySpending
-      .filter((c) => c.effectiveAmount > 0)
-      .sort((a, b) => b.effectiveAmount - a.effectiveAmount)
-      .map((c) => ({
-        category: c.category,
-        amount: c.effectiveAmount,
-        width: (c.effectiveAmount / runwayScale) * 100,
-        percentOfBudget:
-          totalBudget > 0 ? (c.effectiveAmount / totalBudget) * 100 : 0,
-        color: categoryColor(c.category),
-      }));
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [categorySpending, runwayScale, totalBudget, categories]);
-
-  const isOverBudget = totalBudget > 0 && totalSpending > totalBudget;
-  const budgetMarkPercent = isOverBudget ? (totalBudget / runwayScale) * 100 : null;
 
   // ── Evolution chart data ──
   const top5Categories = useMemo(() => {
@@ -367,21 +533,76 @@ export function CategoryInsightsView() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [availableChartCategories, categories]);
 
-  // Month navigation
   const changeMonth = (delta: number) => {
     setSelectedMonth((prev) =>
       delta > 0 ? addMonths(prev, 1) : subMonths(prev, 1)
     );
   };
 
-  const remainingLabel =
-    remaining >= 0
-      ? isCurrentMonth
-        ? "Disponible este mes"
-        : "Sobró del presupuesto"
-      : isCurrentMonth
-      ? "Presupuesto excedido"
-      : "Excedido ese mes";
+  // ── Burn-down tooltip (needs selectedMonth from closure) ──
+  function BurndownTooltip({ active, payload }: TooltipProps<number, string>) {
+    if (!active || !payload?.length) return null;
+    const row = payload[0].payload as (typeof chartData)[number];
+    const isFuture = isCurrentMonth && row.day > todayDay;
+    const cumulative = isFuture ? row.projected : row.actual;
+    const delta =
+      !isFuture && row.ideal !== null && row.actual !== null
+        ? row.actual - row.ideal
+        : null;
+    return (
+      <div className="bg-card border border-border/50 rounded-xl p-3 shadow-lg">
+        <p className="font-semibold text-sm text-foreground capitalize mb-1">
+          {format(setDate(selectedMonth, row.day), "EEEE d 'de' MMMM", {
+            locale: es,
+          })}
+        </p>
+        <div className={cn("space-y-0.5 text-xs", isPrivacyMode && "privacy-blur")}>
+          {isFuture ? (
+            <p className="text-muted-foreground">
+              Proyección:{" "}
+              <span className="font-mono font-semibold tabular-nums text-foreground">
+                ~{formatCurrency(Math.round(cumulative ?? 0))}
+              </span>
+            </p>
+          ) : (
+            <>
+              {row.spentDay !== 0 && (
+                <p className="text-muted-foreground">
+                  Gastado ese día:{" "}
+                  <span className="font-mono font-semibold tabular-nums text-foreground">
+                    {formatCurrency(row.spentDay)}
+                  </span>
+                </p>
+              )}
+              <p className="text-muted-foreground">
+                Acumulado:{" "}
+                <span className="font-mono font-semibold tabular-nums text-foreground">
+                  {formatCurrency(Math.round(cumulative ?? 0))}
+                </span>
+              </p>
+              {delta !== null && Math.abs(delta) > 500 && (
+                <p
+                  className={cn(
+                    "font-medium",
+                    delta > 0 ? "text-rose-500" : "text-emerald-600 dark:text-emerald-500"
+                  )}
+                >
+                  {formatCompact(Math.abs(delta))}{" "}
+                  {delta > 0 ? "sobre el ritmo" : "bajo el ritmo"}
+                </p>
+              )}
+            </>
+          )}
+        </div>
+      </div>
+    );
+  }
+
+  const xTicks = useMemo(() => {
+    const ticks = [1, 5, 10, 15, 20, 25];
+    if (!ticks.includes(daysInMonth)) ticks.push(daysInMonth);
+    return ticks.filter((t) => t <= daysInMonth);
+  }, [daysInMonth]);
 
   return (
     <div className="space-y-4">
@@ -433,12 +654,12 @@ export function CategoryInsightsView() {
         </div>
       </div>
 
-      {/* ─── Hero: budget runway ────────────────────────── */}
+      {/* ─── Copiloto ────────────────────────────────────── */}
       {isLoading ? (
         <GlassCard className="px-4 py-5 sm:px-6">
           <Skeleton className="h-3 w-32 mb-2" />
-          <Skeleton className="h-9 w-48 mb-5" />
-          <Skeleton className="h-3 w-full rounded-full mb-3" />
+          <Skeleton className="h-10 w-56 mb-5" />
+          <Skeleton className="h-[220px] w-full rounded-lg mb-3" />
           <Skeleton className="h-3 w-64" />
         </GlassCard>
       ) : totalBudget <= 0 ? (
@@ -451,9 +672,9 @@ export function CategoryInsightsView() {
             <h2 className="text-base font-semibold mb-1">
               Define tu presupuesto mensual
             </h2>
-            <p className="text-xs text-muted-foreground mb-4 max-w-[280px]">
-              Es el total que planeas gastar cada mes. Después lo repartes
-              entre tus categorías.
+            <p className="text-xs text-muted-foreground mb-4 max-w-[300px]">
+              Es el total que planeas gastar cada mes. Con eso te digo cuánto
+              puedes gastar cada día sin romper el mes.
             </p>
             <div className="flex items-center gap-2 w-full max-w-[280px]">
               <div className="relative flex-1">
@@ -489,30 +710,79 @@ export function CategoryInsightsView() {
         <GlassCard className="relative overflow-hidden">
           <div className="absolute inset-0 bg-gradient-to-br from-primary/[0.04] via-transparent to-transparent pointer-events-none" />
           <div className="relative px-4 py-4 sm:px-6 sm:py-5">
-            {/* Top row: remaining + editable budget */}
-            <div className="flex items-start justify-between gap-4">
+            {/* Top row: today's allowance + editable budget */}
+            <div className="flex items-start justify-between gap-4 flex-wrap">
               <div>
-                <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider mb-1">
-                  {remainingLabel}
+                <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider mb-1 flex items-center gap-1.5">
+                  {isCurrentMonth
+                    ? remaining >= 0
+                      ? "Puedes gastar hoy"
+                      : "Presupuesto excedido"
+                    : remaining >= 0
+                    ? "Sobró del presupuesto"
+                    : "Excedido ese mes"}
+                  {isSimulating && (
+                    <span className="text-amber-500 normal-case tracking-normal font-medium">
+                      · simulando
+                    </span>
+                  )}
                 </p>
-                <div
+                {isCurrentMonth && remaining >= 0 ? (
+                  <div className="flex items-baseline gap-1.5">
+                    <span
+                      className={cn(
+                        "text-3xl sm:text-4xl font-bold font-mono tabular-nums tracking-tight leading-none",
+                        isSimulating && "text-amber-500",
+                        isPrivacyMode && "privacy-blur"
+                      )}
+                    >
+                      $
+                      <NumberFlow
+                        value={Math.round(heroPerDay)}
+                        format={{
+                          style: "decimal",
+                          minimumFractionDigits: 0,
+                          maximumFractionDigits: 0,
+                        }}
+                        locales="es-CL"
+                      />
+                    </span>
+                    <span className="text-sm font-medium text-muted-foreground">
+                      /día
+                    </span>
+                  </div>
+                ) : (
+                  <div
+                    className={cn(
+                      "text-3xl sm:text-4xl font-bold font-mono tabular-nums tracking-tight leading-none",
+                      remaining < 0 && "text-rose-500",
+                      isPrivacyMode && "privacy-blur"
+                    )}
+                  >
+                    {remaining < 0 && "−"}$
+                    <NumberFlow
+                      value={Math.abs(Math.round(remaining))}
+                      format={{
+                        style: "decimal",
+                        minimumFractionDigits: 0,
+                        maximumFractionDigits: 0,
+                      }}
+                      locales="es-CL"
+                    />
+                  </div>
+                )}
+                <p
                   className={cn(
-                    "text-3xl sm:text-4xl font-bold font-mono tabular-nums tracking-tight leading-none",
-                    remaining < 0 && "text-rose-500",
+                    "text-[11px] text-muted-foreground mt-1.5 font-mono tabular-nums",
                     isPrivacyMode && "privacy-blur"
                   )}
                 >
-                  {remaining < 0 && "−"}$
-                  <NumberFlow
-                    value={Math.abs(remaining)}
-                    format={{
-                      style: "decimal",
-                      minimumFractionDigits: 0,
-                      maximumFractionDigits: 0,
-                    }}
-                    locales="es-CL"
-                  />
-                </div>
+                  {isCurrentMonth
+                    ? remaining >= 0
+                      ? `queda ${formatCompact(remaining)} ÷ ${daysLeft} ${daysLeft === 1 ? "día" : "días"}`
+                      : `a ${daysLeft} ${daysLeft === 1 ? "día" : "días"} del cierre`
+                    : `gastaste ${formatCompact(spent)} de ${formatCompact(totalBudget)}`}
+                </p>
               </div>
 
               <div className="text-right shrink-0">
@@ -578,75 +848,114 @@ export function CategoryInsightsView() {
               </div>
             </div>
 
-            {/* Runway bar */}
-            <div className={cn("mt-5", isCurrentMonth ? "mb-5" : "mb-1")}>
-              <div className="relative">
-                <div className="h-3 rounded-full bg-muted/60 flex overflow-hidden">
-                  {runwaySegments.map((seg) => (
-                    <Tooltip key={seg.category}>
-                      <TooltipTrigger asChild>
-                        <div
-                          className={cn(
-                            "h-full transition-all duration-500 cursor-default",
-                            hoveredCategory && hoveredCategory !== seg.category
-                              ? "opacity-30"
-                              : "opacity-100"
-                          )}
-                          style={{
-                            width: `${seg.width}%`,
-                            backgroundColor: seg.color,
-                          }}
-                          onMouseEnter={() => setHoveredCategory(seg.category)}
-                          onMouseLeave={() => setHoveredCategory(null)}
-                        />
-                      </TooltipTrigger>
-                      <TooltipContent side="top">
-                        <p className="text-xs font-medium">
-                          {categoryEmoji(seg.category)} {seg.category}
-                          <span className="mx-1 text-muted-foreground">·</span>
-                          {formatCompact(seg.amount)}
-                          {totalBudget > 0 && (
-                            <span className="text-muted-foreground">
-                              {" "}
-                              ({seg.percentOfBudget.toFixed(0)}%)
-                            </span>
-                          )}
-                        </p>
-                      </TooltipContent>
-                    </Tooltip>
-                  ))}
-                </div>
-
-                {/* Budget boundary when overspent */}
-                {budgetMarkPercent !== null && (
-                  <div
-                    className="absolute -top-0.5 -bottom-0.5 w-0.5 rounded-full bg-background"
-                    style={{ left: `${budgetMarkPercent}%` }}
+            {/* Burn-down chart */}
+            <div className={cn("mt-4 -mx-2", isPrivacyMode && "privacy-blur")}>
+              <ResponsiveContainer width="100%" height={220}>
+                <ComposedChart
+                  data={chartData}
+                  margin={{ top: 12, right: 8, bottom: 0, left: 8 }}
+                >
+                  <defs>
+                    <linearGradient id="burnFill" x1="0" y1="0" x2="0" y2="1">
+                      <stop
+                        offset="0%"
+                        stopColor={CHART_COLORS.expense}
+                        stopOpacity={0.14}
+                      />
+                      <stop
+                        offset="100%"
+                        stopColor={CHART_COLORS.expense}
+                        stopOpacity={0}
+                      />
+                    </linearGradient>
+                  </defs>
+                  <XAxis
+                    dataKey="day"
+                    ticks={xTicks}
+                    stroke={CHART_COLORS.mutedAxis}
+                    fontSize={10}
+                    tickLine={false}
+                    axisLine={false}
                   />
-                )}
+                  <YAxis hide domain={[0, maxY]} />
+                  <ChartTooltip content={<BurndownTooltip />} />
 
-                {/* Today pace marker */}
-                {isCurrentMonth && (
-                  <>
-                    <div
-                      className="absolute -top-1 -bottom-1 w-0.5 rounded-full bg-foreground/60"
-                      style={{ left: `${elapsedPercent}%` }}
-                    />
-                    <span
-                      className="absolute top-full mt-1 text-[9px] font-semibold uppercase tracking-wider text-muted-foreground -translate-x-1/2"
-                      style={{
-                        left: `${Math.min(Math.max(elapsedPercent, 3), 97)}%`,
+                  {/* Budget ceiling */}
+                  <ReferenceLine
+                    y={totalBudget}
+                    stroke={CHART_COLORS.mutedAxis}
+                    strokeDasharray="2 5"
+                    strokeOpacity={0.6}
+                    label={{
+                      value: "Presupuesto",
+                      position: "insideTopRight",
+                      fontSize: 9,
+                      fill: CHART_COLORS.mutedAxis,
+                    }}
+                  />
+
+                  {/* Today marker */}
+                  {isCurrentMonth && (
+                    <ReferenceLine
+                      x={todayDay}
+                      stroke={CHART_COLORS.mutedAxis}
+                      strokeOpacity={0.45}
+                      label={{
+                        value: "Hoy",
+                        position: "insideBottom",
+                        fontSize: 9,
+                        fill: CHART_COLORS.mutedAxis,
                       }}
-                    >
-                      Hoy
-                    </span>
-                  </>
-                )}
-              </div>
+                    />
+                  )}
+
+                  {/* Ideal pace */}
+                  <Line
+                    type="linear"
+                    dataKey="ideal"
+                    stroke={CHART_COLORS.mutedAxis}
+                    strokeWidth={1}
+                    strokeDasharray="4 4"
+                    strokeOpacity={0.55}
+                    dot={false}
+                    activeDot={false}
+                    isAnimationActive={false}
+                  />
+
+                  {/* Projection at current pace (+ simulation) */}
+                  {isCurrentMonth && (
+                    <Line
+                      type="linear"
+                      dataKey="projected"
+                      stroke={
+                        projectionOnTrack
+                          ? CHART_COLORS.income
+                          : CHART_COLORS.expense
+                      }
+                      strokeWidth={1.5}
+                      strokeDasharray="2 4"
+                      dot={false}
+                      activeDot={{ r: 3 }}
+                      isAnimationActive={false}
+                    />
+                  )}
+
+                  {/* Actual cumulative spending */}
+                  <Area
+                    type="monotone"
+                    dataKey="actual"
+                    stroke={CHART_COLORS.expense}
+                    strokeWidth={2}
+                    fill="url(#burnFill)"
+                    dot={false}
+                    activeDot={{ r: 4 }}
+                  />
+                </ComposedChart>
+              </ResponsiveContainer>
             </div>
 
             {/* Stats row */}
-            <div className="flex flex-wrap items-center gap-x-5 gap-y-1.5 text-xs">
+            <div className="mt-2 flex flex-wrap items-center gap-x-5 gap-y-1.5 text-xs">
               <span className="flex items-baseline gap-1.5">
                 <span className="text-muted-foreground">Gastado</span>
                 <span
@@ -655,23 +964,32 @@ export function CategoryInsightsView() {
                     isPrivacyMode && "privacy-blur"
                   )}
                 >
-                  {formatCompact(totalSpending)}
+                  {formatCompact(spent)}
                 </span>
                 <span className="text-muted-foreground/60 tabular-nums">
                   {usagePercent.toFixed(0)}%
                 </span>
               </span>
-              <span className="flex items-baseline gap-1.5">
-                <span className="text-muted-foreground">Asignado</span>
-                <span
-                  className={cn(
-                    "font-mono font-semibold tabular-nums",
-                    isPrivacyMode && "privacy-blur"
-                  )}
-                >
-                  {formatCompact(totalAllocated)}
+              {projectedEnd !== null && (
+                <span className="flex items-baseline gap-1.5">
+                  <span
+                    className={cn(
+                      "size-1.5 rounded-full self-center shrink-0",
+                      projectionOnTrack ? "bg-emerald-500" : "bg-rose-500"
+                    )}
+                  />
+                  <span className="text-muted-foreground">Cierre proyectado</span>
+                  <span
+                    className={cn(
+                      "font-mono font-semibold tabular-nums",
+                      !projectionOnTrack && "text-rose-500",
+                      isPrivacyMode && "privacy-blur"
+                    )}
+                  >
+                    ~{formatCompact(projectedEnd)}
+                  </span>
                 </span>
-              </span>
+              )}
               <span className="flex items-baseline gap-1.5">
                 <span className="text-muted-foreground">
                   {unallocated >= 0 ? "Sin asignar" : "Sobre-asignado"}
@@ -688,48 +1006,99 @@ export function CategoryInsightsView() {
               </span>
             </div>
 
-            {/* Pace projection */}
-            {projectedSpending !== null && totalBudget > 0 && (
-              <div className="mt-2.5 flex items-center gap-1.5 text-[11px]">
-                <span
-                  className={cn(
-                    "size-1.5 rounded-full shrink-0",
-                    projectionOnTrack ? "bg-emerald-500" : "bg-rose-500"
+            {/* ¿Me alcanza? simulator */}
+            {isCurrentMonth && (
+              <div
+                className={cn(
+                  "mt-4 rounded-xl border p-3 transition-colors",
+                  isSimulating
+                    ? simVerdict?.tone === "rose"
+                      ? "border-rose-500/30 bg-rose-500/[0.04]"
+                      : simVerdict?.tone === "amber"
+                      ? "border-amber-500/30 bg-amber-500/[0.04]"
+                      : "border-emerald-500/30 bg-emerald-500/[0.04]"
+                    : "border-border/40 bg-muted/20"
+                )}
+              >
+                <div className="flex items-center gap-2 flex-wrap">
+                  <span className="text-xs font-semibold whitespace-nowrap">
+                    💭 ¿Me alcanza?
+                  </span>
+                  <div className="relative w-32">
+                    <span className="absolute left-2.5 top-1/2 -translate-y-1/2 text-muted-foreground text-xs">
+                      $
+                    </span>
+                    <Input
+                      value={
+                        simAmount > 0
+                          ? simAmount.toLocaleString("es-CL")
+                          : ""
+                      }
+                      placeholder="80.000"
+                      inputMode="numeric"
+                      onChange={(e) =>
+                        setSimInput(e.target.value.replace(/\D/g, ""))
+                      }
+                      className="pl-6 h-8 text-xs font-mono"
+                    />
+                  </div>
+                  <Select value={simCategory} onValueChange={setSimCategory}>
+                    <SelectTrigger className="h-8 w-[150px] rounded-lg text-xs">
+                      <SelectValue placeholder="Categoría" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="none">
+                        <span className="text-muted-foreground">General</span>
+                      </SelectItem>
+                      {expenseCategories.map((cat) => (
+                        <SelectItem key={cat.name} value={cat.name}>
+                          <span className="flex items-center gap-2">
+                            <span className="text-sm leading-none">
+                              {cat.icon || "🏷️"}
+                            </span>
+                            {cat.name}
+                          </span>
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  {isSimulating && (
+                    <button
+                      onClick={() => {
+                        setSimInput("");
+                        setSimCategory("none");
+                      }}
+                      className="p-1.5 rounded-md hover:bg-accent transition-colors"
+                      aria-label="Limpiar simulación"
+                    >
+                      <X className="h-3.5 w-3.5 text-muted-foreground" />
+                    </button>
                   )}
-                />
-                <span className="text-muted-foreground">
-                  A este ritmo:{" "}
-                  <span
+                </div>
+                {simVerdict && (
+                  <p
                     className={cn(
-                      "font-mono font-semibold tabular-nums text-foreground",
+                      "mt-2 text-xs font-medium leading-snug",
+                      simVerdict.tone === "rose" && "text-rose-500",
+                      simVerdict.tone === "amber" && "text-amber-600 dark:text-amber-500",
+                      simVerdict.tone === "emerald" && "text-emerald-600 dark:text-emerald-500",
                       isPrivacyMode && "privacy-blur"
                     )}
                   >
-                    ~{formatCompact(projectedSpending)}
-                  </span>{" "}
-                  al cierre del mes
-                  {projectionOnTrack ? (
-                    " — dentro del presupuesto"
-                  ) : (
-                    <>
-                      {" — "}
-                      <span className={cn("text-rose-500 font-medium", isPrivacyMode && "privacy-blur")}>
-                        {formatCompact(projectedSpending - totalBudget)} por sobre
-                      </span>
-                    </>
-                  )}
-                </span>
+                    {simVerdict.text}
+                  </p>
+                )}
               </div>
             )}
           </div>
         </GlassCard>
       )}
 
-      {/* ─── Categories with budget ─────────────────────── */}
+      {/* ─── Envelopes ──────────────────────────────────── */}
       <SectionCard
-        title="Categorías con presupuesto"
+        title="Sobres por categoría"
         icon={Target}
-        tooltip="Cada categoría con su límite mensual. Haz clic en una para ajustarla."
+        tooltip="Cada categoría con su límite mensual y cuánto puedes gastar por día en ella. Haz clic para ajustar."
         action={
           <Button
             variant="ghost"
@@ -742,15 +1111,19 @@ export function CategoryInsightsView() {
           </Button>
         }
       >
-        {categoriesWithLimits.length > 0 ? (
+        {envelopes.length > 0 ? (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
-            {categoriesWithLimits.map((cat) => {
-              const catUsage = cat.limit
-                ? (cat.effectiveAmount / cat.limit) * 100
-                : 0;
-              const catRemaining = (cat.limit || 0) - cat.effectiveAmount;
+            {envelopes.map((cat) => {
+              const catUsage = (cat.effectiveAmount / cat.limit!) * 100;
+              const catRemaining = cat.limit! - cat.effectiveAmount;
+              const catPerDay = catRemaining / daysLeft;
               const color = categoryColor(cat.category);
-              const isHighlighted = hoveredCategory === cat.category;
+              const statusColor = cat.isOverLimit
+                ? ROSE
+                : cat.isNearLimit
+                ? AMBER
+                : color;
+              const isSimTarget = isSimulating && simCategory === cat.category;
 
               return (
                 <div
@@ -764,18 +1137,16 @@ export function CategoryInsightsView() {
                       handleSetLimit(cat.category);
                     }
                   }}
-                  onMouseEnter={() => setHoveredCategory(cat.category)}
-                  onMouseLeave={() => setHoveredCategory(null)}
                   className={cn(
                     "group relative rounded-xl border bg-card p-3 transition-all cursor-pointer native-press",
                     "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/60",
-                    isHighlighted
-                      ? "border-primary/30 shadow-sm"
+                    isSimTarget
+                      ? "border-amber-500/40 shadow-sm"
                       : "border-border/50 hover:border-primary/20 hover:shadow-sm"
                   )}
                 >
                   {/* Header */}
-                  <div className="flex items-center justify-between mb-2">
+                  <div className="flex items-center justify-between mb-1.5">
                     <div className="flex items-center gap-2 min-w-0">
                       <span className="text-sm leading-none shrink-0">
                         {categoryEmoji(cat.category)}
@@ -783,6 +1154,11 @@ export function CategoryInsightsView() {
                       <span className="text-xs font-medium truncate">
                         {cat.category}
                       </span>
+                      {isSimTarget && (
+                        <span className={cn("text-[10px] font-mono font-semibold text-amber-500 bg-amber-500/10 px-1.5 py-0.5 rounded-md shrink-0", isPrivacyMode && "privacy-blur")}>
+                          +{formatCompact(simAmount)}
+                        </span>
+                      )}
                     </div>
                     <div className="flex items-center gap-0.5 opacity-0 group-hover:opacity-100 group-focus-visible:opacity-100 transition-opacity">
                       <Pencil className="h-3 w-3 text-muted-foreground" />
@@ -799,25 +1175,22 @@ export function CategoryInsightsView() {
                     </div>
                   </div>
 
-                  {/* Amounts */}
-                  <div className="flex items-baseline justify-between mb-1.5">
-                    <span className="flex items-baseline gap-1">
-                      <span
-                        className={cn(
-                          "text-base font-bold font-mono tabular-nums",
-                          isPrivacyMode && "privacy-blur"
-                        )}
-                      >
-                        {formatCompact(cat.effectiveAmount)}
-                      </span>
-                      <span
-                        className={cn(
-                          "text-[10px] text-muted-foreground font-mono tabular-nums",
-                          isPrivacyMode && "privacy-blur"
-                        )}
-                      >
-                        de {formatCompact(cat.limit!)}
-                      </span>
+                  {/* Envelope hero: what you can still spend per day */}
+                  <div className="flex items-baseline justify-between mb-1">
+                    <span
+                      className={cn(
+                        "text-base font-bold font-mono tabular-nums",
+                        catRemaining < 0 && "text-rose-500",
+                        isPrivacyMode && "privacy-blur"
+                      )}
+                    >
+                      {isCurrentMonth
+                        ? catRemaining >= 0
+                          ? `${formatCurrency(Math.round(catPerDay))}`
+                          : `−${formatCompact(Math.abs(catRemaining))}`
+                        : catRemaining >= 0
+                        ? formatCompact(catRemaining)
+                        : `−${formatCompact(Math.abs(catRemaining))}`}
                     </span>
                     <span
                       className={cn(
@@ -832,55 +1205,42 @@ export function CategoryInsightsView() {
                       {catUsage.toFixed(0)}%
                     </span>
                   </div>
+                  <p className="text-[10px] text-muted-foreground -mt-0.5 mb-1.5">
+                    {isCurrentMonth
+                      ? catRemaining >= 0
+                        ? "por día hasta fin de mes"
+                        : "excedido"
+                      : catRemaining >= 0
+                      ? "sobró"
+                      : "excedido"}
+                  </p>
 
-                  {/* Progress bar with pace tick */}
-                  <div className="relative mb-1.5">
-                    <div className="h-1.5 rounded-full bg-muted/60 overflow-hidden">
-                      <div
-                        className={cn(
-                          "h-full rounded-full transition-all duration-500",
-                          cat.isOverLimit
-                            ? "bg-rose-500"
-                            : cat.isNearLimit
-                            ? "bg-amber-500"
-                            : ""
-                        )}
-                        style={{
-                          width: `${Math.min(catUsage, 100)}%`,
-                          backgroundColor:
-                            cat.isOverLimit || cat.isNearLimit
-                              ? undefined
-                              : color,
-                        }}
-                      />
-                    </div>
-                    {isCurrentMonth && (
-                      <div
-                        className="absolute top-1/2 -translate-y-1/2 h-2.5 w-px bg-foreground/30"
-                        style={{ left: `${elapsedPercent}%` }}
-                      />
-                    )}
-                  </div>
+                  {/* Mini burn-down */}
+                  <EnvelopeSparkline
+                    txs={cat.transactions}
+                    daysInMonth={daysInMonth}
+                    endDay={todayDay}
+                    limit={cat.limit!}
+                    color={statusColor}
+                  />
 
                   {/* Footer */}
-                  <div className="flex items-center justify-between text-xs">
+                  <div className="flex items-center justify-between mt-1.5 text-[10px]">
                     <span
                       className={cn(
-                        "font-semibold font-mono tabular-nums",
-                        catRemaining < 0 ? "text-rose-500" : "text-emerald-600 dark:text-emerald-500",
+                        "font-mono tabular-nums text-muted-foreground",
                         isPrivacyMode && "privacy-blur"
                       )}
                     >
-                      {catRemaining >= 0
-                        ? `${formatCompact(catRemaining)} restante`
-                        : `${formatCompact(Math.abs(catRemaining))} excedido`}
+                      {formatCompact(cat.effectiveAmount)} de{" "}
+                      {formatCompact(cat.limit!)}
                     </span>
                     {cat.trend !== "stable" && cat.count > 0 && (
                       <Tooltip>
                         <TooltipTrigger asChild>
                           <span
                             className={cn(
-                              "flex items-center gap-0.5 text-[10px] font-medium tabular-nums",
+                              "flex items-center gap-0.5 font-medium tabular-nums",
                               cat.trend === "up"
                                 ? "text-rose-500/70"
                                 : "text-emerald-500/80"
@@ -920,10 +1280,11 @@ export function CategoryInsightsView() {
               <Target className="h-5 w-5 text-primary" />
             </div>
             <p className="text-sm text-muted-foreground mb-1">
-              No hay categorías con presupuesto
+              No hay sobres todavía
             </p>
             <p className="text-xs text-muted-foreground/60 mb-3">
-              Reparte tu presupuesto entre categorías para controlar cada gasto
+              Reparte tu presupuesto entre categorías y te digo cuánto puedes
+              gastar por día en cada una
             </p>
             <Button
               variant="outline"
@@ -932,7 +1293,7 @@ export function CategoryInsightsView() {
               onClick={openNewLimitDialog}
             >
               <Plus className="h-3 w-3" />
-              Asignar primera categoría
+              Crear primer sobre
             </Button>
           </div>
         )}
@@ -941,7 +1302,7 @@ export function CategoryInsightsView() {
       {/* ─── Unbudgeted Categories ──────────────────────── */}
       {categoriesWithoutLimits.length > 0 && (
         <SectionCard
-          title="Gastos sin presupuesto"
+          title="Gastos sin sobre"
           tooltip="Categorías con gastos este mes pero sin límite definido. Haz clic para asignarles uno."
         >
           <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-2">
@@ -1133,8 +1494,8 @@ export function CategoryInsightsView() {
           <DialogHeader>
             <DialogTitle>
               {limitFormData.category
-                ? `Configurar presupuesto para ${limitFormData.category}`
-                : "Asignar presupuesto a categoría"}
+                ? `Configurar sobre de ${limitFormData.category}`
+                : "Crear sobre para una categoría"}
             </DialogTitle>
             <DialogDescription>
               Define cuánto quieres destinar a esta categoría cada mes
@@ -1236,6 +1597,12 @@ export function CategoryInsightsView() {
                         <span className="text-muted-foreground">Esto representa</span>
                         <span className="font-semibold font-mono tabular-nums">
                           {pctOfBudget.toFixed(0)}% del presupuesto
+                        </span>
+                      </div>
+                      <div className="flex items-center justify-between text-xs">
+                        <span className="text-muted-foreground">Equivale por día</span>
+                        <span className="font-mono tabular-nums">
+                          {formatCurrency(Math.round(currentLimit / daysInMonth))}
                         </span>
                       </div>
                       <div className="flex items-center justify-between text-xs">
