@@ -3,6 +3,7 @@ import { GlassCard } from "./GlassCard";
 import { Button } from "./ui/button";
 import { Input } from "./ui/input";
 import { Label } from "./ui/label";
+import { Skeleton } from "./ui/skeleton";
 import {
   Tooltip,
   TooltipContent,
@@ -26,13 +27,12 @@ import {
   Pencil,
   Check,
   Info,
-  Wallet,
-  TrendingDown,
   TrendingUp,
+  TrendingDown,
   BarChart3,
   SlidersHorizontal,
 } from "lucide-react";
-import { format, addMonths, subMonths } from "date-fns";
+import { format, addMonths, subMonths, getDaysInMonth } from "date-fns";
 import { es } from "date-fns/locale";
 import {
   Dialog,
@@ -83,6 +83,8 @@ const formatCompact = (value: number) =>
     currency: "CLP",
     notation: "compact",
   }).format(value);
+
+const FALLBACK_COLOR = "#6b7280";
 
 // ─── Section Card ────────────────────────────────────────
 
@@ -167,6 +169,7 @@ export function CategoryInsightsView() {
   const [selectedMonth, setSelectedMonth] = useState(new Date());
   const [isLimitDialogOpen, setIsLimitDialogOpen] = useState(false);
   const [editingBudget, setEditingBudget] = useState(false);
+  const [hoveredCategory, setHoveredCategory] = useState<string | null>(null);
   const [selectedChartCategories, setSelectedChartCategories] = useState<Set<string>>(new Set());
   const [chartMonths, setChartMonths] = useState(6);
   const [showAverage, setShowAverage] = useState(false);
@@ -177,7 +180,7 @@ export function CategoryInsightsView() {
     alertPercentage: 80,
   });
 
-  const { categorySpending, monthlyComparison, insights, totalSpending } =
+  const { categorySpending, monthlyComparison, totalSpending } =
     useCategoryInsights(transactions, limits, selectedMonth, chartMonths);
 
   // Budget management
@@ -186,6 +189,24 @@ export function CategoryInsightsView() {
   const unallocated = totalBudget - totalAllocated;
   const usagePercent = totalBudget > 0 ? (totalSpending / totalBudget) * 100 : 0;
   const remaining = totalBudget - totalSpending;
+
+  const isCurrentMonth =
+    format(selectedMonth, "yyyy-MM") === format(new Date(), "yyyy-MM");
+
+  // Month pace: how far into the month we are (only meaningful for the current month)
+  const elapsedFraction = useMemo(() => {
+    const now = new Date();
+    return Math.min(now.getDate() / getDaysInMonth(now), 1);
+  }, []);
+  const elapsedPercent = elapsedFraction * 100;
+
+  // Projected month-end spending at the current pace
+  const projectedSpending =
+    isCurrentMonth && elapsedFraction > 0.08 && totalSpending > 0
+      ? totalSpending / elapsedFraction
+      : null;
+  const projectionOnTrack =
+    projectedSpending !== null && projectedSpending <= totalBudget;
 
   const handleSaveBudget = async () => {
     const value = parseInt(budgetInput.replace(/\D/g, ""), 10);
@@ -208,6 +229,11 @@ export function CategoryInsightsView() {
       limit: existingLimit?.monthly_limit.toString() || "",
       alertPercentage: existingLimit?.alert_at_percentage || 80,
     });
+    setIsLimitDialogOpen(true);
+  };
+
+  const openNewLimitDialog = () => {
+    setLimitFormData({ category: "", limit: "", alertPercentage: 80 });
     setIsLimitDialogOpen(true);
   };
 
@@ -234,30 +260,49 @@ export function CategoryInsightsView() {
       .sort((a, b) => a.name.localeCompare(b.name));
   }, [categories]);
 
-  const isCurrentMonth =
-    format(selectedMonth, "yyyy-MM") === format(new Date(), "yyyy-MM");
+  const categoryColor = (name: string) =>
+    categories.find((c) => c.name === name)?.color || FALLBACK_COLOR;
+  const categoryEmoji = (name: string) =>
+    categories.find((c) => c.name === name)?.icon || "🏷️";
 
-  // Categories with/without limits
-  const categoriesWithLimits = categorySpending.filter((c) => c.limit);
+  // Categories with limits, most pressured first
+  const categoriesWithLimits = useMemo(() => {
+    return categorySpending
+      .filter((c) => c.limit)
+      .sort((a, b) => {
+        const usageA = a.effectiveAmount / a.limit!;
+        const usageB = b.effectiveAmount / b.limit!;
+        return usageB - usageA;
+      });
+  }, [categorySpending]);
+
   const categoriesWithoutLimits = categorySpending.filter(
     (c) => !c.limit && c.count > 0
   );
 
-  // Distribution bar segments
-  const distributionSegments = useMemo(() => {
-    if (!totalBudget) return [];
-    return categoriesWithLimits
-      .map((cat) => {
-        const catObj = categories.find((c) => c.name === cat.category);
-        return {
-          category: cat.category,
-          percentage: (cat.limit! / totalBudget) * 100,
-          color: catObj?.color || "#6b7280",
-        };
-      })
-      .sort((a, b) => b.percentage - a.percentage);
-  }, [totalBudget, categoriesWithLimits, categories]);
+  // Hero runway: spending segments per category against the total budget.
+  // When overspent, the scale grows so segments always fit the track.
+  const runwayScale = Math.max(totalBudget, totalSpending);
+  const runwaySegments = useMemo(() => {
+    if (runwayScale <= 0) return [];
+    return categorySpending
+      .filter((c) => c.effectiveAmount > 0)
+      .sort((a, b) => b.effectiveAmount - a.effectiveAmount)
+      .map((c) => ({
+        category: c.category,
+        amount: c.effectiveAmount,
+        width: (c.effectiveAmount / runwayScale) * 100,
+        percentOfBudget:
+          totalBudget > 0 ? (c.effectiveAmount / totalBudget) * 100 : 0,
+        color: categoryColor(c.category),
+      }));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [categorySpending, runwayScale, totalBudget, categories]);
 
+  const isOverBudget = totalBudget > 0 && totalSpending > totalBudget;
+  const budgetMarkPercent = isOverBudget ? (totalBudget / runwayScale) * 100 : null;
+
+  // ── Evolution chart data ──
   const top5Categories = useMemo(() => {
     const categorySums = categorySpending.map((cat) => {
       const total = monthlyComparison.reduce(
@@ -313,12 +358,14 @@ export function CategoryInsightsView() {
     });
   }, [monthlyComparison, categorySpending, showAverage, activeChartCategories, categoryAverages]);
 
-  // Insights
-  const alertInsights = insights.filter((i) => i.type === "alert");
-  const achievementInsights = insights.filter((i) => i.type === "achievement");
-  const patternInsights = insights.filter(
-    (i) => i.type === "pattern" || i.type === "opportunity"
-  );
+  const categoryLineColors = useMemo(() => {
+    const colors: Record<string, string> = {};
+    availableChartCategories.forEach((cat) => {
+      colors[cat] = categoryColor(cat);
+    });
+    return colors;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [availableChartCategories, categories]);
 
   // Month navigation
   const changeMonth = (delta: number) => {
@@ -327,32 +374,20 @@ export function CategoryInsightsView() {
     );
   };
 
-  // Category colors for chart lines
-  const categoryLineColors = useMemo(() => {
-    const colors: Record<string, string> = {};
-    availableChartCategories.forEach((cat) => {
-      const catObj = categories.find((c) => c.name === cat);
-      colors[cat] = catObj?.color || `hsl(${Math.random() * 360}, 70%, 50%)`;
-    });
-    return colors;
-  }, [availableChartCategories, categories]);
+  const remainingLabel =
+    remaining >= 0
+      ? isCurrentMonth
+        ? "Disponible este mes"
+        : "Sobró del presupuesto"
+      : isCurrentMonth
+      ? "Presupuesto excedido"
+      : "Excedido ese mes";
 
   return (
     <div className="space-y-4">
       {/* ─── Header ────────────────────────────────────── */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-bold tracking-tight mb-1">
-            Presupuesto
-          </h1>
-          <p className="text-sm text-muted-foreground">
-            {isLoading
-              ? "Cargando..."
-              : totalBudget > 0
-              ? `${formatCurrency(totalSpending)} gastado de ${formatCurrency(totalBudget)}`
-              : "Define tu presupuesto mensual y distribúyelo por categoría"}
-          </p>
-        </div>
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <h1 className="text-2xl font-bold tracking-tight">Presupuesto</h1>
 
         <div className="flex items-center gap-1">
           <Button
@@ -366,7 +401,7 @@ export function CategoryInsightsView() {
           <button
             onClick={() => !isCurrentMonth && setSelectedMonth(new Date())}
             className={cn(
-              "min-w-[180px] text-center px-3 py-1.5 rounded-lg transition-colors",
+              "min-w-[150px] sm:min-w-[180px] text-center px-3 py-1.5 rounded-lg transition-colors",
               !isCurrentMonth
                 ? "hover:bg-accent cursor-pointer"
                 : "cursor-default"
@@ -398,559 +433,543 @@ export function CategoryInsightsView() {
         </div>
       </div>
 
-      {/* ─── KPI Cards ──────────────────────────────────── */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
-        {/* Total Budget */}
-        <GlassCard className="relative overflow-hidden group">
-          <div className="absolute inset-0 bg-gradient-to-br from-primary/[0.03] to-transparent" />
-          <div className="relative px-3 py-3">
-            <div className="flex items-center gap-2 mb-1">
-              <div className="p-1 rounded-md bg-primary/10">
-                <Target className="h-3 w-3 text-primary" />
-              </div>
-              <span className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider">
-                Presupuesto
-              </span>
-              {!editingBudget && (
-                <button
-                  onClick={startEditBudget}
-                  className="ml-auto opacity-0 group-hover:opacity-100 transition-opacity p-1 rounded hover:bg-accent"
-                >
-                  <Pencil className="h-3 w-3 text-muted-foreground" />
-                </button>
-              )}
+      {/* ─── Hero: budget runway ────────────────────────── */}
+      {isLoading ? (
+        <GlassCard className="px-4 py-5 sm:px-6">
+          <Skeleton className="h-3 w-32 mb-2" />
+          <Skeleton className="h-9 w-48 mb-5" />
+          <Skeleton className="h-3 w-full rounded-full mb-3" />
+          <Skeleton className="h-3 w-64" />
+        </GlassCard>
+      ) : totalBudget <= 0 ? (
+        <GlassCard className="relative overflow-hidden">
+          <div className="absolute inset-0 bg-gradient-to-br from-primary/[0.04] to-transparent pointer-events-none" />
+          <div className="relative flex flex-col items-center text-center px-4 py-10">
+            <div className="p-3 rounded-full bg-primary/10 mb-3">
+              <Target className="h-6 w-6 text-primary" />
             </div>
-            {editingBudget ? (
-              <div className="flex items-center gap-1.5">
-                <div className="relative flex-1">
-                  <span className="absolute left-2.5 top-1/2 -translate-y-1/2 text-muted-foreground text-sm">
-                    $
-                  </span>
-                  <Input
-                    value={
-                      budgetInput
-                        ? parseInt(
-                            budgetInput.replace(/\D/g, ""),
-                            10
-                          ).toLocaleString("es-CL")
-                        : ""
-                    }
-                    onChange={(e) =>
-                      setBudgetInput(e.target.value.replace(/\D/g, ""))
-                    }
-                    onKeyDown={(e) => {
-                      if (e.key === "Enter") handleSaveBudget();
-                      if (e.key === "Escape") setEditingBudget(false);
+            <h2 className="text-base font-semibold mb-1">
+              Define tu presupuesto mensual
+            </h2>
+            <p className="text-xs text-muted-foreground mb-4 max-w-[280px]">
+              Es el total que planeas gastar cada mes. Después lo repartes
+              entre tus categorías.
+            </p>
+            <div className="flex items-center gap-2 w-full max-w-[280px]">
+              <div className="relative flex-1">
+                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground text-sm">
+                  $
+                </span>
+                <Input
+                  value={
+                    budgetInput
+                      ? parseInt(budgetInput.replace(/\D/g, ""), 10).toLocaleString("es-CL")
+                      : ""
+                  }
+                  placeholder="1.500.000"
+                  onChange={(e) => setBudgetInput(e.target.value.replace(/\D/g, ""))}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter") handleSaveBudget();
+                  }}
+                  className="pl-7 h-9 font-mono text-sm"
+                />
+              </div>
+              <Button
+                size="sm"
+                className="h-9 rounded-lg"
+                disabled={!budgetInput}
+                onClick={handleSaveBudget}
+              >
+                Guardar
+              </Button>
+            </div>
+          </div>
+        </GlassCard>
+      ) : (
+        <GlassCard className="relative overflow-hidden">
+          <div className="absolute inset-0 bg-gradient-to-br from-primary/[0.04] via-transparent to-transparent pointer-events-none" />
+          <div className="relative px-4 py-4 sm:px-6 sm:py-5">
+            {/* Top row: remaining + editable budget */}
+            <div className="flex items-start justify-between gap-4">
+              <div>
+                <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider mb-1">
+                  {remainingLabel}
+                </p>
+                <div
+                  className={cn(
+                    "text-3xl sm:text-4xl font-bold font-mono tabular-nums tracking-tight leading-none",
+                    remaining < 0 && "text-rose-500",
+                    isPrivacyMode && "privacy-blur"
+                  )}
+                >
+                  {remaining < 0 && "−"}$
+                  <NumberFlow
+                    value={Math.abs(remaining)}
+                    format={{
+                      style: "decimal",
+                      minimumFractionDigits: 0,
+                      maximumFractionDigits: 0,
                     }}
-                    className="pl-6 text-sm font-bold font-mono h-7"
-                    autoFocus
+                    locales="es-CL"
                   />
                 </div>
-                <Button
-                  size="icon"
-                  variant="ghost"
-                  className="h-7 w-7 shrink-0"
-                  onClick={handleSaveBudget}
-                >
-                  <Check className="h-3 w-3" />
-                </Button>
-                <Button
-                  size="icon"
-                  variant="ghost"
-                  className="h-7 w-7 shrink-0"
-                  onClick={() => setEditingBudget(false)}
-                >
-                  <X className="h-3 w-3" />
-                </Button>
               </div>
-            ) : (
-              <div
-                className={cn(
-                  "text-lg font-bold font-mono tabular-nums",
-                  isPrivacyMode && "privacy-blur"
-                )}
-              >
-                {totalBudget > 0 ? (
-                  <button
-                    onClick={startEditBudget}
-                    className="hover:text-primary/80 transition-colors cursor-pointer"
-                  >
-                    <NumberFlow
-                      value={totalBudget}
-                      format={{ style: "currency", currency: "CLP", notation: "compact" }}
-                      locales="es-CL"
-                    />
-                  </button>
+
+              <div className="text-right shrink-0">
+                <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider mb-1">
+                  Presupuesto
+                </p>
+                {editingBudget ? (
+                  <div className="flex items-center gap-1">
+                    <div className="relative">
+                      <span className="absolute left-2.5 top-1/2 -translate-y-1/2 text-muted-foreground text-sm">
+                        $
+                      </span>
+                      <Input
+                        value={
+                          budgetInput
+                            ? parseInt(budgetInput.replace(/\D/g, ""), 10).toLocaleString("es-CL")
+                            : ""
+                        }
+                        onChange={(e) =>
+                          setBudgetInput(e.target.value.replace(/\D/g, ""))
+                        }
+                        onKeyDown={(e) => {
+                          if (e.key === "Enter") handleSaveBudget();
+                          if (e.key === "Escape") setEditingBudget(false);
+                        }}
+                        className="pl-6 w-36 text-sm font-mono h-8"
+                        autoFocus
+                      />
+                    </div>
+                    <Button
+                      size="icon"
+                      variant="ghost"
+                      className="h-8 w-8 shrink-0"
+                      onClick={handleSaveBudget}
+                    >
+                      <Check className="h-3.5 w-3.5" />
+                    </Button>
+                    <Button
+                      size="icon"
+                      variant="ghost"
+                      className="h-8 w-8 shrink-0"
+                      onClick={() => setEditingBudget(false)}
+                    >
+                      <X className="h-3.5 w-3.5" />
+                    </Button>
+                  </div>
                 ) : (
                   <button
                     onClick={startEditBudget}
-                    className="text-sm text-muted-foreground hover:text-foreground transition-colors"
+                    className="group flex items-center gap-1.5 rounded-lg px-2 py-1 -mr-2 hover:bg-accent transition-colors"
                   >
-                    Definir →
+                    <span
+                      className={cn(
+                        "text-base font-semibold font-mono tabular-nums",
+                        isPrivacyMode && "privacy-blur"
+                      )}
+                    >
+                      {formatCurrency(totalBudget)}
+                    </span>
+                    <Pencil className="h-3 w-3 text-muted-foreground/50 group-hover:text-muted-foreground transition-colors" />
                   </button>
                 )}
               </div>
-            )}
-          </div>
-        </GlassCard>
+            </div>
 
-        {/* Spent */}
-        <GlassCard className="relative overflow-hidden">
-          <div className="absolute inset-0 bg-gradient-to-br from-rose-500/[0.03] to-transparent" />
-          <div className="relative px-3 py-3">
-            <div className="flex items-center gap-2 mb-1">
-              <div className="p-1 rounded-md bg-rose-500/10">
-                <TrendingDown className="h-3 w-3 text-rose-500" />
+            {/* Runway bar */}
+            <div className={cn("mt-5", isCurrentMonth ? "mb-5" : "mb-1")}>
+              <div className="relative">
+                <div className="h-3 rounded-full bg-muted/60 flex overflow-hidden">
+                  {runwaySegments.map((seg) => (
+                    <Tooltip key={seg.category}>
+                      <TooltipTrigger asChild>
+                        <div
+                          className={cn(
+                            "h-full transition-all duration-500 cursor-default",
+                            hoveredCategory && hoveredCategory !== seg.category
+                              ? "opacity-30"
+                              : "opacity-100"
+                          )}
+                          style={{
+                            width: `${seg.width}%`,
+                            backgroundColor: seg.color,
+                          }}
+                          onMouseEnter={() => setHoveredCategory(seg.category)}
+                          onMouseLeave={() => setHoveredCategory(null)}
+                        />
+                      </TooltipTrigger>
+                      <TooltipContent side="top">
+                        <p className="text-xs font-medium">
+                          {categoryEmoji(seg.category)} {seg.category}
+                          <span className="mx-1 text-muted-foreground">·</span>
+                          {formatCompact(seg.amount)}
+                          {totalBudget > 0 && (
+                            <span className="text-muted-foreground">
+                              {" "}
+                              ({seg.percentOfBudget.toFixed(0)}%)
+                            </span>
+                          )}
+                        </p>
+                      </TooltipContent>
+                    </Tooltip>
+                  ))}
+                </div>
+
+                {/* Budget boundary when overspent */}
+                {budgetMarkPercent !== null && (
+                  <div
+                    className="absolute -top-0.5 -bottom-0.5 w-0.5 rounded-full bg-background"
+                    style={{ left: `${budgetMarkPercent}%` }}
+                  />
+                )}
+
+                {/* Today pace marker */}
+                {isCurrentMonth && (
+                  <>
+                    <div
+                      className="absolute -top-1 -bottom-1 w-0.5 rounded-full bg-foreground/60"
+                      style={{ left: `${elapsedPercent}%` }}
+                    />
+                    <span
+                      className="absolute top-full mt-1 text-[9px] font-semibold uppercase tracking-wider text-muted-foreground -translate-x-1/2"
+                      style={{
+                        left: `${Math.min(Math.max(elapsedPercent, 3), 97)}%`,
+                      }}
+                    >
+                      Hoy
+                    </span>
+                  </>
+                )}
               </div>
-              <span className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider">
-                Gastado
+            </div>
+
+            {/* Stats row */}
+            <div className="flex flex-wrap items-center gap-x-5 gap-y-1.5 text-xs">
+              <span className="flex items-baseline gap-1.5">
+                <span className="text-muted-foreground">Gastado</span>
+                <span
+                  className={cn(
+                    "font-mono font-semibold tabular-nums",
+                    isPrivacyMode && "privacy-blur"
+                  )}
+                >
+                  {formatCompact(totalSpending)}
+                </span>
+                <span className="text-muted-foreground/60 tabular-nums">
+                  {usagePercent.toFixed(0)}%
+                </span>
+              </span>
+              <span className="flex items-baseline gap-1.5">
+                <span className="text-muted-foreground">Asignado</span>
+                <span
+                  className={cn(
+                    "font-mono font-semibold tabular-nums",
+                    isPrivacyMode && "privacy-blur"
+                  )}
+                >
+                  {formatCompact(totalAllocated)}
+                </span>
+              </span>
+              <span className="flex items-baseline gap-1.5">
+                <span className="text-muted-foreground">
+                  {unallocated >= 0 ? "Sin asignar" : "Sobre-asignado"}
+                </span>
+                <span
+                  className={cn(
+                    "font-mono font-semibold tabular-nums",
+                    unallocated < 0 && "text-rose-500",
+                    isPrivacyMode && "privacy-blur"
+                  )}
+                >
+                  {formatCompact(Math.abs(unallocated))}
+                </span>
               </span>
             </div>
-            <div
-              className={cn(
-                "text-lg font-bold font-mono tabular-nums",
-                isPrivacyMode && "privacy-blur"
-              )}
-            >
-              <NumberFlow
-                value={totalSpending}
-                format={{ style: "currency", currency: "CLP", notation: "compact" }}
-                locales="es-CL"
-              />
-            </div>
-            {totalBudget > 0 && (
-              <p className="text-[10px] text-muted-foreground mt-0.5">
-                {usagePercent.toFixed(0)}% del presupuesto
-              </p>
-            )}
-          </div>
-        </GlassCard>
 
-        {/* Remaining */}
-        <GlassCard className="relative overflow-hidden">
-          <div
-            className={cn(
-              "absolute inset-0 bg-gradient-to-br to-transparent",
-              remaining >= 0
-                ? "from-emerald-500/[0.03]"
-                : "from-rose-500/[0.03]"
-            )}
-          />
-          <div className="relative px-3 py-3">
-            <div className="flex items-center gap-2 mb-1">
-              <div
-                className={cn(
-                  "p-1 rounded-md",
-                  remaining >= 0 ? "bg-emerald-500/10" : "bg-rose-500/10"
-                )}
-              >
-                <Wallet
+            {/* Pace projection */}
+            {projectedSpending !== null && totalBudget > 0 && (
+              <div className="mt-2.5 flex items-center gap-1.5 text-[11px]">
+                <span
                   className={cn(
-                    "h-3 w-3",
-                    remaining >= 0 ? "text-emerald-500" : "text-rose-500"
+                    "size-1.5 rounded-full shrink-0",
+                    projectionOnTrack ? "bg-emerald-500" : "bg-rose-500"
                   )}
                 />
-              </div>
-              <span className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider">
-                {remaining >= 0 ? "Restante" : "Excedido"}
-              </span>
-            </div>
-            <div
-              className={cn(
-                "text-lg font-bold font-mono tabular-nums",
-                remaining >= 0 ? "" : "text-rose-500",
-                isPrivacyMode && "privacy-blur"
-              )}
-            >
-              <NumberFlow
-                value={Math.abs(remaining)}
-                format={{ style: "currency", currency: "CLP", notation: "compact" }}
-                locales="es-CL"
-              />
-            </div>
-            {totalBudget > 0 && (
-              <p className="text-[10px] text-muted-foreground mt-0.5">
-                {remaining >= 0
-                  ? `${(100 - usagePercent).toFixed(0)}% disponible`
-                  : `${(usagePercent - 100).toFixed(0)}% sobre el límite`}
-              </p>
-            )}
-          </div>
-        </GlassCard>
-
-        {/* Allocated */}
-        <GlassCard className="relative overflow-hidden">
-          <div className="absolute inset-0 bg-gradient-to-br from-sky-500/[0.03] to-transparent" />
-          <div className="relative px-3 py-3">
-            <div className="flex items-center gap-2 mb-1">
-              <div className="p-1 rounded-md bg-sky-500/10">
-                <BarChart3 className="h-3 w-3 text-sky-500" />
-              </div>
-              <span className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider">
-                Asignado
-              </span>
-            </div>
-            <div
-              className={cn(
-                "text-lg font-bold font-mono tabular-nums",
-                isPrivacyMode && "privacy-blur"
-              )}
-            >
-              <NumberFlow
-                value={totalAllocated}
-                format={{ style: "currency", currency: "CLP", notation: "compact" }}
-                locales="es-CL"
-              />
-            </div>
-            {totalBudget > 0 && (
-              <p
-                className={cn(
-                  "text-[10px] mt-0.5",
-                  unallocated < 0
-                    ? "text-rose-500"
-                    : "text-muted-foreground"
-                )}
-              >
-                {unallocated >= 0
-                  ? `${formatCompact(unallocated)} sin asignar`
-                  : `${formatCompact(Math.abs(unallocated))} sobre-asignado`}
-              </p>
-            )}
-          </div>
-        </GlassCard>
-      </div>
-
-      {/* ─── Distribution Bar ───────────────────────────── */}
-      {totalBudget > 0 && distributionSegments.length > 0 && (
-        <div className="relative overflow-hidden rounded-xl border border-border/50 bg-card px-4 py-3">
-          <div className="space-y-2">
-            <div className="h-2.5 rounded-full overflow-hidden bg-muted/60 flex">
-              {distributionSegments.map((seg) => (
-                <Tooltip key={seg.category}>
-                  <TooltipTrigger asChild>
-                    <div
-                      className="h-full transition-all duration-300 first:rounded-l-full last:rounded-r-full hover:opacity-80 cursor-default"
-                      style={{
-                        width: `${Math.min(seg.percentage, 100)}%`,
-                        backgroundColor: seg.color,
-                      }}
-                    />
-                  </TooltipTrigger>
-                  <TooltipContent side="top">
-                    <p className="text-xs font-medium">
-                      {seg.category}: {seg.percentage.toFixed(0)}%
-                    </p>
-                  </TooltipContent>
-                </Tooltip>
-              ))}
-              {unallocated > 0 && (
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <div
-                      className="h-full bg-muted-foreground/10"
-                      style={{
-                        width: `${(unallocated / totalBudget) * 100}%`,
-                      }}
-                    />
-                  </TooltipTrigger>
-                  <TooltipContent side="top">
-                    <p className="text-xs font-medium">
-                      Sin asignar: {formatCompact(unallocated)}
-                    </p>
-                  </TooltipContent>
-                </Tooltip>
-              )}
-            </div>
-            {/* Legend */}
-            <div className="flex flex-wrap gap-x-4 gap-y-1.5">
-              {distributionSegments.map((seg) => (
-                <div
-                  key={seg.category}
-                  className="flex items-center gap-1.5"
-                >
-                  <div
-                    className="w-2 h-2 rounded-full shrink-0"
-                    style={{ backgroundColor: seg.color }}
-                  />
-                  <span className="text-xs text-muted-foreground">
-                    {seg.category}
-                  </span>
-                  <span className="text-xs font-semibold tabular-nums">
-                    {seg.percentage.toFixed(0)}%
-                  </span>
-                </div>
-              ))}
-              {unallocated > 0 && (
-                <div className="flex items-center gap-1.5">
-                  <div className="w-2 h-2 rounded-full shrink-0 bg-muted-foreground/20" />
-                  <span className="text-xs text-muted-foreground">
-                    Sin asignar
-                  </span>
-                  <span className="text-xs font-semibold tabular-nums">
-                    {((unallocated / totalBudget) * 100).toFixed(0)}%
-                  </span>
-                </div>
-              )}
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* ─── Category Grid + Insights ───────────────────── */}
-      <div
-        className={cn(
-          "grid grid-cols-1 gap-4",
-          insights.length > 0 && "lg:grid-cols-12"
-        )}
-      >
-        {/* Categories with budgets */}
-        <div className={cn(insights.length > 0 ? "lg:col-span-8" : "")}>
-          <SectionCard
-            title="Categorías con presupuesto"
-            icon={Target}
-            tooltip="Categorías con límite mensual asignado"
-            action={
-              <Button
-                variant="ghost"
-                size="sm"
-                className="h-7 text-xs gap-1.5"
-                onClick={() => {
-                  setLimitFormData({
-                    category: "",
-                    limit: "",
-                    alertPercentage: 80,
-                  });
-                  setIsLimitDialogOpen(true);
-                }}
-              >
-                <Plus className="h-3 w-3" />
-                Agregar
-              </Button>
-            }
-          >
-            {categoriesWithLimits.length > 0 ? (
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                {categoriesWithLimits.map((cat) => {
-                  const catUsage = cat.limit
-                    ? (cat.effectiveAmount / cat.limit) * 100
-                    : 0;
-                  const catRemaining = (cat.limit || 0) - cat.effectiveAmount;
-                  const catObj = categories.find(
-                    (c) => c.name === cat.category
-                  );
-                  const color = catObj?.color || "#6b7280";
-
-                  return (
-                    <div
-                      key={cat.category}
-                      className="group relative rounded-xl border border-border/50 bg-card p-3 transition-all hover:border-primary/20 hover:shadow-sm cursor-pointer"
-                      onClick={() => handleSetLimit(cat.category)}
-                    >
-                      {/* Header */}
-                      <div className="flex items-center justify-between mb-2">
-                        <div className="flex items-center gap-2 min-w-0">
-                          <span className="text-sm leading-none shrink-0">
-                            {catObj?.icon || "🏷️"}
-                          </span>
-                          <span className="text-xs font-medium truncate">
-                            {cat.category}
-                          </span>
-                        </div>
-                        <div className="flex items-center gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity">
-                          <Pencil className="h-3 w-3 text-muted-foreground" />
-                          <button
-                            className="p-1 rounded hover:bg-accent transition-colors"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              handleDeleteLimit(cat.category);
-                            }}
-                          >
-                            <X className="h-3 w-3 text-muted-foreground hover:text-destructive" />
-                          </button>
-                        </div>
-                      </div>
-
-                      {/* Amount */}
-                      <div className="flex items-baseline justify-between mb-1.5">
-                        <span
-                          className={cn(
-                            "text-base font-bold font-mono tabular-nums",
-                            isPrivacyMode && "privacy-blur"
-                          )}
-                        >
-                          {formatCompact(cat.effectiveAmount)}
-                        </span>
-                        <span
-                          className={cn(
-                            "text-[10px] text-muted-foreground font-mono tabular-nums",
-                            isPrivacyMode && "privacy-blur"
-                          )}
-                        >
-                          de {formatCompact(cat.limit!)}
-                        </span>
-                      </div>
-
-                      {/* Progress bar */}
-                      <div className="h-1.5 rounded-full bg-muted/60 overflow-hidden mb-1.5">
-                        <div
-                          className="h-full rounded-full transition-all duration-500"
-                          style={{
-                            width: `${Math.min(catUsage, 100)}%`,
-                            backgroundColor: cat.isOverLimit
-                              ? "#e11d48"
-                              : cat.isNearLimit
-                              ? "#f59e0b"
-                              : color,
-                          }}
-                        />
-                      </div>
-
-                      {/* Footer */}
-                      <div className="flex items-center justify-between text-xs">
-                        <span
-                          className={cn(
-                            "font-semibold font-mono tabular-nums",
-                            catRemaining < 0
-                              ? "text-rose-500"
-                              : "text-emerald-600",
-                            isPrivacyMode && "privacy-blur"
-                          )}
-                        >
-                          {catRemaining >= 0
-                            ? `${formatCompact(catRemaining)} restante`
-                            : `${formatCompact(Math.abs(catRemaining))} excedido`}
-                        </span>
-                        <span
-                          className={cn(
-                            "font-mono tabular-nums font-semibold px-1.5 py-0.5 rounded-md",
-                            cat.isOverLimit
-                              ? "text-rose-600 bg-rose-500/10"
-                              : cat.isNearLimit
-                              ? "text-amber-600 bg-amber-500/10"
-                              : "text-muted-foreground bg-muted/60"
-                          )}
-                        >
-                          {catUsage.toFixed(0)}%
-                        </span>
-                      </div>
-
-                      {/* Reimbursement */}
-                      {cat.reimbursedAmount > 0 && (
-                        <div className="mt-2 text-[11px] text-emerald-600 bg-emerald-500/10 px-2 py-1 rounded-lg">
-                          Reembolso: {formatCompact(cat.reimbursedAmount)}
-                        </div>
-                      )}
-                    </div>
-                  );
-                })}
-              </div>
-            ) : (
-              <div className="flex flex-col items-center justify-center py-8 text-center">
-                <div className="p-3 rounded-full bg-primary/10 mb-3">
-                  <Target className="h-5 w-5 text-primary" />
-                </div>
-                <p className="text-sm text-muted-foreground mb-1">
-                  No hay categorías con presupuesto
-                </p>
-                <p className="text-xs text-muted-foreground/60 mb-3">
-                  Asigna límites para controlar tus gastos
-                </p>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  className="gap-1.5 rounded-lg"
-                  onClick={() => {
-                    setLimitFormData({
-                      category: "",
-                      limit: "",
-                      alertPercentage: 80,
-                    });
-                    setIsLimitDialogOpen(true);
-                  }}
-                >
-                  <Plus className="h-3 w-3" />
-                  Asignar primera categoría
-                </Button>
-              </div>
-            )}
-          </SectionCard>
-        </div>
-
-        {/* Insights — Index-style cards */}
-        {insights.length > 0 && (
-          <div className="lg:col-span-4">
-            <GlassCard className="flex flex-col overflow-hidden">
-              <div className="flex items-center gap-2 px-4 pt-3 pb-2 shrink-0">
-                <h3 className="text-sm font-semibold">Insights</h3>
-                <span className="text-[10px] font-medium text-muted-foreground tabular-nums">
-                  {insights.length}
+                <span className="text-muted-foreground">
+                  A este ritmo:{" "}
+                  <span
+                    className={cn(
+                      "font-mono font-semibold tabular-nums text-foreground",
+                      isPrivacyMode && "privacy-blur"
+                    )}
+                  >
+                    ~{formatCompact(projectedSpending)}
+                  </span>{" "}
+                  al cierre del mes
+                  {projectionOnTrack ? (
+                    " — dentro del presupuesto"
+                  ) : (
+                    <>
+                      {" — "}
+                      <span className={cn("text-rose-500 font-medium", isPrivacyMode && "privacy-blur")}>
+                        {formatCompact(projectedSpending - totalBudget)} por sobre
+                      </span>
+                    </>
+                  )}
                 </span>
               </div>
-              <div className="flex-1 overflow-y-auto px-3 pb-3 space-y-1.5">
-                {[...alertInsights, ...achievementInsights.slice(0, 3), ...patternInsights.slice(0, 2)].map((insight, idx) => {
-                  const catObj = insight.category ? categories.find((c) => c.name === insight.category) : null;
-                  const emoji = catObj?.icon || (insight.type === "alert" ? "⚠️" : insight.type === "achievement" ? "✅" : "💡");
-                  const borderColor = insight.type === "alert" ? "border-amber-500/20" : insight.type === "achievement" ? "border-emerald-500/20" : "border-violet-500/20";
-                  return (
-                    <div
-                      key={idx}
+            )}
+          </div>
+        </GlassCard>
+      )}
+
+      {/* ─── Categories with budget ─────────────────────── */}
+      <SectionCard
+        title="Categorías con presupuesto"
+        icon={Target}
+        tooltip="Cada categoría con su límite mensual. Haz clic en una para ajustarla."
+        action={
+          <Button
+            variant="ghost"
+            size="sm"
+            className="h-7 text-xs gap-1.5"
+            onClick={openNewLimitDialog}
+          >
+            <Plus className="h-3 w-3" />
+            Agregar
+          </Button>
+        }
+      >
+        {categoriesWithLimits.length > 0 ? (
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+            {categoriesWithLimits.map((cat) => {
+              const catUsage = cat.limit
+                ? (cat.effectiveAmount / cat.limit) * 100
+                : 0;
+              const catRemaining = (cat.limit || 0) - cat.effectiveAmount;
+              const color = categoryColor(cat.category);
+              const isHighlighted = hoveredCategory === cat.category;
+
+              return (
+                <div
+                  key={cat.category}
+                  role="button"
+                  tabIndex={0}
+                  onClick={() => handleSetLimit(cat.category)}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter" || e.key === " ") {
+                      e.preventDefault();
+                      handleSetLimit(cat.category);
+                    }
+                  }}
+                  onMouseEnter={() => setHoveredCategory(cat.category)}
+                  onMouseLeave={() => setHoveredCategory(null)}
+                  className={cn(
+                    "group relative rounded-xl border bg-card p-3 transition-all cursor-pointer native-press",
+                    "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/60",
+                    isHighlighted
+                      ? "border-primary/30 shadow-sm"
+                      : "border-border/50 hover:border-primary/20 hover:shadow-sm"
+                  )}
+                >
+                  {/* Header */}
+                  <div className="flex items-center justify-between mb-2">
+                    <div className="flex items-center gap-2 min-w-0">
+                      <span className="text-sm leading-none shrink-0">
+                        {categoryEmoji(cat.category)}
+                      </span>
+                      <span className="text-xs font-medium truncate">
+                        {cat.category}
+                      </span>
+                    </div>
+                    <div className="flex items-center gap-0.5 opacity-0 group-hover:opacity-100 group-focus-visible:opacity-100 transition-opacity">
+                      <Pencil className="h-3 w-3 text-muted-foreground" />
+                      <button
+                        className="p-1 rounded hover:bg-accent transition-colors"
+                        aria-label={`Quitar límite de ${cat.category}`}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleDeleteLimit(cat.category);
+                        }}
+                      >
+                        <X className="h-3 w-3 text-muted-foreground hover:text-destructive" />
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* Amounts */}
+                  <div className="flex items-baseline justify-between mb-1.5">
+                    <span className="flex items-baseline gap-1">
+                      <span
+                        className={cn(
+                          "text-base font-bold font-mono tabular-nums",
+                          isPrivacyMode && "privacy-blur"
+                        )}
+                      >
+                        {formatCompact(cat.effectiveAmount)}
+                      </span>
+                      <span
+                        className={cn(
+                          "text-[10px] text-muted-foreground font-mono tabular-nums",
+                          isPrivacyMode && "privacy-blur"
+                        )}
+                      >
+                        de {formatCompact(cat.limit!)}
+                      </span>
+                    </span>
+                    <span
                       className={cn(
-                        "flex items-start gap-2.5 rounded-lg border p-2.5 transition-colors hover:brightness-110",
-                        borderColor
+                        "text-[10px] font-mono tabular-nums font-semibold px-1.5 py-0.5 rounded-md",
+                        cat.isOverLimit
+                          ? "text-rose-500 bg-rose-500/10"
+                          : cat.isNearLimit
+                          ? "text-amber-500 bg-amber-500/10"
+                          : "text-muted-foreground bg-muted/60"
                       )}
                     >
-                      <span className="text-base shrink-0 flex items-center justify-center size-7">{emoji}</span>
-                      <div className="min-w-0 flex-1">
-                        <p className="text-[11px] font-medium leading-snug">{insight.title}</p>
-                        <p className={cn("text-[10px] text-muted-foreground leading-snug mt-0.5", isPrivacyMode && "privacy-blur")}>
-                          {insight.description}
-                        </p>
-                      </div>
+                      {catUsage.toFixed(0)}%
+                    </span>
+                  </div>
+
+                  {/* Progress bar with pace tick */}
+                  <div className="relative mb-1.5">
+                    <div className="h-1.5 rounded-full bg-muted/60 overflow-hidden">
+                      <div
+                        className={cn(
+                          "h-full rounded-full transition-all duration-500",
+                          cat.isOverLimit
+                            ? "bg-rose-500"
+                            : cat.isNearLimit
+                            ? "bg-amber-500"
+                            : ""
+                        )}
+                        style={{
+                          width: `${Math.min(catUsage, 100)}%`,
+                          backgroundColor:
+                            cat.isOverLimit || cat.isNearLimit
+                              ? undefined
+                              : color,
+                        }}
+                      />
                     </div>
-                  );
-                })}
-              </div>
-            </GlassCard>
+                    {isCurrentMonth && (
+                      <div
+                        className="absolute top-1/2 -translate-y-1/2 h-2.5 w-px bg-foreground/30"
+                        style={{ left: `${elapsedPercent}%` }}
+                      />
+                    )}
+                  </div>
+
+                  {/* Footer */}
+                  <div className="flex items-center justify-between text-xs">
+                    <span
+                      className={cn(
+                        "font-semibold font-mono tabular-nums",
+                        catRemaining < 0 ? "text-rose-500" : "text-emerald-600 dark:text-emerald-500",
+                        isPrivacyMode && "privacy-blur"
+                      )}
+                    >
+                      {catRemaining >= 0
+                        ? `${formatCompact(catRemaining)} restante`
+                        : `${formatCompact(Math.abs(catRemaining))} excedido`}
+                    </span>
+                    {cat.trend !== "stable" && cat.count > 0 && (
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <span
+                            className={cn(
+                              "flex items-center gap-0.5 text-[10px] font-medium tabular-nums",
+                              cat.trend === "up"
+                                ? "text-rose-500/70"
+                                : "text-emerald-500/80"
+                            )}
+                          >
+                            {cat.trend === "up" ? (
+                              <TrendingUp className="h-2.5 w-2.5" />
+                            ) : (
+                              <TrendingDown className="h-2.5 w-2.5" />
+                            )}
+                            {Math.round(cat.trendPercentage)}%
+                          </span>
+                        </TooltipTrigger>
+                        <TooltipContent side="top">
+                          <p className="text-xs">
+                            {cat.trend === "up" ? "Más" : "Menos"} gasto que el
+                            mes pasado
+                          </p>
+                        </TooltipContent>
+                      </Tooltip>
+                    )}
+                  </div>
+
+                  {/* Reimbursement */}
+                  {cat.reimbursedAmount > 0 && (
+                    <div className={cn("mt-2 text-[11px] text-emerald-600 dark:text-emerald-500 bg-emerald-500/10 px-2 py-1 rounded-lg", isPrivacyMode && "privacy-blur")}>
+                      Reembolso: {formatCompact(cat.reimbursedAmount)}
+                    </div>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+        ) : (
+          <div className="flex flex-col items-center justify-center py-8 text-center">
+            <div className="p-3 rounded-full bg-primary/10 mb-3">
+              <Target className="h-5 w-5 text-primary" />
+            </div>
+            <p className="text-sm text-muted-foreground mb-1">
+              No hay categorías con presupuesto
+            </p>
+            <p className="text-xs text-muted-foreground/60 mb-3">
+              Reparte tu presupuesto entre categorías para controlar cada gasto
+            </p>
+            <Button
+              variant="outline"
+              size="sm"
+              className="gap-1.5 rounded-lg"
+              onClick={openNewLimitDialog}
+            >
+              <Plus className="h-3 w-3" />
+              Asignar primera categoría
+            </Button>
           </div>
         )}
-      </div>
+      </SectionCard>
 
       {/* ─── Unbudgeted Categories ──────────────────────── */}
       {categoriesWithoutLimits.length > 0 && (
         <SectionCard
-          title="Sin presupuesto asignado"
-          tooltip="Categorías con gastos este mes pero sin límite definido. Haz clic para asignar un presupuesto."
+          title="Gastos sin presupuesto"
+          tooltip="Categorías con gastos este mes pero sin límite definido. Haz clic para asignarles uno."
         >
           <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-2">
-            {categoriesWithoutLimits.map((cat) => {
-              const catObj = categories.find((c) => c.name === cat.category);
-              const color = catObj?.color || "#6b7280";
-              return (
-                <button
-                  key={cat.category}
-                  onClick={() => handleSetLimit(cat.category)}
-                  className="flex items-center gap-2 p-2.5 rounded-lg border border-border/50 bg-card hover:border-primary/20 hover:bg-accent/50 transition-all text-left group"
-                >
-                  <span className="text-base leading-none shrink-0">
-                    {catObj?.icon || "🏷️"}
+            {categoriesWithoutLimits.map((cat) => (
+              <button
+                key={cat.category}
+                onClick={() => handleSetLimit(cat.category)}
+                className="flex items-center gap-2 p-2.5 rounded-lg border border-border/50 bg-card hover:border-primary/20 hover:bg-accent/50 transition-all text-left group native-press focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/60"
+              >
+                <span className="text-base leading-none shrink-0">
+                  {categoryEmoji(cat.category)}
+                </span>
+                <div className="flex-1 min-w-0">
+                  <span className="text-xs font-medium truncate block">
+                    {cat.category}
                   </span>
-                  <div className="flex-1 min-w-0">
-                    <span className="text-xs font-medium truncate block">
-                      {cat.category}
-                    </span>
-                    <span
-                      className={cn(
-                        "text-[11px] text-muted-foreground font-mono tabular-nums",
-                        isPrivacyMode && "privacy-blur"
-                      )}
-                    >
-                      {formatCompact(cat.effectiveAmount)}
-                    </span>
-                  </div>
-                  <Plus className="h-3 w-3 text-muted-foreground/40 group-hover:text-primary transition-colors shrink-0" />
-                </button>
-              );
-            })}
+                  <span
+                    className={cn(
+                      "text-[11px] text-muted-foreground font-mono tabular-nums",
+                      isPrivacyMode && "privacy-blur"
+                    )}
+                  >
+                    {formatCompact(cat.effectiveAmount)}
+                  </span>
+                </div>
+                <Plus className="h-3 w-3 text-muted-foreground/40 group-hover:text-primary transition-colors shrink-0" />
+              </button>
+            ))}
           </div>
         </SectionCard>
       )}
@@ -963,7 +982,7 @@ export function CategoryInsightsView() {
           tooltip={
             selectedChartCategories.size > 0
               ? `${selectedChartCategories.size} ${selectedChartCategories.size === 1 ? "categoría seleccionada" : "categorías seleccionadas"}`
-              : "Top 5 categorías con mayor actividad en los últimos 6 meses"
+              : "Top 5 categorías con mayor actividad en el período"
           }
           action={
             <div className="flex items-center gap-1.5">
@@ -997,61 +1016,61 @@ export function CategoryInsightsView() {
                 <span className="text-[10px]">∼</span>
                 Promedio
               </button>
-            <Popover>
-              <PopoverTrigger asChild>
-                <button className={cn(
-                  "flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-medium transition-colors border",
-                  selectedChartCategories.size > 0
-                    ? "bg-primary/10 text-primary border-primary/30"
-                    : "bg-muted/50 text-muted-foreground border-border/50 hover:bg-accent"
-                )}>
-                  <SlidersHorizontal className="h-3 w-3" />
-                  {selectedChartCategories.size > 0
-                    ? `${selectedChartCategories.size} seleccionada${selectedChartCategories.size > 1 ? "s" : ""}`
-                    : "Top 5"}
-                </button>
-              </PopoverTrigger>
-              <PopoverContent align="end" collisionPadding={8} className="w-52 p-2">
-                <div className="flex items-center justify-between px-2 pb-2 mb-1 border-b border-border/40">
-                  <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Categorías</span>
-                  {selectedChartCategories.size > 0 && (
-                    <button
-                      onClick={() => setSelectedChartCategories(new Set())}
-                      className="text-xs text-muted-foreground hover:text-foreground transition-colors"
-                    >
-                      Limpiar
-                    </button>
-                  )}
-                </div>
-                <div className="max-h-56 overflow-y-auto space-y-0.5">
-                  {availableChartCategories.map((cat) => {
-                    const checked = selectedChartCategories.has(cat);
-                    return (
-                      <label
-                        key={cat}
-                        className="flex items-center gap-2 px-2 py-1.5 rounded-md hover:bg-accent cursor-pointer"
+              <Popover>
+                <PopoverTrigger asChild>
+                  <button className={cn(
+                    "flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-medium transition-colors border",
+                    selectedChartCategories.size > 0
+                      ? "bg-primary/10 text-primary border-primary/30"
+                      : "bg-muted/50 text-muted-foreground border-border/50 hover:bg-accent"
+                  )}>
+                    <SlidersHorizontal className="h-3 w-3" />
+                    {selectedChartCategories.size > 0
+                      ? `${selectedChartCategories.size} seleccionada${selectedChartCategories.size > 1 ? "s" : ""}`
+                      : "Top 5"}
+                  </button>
+                </PopoverTrigger>
+                <PopoverContent align="end" collisionPadding={8} className="w-52 p-2">
+                  <div className="flex items-center justify-between px-2 pb-2 mb-1 border-b border-border/40">
+                    <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Categorías</span>
+                    {selectedChartCategories.size > 0 && (
+                      <button
+                        onClick={() => setSelectedChartCategories(new Set())}
+                        className="text-xs text-muted-foreground hover:text-foreground transition-colors"
                       >
-                        <Checkbox
-                          checked={checked}
-                          onCheckedChange={(v) => {
-                            setSelectedChartCategories((prev) => {
-                              const next = new Set(prev);
-                              if (v) next.add(cat);
-                              else next.delete(cat);
-                              return next;
-                            });
-                          }}
-                        />
-                        <span className="text-sm leading-none shrink-0">
-                          {categories.find((c) => c.name === cat)?.icon || "🏷️"}
-                        </span>
-                        <span className="text-xs text-foreground truncate">{cat}</span>
-                      </label>
-                    );
-                  })}
-                </div>
-              </PopoverContent>
-            </Popover>
+                        Limpiar
+                      </button>
+                    )}
+                  </div>
+                  <div className="max-h-56 overflow-y-auto space-y-0.5">
+                    {availableChartCategories.map((cat) => {
+                      const checked = selectedChartCategories.has(cat);
+                      return (
+                        <label
+                          key={cat}
+                          className="flex items-center gap-2 px-2 py-1.5 rounded-md hover:bg-accent cursor-pointer"
+                        >
+                          <Checkbox
+                            checked={checked}
+                            onCheckedChange={(v) => {
+                              setSelectedChartCategories((prev) => {
+                                const next = new Set(prev);
+                                if (v) next.add(cat);
+                                else next.delete(cat);
+                                return next;
+                              });
+                            }}
+                          />
+                          <span className="text-sm leading-none shrink-0">
+                            {categoryEmoji(cat)}
+                          </span>
+                          <span className="text-xs text-foreground truncate">{cat}</span>
+                        </label>
+                      );
+                    })}
+                  </div>
+                </PopoverContent>
+              </Popover>
             </div>
           }
         >
@@ -1233,7 +1252,7 @@ export function CategoryInsightsView() {
                         <span
                           className={cn(
                             "font-semibold font-mono tabular-nums",
-                            newUnallocated < 0 ? "text-rose-500" : "text-emerald-600"
+                            newUnallocated < 0 ? "text-rose-500" : "text-emerald-600 dark:text-emerald-500"
                           )}
                         >
                           {formatCurrency(Math.abs(newUnallocated))}
