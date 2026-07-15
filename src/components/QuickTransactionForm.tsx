@@ -1,7 +1,14 @@
 import { useState, useRef } from "react";
 import { Button } from "./ui/button";
 import { Input } from "./ui/input";
-import { CornerDownLeft, Sparkles, Users } from "lucide-react";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "./ui/select";
+import { CornerDownLeft, Sparkles, Users, Undo2, X } from "lucide-react";
 import { useCategories } from "@/hooks/useCategories";
 import { useTransactions } from "@/hooks/useTransactions";
 import { useSharedExpenses } from "@/hooks/useSharedExpenses";
@@ -33,6 +40,7 @@ export default function QuickTransactionForm({ onSuccess, defaultType = "Gasto" 
   const [sharedDrawerOpen, setSharedDrawerOpen] = useState(false);
   const [pendingTransaction, setPendingTransaction] = useState<{ id: string; amount: number } | null>(null);
   const [amountError, setAmountError] = useState("");
+  const [reimbursementCategory, setReimbursementCategory] = useState<string | null>(null);
 
   const { categories } = useCategories();
   const queryClient = useQueryClient();
@@ -121,6 +129,8 @@ export default function QuickTransactionForm({ onSuccess, defaultType = "Gasto" 
         category_name: willAnalyze ? "⚡ Analizando..." : "Sin categoría",
         detail: detail || null,
         date: new Date().toISOString(),
+        reimbursement_for_category:
+          defaultType === "Ingreso" ? reimbursementCategory : null,
       });
 
       if (willAnalyze && transaction?.id) {
@@ -137,6 +147,7 @@ export default function QuickTransactionForm({ onSuccess, defaultType = "Gasto" 
       setAmount("");
       setDetail("");
       setIsShared(false);
+      setReimbursementCategory(null);
       setTimeout(() => amountInputRef.current?.focus(), 100);
 
       playToggleOff();
@@ -270,6 +281,57 @@ export default function QuickTransactionForm({ onSuccess, defaultType = "Gasto" 
             categorización automática
           </p>
         </div>
+
+        {/* Reimbursement suggestion — conservative chip, never automatic */}
+        {defaultType === "Ingreso" &&
+          (/reembolso|devoluci|me devolv|me pagaron/i.test(detail) ||
+            reimbursementCategory) && (
+            <div className="flex items-center justify-center gap-2 py-1 flex-wrap animate-in fade-in slide-in-from-top-1 duration-200">
+              {reimbursementCategory ? (
+                <button
+                  type="button"
+                  onClick={() => setReimbursementCategory(null)}
+                  className="flex items-center gap-1.5 rounded-full border border-emerald-500/30 bg-emerald-500/10 px-3 py-1 text-xs font-medium text-emerald-600 dark:text-emerald-500 hover:bg-emerald-500/15 transition-colors"
+                >
+                  <Undo2 className="h-3 w-3" />
+                  Reembolso de{" "}
+                  {categories.find((c) => c.name === reimbursementCategory)?.icon || "🏷️"}{" "}
+                  {reimbursementCategory}
+                  <X className="h-3 w-3 opacity-60" />
+                </button>
+              ) : (
+                <>
+                  <span className="text-xs text-muted-foreground flex items-center gap-1">
+                    <Undo2 className="h-3 w-3" />
+                    ¿Es un reembolso?
+                  </span>
+                  <Select
+                    value=""
+                    onValueChange={(v) => setReimbursementCategory(v)}
+                  >
+                    <SelectTrigger className="h-7 w-[160px] rounded-full text-xs">
+                      <SelectValue placeholder="Sí, de…" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {categories
+                        .filter((c) => c.type === "Gasto")
+                        .sort((a, b) => a.name.localeCompare(b.name))
+                        .map((cat) => (
+                          <SelectItem key={cat.name} value={cat.name}>
+                            <span className="flex items-center gap-2">
+                              <span className="text-sm leading-none">
+                                {cat.icon || "🏷️"}
+                              </span>
+                              {cat.name}
+                            </span>
+                          </SelectItem>
+                        ))}
+                    </SelectContent>
+                  </Select>
+                </>
+              )}
+            </div>
+          )}
 
         {/* Shared expense — subtle toggle */}
         {defaultType === "Gasto" && (

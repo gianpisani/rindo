@@ -70,7 +70,7 @@ export const APP_ROUTES: RouteConfig[] = [
     group: "tools",
   },
   {
-    title: "Presupuesto",
+    title: "Meta",
     url: "/budget",
     icon: Target,
     shortcut: "7",

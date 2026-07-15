@@ -576,6 +576,10 @@ export type Database = {
         Row: {
           created_at: string | null
           id: string
+          savings_goal: number | null
+          splurge_categories: string[]
+          splurge_fund_monthly: number | null
+          splurge_fund_start: string | null
           total_budget: number
           updated_at: string | null
           user_id: string
@@ -583,13 +587,21 @@ export type Database = {
         Insert: {
           created_at?: string | null
           id?: string
-          total_budget: number
+          savings_goal?: number | null
+          splurge_categories?: string[]
+          splurge_fund_monthly?: number | null
+          splurge_fund_start?: string | null
+          total_budget?: number
           updated_at?: string | null
           user_id: string
         }
         Update: {
           created_at?: string | null
           id?: string
+          savings_goal?: number | null
+          splurge_categories?: string[]
+          splurge_fund_monthly?: number | null
+          splurge_fund_start?: string | null
           total_budget?: number
           updated_at?: string | null
           user_id?: string

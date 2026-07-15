@@ -8,6 +8,14 @@ import { useCategoryLimits } from "@/hooks/useCategoryLimits";
 import { useMonthlySummary } from "@/hooks/useMonthlySummary";
 import { useCategoryInsights } from "@/hooks/useCategoryInsights";
 import { useGlobalDrawers } from "@/hooks/useGlobalDrawers";
+import { useMonthlyBudget } from "@/hooks/useMonthlyBudget";
+import {
+  useRealFlows,
+  computeRealFlows,
+  computeRealBalance,
+  SWEEP_ALERT_THRESHOLD,
+  type RealFlowsConfig,
+} from "@/hooks/useRealFlows";
 import {
   TrendingUp,
   TrendingDown,
@@ -81,49 +89,50 @@ const Index = () => {
     openQuickAdd(type);
   };
 
-  // Calcular stats del mes actual
+  // Calcular stats del mes actual — flujos reales (ingreso con sueldo-shift,
+  // consumo neto de reembolsos, sin tránsito)
   const now = new Date();
-  const monthStart = startOfMonth(now);
-  const monthEnd = endOfMonth(now);
-  const lastMonthStart = startOfMonth(subMonths(now, 1));
-  const lastMonthEnd = endOfMonth(subMonths(now, 1));
-
-  const currentMonthTransactions = transactions.filter((t) => {
-    const date = new Date(t.date);
-    return date >= monthStart && date <= monthEnd;
-  });
+  const lastMonth = subMonths(now, 1);
+  const lastMonthStart = startOfMonth(lastMonth);
+  const lastMonthEnd = endOfMonth(lastMonth);
 
   const lastMonthTransactions = transactions.filter((t) => {
     const date = new Date(t.date);
     return date >= lastMonthStart && date <= lastMonthEnd;
   });
 
-  const currentIncome = currentMonthTransactions
-    .filter((t) => t.type === "Ingreso")
-    .reduce((sum, t) => sum + Number(t.amount), 0);
+  const { budget } = useMonthlyBudget();
+  const flowConfig = useMemo<Partial<RealFlowsConfig>>(
+    () => ({ splurgeCategories: budget?.splurge_categories ?? [] }),
+    [budget?.splurge_categories]
+  );
+  const currentFlows = useRealFlows(transactions, now, flowConfig);
+  const lastMonthFlows = useMemo(
+    () => computeRealFlows(transactions, lastMonth, flowConfig),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [transactions, lastMonth.getFullYear(), lastMonth.getMonth(), flowConfig]
+  );
 
-  const currentExpenses = currentMonthTransactions
-    .filter((t) => t.type === "Gasto")
-    .reduce((sum, t) => sum + Number(t.amount), 0);
+  const currentIncome = currentFlows.ingresoReal;
+  const currentExpenses = currentFlows.consumoNeto;
+  const currentInvestments = currentFlows.invertido;
+  const lastMonthExpenses = lastMonthFlows.consumoNeto;
+  const lastMonthIncome = lastMonthFlows.ingresoReal;
 
-  const currentInvestments = currentMonthTransactions
-    .filter((t) => t.type === "Inversión")
-    .reduce((sum, t) => sum + Number(t.amount), 0);
+  // Balance total real: excluye tránsito y su devolución tagueada
+  const totalBalance = useMemo(() => computeRealBalance(transactions), [transactions]);
 
-  const lastMonthExpenses = lastMonthTransactions
-    .filter((t) => t.type === "Gasto")
-    .reduce((sum, t) => sum + Number(t.amount), 0);
-
-  const lastMonthIncome = lastMonthTransactions
-    .filter((t) => t.type === "Ingreso")
-    .reduce((sum, t) => sum + Number(t.amount), 0);
-
-  // Balance total real (todas las transacciones)
-  const totalBalance = transactions.reduce((acc, t) => {
-    if (t.type === "Ingreso") return acc + Number(t.amount);
-    if (t.type === "Gasto" || t.type === "Inversión") return acc - Number(t.amount);
-    return acc;
-  }, 0);
+  // Detector de sweep: mes cerrado con ahorro sin invertir, visible los
+  // primeros días del mes (solo si el usuario ya opera con meta de ahorro)
+  const sweepAlert = useMemo(() => {
+    if (!budget?.savings_goal || now.getDate() > 7) return null;
+    if (lastMonthFlows.consumoBruto === 0 && lastMonthFlows.ingresoReal === 0)
+      return null;
+    const saved = lastMonthFlows.ingresoReal - lastMonthFlows.consumoNeto;
+    const gap = saved - lastMonthFlows.invertido;
+    return gap > SWEEP_ALERT_THRESHOLD ? { amount: gap } : null;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [budget?.savings_goal, lastMonthFlows]);
 
   const expenseChange = lastMonthExpenses > 0
     ? ((currentExpenses - lastMonthExpenses) / lastMonthExpenses) * 100
@@ -139,7 +148,6 @@ const Index = () => {
   const { insights: currentInsights } = useCategoryInsights(transactions, limits, now);
 
   // Last month data for Monthly Story
-  const lastMonth = subMonths(now, 1);
   const lastMonthSummary = useMonthlySummary(transactions, categories, limits, lastMonth);
   const hasLastMonthData = lastMonthSummary.transactionCount > 0;
   const { insights: lastMonthInsights } = useCategoryInsights(transactions, limits, lastMonth);
@@ -631,6 +639,33 @@ const Index = () => {
             {getGreeting()}{displayName ? <>, <span className="animated-gradient-text">{displayName}</span></> : ""}
           </h1>
         </div>
+
+        {/* ─── Card de sweep: ahorro del mes pasado sin invertir ─── */}
+        {sweepAlert && (
+          <button
+            onClick={() => navigate("/budget")}
+            className="w-full text-left rounded-xl border border-amber-500/30 bg-amber-500/[0.06] px-4 py-3 flex items-center gap-3 hover:bg-amber-500/10 transition-colors native-press focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/60"
+          >
+            <div className="flex items-center justify-center size-9 rounded-full bg-amber-500/15 text-amber-600 dark:text-amber-500 shrink-0">
+              <PiggyBank className="h-4 w-4" />
+            </div>
+            <div className="flex-1 min-w-0">
+              <p className="text-sm font-semibold">Te quedó plata sin invertir</p>
+              <p className={cn("text-xs text-muted-foreground", isPrivacyMode && "privacy-blur")}>
+                Cerraste{" "}
+                <span className="capitalize">
+                  {format(lastMonth, "MMMM", { locale: es })}
+                </span>{" "}
+                con{" "}
+                <span className="font-mono font-semibold tabular-nums">
+                  {formatCompact(sweepAlert.amount)}
+                </span>{" "}
+                ahorrados que no barriste a inversión.
+              </p>
+            </div>
+            <ChevronRight className="h-4 w-4 text-muted-foreground shrink-0" />
+          </button>
+        )}
 
         {/* ─── MOBILE LAYOUT (< lg) ─── */}
         {/* 100dvh minus: header 56px + main-padding 16px + greeting ~36px + gap 16px + bottom-padding 112px */}

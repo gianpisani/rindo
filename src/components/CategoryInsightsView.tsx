@@ -15,6 +15,13 @@ import { useMonthlyBudget } from "@/hooks/useMonthlyBudget";
 import { useTransactions, Transaction } from "@/hooks/useTransactions";
 import { useCategories } from "@/hooks/useCategories";
 import { usePrivacyMode } from "@/hooks/usePrivacyMode";
+import {
+  useRealFlows,
+  computeRealFlows,
+  computeSplurgeFund,
+  SWEEP_ALERT_THRESHOLD,
+  type RealFlowsConfig,
+} from "@/hooks/useRealFlows";
 import { cn } from "@/lib/utils";
 import { CHART_COLORS } from "@/lib/chart-config";
 import NumberFlow from "@number-flow/react";
@@ -31,6 +38,10 @@ import {
   TrendingDown,
   BarChart3,
   SlidersHorizontal,
+  PiggyBank,
+  Flame,
+  HeartPulse,
+  AlertTriangle,
 } from "lucide-react";
 import {
   format,
@@ -39,6 +50,8 @@ import {
   getDaysInMonth,
   isSameMonth,
   setDate,
+  startOfMonth,
+  differenceInCalendarMonths,
 } from "date-fns";
 import { es } from "date-fns/locale";
 import {
@@ -70,6 +83,7 @@ import {
   XAxis,
   YAxis,
   ReferenceLine,
+  ReferenceArea,
   Tooltip as ChartTooltip,
   ResponsiveContainer,
   Legend,
@@ -249,6 +263,18 @@ function EnvelopeSparkline({
 
 // ─── Main Component ──────────────────────────────────────
 
+type Tone = "emerald" | "amber" | "rose";
+
+interface MonthVerdict {
+  month: Date;
+  saved: number;
+  invertido: number;
+  tone: Tone;
+  symbol: string;
+  culprit: string | null;
+  culpritAmount: number;
+}
+
 export function CategoryInsightsView() {
   const { transactions, isLoading } = useTransactions();
   const { categories } = useCategories();
@@ -259,8 +285,13 @@ export function CategoryInsightsView() {
   const [isLimitDialogOpen, setIsLimitDialogOpen] = useState(false);
   const [editingBudget, setEditingBudget] = useState(false);
   const [budgetInput, setBudgetInput] = useState("");
+  const [editingGoal, setEditingGoal] = useState(false);
+  const [goalInput, setGoalInput] = useState("");
   const [simInput, setSimInput] = useState("");
   const [simCategory, setSimCategory] = useState<string>("none");
+  const [fundConfigOpen, setFundConfigOpen] = useState(false);
+  const [splurgeDraft, setSplurgeDraft] = useState<Set<string>>(new Set());
+  const [fundInput, setFundInput] = useState("");
   const [selectedChartCategories, setSelectedChartCategories] = useState<Set<string>>(new Set());
   const [chartMonths, setChartMonths] = useState(6);
   const [showAverage, setShowAverage] = useState(false);
@@ -277,9 +308,30 @@ export function CategoryInsightsView() {
     chartMonths
   );
 
+  // ── Flujos reales del mes (clasificación central) ──
+  const splurgeCategories = useMemo(
+    () => budget?.splurge_categories ?? [],
+    [budget?.splurge_categories]
+  );
+  const flowConfig = useMemo<Partial<RealFlowsConfig>>(
+    () => ({ splurgeCategories }),
+    [splurgeCategories]
+  );
+  const flows = useRealFlows(transactions, selectedMonth, flowConfig);
+
+  // ── Meta vs presupuesto legacy ──
+  const savingsGoal = budget?.savings_goal ?? 0;
+  const hasGoal = savingsGoal > 0;
+  const legacyBudget = budget?.total_budget || 0;
+  const ingresoMes = flows.ingresoReal;
+  // El techo operativo: con meta es DERIVADO del ingreso real; sin meta, el presupuesto manual v1.
+  const spendingCeiling = hasGoal
+    ? Math.max(0, ingresoMes - savingsGoal)
+    : legacyBudget;
+  const isConfigured = hasGoal || legacyBudget > 0;
+
   const totalAllocated = limits.reduce((s, l) => s + l.monthly_limit, 0);
-  const totalBudget = budget?.total_budget || 0;
-  const unallocated = totalBudget - totalAllocated;
+  const unallocated = spendingCeiling - totalAllocated;
 
   const isCurrentMonth =
     format(selectedMonth, "yyyy-MM") === format(new Date(), "yyyy-MM");
@@ -289,31 +341,18 @@ export function CategoryInsightsView() {
   const todayDay = isCurrentMonth ? new Date().getDate() : daysInMonth;
   const daysLeft = Math.max(daysInMonth - todayDay + 1, 1); // includes today
 
-  // ── Daily net spending (Gastos minus reimbursements, by day) ──
-  const dailyNet = useMemo(() => {
-    const arr = new Array(daysInMonth + 1).fill(0);
-    transactions.forEach((t) => {
-      const d = new Date(t.date);
-      if (!isSameMonth(d, selectedMonth)) return;
-      const day = d.getDate();
-      if (t.type === "Gasto") arr[day] += Number(t.amount);
-      else if (t.type === "Ingreso" && t.reimbursement_for_category)
-        arr[day] -= Number(t.amount);
-    });
-    return arr;
-  }, [transactions, selectedMonth, daysInMonth]);
-
   // ── Simulation ("¿Me alcanza?") ──
   const simAmount = parseInt(simInput.replace(/\D/g, ""), 10) || 0;
   const isSimulating = isCurrentMonth && simAmount > 0;
 
-  // ── Burn-down series ──
+  // ── Burn-down series (gasto neto por día, sin tránsito) ──
   const {
     chartData,
     spent,
     projectedEnd,
     maxY,
   } = useMemo(() => {
+    const dailyNet = flows.dailyNet;
     let cum = 0;
     let cumAtToday = 0;
     for (let day = 1; day <= todayDay; day++) cum += dailyNet[day];
@@ -335,7 +374,7 @@ export function CategoryInsightsView() {
         day,
         spentDay: dailyNet[day],
         actual: !isCurrentMonth || day <= todayDay ? running : null,
-        ideal: totalBudget > 0 ? (totalBudget * day) / daysInMonth : null,
+        ideal: spendingCeiling > 0 ? (spendingCeiling * day) / daysInMonth : null,
         projected:
           isCurrentMonth && day >= todayDay
             ? cumAtToday + sim + pace * (day - todayDay)
@@ -345,18 +384,143 @@ export function CategoryInsightsView() {
 
     const spent = isCurrentMonth ? cumAtToday : cumEnd;
     const maxY =
-      Math.max(totalBudget, cumEnd, projectedEnd ?? 0, 1) * 1.06;
+      Math.max(
+        spendingCeiling,
+        hasGoal ? ingresoMes : 0,
+        cumEnd,
+        projectedEnd ?? 0,
+        1
+      ) * 1.06;
 
     return { chartData: rows, spent, projectedEnd, maxY };
-  }, [dailyNet, daysInMonth, todayDay, isCurrentMonth, totalBudget, simAmount]);
+  }, [flows.dailyNet, daysInMonth, todayDay, isCurrentMonth, spendingCeiling, simAmount, hasGoal, ingresoMes]);
 
-  const remaining = totalBudget - spent;
-  const usagePercent = totalBudget > 0 ? (spent / totalBudget) * 100 : 0;
+  const remaining = spendingCeiling - spent;
+  const usagePercent = spendingCeiling > 0 ? (spent / spendingCeiling) * 100 : 0;
   const perDay = Math.max(0, remaining) / daysLeft;
   const perDayAfterSim = Math.max(0, remaining - simAmount) / daysLeft;
   const heroPerDay = isSimulating ? perDayAfterSim : perDay;
-  const projectionOnTrack =
-    projectedEnd !== null && totalBudget > 0 && projectedEnd <= totalBudget;
+
+  // ── Métricas de meta ──
+  const clampGoal = (v: number) => Math.min(Math.max(v, 0), savingsGoal);
+  // Cuánto de la meta sigue viva hoy (o cuánto sobrevivió, en meses cerrados)
+  const metaProtegida = clampGoal(ingresoMes - spent);
+  const metaProyectada =
+    projectedEnd !== null ? clampGoal(ingresoMes - projectedEnd) : metaProtegida;
+  // Veredicto de meses cerrados: lo que efectivamente quedó sin gastar
+  const ahorradoMes = ingresoMes - spent;
+
+  const goalTone: Tone =
+    metaProtegida >= savingsGoal ? "emerald" : metaProtegida > 0 ? "amber" : "rose";
+
+  const projectionOnTrack = hasGoal
+    ? metaProyectada >= savingsGoal
+    : projectedEnd !== null && spendingCeiling > 0 && projectedEnd <= spendingCeiling;
+  const projectionColor = hasGoal
+    ? metaProyectada >= savingsGoal
+      ? CHART_COLORS.income
+      : metaProyectada > 0
+      ? AMBER
+      : CHART_COLORS.expense
+    : projectionOnTrack
+    ? CHART_COLORS.income
+    : CHART_COLORS.expense;
+
+  // ── Culpable de un mes: el bombazo (o gasto) más grande ──
+  const culpritFor = (month: Date): { label: string; amount: number } | null => {
+    const splurgeSet = new Set(splurgeCategories);
+    const candidates = transactions.filter(
+      (t) => t.type === "Gasto" && isSameMonth(new Date(t.date), month)
+    );
+    const pool = candidates.filter((t) => splurgeSet.has(t.category_name));
+    const top = (pool.length > 0 ? pool : candidates).reduce(
+      (max, t) => (Number(t.amount) > Number(max?.amount ?? 0) ? t : max),
+      null as Transaction | null
+    );
+    if (!top) return null;
+    return { label: top.detail || top.category_name, amount: Number(top.amount) };
+  };
+
+  // ── Strip de veredictos: últimos 4 meses cerrados ──
+  const monthVerdicts = useMemo((): MonthVerdict[] => {
+    if (!hasGoal) return [];
+    const base = startOfMonth(new Date());
+    const out: MonthVerdict[] = [];
+    for (let i = 1; i <= 4; i++) {
+      const month = subMonths(base, i);
+      const f = computeRealFlows(transactions, month, flowConfig);
+      if (f.consumoBruto === 0 && f.ingresoReal === 0) continue;
+      const saved = f.ingresoReal - f.consumoNeto;
+      const tone: Tone =
+        saved >= savingsGoal ? "emerald" : saved > 0 ? "amber" : "rose";
+      let culprit: string | null = null;
+      let culpritAmount = 0;
+      if (tone !== "emerald") {
+        const c = culpritFor(month);
+        if (c) {
+          culprit = c.label;
+          culpritAmount = c.amount;
+        }
+      }
+      out.push({
+        month,
+        saved,
+        invertido: f.invertido,
+        tone,
+        symbol: tone === "emerald" ? "✓" : tone === "amber" ? "◐" : "⚠",
+        culprit,
+        culpritAmount,
+      });
+    }
+    return out;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [transactions, hasGoal, savingsGoal, flowConfig]);
+
+  // ── Detector de sweep: mes cerrado con plata ahorrada pero sin invertir ──
+  const sweepAlert = useMemo(() => {
+    const last = monthVerdicts[0];
+    if (!last) return null;
+    const gap = last.saved - last.invertido;
+    if (gap <= SWEEP_ALERT_THRESHOLD) return null;
+    return { month: last.month, amount: gap };
+  }, [monthVerdicts]);
+
+  // ── Vida: banda normal (promedio de los 6 meses previos) ──
+  const vidaStats = useMemo(() => {
+    const values: number[] = [];
+    for (let i = 1; i <= 6; i++) {
+      const f = computeRealFlows(transactions, subMonths(selectedMonth, i), flowConfig);
+      if (f.consumoBruto > 0) values.push(f.vida);
+    }
+    if (values.length === 0) return null;
+    const avg = values.reduce((a, b) => a + b, 0) / values.length;
+    return { avg, min: Math.min(...values), max: Math.max(...values) };
+  }, [transactions, selectedMonth, flowConfig]);
+
+  const monthFraction = Math.max(todayDay / daysInMonth, 1 / daysInMonth);
+  const vidaProjected = isCurrentMonth ? flows.vida / monthFraction : flows.vida;
+  const vidaStatus: "alto" | "bajo" | "normal" | null = vidaStats
+    ? vidaProjected > vidaStats.avg * 1.15
+      ? "alto"
+      : vidaProjected < vidaStats.avg * 0.85
+      ? "bajo"
+      : "normal"
+    : null;
+
+  // ── Fondo de bombazos ──
+  const fundMonthly = budget?.splurge_fund_monthly ?? 0;
+  const fundStart = budget?.splurge_fund_start
+    ? new Date(budget.splurge_fund_start + "T12:00:00")
+    : null;
+  const fundMonths = fundStart
+    ? differenceInCalendarMonths(startOfMonth(selectedMonth), startOfMonth(fundStart)) + 1
+    : 0;
+  const fund = useMemo(() => {
+    if (fundMonthly <= 0 || !fundStart || fundMonths <= 0) return null;
+    return computeSplurgeFund(transactions, fundMonthly, fundStart, selectedMonth, flowConfig);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [transactions, fundMonthly, budget?.splurge_fund_start, selectedMonth, flowConfig, fundMonths]);
+  const fundContributed = fundMonthly * Math.max(fundMonths, 0);
 
   // ── Simulation verdict ──
   const simEnvelope =
@@ -365,14 +529,40 @@ export function CategoryInsightsView() {
       : undefined;
 
   const simVerdict = useMemo(() => {
-    if (!isSimulating || totalBudget <= 0) return null;
+    if (!isSimulating || spendingCeiling <= 0) return null;
     const afterRemaining = remaining - simAmount;
     const envelopeAfter = simEnvelope
       ? simEnvelope.effectiveAmount + simAmount
       : null;
     const envelopeBreaks =
       simEnvelope && envelopeAfter! > simEnvelope.limit!;
+    const envelopeNote = envelopeBreaks
+      ? ` Ojo: ${simEnvelope!.category} quedaría excedida en ${formatCompact(envelopeAfter! - simEnvelope!.limit!)}.`
+      : "";
 
+    if (hasGoal) {
+      // Veredicto en lenguaje de meta: ¿sobrevive la meta de ahorro?
+      const metaAfter = clampGoal(ingresoMes - spent - simAmount);
+      if (afterRemaining >= 0) {
+        return {
+          tone: "emerald" as const,
+          text: `Sí, y tu meta sigue intacta. Tu día queda en ${formatCurrency(Math.round(perDayAfterSim))}.${envelopeNote}`,
+        };
+      }
+      if (metaAfter > 0) {
+        return {
+          tone: "amber" as const,
+          text: `Sí, pero ${formatCompact(-afterRemaining)} salen de tu meta: quedaría en ${formatCompact(metaAfter)} de ${formatCompact(savingsGoal)}.${envelopeNote}`,
+        };
+      }
+      const overIncome = spent + simAmount - ingresoMes;
+      return {
+        tone: "rose" as const,
+        text: `No: tu meta quedaría en $0${overIncome > 0 ? ` y gastarías ${formatCompact(overIncome)} sobre tu ingreso` : ""}.`,
+      };
+    }
+
+    // Modo legacy (presupuesto manual)
     if (afterRemaining < 0) {
       return {
         tone: "rose" as const,
@@ -395,13 +585,27 @@ export function CategoryInsightsView() {
       tone: "emerald" as const,
       text: `Te alcanza. Tu día queda en ${formatCurrency(Math.round(perDayAfterSim))}${simEnvelope ? ` y ${simEnvelope.category} al ${Math.round((envelopeAfter! / simEnvelope.limit!) * 100)}%` : ""}.`,
     };
-  }, [isSimulating, totalBudget, remaining, simAmount, simEnvelope, perDay, perDayAfterSim]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isSimulating, spendingCeiling, remaining, simAmount, simEnvelope, perDay, perDayAfterSim, hasGoal, ingresoMes, spent, savingsGoal]);
 
-  // ── Budget CRUD ──
+  // ── Goal / Budget CRUD ──
+  const handleSaveGoal = async () => {
+    const value = parseInt(goalInput.replace(/\D/g, ""), 10);
+    if (!isNaN(value) && value > 0) {
+      await upsertBudget.mutateAsync({ savings_goal: value });
+    }
+    setEditingGoal(false);
+  };
+
+  const startEditGoal = () => {
+    setGoalInput(budget?.savings_goal?.toString() || "");
+    setEditingGoal(true);
+  };
+
   const handleSaveBudget = async () => {
     const value = parseInt(budgetInput.replace(/\D/g, ""), 10);
     if (!isNaN(value) && value > 0) {
-      await upsertBudget.mutateAsync(value);
+      await upsertBudget.mutateAsync({ total_budget: value });
     }
     setEditingBudget(false);
   };
@@ -409,6 +613,28 @@ export function CategoryInsightsView() {
   const startEditBudget = () => {
     setBudgetInput(budget?.total_budget?.toString() || "");
     setEditingBudget(true);
+  };
+
+  // ── Fondo de bombazos: config ──
+  const openFundConfig = (open: boolean) => {
+    if (open) {
+      setSplurgeDraft(new Set(splurgeCategories));
+      setFundInput(fundMonthly > 0 ? fundMonthly.toString() : "");
+    }
+    setFundConfigOpen(open);
+  };
+
+  const handleSaveFundConfig = async () => {
+    const monthly = parseInt(fundInput.replace(/\D/g, ""), 10) || 0;
+    await upsertBudget.mutateAsync({
+      splurge_categories: Array.from(splurgeDraft),
+      splurge_fund_monthly: monthly > 0 ? monthly : null,
+      splurge_fund_start:
+        monthly > 0
+          ? budget?.splurge_fund_start ?? format(startOfMonth(new Date()), "yyyy-MM-dd")
+          : budget?.splurge_fund_start ?? null,
+    });
+    setFundConfigOpen(false);
   };
 
   // ── Limit CRUD ──
@@ -604,11 +830,27 @@ export function CategoryInsightsView() {
     return ticks.filter((t) => t <= daysInMonth);
   }, [daysInMonth]);
 
+  // ── Draft de meta en empty state: mostrar el límite derivado al tiro ──
+  const goalDraftValue = parseInt(goalInput.replace(/\D/g, ""), 10) || 0;
+
+  const toneText = (tone: Tone) =>
+    tone === "rose"
+      ? "text-rose-500"
+      : tone === "amber"
+      ? "text-amber-600 dark:text-amber-500"
+      : "text-emerald-600 dark:text-emerald-500";
+  const toneBg = (tone: Tone) =>
+    tone === "rose"
+      ? "bg-rose-500"
+      : tone === "amber"
+      ? "bg-amber-500"
+      : "bg-emerald-500";
+
   return (
     <div className="space-y-4">
       {/* ─── Header ────────────────────────────────────── */}
       <div className="flex flex-wrap items-center justify-between gap-2">
-        <h1 className="text-2xl font-bold tracking-tight">Presupuesto</h1>
+        <h1 className="text-2xl font-bold tracking-tight">Meta</h1>
 
         <div className="flex items-center gap-1">
           <Button
@@ -662,19 +904,19 @@ export function CategoryInsightsView() {
           <Skeleton className="h-[220px] w-full rounded-lg mb-3" />
           <Skeleton className="h-3 w-64" />
         </GlassCard>
-      ) : totalBudget <= 0 ? (
+      ) : !isConfigured ? (
         <GlassCard className="relative overflow-hidden">
           <div className="absolute inset-0 bg-gradient-to-br from-primary/[0.04] to-transparent pointer-events-none" />
           <div className="relative flex flex-col items-center text-center px-4 py-10">
             <div className="p-3 rounded-full bg-primary/10 mb-3">
-              <Target className="h-6 w-6 text-primary" />
+              <PiggyBank className="h-6 w-6 text-primary" />
             </div>
             <h2 className="text-base font-semibold mb-1">
-              Define tu presupuesto mensual
+              ¿Cuánto quieres ahorrar al mes?
             </h2>
-            <p className="text-xs text-muted-foreground mb-4 max-w-[300px]">
-              Es el total que planeas gastar cada mes. Con eso te digo cuánto
-              puedes gastar cada día sin romper el mes.
+            <p className="text-xs text-muted-foreground mb-4 max-w-[320px]">
+              Págate a ti primero: fija tu meta de ahorro y el límite de gasto
+              se deriva solo de tu ingreso real de cada mes.
             </p>
             <div className="flex items-center gap-2 w-full max-w-[280px]">
               <div className="relative flex-1">
@@ -683,14 +925,15 @@ export function CategoryInsightsView() {
                 </span>
                 <Input
                   value={
-                    budgetInput
-                      ? parseInt(budgetInput.replace(/\D/g, ""), 10).toLocaleString("es-CL")
+                    goalInput
+                      ? parseInt(goalInput.replace(/\D/g, ""), 10).toLocaleString("es-CL")
                       : ""
                   }
-                  placeholder="1.500.000"
-                  onChange={(e) => setBudgetInput(e.target.value.replace(/\D/g, ""))}
+                  placeholder="500.000"
+                  inputMode="numeric"
+                  onChange={(e) => setGoalInput(e.target.value.replace(/\D/g, ""))}
                   onKeyDown={(e) => {
-                    if (e.key === "Enter") handleSaveBudget();
+                    if (e.key === "Enter") handleSaveGoal();
                   }}
                   className="pl-7 h-9 font-mono text-sm"
                 />
@@ -698,400 +941,959 @@ export function CategoryInsightsView() {
               <Button
                 size="sm"
                 className="h-9 rounded-lg"
-                disabled={!budgetInput}
-                onClick={handleSaveBudget}
+                disabled={!goalInput}
+                onClick={handleSaveGoal}
               >
                 Guardar
               </Button>
             </div>
+            {ingresoMes > 0 && goalDraftValue > 0 && (
+              <p className={cn("text-xs text-muted-foreground mt-3 font-mono tabular-nums", isPrivacyMode && "privacy-blur")}>
+                Con tu ingreso de este mes ({formatCompact(ingresoMes)}), tu
+                límite de gasto quedaría en{" "}
+                <span className="font-semibold text-foreground">
+                  {formatCurrency(Math.max(0, ingresoMes - goalDraftValue))}
+                </span>
+              </p>
+            )}
           </div>
         </GlassCard>
       ) : (
-        <GlassCard className="relative overflow-hidden">
-          <div className="absolute inset-0 bg-gradient-to-br from-primary/[0.04] via-transparent to-transparent pointer-events-none" />
-          <div className="relative px-4 py-4 sm:px-6 sm:py-5">
-            {/* Top row: today's allowance + editable budget */}
-            <div className="flex items-start justify-between gap-4 flex-wrap">
-              <div>
-                <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider mb-1 flex items-center gap-1.5">
-                  {isCurrentMonth
-                    ? remaining >= 0
-                      ? "Puedes gastar hoy"
-                      : "Presupuesto excedido"
-                    : remaining >= 0
-                    ? "Sobró del presupuesto"
-                    : "Excedido ese mes"}
-                  {isSimulating && (
-                    <span className="text-amber-500 normal-case tracking-normal font-medium">
-                      · simulando
-                    </span>
-                  )}
-                </p>
-                {isCurrentMonth && remaining >= 0 ? (
-                  <div className="flex items-baseline gap-1.5">
-                    <span
-                      className={cn(
-                        "text-3xl sm:text-4xl font-bold font-mono tabular-nums tracking-tight leading-none",
-                        isSimulating && "text-amber-500",
-                        isPrivacyMode && "privacy-blur"
-                      )}
-                    >
-                      $
-                      <NumberFlow
-                        value={Math.round(heroPerDay)}
-                        format={{
-                          style: "decimal",
-                          minimumFractionDigits: 0,
-                          maximumFractionDigits: 0,
-                        }}
-                        locales="es-CL"
-                      />
-                    </span>
-                    <span className="text-sm font-medium text-muted-foreground">
-                      /día
-                    </span>
-                  </div>
-                ) : (
-                  <div
-                    className={cn(
-                      "text-3xl sm:text-4xl font-bold font-mono tabular-nums tracking-tight leading-none",
-                      remaining < 0 && "text-rose-500",
-                      isPrivacyMode && "privacy-blur"
-                    )}
-                  >
-                    {remaining < 0 && "−"}$
-                    <NumberFlow
-                      value={Math.abs(Math.round(remaining))}
-                      format={{
-                        style: "decimal",
-                        minimumFractionDigits: 0,
-                        maximumFractionDigits: 0,
-                      }}
-                      locales="es-CL"
-                    />
-                  </div>
-                )}
-                <p
-                  className={cn(
-                    "text-[11px] text-muted-foreground mt-1.5 font-mono tabular-nums",
-                    isPrivacyMode && "privacy-blur"
-                  )}
-                >
-                  {isCurrentMonth
-                    ? remaining >= 0
-                      ? `queda ${formatCompact(remaining)} ÷ ${daysLeft} ${daysLeft === 1 ? "día" : "días"}`
-                      : `a ${daysLeft} ${daysLeft === 1 ? "día" : "días"} del cierre`
-                    : `gastaste ${formatCompact(spent)} de ${formatCompact(totalBudget)}`}
-                </p>
-              </div>
-
-              <div className="text-right shrink-0">
-                <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider mb-1">
-                  Presupuesto
-                </p>
-                {editingBudget ? (
-                  <div className="flex items-center gap-1">
-                    <div className="relative">
-                      <span className="absolute left-2.5 top-1/2 -translate-y-1/2 text-muted-foreground text-sm">
-                        $
-                      </span>
-                      <Input
-                        value={
-                          budgetInput
-                            ? parseInt(budgetInput.replace(/\D/g, ""), 10).toLocaleString("es-CL")
-                            : ""
-                        }
-                        onChange={(e) =>
-                          setBudgetInput(e.target.value.replace(/\D/g, ""))
-                        }
-                        onKeyDown={(e) => {
-                          if (e.key === "Enter") handleSaveBudget();
-                          if (e.key === "Escape") setEditingBudget(false);
-                        }}
-                        className="pl-6 w-36 text-sm font-mono h-8"
-                        autoFocus
-                      />
-                    </div>
-                    <Button
-                      size="icon"
-                      variant="ghost"
-                      className="h-8 w-8 shrink-0"
-                      onClick={handleSaveBudget}
-                    >
-                      <Check className="h-3.5 w-3.5" />
-                    </Button>
-                    <Button
-                      size="icon"
-                      variant="ghost"
-                      className="h-8 w-8 shrink-0"
-                      onClick={() => setEditingBudget(false)}
-                    >
-                      <X className="h-3.5 w-3.5" />
-                    </Button>
-                  </div>
-                ) : (
-                  <button
-                    onClick={startEditBudget}
-                    className="group flex items-center gap-1.5 rounded-lg px-2 py-1 -mr-2 hover:bg-accent transition-colors"
-                  >
-                    <span
-                      className={cn(
-                        "text-base font-semibold font-mono tabular-nums",
-                        isPrivacyMode && "privacy-blur"
-                      )}
-                    >
-                      {formatCurrency(totalBudget)}
-                    </span>
-                    <Pencil className="h-3 w-3 text-muted-foreground/50 group-hover:text-muted-foreground transition-colors" />
-                  </button>
-                )}
-              </div>
-            </div>
-
-            {/* Burn-down chart */}
-            <div className={cn("mt-4 -mx-2", isPrivacyMode && "privacy-blur")}>
-              <ResponsiveContainer width="100%" height={220}>
-                <ComposedChart
-                  data={chartData}
-                  margin={{ top: 12, right: 8, bottom: 0, left: 8 }}
-                >
-                  <defs>
-                    <linearGradient id="burnFill" x1="0" y1="0" x2="0" y2="1">
-                      <stop
-                        offset="0%"
-                        stopColor={CHART_COLORS.expense}
-                        stopOpacity={0.14}
-                      />
-                      <stop
-                        offset="100%"
-                        stopColor={CHART_COLORS.expense}
-                        stopOpacity={0}
-                      />
-                    </linearGradient>
-                  </defs>
-                  <XAxis
-                    dataKey="day"
-                    ticks={xTicks}
-                    stroke={CHART_COLORS.mutedAxis}
-                    fontSize={10}
-                    tickLine={false}
-                    axisLine={false}
-                  />
-                  <YAxis hide domain={[0, maxY]} />
-                  <ChartTooltip content={<BurndownTooltip />} />
-
-                  {/* Budget ceiling */}
-                  <ReferenceLine
-                    y={totalBudget}
-                    stroke={CHART_COLORS.mutedAxis}
-                    strokeDasharray="2 5"
-                    strokeOpacity={0.6}
-                    label={{
-                      value: "Presupuesto",
-                      position: "insideTopRight",
-                      fontSize: 9,
-                      fill: CHART_COLORS.mutedAxis,
-                    }}
-                  />
-
-                  {/* Today marker */}
-                  {isCurrentMonth && (
-                    <ReferenceLine
-                      x={todayDay}
-                      stroke={CHART_COLORS.mutedAxis}
-                      strokeOpacity={0.45}
-                      label={{
-                        value: "Hoy",
-                        position: "insideBottom",
-                        fontSize: 9,
-                        fill: CHART_COLORS.mutedAxis,
-                      }}
-                    />
-                  )}
-
-                  {/* Ideal pace */}
-                  <Line
-                    type="linear"
-                    dataKey="ideal"
-                    stroke={CHART_COLORS.mutedAxis}
-                    strokeWidth={1}
-                    strokeDasharray="4 4"
-                    strokeOpacity={0.55}
-                    dot={false}
-                    activeDot={false}
-                    isAnimationActive={false}
-                  />
-
-                  {/* Projection at current pace (+ simulation) */}
-                  {isCurrentMonth && (
-                    <Line
-                      type="linear"
-                      dataKey="projected"
-                      stroke={
-                        projectionOnTrack
-                          ? CHART_COLORS.income
-                          : CHART_COLORS.expense
-                      }
-                      strokeWidth={1.5}
-                      strokeDasharray="2 4"
-                      dot={false}
-                      activeDot={{ r: 3 }}
-                      isAnimationActive={false}
-                    />
-                  )}
-
-                  {/* Actual cumulative spending */}
-                  <Area
-                    type="monotone"
-                    dataKey="actual"
-                    stroke={CHART_COLORS.expense}
-                    strokeWidth={2}
-                    fill="url(#burnFill)"
-                    dot={false}
-                    activeDot={{ r: 4 }}
-                  />
-                </ComposedChart>
-              </ResponsiveContainer>
-            </div>
-
-            {/* Stats row */}
-            <div className="mt-2 flex flex-wrap items-center gap-x-5 gap-y-1.5 text-xs">
-              <span className="flex items-baseline gap-1.5">
-                <span className="text-muted-foreground">Gastado</span>
-                <span
-                  className={cn(
-                    "font-mono font-semibold tabular-nums",
-                    isPrivacyMode && "privacy-blur"
-                  )}
-                >
-                  {formatCompact(spent)}
-                </span>
-                <span className="text-muted-foreground/60 tabular-nums">
-                  {usagePercent.toFixed(0)}%
-                </span>
-              </span>
-              {projectedEnd !== null && (
-                <span className="flex items-baseline gap-1.5">
-                  <span
-                    className={cn(
-                      "size-1.5 rounded-full self-center shrink-0",
-                      projectionOnTrack ? "bg-emerald-500" : "bg-rose-500"
-                    )}
-                  />
-                  <span className="text-muted-foreground">Cierre proyectado</span>
-                  <span
-                    className={cn(
-                      "font-mono font-semibold tabular-nums",
-                      !projectionOnTrack && "text-rose-500",
-                      isPrivacyMode && "privacy-blur"
-                    )}
-                  >
-                    ~{formatCompact(projectedEnd)}
-                  </span>
-                </span>
-              )}
-              <span className="flex items-baseline gap-1.5">
-                <span className="text-muted-foreground">
-                  {unallocated >= 0 ? "Sin asignar" : "Sobre-asignado"}
-                </span>
-                <span
-                  className={cn(
-                    "font-mono font-semibold tabular-nums",
-                    unallocated < 0 && "text-rose-500",
-                    isPrivacyMode && "privacy-blur"
-                  )}
-                >
-                  {formatCompact(Math.abs(unallocated))}
-                </span>
-              </span>
-            </div>
-
-            {/* ¿Me alcanza? simulator */}
-            {isCurrentMonth && (
-              <div
-                className={cn(
-                  "mt-4 rounded-xl border p-3 transition-colors",
-                  isSimulating
-                    ? simVerdict?.tone === "rose"
-                      ? "border-rose-500/30 bg-rose-500/[0.04]"
-                      : simVerdict?.tone === "amber"
-                      ? "border-amber-500/30 bg-amber-500/[0.04]"
-                      : "border-emerald-500/30 bg-emerald-500/[0.04]"
-                    : "border-border/40 bg-muted/20"
-                )}
-              >
-                <div className="flex items-center gap-2 flex-wrap">
-                  <span className="text-xs font-semibold whitespace-nowrap">
-                    💭 ¿Me alcanza?
-                  </span>
-                  <div className="relative w-32">
+        <>
+          {/* Banner de migración: tiene presupuesto v1 pero aún no define meta */}
+          {!hasGoal && (
+            <GlassCard className="border-primary/20">
+              <div className="flex flex-wrap items-center gap-3 px-4 py-3">
+                <div className="p-2 rounded-full bg-primary/10 shrink-0">
+                  <PiggyBank className="h-4 w-4 text-primary" />
+                </div>
+                <div className="flex-1 min-w-[200px]">
+                  <p className="text-sm font-semibold">Parte por tu meta de ahorro</p>
+                  <p className={cn("text-xs text-muted-foreground", isPrivacyMode && "privacy-blur")}>
+                    Define cuánto quieres ahorrar al mes y el presupuesto se
+                    deriva de tu ingreso real
+                    {ingresoMes > 0 ? ` (este mes: ${formatCompact(ingresoMes)} − meta)` : ""}.
+                  </p>
+                </div>
+                <div className="flex items-center gap-2">
+                  <div className="relative">
                     <span className="absolute left-2.5 top-1/2 -translate-y-1/2 text-muted-foreground text-xs">
                       $
                     </span>
                     <Input
                       value={
-                        simAmount > 0
-                          ? simAmount.toLocaleString("es-CL")
+                        goalInput
+                          ? parseInt(goalInput.replace(/\D/g, ""), 10).toLocaleString("es-CL")
                           : ""
                       }
-                      placeholder="80.000"
+                      placeholder="500.000"
                       inputMode="numeric"
-                      onChange={(e) =>
-                        setSimInput(e.target.value.replace(/\D/g, ""))
-                      }
-                      className="pl-6 h-8 text-xs font-mono"
+                      onChange={(e) => setGoalInput(e.target.value.replace(/\D/g, ""))}
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter") handleSaveGoal();
+                      }}
+                      className="pl-6 w-32 h-8 text-xs font-mono"
                     />
                   </div>
-                  <Select value={simCategory} onValueChange={setSimCategory}>
-                    <SelectTrigger className="h-8 w-[150px] rounded-lg text-xs">
-                      <SelectValue placeholder="Categoría" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="none">
-                        <span className="text-muted-foreground">General</span>
-                      </SelectItem>
-                      {expenseCategories.map((cat) => (
-                        <SelectItem key={cat.name} value={cat.name}>
-                          <span className="flex items-center gap-2">
-                            <span className="text-sm leading-none">
-                              {cat.icon || "🏷️"}
+                  <Button
+                    size="sm"
+                    className="h-8 rounded-lg text-xs"
+                    disabled={!goalInput}
+                    onClick={handleSaveGoal}
+                  >
+                    Crear meta
+                  </Button>
+                </div>
+              </div>
+            </GlassCard>
+          )}
+
+          <GlassCard className="relative overflow-hidden">
+            <div className="absolute inset-0 bg-gradient-to-br from-primary/[0.04] via-transparent to-transparent pointer-events-none" />
+            <div className="relative px-4 py-4 sm:px-6 sm:py-5">
+              {/* ── Barra de meta ── */}
+              {hasGoal && (
+                <div className="mb-4 rounded-xl border border-border/40 bg-muted/20 px-3 py-2.5">
+                  <div className="flex items-center justify-between gap-2 flex-wrap">
+                    <div className="flex items-center gap-2 min-w-0">
+                      <PiggyBank className="h-3.5 w-3.5 text-primary/70 shrink-0" />
+                      <span className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider whitespace-nowrap">
+                        Meta del mes
+                      </span>
+                      {editingGoal ? (
+                        <div className="flex items-center gap-1">
+                          <div className="relative">
+                            <span className="absolute left-2.5 top-1/2 -translate-y-1/2 text-muted-foreground text-xs">
+                              $
                             </span>
-                            {cat.name}
+                            <Input
+                              value={
+                                goalInput
+                                  ? parseInt(goalInput.replace(/\D/g, ""), 10).toLocaleString("es-CL")
+                                  : ""
+                              }
+                              inputMode="numeric"
+                              onChange={(e) =>
+                                setGoalInput(e.target.value.replace(/\D/g, ""))
+                              }
+                              onKeyDown={(e) => {
+                                if (e.key === "Enter") handleSaveGoal();
+                                if (e.key === "Escape") setEditingGoal(false);
+                              }}
+                              className="pl-6 w-32 text-xs font-mono h-7"
+                              autoFocus
+                            />
+                          </div>
+                          <Button
+                            size="icon"
+                            variant="ghost"
+                            className="h-7 w-7 shrink-0"
+                            onClick={handleSaveGoal}
+                          >
+                            <Check className="h-3.5 w-3.5" />
+                          </Button>
+                          <Button
+                            size="icon"
+                            variant="ghost"
+                            className="h-7 w-7 shrink-0"
+                            onClick={() => setEditingGoal(false)}
+                          >
+                            <X className="h-3.5 w-3.5" />
+                          </Button>
+                        </div>
+                      ) : (
+                        <button
+                          onClick={startEditGoal}
+                          className="group flex items-center gap-1.5 rounded-lg px-1.5 py-0.5 hover:bg-accent transition-colors min-w-0"
+                        >
+                          <span
+                            className={cn(
+                              "text-sm font-semibold font-mono tabular-nums truncate",
+                              isPrivacyMode && "privacy-blur"
+                            )}
+                          >
+                            ahorrar {formatCurrency(savingsGoal)}
                           </span>
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                  {isSimulating && (
-                    <button
-                      onClick={() => {
-                        setSimInput("");
-                        setSimCategory("none");
-                      }}
-                      className="p-1.5 rounded-md hover:bg-accent transition-colors"
-                      aria-label="Limpiar simulación"
+                          <Pencil className="h-3 w-3 text-muted-foreground/50 group-hover:text-muted-foreground transition-colors shrink-0" />
+                        </button>
+                      )}
+                    </div>
+                    <span
+                      className={cn(
+                        "text-xs font-medium font-mono tabular-nums",
+                        toneText(goalTone),
+                        isPrivacyMode && "privacy-blur"
+                      )}
                     >
-                      <X className="h-3.5 w-3.5 text-muted-foreground" />
+                      {goalTone === "emerald"
+                        ? isCurrentMonth
+                          ? "intacta"
+                          : "cumplida ✓"
+                        : goalTone === "amber"
+                        ? `viva: ${formatCompact(metaProtegida)}`
+                        : "en $0"}
+                    </span>
+                  </div>
+                  <div className="mt-2 h-2 rounded-full bg-muted/60 overflow-hidden">
+                    <div
+                      className={cn(
+                        "h-full rounded-full transition-all duration-500",
+                        toneBg(goalTone)
+                      )}
+                      style={{
+                        width: `${savingsGoal > 0 ? Math.max((metaProtegida / savingsGoal) * 100, metaProtegida > 0 ? 2 : 0) : 0}%`,
+                      }}
+                    />
+                  </div>
+                </div>
+              )}
+
+              {/* Top row: today's allowance + derived ceiling */}
+              <div className="flex items-start justify-between gap-4 flex-wrap">
+                <div>
+                  {hasGoal && !isCurrentMonth ? (
+                    // Autopsia de mes cerrado: veredicto de ahorro
+                    <>
+                      <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider mb-1">
+                        {ahorradoMes >= savingsGoal
+                          ? "Ahorraste ese mes"
+                          : ahorradoMes > 0
+                          ? "Protegiste de tu meta"
+                          : "Ahorro del mes"}
+                      </p>
+                      <div
+                        className={cn(
+                          "text-3xl sm:text-4xl font-bold font-mono tabular-nums tracking-tight leading-none",
+                          toneText(goalTone),
+                          isPrivacyMode && "privacy-blur"
+                        )}
+                      >
+                        {ahorradoMes < 0 && "−"}$
+                        <NumberFlow
+                          value={Math.abs(Math.round(ahorradoMes))}
+                          format={{
+                            style: "decimal",
+                            minimumFractionDigits: 0,
+                            maximumFractionDigits: 0,
+                          }}
+                          locales="es-CL"
+                        />
+                      </div>
+                      <p
+                        className={cn(
+                          "text-[11px] text-muted-foreground mt-1.5 font-mono tabular-nums",
+                          isPrivacyMode && "privacy-blur"
+                        )}
+                      >
+                        meta: {formatCompact(savingsGoal)} · ingreso{" "}
+                        {formatCompact(ingresoMes)} − gastos netos {formatCompact(spent)}
+                      </p>
+                      {ahorradoMes < savingsGoal && (() => {
+                        const c = culpritFor(selectedMonth);
+                        return c ? (
+                          <p className={cn("text-[11px] text-muted-foreground mt-0.5", isPrivacyMode && "privacy-blur")}>
+                            el golpe más grande: {c.label} ({formatCompact(c.amount)})
+                          </p>
+                        ) : null;
+                      })()}
+                    </>
+                  ) : (
+                    <>
+                      <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider mb-1 flex items-center gap-1.5">
+                        {isCurrentMonth
+                          ? remaining >= 0
+                            ? "Puedes gastar hoy"
+                            : hasGoal
+                            ? "Comiéndote la meta"
+                            : "Presupuesto excedido"
+                          : remaining >= 0
+                          ? "Sobró del presupuesto"
+                          : "Excedido ese mes"}
+                        {isSimulating && (
+                          <span className="text-amber-500 normal-case tracking-normal font-medium">
+                            · simulando
+                          </span>
+                        )}
+                      </p>
+                      {isCurrentMonth && remaining >= 0 ? (
+                        <div className="flex items-baseline gap-1.5">
+                          <span
+                            className={cn(
+                              "text-3xl sm:text-4xl font-bold font-mono tabular-nums tracking-tight leading-none",
+                              isSimulating && "text-amber-500",
+                              isPrivacyMode && "privacy-blur"
+                            )}
+                          >
+                            $
+                            <NumberFlow
+                              value={Math.round(heroPerDay)}
+                              format={{
+                                style: "decimal",
+                                minimumFractionDigits: 0,
+                                maximumFractionDigits: 0,
+                              }}
+                              locales="es-CL"
+                            />
+                          </span>
+                          <span className="text-sm font-medium text-muted-foreground">
+                            /día
+                          </span>
+                        </div>
+                      ) : (
+                        <div
+                          className={cn(
+                            "text-3xl sm:text-4xl font-bold font-mono tabular-nums tracking-tight leading-none",
+                            remaining < 0 && "text-rose-500",
+                            isPrivacyMode && "privacy-blur"
+                          )}
+                        >
+                          {remaining < 0 && "−"}$
+                          <NumberFlow
+                            value={Math.abs(Math.round(remaining))}
+                            format={{
+                              style: "decimal",
+                              minimumFractionDigits: 0,
+                              maximumFractionDigits: 0,
+                            }}
+                            locales="es-CL"
+                          />
+                        </div>
+                      )}
+                      {hasGoal && isCurrentMonth && (
+                        <p
+                          className={cn(
+                            "text-[11px] text-muted-foreground mt-1.5 font-mono tabular-nums",
+                            isPrivacyMode && "privacy-blur"
+                          )}
+                        >
+                          = ingreso {formatCompact(ingresoMes)} − meta{" "}
+                          {formatCompact(savingsGoal)} − gastado {formatCompact(spent)}
+                        </p>
+                      )}
+                      <p
+                        className={cn(
+                          "text-[11px] text-muted-foreground font-mono tabular-nums",
+                          hasGoal && isCurrentMonth ? "mt-0.5" : "mt-1.5",
+                          isPrivacyMode && "privacy-blur"
+                        )}
+                      >
+                        {isCurrentMonth
+                          ? remaining >= 0
+                            ? `queda ${formatCompact(remaining)} ÷ ${daysLeft} ${daysLeft === 1 ? "día" : "días"}`
+                            : `a ${daysLeft} ${daysLeft === 1 ? "día" : "días"} del cierre`
+                          : `gastaste ${formatCompact(spent)} de ${formatCompact(spendingCeiling)}`}
+                      </p>
+                    </>
+                  )}
+                </div>
+
+                <div className="text-right shrink-0">
+                  <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider mb-1 flex items-center justify-end gap-1">
+                    {hasGoal ? "Tu límite" : "Presupuesto"}
+                    {hasGoal && (
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <Info className="h-3 w-3 text-muted-foreground/40 hover:text-muted-foreground transition-colors cursor-help" />
+                        </TooltipTrigger>
+                        <TooltipContent side="top" className="max-w-[220px]">
+                          Derivado: ingreso real del mes − tu meta de ahorro. Si
+                          entra más plata, el límite sube solo.
+                        </TooltipContent>
+                      </Tooltip>
+                    )}
+                  </p>
+                  {hasGoal ? (
+                    <>
+                      <span
+                        className={cn(
+                          "text-base font-semibold font-mono tabular-nums",
+                          isPrivacyMode && "privacy-blur"
+                        )}
+                      >
+                        {formatCurrency(spendingCeiling)}
+                      </span>
+                      {ingresoMes === 0 && (
+                        <p className="text-[10px] text-amber-600 dark:text-amber-500 mt-0.5">
+                          sin ingreso registrado este mes
+                        </p>
+                      )}
+                    </>
+                  ) : editingBudget ? (
+                    <div className="flex items-center gap-1">
+                      <div className="relative">
+                        <span className="absolute left-2.5 top-1/2 -translate-y-1/2 text-muted-foreground text-sm">
+                          $
+                        </span>
+                        <Input
+                          value={
+                            budgetInput
+                              ? parseInt(budgetInput.replace(/\D/g, ""), 10).toLocaleString("es-CL")
+                              : ""
+                          }
+                          onChange={(e) =>
+                            setBudgetInput(e.target.value.replace(/\D/g, ""))
+                          }
+                          onKeyDown={(e) => {
+                            if (e.key === "Enter") handleSaveBudget();
+                            if (e.key === "Escape") setEditingBudget(false);
+                          }}
+                          className="pl-6 w-36 text-sm font-mono h-8"
+                          autoFocus
+                        />
+                      </div>
+                      <Button
+                        size="icon"
+                        variant="ghost"
+                        className="h-8 w-8 shrink-0"
+                        onClick={handleSaveBudget}
+                      >
+                        <Check className="h-3.5 w-3.5" />
+                      </Button>
+                      <Button
+                        size="icon"
+                        variant="ghost"
+                        className="h-8 w-8 shrink-0"
+                        onClick={() => setEditingBudget(false)}
+                      >
+                        <X className="h-3.5 w-3.5" />
+                      </Button>
+                    </div>
+                  ) : (
+                    <button
+                      onClick={startEditBudget}
+                      className="group flex items-center gap-1.5 rounded-lg px-2 py-1 -mr-2 hover:bg-accent transition-colors"
+                    >
+                      <span
+                        className={cn(
+                          "text-base font-semibold font-mono tabular-nums",
+                          isPrivacyMode && "privacy-blur"
+                        )}
+                      >
+                        {formatCurrency(spendingCeiling)}
+                      </span>
+                      <Pencil className="h-3 w-3 text-muted-foreground/50 group-hover:text-muted-foreground transition-colors" />
                     </button>
                   )}
                 </div>
-                {simVerdict && (
-                  <p
+              </div>
+
+              {/* Burn-down chart */}
+              <div className={cn("mt-4 -mx-2", isPrivacyMode && "privacy-blur")}>
+                <ResponsiveContainer width="100%" height={220}>
+                  <ComposedChart
+                    data={chartData}
+                    margin={{ top: 12, right: 8, bottom: 0, left: 8 }}
+                  >
+                    <defs>
+                      <linearGradient id="burnFill" x1="0" y1="0" x2="0" y2="1">
+                        <stop
+                          offset="0%"
+                          stopColor={CHART_COLORS.expense}
+                          stopOpacity={0.14}
+                        />
+                        <stop
+                          offset="100%"
+                          stopColor={CHART_COLORS.expense}
+                          stopOpacity={0}
+                        />
+                      </linearGradient>
+                    </defs>
+                    <XAxis
+                      dataKey="day"
+                      ticks={xTicks}
+                      stroke={CHART_COLORS.mutedAxis}
+                      fontSize={10}
+                      tickLine={false}
+                      axisLine={false}
+                    />
+                    <YAxis hide domain={[0, maxY]} />
+                    <ChartTooltip content={<BurndownTooltip />} />
+
+                    {/* Zona "comiéndote la meta": entre el límite y el ingreso */}
+                    {hasGoal && ingresoMes > spendingCeiling && (
+                      <ReferenceArea
+                        y1={spendingCeiling}
+                        y2={ingresoMes}
+                        fill={ROSE}
+                        fillOpacity={0.05}
+                        stroke="none"
+                      />
+                    )}
+
+                    {/* Techo operativo */}
+                    <ReferenceLine
+                      y={spendingCeiling}
+                      stroke={CHART_COLORS.mutedAxis}
+                      strokeDasharray="2 5"
+                      strokeOpacity={0.6}
+                      label={{
+                        value: hasGoal ? "Tu límite" : "Presupuesto",
+                        position: "insideTopRight",
+                        fontSize: 9,
+                        fill: CHART_COLORS.mutedAxis,
+                      }}
+                    />
+
+                    {/* Ingreso del mes: pasarlo = meta en $0 */}
+                    {hasGoal && ingresoMes > spendingCeiling && (
+                      <ReferenceLine
+                        y={ingresoMes}
+                        stroke={ROSE}
+                        strokeDasharray="2 5"
+                        strokeOpacity={0.5}
+                        label={{
+                          value: "Ingreso",
+                          position: "insideTopRight",
+                          fontSize: 9,
+                          fill: ROSE,
+                        }}
+                      />
+                    )}
+
+                    {/* Today marker */}
+                    {isCurrentMonth && (
+                      <ReferenceLine
+                        x={todayDay}
+                        stroke={CHART_COLORS.mutedAxis}
+                        strokeOpacity={0.45}
+                        label={{
+                          value: "Hoy",
+                          position: "insideBottom",
+                          fontSize: 9,
+                          fill: CHART_COLORS.mutedAxis,
+                        }}
+                      />
+                    )}
+
+                    {/* Ideal pace */}
+                    <Line
+                      type="linear"
+                      dataKey="ideal"
+                      stroke={CHART_COLORS.mutedAxis}
+                      strokeWidth={1}
+                      strokeDasharray="4 4"
+                      strokeOpacity={0.55}
+                      dot={false}
+                      activeDot={false}
+                      isAnimationActive={false}
+                    />
+
+                    {/* Projection at current pace (+ simulation) */}
+                    {isCurrentMonth && (
+                      <Line
+                        type="linear"
+                        dataKey="projected"
+                        stroke={projectionColor}
+                        strokeWidth={1.5}
+                        strokeDasharray="2 4"
+                        dot={false}
+                        activeDot={{ r: 3 }}
+                        isAnimationActive={false}
+                      />
+                    )}
+
+                    {/* Actual cumulative spending */}
+                    <Area
+                      type="monotone"
+                      dataKey="actual"
+                      stroke={CHART_COLORS.expense}
+                      strokeWidth={2}
+                      fill="url(#burnFill)"
+                      dot={false}
+                      activeDot={{ r: 4 }}
+                    />
+                  </ComposedChart>
+                </ResponsiveContainer>
+              </div>
+
+              {/* Stats row */}
+              <div className="mt-2 flex flex-wrap items-center gap-x-5 gap-y-1.5 text-xs">
+                <span className="flex items-baseline gap-1.5">
+                  <span className="text-muted-foreground">Gastado</span>
+                  <span
                     className={cn(
-                      "mt-2 text-xs font-medium leading-snug",
-                      simVerdict.tone === "rose" && "text-rose-500",
-                      simVerdict.tone === "amber" && "text-amber-600 dark:text-amber-500",
-                      simVerdict.tone === "emerald" && "text-emerald-600 dark:text-emerald-500",
+                      "font-mono font-semibold tabular-nums",
                       isPrivacyMode && "privacy-blur"
                     )}
                   >
-                    {simVerdict.text}
-                  </p>
+                    {formatCompact(spent)}
+                  </span>
+                  <span className="text-muted-foreground/60 tabular-nums">
+                    {usagePercent.toFixed(0)}%
+                  </span>
+                </span>
+                {projectedEnd !== null && (
+                  <span className="flex items-baseline gap-1.5">
+                    <span
+                      className={cn(
+                        "size-1.5 rounded-full self-center shrink-0",
+                        projectionOnTrack
+                          ? "bg-emerald-500"
+                          : hasGoal && metaProyectada > 0
+                          ? "bg-amber-500"
+                          : "bg-rose-500"
+                      )}
+                    />
+                    <span className="text-muted-foreground">Cierre proyectado</span>
+                    <span
+                      className={cn(
+                        "font-mono font-semibold tabular-nums",
+                        !projectionOnTrack &&
+                          (hasGoal && metaProyectada > 0
+                            ? "text-amber-600 dark:text-amber-500"
+                            : "text-rose-500"),
+                        isPrivacyMode && "privacy-blur"
+                      )}
+                    >
+                      ~{formatCompact(projectedEnd)}
+                    </span>
+                  </span>
                 )}
+                {hasGoal && isCurrentMonth && projectedEnd !== null && (
+                  <span className="flex items-baseline gap-1.5">
+                    <span className="text-muted-foreground">Meta proyectada</span>
+                    <span
+                      className={cn(
+                        "font-mono font-semibold tabular-nums",
+                        metaProyectada >= savingsGoal
+                          ? "text-emerald-600 dark:text-emerald-500"
+                          : metaProyectada > 0
+                          ? "text-amber-600 dark:text-amber-500"
+                          : "text-rose-500",
+                        isPrivacyMode && "privacy-blur"
+                      )}
+                    >
+                      {metaProyectada >= savingsGoal
+                        ? "intacta"
+                        : metaProyectada > 0
+                        ? `~${formatCompact(metaProyectada)}`
+                        : "$0"}
+                    </span>
+                  </span>
+                )}
+                <span className="flex items-baseline gap-1.5">
+                  <span className="text-muted-foreground">
+                    {unallocated >= 0 ? "Sin asignar" : "Sobre-asignado"}
+                  </span>
+                  <span
+                    className={cn(
+                      "font-mono font-semibold tabular-nums",
+                      unallocated < 0 && "text-rose-500",
+                      isPrivacyMode && "privacy-blur"
+                    )}
+                  >
+                    {formatCompact(Math.abs(unallocated))}
+                  </span>
+                </span>
               </div>
-            )}
-          </div>
-        </GlassCard>
+
+              {/* ¿Me alcanza? simulator */}
+              {isCurrentMonth && (
+                <div
+                  className={cn(
+                    "mt-4 rounded-xl border p-3 transition-colors",
+                    isSimulating
+                      ? simVerdict?.tone === "rose"
+                        ? "border-rose-500/30 bg-rose-500/[0.04]"
+                        : simVerdict?.tone === "amber"
+                        ? "border-amber-500/30 bg-amber-500/[0.04]"
+                        : "border-emerald-500/30 bg-emerald-500/[0.04]"
+                      : "border-border/40 bg-muted/20"
+                  )}
+                >
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <span className="text-xs font-semibold whitespace-nowrap">
+                      💭 ¿Me alcanza?
+                    </span>
+                    <div className="relative w-32">
+                      <span className="absolute left-2.5 top-1/2 -translate-y-1/2 text-muted-foreground text-xs">
+                        $
+                      </span>
+                      <Input
+                        value={
+                          simAmount > 0
+                            ? simAmount.toLocaleString("es-CL")
+                            : ""
+                        }
+                        placeholder="80.000"
+                        inputMode="numeric"
+                        onChange={(e) =>
+                          setSimInput(e.target.value.replace(/\D/g, ""))
+                        }
+                        className="pl-6 h-8 text-xs font-mono"
+                      />
+                    </div>
+                    <Select value={simCategory} onValueChange={setSimCategory}>
+                      <SelectTrigger className="h-8 w-[150px] rounded-lg text-xs">
+                        <SelectValue placeholder="Categoría" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="none">
+                          <span className="text-muted-foreground">General</span>
+                        </SelectItem>
+                        {expenseCategories.map((cat) => (
+                          <SelectItem key={cat.name} value={cat.name}>
+                            <span className="flex items-center gap-2">
+                              <span className="text-sm leading-none">
+                                {cat.icon || "🏷️"}
+                              </span>
+                              {cat.name}
+                            </span>
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    {isSimulating && (
+                      <button
+                        onClick={() => {
+                          setSimInput("");
+                          setSimCategory("none");
+                        }}
+                        className="p-1.5 rounded-md hover:bg-accent transition-colors"
+                        aria-label="Limpiar simulación"
+                      >
+                        <X className="h-3.5 w-3.5 text-muted-foreground" />
+                      </button>
+                    )}
+                  </div>
+                  {simVerdict && (
+                    <p
+                      className={cn(
+                        "mt-2 text-xs font-medium leading-snug",
+                        toneText(simVerdict.tone),
+                        isPrivacyMode && "privacy-blur"
+                      )}
+                    >
+                      {simVerdict.text}
+                    </p>
+                  )}
+                </div>
+              )}
+
+              {/* ── Strip de veredictos: meses cerrados ── */}
+              {hasGoal && monthVerdicts.length > 0 && (
+                <div className="mt-4 pt-3 border-t border-border/30">
+                  <div className="flex flex-wrap gap-2">
+                    {[...monthVerdicts].reverse().map((v) => (
+                      <Tooltip key={v.month.toISOString()}>
+                        <TooltipTrigger asChild>
+                          <button
+                            onClick={() => setSelectedMonth(v.month)}
+                            className={cn(
+                              "flex items-center gap-1.5 rounded-lg border px-2.5 py-1.5 text-xs transition-colors native-press",
+                              "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/60",
+                              v.tone === "emerald" &&
+                                "border-emerald-500/25 bg-emerald-500/[0.05] hover:bg-emerald-500/10",
+                              v.tone === "amber" &&
+                                "border-amber-500/25 bg-amber-500/[0.05] hover:bg-amber-500/10",
+                              v.tone === "rose" &&
+                                "border-rose-500/25 bg-rose-500/[0.05] hover:bg-rose-500/10"
+                            )}
+                          >
+                            <span className="font-medium capitalize">
+                              {format(v.month, "MMM", { locale: es })}
+                            </span>
+                            <span className={toneText(v.tone)}>{v.symbol}</span>
+                            <span
+                              className={cn(
+                                "font-mono tabular-nums",
+                                toneText(v.tone),
+                                isPrivacyMode && "privacy-blur"
+                              )}
+                            >
+                              {v.saved <= 0
+                                ? "$0"
+                                : v.saved >= savingsGoal
+                                ? formatCompact(v.saved)
+                                : `${formatCompact(v.saved)} de ${formatCompact(savingsGoal)}`}
+                            </span>
+                          </button>
+                        </TooltipTrigger>
+                        <TooltipContent side="top" className="max-w-[240px]">
+                          {v.tone === "emerald"
+                            ? `Ahorraste ${formatCurrency(v.saved)} — meta cumplida.`
+                            : v.tone === "amber"
+                            ? `Protegiste ${formatCurrency(v.saved)} de ${formatCurrency(savingsGoal)}${v.culprit ? ` — ${v.culprit} pesó ${formatCompact(v.culpritAmount)}.` : "."}`
+                            : `Ahorraste $0${v.culprit ? ` — tu meta pagó ${v.culprit} (${formatCompact(v.culpritAmount)}).` : "."}`}
+                        </TooltipContent>
+                      </Tooltip>
+                    ))}
+                  </div>
+
+                  {/* Detector de sweep */}
+                  {sweepAlert && (
+                    <div
+                      className={cn(
+                        "mt-2.5 flex items-start gap-2 rounded-lg border border-amber-500/30 bg-amber-500/[0.06] px-3 py-2 text-xs text-amber-600 dark:text-amber-500",
+                        isPrivacyMode && "privacy-blur"
+                      )}
+                    >
+                      <AlertTriangle className="h-3.5 w-3.5 shrink-0 mt-0.5" />
+                      <span>
+                        Cerraste{" "}
+                        <span className="capitalize font-medium">
+                          {format(sweepAlert.month, "MMMM", { locale: es })}
+                        </span>{" "}
+                        con{" "}
+                        <span className="font-mono font-semibold tabular-nums">
+                          {formatCompact(sweepAlert.amount)}
+                        </span>{" "}
+                        ahorrados pero sin invertir. Bárrelos antes de que se gasten solos.
+                      </span>
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
+          </GlassCard>
+
+          {/* ─── Vida / Bombazos ─────────────────────────── */}
+          {hasGoal && (
+            <SectionCard
+              title="Vida y bombazos"
+              icon={Flame}
+              tooltip="Vida: tu gasto recurrente del mes vs tu banda normal. Bombazos: gastos grandes no recurrentes (viajes, tecnología, lo que definas) contra su fondo acumulable."
+              action={
+                <Popover open={fundConfigOpen} onOpenChange={openFundConfig}>
+                  <PopoverTrigger asChild>
+                    <Button variant="ghost" size="sm" className="h-7 text-xs gap-1.5">
+                      <SlidersHorizontal className="h-3 w-3" />
+                      Configurar
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent align="end" collisionPadding={8} className="w-64 p-3">
+                    <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2">
+                      Categorías bombazo
+                    </p>
+                    <div className="max-h-44 overflow-y-auto space-y-0.5 mb-3">
+                      {expenseCategories.map((cat) => {
+                        const checked = splurgeDraft.has(cat.name);
+                        return (
+                          <label
+                            key={cat.name}
+                            className="flex items-center gap-2 px-1.5 py-1.5 rounded-md hover:bg-accent cursor-pointer"
+                          >
+                            <Checkbox
+                              checked={checked}
+                              onCheckedChange={(v) => {
+                                setSplurgeDraft((prev) => {
+                                  const next = new Set(prev);
+                                  if (v) next.add(cat.name);
+                                  else next.delete(cat.name);
+                                  return next;
+                                });
+                              }}
+                            />
+                            <span className="text-sm leading-none shrink-0">
+                              {cat.icon || "🏷️"}
+                            </span>
+                            <span className="text-xs text-foreground truncate">
+                              {cat.name}
+                            </span>
+                          </label>
+                        );
+                      })}
+                    </div>
+                    <Label className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
+                      Fondo mensual para bombazos
+                    </Label>
+                    <div className="relative mt-1.5 mb-1">
+                      <span className="absolute left-2.5 top-1/2 -translate-y-1/2 text-muted-foreground text-xs">
+                        $
+                      </span>
+                      <Input
+                        value={
+                          fundInput
+                            ? parseInt(fundInput.replace(/\D/g, ""), 10).toLocaleString("es-CL")
+                            : ""
+                        }
+                        placeholder="300.000"
+                        inputMode="numeric"
+                        onChange={(e) => setFundInput(e.target.value.replace(/\D/g, ""))}
+                        className="pl-6 h-8 text-xs font-mono"
+                      />
+                    </div>
+                    <p className="text-[10px] text-muted-foreground mb-3">
+                      {budget?.splurge_fund_start
+                        ? `Acumula desde ${format(new Date(budget.splurge_fund_start + "T12:00:00"), "MMM yyyy", { locale: es })}. Lo que no uses un mes queda disponible para el siguiente.`
+                        : "Parte acumulando desde este mes. Lo que no uses queda para el siguiente."}
+                    </p>
+                    <Button size="sm" className="w-full h-8 rounded-lg text-xs" onClick={handleSaveFundConfig}>
+                      Guardar
+                    </Button>
+                  </PopoverContent>
+                </Popover>
+              }
+            >
+              <div className="space-y-3">
+                {/* Vida */}
+                <div className="flex items-center justify-between gap-3">
+                  <div className="flex items-center gap-2.5 min-w-0">
+                    <div className="p-2 rounded-lg bg-muted/50 shrink-0">
+                      <HeartPulse className="h-4 w-4 text-primary/70" />
+                    </div>
+                    <div className="min-w-0">
+                      <p className="text-sm font-medium">Vida</p>
+                      <p className="text-[11px] text-muted-foreground">
+                        gasto recurrente, neto de reembolsos
+                      </p>
+                    </div>
+                  </div>
+                  <div className="text-right shrink-0">
+                    <p
+                      className={cn(
+                        "text-sm font-bold font-mono tabular-nums",
+                        isPrivacyMode && "privacy-blur"
+                      )}
+                    >
+                      {formatCompact(flows.vida)}
+                    </p>
+                    {vidaStats && vidaStatus && (
+                      <p
+                        className={cn(
+                          "text-[10px] font-mono tabular-nums",
+                          vidaStatus === "alto"
+                            ? "text-rose-500"
+                            : vidaStatus === "bajo"
+                            ? "text-emerald-600 dark:text-emerald-500"
+                            : "text-muted-foreground",
+                          isPrivacyMode && "privacy-blur"
+                        )}
+                      >
+                        {isCurrentMonth ? `ritmo ~${formatCompact(vidaProjected)} · ` : ""}
+                        {vidaStatus === "normal"
+                          ? `normal (~${formatCompact(vidaStats.avg)}/mes)`
+                          : `${vidaStatus} vs ~${formatCompact(vidaStats.avg)}/mes`}
+                      </p>
+                    )}
+                  </div>
+                </div>
+
+                <div className="h-px bg-border/40" />
+
+                {/* Bombazos */}
+                <div className="flex items-center justify-between gap-3">
+                  <div className="flex items-center gap-2.5 min-w-0">
+                    <div className="p-2 rounded-lg bg-muted/50 shrink-0">
+                      <Flame className="h-4 w-4 text-amber-500" />
+                    </div>
+                    <div className="min-w-0">
+                      <p className="text-sm font-medium">Bombazos</p>
+                      <p className="text-[11px] text-muted-foreground truncate">
+                        {splurgeCategories.length > 0
+                          ? splurgeCategories.join(" · ")
+                          : "gastos grandes no recurrentes"}
+                      </p>
+                    </div>
+                  </div>
+                  <div className="text-right shrink-0">
+                    {splurgeCategories.length === 0 ? (
+                      <button
+                        onClick={() => openFundConfig(true)}
+                        className="text-xs text-primary hover:underline"
+                      >
+                        Elegir categorías →
+                      </button>
+                    ) : (
+                      <>
+                        <p
+                          className={cn(
+                            "text-sm font-bold font-mono tabular-nums",
+                            isPrivacyMode && "privacy-blur"
+                          )}
+                        >
+                          {formatCompact(flows.bombazos)}
+                        </p>
+                        {fund !== null ? (
+                          <p
+                            className={cn(
+                              "text-[10px] font-mono tabular-nums",
+                              fund >= 0
+                                ? "text-muted-foreground"
+                                : "text-rose-500",
+                              isPrivacyMode && "privacy-blur"
+                            )}
+                          >
+                            {fund >= 0
+                              ? `fondo: ${formatCompact(fund)} de ${formatCompact(fundContributed)} acumulado`
+                              : `fondo excedido en ${formatCompact(-fund)}`}
+                          </p>
+                        ) : (
+                          <button
+                            onClick={() => openFundConfig(true)}
+                            className="text-[10px] text-primary hover:underline"
+                          >
+                            crear fondo mensual →
+                          </button>
+                        )}
+                      </>
+                    )}
+                  </div>
+                </div>
+              </div>
+            </SectionCard>
+          )}
+        </>
       )}
 
       {/* ─── Envelopes ──────────────────────────────────── */}
@@ -1283,8 +2085,8 @@ export function CategoryInsightsView() {
               No hay sobres todavía
             </p>
             <p className="text-xs text-muted-foreground/60 mb-3">
-              Reparte tu presupuesto entre categorías y te digo cuánto puedes
-              gastar por día en cada una
+              Reparte tu límite de gasto entre categorías y te digo cuánto
+              puedes gastar por día en cada una
             </p>
             <Button
               variant="outline"
@@ -1552,10 +2354,10 @@ export function CategoryInsightsView() {
               />
 
               {/* Quick percentage buttons */}
-              {totalBudget > 0 && (
+              {spendingCeiling > 0 && (
                 <div className="flex flex-wrap gap-1.5 pt-1">
                   {[5, 10, 15, 20, 25, 30].map((pct) => {
-                    const amount = Math.round(totalBudget * pct / 100);
+                    const amount = Math.round(spendingCeiling * pct / 100);
                     return (
                       <button
                         key={pct}
@@ -1579,7 +2381,7 @@ export function CategoryInsightsView() {
             </div>
 
             {/* Budget allocation context */}
-            {totalBudget > 0 && (
+            {spendingCeiling > 0 && (
               <div className="rounded-lg border border-border/50 bg-muted/30 p-3 space-y-2">
                 {(() => {
                   const currentLimit = Number(limitFormData.limit) || 0;
@@ -1588,15 +2390,15 @@ export function CategoryInsightsView() {
                   );
                   const otherAllocated = totalAllocated - (existingLimitForCategory?.monthly_limit || 0);
                   const newTotalAllocated = otherAllocated + currentLimit;
-                  const newUnallocated = totalBudget - newTotalAllocated;
-                  const pctOfBudget = totalBudget > 0 ? (currentLimit / totalBudget) * 100 : 0;
+                  const newUnallocated = spendingCeiling - newTotalAllocated;
+                  const pctOfBudget = spendingCeiling > 0 ? (currentLimit / spendingCeiling) * 100 : 0;
 
                   return (
                     <>
                       <div className="flex items-center justify-between text-xs">
                         <span className="text-muted-foreground">Esto representa</span>
                         <span className="font-semibold font-mono tabular-nums">
-                          {pctOfBudget.toFixed(0)}% del presupuesto
+                          {pctOfBudget.toFixed(0)}% de tu límite
                         </span>
                       </div>
                       <div className="flex items-center justify-between text-xs">
@@ -1632,7 +2434,7 @@ export function CategoryInsightsView() {
                             "h-full rounded-full transition-all duration-300",
                             newUnallocated < 0 ? "bg-rose-500" : "bg-primary"
                           )}
-                          style={{ width: `${Math.min((newTotalAllocated / totalBudget) * 100, 100)}%` }}
+                          style={{ width: `${Math.min((newTotalAllocated / spendingCeiling) * 100, 100)}%` }}
                         />
                       </div>
                     </>

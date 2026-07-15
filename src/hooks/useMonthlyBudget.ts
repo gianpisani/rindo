@@ -5,10 +5,30 @@ import { toast } from "sonner";
 export interface MonthlyBudget {
   id: string;
   user_id: string;
+  /** Legacy/derivado: presupuesto de gasto manual. Fallback cuando no hay meta. */
   total_budget: number;
+  /** La meta de ahorro mensual — el input sagrado. */
+  savings_goal: number | null;
+  /** Aporte mensual al fondo de bombazos. */
+  splurge_fund_monthly: number | null;
+  /** Desde cuándo acumula el fondo (date ISO yyyy-MM-dd). */
+  splurge_fund_start: string | null;
+  /** Categorías de gasto tratadas como bombazos (configurables por usuario). */
+  splurge_categories: string[];
   created_at: string;
   updated_at: string;
 }
+
+export type MonthlyBudgetPatch = Partial<
+  Pick<
+    MonthlyBudget,
+    | "total_budget"
+    | "savings_goal"
+    | "splurge_fund_monthly"
+    | "splurge_fund_start"
+    | "splurge_categories"
+  >
+>;
 
 export function useMonthlyBudget() {
   const queryClient = useQueryClient();
@@ -27,7 +47,7 @@ export function useMonthlyBudget() {
   });
 
   const upsertBudget = useMutation({
-    mutationFn: async (totalBudget: number) => {
+    mutationFn: async (patch: MonthlyBudgetPatch) => {
       const { data: userData } = await supabase.auth.getUser();
       if (!userData.user) throw new Error("No user found");
 
@@ -36,7 +56,7 @@ export function useMonthlyBudget() {
         .upsert(
           {
             user_id: userData.user.id,
-            total_budget: totalBudget,
+            ...patch,
           },
           { onConflict: "user_id" }
         )
@@ -48,7 +68,7 @@ export function useMonthlyBudget() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["monthly_budget"] });
-      toast.success("Presupuesto actualizado");
+      toast.success("Guardado");
     },
     onError: (error: Error) => {
       toast.error(error.message);
