@@ -68,6 +68,40 @@ function normalizeBankDescription(desc: string): string {
   return desc.toLowerCase().replace(/[^a-z0-9áéíóúñ]/gi, '').toLowerCase()
 }
 
+/**
+ * Extracts the counterparty name from a transfer description, stripping
+ * known prefixes from both import sources (process-email-v2 y bank-sync),
+ * removes accents/case, and returns a token set for order-independent matching.
+ * "Transferencia a Sebastian Julian" -> {sebastian, julian}
+ * "Traspaso A:Sebastian Julian Perez" -> {sebastian, julian, perez}
+ */
+function extractNameTokens(desc: string): Set<string> {
+  const stripped = desc
+    .replace(/^transferencia\s+(a|de)\s*/i, '')
+    .replace(/^traspaso\s+a:?\s*/i, '')
+    // legacy rows que aún tengan "· Banco X" o "(Banco Origen)" al final
+    .split('·')[0]
+    .replace(/\(.*\)\s*$/, '')
+
+  const normalized = stripped
+    .normalize('NFD')
+    .replace(/[̀-ͯ]/g, '') // quita tildes (combining diacritics tras NFD)
+    .toLowerCase()
+    .replace(/[^a-z0-9\s]/g, '')
+
+  return new Set(normalized.split(/\s+/).filter((t) => t.length > 0))
+}
+
+/** true si el conjunto de tokens más chico está contenido en el más grande */
+function nameTokensMatch(a: Set<string>, b: Set<string>): boolean {
+  if (a.size === 0 || b.size === 0) return false
+  const [small, big] = a.size <= b.size ? [a, b] : [b, a]
+  for (const token of small) {
+    if (!big.has(token)) return false
+  }
+  return true
+}
+
 function convertDate(dateStr: string, fallbackDate: string): string {
   if (dateStr.toLowerCase() === 'pendiente') return fallbackDate
   const parts = dateStr.split('-')
@@ -147,7 +181,15 @@ export async function importBankMovements(params: {
       if (!row.bank_description) return false
       const a = normalizeBankDescription(description)
       const b = normalizeBankDescription(row.bank_description)
-      return a.includes(b) || b.includes(a)
+      if (a.includes(b) || b.includes(a)) return true
+
+      // Match específico de transferencias: compara solo el nombre de la
+      // contraparte, ya que process-email-v2 ("Transferencia a X") y
+      // bank-sync ("Traspaso A:X") usan vocabularios distintos que rompen
+      // el match por substring de arriba.
+      const isTransferDesc = /^(transferencia|traspaso)/i.test(description) || /^(transferencia|traspaso)/i.test(row.bank_description)
+      if (!isTransferDesc) return false
+      return nameTokensMatch(extractNameTokens(description), extractNameTokens(row.bank_description))
     })
 
     // Deduplication check — manually entered rows
