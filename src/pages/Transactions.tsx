@@ -330,7 +330,7 @@ export default function Transactions() {
     // Actualizar formData para que "Guardar Cambios" no sobreescriba el monto reducido
     const currentAmount = parseFloat(formData.amount || "0");
     const newAmount = currentAmount - confirmPaid.amount;
-    if (newAmount > 0) {
+    if (newAmount >= 0) {
       setFormData(prev => ({ ...prev, amount: newAmount.toString() }));
     }
     setConfirmPaid(null);

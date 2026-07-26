@@ -172,7 +172,7 @@ export function useSharedExpenses() {
 
       if (!originalTxError && originalTx) {
         const newAmount = Number(originalTx.amount) - amount;
-        if (newAmount > 0) {
+        if (newAmount >= 0) {
           await supabase
             .from("transactions")
             .update({ amount: newAmount })
@@ -266,7 +266,7 @@ export function useSharedExpenses() {
 
       if (!originalTxError && originalTx) {
         const newAmount = Number(originalTx.amount) - amount;
-        if (newAmount > 0) {
+        if (newAmount >= 0) {
           await supabase
             .from("transactions")
             .update({ amount: newAmount })
