@@ -121,14 +121,8 @@ function parseTransferenciaTerceros(text: string): ParsedTransaction | null {
     text.match(/Nombre(?:\s+y\s+Apellido)?\s+([A-ZÁÉÍÓÚÑa-záéíóúñ\s]+?)(?:\s+Rut|\s+Tipo|\s+N[º°]|\s+Banco|\s+E-?mail|$)/i)?.[1]?.trim()
     || text.match(/transferencia\s+de\s+fondos\s+a\s+([A-ZÁÉÍÓÚÑa-záéíóúñ\s]+?)(?:,|\s+el\s+d[ií]a|\s+desde)/i)?.[1]?.trim()
 
-  // Destination bank: "Banco  Banco BCI/MACHBANK" or "Banco  Scotiabank Sud Americano"
-  // Format 2: "Banco  Banco de Chile - Edwards"
-  const bancoDestino =
-    text.match(/Banco\s+(.+?)(?:\s+Email|\s+Mail|\s+Monto|\s+Mensaje|\s+Cuenta\s+de\s+destino|\s+Tipo\s+de\s+Cuenta|\s+Comentario|\s+Datos\s+de)/i)?.[1]?.trim()
-
-  const parts = [destinatario, bancoDestino].filter(Boolean)
-  const detail = parts.length > 0
-    ? `Transferencia a ${parts.join(' · ')}`
+  const detail = destinatario
+    ? `Transferencia a ${destinatario}`
     : 'Transferencia a terceros'
 
   const bank = detectBank('', text)
@@ -161,15 +155,7 @@ function parseTransferenciaRecibida(text: string): ParsedTransaction | null {
     if (m) remitente = m[1].trim()
   }
 
-  // Source bank: "Banco de origen  Banco Bci / Mach"
-  const bancoOrigen =
-    text.match(/Banco\s+de\s+origen\s+(.+?)(?:\s+Fecha|\s+Mensaje|\s+N[úu]mero|\s+Monto)/i)?.[1]?.trim()
-
-  let detail = 'Transferencia recibida'
-  if (remitente) {
-    detail = `Transferencia de ${remitente}`
-    if (bancoOrigen) detail += ` (${bancoOrigen})`
-  }
+  const detail = remitente ? `Transferencia de ${remitente}` : 'Transferencia recibida'
 
   const bank = detectBank('', text)
 
