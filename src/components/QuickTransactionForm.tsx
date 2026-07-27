@@ -47,7 +47,7 @@ export default function QuickTransactionForm({ onSuccess, defaultType = "Gasto" 
   const { addTransaction } = useTransactions();
   const { playToggleOff, playTap } = useSoundFX();
   const { isPrivacyMode } = usePrivacyMode();
-  const { addSharedExpenses } = useSharedExpenses();
+  const { addSharedExpenses, uniqueDebtorNames } = useSharedExpenses();
   const detailInputRef = useRef<HTMLInputElement>(null);
   const amountInputRef = useRef<HTMLInputElement>(null);
 
@@ -379,6 +379,7 @@ export default function QuickTransactionForm({ onSuccess, defaultType = "Gasto" 
         onOpenChange={setSharedDrawerOpen}
         totalAmount={pendingTransaction?.amount || 0}
         onConfirm={handleSharedExpenseConfirm}
+        suggestions={uniqueDebtorNames("they_owe_me")}
       />
     </>
   );

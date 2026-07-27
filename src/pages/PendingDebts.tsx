@@ -6,7 +6,9 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { BaseModal } from "@/components/BaseModal";
 import ConfirmDialog from "@/components/ConfirmDialog";
-import { useSharedExpenses } from "@/hooks/useSharedExpenses";
+import { DebtorNameCombobox } from "@/components/DebtorNameCombobox";
+import { useSharedExpenses, type SharedExpenseDirection } from "@/hooks/useSharedExpenses";
+import { useTransactions } from "@/hooks/useTransactions";
 import { usePrivacyMode } from "@/hooks/usePrivacyMode";
 import { cn } from "@/lib/utils";
 import {
@@ -17,6 +19,7 @@ import {
   ChevronDown,
   DollarSign,
   Receipt,
+  HandCoins,
 } from "lucide-react";
 import { LoadingScreen } from "@/components/LoadingScreen";
 
@@ -36,13 +39,20 @@ const parseRawAmount = (value: string) => {
 export default function PendingDebts() {
   const {
     pendingByDebtor,
+    pendingByCreditor,
     sharedExpensesWithTransaction,
     markAsPaid,
+    settleDebtsIOwe,
     deleteSharedExpense,
     addQuickDebt,
+    addManualDebtIOwe,
+    uniqueDebtorNames,
     isLoading,
   } = useSharedExpenses();
+  const { transactions } = useTransactions();
   const { isPrivacyMode } = usePrivacyMode();
+
+  const [direction, setDirection] = useState<SharedExpenseDirection>("they_owe_me");
 
   const [confirmPaid, setConfirmPaid] = useState<{
     id: string;
@@ -50,6 +60,7 @@ export default function PendingDebts() {
     amount: number;
     detail?: string;
   } | null>(null);
+  const [settleTarget, setSettleTarget] = useState<{ id: string; name: string; amount: number } | null>(null);
   const [confirmDelete, setConfirmDelete] = useState<{ open: boolean; id: string | null }>({
     open: false,
     id: null,
@@ -77,6 +88,15 @@ export default function PendingDebts() {
     setConfirmPaid(null);
   };
 
+  const handleSettleWithTransaction = async (transactionId: string) => {
+    if (!settleTarget) return;
+    await settleDebtsIOwe.mutateAsync({
+      debts: [{ sharedExpenseId: settleTarget.id }],
+      existingTransactionId: transactionId,
+    });
+    setSettleTarget(null);
+  };
+
   const handleConfirmDelete = async () => {
     if (confirmDelete.id) {
       await deleteSharedExpense.mutateAsync(confirmDelete.id);
@@ -86,24 +106,43 @@ export default function PendingDebts() {
   const handleAddDebt = async () => {
     const amount = parseRawAmount(newDebt.amount);
     if (!newDebt.name.trim() || !amount || amount <= 0) return;
-    await addQuickDebt.mutateAsync({
-      debtorName: newDebt.name.trim(),
-      amount,
-      detail: newDebt.detail.trim() || undefined,
-    });
+    if (direction === "they_owe_me") {
+      await addQuickDebt.mutateAsync({
+        debtorName: newDebt.name.trim(),
+        amount,
+        detail: newDebt.detail.trim() || undefined,
+      });
+    } else {
+      await addManualDebtIOwe.mutateAsync({
+        creditorName: newDebt.name.trim(),
+        amount,
+        detail: newDebt.detail.trim() || undefined,
+      });
+    }
     setNewDebt({ name: "", amount: "", detail: "" });
     setShowAddModal(false);
   };
 
-  const getExpensesForDebtor = (debtorName: string) =>
+  const getExpensesForPerson = (name: string) =>
     sharedExpensesWithTransaction.filter(
-      (exp) => exp.debtor_name === debtorName && !exp.paid
+      (exp) => exp.debtor_name === name && !exp.paid && exp.direction === direction
     );
 
-  const paidExpenses = sharedExpensesWithTransaction.filter((exp) => exp.paid);
+  const paidExpenses = sharedExpensesWithTransaction.filter(
+    (exp) => exp.paid && exp.direction === direction
+  );
 
-  const totalPending = pendingByDebtor.reduce((s, d) => s + d.total_owed, 0);
-  const totalExpenses = pendingByDebtor.reduce((s, d) => s + d.count_expenses, 0);
+  const isOwedToMe = direction === "they_owe_me";
+  const summary = isOwedToMe
+    ? pendingByDebtor.map((d) => ({ name: d.debtor_name, total_owed: d.total_owed, count_expenses: d.count_expenses }))
+    : pendingByCreditor.map((d) => ({ name: d.creditor_name, total_owed: d.total_owed, count_expenses: d.count_expenses }));
+
+  const totalPending = summary.reduce((s, d) => s + d.total_owed, 0);
+  const totalExpenses = summary.reduce((s, d) => s + d.count_expenses, 0);
+
+  const recentGastos = transactions
+    .filter((t) => t.type === "Gasto")
+    .slice(0, 30);
 
   if (isLoading) {
     return (
@@ -133,10 +172,32 @@ export default function PendingDebts() {
           </Button>
         </div>
 
+        {/* Direction toggle */}
+        <div className="inline-flex rounded-full border border-border/60 p-1 bg-muted/30">
+          <button
+            className={cn(
+              "px-4 py-1.5 rounded-full text-sm font-medium transition-colors",
+              isOwedToMe ? "bg-background shadow-sm text-foreground" : "text-muted-foreground"
+            )}
+            onClick={() => setDirection("they_owe_me")}
+          >
+            Me deben
+          </button>
+          <button
+            className={cn(
+              "px-4 py-1.5 rounded-full text-sm font-medium transition-colors",
+              !isOwedToMe ? "bg-background shadow-sm text-foreground" : "text-muted-foreground"
+            )}
+            onClick={() => setDirection("i_owe_them")}
+          >
+            Yo debo
+          </button>
+        </div>
+
         {/* Compact Stats Row */}
-        {pendingByDebtor.length > 0 && (
+        {summary.length > 0 && (
           <div className="flex items-center gap-4 text-sm">
-            <div className="flex items-center gap-1.5 text-amber-500">
+            <div className={cn("flex items-center gap-1.5", isOwedToMe ? "text-amber-500" : "text-destructive")}>
               <DollarSign className="h-4 w-4" />
               <span className={cn("font-semibold tabular-nums", isPrivacyMode && "privacy-blur")}>
                 {fmt(totalPending)}
@@ -146,7 +207,7 @@ export default function PendingDebts() {
             <span className="text-border">|</span>
             <div className="flex items-center gap-1.5 text-muted-foreground">
               <Users className="h-3.5 w-3.5" />
-              <span className="tabular-nums">{pendingByDebtor.length}</span>
+              <span className="tabular-nums">{summary.length}</span>
             </div>
             <span className="text-border">|</span>
             <div className="flex items-center gap-1.5 text-muted-foreground">
@@ -157,14 +218,14 @@ export default function PendingDebts() {
         )}
 
         {/* Pending Debts - Flat List by Person */}
-        {pendingByDebtor.length === 0 ? (
+        {summary.length === 0 ? (
           <div className="rounded-2xl border border-dashed border-border/60 py-16 text-center">
             <Users className="h-12 w-12 mx-auto text-muted-foreground/30 mb-3" />
             <p className="text-base font-medium text-muted-foreground mb-1">
-              No hay deudas pendientes
+              {isOwedToMe ? "No hay deudas pendientes" : "No le debes plata a nadie"}
             </p>
             <p className="text-sm text-muted-foreground/60 mb-4">
-              Agrega una deuda o divide un gasto compartido
+              {isOwedToMe ? "Agrega una deuda o divide un gasto compartido" : "Registra una deuda que le debas a alguien"}
             </p>
             <Button
               variant="outline"
@@ -178,34 +239,35 @@ export default function PendingDebts() {
           </div>
         ) : (
           <div className="space-y-3">
-            {pendingByDebtor.map((debtor) => {
-              const expenses = getExpensesForDebtor(debtor.debtor_name);
+            {summary.map((person) => {
+              const expenses = getExpensesForPerson(person.name);
 
               return (
-                <GlassCard key={debtor.debtor_name}>
+                <GlassCard key={person.name}>
                   {/* Person Header */}
                   <div className="flex items-center gap-3 px-4 py-3">
-                    <div className="h-9 w-9 rounded-full bg-primary/10 flex items-center justify-center shrink-0">
-                      <span className="text-sm font-bold text-primary">
-                        {debtor.debtor_name.charAt(0).toUpperCase()}
+                    <div className={cn("h-9 w-9 rounded-full flex items-center justify-center shrink-0", isOwedToMe ? "bg-primary/10" : "bg-destructive/10")}>
+                      <span className={cn("text-sm font-bold", isOwedToMe ? "text-primary" : "text-destructive")}>
+                        {person.name.charAt(0).toUpperCase()}
                       </span>
                     </div>
                     <div className="flex-1 min-w-0">
                       <p className="font-semibold text-sm truncate">
-                        {debtor.debtor_name}
+                        {person.name}
                       </p>
                       <p className="text-xs text-muted-foreground">
-                        {debtor.count_expenses}{" "}
-                        {debtor.count_expenses === 1 ? "gasto" : "gastos"}
+                        {person.count_expenses}{" "}
+                        {person.count_expenses === 1 ? "gasto" : "gastos"}
                       </p>
                     </div>
                     <span
                       className={cn(
-                        "text-base font-bold text-amber-500 tabular-nums",
+                        "text-base font-bold tabular-nums",
+                        isOwedToMe ? "text-amber-500" : "text-destructive",
                         isPrivacyMode && "privacy-blur"
                       )}
                     >
-                      {fmt(debtor.total_owed)}
+                      {fmt(person.total_owed)}
                     </span>
                   </div>
 
@@ -222,13 +284,12 @@ export default function PendingDebts() {
                         >
                           <div className="flex-1 min-w-0">
                             <p className="text-sm truncate">
-                              {expense.transaction_detail || "Sin detalle"}
+                              {expense.transaction_detail || expense.detail || "Sin detalle"}
                             </p>
                             <p className="text-xs text-muted-foreground">
-                              {new Date(expense.transaction_date).toLocaleDateString(
-                                "es-CL",
-                                { day: "numeric", month: "short" }
-                              )}
+                              {expense.transaction_date
+                                ? new Date(expense.transaction_date).toLocaleDateString("es-CL", { day: "numeric", month: "short" })
+                                : new Date(expense.created_at).toLocaleDateString("es-CL", { day: "numeric", month: "short" })}
                               {expense.transaction_category && (
                                 <>
                                   {" · "}
@@ -249,14 +310,20 @@ export default function PendingDebts() {
                           <div className="flex items-center gap-1 shrink-0">
                             <button
                               className="h-9 w-9 rounded-full flex items-center justify-center hover:bg-success/10 active:bg-success/20 transition-colors"
-                              title="Marcar como pagado"
+                              title={isOwedToMe ? "Marcar como pagado" : "Marcar como saldada"}
                               onClick={() =>
-                                setConfirmPaid({
-                                  id: expense.id,
-                                  name: expense.debtor_name,
-                                  amount: expense.amount_owed,
-                                  detail: expense.transaction_detail || undefined,
-                                })
+                                isOwedToMe
+                                  ? setConfirmPaid({
+                                      id: expense.id,
+                                      name: expense.debtor_name,
+                                      amount: expense.amount_owed,
+                                      detail: expense.transaction_detail || undefined,
+                                    })
+                                  : setSettleTarget({
+                                      id: expense.id,
+                                      name: expense.debtor_name,
+                                      amount: expense.amount_owed,
+                                    })
                               }
                             >
                               <CheckCircle2 className="h-[18px] w-[18px] text-success" />
@@ -293,7 +360,7 @@ export default function PendingDebts() {
                 )}
               />
               <CheckCircle2 className="h-4 w-4 text-success" />
-              <span>Pagados ({paidExpenses.length})</span>
+              <span>{isOwedToMe ? "Pagados" : "Saldadas"} ({paidExpenses.length})</span>
             </button>
 
             {showPaid && (
@@ -314,7 +381,7 @@ export default function PendingDebts() {
                       </span>
                       <span className="mx-1.5">·</span>
                       <span className="text-xs">
-                        {expense.transaction_detail || "Sin detalle"}
+                        {expense.transaction_detail || expense.detail || "Sin detalle"}
                       </span>
                     </div>
                     <span
@@ -357,7 +424,8 @@ export default function PendingDebts() {
               !newDebt.name.trim() ||
               !newDebt.amount ||
               parseRawAmount(newDebt.amount) <= 0 ||
-              addQuickDebt.isPending
+              addQuickDebt.isPending ||
+              addManualDebtIOwe.isPending
             }
           >
             Crear deuda
@@ -365,6 +433,30 @@ export default function PendingDebts() {
         }
       >
         <div className="space-y-5">
+          {/* Direction toggle inside modal */}
+          <div className="inline-flex w-full rounded-full border border-border/60 p-1 bg-muted/30">
+            <button
+              type="button"
+              className={cn(
+                "flex-1 px-4 py-1.5 rounded-full text-sm font-medium transition-colors",
+                direction === "they_owe_me" ? "bg-background shadow-sm text-foreground" : "text-muted-foreground"
+              )}
+              onClick={() => setDirection("they_owe_me")}
+            >
+              Me deben
+            </button>
+            <button
+              type="button"
+              className={cn(
+                "flex-1 px-4 py-1.5 rounded-full text-sm font-medium transition-colors",
+                direction === "i_owe_them" ? "bg-background shadow-sm text-foreground" : "text-muted-foreground"
+              )}
+              onClick={() => setDirection("i_owe_them")}
+            >
+              Yo debo
+            </button>
+          </div>
+
           {/* Big amount input - Rindo style */}
           <div>
             <Input
@@ -386,15 +478,15 @@ export default function PendingDebts() {
           </div>
 
           <div className="space-y-1.5">
-            <Label className="text-sm font-medium">Nombre</Label>
-            <Input
+            <Label className="text-sm font-medium">
+              {direction === "they_owe_me" ? "Nombre" : "¿A quién le debes?"}
+            </Label>
+            <DebtorNameCombobox
               placeholder="ej. Juan"
               value={newDebt.name}
-              onChange={(e) => setNewDebt({ ...newDebt, name: e.target.value })}
+              onChange={(name) => setNewDebt({ ...newDebt, name })}
+              suggestions={uniqueDebtorNames(direction)}
               className="h-11 rounded-full px-5"
-              onKeyDown={(e) => {
-                if (e.key === "Enter") handleAddDebt();
-              }}
             />
           </div>
           <div className="space-y-1.5">
@@ -414,7 +506,7 @@ export default function PendingDebts() {
         </div>
       </BaseModal>
 
-      {/* Confirm Paid Dialog */}
+      {/* Confirm Paid Dialog (they_owe_me) */}
       <ConfirmDialog
         open={!!confirmPaid}
         onOpenChange={() => setConfirmPaid(null)}
@@ -429,6 +521,49 @@ export default function PendingDebts() {
         cancelText="Cancelar"
         variant="default"
       />
+
+      {/* Settle with existing Gasto (i_owe_them) */}
+      <BaseModal
+        open={!!settleTarget}
+        onOpenChange={(open) => !open && setSettleTarget(null)}
+        title="Saldar deuda"
+        maxWidth="sm"
+      >
+        <div className="space-y-4">
+          {settleTarget && (
+            <p className="text-sm text-muted-foreground">
+              Elige el gasto con el que le pagaste {fmt(settleTarget.amount)} a {settleTarget.name}.
+            </p>
+          )}
+          <div className="max-h-[320px] overflow-y-auto space-y-1.5">
+            {recentGastos.length === 0 && (
+              <p className="text-sm text-muted-foreground text-center py-6">
+                No tienes gastos registrados todavía.
+              </p>
+            )}
+            {recentGastos.map((tx) => (
+              <button
+                key={tx.id}
+                type="button"
+                disabled={settleDebtsIOwe.isPending}
+                onClick={() => handleSettleWithTransaction(tx.id)}
+                className="w-full flex items-center justify-between rounded-lg border border-border bg-background p-3 gap-3 text-left hover:border-primary/40 hover:bg-accent/30 transition-colors"
+              >
+                <div className="flex items-center gap-2 min-w-0">
+                  <HandCoins className="h-4 w-4 text-muted-foreground shrink-0" />
+                  <div className="min-w-0">
+                    <p className="text-sm font-medium truncate">{tx.detail || "Sin detalle"}</p>
+                    <p className="text-xs text-muted-foreground">
+                      {new Date(tx.date).toLocaleDateString("es-CL", { day: "numeric", month: "short" })} · {tx.category_name}
+                    </p>
+                  </div>
+                </div>
+                <span className="text-sm font-semibold shrink-0">{fmt(tx.amount)}</span>
+              </button>
+            ))}
+          </div>
+        </div>
+      </BaseModal>
 
       {/* Confirm Delete Dialog */}
       <ConfirmDialog

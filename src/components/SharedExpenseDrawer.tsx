@@ -6,6 +6,7 @@ import { BaseModal } from "./BaseModal";
 import { Plus, Trash2, Users } from "lucide-react";
 import { RadioGroup, RadioGroupItem } from "./ui/radio-group";
 import { Checkbox } from "./ui/checkbox";
+import { DebtorNameCombobox } from "./DebtorNameCombobox";
 
 interface Debtor {
   name: string;
@@ -17,13 +18,15 @@ interface SharedExpenseDrawerProps {
   onOpenChange: (open: boolean) => void;
   totalAmount: number;
   onConfirm: (debtors: Debtor[]) => void;
+  suggestions?: string[];
 }
 
-export default function SharedExpenseDrawer({ 
-  open, 
-  onOpenChange, 
+export default function SharedExpenseDrawer({
+  open,
+  onOpenChange,
   totalAmount,
-  onConfirm 
+  onConfirm,
+  suggestions = [],
 }: SharedExpenseDrawerProps) {
   const [splitMode, setSplitMode] = useState<"equal" | "manual">("equal");
   const [includeMe, setIncludeMe] = useState(true);
@@ -187,10 +190,11 @@ export default function SharedExpenseDrawer({
             {debtors.map((debtor, index) => (
               <div key={index} className="flex gap-2 items-start">
                 <div className="flex-1 space-y-1">
-                  <Input
+                  <DebtorNameCombobox
                     placeholder="Nombre"
                     value={debtor.name}
-                    onChange={(e) => handleDebtorNameChange(index, e.target.value)}
+                    onChange={(name) => handleDebtorNameChange(index, name)}
+                    suggestions={suggestions}
                   />
                 </div>
 
