@@ -38,6 +38,7 @@ import { categorizeTransaction, debounce } from "@/lib/categorizer";
 import { cn } from "@/lib/utils";
 import { CategorySelect, CategoryPickerInline } from "@/components/CategorySelect";
 import { DateTimePicker } from "@/components/ui/date-time-picker";
+import { DateRangeFilter, DateRangeValue } from "@/components/DateRangeFilter";
 
 // ── Add/Edit modal: type segmented control + hero amount ───────────
 type TransactionType = "Ingreso" | "Gasto" | "Inversión" | "Reembolso";
@@ -122,6 +123,7 @@ export default function Transactions() {
   const [typeFilter, setTypeFilter] = useState("all");
   const [categoryFilter, setCategoryFilter] = useState("all");
   const [cardFilter, setCardFilter] = useState("all");
+  const [dateRange, setDateRange] = useState<DateRangeValue>({});
 
   // Sync from URL params (e.g. coming from ⌘K)
   useEffect(() => {
@@ -1268,6 +1270,9 @@ export default function Transactions() {
             )}
           </div>
 
+          {/* Filtro fecha */}
+          <DateRangeFilter value={dateRange} onChange={setDateRange} />
+
           {/* Filtro tarjeta */}
           {(isLoadingCards || creditCards.length > 0) && (
             <Select value={cardFilter} onValueChange={setCardFilter} disabled={isLoadingCards}>
@@ -1338,6 +1343,8 @@ export default function Transactions() {
           onCategoryFilterChange={setCategoryFilter}
           cardFilter={cardFilter}
           onCardFilterChange={setCardFilter}
+          dateRange={dateRange}
+          onDateRangeChange={setDateRange}
           highlightId={highlightId}
         />
       </div>
