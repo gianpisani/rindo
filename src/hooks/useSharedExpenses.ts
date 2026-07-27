@@ -170,13 +170,16 @@ export function useSharedExpenses() {
         .eq("id", sharedExp.transaction_id)
         .single();
 
-      if (!originalTxError && originalTx) {
+      if (originalTxError) throw originalTxError;
+
+      if (originalTx) {
         const newAmount = Number(originalTx.amount) - amount;
         if (newAmount >= 0) {
-          await supabase
+          const { error: reduceError } = await supabase
             .from("transactions")
             .update({ amount: newAmount })
             .eq("id", sharedExp.transaction_id);
+          if (reduceError) throw reduceError;
         }
       }
 
@@ -264,13 +267,16 @@ export function useSharedExpenses() {
         .eq("id", sharedExp.transaction_id)
         .single();
 
-      if (!originalTxError && originalTx) {
+      if (originalTxError) throw originalTxError;
+
+      if (originalTx) {
         const newAmount = Number(originalTx.amount) - amount;
         if (newAmount >= 0) {
-          await supabase
+          const { error: reduceError } = await supabase
             .from("transactions")
             .update({ amount: newAmount })
             .eq("id", sharedExp.transaction_id);
+          if (reduceError) throw reduceError;
         }
       }
     },
