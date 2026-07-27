@@ -751,33 +751,39 @@ export type Database = {
           amount_owed: number
           created_at: string
           debtor_name: string
+          detail: string | null
+          direction: string
           id: string
           paid: boolean
           paid_at: string | null
           paid_transaction_id: string | null
-          transaction_id: string
+          transaction_id: string | null
           user_id: string
         }
         Insert: {
           amount_owed: number
           created_at?: string
           debtor_name: string
+          detail?: string | null
+          direction?: string
           id?: string
           paid?: boolean
           paid_at?: string | null
           paid_transaction_id?: string | null
-          transaction_id: string
+          transaction_id?: string | null
           user_id: string
         }
         Update: {
           amount_owed?: number
           created_at?: string
           debtor_name?: string
+          detail?: string | null
+          direction?: string
           id?: string
           paid?: boolean
           paid_at?: string | null
           paid_transaction_id?: string | null
-          transaction_id?: string
+          transaction_id?: string | null
           user_id?: string
         }
         Relationships: [
@@ -1004,6 +1010,8 @@ export type Database = {
           amount_owed: number | null
           created_at: string | null
           debtor_name: string | null
+          detail: string | null
+          direction: string | null
           id: string | null
           paid: boolean | null
           paid_at: string | null
@@ -1047,6 +1055,14 @@ export type Database = {
         Returns: {
           count_expenses: number
           debtor_name: string
+          total_owed: number
+        }[]
+      }
+      get_pending_by_creditor: {
+        Args: { p_user_id: string }
+        Returns: {
+          count_expenses: number
+          creditor_name: string
           total_owed: number
         }[]
       }
