@@ -29,6 +29,8 @@ import { useSharedExpenses } from "@/hooks/useSharedExpenses";
 import { Checkbox } from "@/components/ui/checkbox";
 import SharedExpenseDrawer from "@/components/SharedExpenseDrawer";
 import { DebtorNameCombobox } from "@/components/DebtorNameCombobox";
+import { DebtLinkPanel } from "@/components/DebtLinkPanel";
+import { planFromSelection } from "@/lib/debtNetting";
 import { BankSyncModal } from "@/components/BankSyncModal";
 import { useBankSyncContext } from "@/contexts/BankSyncContext";
 import { format, parse } from "date-fns";
@@ -100,8 +102,7 @@ export default function Transactions() {
     updateSharedExpenseAmount,
     getSharedExpensesByTransaction,
     markAsPaid,
-    linkExistingTransactionToDebts,
-    settleDebtsIOwe,
+    settleShared,
     deleteSharedExpense,
     sharedExpenses,
     sharedExpensesWithTransaction,
@@ -125,8 +126,9 @@ export default function Transactions() {
   const [newDebtorAmount, setNewDebtorAmount] = useState("");
   const [editingDebtorId, setEditingDebtorId] = useState<string | null>(null);
   const [editingDebtorAmount, setEditingDebtorAmount] = useState("");
-  const [debtsToLink, setDebtsToLink] = useState<Array<{ id: string; debtorName: string; amount: number; transactionDetail?: string }>>([]);
-  const [debtsIOweToSettle, setDebtsIOweToSettle] = useState<Array<{ id: string; debtorName: string; amount: number }>>([]);
+  // Deudas que esta transacción va a cerrar, de cualquiera de las dos direcciones.
+  // El plan (qué se paga y qué se compensa) sale de planFromSelection.
+  const [debtsToSettle, setDebtsToSettle] = useState<string[]>([]);
   const [settleDebtToggle, setSettleDebtToggle] = useState(false);
   const [isImporting, setIsImporting] = useState(false);
   const [searchParams, setSearchParams] = useSearchParams();
@@ -265,6 +267,44 @@ export default function Transactions() {
     setSuggestion(null);
   };
 
+  /**
+   * Cierra las deudas seleccionadas contra una transacción. El plan decide qué se
+   * paga con plata y qué se compensa contra el otro lado; si el neto entra, la
+   * transacción se reetiqueta como Reembolso, y si sale se deja como el Gasto que
+   * ya es.
+   */
+  const handleSettleSelected = async (transactionId: string) => {
+    const rows = sharedExpensesWithTransaction.filter(
+      (se) => !se.paid && debtsToSettle.includes(se.id)
+    );
+    if (rows.length === 0) return;
+
+    const plan = planFromSelection(rows);
+
+    if (plan.netDirection === "in") {
+      const names = [...new Set(rows.map((r) => r.debtor_name))];
+      await updateTransaction.mutateAsync({
+        id: transactionId,
+        type: "Reembolso",
+        category_name: "Pagos recibidos",
+        detail: `Pago de ${names.join(", ")}`,
+      });
+    }
+
+    try {
+      await settleShared.mutateAsync({
+        cashIds: plan.cashIds,
+        offsetIds: plan.offsetIds,
+        transactionId,
+      });
+      toast.success(
+        plan.offsetAmount > 0 ? "Deudas saldadas y compensadas" : "Deudas vinculadas a la transacción"
+      );
+    } catch (error: any) {
+      toast.error(error.message);
+    }
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
@@ -292,21 +332,8 @@ export default function Transactions() {
         amount: parsedAmount,
       });
 
-      if (debtsToLink.length > 0 && transaction?.id) {
-        await linkExistingTransactionToDebts.mutateAsync({
-          debts: debtsToLink.map((d) => ({
-            sharedExpenseId: d.id,
-            amount: d.amount,
-            debtorName: d.debtorName,
-            transactionDetail: d.transactionDetail,
-          })),
-          existingTransactionId: transaction.id,
-        });
-      } else if (debtsIOweToSettle.length > 0 && transaction?.id) {
-        await settleDebtsIOwe.mutateAsync({
-          debts: debtsIOweToSettle.map((d) => ({ sharedExpenseId: d.id })),
-          existingTransactionId: transaction.id,
-        });
+      if (debtsToSettle.length > 0 && transaction?.id) {
+        await handleSettleSelected(transaction.id);
       } else if (isShared && formData.type === "Gasto" && transaction?.id) {
         setPendingTransaction({ id: transaction.id, amount: parsedAmount });
         setIsDialogOpen(false);
@@ -377,8 +404,7 @@ export default function Transactions() {
     setNewDebtorAmount("");
     setEditingDebtorId(null);
     setEditingDebtorAmount("");
-    setDebtsToLink([]);
-    setDebtsIOweToSettle([]);
+    setDebtsToSettle([]);
     setSettleDebtToggle(false);
   };
 
@@ -685,8 +711,10 @@ export default function Transactions() {
                         aria-checked={isActive}
                         onClick={() => {
                           setFormData({ ...formData, type: opt.value, category_name: "" });
-                          if (opt.value !== "Ingreso" && opt.value !== "Reembolso") setDebtsToLink([]);
-                          if (opt.value !== "Gasto") setDebtsIOweToSettle([]);
+                          // Cambiar de tipo cambia qué deudas tienen sentido: la
+                          // selección hecha para el tipo anterior ya no aplica.
+                          setDebtsToSettle([]);
+                          if (opt.value !== "Gasto") setSettleDebtToggle(false);
                         }}
                         className={cn(
                           "flex flex-col items-center gap-1 rounded-xl border py-2.5 px-1 transition-all",
@@ -839,7 +867,11 @@ export default function Transactions() {
                   />
                 </div>
 
-                {/* Vincular a deuda(s) pendiente(s) — para Ingreso/Reembolso */}
+                {/* Vincular a deuda(s) pendiente(s) — para Ingreso/Reembolso.
+                    Se muestran las dos direcciones a propósito: un ingreso puede
+                    cerrar deudas que yo debo si se compensan contra lo que me
+                    deben, y ese es justamente el caso que antes no se podía
+                    expresar. */}
                 {(formData.type === "Ingreso" || formData.type === "Reembolso") && (() => {
                   // Al editar: ocultar si ya está vinculada
                   if (editingTransaction) {
@@ -849,23 +881,8 @@ export default function Transactions() {
                     if (linkedTxIds.has(editingTransaction.id)) return null;
                   }
 
-                  const pendingDebts = sharedExpensesWithTransaction.filter(se => !se.paid && se.direction === "they_owe_me");
+                  const pendingDebts = sharedExpensesWithTransaction.filter(se => !se.paid);
                   if (pendingDebts.length === 0) return null;
-
-                  const txAmount = parseFloat(formData.amount || "0");
-                  const selectedTotal = debtsToLink.reduce((sum, d) => sum + d.amount, 0);
-                  const totalMismatch = txAmount > 0 && debtsToLink.length > 0 && Math.abs(txAmount - selectedTotal) > 1;
-
-                  const toggleDebt = (debt: typeof pendingDebts[number]) => {
-                    setDebtsToLink(prev => {
-                      const exists = prev.some(d => d.id === debt.id);
-                      if (exists) return prev.filter(d => d.id !== debt.id);
-                      return [...prev, { id: debt.id, debtorName: debt.debtor_name, amount: debt.amount_owed, transactionDetail: debt.transaction_detail || undefined }];
-                    });
-                    if (!editingTransaction) {
-                      setFormData(prev => ({ ...prev, type: "Reembolso", category_name: "" }));
-                    }
-                  };
 
                   return (
                     <div className="space-y-3 rounded-xl border-2 border-amber-500/20 bg-amber-500/5 p-4">
@@ -873,100 +890,46 @@ export default function Transactions() {
                         <Users className="h-4 w-4 text-amber-500" />
                         <span className="text-sm font-semibold">Vincular a deuda(s) pendiente(s)</span>
                       </div>
-                      <div className="space-y-2">
-                        {pendingDebts.map((debt) => {
-                          const isSelected = debtsToLink.some(d => d.id === debt.id);
-                          const amountMismatch = txAmount > 0 && Math.abs(txAmount - debt.amount_owed) > 1;
-                          return (
-                            <div
-                              key={debt.id}
-                              role="checkbox"
-                              aria-checked={isSelected}
-                              tabIndex={0}
-                              onClick={() => toggleDebt(debt)}
-                              onKeyDown={(e) => {
-                                if (e.key === "Enter" || e.key === " ") {
-                                  e.preventDefault();
-                                  toggleDebt(debt);
-                                }
-                              }}
-                              className={`w-full flex items-center justify-between rounded-lg border bg-background p-3 gap-3 transition-colors text-left cursor-pointer select-none ${isSelected ? "border-amber-500 bg-amber-500/5" : "border-border"}`}
-                            >
-                              {/* Indicador visual, NO un Checkbox de Radix: un Checkbox
-                                  controlado dentro de un <form> monta un input oculto que
-                                  re-despacha un evento 'click' burbujeante cada vez que
-                                  cambia `checked`. Ese click vuelve a este contenedor,
-                                  re-dispara toggleDebt y entra en loop infinito
-                                  ("Maximum update depth exceeded"). */}
-                              <span
-                                aria-hidden
-                                className={cn(
-                                  "flex h-4 w-4 shrink-0 items-center justify-center rounded-sm border transition-colors",
-                                  isSelected ? "border-amber-500 bg-amber-500 text-white" : "border-input"
-                                )}
-                              >
-                                {isSelected && <Check className="h-3 w-3" />}
-                              </span>
-                              <div className="flex-1 min-w-0">
-                                <div className="flex items-center gap-1.5">
-                                  <span className="text-sm font-medium truncate">{debt.debtor_name}</span>
-                                  <span className="text-xs text-muted-foreground">·</span>
-                                  <span className="text-sm font-semibold text-amber-600">
-                                    ${new Intl.NumberFormat("es-CL").format(debt.amount_owed)}
-                                  </span>
-                                </div>
-                                <p className="text-xs text-muted-foreground truncate mt-0.5">
-                                  {debt.transaction_detail || "Sin detalle"} · {new Date(debt.transaction_date).toLocaleDateString("es-CL", { day: "numeric", month: "short" })}
-                                </p>
-                                {debtsToLink.length <= 1 && amountMismatch && (
-                                  <p className="text-xs text-amber-600 mt-0.5">
-                                    Monto diferente a la deuda (${new Intl.NumberFormat("es-CL").format(debt.amount_owed)})
-                                  </p>
-                                )}
-                              </div>
-                            </div>
+
+                      <DebtLinkPanel
+                        rows={pendingDebts}
+                        selectedIds={debtsToSettle}
+                        onSelectionChange={(ids) => {
+                          setDebtsToSettle(ids);
+                          // Sólo tiene sentido volverla Reembolso si el neto entra.
+                          // Si lo seleccionado deja plata saliendo, el tipo lo
+                          // decide el usuario y no lo pisamos.
+                          const plan = planFromSelection(
+                            pendingDebts.filter((se) => ids.includes(se.id))
                           );
-                        })}
-                      </div>
-                      {debtsToLink.length > 0 && (
-                        <div className="space-y-2 pt-1 border-t border-amber-500/20">
-                          <div className="flex items-center justify-between text-xs pt-2">
-                            <span className="text-muted-foreground">
-                              {debtsToLink.length} deuda{debtsToLink.length > 1 ? "s" : ""} seleccionada{debtsToLink.length > 1 ? "s" : ""}
-                            </span>
-                            <span className={`font-semibold ${totalMismatch ? "text-amber-600" : "text-foreground"}`}>
-                              ${new Intl.NumberFormat("es-CL").format(selectedTotal)}
-                            </span>
-                          </div>
-                          {editingTransaction ? (
-                            <Button
-                              type="button"
-                              size="sm"
-                              className="w-full h-8 text-xs"
-                              disabled={linkExistingTransactionToDebts.isPending}
-                              onClick={async () => {
-                                await linkExistingTransactionToDebts.mutateAsync({
-                                  debts: debtsToLink.map((d) => ({
-                                    sharedExpenseId: d.id,
-                                    amount: d.amount,
-                                    debtorName: d.debtorName,
-                                    transactionDetail: d.transactionDetail,
-                                  })),
-                                  existingTransactionId: editingTransaction.id,
-                                });
-                                setIsDialogOpen(false);
-                                setEditingTransaction(null);
-                                resetForm();
-                              }}
-                            >
-                              Vincular seleccionadas
-                            </Button>
-                          ) : (
-                            <p className="text-xs text-amber-600">
-                              Al guardar, esta transacción se vinculará como pago de {[...new Set(debtsToLink.map(d => d.debtorName))].join(", ")} y quedará registrada como Reembolso.
-                            </p>
-                          )}
-                        </div>
+                          if (!editingTransaction && plan.netDirection === "in") {
+                            setFormData(prev => ({ ...prev, type: "Reembolso", category_name: "" }));
+                          }
+                        }}
+                        transactionAmount={parseFloat(formData.amount || "0")}
+                      />
+
+                      {debtsToSettle.length > 0 && (
+                        editingTransaction ? (
+                          <Button
+                            type="button"
+                            size="sm"
+                            className="w-full h-8 text-xs"
+                            disabled={settleShared.isPending}
+                            onClick={async () => {
+                              await handleSettleSelected(editingTransaction.id);
+                              setIsDialogOpen(false);
+                              setEditingTransaction(null);
+                              resetForm();
+                            }}
+                          >
+                            Vincular seleccionadas
+                          </Button>
+                        ) : (
+                          <p className="text-xs text-amber-600">
+                            Al guardar, esta transacción quedará registrada como Reembolso y cerrará las deudas seleccionadas.
+                          </p>
+                        )
                       )}
                     </div>
                   );
@@ -1240,14 +1203,12 @@ export default function Transactions() {
                   );
                 })()}
 
-                {/* Saldar deuda(s) que yo debo — solo para Gastos */}
+                {/* Saldar deuda(s) que yo debo — solo para Gastos. Igual que en el
+                    panel de arriba, muestra las dos direcciones: un gasto puede
+                    saldar el neto con alguien que además me debe plata. */}
                 {formData.type === "Gasto" && (() => {
-                  const pendingIOwe = sharedExpensesWithTransaction.filter(se => !se.paid && se.direction === "i_owe_them");
-                  if (pendingIOwe.length === 0) return null;
-
-                  const txAmount = parseFloat(formData.amount || "0");
-                  const selectedTotal = debtsIOweToSettle.reduce((sum, d) => sum + d.amount, 0);
-                  const totalMismatch = txAmount > 0 && debtsIOweToSettle.length > 0 && Math.abs(txAmount - selectedTotal) > 1;
+                  const pendingDebts = sharedExpensesWithTransaction.filter(se => !se.paid);
+                  if (pendingDebts.length === 0) return null;
 
                   if (!settleDebtToggle) {
                     return (
@@ -1257,7 +1218,7 @@ export default function Transactions() {
                           checked={settleDebtToggle}
                           onCheckedChange={(checked) => {
                             setSettleDebtToggle(checked as boolean);
-                            if (!checked) setDebtsIOweToSettle([]);
+                            if (!checked) setDebtsToSettle([]);
                           }}
                         />
                         <label
@@ -1270,14 +1231,6 @@ export default function Transactions() {
                       </div>
                     );
                   }
-
-                  const toggleDebt = (debt: typeof pendingIOwe[number]) => {
-                    setDebtsIOweToSettle(prev => {
-                      const exists = prev.some(d => d.id === debt.id);
-                      if (exists) return prev.filter(d => d.id !== debt.id);
-                      return [...prev, { id: debt.id, debtorName: debt.debtor_name, amount: debt.amount_owed }];
-                    });
-                  };
 
                   return (
                     <div className="space-y-3 rounded-xl border-2 border-destructive/20 bg-destructive/5 p-4">
@@ -1293,88 +1246,36 @@ export default function Transactions() {
                           className="h-7 w-7 p-0"
                           onClick={() => {
                             setSettleDebtToggle(false);
-                            setDebtsIOweToSettle([]);
+                            setDebtsToSettle([]);
                           }}
                         >
                           <X className="h-3.5 w-3.5" />
                         </Button>
                       </div>
-                      <div className="space-y-2">
-                        {pendingIOwe.map((debt) => {
-                          const isSelected = debtsIOweToSettle.some(d => d.id === debt.id);
-                          return (
-                            <div
-                              key={debt.id}
-                              role="checkbox"
-                              aria-checked={isSelected}
-                              tabIndex={0}
-                              onClick={() => toggleDebt(debt)}
-                              onKeyDown={(e) => {
-                                if (e.key === "Enter" || e.key === " ") {
-                                  e.preventDefault();
-                                  toggleDebt(debt);
-                                }
-                              }}
-                              className={`w-full flex items-center gap-3 rounded-lg border bg-background p-3 text-left transition-colors cursor-pointer select-none ${isSelected ? "border-destructive bg-destructive/5" : "border-border"}`}
-                            >
-                              {/* Indicador visual, no un Checkbox de Radix — ver comentario
-                                  en el panel de vincular deudas. */}
-                              <span
-                                aria-hidden
-                                className={cn(
-                                  "flex h-4 w-4 shrink-0 items-center justify-center rounded-sm border transition-colors",
-                                  isSelected ? "border-destructive bg-destructive text-white" : "border-input"
-                                )}
-                              >
-                                {isSelected && <Check className="h-3 w-3" />}
-                              </span>
-                              <div className="flex-1 min-w-0">
-                                <div className="flex items-center gap-1.5">
-                                  <span className="text-sm font-medium truncate">{debt.debtor_name}</span>
-                                  <span className="text-xs text-muted-foreground">·</span>
-                                  <span className="text-sm font-semibold text-destructive">
-                                    ${new Intl.NumberFormat("es-CL").format(debt.amount_owed)}
-                                  </span>
-                                </div>
-                                <p className="text-xs text-muted-foreground truncate mt-0.5">
-                                  {debt.transaction_detail || debt.detail || "Sin detalle"}
-                                </p>
-                              </div>
-                            </div>
-                          );
-                        })}
-                      </div>
-                      {debtsIOweToSettle.length > 0 && (
-                        <div className="space-y-2 pt-2 border-t border-destructive/20">
-                          <div className="flex items-center justify-between text-xs">
-                            <span className="text-muted-foreground">
-                              {debtsIOweToSettle.length} deuda{debtsIOweToSettle.length > 1 ? "s" : ""} seleccionada{debtsIOweToSettle.length > 1 ? "s" : ""}
-                            </span>
-                            <span className={`font-semibold ${totalMismatch ? "text-destructive" : "text-foreground"}`}>
-                              ${new Intl.NumberFormat("es-CL").format(selectedTotal)}
-                            </span>
-                          </div>
-                          {editingTransaction && (
-                            <Button
-                              type="button"
-                              size="sm"
-                              variant="destructive"
-                              className="w-full h-8 text-xs"
-                              disabled={settleDebtsIOwe.isPending}
-                              onClick={async () => {
-                                await settleDebtsIOwe.mutateAsync({
-                                  debts: debtsIOweToSettle.map(d => ({ sharedExpenseId: d.id })),
-                                  existingTransactionId: editingTransaction.id,
-                                });
-                                setIsDialogOpen(false);
-                                setEditingTransaction(null);
-                                resetForm();
-                              }}
-                            >
-                              Saldar seleccionadas
-                            </Button>
-                          )}
-                        </div>
+
+                      <DebtLinkPanel
+                        rows={pendingDebts}
+                        selectedIds={debtsToSettle}
+                        onSelectionChange={setDebtsToSettle}
+                        transactionAmount={parseFloat(formData.amount || "0")}
+                      />
+
+                      {debtsToSettle.length > 0 && editingTransaction && (
+                        <Button
+                          type="button"
+                          size="sm"
+                          variant="destructive"
+                          className="w-full h-8 text-xs"
+                          disabled={settleShared.isPending}
+                          onClick={async () => {
+                            await handleSettleSelected(editingTransaction.id);
+                            setIsDialogOpen(false);
+                            setEditingTransaction(null);
+                            resetForm();
+                          }}
+                        >
+                          Saldar seleccionadas
+                        </Button>
                       )}
                     </div>
                   );
