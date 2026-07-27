@@ -68,6 +68,7 @@ import { InlineDateTimePicker } from "./ui/date-time-picker";
 import { ChevronDoubleLeftIcon, ChevronDoubleRightIcon } from "@heroicons/react/24/outline";
 import { Popover, PopoverContent, PopoverTrigger } from "./ui/popover";
 import { Command, CommandInput, CommandList, CommandEmpty, CommandGroup, CommandItem } from "./ui/command";
+import { DateRangeFilter, DateRangeValue } from "./DateRangeFilter";
 
 // ── Category icon map ──────────────────────────────────────────────────────
 
@@ -582,7 +583,11 @@ interface TransactionsTableProps {
   onCategoryFilterChange?: (v: string) => void;
   cardFilter?: string;
   onCardFilterChange?: (v: string) => void;
+  dateRange?: DateRangeValue;
+  onDateRangeChange?: (v: DateRangeValue) => void;
 }
+
+const EMPTY_DATE_RANGE: DateRangeValue = {};
 
 // ── Main component ─────────────────────────────────────────────────────────
 
@@ -605,6 +610,8 @@ export function TransactionsTable({
   onCategoryFilterChange,
   cardFilter: externalCardFilter,
   onCardFilterChange,
+  dateRange: externalDateRange,
+  onDateRangeChange,
 }: TransactionsTableProps) {
   const [searchParams] = useSearchParams();
   const [sorting, setSorting] = useState<SortingState>([{ id: "date", desc: true }]);
@@ -612,6 +619,7 @@ export function TransactionsTable({
   const [internalTypeFilter, setInternalTypeFilter] = useState<string>("all");
   const [internalCategoryFilter, setInternalCategoryFilter] = useState<string>("all");
   const [internalCardFilter, setInternalCardFilter] = useState<string>("all");
+  const [internalDateRange, setInternalDateRange] = useState<DateRangeValue>({});
   const [rowSelection, setRowSelection] = useState<RowSelectionState>({});
   const [panelExpanded, setPanelExpanded] = useState(false);
   const [panelY, setPanelY] = useState<number | null>(null);
@@ -644,14 +652,18 @@ export function TransactionsTable({
   const setCategoryFilter = isControlled ? onCategoryFilterChange! : setInternalCategoryFilter;
   const cardFilter = isControlled ? (externalCardFilter ?? "all") : internalCardFilter;
   const setCardFilter = isControlled ? (onCardFilterChange ?? setInternalCardFilter) : setInternalCardFilter;
+  const dateRange = isControlled ? (externalDateRange ?? EMPTY_DATE_RANGE) : internalDateRange;
+  const setDateRange = isControlled ? (onDateRangeChange ?? setInternalDateRange) : setInternalDateRange;
 
   const hasActiveFilters =
-    Boolean(globalFilter) || typeFilter !== "all" || categoryFilter !== "all" || cardFilter !== "all";
+    Boolean(globalFilter) || typeFilter !== "all" || categoryFilter !== "all" || cardFilter !== "all" ||
+    Boolean(dateRange.from || dateRange.to);
   const clearFilters = () => {
     setGlobalFilter("");
     setTypeFilter("all");
     setCategoryFilter("all");
     setCardFilter("all");
+    setDateRange({});
   };
 
   useEffect(() => {
@@ -1050,8 +1062,16 @@ export function TransactionsTable({
         data = data.filter(t => t.card_id === cardFilter);
       }
     }
+    if (dateRange.from || dateRange.to) {
+      data = data.filter(t => {
+        const date = new Date(t.date);
+        if (dateRange.from && date < dateRange.from) return false;
+        if (dateRange.to && date > dateRange.to) return false;
+        return true;
+      });
+    }
     return data;
-  }, [fuzzyResults, transactions, globalFilter, typeFilter, categoryFilter, cardFilter]);
+  }, [fuzzyResults, transactions, globalFilter, typeFilter, categoryFilter, cardFilter, dateRange]);
 
   const table = useReactTable({
     data: filteredData,
@@ -1304,6 +1324,8 @@ export function TransactionsTable({
               ))}
             </SelectContent>
           </Select>
+
+          <DateRangeFilter value={dateRange} onChange={setDateRange} className="w-full sm:w-[200px]" />
         </div>
       )}
 
