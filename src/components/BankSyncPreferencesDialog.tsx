@@ -52,12 +52,26 @@ export function BankSyncPreferencesDialog({ cred, onOpenChange }: BankSyncPrefer
             </DialogHeader>
 
             <div className="space-y-4 pt-2">
-              <div className="flex items-center justify-between gap-3 rounded-xl border border-border/50 p-3">
+              <div
+                className={`flex items-center justify-between gap-3 rounded-xl border p-3 transition-colors ${
+                  cred.is_active
+                    ? "border-green-500/30 bg-green-500/5"
+                    : "border-border/50"
+                }`}
+              >
                 <div className="flex items-center gap-2.5">
-                  <RefreshCw className="h-4 w-4 text-muted-foreground shrink-0" />
+                  <RefreshCw
+                    className={`h-4 w-4 shrink-0 ${cred.is_active ? "text-green-600 dark:text-green-500" : "text-muted-foreground"}`}
+                  />
                   <div>
-                    <p className="text-sm font-medium">Auto-sync activo</p>
-                    <p className="text-xs text-muted-foreground">Sincroniza automáticamente según el horario</p>
+                    <p className="text-sm font-medium">
+                      {cred.is_active ? "Auto-sync activo" : "Auto-sync pausado"}
+                    </p>
+                    <p className="text-xs text-muted-foreground">
+                      {cred.is_active
+                        ? "Sincroniza automáticamente según el horario"
+                        : "No se sincronizará hasta que lo actives"}
+                    </p>
                   </div>
                 </div>
                 <Switch

@@ -59,6 +59,21 @@ function getFriendlyError(status: BankCredential["last_sync_status"]): string {
   return FRIENDLY_ERROR_MESSAGES[status] ?? "Hubo un problema con la sincronización.";
 }
 
+function ActiveIndicator({ isActive }: { isActive: boolean }) {
+  return (
+    <span
+      className={`flex items-center gap-1.5 text-xs font-medium ${
+        isActive ? "text-green-600 dark:text-green-500" : "text-muted-foreground"
+      }`}
+    >
+      <span
+        className={`h-1.5 w-1.5 rounded-full ${isActive ? "bg-green-500" : "bg-muted-foreground/50"}`}
+      />
+      {isActive ? "Auto-sync activo" : "Auto-sync pausado"}
+    </span>
+  );
+}
+
 function formatSyncDate(dateStr: string | null): string {
   if (!dateStr) return "";
   const d = new Date(dateStr);
@@ -82,7 +97,11 @@ function CredentialRow({
   if (!bank) return null;
 
   return (
-    <div className="flex flex-col gap-3 p-4 rounded-xl border border-border/50 bg-card">
+    <div
+      className={`flex flex-col gap-3 p-4 rounded-xl border bg-card transition-opacity ${
+        cred.is_active ? "border-border/50" : "border-border/50 opacity-70"
+      }`}
+    >
       {/* Top row: logo + name + settings gear */}
       <div className="flex items-center gap-3">
         <BankLogo bank={bank} size="sm" />
@@ -99,6 +118,9 @@ function CredentialRow({
           <Settings2 className="h-5 w-5" />
         </button>
       </div>
+
+      {/* Auto-sync activo/pausado */}
+      <ActiveIndicator isActive={cred.is_active} />
 
       {/* Last sync status */}
       <div className="flex items-center justify-between">
