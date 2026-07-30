@@ -82,9 +82,17 @@ export function BankSyncPreferencesDialog({ cred, onOpenChange }: BankSyncPrefer
                 />
               </div>
 
-              <div className="flex items-center justify-between gap-3 rounded-xl border border-border/50 p-3">
+              <div
+                className={`flex items-center justify-between gap-3 rounded-xl border p-3 transition-colors ${
+                  cred.notify_email
+                    ? "border-green-500/30 bg-green-500/5"
+                    : "border-border/50"
+                }`}
+              >
                 <div className="flex items-center gap-2.5">
-                  <Mail className="h-4 w-4 text-muted-foreground shrink-0" />
+                  <Mail
+                    className={`h-4 w-4 shrink-0 ${cred.notify_email ? "text-green-600 dark:text-green-500" : "text-muted-foreground"}`}
+                  />
                   <div>
                     <p className="text-sm font-medium">Notificarme por mail</p>
                     <p className="text-xs text-muted-foreground">Recibe un correo al importar movimientos o si falla el sync</p>
