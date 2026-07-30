@@ -1,18 +1,29 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
+import { personKey } from "@/lib/debtNetting";
 
 export type SharedExpenseDirection = "they_owe_me" | "i_owe_them";
+
+// Cómo se cerró una deuda: 'cash' se movió plata, 'offset' se compensó contra el
+// otro lado y nunca hubo transferencia. Las deudas cerradas antes de que
+// existiera la columna quedan en null y se leen como 'cash'.
+export type SettlementKind = "cash" | "offset";
 
 export interface SharedExpense {
   id: string;
   transaction_id: string | null;
   // Nombre de la contraparte: quién me debe (they_owe_me) o a quién le debo (i_owe_them).
   debtor_name: string;
+  // Versión normalizada de debtor_name (columna generada). Es la identidad por la
+  // que se agrupa y se netea; "cata" y "Cata " comparten person_key.
+  person_key: string;
   amount_owed: number;
   paid: boolean;
   paid_at: string | null;
   paid_transaction_id: string | null;
+  settlement_kind: SettlementKind | null;
+  settlement_id: string | null;
   direction: SharedExpenseDirection;
   // Detalle propio. Solo se usa en deudas "i_owe_them", que no tienen una
   // transacción de la cual heredar transaction_detail.
@@ -40,6 +51,18 @@ export interface CreditorSummary {
   count_expenses: number;
 }
 
+// Los dos lados de una misma persona en una sola fila. net > 0 me deben,
+// net < 0 yo debo, net = 0 estamos al día.
+export interface PersonBalance {
+  person_key: string;
+  display_name: string;
+  owed_to_me: number;
+  i_owe: number;
+  net: number;
+  count_owed_to_me: number;
+  count_i_owe: number;
+}
+
 export function useSharedExpenses() {
   const queryClient = useQueryClient();
 
@@ -62,9 +85,24 @@ export function useSharedExpenses() {
     return sharedExpenses.filter((se) => se.transaction_id === transactionId);
   };
 
-  // Nombres únicos ya registrados para una dirección (autocomplete)
-  const uniqueDebtorNames = (direction: SharedExpenseDirection = "they_owe_me") =>
-    [...new Set(sharedExpenses.filter((se) => se.direction === direction).map((se) => se.debtor_name))].sort();
+  // Nombres únicos ya registrados para una dirección (autocomplete). Se deduplica
+  // por person_key para no ofrecer "cata" y "Cata" como si fueran dos personas;
+  // se muestra la grafía más reciente, igual criterio que get_balances_by_person.
+  const uniqueDebtorNames = (direction: SharedExpenseDirection = "they_owe_me") => {
+    const byKey = new Map<string, { name: string; createdAt: number }>();
+
+    for (const se of sharedExpenses) {
+      if (se.direction !== direction) continue;
+      const key = personKey(se.debtor_name);
+      const createdAt = new Date(se.created_at).getTime();
+      const current = byKey.get(key);
+      if (!current || createdAt > current.createdAt) {
+        byKey.set(key, { name: se.debtor_name, createdAt });
+      }
+    }
+
+    return [...byKey.values()].map((v) => v.name).sort((a, b) => a.localeCompare(b, "es"));
+  };
 
   // Obtener gastos compartidos con info de transacción
   const { data: sharedExpensesWithTransaction = [] } = useQuery({
@@ -112,9 +150,88 @@ export function useSharedExpenses() {
     },
   });
 
+  // Balance neto por persona: los dos lados juntos. Es lo que consume la página
+  // de Deudas; pendingByDebtor/pendingByCreditor quedan sólo por compatibilidad.
+  const { data: balancesByPerson = [] } = useQuery({
+    queryKey: ["balances_by_person"],
+    queryFn: async () => {
+      const { data: userData } = await supabase.auth.getUser();
+      if (!userData.user) throw new Error("No user found");
+
+      const { data, error } = await supabase.rpc("get_balances_by_person", {
+        p_user_id: userData.user.id,
+      });
+
+      if (error) throw error;
+      return (data || []) as PersonBalance[];
+    },
+  });
+
+  // Toda mutación que cierre, cree o borre deudas tiene que refrescar esto.
+  const invalidateAll = () => {
+    queryClient.invalidateQueries({ queryKey: ["shared_expenses"] });
+    queryClient.invalidateQueries({ queryKey: ["shared_expenses_with_transaction"] });
+    queryClient.invalidateQueries({ queryKey: ["pending_by_debtor"] });
+    queryClient.invalidateQueries({ queryKey: ["pending_by_creditor"] });
+    queryClient.invalidateQueries({ queryKey: ["balances_by_person"] });
+    queryClient.invalidateQueries({ queryKey: ["transactions"] });
+  };
+
+  // Cierre de deudas en una sola transacción de base de datos: marca las filas,
+  // distingue las compensadas de las pagadas con plata y ajusta el gasto original.
+  // Antes esto eran 3-4 escrituras encadenadas desde el cliente, sin atomicidad.
+  const settleShared = useMutation({
+    mutationFn: async ({
+      cashIds,
+      offsetIds,
+      transactionId,
+    }: {
+      cashIds: string[];
+      offsetIds: string[];
+      transactionId?: string | null;
+    }) => {
+      // El proyecto compila con strictNullChecks:false, así que un payload mal
+      // mapeado no lo detecta el compilador y termina como `= ANY(NULL)` en
+      // Postgres, cerrando cero filas en silencio. Falla acá.
+      const cash = (cashIds || []).filter(Boolean);
+      const offset = (offsetIds || []).filter(Boolean);
+      if (cash.length + offset.length === 0) {
+        throw new Error("settleShared: no se recibió ninguna deuda para saldar");
+      }
+
+      const { data, error } = await supabase.rpc("settle_shared_expenses", {
+        p_cash_ids: cash,
+        p_offset_ids: offset,
+        p_transaction_id: transactionId ?? null,
+      });
+
+      if (error) throw error;
+      return data as string;
+    },
+    // Sin toast de error: los envoltorios de más abajo y las pantallas que la
+    // llaman directo ya reportan, y si no doblaríamos el mensaje.
+    onSuccess: invalidateAll,
+  });
+
   // Agregar gastos compartidos (batch) — siempre dirección "me deben"
   const addSharedExpenses = useMutation({
-    mutationFn: async (expenses: Array<Omit<SharedExpense, "id" | "user_id" | "created_at" | "paid" | "paid_at" | "paid_transaction_id" | "direction">>) => {
+    mutationFn: async (
+      expenses: Array<
+        Omit<
+          SharedExpense,
+          | "id"
+          | "user_id"
+          | "created_at"
+          | "paid"
+          | "paid_at"
+          | "paid_transaction_id"
+          | "direction"
+          | "person_key"
+          | "settlement_kind"
+          | "settlement_id"
+        >
+      >
+    ) => {
       const { data: userData } = await supabase.auth.getUser();
       if (!userData.user) throw new Error("No user found");
 
@@ -132,11 +249,7 @@ export function useSharedExpenses() {
       if (error) throw error;
       return data as SharedExpense[];
     },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["shared_expenses"] });
-      queryClient.invalidateQueries({ queryKey: ["shared_expenses_with_transaction"] });
-      queryClient.invalidateQueries({ queryKey: ["pending_by_debtor"] });
-    },
+    onSuccess: invalidateAll,
   });
 
   // Marcar como pagado (crea transacción de ingreso)
@@ -160,16 +273,7 @@ export function useSharedExpenses() {
         ? `${debtorName} pagó: ${transactionDetail}`
         : `Pago de ${debtorName}`;
 
-      // 1. Leer el shared_expense para obtener transaction_id del gasto original
-      const { data: sharedExp, error: sharedExpError } = await supabase
-        .from("shared_expenses")
-        .select("transaction_id")
-        .eq("id", sharedExpenseId)
-        .single();
-
-      if (sharedExpError) throw sharedExpError;
-
-      // 2. Crear transacción de reembolso (no suma al balance)
+      // Crear la transacción de reembolso (no suma al balance)...
       const { data: reembolsoTransaction, error: transactionError } = await supabase
         .from("transactions")
         .insert({
@@ -185,48 +289,16 @@ export function useSharedExpenses() {
 
       if (transactionError) throw transactionError;
 
-      // 3. Actualizar shared_expense como pagado
-      const { error: updateError } = await supabase
-        .from("shared_expenses")
-        .update({
-          paid: true,
-          paid_at: new Date().toISOString(),
-          paid_transaction_id: reembolsoTransaction.id,
-        })
-        .eq("id", sharedExpenseId);
-
-      if (updateError) throw updateError;
-
-      // 4. Reducir el monto del gasto original
-      if (sharedExp.transaction_id) {
-        const { data: originalTx, error: originalTxError } = await supabase
-          .from("transactions")
-          .select("amount")
-          .eq("id", sharedExp.transaction_id)
-          .single();
-
-        if (originalTxError) throw originalTxError;
-
-        if (originalTx) {
-          const newAmount = Number(originalTx.amount) - amount;
-          if (newAmount >= 0) {
-            const { error: reduceError } = await supabase
-              .from("transactions")
-              .update({ amount: newAmount })
-              .eq("id", sharedExp.transaction_id);
-            if (reduceError) throw reduceError;
-          }
-        }
-      }
+      // ...y dejar que la RPC cierre la deuda y ajuste el gasto original.
+      await settleShared.mutateAsync({
+        cashIds: [sharedExpenseId],
+        offsetIds: [],
+        transactionId: reembolsoTransaction.id,
+      });
 
       return reembolsoTransaction;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["shared_expenses"] });
-      queryClient.invalidateQueries({ queryKey: ["shared_expenses_with_transaction"] });
-      queryClient.invalidateQueries({ queryKey: ["pending_by_debtor"] });
-      queryClient.invalidateQueries({ queryKey: ["transactions"] });
-
       toast.success("Pago registrado. Se ha creado el ingreso automáticamente");
     },
     onError: (error: any) => {
@@ -243,91 +315,7 @@ export function useSharedExpenses() {
         .eq("id", id);
       if (error) throw error;
     },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["shared_expenses"] });
-      queryClient.invalidateQueries({ queryKey: ["shared_expenses_with_transaction"] });
-      queryClient.invalidateQueries({ queryKey: ["pending_by_debtor"] });
-    },
-  });
-
-  // Vincular transacción existente como pago de deuda (una sola deuda)
-  const linkExistingTransaction = useMutation({
-    mutationFn: async ({
-      sharedExpenseId,
-      existingTransactionId,
-      amount,
-      debtorName,
-      transactionDetail,
-    }: {
-      sharedExpenseId: string;
-      existingTransactionId: string;
-      amount: number;
-      debtorName: string;
-      transactionDetail?: string;
-    }) => {
-      // 1. Leer transaction_id del gasto original
-      const { data: sharedExp, error: sharedExpError } = await supabase
-        .from("shared_expenses")
-        .select("transaction_id")
-        .eq("id", sharedExpenseId)
-        .single();
-
-      if (sharedExpError) throw sharedExpError;
-
-      // 2. Actualizar la transacción vinculada: tipo Reembolso + detalle descriptivo
-      const detail = transactionDetail
-        ? `${debtorName} pagó: ${transactionDetail}`
-        : `Pago de ${debtorName}`;
-
-      await supabase
-        .from("transactions")
-        .update({ type: "Reembolso", detail, category_name: "Pagos recibidos" })
-        .eq("id", existingTransactionId);
-
-      // 3. Marcar como pagado usando la transacción existente
-      const { error: updateError } = await supabase
-        .from("shared_expenses")
-        .update({
-          paid: true,
-          paid_at: new Date().toISOString(),
-          paid_transaction_id: existingTransactionId,
-        })
-        .eq("id", sharedExpenseId);
-
-      if (updateError) throw updateError;
-
-      // 4. Reducir el monto del gasto original
-      if (sharedExp.transaction_id) {
-        const { data: originalTx, error: originalTxError } = await supabase
-          .from("transactions")
-          .select("amount")
-          .eq("id", sharedExp.transaction_id)
-          .single();
-
-        if (originalTxError) throw originalTxError;
-
-        if (originalTx) {
-          const newAmount = Number(originalTx.amount) - amount;
-          if (newAmount >= 0) {
-            const { error: reduceError } = await supabase
-              .from("transactions")
-              .update({ amount: newAmount })
-              .eq("id", sharedExp.transaction_id);
-            if (reduceError) throw reduceError;
-          }
-        }
-      }
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["shared_expenses"] });
-      queryClient.invalidateQueries({ queryKey: ["shared_expenses_with_transaction"] });
-      queryClient.invalidateQueries({ queryKey: ["pending_by_debtor"] });
-      queryClient.invalidateQueries({ queryKey: ["transactions"] });
-      toast.success("Deuda vinculada a transacción existente");
-    },
-    onError: (error: any) => {
-      toast.error(error.message);
-    },
+    onSuccess: invalidateAll,
   });
 
   // Vincular una transacción existente (Ingreso/Reembolso) como pago de VARIAS
@@ -344,12 +332,12 @@ export function useSharedExpenses() {
 
       // El proyecto compila con strictNullChecks:false, así que un payload mal
       // mapeado (p. ej. pasar {id} en vez de {sharedExpenseId}) no lo detecta el
-      // compilador y termina como `IN (undefined)` en Postgres. Falla acá.
+      // compilador y llega vacío a Postgres. Falla acá.
       if (debts.some((d) => !d.sharedExpenseId)) {
         throw new Error("linkExistingTransactionToDebts: falta sharedExpenseId en el payload");
       }
 
-      // 1. Detalle combinado con los nombres únicos involucrados
+      // Reetiquetar la transacción con los nombres involucrados...
       const uniqueNames = [...new Set(debts.map((d) => d.debtorName))];
       const detail = uniqueNames.length === 1 ? `Pago de ${uniqueNames[0]}` : `Pago de ${uniqueNames.join(", ")}`;
 
@@ -358,54 +346,14 @@ export function useSharedExpenses() {
         .update({ type: "Reembolso", detail, category_name: "Pagos recibidos" })
         .eq("id", existingTransactionId);
 
-      // 2. Marcar todas las deudas seleccionadas como pagadas en un solo update
-      const ids = debts.map((d) => d.sharedExpenseId);
-      const { error: updateError } = await supabase
-        .from("shared_expenses")
-        .update({
-          paid: true,
-          paid_at: new Date().toISOString(),
-          paid_transaction_id: existingTransactionId,
-        })
-        .in("id", ids);
-
-      if (updateError) throw updateError;
-
-      // 3. Reducir el monto de cada transacción original afectada, agrupando
-      //    por transaction_id (pueden venir de gastos distintos)
-      const { data: sharedExpsData } = await supabase
-        .from("shared_expenses")
-        .select("id, transaction_id")
-        .in("id", ids);
-
-      const reduceByOriginalTx = new Map<string, number>();
-      for (const d of debts) {
-        const se = sharedExpsData?.find((s) => s.id === d.sharedExpenseId);
-        if (se?.transaction_id) {
-          reduceByOriginalTx.set(se.transaction_id, (reduceByOriginalTx.get(se.transaction_id) || 0) + d.amount);
-        }
-      }
-
-      for (const [txId, totalReduce] of reduceByOriginalTx) {
-        const { data: originalTx, error: originalTxError } = await supabase
-          .from("transactions")
-          .select("amount")
-          .eq("id", txId)
-          .single();
-
-        if (!originalTxError && originalTx) {
-          const newAmount = Number(originalTx.amount) - totalReduce;
-          if (newAmount > 0) {
-            await supabase.from("transactions").update({ amount: newAmount }).eq("id", txId);
-          }
-        }
-      }
+      // ...y cerrar todas las deudas contra ella en una sola operación.
+      await settleShared.mutateAsync({
+        cashIds: debts.map((d) => d.sharedExpenseId),
+        offsetIds: [],
+        transactionId: existingTransactionId,
+      });
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["shared_expenses"] });
-      queryClient.invalidateQueries({ queryKey: ["shared_expenses_with_transaction"] });
-      queryClient.invalidateQueries({ queryKey: ["pending_by_debtor"] });
-      queryClient.invalidateQueries({ queryKey: ["transactions"] });
       toast.success("Deudas vinculadas a la transacción");
     },
     onError: (error: any) => {
@@ -419,12 +367,7 @@ export function useSharedExpenses() {
       const { error } = await supabase.from("shared_expenses").delete().eq("id", id);
       if (error) throw error;
     },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["shared_expenses"] });
-      queryClient.invalidateQueries({ queryKey: ["shared_expenses_with_transaction"] });
-      queryClient.invalidateQueries({ queryKey: ["pending_by_debtor"] });
-      queryClient.invalidateQueries({ queryKey: ["pending_by_creditor"] });
-    },
+    onSuccess: invalidateAll,
   });
 
   // Crear deuda rápida "me deben" (crea transacción + shared_expense en un paso)
@@ -473,10 +416,7 @@ export function useSharedExpenses() {
       return transaction;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["shared_expenses"] });
-      queryClient.invalidateQueries({ queryKey: ["shared_expenses_with_transaction"] });
-      queryClient.invalidateQueries({ queryKey: ["pending_by_debtor"] });
-      queryClient.invalidateQueries({ queryKey: ["transactions"] });
+      invalidateAll();
       toast.success("Deuda creada");
     },
     onError: (error: any) => {
@@ -515,9 +455,7 @@ export function useSharedExpenses() {
       return data as SharedExpense;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["shared_expenses"] });
-      queryClient.invalidateQueries({ queryKey: ["shared_expenses_with_transaction"] });
-      queryClient.invalidateQueries({ queryKey: ["pending_by_creditor"] });
+      invalidateAll();
       toast.success("Deuda registrada");
     },
     onError: (error: any) => {
@@ -542,24 +480,13 @@ export function useSharedExpenses() {
         throw new Error("settleDebtsIOwe: falta sharedExpenseId en el payload");
       }
 
-      const ids = debts.map((d) => d.sharedExpenseId);
-      const { error } = await supabase
-        .from("shared_expenses")
-        .update({
-          paid: true,
-          paid_at: new Date().toISOString(),
-          paid_transaction_id: existingTransactionId,
-        })
-        .in("id", ids)
-        .eq("direction", "i_owe_them");
-
-      if (error) throw error;
+      await settleShared.mutateAsync({
+        cashIds: debts.map((d) => d.sharedExpenseId),
+        offsetIds: [],
+        transactionId: existingTransactionId,
+      });
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["shared_expenses"] });
-      queryClient.invalidateQueries({ queryKey: ["shared_expenses_with_transaction"] });
-      queryClient.invalidateQueries({ queryKey: ["pending_by_creditor"] });
-      queryClient.invalidateQueries({ queryKey: ["transactions"] });
       toast.success("Deuda saldada");
     },
     onError: (error: any) => {
@@ -572,13 +499,14 @@ export function useSharedExpenses() {
     sharedExpensesWithTransaction,
     pendingByDebtor,
     pendingByCreditor,
+    balancesByPerson,
     isLoading,
     addSharedExpenses,
     addQuickDebt,
     addManualDebtIOwe,
     updateSharedExpenseAmount,
     markAsPaid,
-    linkExistingTransaction,
+    settleShared,
     linkExistingTransactionToDebts,
     settleDebtsIOwe,
     deleteSharedExpense,

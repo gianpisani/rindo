@@ -757,6 +757,9 @@ export type Database = {
           paid: boolean
           paid_at: string | null
           paid_transaction_id: string | null
+          person_key: string | null
+          settlement_id: string | null
+          settlement_kind: string | null
           transaction_id: string | null
           user_id: string
         }
@@ -770,6 +773,8 @@ export type Database = {
           paid?: boolean
           paid_at?: string | null
           paid_transaction_id?: string | null
+          settlement_id?: string | null
+          settlement_kind?: string | null
           transaction_id?: string | null
           user_id: string
         }
@@ -783,6 +788,8 @@ export type Database = {
           paid?: boolean
           paid_at?: string | null
           paid_transaction_id?: string | null
+          settlement_id?: string | null
+          settlement_kind?: string | null
           transaction_id?: string | null
           user_id?: string
         }
@@ -1016,6 +1023,9 @@ export type Database = {
           paid: boolean | null
           paid_at: string | null
           paid_transaction_id: string | null
+          person_key: string | null
+          settlement_id: string | null
+          settlement_kind: string | null
           transaction_amount: number | null
           transaction_category: string | null
           transaction_date: string | null
@@ -1048,6 +1058,30 @@ export type Database = {
       }
       get_next_billing_date: {
         Args: { p_billing_day: number; p_from_date?: string }
+        Returns: string
+      }
+      get_balances_by_person: {
+        Args: { p_user_id: string }
+        Returns: {
+          count_i_owe: number
+          count_owed_to_me: number
+          display_name: string
+          i_owe: number
+          net: number
+          owed_to_me: number
+          person_key: string
+        }[]
+      }
+      normalize_person_name: {
+        Args: { p: string }
+        Returns: string
+      }
+      settle_shared_expenses: {
+        Args: {
+          p_cash_ids: string[]
+          p_offset_ids: string[]
+          p_transaction_id?: string
+        }
         Returns: string
       }
       get_pending_by_debtor: {
