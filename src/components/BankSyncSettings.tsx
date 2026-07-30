@@ -61,6 +61,17 @@ function StatusBadge({ status }: { status: BankCredential["last_sync_status"] })
   );
 }
 
+const FRIENDLY_ERROR_MESSAGES: Record<string, string> = {
+  failed: "No se pudo sincronizar con el banco. Intenta nuevamente más tarde.",
+  invalid_credentials: "El RUT o la contraseña no son correctos. Actualiza tus credenciales.",
+  "2fa_blocked": "El banco pidió verificación en dos pasos (2FA). La sincronización automática fue pausada.",
+};
+
+function getFriendlyError(status: BankCredential["last_sync_status"]): string {
+  if (!status) return "Hubo un problema con la sincronización.";
+  return FRIENDLY_ERROR_MESSAGES[status] ?? "Hubo un problema con la sincronización.";
+}
+
 function formatSyncDate(dateStr: string | null): string {
   if (!dateStr) return "";
   const d = new Date(dateStr);
@@ -194,7 +205,7 @@ function CredentialRow({
       {/* Error message */}
       {cred.last_error && (cred.last_sync_status === "failed" || cred.last_sync_status === "invalid_credentials") && (
         <p className="text-[11px] text-destructive/80 bg-destructive/5 rounded-lg px-2.5 py-1.5">
-          {cred.last_error}
+          {getFriendlyError(cred.last_sync_status)}
         </p>
       )}
     </div>
@@ -216,7 +227,11 @@ export function BankSyncSettings({ onAddBank }: BankSyncSettingsProps) {
   async function handleToggle(bank: string, active: boolean) {
     await supabase
       .from("bank_sync_credentials")
-      .update({ is_active: active, updated_at: new Date().toISOString() })
+      .update({
+        is_active: active,
+        updated_at: new Date().toISOString(),
+        ...(active ? { consecutive_failures: 0, last_error: null } : {}),
+      })
       .eq("bank", bank);
     // Invalidate query to refresh UI
     qc.invalidateQueries({ queryKey: ["bank-sync-credentials"] });
