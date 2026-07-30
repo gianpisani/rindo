@@ -1,36 +1,23 @@
 import { useState } from "react";
-import { useQueryClient } from "@tanstack/react-query";
 import {
   CheckCircle2,
   XCircle,
   AlertTriangle,
   Clock,
   Trash2,
-  ToggleLeft,
-  ToggleRight,
   Loader2,
   Settings2,
   Plus,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
-import { cn } from "@/lib/utils";
-import { SYNC_SCHEDULES, getBankById, isCustomSchedule, getCustomHour } from "@/lib/banks";
+import { getBankById } from "@/lib/banks";
 import { BankLogo } from "@/components/BankLogo";
+import { BankSyncPreferencesDialog } from "@/components/BankSyncPreferencesDialog";
 import {
   useBankSyncCredentials,
   useDeleteCredentials,
-  useUpdateSchedule,
 } from "@/hooks/useBankSyncCredentials";
 import type { BankCredential } from "@/hooks/useBankSyncCredentials";
-import { supabase } from "@/integrations/supabase/client";
-import type { SyncScheduleId } from "@/lib/banks";
 
 // ── Status helpers ────────────────────────────────────────────────────────────
 
@@ -54,7 +41,7 @@ function StatusBadge({ status }: { status: BankCredential["last_sync_status"] })
   const Icon = cfg.icon;
 
   return (
-    <span className={cn("flex items-center gap-1 text-xs font-medium", cfg.className)}>
+    <span className={`flex items-center gap-1 text-xs font-medium ${cfg.className}`}>
       <Icon className="h-3 w-3" />
       {cfg.label}
     </span>
@@ -83,13 +70,11 @@ function formatSyncDate(dateStr: string | null): string {
 function CredentialRow({
   cred,
   onDelete,
-  onToggle,
-  onScheduleChange,
+  onOpenPreferences,
 }: {
   cred: BankCredential;
   onDelete: (bank: string) => void;
-  onToggle: (bank: string, active: boolean) => void;
-  onScheduleChange: (bank: string, schedule: SyncScheduleId) => void;
+  onOpenPreferences: (cred: BankCredential) => void;
 }) {
   const [confirmDelete, setConfirmDelete] = useState(false);
   const bank = getBankById(cred.bank);
@@ -98,7 +83,7 @@ function CredentialRow({
 
   return (
     <div className="flex flex-col gap-3 p-4 rounded-xl border border-border/50 bg-card">
-      {/* Top row: logo + name + status + toggle */}
+      {/* Top row: logo + name + settings gear */}
       <div className="flex items-center gap-3">
         <BankLogo bank={bank} size="sm" />
         <div className="flex-1 min-w-0">
@@ -107,15 +92,11 @@ function CredentialRow({
         </div>
         <button
           type="button"
-          onClick={() => onToggle(cred.bank, !cred.is_active)}
+          onClick={() => onOpenPreferences(cred)}
           className="shrink-0 cursor-pointer text-muted-foreground hover:text-foreground transition-colors"
-          title={cred.is_active ? "Pausar auto-sync" : "Activar auto-sync"}
+          title="Configurar auto-sync"
         >
-          {cred.is_active ? (
-            <ToggleRight className="h-5 w-5 text-primary" />
-          ) : (
-            <ToggleLeft className="h-5 w-5" />
-          )}
+          <Settings2 className="h-5 w-5" />
         </button>
       </div>
 
@@ -127,50 +108,8 @@ function CredentialRow({
         )}
       </div>
 
-      {/* Schedule + delete */}
-      <div className="flex items-center gap-2">
-        <Select
-          value={isCustomSchedule(cred.sync_schedule) ? "custom" : cred.sync_schedule}
-          onValueChange={(v) => {
-            if (v === "custom") {
-              onScheduleChange(cred.bank, "custom_08" as SyncScheduleId);
-            } else {
-              onScheduleChange(cred.bank, v as SyncScheduleId);
-            }
-          }}
-          disabled={!cred.is_active}
-        >
-          <SelectTrigger className="h-8 text-xs rounded-lg flex-1">
-            <Settings2 className="h-3 w-3 mr-1.5 text-muted-foreground" />
-            <SelectValue />
-          </SelectTrigger>
-          <SelectContent>
-            {SYNC_SCHEDULES.map((s) => (
-              <SelectItem key={s.value} value={s.value} className="text-xs">
-                {s.label}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-        {isCustomSchedule(cred.sync_schedule) && (
-          <Select
-            value={String(getCustomHour(cred.sync_schedule))}
-            onValueChange={(h) => onScheduleChange(cred.bank, `custom_${h.padStart(2, "0")}` as SyncScheduleId)}
-            disabled={!cred.is_active}
-          >
-            <SelectTrigger className="h-8 text-xs rounded-lg w-20 shrink-0">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              {Array.from({ length: 24 }, (_, i) => (
-                <SelectItem key={i} value={String(i)} className="text-xs">
-                  {String(i).padStart(2, "0")}:00
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        )}
-
+      {/* Delete */}
+      <div className="flex items-center justify-end gap-2">
         {confirmDelete ? (
           <div className="flex gap-1.5 shrink-0">
             <Button
@@ -219,23 +158,9 @@ interface BankSyncSettingsProps {
 }
 
 export function BankSyncSettings({ onAddBank }: BankSyncSettingsProps) {
-  const qc = useQueryClient();
   const { data: credentials, isLoading } = useBankSyncCredentials();
   const deleteMutation = useDeleteCredentials();
-  const scheduleMutation = useUpdateSchedule();
-
-  async function handleToggle(bank: string, active: boolean) {
-    await supabase
-      .from("bank_sync_credentials")
-      .update({
-        is_active: active,
-        updated_at: new Date().toISOString(),
-        ...(active ? { consecutive_failures: 0, last_error: null } : {}),
-      })
-      .eq("bank", bank);
-    // Invalidate query to refresh UI
-    qc.invalidateQueries({ queryKey: ["bank-sync-credentials"] });
-  }
+  const [preferencesCred, setPreferencesCred] = useState<BankCredential | null>(null);
 
   if (isLoading) {
     return (
@@ -284,10 +209,7 @@ export function BankSyncSettings({ onAddBank }: BankSyncSettingsProps) {
               key={cred.bank}
               cred={cred}
               onDelete={(bank) => deleteMutation.mutate(bank)}
-              onToggle={handleToggle}
-              onScheduleChange={(bank, schedule) =>
-                scheduleMutation.mutate({ bank, syncSchedule: schedule })
-              }
+              onOpenPreferences={setPreferencesCred}
             />
           ))}
         </div>
@@ -296,6 +218,11 @@ export function BankSyncSettings({ onAddBank }: BankSyncSettingsProps) {
       <p className="text-xs text-muted-foreground text-center">
         Las contraseñas se guardan encriptadas y nunca son visibles.
       </p>
+
+      <BankSyncPreferencesDialog
+        cred={preferencesCred ? credentials?.find((c) => c.bank === preferencesCred.bank) ?? null : null}
+        onOpenChange={(open) => !open && setPreferencesCred(null)}
+      />
     </div>
   );
 }

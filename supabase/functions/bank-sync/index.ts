@@ -169,12 +169,21 @@ Deno.serve(async (req) => {
       }
 
       const result = jobData.result!
+
+      const { data: syncCred } = await supabaseClient
+        .from('bank_sync_credentials')
+        .select('notify_email')
+        .eq('user_id', userId)
+        .eq('bank', result.bank)
+        .maybeSingle()
+      const notifyEmail = syncCred?.notify_email ?? true
+
       const { imported, skipped, importedItems, skippedItems } = await importBankMovements({
         supabaseClient,
         userId,
         result,
         trigger: 'manual',
-        sendEmail: true,
+        sendEmail: notifyEmail,
       })
 
       console.log(`Bank sync complete for user ${userId}: imported=${imported}, skipped=${skipped}`)
@@ -188,8 +197,9 @@ Deno.serve(async (req) => {
     // ── ACTION: import-skipped ───────────────────────────────────────────────
 
     if (action === 'import-skipped') {
-      const { movements } = body as {
+      const { movements, bank: skippedBank } = body as {
         movements: { date: string; description: string; amount: number; type: string; card?: string }[]
+        bank?: string
       }
 
       if (!movements || !Array.isArray(movements) || movements.length === 0) {
@@ -267,18 +277,31 @@ Deno.serve(async (req) => {
 
       if (created > 0) {
         try {
-          const serviceRoleClient = createClient(
-            Deno.env.get('SUPABASE_URL')!,
-            Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!,
-          )
-          const { data: userData } = await serviceRoleClient.auth.admin.getUserById(userId)
-          const userEmail = userData?.user?.email
-          if (userEmail) {
-            await sendBatchNotificationEmail({
-              to: userEmail,
-              bank: 'Banco',
-              transactions: movements.map((m) => ({ date: m.date, description: m.description, amount: m.amount, type: m.type })),
-            })
+          let notifyEmail = true
+          if (skippedBank) {
+            const { data: syncCred } = await supabaseClient
+              .from('bank_sync_credentials')
+              .select('notify_email')
+              .eq('user_id', userId)
+              .eq('bank', skippedBank)
+              .maybeSingle()
+            notifyEmail = syncCred?.notify_email ?? true
+          }
+
+          if (notifyEmail) {
+            const serviceRoleClient = createClient(
+              Deno.env.get('SUPABASE_URL')!,
+              Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!,
+            )
+            const { data: userData } = await serviceRoleClient.auth.admin.getUserById(userId)
+            const userEmail = userData?.user?.email
+            if (userEmail) {
+              await sendBatchNotificationEmail({
+                to: userEmail,
+                bank: skippedBank ?? 'Banco',
+                transactions: movements.map((m) => ({ date: m.date, description: m.description, amount: m.amount, type: m.type })),
+              })
+            }
           }
         } catch (emailError) {
           console.error('⚠️ Email notification error (import-skipped):', emailError)
@@ -328,7 +351,7 @@ Deno.serve(async (req) => {
     // ── ACTION: save-credentials ──────────────────────────────────────────────
 
     if (action === 'save-credentials') {
-      const { bank, rut, password, syncSchedule } = body
+      const { bank, rut, password, syncSchedule, notifyEmail } = body
 
       if (!bank || !rut || !password) {
         return new Response(
@@ -349,6 +372,7 @@ Deno.serve(async (req) => {
           encrypted_password: encryptedPassword,
           sync_schedule: schedule,
           is_active: true,
+          notify_email: notifyEmail ?? true,
           consecutive_failures: 0,
           last_sync_status: null,
           last_error: null,
@@ -436,7 +460,7 @@ Deno.serve(async (req) => {
     if (action === 'list-credentials') {
       const { data, error } = await supabaseClient
         .from('bank_sync_credentials')
-        .select('bank, rut, is_active, sync_schedule, last_sync_at, last_sync_status, last_error, consecutive_failures, created_at, updated_at')
+        .select('bank, rut, is_active, sync_schedule, notify_email, last_sync_at, last_sync_status, last_error, consecutive_failures, created_at, updated_at')
         .eq('user_id', userId)
         .order('created_at', { ascending: true })
 

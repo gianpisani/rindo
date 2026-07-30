@@ -107,7 +107,7 @@ function EntryDetail({ entry }: { entry: SyncLogEntry }) {
     setIsImporting(true);
     const movements = skippedItems.filter((_, i) => selectedSkipped.has(i));
     const { data } = await supabase.functions.invoke("bank-sync", {
-      body: { action: "import-skipped", movements },
+      body: { action: "import-skipped", movements, bank: entry.bank },
     });
     if (data?.created) {
       setImportedCount((c) => c + data.created);
