@@ -59,17 +59,19 @@ function getFriendlyError(status: BankCredential["last_sync_status"]): string {
   return FRIENDLY_ERROR_MESSAGES[status] ?? "Hubo un problema con la sincronización.";
 }
 
-function ActiveIndicator({ isActive }: { isActive: boolean }) {
+function ActiveIndicator({ isActive, color }: { isActive: boolean; color: string }) {
   return (
     <span
-      className={`flex items-center gap-1.5 text-xs font-medium ${
-        isActive ? "text-green-600 dark:text-green-500" : "text-muted-foreground"
-      }`}
+      className="flex items-center gap-1.5 text-xs font-medium"
+      style={{ color: isActive ? color : undefined }}
     >
       <span
-        className={`h-1.5 w-1.5 rounded-full ${isActive ? "bg-green-500" : "bg-muted-foreground/50"}`}
+        className={isActive ? "h-1.5 w-1.5 rounded-full" : "h-1.5 w-1.5 rounded-full bg-muted-foreground/50"}
+        style={{ backgroundColor: isActive ? color : undefined }}
       />
-      {isActive ? "Auto-sync activo" : "Auto-sync pausado"}
+      <span className={isActive ? "" : "text-muted-foreground"}>
+        {isActive ? "Auto-sync activo" : "Auto-sync pausado"}
+      </span>
     </span>
   );
 }
@@ -120,7 +122,7 @@ function CredentialRow({
       </div>
 
       {/* Auto-sync activo/pausado */}
-      <ActiveIndicator isActive={cred.is_active} />
+      <ActiveIndicator isActive={cred.is_active} color={bank.color} />
 
       {/* Last sync status */}
       <div className="flex items-center justify-between">

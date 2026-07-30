@@ -53,15 +53,17 @@ export function BankSyncPreferencesDialog({ cred, onOpenChange }: BankSyncPrefer
 
             <div className="space-y-4 pt-2">
               <div
-                className={`flex items-center justify-between gap-3 rounded-xl border p-3 transition-colors ${
+                className="flex items-center justify-between gap-3 rounded-xl border p-3 transition-colors"
+                style={
                   cred.is_active
-                    ? "border-green-500/30 bg-green-500/5"
-                    : "border-border/50"
-                }`}
+                    ? { borderColor: `${bank.color}4d`, backgroundColor: `${bank.color}0d` }
+                    : undefined
+                }
               >
                 <div className="flex items-center gap-2.5">
                   <RefreshCw
-                    className={`h-4 w-4 shrink-0 ${cred.is_active ? "text-green-600 dark:text-green-500" : "text-muted-foreground"}`}
+                    className={cred.is_active ? "h-4 w-4 shrink-0" : "h-4 w-4 shrink-0 text-muted-foreground"}
+                    style={{ color: cred.is_active ? bank.color : undefined }}
                   />
                   <div>
                     <p className="text-sm font-medium">
@@ -83,15 +85,17 @@ export function BankSyncPreferencesDialog({ cred, onOpenChange }: BankSyncPrefer
               </div>
 
               <div
-                className={`flex items-center justify-between gap-3 rounded-xl border p-3 transition-colors ${
+                className="flex items-center justify-between gap-3 rounded-xl border p-3 transition-colors"
+                style={
                   cred.notify_email
-                    ? "border-green-500/30 bg-green-500/5"
-                    : "border-border/50"
-                }`}
+                    ? { borderColor: `${bank.color}4d`, backgroundColor: `${bank.color}0d` }
+                    : undefined
+                }
               >
                 <div className="flex items-center gap-2.5">
                   <Mail
-                    className={`h-4 w-4 shrink-0 ${cred.notify_email ? "text-green-600 dark:text-green-500" : "text-muted-foreground"}`}
+                    className={cred.notify_email ? "h-4 w-4 shrink-0" : "h-4 w-4 shrink-0 text-muted-foreground"}
+                    style={{ color: cred.notify_email ? bank.color : undefined }}
                   />
                   <div>
                     <p className="text-sm font-medium">Notificarme por mail</p>
