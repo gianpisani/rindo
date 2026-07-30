@@ -121,7 +121,7 @@ Deno.serve(async (req) => {
   // Fetch all active credentials whose schedule matches the current hour
   const { data: credentials, error: fetchError } = await supabase
     .from('bank_sync_credentials')
-    .select('id, user_id, bank, rut, encrypted_password, sync_schedule, consecutive_failures, last_sync_status')
+    .select('id, user_id, bank, rut, encrypted_password, sync_schedule, notify_email, consecutive_failures, last_sync_status')
     .eq('is_active', true)
     .lt('consecutive_failures', CIRCUIT_BREAKER_LIMIT)
     .in('sync_schedule', schedulesToRun)
@@ -152,7 +152,7 @@ Deno.serve(async (req) => {
 
   // Process each credential sequentially to respect rate limits
   for (const cred of credentials) {
-    const { id: credId, user_id: userId, bank, rut, encrypted_password, consecutive_failures } = cred
+    const { id: credId, user_id: userId, bank, rut, encrypted_password, consecutive_failures, notify_email: notifyEmail } = cred
 
     try {
       // Decrypt password from at-rest storage
@@ -197,7 +197,7 @@ Deno.serve(async (req) => {
           const { data } = await supabase.auth.admin.getUserById(userId)
           return data?.user?.email
         }
-        const userEmail = await getUserEmail()
+        const userEmail = notifyEmail ? await getUserEmail() : null
         if (userEmail) {
           await sendBankSyncFailureEmail({ to: userEmail, bank, reason: '2fa_blocked' }).catch(() => {})
         }
@@ -227,14 +227,16 @@ Deno.serve(async (req) => {
             .update({ is_active: false })
             .eq('id', credId)
 
-          const { data } = await supabase.auth.admin.getUserById(userId)
-          const userEmail = data?.user?.email
-          if (userEmail) {
-            await sendBankSyncFailureEmail({
-              to: userEmail,
-              bank,
-              reason: isInvalidCreds ? 'invalid_credentials' : 'circuit_breaker',
-            }).catch(() => {})
+          if (notifyEmail) {
+            const { data } = await supabase.auth.admin.getUserById(userId)
+            const userEmail = data?.user?.email
+            if (userEmail) {
+              await sendBankSyncFailureEmail({
+                to: userEmail,
+                bank,
+                reason: isInvalidCreds ? 'invalid_credentials' : 'circuit_breaker',
+              }).catch(() => {})
+            }
           }
         }
 
@@ -248,7 +250,7 @@ Deno.serve(async (req) => {
         userId,
         result: pollResult.result!,
         trigger: 'cron',
-        sendEmail: true,
+        sendEmail: notifyEmail,
       })
 
       // Write to bank_sync_log

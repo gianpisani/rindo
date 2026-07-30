@@ -100,7 +100,7 @@ interface BankSyncModalProps {
   result: SyncResult | null;
   onStart: (params: { bank: string; rut: string; password: string; fromDate?: string; toDate?: string }) => void;
   onStartStored: (params: { bank: string; fromDate?: string; toDate?: string }) => void;
-  onImportSkipped: (movements: SyncMovementItem[]) => Promise<number>;
+  onImportSkipped: (movements: SyncMovementItem[], bank?: string) => Promise<number>;
   onDeleteImported: (ids: string[]) => Promise<number>;
   onReset: () => void;
 }
@@ -235,7 +235,7 @@ export function BankSyncModal({
     const movements = result.skippedItems.filter((_, i) => selectedSkipped.has(i));
     if (movements.length === 0) return;
     setIsImporting(true);
-    const count = await onImportSkipped(movements);
+    const count = await onImportSkipped(movements, bank);
     setImportedSkippedCount(count);
     setSelectedSkipped(new Set());
     setIsImporting(false);

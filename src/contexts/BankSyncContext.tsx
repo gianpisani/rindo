@@ -36,7 +36,7 @@ interface BankSyncContextValue {
   isRunning: boolean;
   startSync: (params: { bank: string; rut: string; password: string; fromDate?: string; toDate?: string }) => void;
   startSyncStored: (params: { bank: string; fromDate?: string; toDate?: string }) => void;
-  importSkipped: (movements: SyncMovementItem[]) => Promise<number>;
+  importSkipped: (movements: SyncMovementItem[], bank?: string) => Promise<number>;
   deleteImported: (ids: string[]) => Promise<number>;
   reset: () => void;
 }
@@ -229,10 +229,10 @@ export function BankSyncProvider({ children }: { children: ReactNode }) {
   );
 
   const importSkipped = useCallback(
-    async (movements: SyncMovementItem[]): Promise<number> => {
+    async (movements: SyncMovementItem[], bank?: string): Promise<number> => {
       try {
         const { data, error } = await supabase.functions.invoke("bank-sync", {
-          body: { action: "import-skipped", movements },
+          body: { action: "import-skipped", movements, ...(bank ? { bank } : {}) },
         });
         if (error || !data) {
           toast.error("Error al importar transacciones");
