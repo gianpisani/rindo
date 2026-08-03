@@ -37,6 +37,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { categorizeTransaction, debounce } from "@/lib/categorizer";
 import { cn } from "@/lib/utils";
+import { getCleanDetail } from "@/lib/import-source";
 import { CategorySelect, CategoryPickerInline } from "@/components/CategorySelect";
 import { DateTimePicker } from "@/components/ui/date-time-picker";
 import { DateRangeFilter, DateRangeValue } from "@/components/DateRangeFilter";
@@ -400,7 +401,7 @@ export default function Transactions() {
 
     setFormData({
       date: dateObj,
-      detail: transaction.detail || "",
+      detail: getCleanDetail(transaction.detail),
       category_name: transaction.category_name,
       type: transaction.type,
       amount: transaction.amount.toString(),
@@ -455,7 +456,7 @@ export default function Transactions() {
   const handleExportCSV = () => {
     const csvData = transactions.map((t) => ({
       Fecha: format(new Date(t.date), "dd/MM/yyyy"),
-      Detalle: t.detail || "",
+      Detalle: getCleanDetail(t.detail),
       Categoría: t.category_name,
       Tipo: t.type,
       Monto: `$${Number(t.amount).toLocaleString("es-CL")}`,
@@ -1057,7 +1058,7 @@ export default function Transactions() {
                                             id: se.id,
                                             name: se.debtor_name,
                                             amount: se.amount_owed,
-                                            detail: editingTransaction?.detail || undefined,
+                                            detail: getCleanDetail(editingTransaction?.detail) || undefined,
                                           })}
                                         >
                                           <CheckCircle2 className="h-3 w-3 mr-1" />
@@ -1581,7 +1582,7 @@ export default function Transactions() {
           return (
             <div className="rounded-lg border bg-muted/50 p-3 space-y-1 text-sm">
               <div className="flex items-center justify-between">
-                <span className="font-medium">{tx.detail || "Sin detalle"}</span>
+                <span className="font-medium">{getCleanDetail(tx.detail) || "Sin detalle"}</span>
                 <span className={`font-bold font-mono tabular-nums ${tx.type === "Ingreso" ? "text-emerald-500" : tx.type === "Inversión" ? "text-blue-500" : tx.type === "Reembolso" ? "text-amber-500" : "text-rose-500"}`}>
                   {formatCurrency(tx.amount)}
                 </span>

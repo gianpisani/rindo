@@ -60,6 +60,7 @@ import { useCreditCards } from "@/hooks/useCreditCards";
 import { format, subDays } from "date-fns";
 import { es } from "date-fns/locale";
 import { cn } from "@/lib/utils";
+import { getCleanDetail, getImportSourceBadge } from "@/lib/import-source";
 import { useSearchParams } from "react-router-dom";
 import { usePrivacyMode } from "@/hooks/usePrivacyMode";
 import { useIsMobile } from "@/hooks/use-mobile";
@@ -180,10 +181,6 @@ function getAvatarColor(str: string): string {
   return AVATAR_PALETTE[Math.abs(hash) % AVATAR_PALETTE.length];
 }
 
-function getCleanDetail(detail: string | null): string {
-  if (!detail) return "";
-  return detail.replace(/^🤖\s*/, "").trim();
-}
 
 // ── Date group helpers ─────────────────────────────────────────────────────
 
@@ -766,9 +763,8 @@ export function TransactionsTable({
         size: 310, minSize: 220,
         header: "Detalle",
         cell: ({ row }) => {
-          const raw = row.original.detail || "";
-          const clean = getCleanDetail(raw);
-          const isBot = raw.startsWith("🤖");
+          const clean = getCleanDetail(row.original.detail);
+          const sourceBadge = getImportSourceBadge(row.original.import_source);
           const initial = clean.charAt(0).toUpperCase() || "?";
           const avatarColor = getAvatarColor(clean || "default");
 
@@ -782,12 +778,12 @@ export function TransactionsTable({
                 >
                   {initial}
                 </div>
-                {isBot && (
+                {sourceBadge && (
                   <div
                     className="absolute -bottom-0.5 -right-0.5 w-3.5 h-3.5 rounded-full bg-background flex items-center justify-center"
-                    title="Detectado por el bot"
+                    title={sourceBadge.label}
                   >
-                    <span className="text-[8px] leading-none">🤖</span>
+                    <span className="text-[8px] leading-none">{sourceBadge.emoji}</span>
                   </div>
                 )}
               </div>
@@ -796,8 +792,7 @@ export function TransactionsTable({
                 <EditableTextCell
                   value={clean}
                   onSave={(newDetail) => {
-                    const prefix = isBot ? "🤖 " : "";
-                    handleInlineUpdate(row.original.id, "detail", newDetail ? prefix + newDetail : null);
+                    handleInlineUpdate(row.original.id, "detail", newDetail || null);
                   }}
                   placeholder="Agregar detalle..."
                   className="text-sm text-muted-foreground"
@@ -1543,7 +1538,7 @@ export function TransactionsTable({
                     const clean = getCleanDetail(t.detail);
                     const initial = clean.charAt(0).toUpperCase() || "?";
                     const avatarColor = getAvatarColor(clean || "default");
-                    const isBot = (t.detail || "").startsWith("🤖");
+                    const sourceBadge = getImportSourceBadge(t.import_source);
                     const catData = categories.find(c => c.name === t.category_name);
                     const emoji = catData?.icon || getCategoryIcon(t.category_name);
                     const amountColor = typeAmountColors[t.type];
@@ -1584,9 +1579,12 @@ export function TransactionsTable({
                           >
                             {initial}
                           </div>
-                          {isBot && (
-                            <div className="absolute -bottom-0.5 -right-0.5 w-4 h-4 rounded-full bg-background flex items-center justify-center">
-                              <span className="text-[9px] leading-none">🤖</span>
+                          {sourceBadge && (
+                            <div
+                              className="absolute -bottom-0.5 -right-0.5 w-4 h-4 rounded-full bg-background flex items-center justify-center"
+                              title={sourceBadge.label}
+                            >
+                              <span className="text-[9px] leading-none">{sourceBadge.emoji}</span>
                             </div>
                           )}
                         </div>
@@ -1674,7 +1672,7 @@ export function TransactionsTable({
                 const clean = getCleanDetail(t.detail);
                 const initial = clean.charAt(0).toUpperCase() || "?";
                 const avatarColor = getAvatarColor(clean || "default");
-                const isBot = (t.detail || "").startsWith("🤖");
+                const sourceBadge = getImportSourceBadge(t.import_source);
                 const catData = categories.find(c => c.name === t.category_name);
                 const emoji = catData?.icon || getCategoryIcon(t.category_name);
                 const amountColor = typeAmountColors[t.type];
@@ -1713,9 +1711,12 @@ export function TransactionsTable({
                       >
                         {initial}
                       </div>
-                      {isBot && (
-                        <div className="absolute -bottom-0.5 -right-0.5 w-4 h-4 rounded-full bg-background flex items-center justify-center">
-                          <span className="text-[9px] leading-none">🤖</span>
+                      {sourceBadge && (
+                        <div
+                          className="absolute -bottom-0.5 -right-0.5 w-4 h-4 rounded-full bg-background flex items-center justify-center"
+                          title={sourceBadge.label}
+                        >
+                          <span className="text-[9px] leading-none">{sourceBadge.emoji}</span>
                         </div>
                       )}
                     </div>

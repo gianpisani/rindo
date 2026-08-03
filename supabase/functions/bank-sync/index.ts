@@ -237,7 +237,7 @@ Deno.serve(async (req) => {
             user_id: userId,
             date: insertDate,
             import_source: 'bank-sync',
-            detail: `🤖 ${m.description}`,
+            detail: m.description,
             bank_description: m.description,
             type: m.type,
             amount: m.amount,
@@ -269,7 +269,7 @@ Deno.serve(async (req) => {
           method: 'POST',
           headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${supabaseKey}` },
           body: JSON.stringify({
-            transactions: toAutoCategorize.map(({ id, detail }) => ({ id, detail: `🤖 ${detail}` })),
+            transactions: toAutoCategorize.map(({ id, detail }) => ({ id, detail })),
             userId,
             existingCategories,
           }),

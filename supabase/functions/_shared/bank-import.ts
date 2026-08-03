@@ -243,7 +243,7 @@ export async function importBankMovements(params: {
         user_id: userId,
         date: insertDate,
         import_source: 'bank-sync',
-        detail: `🤖 ${description}`,
+        detail: description,
         bank_description: description,
         type,
         amount: absAmount,
@@ -279,7 +279,7 @@ export async function importBankMovements(params: {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${supabaseKey}` },
       body: JSON.stringify({
-        transactions: toAutoCategorize.map(({ id, detail }) => ({ id, detail: `🤖 ${detail}` })),
+        transactions: toAutoCategorize.map(({ id, detail }) => ({ id, detail })),
         userId,
         existingCategories,
       }),

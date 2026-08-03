@@ -18,6 +18,7 @@ import { Separator } from "./ui/separator";
 import { ScrollArea } from "./ui/scroll-area";
 import { Alert, AlertDescription } from "./ui/alert";
 import { CHART_COLORS, CHART_TOOLTIP_STYLE } from "@/lib/chart-config";
+import { getCleanDetail } from "@/lib/import-source";
 
 interface CategoryDetailContentProps {
   category: CategorySpending;
@@ -372,7 +373,7 @@ export function CategoryDetailContent({ category, monthName }: CategoryDetailCon
                         className="flex items-start justify-between text-sm py-2 border-b last:border-0"
                       >
                         <div className="flex-1">
-                          <div className="font-medium">{t.detail || "Sin detalle"}</div>
+                          <div className="font-medium">{getCleanDetail(t.detail) || "Sin detalle"}</div>
                           <div className="text-xs text-muted-foreground">
                             {format(new Date(t.date), "HH:mm", { locale: es })}
                           </div>

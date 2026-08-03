@@ -22,6 +22,7 @@ import {
   HandCoins,
 } from "lucide-react";
 import { LoadingScreen } from "@/components/LoadingScreen";
+import { getCleanDetail } from "@/lib/import-source";
 
 const fmt = (n: number) => `$${new Intl.NumberFormat("es-CL").format(n)}`;
 
@@ -552,7 +553,7 @@ export default function PendingDebts() {
                 <div className="flex items-center gap-2 min-w-0">
                   <HandCoins className="h-4 w-4 text-muted-foreground shrink-0" />
                   <div className="min-w-0">
-                    <p className="text-sm font-medium truncate">{tx.detail || "Sin detalle"}</p>
+                    <p className="text-sm font-medium truncate">{getCleanDetail(tx.detail) || "Sin detalle"}</p>
                     <p className="text-xs text-muted-foreground">
                       {new Date(tx.date).toLocaleDateString("es-CL", { day: "numeric", month: "short" })} · {tx.category_name}
                     </p>

@@ -29,6 +29,7 @@ import { Kbd } from "@/components/ui/kbd";
 import { useNavPreferences } from "@/hooks/useNavPreferences";
 import { getCategoryIcon } from "@/components/TransactionsTable";
 import { cn } from "@/lib/utils";
+import { getCleanDetail } from "@/lib/import-source";
 
 interface CommandBarProps {
   open: boolean;
@@ -109,7 +110,7 @@ export function CommandBar({ open, onOpenChange, onAddTransaction, onConciliate,
                 return (
                   <CommandItem
                     key={t.id}
-                    value={`${t.detail || ""} ${t.category_name} ${t.id}`}
+                    value={`${getCleanDetail(t.detail)} ${t.category_name} ${t.id}`}
                     onSelect={() =>
                       runCommand(() => navigate(`/transactions?search=${encodeURIComponent(search)}&highlight=${t.id}`))
                     }
@@ -122,7 +123,7 @@ export function CommandBar({ open, onOpenChange, onAddTransaction, onConciliate,
 
                     {/* Detail */}
                     <span className="text-sm truncate flex-1 min-w-0 font-medium">
-                      {t.detail || <span className="text-muted-foreground/50 italic font-normal">Sin detalle</span>}
+                      {getCleanDetail(t.detail) || <span className="text-muted-foreground/50 italic font-normal">Sin detalle</span>}
                     </span>
 
                     {/* Category pill */}

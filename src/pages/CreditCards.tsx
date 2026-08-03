@@ -46,6 +46,7 @@ import { cn } from "@/lib/utils";
 import { format, addMonths } from "date-fns";
 import { es } from "date-fns/locale";
 import { usePrivacyMode } from "@/hooks/usePrivacyMode";
+import { getCleanDetail } from "@/lib/import-source";
 
 // Banco de Chile billing cutoff: cycles run from 14:00 to 14:00
 const BILLING_CUTOFF_HOUR = 14;
@@ -473,7 +474,7 @@ export default function CreditCards() {
                                   {format(new Date(tx.date), "dd/MM")}
                                 </td>
                                 <td className={cn("px-3 py-2 text-xs", isPrivacyMode && "privacy-blur")}>
-                                  {tx.detail || tx.category_name}
+                                  {getCleanDetail(tx.detail) || tx.category_name}
                                 </td>
                                 <td className={cn(
                                   "px-3 py-2 text-right font-medium font-mono tabular-nums whitespace-nowrap text-xs",
