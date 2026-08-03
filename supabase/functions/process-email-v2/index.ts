@@ -1,6 +1,7 @@
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.39.3'
 import { corsHeaders } from '../_shared/cors.ts'
 import { sendNotificationEmail } from '../_shared/email-notification.ts'
+import { bankSettlementDate } from '../_shared/business-day.ts'
 
 interface EmailPayload {
   subject: string
@@ -18,6 +19,8 @@ interface ParsedTransaction {
   bank: string
   cardLastFour?: string
   bankDescription?: string
+  /** Las transferencias las liquida el banco en día hábil; ver bank_settlement_date. */
+  isTransfer?: boolean
 }
 
 // ── Text normalization ──────────────────────────────────────────────
@@ -127,7 +130,7 @@ function parseTransferenciaTerceros(text: string): ParsedTransaction | null {
 
   const bank = detectBank('', text)
 
-  return { amount, type: 'Gasto', detail, bank: bank !== 'Banco' ? bank : 'Banco de Chile' }
+  return { amount, type: 'Gasto', detail, bank: bank !== 'Banco' ? bank : 'Banco de Chile', isTransfer: true }
 }
 
 function parseTransferenciaRecibida(text: string): ParsedTransaction | null {
@@ -159,7 +162,7 @@ function parseTransferenciaRecibida(text: string): ParsedTransaction | null {
 
   const bank = detectBank('', text)
 
-  return { amount, type: 'Ingreso', detail, bank: bank !== 'Banco' ? bank : 'Banco de Chile' }
+  return { amount, type: 'Ingreso', detail, bank: bank !== 'Banco' ? bank : 'Banco de Chile', isTransfer: true }
 }
 
 function parsePagoTarjeta(text: string): ParsedTransaction | null {
@@ -368,6 +371,13 @@ Deno.serve(async (req) => {
       Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
     )
 
+    // El banco liquida las transferencias en día hábil: una hecha el sábado la
+    // reporta con fecha del lunes. Guardamos esa fecha aparte para que bank-sync
+    // reconozca el movimiento como duplicado, sin perder la fecha real en `date`.
+    const settlementDate = parsed.isTransfer
+      ? await bankSettlementDate(supabase, new Date(transactionDate), { bank: parsed.bank })
+      : null
+
     // Auto-categorize: check user's history for similar details
     let categoryName = 'Sin categoría'
     try {
@@ -424,6 +434,8 @@ Deno.serve(async (req) => {
       .insert({
         user_id: user_id,
         date: transactionDate,
+        bank_settlement_date: settlementDate,
+        import_source: 'email',
         detail: parsed.detail,
         bank_description: bankDescription,
         category_name: categoryName,

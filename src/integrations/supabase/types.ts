@@ -39,6 +39,105 @@ export type Database = {
   }
   public: {
     Tables: {
+      bank_sync_credentials: {
+        Row: {
+          bank: string
+          consecutive_failures: number
+          created_at: string
+          encrypted_password: string
+          id: string
+          is_active: boolean
+          key_version: number
+          last_error: string | null
+          last_sync_at: string | null
+          last_sync_status: string | null
+          notify_email: boolean
+          rut: string
+          sync_schedule: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          bank: string
+          consecutive_failures?: number
+          created_at?: string
+          encrypted_password: string
+          id?: string
+          is_active?: boolean
+          key_version?: number
+          last_error?: string | null
+          last_sync_at?: string | null
+          last_sync_status?: string | null
+          notify_email?: boolean
+          rut: string
+          sync_schedule?: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          bank?: string
+          consecutive_failures?: number
+          created_at?: string
+          encrypted_password?: string
+          id?: string
+          is_active?: boolean
+          key_version?: number
+          last_error?: string | null
+          last_sync_at?: string | null
+          last_sync_status?: string | null
+          notify_email?: boolean
+          rut?: string
+          sync_schedule?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      bank_sync_log: {
+        Row: {
+          bank: string
+          created_at: string
+          error: string | null
+          id: string
+          imported: number
+          imported_items: Json | null
+          skipped: number
+          skipped_items: Json | null
+          status: string
+          sync_date: string
+          trigger: string
+          user_id: string
+        }
+        Insert: {
+          bank: string
+          created_at?: string
+          error?: string | null
+          id?: string
+          imported?: number
+          imported_items?: Json | null
+          skipped?: number
+          skipped_items?: Json | null
+          status: string
+          sync_date?: string
+          trigger: string
+          user_id: string
+        }
+        Update: {
+          bank?: string
+          created_at?: string
+          error?: string | null
+          id?: string
+          imported?: number
+          imported_items?: Json | null
+          skipped?: number
+          skipped_items?: Json | null
+          status?: string
+          sync_date?: string
+          trigger?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       card_transactions: {
         Row: {
           amount: number
@@ -160,6 +259,48 @@ export type Database = {
           monthly_limit?: number
           updated_at?: string | null
           user_id?: string
+        }
+        Relationships: []
+      }
+      chilean_holidays: {
+        Row: {
+          created_at: string
+          date: string
+          inalienable: boolean
+          title: string
+          type: string | null
+        }
+        Insert: {
+          created_at?: string
+          date: string
+          inalienable?: boolean
+          title: string
+          type?: string | null
+        }
+        Update: {
+          created_at?: string
+          date?: string
+          inalienable?: boolean
+          title?: string
+          type?: string | null
+        }
+        Relationships: []
+      }
+      chilean_holidays_sync: {
+        Row: {
+          holiday_count: number
+          synced_at: string
+          year: number
+        }
+        Insert: {
+          holiday_count: number
+          synced_at?: string
+          year: number
+        }
+        Update: {
+          holiday_count?: number
+          synced_at?: string
+          year?: number
         }
         Relationships: []
       }
@@ -807,12 +948,14 @@ export type Database = {
         Row: {
           amount: number
           bank_description: string | null
+          bank_settlement_date: string | null
           card_id: string | null
           category_name: string
           created_at: string
           date: string
           detail: string | null
           id: string
+          import_source: string | null
           installment_id: string | null
           reimbursement_for_category: string | null
           type: string
@@ -821,12 +964,14 @@ export type Database = {
         Insert: {
           amount: number
           bank_description?: string | null
+          bank_settlement_date?: string | null
           card_id?: string | null
           category_name: string
           created_at?: string
           date?: string
           detail?: string | null
           id?: string
+          import_source?: string | null
           installment_id?: string | null
           reimbursement_for_category?: string | null
           type: string
@@ -835,12 +980,14 @@ export type Database = {
         Update: {
           amount?: number
           bank_description?: string | null
+          bank_settlement_date?: string | null
           card_id?: string | null
           category_name?: string
           created_at?: string
           date?: string
           detail?: string | null
           id?: string
+          import_source?: string | null
           installment_id?: string | null
           reimbursement_for_category?: string | null
           type?: string
@@ -1050,19 +1197,19 @@ export type Database = {
         Args: { p_billing_day: number; p_from_date?: string }
         Returns: string
       }
-      get_pending_by_debtor: {
-        Args: { p_user_id: string }
-        Returns: {
-          count_expenses: number
-          debtor_name: string
-          total_owed: number
-        }[]
-      }
       get_pending_by_creditor: {
         Args: { p_user_id: string }
         Returns: {
           count_expenses: number
           creditor_name: string
+          total_owed: number
+        }[]
+      }
+      get_pending_by_debtor: {
+        Args: { p_user_id: string }
+        Returns: {
+          count_expenses: number
+          debtor_name: string
           total_owed: number
         }[]
       }

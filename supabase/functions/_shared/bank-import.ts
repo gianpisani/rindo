@@ -167,14 +167,21 @@ export async function importBankMovements(params: {
     const description = movement.description
 
     // Deduplication check — bank-imported rows
+    //
+    // `isoDate` es la fecha que ya viene liquidada desde el banco, así que se
+    // compara directo contra bank_settlement_date cuando la fila existente la
+    // tiene (la escribe process-email-v2 para transferencias). Sin esto, una
+    // transferencia hecha el sábado quedaba con fecha de sábado por email y de
+    // lunes por sync, y la comparación por día calendario no las cruzaba.
+    // El fallback por rango de `date` cubre las filas sin fecha de liquidación:
+    // las de bank-sync, las de wallet y las anteriores a esa columna.
     const { data: existingBankRows } = await supabaseClient
       .from('transactions')
       .select('id, bank_description')
       .eq('user_id', userId)
-      .gte('date', isoDate)
-      .lt('date', nextDayStr)
       .eq('amount', absAmount)
       .not('bank_description', 'is', null)
+      .or(`bank_settlement_date.eq.${isoDate},and(bank_settlement_date.is.null,date.gte.${isoDate},date.lt.${nextDayStr})`)
       .limit(10)
 
     const bankDuplicate = existingBankRows?.some((row) => {
@@ -235,6 +242,7 @@ export async function importBankMovements(params: {
       .insert({
         user_id: userId,
         date: insertDate,
+        import_source: 'bank-sync',
         detail: `🤖 ${description}`,
         bank_description: description,
         type,

@@ -147,6 +147,7 @@ Deno.serve(async (req) => {
       .insert({
         user_id: usuario,
         date: transactionDate,
+        import_source: 'wallet',
         detail: detail,
         bank_description: `${comercio}${divisaSuffix}`,
         category_name: categoryName,

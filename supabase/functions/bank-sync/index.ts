@@ -236,6 +236,7 @@ Deno.serve(async (req) => {
           .insert({
             user_id: userId,
             date: insertDate,
+            import_source: 'bank-sync',
             detail: `🤖 ${m.description}`,
             bank_description: m.description,
             type: m.type,
