@@ -111,6 +111,14 @@ function parseTransferenciaTerceros(text: string): ParsedTransaction | null {
   // Banco de Chile format 1: "Transferencia a terceros"
   // Banco de Chile format 2: "ha efectuado una transferencia de fondos a [Nombre]"
   // Itaú/otros: "comprobante electronico de transferencia de fondos realizada"
+  // Descartar primero las entrantes. El email de transferencia recibida de Banco
+  // de Chile ("nuestro(a) cliente X ha efectuado una transferencia de fondos a tu
+  // cuenta") calza con la segunda alternativa de isOutgoing, así que sin este
+  // guard se registraba como Gasto y tomaba el nombre del titular de destino
+  // —o sea, el propio usuario— como si fuera el destinatario.
+  const isIncoming = /(?:a|hacia)\s+tu\s+cuenta|has\s+recibido\s+una\s+transferencia|te\s+han\s+transferido|abono\s+por\s+transferencia/i.test(text)
+  if (isIncoming) return null
+
   const isOutgoing = /transferencia a terceros|ha\s+efectuado\s+una\s+transferencia\s+de\s+fondos|transferencias?\s+de\s+fondos\s+a\s+(?!tu\s+cuenta)/i.test(text)
     || /comprobante\s+(?:electr[oó]nico\s+)?de\s+transferencia\s+de\s+fondos\s+realizada/i.test(text)
   if (!isOutgoing) return null

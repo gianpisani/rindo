@@ -74,11 +74,15 @@ function normalizeBankDescription(desc: string): string {
  * removes accents/case, and returns a token set for order-independent matching.
  * "Transferencia a Sebastian Julian" -> {sebastian, julian}
  * "Traspaso A:Sebastian Julian Perez" -> {sebastian, julian, perez}
+ * "Traspaso De:Cecilia Alejandra Ruiz" -> {cecilia, alejandra, ruiz}
  */
 function extractNameTokens(desc: string): Set<string> {
   const stripped = desc
     .replace(/^transferencia\s+(a|de)\s*/i, '')
-    .replace(/^traspaso\s+a:?\s*/i, '')
+    // "de" además de "a": las transferencias recibidas llegan como "Traspaso De:X".
+    // Sin esta variante el nombre quedaba pegado al prefijo ("dececilia") y no
+    // cruzaba nunca con el "Transferencia de X" que genera process-email-v2.
+    .replace(/^traspaso\s+(a|de):?\s*/i, '')
     // legacy rows que aún tengan "· Banco X" o "(Banco Origen)" al final
     .split('·')[0]
     .replace(/\(.*\)\s*$/, '')
