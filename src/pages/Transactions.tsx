@@ -38,6 +38,7 @@ import { toast } from "sonner";
 import { categorizeTransaction, debounce } from "@/lib/categorizer";
 import { cn } from "@/lib/utils";
 import { CategorySelect, CategoryPickerInline } from "@/components/CategorySelect";
+import { CategoryCreateInline, CATEGORY_FORM_ID } from "@/components/CategoryCreateInline";
 import { DateTimePicker } from "@/components/ui/date-time-picker";
 import { DateRangeFilter, DateRangeValue } from "@/components/DateRangeFilter";
 
@@ -93,7 +94,7 @@ export default function Transactions() {
     updateMultipleTransactions,
     duplicateTransactions,
   } = useTransactions();
-  const { categories } = useCategories();
+  const { categories, addCategory } = useCategories();
   const { creditCards, isLoading: isLoadingCards } = useCreditCards();
   const {
     addSharedExpenses,
@@ -114,6 +115,8 @@ export default function Transactions() {
 
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [isCategoryPickerOpen, setIsCategoryPickerOpen] = useState(false);
+  // Creación de categoría inline: null = cerrado; string = nombre inicial.
+  const [newCategoryName, setNewCategoryName] = useState<string | null>(null);
   const [isImportDialogOpen, setIsImportDialogOpen] = useState(false);
   const [editingTransaction, setEditingTransaction] = useState<Transaction | null>(null);
   const [isShared, setIsShared] = useState(false);
@@ -631,15 +634,27 @@ export default function Transactions() {
                 resetForm();
                 setSuggestion(null);
                 setIsCategoryPickerOpen(false);
+                setNewCategoryName(null);
               }
             }}
             title={
-              isCategoryPickerOpen
+              newCategoryName !== null
+                ? "Nueva categoría"
+                : isCategoryPickerOpen
                 ? "Elegir categoría"
                 : editingTransaction ? "Editar transacción" : "Nueva transacción"
             }
             maxWidth="lg"
-            footer={isCategoryPickerOpen ? undefined : (
+            footer={newCategoryName !== null ? (
+              <Button
+                type="submit"
+                form={CATEGORY_FORM_ID}
+                className="w-full h-11 text-[15px] font-semibold"
+                disabled={addCategory.isPending}
+              >
+                Crear categoría
+              </Button>
+            ) : isCategoryPickerOpen ? undefined : (
               <Button
                 type="submit"
                 form="transaction-form"
@@ -660,7 +675,24 @@ export default function Transactions() {
               </Button>
             )}
           >
-            {isCategoryPickerOpen ? (
+            {newCategoryName !== null ? (
+              <CategoryCreateInline
+                initialName={newCategoryName}
+                type={formData.type}
+                onBack={() => setNewCategoryName(null)}
+                onSubmit={async (category) => {
+                  try {
+                    await addCategory.mutateAsync(category);
+                  } catch {
+                    // addCategory ya notifica el error; quedarse en el form.
+                    return;
+                  }
+                  setFormData((prev) => ({ ...prev, category_name: category.name }));
+                  setNewCategoryName(null);
+                  setIsCategoryPickerOpen(false);
+                }}
+              />
+            ) : isCategoryPickerOpen ? (
               <CategoryPickerInline
                 value={formData.category_name}
                 options={categoryOptions}
@@ -669,6 +701,7 @@ export default function Transactions() {
                   setIsCategoryPickerOpen(false);
                 }}
                 onBack={() => setIsCategoryPickerOpen(false)}
+                onCreate={(name) => setNewCategoryName(name)}
               />
             ) : (
             <form id="transaction-form" onSubmit={handleSubmit} className="space-y-4 pt-2">
@@ -790,6 +823,7 @@ export default function Transactions() {
                       onChange={(value) => setFormData({ ...formData, category_name: value })}
                       options={categoryOptions}
                       onOpenMobile={() => setIsCategoryPickerOpen(true)}
+                      onCreate={(name) => setNewCategoryName(name)}
                     />
                   </div>
                   {formData.type !== "Inversión" && creditCards.length > 0 && (
