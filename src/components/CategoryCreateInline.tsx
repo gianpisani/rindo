@@ -22,6 +22,8 @@ interface CategoryCreateInlineProps {
   /** Tipo de la transacción en curso: la categoría nace con ese tipo. */
   type: CategoryType;
   onBack: () => void;
+  /** "Volver" cuando se vuelve a un paso previo, "Cancelar" en un modal propio. */
+  backLabel?: string;
   /** Crea la categoría. Al resolver, el llamador decide qué hacer. */
   onSubmit: (category: {
     name: string;
@@ -40,6 +42,7 @@ export function CategoryCreateInline({
   initialName = "",
   type,
   onBack,
+  backLabel = "Volver",
   onSubmit,
 }: CategoryCreateInlineProps) {
   const rootRef = useRef<HTMLDivElement>(null);
@@ -80,7 +83,7 @@ export function CategoryCreateInline({
         className="mb-2 flex items-center gap-1.5 rounded-lg px-1 py-1 text-sm text-muted-foreground transition-colors hover:text-foreground"
       >
         <ArrowLeft className="h-4 w-4" />
-        Volver
+        {backLabel}
       </button>
 
       <form id={CATEGORY_FORM_ID} onSubmit={handleSubmit} className="space-y-5">

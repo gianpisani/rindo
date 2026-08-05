@@ -1,10 +1,14 @@
-import React, { useState } from "react";
+import React, { useMemo, useState } from "react";
 import { Input } from "@/components/ui/input";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { cn } from "@/lib/utils";
-import { EMOJI_CATEGORIES } from "@/data/emojis";
+import { EMOJI_CATEGORIES, EMOJI_SEARCH_TEXT } from "@/data/emojis";
 import { Search } from "lucide-react";
+
+/** El texto buscable viene sin tildes, así que la consulta también. */
+const normalize = (s: string) =>
+  s.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
 
 interface EmojiPickerProps {
   value: string;
@@ -14,11 +18,20 @@ interface EmojiPickerProps {
 export function EmojiPicker({ value, onSelect }: EmojiPickerProps) {
   const [search, setSearch] = useState("");
 
-  const filteredCategories = search.trim()
-    ? EMOJI_CATEGORIES.filter((cat) =>
-        cat.label.toLowerCase().includes(search.toLowerCase())
-      )
-    : EMOJI_CATEGORIES;
+  // Busca por nombre y sinónimos de cada emoji. Si el término calza con el
+  // nombre de la categoría, se muestra completa.
+  const filteredCategories = useMemo(() => {
+    const query = normalize(search.trim());
+    if (!query) return EMOJI_CATEGORIES;
+
+    return EMOJI_CATEGORIES.map((cat) => {
+      if (normalize(cat.label).includes(query)) return cat;
+      const emojis = cat.emojis.filter((emoji) =>
+        (EMOJI_SEARCH_TEXT[emoji] ?? "").includes(query)
+      );
+      return { ...cat, emojis };
+    }).filter((cat) => cat.emojis.length > 0);
+  }, [search]);
 
   const EmojiGrid = ({ emojis }: { emojis: string[] }) => (
     <div className="grid grid-cols-8 gap-1">
@@ -47,7 +60,7 @@ export function EmojiPicker({ value, onSelect }: EmojiPickerProps) {
         <Input
           value={search}
           onChange={(e) => setSearch(e.target.value)}
-          placeholder="Buscar categoría..."
+          placeholder="Buscar emoji..."
           className="h-8 pl-8 rounded-full text-sm"
         />
       </div>
