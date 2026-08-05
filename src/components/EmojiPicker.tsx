@@ -1,6 +1,7 @@
 import React, { useMemo, useState } from "react";
 import { Input } from "@/components/ui/input";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
+import { ScrollArea } from "@/components/ui/scroll-area";
 import { cn } from "@/lib/utils";
 import { EMOJI_CATEGORIES, EMOJI_SEARCH_TEXT } from "@/data/emojis";
 import { Search } from "lucide-react";
@@ -64,29 +65,26 @@ export function EmojiPicker({ value, onSelect }: EmojiPickerProps) {
         />
       </div>
 
-      {/* Sin scroll propio: la grilla crece y scrollea el contenedor del modal.
-          Un ScrollArea anidado dentro del Dialog no responde al touch en iOS,
-          el mismo problema que ya resolvieron BaseModal y CategoryPickerInline. */}
       {search.trim() ? (
         filteredCategories.length > 0 ? (
-          <div className="space-y-3">
-            {filteredCategories.map((cat) => (
-              <div key={cat.id}>
-                <p className="text-xs text-muted-foreground mb-1">{cat.label}</p>
-                <EmojiGrid emojis={cat.emojis} />
-              </div>
-            ))}
-          </div>
+          <ScrollArea className="h-[200px]">
+            <div className="space-y-3 pr-2">
+              {filteredCategories.map((cat) => (
+                <div key={cat.id}>
+                  <p className="text-xs text-muted-foreground mb-1">{cat.label}</p>
+                  <EmojiGrid emojis={cat.emojis} />
+                </div>
+              ))}
+            </div>
+          </ScrollArea>
         ) : (
-          <div className="py-8 text-center text-sm text-muted-foreground">
+          <div className="h-[200px] flex items-center justify-center text-sm text-muted-foreground">
             Sin resultados
           </div>
         )
       ) : (
         <Tabs defaultValue={EMOJI_CATEGORIES[0].id}>
-          {/* Fija: la grilla es larga y sin esto habría que volver arriba
-              cada vez que se quiere cambiar de categoría. */}
-          <TabsList className="sticky top-0 z-10 w-full h-auto flex gap-0 p-1 bg-muted rounded-xl overflow-x-auto justify-start">
+          <TabsList className="w-full h-auto flex gap-0 p-1 bg-muted rounded-xl overflow-x-auto justify-start">
             {EMOJI_CATEGORIES.map((cat) => (
               <TabsTrigger
                 key={cat.id}
@@ -100,7 +98,11 @@ export function EmojiPicker({ value, onSelect }: EmojiPickerProps) {
           </TabsList>
           {EMOJI_CATEGORIES.map((cat) => (
             <TabsContent key={cat.id} value={cat.id} className="mt-2">
-              <EmojiGrid emojis={cat.emojis} />
+              <ScrollArea className="h-[200px]">
+                <div className="pr-2">
+                  <EmojiGrid emojis={cat.emojis} />
+                </div>
+              </ScrollArea>
             </TabsContent>
           ))}
         </Tabs>
