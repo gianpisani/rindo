@@ -39,8 +39,8 @@ META = {
     "Travel & Places": ("travel", "Viajes y lugares", "✈️"),
     "Activities": ("activities", "Actividades y deportes", "⚽"),
     "Objects": ("objects", "Objetos", "💡"),
-    "Symbols": ("symbols", "Símbolos y señales", "💲"),
-    "Flags": ("flags", "Banderas", "🏳️"),
+    "Symbols": ("symbols", "Símbolos y señales", "❤️"),
+    "Flags": ("flags", "Banderas", "🏁"),
 }
 
 groups, order, english = {}, [], {}

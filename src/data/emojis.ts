@@ -243,7 +243,7 @@ export const EMOJI_CATEGORIES: EmojiCategory[] = [
   {
     id: "symbols",
     label: "Símbolos y señales",
-    icon: "💲",
+    icon: "❤️",
     emojis: [
       "🏧", "🚮", "🚰", "♿", "🚹", "🚺", "🚻", "🚼",
       "🚾", "🛂", "🛃", "🛄", "🛅", "⚠️", "🚸", "⛔",
@@ -278,7 +278,7 @@ export const EMOJI_CATEGORIES: EmojiCategory[] = [
   {
     id: "flags",
     label: "Banderas",
-    icon: "🏳️",
+    icon: "🏁",
     emojis: [
       "🏁", "🚩", "🎌", "🏴", "🏳️", "🏳️‍🌈", "🏳️‍⚧️", "🏴‍☠️",
       "🇦🇨", "🇦🇩", "🇦🇪", "🇦🇫", "🇦🇬", "🇦🇮", "🇦🇱", "🇦🇲",
