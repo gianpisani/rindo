@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { ArrowLeft, Check, ChevronDown } from "lucide-react";
+import { ArrowLeft, Check, ChevronDown, Plus } from "lucide-react";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import {
   Command,
@@ -29,6 +29,42 @@ interface CategorySelectProps {
    * para mostrar un picker inline dentro del modal, que scrollea con
    * el contenedor del modal y evita overlays anidados). */
   onOpenMobile?: () => void;
+  /** Si se entrega, muestra la acción de crear categoría. Recibe el texto
+   * escrito en la búsqueda para prellenar el nombre. */
+  onCreate?: (name: string) => void;
+}
+
+/**
+ * Acción de crear categoría, fuera de CommandList para que no la filtre
+ * la búsqueda de cmdk y siga visible cuando no hay resultados.
+ */
+function CreateCategoryAction({
+  search,
+  onCreate,
+  size = "sm",
+}: {
+  search: string;
+  onCreate: (name: string) => void;
+  size?: "sm" | "lg";
+}) {
+  const name = search.trim();
+  return (
+    <button
+      type="button"
+      onClick={() => onCreate(name)}
+      className={cn(
+        "flex w-full items-center gap-2.5 border-border/60 text-left text-primary transition-colors hover:bg-muted/60",
+        // En mobile va bajo el buscador (la lista no tiene scroll propio);
+        // en desktop cierra el popover, bajo la lista.
+        size === "lg" ? "mt-1 gap-3 rounded-xl px-3 py-3 text-base" : "border-t px-3 py-2.5 text-sm"
+      )}
+    >
+      <Plus className={cn("shrink-0", size === "lg" ? "h-5 w-5" : "h-4 w-4")} />
+      <span className="truncate">
+        {name ? <>Crear “{name}”</> : "Crear categoría"}
+      </span>
+    </button>
+  );
 }
 
 /**
@@ -43,8 +79,10 @@ export function CategorySelect({
   searchPlaceholder = "Buscar categoría...",
   className,
   onOpenMobile,
+  onCreate,
 }: CategorySelectProps) {
   const [open, setOpen] = useState(false);
+  const [search, setSearch] = useState("");
   const isMobile = useIsMobile();
 
   const selected = options.find((o) => o.value === value);
@@ -82,7 +120,14 @@ export function CategorySelect({
   }
 
   return (
-    <Popover open={open} onOpenChange={setOpen} modal>
+    <Popover
+      open={open}
+      onOpenChange={(next) => {
+        setOpen(next);
+        if (!next) setSearch("");
+      }}
+      modal
+    >
       <PopoverTrigger asChild>
         <button type="button" role="combobox" aria-expanded={open} className={triggerClasses}>
           {triggerContent}
@@ -94,7 +139,12 @@ export function CategorySelect({
         sideOffset={4}
       >
         <Command>
-          <CommandInput placeholder={searchPlaceholder} className="h-9 text-sm" />
+          <CommandInput
+            value={search}
+            onValueChange={setSearch}
+            placeholder={searchPlaceholder}
+            className="h-9 text-sm"
+          />
           <CommandList className="max-h-[280px] overscroll-contain">
             <CommandEmpty className="py-6 text-center text-sm text-muted-foreground">
               Sin resultados
@@ -121,6 +171,16 @@ export function CategorySelect({
               ))}
             </CommandGroup>
           </CommandList>
+          {onCreate && (
+            <CreateCategoryAction
+              search={search}
+              onCreate={(name) => {
+                setOpen(false);
+                setSearch("");
+                onCreate(name);
+              }}
+            />
+          )}
         </Command>
       </PopoverContent>
     </Popover>
@@ -133,6 +193,8 @@ interface CategoryPickerInlineProps {
   onSelect: (value: string) => void;
   onBack: () => void;
   searchPlaceholder?: string;
+  /** Si se entrega, muestra la acción de crear categoría. */
+  onCreate?: (name: string) => void;
 }
 
 /**
@@ -146,8 +208,10 @@ export function CategoryPickerInline({
   onSelect,
   onBack,
   searchPlaceholder = "Buscar categoría...",
+  onCreate,
 }: CategoryPickerInlineProps) {
   const rootRef = useRef<HTMLDivElement>(null);
+  const [search, setSearch] = useState("");
 
   // El nudge de BaseModal corre solo al abrir el modal, cuando el form
   // suele caber sin scroll. Al montar el picker el contenido crece, así
@@ -180,7 +244,22 @@ export function CategoryPickerInline({
         Volver
       </button>
       <Command className="bg-transparent">
-        <CommandInput placeholder={searchPlaceholder} className="h-11 text-base" />
+        <CommandInput
+          value={search}
+          onValueChange={setSearch}
+          placeholder={searchPlaceholder}
+          className="h-11 text-base"
+        />
+        {onCreate && (
+          <CreateCategoryAction
+            search={search}
+            size="lg"
+            onCreate={(name) => {
+              setSearch("");
+              onCreate(name);
+            }}
+          />
+        )}
         {/* max-h-full (parent altura auto) = sin tope: la lista crece y
             scrollea el contenedor del modal, no ella misma. Ojo: la
             versión de tailwind-merge del proyecto NO resuelve el

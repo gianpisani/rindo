@@ -52,6 +52,7 @@ import {
   Minimize2,
   SearchX,
   Inbox,
+  Plus,
 } from "lucide-react";
 import { Transaction } from "@/hooks/useTransactions";
 import NumberFlow, { type Format } from "@number-flow/react";
@@ -66,6 +67,9 @@ import { useIsMobile } from "@/hooks/use-mobile";
 import { AnalyzingBadge } from "./AnalyzingBadge";
 import { InlineDateTimePicker } from "./ui/date-time-picker";
 import { ChevronDoubleLeftIcon, ChevronDoubleRightIcon } from "@heroicons/react/24/outline";
+import { useCategories } from "@/hooks/useCategories";
+import { BaseModal } from "./BaseModal";
+import { CategoryCreateInline, CATEGORY_FORM_ID } from "./CategoryCreateInline";
 import { Popover, PopoverContent, PopoverTrigger } from "./ui/popover";
 import { Command, CommandInput, CommandList, CommandEmpty, CommandGroup, CommandItem } from "./ui/command";
 import { DateRangeFilter, DateRangeValue } from "./DateRangeFilter";
@@ -430,13 +434,22 @@ interface CategoryComboboxProps {
   renderValue: (value: string) => React.ReactNode;
   className?: string;
   placeholder?: string;
+  /** Si se entrega, muestra la acción de crear categoría con el texto buscado. */
+  onCreate?: (name: string) => void;
 }
 
-function CategoryCombobox({ value, options, onSave, renderValue, className, placeholder = "Buscar categoría..." }: CategoryComboboxProps) {
+function CategoryCombobox({ value, options, onSave, renderValue, className, placeholder = "Buscar categoría...", onCreate }: CategoryComboboxProps) {
   const [open, setOpen] = useState(false);
+  const [search, setSearch] = useState("");
 
   return (
-    <Popover open={open} onOpenChange={setOpen}>
+    <Popover
+      open={open}
+      onOpenChange={(next) => {
+        setOpen(next);
+        if (!next) setSearch("");
+      }}
+    >
       <PopoverTrigger asChild>
         <button
           className={cn(
@@ -452,7 +465,12 @@ function CategoryCombobox({ value, options, onSave, renderValue, className, plac
       </PopoverTrigger>
       <PopoverContent className="w-[220px] p-0 border-0 shadow-lg shadow-black/10 dark:shadow-black/30 rounded-lg overflow-hidden" align="start" side="bottom" sideOffset={4}>
         <Command className="rounded-lg">
-          <CommandInput placeholder={placeholder} className="h-8 text-xs border-0 ring-0 focus:ring-0" />
+          <CommandInput
+            value={search}
+            onValueChange={setSearch}
+            placeholder={placeholder}
+            className="h-8 text-xs border-0 ring-0 focus:ring-0"
+          />
           <CommandList>
             <CommandEmpty className="py-3 text-center text-xs text-muted-foreground">
               Sin resultados
@@ -485,6 +503,25 @@ function CategoryCombobox({ value, options, onSave, renderValue, className, plac
               ))}
             </CommandGroup>
           </CommandList>
+          {/* Fuera de CommandList a propósito: dentro, el filtro de cmdk la
+              escondería justo cuando la búsqueda no tiene resultados. */}
+          {onCreate && (
+            <button
+              type="button"
+              onClick={() => {
+                const name = search.trim();
+                setOpen(false);
+                setSearch("");
+                onCreate(name);
+              }}
+              className="flex w-full items-center gap-2 border-t border-border/60 px-2 py-2 text-left text-xs text-primary transition-colors hover:bg-muted/60"
+            >
+              <Plus className="h-3.5 w-3.5 flex-shrink-0" />
+              <span className="truncate">
+                {search.trim() ? `Crear “${search.trim()}”` : "Crear categoría"}
+              </span>
+            </button>
+          )}
         </Command>
       </PopoverContent>
     </Popover>
@@ -628,7 +665,16 @@ export function TransactionsTable({
   const tbodyRef = React.useRef<HTMLTableSectionElement>(null);
   const { isPrivacyMode } = usePrivacyMode();
   const { creditCards, isLoading: isLoadingCards } = useCreditCards();
+  const { addCategory } = useCategories();
   const isMobile = useIsMobile();
+
+  // Crear categoría desde la celda: guarda a qué transacción asignarla,
+  // con qué tipo nace y el nombre tecleado en la búsqueda.
+  const [categoryDraft, setCategoryDraft] = useState<{
+    transactionId: string;
+    type: "Ingreso" | "Gasto" | "Inversión" | "Reembolso";
+    name: string;
+  } | null>(null);
 
   // Touch-through guard: en iOS, al tocar un item del menú "..." el menú se
   // desmonta y el click del navegador aterriza en la card que quedó debajo,
@@ -867,6 +913,9 @@ export function TransactionsTable({
                   color: c.color,
                 }))}
                 onSave={(newCategory) => handleInlineUpdate(row.original.id, "category_name", newCategory)}
+                onCreate={(name) =>
+                  setCategoryDraft({ transactionId: row.original.id, type, name })
+                }
                 renderValue={(val) => (
                   <div className="flex items-center gap-1.5 min-w-0">
                     <span className="text-base leading-none flex-shrink-0">{emoji}</span>
@@ -2066,6 +2115,47 @@ export function TransactionsTable({
           </div>
         </>
       )}
+
+      {/* Crear categoría desde una celda y asignarla a esa transacción */}
+      <BaseModal
+        open={categoryDraft !== null}
+        onOpenChange={(open) => !open && setCategoryDraft(null)}
+        title="Nueva categoría"
+        maxWidth="sm"
+        footer={
+          <Button
+            type="submit"
+            form={CATEGORY_FORM_ID}
+            className="w-full rounded-full"
+            disabled={addCategory.isPending}
+          >
+            Crear categoría
+          </Button>
+        }
+      >
+        {categoryDraft && (
+          <CategoryCreateInline
+            initialName={categoryDraft.name}
+            type={categoryDraft.type}
+            backLabel="Cancelar"
+            onBack={() => setCategoryDraft(null)}
+            onSubmit={async (category) => {
+              try {
+                await addCategory.mutateAsync(category);
+              } catch {
+                // addCategory ya notifica el error; quedarse en el formulario.
+                return;
+              }
+              await handleInlineUpdate(
+                categoryDraft.transactionId,
+                "category_name",
+                category.name
+              );
+              setCategoryDraft(null);
+            }}
+          />
+        )}
+      </BaseModal>
     </div>
   );
 }
