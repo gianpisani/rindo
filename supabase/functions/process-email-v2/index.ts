@@ -27,9 +27,24 @@ interface ParsedTransaction {
 // Gmail's getPlainBody() wraps lines and injects invisible chars.
 // Normalize to a single continuous line so regexes work reliably.
 
+const HTML_ENTITIES: Record<string, string> = {
+  aacute: '\u00E1', eacute: '\u00E9', iacute: '\u00ED', oacute: '\u00F3', uacute: '\u00FA', uuml: '\u00FC',
+  ntilde: '\u00F1', Aacute: '\u00C1', Eacute: '\u00C9', Iacute: '\u00CD', Oacute: '\u00D3', Uacute: '\u00DA',
+  Ntilde: '\u00D1', amp: '&', nbsp: ' ', quot: '"', apos: "'", bull: '\u00B7', deg: '\u00B0',
+  ordm: '\u00BA', lt: '<', gt: '>',
+}
+
 function normalizeEmailText(text: string): string {
   return text
     .replace(/[\u200B-\u200F\u2028\u2029\uFEFF\u00AD\u034F\u061C\u180E]/g, '')
+    // Los correos del banco son HTML y marcan la contraparte con <b>. Seg\u00FAn c\u00F3mo
+    // se convierta el cuerpo a texto, ese \u00E9nfasis puede sobrevivir como tag o
+    // como asteriscos pegados al nombre, y ah\u00ED rompe la extracci\u00F3n: los patrones
+    // buscan el nombre entre "cliente" y "ha efectuado", as\u00ED que cualquier
+    // car\u00E1cter de markup en medio hace que no calcen.
+    .replace(/<[^>\n]{1,200}>/g, ' ')
+    .replace(/&([a-zA-Z]{2,8});/g, (full, name) => HTML_ENTITIES[name] ?? full)
+    .replace(/&#(\d{1,5});/g, (_, code) => String.fromCharCode(Number(code)))
     .replace(/\s+/g, ' ')
     .trim()
 }
@@ -81,6 +96,34 @@ function cleanMerchantName(raw: string): string {
   return name || raw.trim()
 }
 
+// Los patrones ubican el nombre de la contraparte por lo que lo rodea, así que
+// la clase de caracteres tiene que aceptar todo lo que puede venir dentro: las
+// iniciales abreviadas ("Juan P."), los apellidos con guion o apóstrofe, y el
+// énfasis que algunos conversores de HTML a texto dejan como asteriscos
+// alrededor del nombre. `cleanPersonName` saca esos asteriscos después.
+const NAME_CHARS = "A-ZÁÉÍÓÚÜÑa-záéíóúüñ.,'*_\\-\\s"
+
+/** Palabras del texto del email que nunca son un nombre de persona. */
+const NOT_A_NAME = /^(?:fondos|cliente|clientes|dinero|transferencia|cuenta|nuestro|nuestra)$/i
+
+/**
+ * Limpia un nombre capturado y descarta los falsos positivos: si la captura
+ * quedó en una palabra del propio texto del email (típicamente "fondos"), es
+ * preferible no tener nombre a guardar uno inventado, porque bank-sync
+ * deduplica comparando justamente estos nombres.
+ */
+function cleanPersonName(raw: string | undefined): string | null {
+  if (!raw) return null
+  const name = raw
+    .replace(/[*_]/g, '')
+    .replace(/^[\s.,;:]+|[\s.,;:]+$/g, '')
+    .replace(/\s+/g, ' ')
+    .trim()
+  if (name.length < 2) return null
+  if (name.split(' ').every((w) => NOT_A_NAME.test(w))) return null
+  return name
+}
+
 // ── Parsers por tipo de email ──────────────────────────────────────
 
 function parseCompraTarjeta(text: string): ParsedTransaction | null {
@@ -129,8 +172,8 @@ function parseTransferenciaTerceros(text: string): ParsedTransaction | null {
   // Recipient name: "Nombre y Apellido  X" or "Nombre  X"
   // Format 2: "transferencia de fondos a [Nombre],"
   const destinatario =
-    text.match(/Nombre(?:\s+y\s+Apellido)?\s+([A-ZÁÉÍÓÚÑa-záéíóúñ\s]+?)(?:\s+Rut|\s+Tipo|\s+N[º°]|\s+Banco|\s+E-?mail|$)/i)?.[1]?.trim()
-    || text.match(/transferencia\s+de\s+fondos\s+a\s+([A-ZÁÉÍÓÚÑa-záéíóúñ\s]+?)(?:,|\s+el\s+d[ií]a|\s+desde)/i)?.[1]?.trim()
+    cleanPersonName(text.match(new RegExp(`Nombre(?:\\s+y\\s+Apellido)?\\s+([${NAME_CHARS}]+?)(?:\\s+Rut|\\s+Tipo|\\s+N[º°]|\\s+Banco|\\s+E-?mail|$)`, 'i'))?.[1])
+    || cleanPersonName(text.match(new RegExp(`transferencia\\s+de\\s+fondos\\s+a\\s+(?!tu\\b)([${NAME_CHARS}]+?)(?:,|\\s+el\\s+d[ií]a|\\s+desde)`, 'i'))?.[1])
 
   const detail = destinatario
     ? `Transferencia a ${destinatario}`
@@ -152,18 +195,30 @@ function parseTransferenciaRecibida(text: string): ParsedTransaction | null {
   const amount = extractAmount(text)
   if (!amount) return null
 
+  // El orden importa: la primera alternativa que calce gana. Las que apuntan a
+  // una sección explícita del email van antes que las que leen la frase suelta.
+  const remitentePatterns = [
+    // "nuestro(a) cliente NOMBRE ha efectuado" (Banco de Chile, BancoEstado)
+    // El "(a)" viene a veces pegado y a veces separado ("nuestro (a) cliente"), y
+    // el nombre puede traer el RUT entre paréntesis antes del verbo.
+    new RegExp(`nuestr[oa]\\s*\\(?\\s*a?\\s*\\)?\\s+client[ea]\\s*\\(?\\s*a?\\s*\\)?\\s+([${NAME_CHARS}]+?)\\s*(?:\\([^)]{0,40}\\))?\\s+(?:ha\\s+(?:efectuado|realizado)|te\\s+ha|Datos)`, 'i'),
+    // "Datos del remitente / Nombre y Apellido NOMBRE". Se acota a la sección de
+    // origen a propósito: el email de Banco de Chile también trae un bloque
+    // "Datos de destinatario" con el nombre del propio usuario, y tomarlo de ahí
+    // dejaba la transferencia a nombre de quien la recibe.
+    new RegExp(`Datos\\s+de(?:l)?\\s+(?:remitente|origen|ordenante)\\b.{0,80}?Nombre(?:\\s+y\\s+Apellido)?\\s+([${NAME_CHARS}]+?)\\s+(?:Rut|R\\.?U\\.?T|Banco|Cuenta|Monto|Email|E-?mail)`, 'i'),
+    // "transferencia de fondos de NOMBRE hacia tu cuenta" (BCI/Mach). El
+    // lookahead evita que "una transferencia de fondos a tu cuenta" —el texto de
+    // Banco de Chile— capture la palabra "fondos" como si fuera el remitente.
+    new RegExp(`transferencia\\s+(?:electr[oó]nica\\s+)?(?:de\\s+fondos\\s+)?de\\s+(?!fondos\\b)([${NAME_CHARS}]+?)\\s+(?:hacia|a)\\s+tu\\s+cuenta`, 'i'),
+    // "te han transferido $X de NOMBRE" / "abono por transferencia de NOMBRE"
+    new RegExp(`(?:te\\s+han\\s+transferido|abono\\s+por\\s+transferencia)\\b.{0,40}?\\bde\\s+(?!fondos\\b)([${NAME_CHARS}]+?)\\s+(?:por|el|Rut|Monto|$)`, 'i'),
+  ]
+
   let remitente: string | null = null
-
-  // "nuestro(a) cliente NOMBRE ha efectuado" (Banco de Chile, BancoEstado)
-  if (!remitente) {
-    const m = text.match(/nuestr[oa]\(?a?\)?\s+cliente\s+([A-ZÁÉÍÓÚÑa-záéíóúñ\s]+?)\s+(?:ha\s+efectuado|Datos)/i)
-    if (m) remitente = m[1].trim()
-  }
-
-  // "transferencia de fondos de NOMBRE hacia tu cuenta" (BCI/Mach)
-  if (!remitente) {
-    const m = text.match(/transferencia\s+(?:de\s+fondos\s+)?de\s+([A-ZÁÉÍÓÚÑa-záéíóúñ\s]+?)\s+(?:hacia|a)\s+tu\s+cuenta/i)
-    if (m) remitente = m[1].trim()
+  for (const pattern of remitentePatterns) {
+    remitente = cleanPersonName(text.match(pattern)?.[1])
+    if (remitente) break
   }
 
   const detail = remitente ? `Transferencia de ${remitente}` : 'Transferencia recibida'
