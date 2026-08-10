@@ -96,12 +96,20 @@ function extractNameTokens(desc: string): Set<string> {
   return new Set(normalized.split(/\s+/).filter((t) => t.length > 0))
 }
 
+const MIN_PREFIX_LENGTH = 4
+
 /** true si el conjunto de tokens más chico está contenido en el más grande */
 function nameTokensMatch(a: Set<string>, b: Set<string>): boolean {
   if (a.size === 0 || b.size === 0) return false
   const [small, big] = a.size <= b.size ? [a, b] : [b, a]
+  const bigTokens = [...big]
   for (const token of small) {
-    if (!big.has(token)) return false
+    if (big.has(token)) continue
+    const prefixMatch = bigTokens.some((other) => {
+      const [short, long] = token.length <= other.length ? [token, other] : [other, token]
+      return short.length >= MIN_PREFIX_LENGTH && long.startsWith(short)
+    })
+    if (!prefixMatch) return false
   }
   return true
 }
