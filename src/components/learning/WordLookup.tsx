@@ -1,7 +1,8 @@
 import { useEffect, useRef, useState } from "react";
 import { cn } from "@/lib/utils";
+import { toast } from "sonner";
 import { Volume2, Loader2, BookOpen, Languages } from "lucide-react";
-import { useDictionary } from "@/hooks/useDictionary";
+import { useDictionary, usePronunciation } from "@/hooks/useDictionary";
 import { useTranslations } from "@/hooks/useTranslation";
 
 interface WordLookupProps {
@@ -32,11 +33,28 @@ export function WordLookup({
 }: WordLookupProps) {
   const { data, isLoading, isError } = useDictionary(term);
 
+  // dictionaryapi.dev solo tiene palabras sueltas y no siempre trae fonética.
+  // Cuando falta, se busca en Wiktionary, que sí cubre las expresiones.
+  const { data: extra } = usePronunciation(
+    term,
+    !isLoading && (!data?.phonetic || !data?.audioUrl)
+  );
+
+  const phonetic = data?.phonetic ?? extra?.phonetic ?? null;
+  const audioUrl = data?.audioUrl ?? extra?.audioUrl ?? null;
+  const approximate = !data?.phonetic && !!extra?.approximate;
+
+  const phoneticLabel = phonetic && (approximate ? `≈ ${phonetic}` : phonetic);
+  const phoneticTitle = approximate
+    ? "Aproximada: la armé juntando la fonética de cada palabra, porque las expresiones no tienen la suya"
+    : undefined;
+
   const [inSpanish, setInSpanish] = useState(
     () => localStorage.getItem(LANG_PREF_KEY) !== "en"
   );
 
   const audioRef = useRef<HTMLAudioElement | null>(null);
+  const [playing, setPlaying] = useState(false);
 
   // Dos acepciones bastan: son las que de verdad se leen, y así el panel de
   // captura entra completo sin scrollear.
@@ -62,12 +80,59 @@ export function WordLookup({
 
   const say = (text: string) => (inSpanish ? translations[text] ?? text : text);
 
+  /**
+   * Reproduce la pronunciación grabada.
+   *
+   * Los errores se avisan: antes se tragaban en silencio y el botón parecía
+   * roto —el archivo puede no existir, o ser un .ogg que el navegador no lee.
+   */
   const playAudio = () => {
-    if (!data?.audioUrl) return;
+    if (!audioUrl) return;
+
     audioRef.current?.pause();
-    audioRef.current = new Audio(data.audioUrl);
-    audioRef.current.play().catch(() => {});
+    const audio = new Audio(audioUrl);
+    audioRef.current = audio;
+
+    const fail = () => {
+      setPlaying(false);
+      toast.error("No pude reproducir la pronunciación", {
+        description: "El audio de esta palabra no está disponible.",
+      });
+    };
+
+    setPlaying(true);
+    audio.onended = () => setPlaying(false);
+    audio.onerror = fail;
+    audio.play().catch(fail);
   };
+
+  const pronunciation = (phonetic || audioUrl) && (
+    <div className="-mt-0.5">
+      {audioUrl ? (
+        <button
+          onClick={playAudio}
+          title={phoneticTitle ?? "Escuchar cómo se pronuncia"}
+          className="flex items-center gap-1.5 text-muted-foreground hover:text-primary transition-colors"
+        >
+          {playing ? (
+            <Loader2 className="h-3.5 w-3.5 animate-spin shrink-0" />
+          ) : (
+            <Volume2 className="h-3.5 w-3.5 shrink-0" />
+          )}
+          <span className="text-[11px] font-mono">
+            {phoneticLabel ?? "Escuchar"}
+          </span>
+        </button>
+      ) : (
+        <p
+          title={phoneticTitle}
+          className="text-[11px] text-muted-foreground font-mono"
+        >
+          {phoneticLabel}
+        </p>
+      )}
+    </div>
+  );
 
   const toggleLang = () => {
     setInSpanish((prev) => {
@@ -113,6 +178,8 @@ export function WordLookup({
           </p>
         )}
 
+        {pronunciation}
+
         {contextSentence && translations[contextSentence.trim()] && (
           <p className="text-[11px] text-muted-foreground italic">
             “{translations[contextSentence.trim()]}”
@@ -145,16 +212,6 @@ export function WordLookup({
 
         <div className="flex-1" />
 
-        {data.audioUrl && (
-          <button
-            onClick={playAudio}
-            aria-label="Escuchar pronunciación"
-            className="text-muted-foreground hover:text-primary transition-colors shrink-0"
-          >
-            <Volume2 className="h-3.5 w-3.5" />
-          </button>
-        )}
-
         <button
           onClick={toggleLang}
           aria-label={inSpanish ? "Ver en inglés" : "Ver en español"}
@@ -172,11 +229,7 @@ export function WordLookup({
         </button>
       </div>
 
-      {data.phonetic && (
-        <p className="text-[11px] text-muted-foreground font-mono -mt-1">
-          {data.phonetic}
-        </p>
-      )}
+      {pronunciation}
 
       {/* La frase donde apareció, en español */}
       {contextSentence && translations[contextSentence.trim()] && inSpanish && (
