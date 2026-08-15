@@ -16,6 +16,7 @@ import {
   Check,
   ArrowLeft,
   Eye,
+  Search,
   ChevronDown,
   ExternalLink,
   RotateCcw,
@@ -127,6 +128,12 @@ export function SessionStudio({
   const [typeTouched, setTypeTouched] = useState(false);
   /** En automático el formulario es solo lectura: ya se guardó. */
   const [alreadySaved, setAlreadySaved] = useState(false);
+  /**
+   * Modo consulta: con la sesión pausada las palabras igual se pueden mirar.
+   * Buscar qué significa algo no es tiempo de estudio, pero tampoco es motivo
+   * para no dejarte mirar — así que se ve la ficha completa y no se guarda nada.
+   */
+  const [lookupOnly, setLookupOnly] = useState(false);
   const capturedAtRef = useRef<number | null>(null);
   const wasPlayingRef = useRef(false);
 
@@ -136,26 +143,28 @@ export function SessionStudio({
   }, []);
 
   const openCapture = useCallback(() => {
-    if (isPaused) return;
     holdVideo();
     capturedAtRef.current = hasPlayer
       ? Math.round(playerRef.current?.getCurrentTime() ?? 0)
       : null;
     setAlreadySaved(false);
+    setLookupOnly(isPaused);
     setIsCapturing(true);
-    onActivity();
+    if (!isPaused) onActivity();
     requestAnimationFrame(() => expressionRef.current?.focus());
   }, [hasPlayer, isPaused, onActivity, holdVideo]);
 
   const pickFromTranscript = useCallback(
     (term: string, cue: Cue) => {
-      if (isPaused) return;
-
       holdVideo();
+
+      // En pausa la ficha se ve igual, pero no se guarda ni se registra
+      // actividad: es una consulta, no una captura.
+      const lookup = isPaused;
 
       // En automático la ficha se ve igual; lo único que cambia es que ya
       // quedó guardada y no hay que apretar nada.
-      if (auto.enabled) auto.captureNow(term, cue.text, cue.t);
+      if (!lookup && auto.enabled) auto.captureNow(term, cue.text, cue.t);
 
       capturedAtRef.current = cue.t;
       setExpression(term);
@@ -164,9 +173,10 @@ export function SessionStudio({
       setTranslation(null);
       setItemType(detectItemType(term));
       setTypeTouched(false);
-      setAlreadySaved(auto.enabled);
+      setAlreadySaved(!lookup && auto.enabled);
+      setLookupOnly(lookup);
       setIsCapturing(true);
-      onActivity();
+      if (!lookup) onActivity();
     },
     [isPaused, onActivity, holdVideo, auto]
   );
@@ -180,6 +190,7 @@ export function SessionStudio({
     setItemType("expression");
     setTypeTouched(false);
     setAlreadySaved(false);
+    setLookupOnly(false);
     capturedAtRef.current = null;
     if (resumeVideo && wasPlayingRef.current) playerRef.current?.play();
     wasPlayingRef.current = false;
@@ -230,6 +241,16 @@ export function SessionStudio({
     session.id,
     closeCapture,
   ]);
+
+  /**
+   * Lo que encontraste mirando en pausa no se pierde: reanuda la sesión y lo
+   * guarda, que es lo que ibas a hacer a mano de todas formas.
+   */
+  const resumeAndSave = useCallback(() => {
+    onResume();
+    setLookupOnly(false);
+    submitCapture();
+  }, [onResume, submitCapture]);
 
   useEffect(() => {
     if (!isCapturing || typeTouched) return;
@@ -304,7 +325,7 @@ export function SessionStudio({
       dot: "bg-muted-foreground",
       text: "text-muted-foreground",
       ring: "border-border",
-      note: "el tiempo efectivo está detenido",
+      note: "el tiempo está detenido, pero puedes seguir buscando palabras",
     },
   }[state];
 
@@ -546,7 +567,9 @@ export function SessionStudio({
             <div className="flex items-center justify-between gap-2 px-3 py-2 border-b border-border/50 shrink-0">
               <div className="flex items-center gap-2 min-w-0">
                 <Highlighter className="h-3.5 w-3.5 text-primary shrink-0" />
-                <h3 className="text-xs font-semibold shrink-0">Capturar</h3>
+                <h3 className="text-xs font-semibold shrink-0">
+                  {lookupOnly ? "Consultar" : "Capturar"}
+                </h3>
                 {isCapturing && capturedAtRef.current !== null && (
                   <span className="text-[11px] text-muted-foreground tabular-nums shrink-0">
                     en {formatClock(capturedAtRef.current)}
@@ -592,7 +615,7 @@ export function SessionStudio({
                     onKeyDown={(e) => {
                       if (e.key === "Enter") {
                         e.preventDefault();
-                        submitCapture();
+                        if (!lookupOnly) submitCapture();
                       } else if (e.key === "Escape") {
                         e.preventDefault();
                         closeCapture(true);
@@ -617,7 +640,7 @@ export function SessionStudio({
                     onKeyDown={(e) => {
                       if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) {
                         e.preventDefault();
-                        submitCapture();
+                        if (!lookupOnly) submitCapture();
                       } else if (e.key === "Escape") {
                         e.preventDefault();
                         closeCapture(true);
@@ -637,7 +660,12 @@ export function SessionStudio({
                     />
                   )}
 
-                  <div className={cn("flex flex-wrap gap-1.5", alreadySaved && "hidden")}>
+                  <div
+                    className={cn(
+                      "flex flex-wrap gap-1.5",
+                      (alreadySaved || lookupOnly) && "hidden"
+                    )}
+                  >
                     {CAPTURE_TYPES.map(({ type, label, hint }) => (
                       <button
                         key={type}
@@ -658,7 +686,32 @@ export function SessionStudio({
                     ))}
                   </div>
 
-                  {alreadySaved ? (
+                  {lookupOnly ? (
+                    <div className="space-y-2 pt-0.5">
+                      <p className="text-[11px] text-muted-foreground leading-relaxed">
+                        La sesión está pausada: esto es solo para mirar — no se
+                        guarda ni suma tiempo.
+                      </p>
+                      <div className="flex gap-2">
+                        <Button
+                          onClick={resumeAndSave}
+                          disabled={!expression.trim()}
+                          variant="outline"
+                          className="flex-1 rounded-xl h-9 font-semibold border-primary/30 text-primary hover:bg-primary/10 hover:text-primary"
+                        >
+                          <Play className="h-3.5 w-3.5 mr-1.5 fill-current" />
+                          Reanudar y guardar
+                        </Button>
+                        <Button
+                          onClick={() => closeCapture(true)}
+                          variant="ghost"
+                          className="rounded-xl h-9"
+                        >
+                          Cerrar
+                        </Button>
+                      </div>
+                    </div>
+                  ) : alreadySaved ? (
                     <div className="flex items-center gap-2 pt-0.5">
                       <span className="flex items-center gap-1.5 text-[11px] font-medium text-emerald-500">
                         <Check className="h-3.5 w-3.5" />
@@ -696,12 +749,20 @@ export function SessionStudio({
                 <>
                   <Button
                     onClick={openCapture}
-                    disabled={isPaused}
                     variant="outline"
                     className="w-full rounded-xl h-10 border-dashed font-medium"
                   >
-                    <Plus className="h-4 w-4 mr-2" />
-                    Nueva expresión
+                    {isPaused ? (
+                      <>
+                        <Search className="h-4 w-4 mr-2" />
+                        Buscar una palabra
+                      </>
+                    ) : (
+                      <>
+                        <Plus className="h-4 w-4 mr-2" />
+                        Nueva expresión
+                      </>
+                    )}
                     <kbd className="ml-2 px-1.5 py-0.5 rounded bg-muted text-[10px] font-mono">
                       E
                     </kbd>
@@ -710,8 +771,9 @@ export function SessionStudio({
                   <div className="mt-3">
                     {captured.length === 0 ? (
                       <p className="text-[11px] text-muted-foreground text-center py-4 px-1 leading-relaxed">
-                        Haz clic en cualquier palabra de los subtítulos. El
-                        video se pausa solo y vuelve a andar al guardar.
+                        {isPaused
+                          ? "En pausa puedes mirar cualquier palabra de los subtítulos: se ve su significado, pero no se guarda hasta que reanudes."
+                          : "Haz clic en cualquier palabra de los subtítulos. El video se pausa solo y vuelve a andar al guardar."}
                       </p>
                     ) : (
                       <div className="space-y-1.5">
