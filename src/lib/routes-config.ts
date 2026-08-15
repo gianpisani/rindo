@@ -9,6 +9,7 @@ import {
   TrendingUp,
   CreditCard,
   GraduationCap,
+  Languages,
 } from "lucide-react";
 import { ComponentType } from "react";
 
@@ -88,6 +89,12 @@ export const APP_ROUTES: RouteConfig[] = [
     title: "Clases",
     url: "/tutoring",
     icon: GraduationCap,
+    group: "tools",
+  },
+  {
+    title: "Aprendizaje",
+    url: "/learning",
+    icon: Languages,
     group: "tools",
   },
 ];

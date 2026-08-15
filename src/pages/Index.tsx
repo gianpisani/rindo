@@ -36,6 +36,7 @@ import { cn } from "@/lib/utils";
 import NumberFlow from "@number-flow/react";
 import { usePrivacyMode } from "@/hooks/usePrivacyMode";
 import { MonthlyStory } from "@/components/MonthlyStory";
+import { LearningNudge } from "@/components/learning/LearningNudge";
 import { useUserProfile } from "@/hooks/useUserProfile";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import { getCategoryIcon } from "@/components/TransactionsTable";
@@ -639,6 +640,9 @@ const Index = () => {
             {getGreeting()}{displayName ? <>, <span className="animated-gradient-text">{displayName}</span></> : ""}
           </h1>
         </div>
+
+        {/* ─── Recordatorio: días sin una sesión de aprendizaje ─── */}
+        <LearningNudge />
 
         {/* ─── Card de sweep: ahorro del mes pasado sin invertir ─── */}
         {sweepAlert && (
