@@ -16,6 +16,7 @@ import {
   Check,
   ArrowLeft,
   Eye,
+  ChevronDown,
   ExternalLink,
   RotateCcw,
   RotateCw,
@@ -308,6 +309,12 @@ export function SessionStudio({
   }[state];
 
   const [confirmDiscard, setConfirmDiscard] = useState(false);
+
+  /**
+   * Cuál de las expresiones capturadas está abierta. Solo una a la vez: la
+   * lista vive en una columna angosta y dos fichas abiertas la vuelven ilegible.
+   */
+  const [openItem, setOpenItem] = useState<string | null>(null);
 
   const controls = (
     <>
@@ -711,40 +718,108 @@ export function SessionStudio({
                         {captured
                           .slice()
                           .reverse()
-                          .map((item) => (
-                            <button
-                              key={item.sighting_id}
-                              onClick={() => {
-                                if (item.timestamp_seconds !== null && hasPlayer) {
-                                  playerRef.current?.seekTo(item.timestamp_seconds);
-                                  onActivity();
-                                }
-                              }}
-                              className={cn(
-                                "w-full text-left rounded-xl border border-border/50 bg-muted/20 px-3 py-2",
-                                "transition-all duration-200 hover:border-border hover:bg-muted/40",
-                                item.pending && "opacity-60",
-                                item.timestamp_seconds === null && "cursor-default"
-                              )}
-                            >
-                              <div className="flex items-baseline justify-between gap-2">
-                                <span className="text-sm font-medium truncate">
-                                  {item.expression}
-                                </span>
-                                {item.timestamp_seconds !== null && (
-                                  <span className="text-[10px] text-muted-foreground tabular-nums shrink-0">
-                                    {formatClock(item.timestamp_seconds)}
+                          .map((item) => {
+                            // El significado en español manda; el inglés queda
+                            // debajo porque es el que enseña el matiz.
+                            const sense = item.meaning_es ?? item.meaning;
+                            const canOpen = !!(sense || item.context);
+                            const isOpen = openItem === item.sighting_id;
+
+                            return (
+                              <div
+                                key={item.sighting_id}
+                                className={cn(
+                                  "rounded-xl border bg-muted/20 transition-all duration-200",
+                                  item.pending && "opacity-60",
+                                  isOpen
+                                    ? "border-border bg-muted/40"
+                                    : "border-border/50 hover:border-border hover:bg-muted/40"
+                                )}
+                              >
+                                <div className="flex items-baseline gap-2 px-3 py-2">
+                                  <button
+                                    onClick={() =>
+                                      setOpenItem(isOpen ? null : item.sighting_id)
+                                    }
+                                    disabled={!canOpen}
+                                    aria-expanded={canOpen ? isOpen : undefined}
+                                    className="flex-1 min-w-0 flex items-baseline gap-1.5 text-left disabled:cursor-default"
+                                  >
+                                    <span className="text-sm font-medium truncate shrink-0 max-w-[55%]">
+                                      {item.expression}
+                                    </span>
+                                    {item.translation_es && (
+                                      <>
+                                        <span className="text-[10px] text-muted-foreground shrink-0">
+                                          ·
+                                        </span>
+                                        <span className="text-xs text-primary font-medium truncate">
+                                          {item.translation_es}
+                                        </span>
+                                      </>
+                                    )}
+                                    {canOpen && (
+                                      <ChevronDown
+                                        className={cn(
+                                          "h-3 w-3 shrink-0 self-center text-muted-foreground transition-transform",
+                                          isOpen && "rotate-180"
+                                        )}
+                                      />
+                                    )}
+                                  </button>
+
+                                  {item.timestamp_seconds !== null &&
+                                    (hasPlayer ? (
+                                      <button
+                                        onClick={() => {
+                                          playerRef.current?.seekTo(
+                                            item.timestamp_seconds!
+                                          );
+                                          onActivity();
+                                        }}
+                                        title="Volver a ese momento"
+                                        className="text-[10px] text-muted-foreground tabular-nums shrink-0 hover:text-primary transition-colors"
+                                      >
+                                        {formatClock(item.timestamp_seconds)}
+                                      </button>
+                                    ) : (
+                                      <span className="text-[10px] text-muted-foreground tabular-nums shrink-0">
+                                        {formatClock(item.timestamp_seconds)}
+                                      </span>
+                                    ))}
+                                </div>
+
+                                {!item.is_new && (
+                                  <span className="text-[10px] text-violet-500 flex items-center gap-1 px-3 pb-2 -mt-1">
+                                    <Eye className="h-2.5 w-2.5" />
+                                    ya la tenías
                                   </span>
                                 )}
+
+                                {isOpen && (
+                                  <div className="px-3 pb-2.5 pt-2 space-y-1.5 border-t border-border/40">
+                                    {sense && (
+                                      <p className="text-[11px] leading-relaxed">
+                                        {sense}
+                                      </p>
+                                    )}
+                                    {item.meaning &&
+                                      item.meaning_es &&
+                                      item.meaning !== item.meaning_es && (
+                                        <p className="text-[11px] leading-relaxed text-muted-foreground italic">
+                                          {item.meaning}
+                                        </p>
+                                      )}
+                                    {item.context && (
+                                      <p className="text-[11px] text-muted-foreground italic border-l-2 border-primary/30 pl-2">
+                                        “{item.context}”
+                                      </p>
+                                    )}
+                                  </div>
+                                )}
                               </div>
-                              {!item.is_new && (
-                                <span className="text-[10px] text-violet-500 flex items-center gap-1 mt-0.5">
-                                  <Eye className="h-2.5 w-2.5" />
-                                  ya la tenías
-                                </span>
-                              )}
-                            </button>
-                          ))}
+                            );
+                          })}
                       </div>
                     )}
                   </div>
