@@ -713,6 +713,374 @@ export type Database = {
           },
         ]
       }
+      learning_goals: {
+        Row: {
+          created_at: string
+          daily_minutes_target: number
+          emoji: string
+          id: string
+          is_active: boolean
+          level_current: string | null
+          level_target: string | null
+          north_star: string | null
+          topic: string
+          updated_at: string
+          user_id: string
+          weekly_days_target: number
+        }
+        Insert: {
+          created_at?: string
+          daily_minutes_target?: number
+          emoji?: string
+          id?: string
+          is_active?: boolean
+          level_current?: string | null
+          level_target?: string | null
+          north_star?: string | null
+          topic: string
+          updated_at?: string
+          user_id: string
+          weekly_days_target?: number
+        }
+        Update: {
+          created_at?: string
+          daily_minutes_target?: number
+          emoji?: string
+          id?: string
+          is_active?: boolean
+          level_current?: string | null
+          level_target?: string | null
+          north_star?: string | null
+          topic?: string
+          updated_at?: string
+          user_id?: string
+          weekly_days_target?: number
+        }
+        Relationships: []
+      }
+      learning_item_sightings: {
+        Row: {
+          context: string | null
+          created_at: string
+          id: string
+          item_id: string
+          session_id: string | null
+          timestamp_seconds: number | null
+          user_id: string
+        }
+        Insert: {
+          context?: string | null
+          created_at?: string
+          id?: string
+          item_id: string
+          session_id?: string | null
+          timestamp_seconds?: number | null
+          user_id: string
+        }
+        Update: {
+          context?: string | null
+          created_at?: string
+          id?: string
+          item_id?: string
+          session_id?: string | null
+          timestamp_seconds?: number | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "learning_item_sightings_item_id_fkey"
+            columns: ["item_id"]
+            isOneToOne: false
+            referencedRelation: "learning_items"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "learning_item_sightings_session_id_fkey"
+            columns: ["session_id"]
+            isOneToOne: false
+            referencedRelation: "learning_sessions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      learning_items: {
+        Row: {
+          created_at: string
+          expression: string
+          first_session_id: string | null
+          goal_id: string
+          id: string
+          item_type: string
+          last_seen_at: string
+          mastery: string
+          meaning: string | null
+          meaning_es: string | null
+          my_sentence: string | null
+          normalized: string
+          times_seen: number
+          translation_es: string | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          expression: string
+          first_session_id?: string | null
+          goal_id: string
+          id?: string
+          item_type?: string
+          last_seen_at?: string
+          mastery?: string
+          meaning?: string | null
+          meaning_es?: string | null
+          my_sentence?: string | null
+          normalized: string
+          times_seen?: number
+          translation_es?: string | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          expression?: string
+          first_session_id?: string | null
+          goal_id?: string
+          id?: string
+          item_type?: string
+          last_seen_at?: string
+          mastery?: string
+          meaning?: string | null
+          meaning_es?: string | null
+          my_sentence?: string | null
+          normalized?: string
+          times_seen?: number
+          translation_es?: string | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "learning_items_first_session_id_fkey"
+            columns: ["first_session_id"]
+            isOneToOne: false
+            referencedRelation: "learning_sessions"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "learning_items_goal_id_fkey"
+            columns: ["goal_id"]
+            isOneToOne: false
+            referencedRelation: "learning_goals"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      learning_sessions: {
+        Row: {
+          comp_details: number | null
+          comp_explain: number | null
+          comp_main_idea: number | null
+          comp_subtitles: number | null
+          consumed_seconds: number
+          content_author: string | null
+          content_duration_seconds: number | null
+          content_thumbnail: string | null
+          content_title: string | null
+          content_type: string
+          content_url: string | null
+          created_at: string
+          difficulty: string | null
+          effective_seconds: number
+          elapsed_seconds: number | null
+          ended_at: string | null
+          external_id: string | null
+          goal_id: string
+          id: string
+          last_heartbeat_at: string | null
+          last_position_seconds: number
+          last_resumed_at: string | null
+          main_idea_text: string | null
+          pause_count: number
+          started_at: string
+          status: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          comp_details?: number | null
+          comp_explain?: number | null
+          comp_main_idea?: number | null
+          comp_subtitles?: number | null
+          consumed_seconds?: number
+          content_author?: string | null
+          content_duration_seconds?: number | null
+          content_thumbnail?: string | null
+          content_title?: string | null
+          content_type?: string
+          content_url?: string | null
+          created_at?: string
+          difficulty?: string | null
+          effective_seconds?: number
+          elapsed_seconds?: number | null
+          ended_at?: string | null
+          external_id?: string | null
+          goal_id: string
+          id?: string
+          last_heartbeat_at?: string | null
+          last_position_seconds?: number
+          last_resumed_at?: string | null
+          main_idea_text?: string | null
+          pause_count?: number
+          started_at?: string
+          status?: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          comp_details?: number | null
+          comp_explain?: number | null
+          comp_main_idea?: number | null
+          comp_subtitles?: number | null
+          consumed_seconds?: number
+          content_author?: string | null
+          content_duration_seconds?: number | null
+          content_thumbnail?: string | null
+          content_title?: string | null
+          content_type?: string
+          content_url?: string | null
+          created_at?: string
+          difficulty?: string | null
+          effective_seconds?: number
+          elapsed_seconds?: number | null
+          ended_at?: string | null
+          external_id?: string | null
+          goal_id?: string
+          id?: string
+          last_heartbeat_at?: string | null
+          last_position_seconds?: number
+          last_resumed_at?: string | null
+          main_idea_text?: string | null
+          pause_count?: number
+          started_at?: string
+          status?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "learning_sessions_goal_id_fkey"
+            columns: ["goal_id"]
+            isOneToOne: false
+            referencedRelation: "learning_goals"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      learning_queue: {
+        Row: {
+          content_author: string | null
+          content_duration_seconds: number | null
+          content_thumbnail: string | null
+          content_title: string | null
+          content_type: string
+          content_url: string | null
+          created_at: string
+          external_id: string | null
+          goal_id: string
+          id: string
+          note: string | null
+          session_id: string | null
+          updated_at: string
+          user_id: string
+          watched_at: string | null
+        }
+        Insert: {
+          content_author?: string | null
+          content_duration_seconds?: number | null
+          content_thumbnail?: string | null
+          content_title?: string | null
+          content_type?: string
+          content_url?: string | null
+          created_at?: string
+          external_id?: string | null
+          goal_id: string
+          id?: string
+          note?: string | null
+          session_id?: string | null
+          updated_at?: string
+          user_id: string
+          watched_at?: string | null
+        }
+        Update: {
+          content_author?: string | null
+          content_duration_seconds?: number | null
+          content_thumbnail?: string | null
+          content_title?: string | null
+          content_type?: string
+          content_url?: string | null
+          created_at?: string
+          external_id?: string | null
+          goal_id?: string
+          id?: string
+          note?: string | null
+          session_id?: string | null
+          updated_at?: string
+          user_id?: string
+          watched_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "learning_queue_goal_id_fkey"
+            columns: ["goal_id"]
+            isOneToOne: false
+            referencedRelation: "learning_goals"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "learning_queue_session_id_fkey"
+            columns: ["session_id"]
+            isOneToOne: false
+            referencedRelation: "learning_sessions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      learning_transcripts: {
+        Row: {
+          created_at: string
+          cue_count: number
+          cues: Json
+          external_id: string
+          id: string
+          lang: string
+          source: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          cue_count?: number
+          cues: Json
+          external_id: string
+          id?: string
+          lang?: string
+          source?: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          cue_count?: number
+          cues?: Json
+          external_id?: string
+          id?: string
+          lang?: string
+          source?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       monthly_budgets: {
         Row: {
           created_at: string | null
@@ -1192,6 +1560,20 @@ export type Database = {
       calculate_distance_km: {
         Args: { lat1: number; lat2: number; lon1: number; lon2: number }
         Returns: number
+      }
+      capture_learning_expression: {
+        Args: {
+          p_context?: string
+          p_expression: string
+          p_goal_id: string
+          p_item_type?: string
+          p_meaning?: string
+          p_meaning_es?: string
+          p_session_id: string
+          p_timestamp_seconds?: number
+          p_translation_es?: string
+        }
+        Returns: Json
       }
       get_next_billing_date: {
         Args: { p_billing_day: number; p_from_date?: string }
