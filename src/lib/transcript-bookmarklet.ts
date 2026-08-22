@@ -12,16 +12,45 @@
 // el panel, espera a que cargue, lo lee y lo deja en el portapapeles con el
 // formato que Rindo ya sabe leer.
 //
+// ── Los dos paneles ─────────────────────────────────────────
+//
+// YouTube está migrando el panel de transcripción y hoy conviven dos, elegidos
+// por video (no por cuenta ni por navegador), así que uno se topa con los dos
+// el mismo día:
+//
+//   · el viejo, Polymer: panel `engagement-panel-searchable-transcript` con
+//     líneas `ytd-transcript-segment-renderer`.
+//   · el nuevo, Lit: panel `PAmodern_transcript_view` con líneas
+//     `transcript-segment-view-model` y clases `ytw…`.
+//
+// Eso explica el "funciona en algunos videos y en otros no": el marcador solo
+// conocía las líneas viejas. Y no bastaba con sumar el selector nuevo, porque
+// el panel nuevo trae dos trampas más:
+//
+//   1. No hay saltos de línea. El viejo dejaba "0:44\ntexto" en textContent;
+//      el nuevo lo pega todo, y además intercala una etiqueta invisible para
+//      lectores de pantalla ("44 segundos"), así que leer por líneas daba
+//      "0:4444 segundostexto" y no matcheaba ninguna marca de tiempo.
+//   2. YouTube deja paneles duplicados y ocultos en el DOM con el mismo texto
+//      dentro. Leerlos todos duplicaba la transcripción entera.
+//
+// Por eso las líneas se leen por estructura (marca de tiempo + lo visible)
+// y solo desde el panel que está realmente en pantalla.
+//
 // CUIDADO al editar SOURCE: se colapsa a una sola línea para meterlo en la
 // URL, así que NO puede contener comentarios `//` (comentarían el resto del
-// programa) ni saltos de línea significativos. El test de abajo lo verifica.
+// programa) ni saltos de línea significativos. Para comentar algo ahí dentro
+// se usan bloques `/* … */`, que sobreviven al colapso. minify() lo verifica.
 
 const SOURCE = `
 (async () => {
   const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+  const SEGMENTS = 'ytd-transcript-segment-renderer, transcript-segment-view-model';
   const PANEL = 'ytd-engagement-panel-section-list-renderer';
-  const TARGET = 'engagement-panel-searchable-transcript';
   const STAMP = /^\\d{1,2}:\\d{2}(:\\d{2})?$/;
+  const OPEN = /mostrar transcripci|ver transcripci|show transcript/i;
+  const SHUT = /cerrar|ocultar|close|hide/i;
+  const TAB = /transcripci|transcript/i;
 
   const toast = (msg, bad) => {
     const el = document.createElement('div');
@@ -31,7 +60,56 @@ const SOURCE = `
     setTimeout(() => el.remove(), 5000);
   };
 
-  const panelOf = () => [...document.querySelectorAll(PANEL)].find((p) => (p.getAttribute('target-id') || '') === TARGET);
+  const label = (el) => ((el.getAttribute('aria-label') || '') + ' ' + (el.textContent || '')).replace(/\\s+/g, ' ').trim();
+
+  /* Solo las líneas del panel que está en pantalla: YouTube deja paneles
+     duplicados y ocultos con el mismo texto, y leerlos todos la duplica. */
+  const segments = () => [...document.querySelectorAll(SEGMENTS)].filter((s) => s.offsetParent !== null);
+
+  /* En el panel nuevo lo clickeable suele ser un botón adentro del chip. */
+  const press = (el) => {
+    const target = el.querySelector('button, a, [role="button"], [role="tab"]') || el;
+    target.click();
+  };
+
+  /* La lista se pide recién cuando entra en viewport, así que si quedó un
+     continuation pendiente hay que asomarlo para que YouTube la traiga. */
+  const waitForSegments = async (tries) => {
+    for (let i = 0; i < tries; i++) {
+      if (segments().length) return true;
+      const more = document.querySelector('ytd-continuation-item-renderer');
+      if (more) more.scrollIntoView({ block: 'center' });
+      await sleep(500);
+    }
+    return segments().length > 0;
+  };
+
+  /* Lee una línea sin depender de las clases de YouTube: la marca de tiempo es
+     el primer descendiente cuyo texto es exactamente una marca, y el texto es
+     todo lo demás menos lo que está solo para lectores de pantalla. */
+  const read = (el) => {
+    const all = [...el.querySelectorAll('*')];
+    const stampEl = all.find((c) => STAMP.test((c.textContent || '').trim()));
+    if (!stampEl) return null;
+
+    const laidOut = el.offsetWidth > 0 || el.offsetHeight > 0;
+    const skip = [stampEl];
+    for (const c of all) {
+      if (c === stampEl || !(c.textContent || '').trim()) continue;
+      const cls = typeof c.className === 'string' ? c.className : '';
+      const invisible = laidOut && c.offsetWidth <= 1 && c.offsetHeight <= 1;
+      if (invisible || /a11y|screenreader|visuallyhidden/i.test(cls)) skip.push(c);
+    }
+
+    skip.forEach((n) => n.setAttribute('data-rindo-skip', ''));
+    const copy = el.cloneNode(true);
+    skip.forEach((n) => n.removeAttribute('data-rindo-skip'));
+    copy.querySelectorAll('[data-rindo-skip]').forEach((n) => n.remove());
+
+    const text = (copy.textContent || '').replace(/\\s+/g, ' ').trim();
+    if (!text) return null;
+    return (stampEl.textContent || '').trim() + '\\n' + text;
+  };
 
   try {
     if (!location.href.includes('/watch')) {
@@ -41,49 +119,45 @@ const SOURCE = `
 
     toast('Buscando los subtitulos...');
 
-    let panel = panelOf();
-    if (!panel || panel.getAttribute('visibility') !== 'ENGAGEMENT_PANEL_VISIBILITY_EXPANDED') {
+    if (!segments().length) {
       const expand = document.querySelector('#expand');
       if (expand) expand.click();
       await sleep(700);
-      const btn = [...document.querySelectorAll('button')].find((b) => /transcript|transcripci/i.test((b.getAttribute('aria-label') || '') + ' ' + (b.textContent || '')));
+      const btn = [...document.querySelectorAll('button')].filter((b) => OPEN.test(label(b)) && !SHUT.test(label(b)))[0];
       if (!btn) {
         toast('Este video no tiene transcripcion disponible', true);
         return;
       }
-      btn.click();
+      press(btn);
       await sleep(1000);
-      panel = panelOf();
     }
 
-    if (!panel) {
-      toast('No pude abrir el panel de transcripcion', true);
-      return;
+    /* Algunos videos abren el panel en la pestaña "Capítulos": hay que pasar
+       a la de transcripción, que según el video es un chip o una tab. */
+    if (!(await waitForSegments(20))) {
+      const open = [...document.querySelectorAll(PANEL)].filter((p) => (p.getAttribute('visibility') || '').includes('EXPANDED'));
+      for (const panel of open) {
+        const tab = [...panel.querySelectorAll('chip-view-model, chip-shape, [role="tab"], tp-yt-paper-tab, yt-tab-shape')].filter((el) => TAB.test(el.textContent || '')).pop();
+        if (!tab) continue;
+        press(tab);
+        if (await waitForSegments(20)) break;
+      }
     }
 
-    const tab = [...panel.querySelectorAll('[role="tab"], tp-yt-paper-tab, yt-tab-shape, button')].filter((el) => /transcripci|transcript/i.test(el.textContent || '')).pop();
-    if (tab) {
-      tab.click();
-      await sleep(600);
-    }
-
-    let segs = [];
-    for (let i = 0; i < 40; i++) {
-      segs = [...panel.querySelectorAll('ytd-transcript-segment-renderer')];
-      if (segs.length) break;
-      await sleep(500);
-    }
-
+    const segs = segments();
     if (!segs.length) {
       toast('La transcripcion no alcanzo a cargar, reintenta', true);
       return;
     }
 
     const rows = [];
+    const seen = new Set();
     for (const s of segs) {
-      const parts = (s.textContent || '').split('\\n').map((x) => x.trim()).filter(Boolean);
-      if (parts.length < 2 || !STAMP.test(parts[0])) continue;
-      rows.push(parts[0] + '\\n' + parts.slice(1).join(' '));
+      const row = read(s);
+      if (row && !seen.has(row)) {
+        seen.add(row);
+        rows.push(row);
+      }
     }
 
     if (!rows.length) {
@@ -99,7 +173,7 @@ const SOURCE = `
 })();
 `;
 
-/** Una sola línea, sin comentarios, lista para ir en la URL. */
+/** Una sola línea, sin comentarios de línea, lista para ir en la URL. */
 function minify(source: string): string {
   const flat = source
     .split("\n")
@@ -110,7 +184,7 @@ function minify(source: string): string {
   if (flat.includes("//")) {
     throw new Error(
       "El bookmarklet no puede contener comentarios `//`: al ir en una sola " +
-        "línea comentarían el resto del programa."
+        "línea comentarían el resto del programa. Usa bloques `/* … */`."
     );
   }
 
