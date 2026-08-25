@@ -211,7 +211,7 @@ export function TranscriptHelpDialog({
           className="w-full h-12 text-base font-semibold rounded-xl"
         >
           <ClipboardPaste className="h-5 w-5 mr-2" />
-          Ya lo apreté — pegar acá
+          Pegar los subtítulos
         </Button>
       }
     >
@@ -253,7 +253,7 @@ export function TranscriptHelpDialog({
 
           <Step n={2} title="Aprieta el marcador «Subtítulos → Rindo»" />
 
-          <Step n={3} title="Vuelve acá y pega con el botón de abajo" />
+          <Step n={3} title="Vuelve acá y pégalos" />
         </div>
 
         {done && (
