@@ -1,5 +1,5 @@
 import { useMemo } from "react";
-import { format, parseISO, startOfWeek } from "date-fns";
+import { format, parseISO, subDays } from "date-fns";
 import { es } from "date-fns/locale";
 import {
   Area,
@@ -15,89 +15,105 @@ import {
   ZAxis,
 } from "recharts";
 import { cn } from "@/lib/utils";
-import { ArrowDown, ArrowUp, Minus } from "lucide-react";
+import { ArrowDown, ArrowUp, Flame, Minus, MoveUpRight } from "lucide-react";
 import { CHART_COLORS, CHART_TOOLTIP_STYLE } from "@/lib/chart-config";
-import { MAX_COMPREHENSION, formatDuration } from "@/lib/learning-config";
 import {
-  bandOf,
-  formatRank,
-  median,
-  FREQUENCY_LIST_SIZE,
-  type Band,
-} from "@/lib/corpus";
-import type { LearningStats, PeriodStats } from "@/hooks/useLearningStats";
+  MAX_COMPREHENSION,
+  comprehensionScore,
+  formatDuration,
+  youTubeWatchUrl,
+} from "@/lib/learning-config";
+import { bandOf, formatRank, median } from "@/lib/corpus";
+import {
+  FORM_PROJECTION_DAYS,
+  computeForm,
+  formState,
+  projectForm,
+  projectFormAtPace,
+  stopRate,
+  trendOf,
+} from "@/lib/progress";
+import type { LearningStats } from "@/hooks/useLearningStats";
+import type { SessionWithItemCount } from "@/hooks/useLearningSessions";
 import type { LearningItem } from "@/hooks/useLearningItems";
 import type { Corpus } from "@/hooks/useCorpus";
+import type { LearningGoal } from "@/hooks/useLearningGoals";
 import { BandComposition } from "./BandComposition";
 
 interface LearningProgressProps {
   stats: LearningStats;
+  sessions: SessionWithItemCount[];
   items: LearningItem[];
   corpus: Corpus;
+  goal: LearningGoal;
 }
 
-/** Una palabra capturada, ubicada en el tiempo y en el ranking del inglés. */
-interface Point {
-  time: number;
-  rank: number;
-  word: string;
-  band: Band;
+/** Un video terminado, con todo lo que se puede comparar contra los otros. */
+interface SessionPoint {
+  id: string;
+  externalId: string | null;
+  title: string;
+  date: string;
+  comprehension: number | null;
+  /** 0–100: cuánto del video está fuera de las mil palabras más usadas. */
+  difficulty: number | null;
+  stops: number;
+  /** Frenos por cada diez minutos de contenido. */
+  rate: number | null;
+  order: number;
 }
 
-export function LearningProgress({ stats, items, corpus }: LearningProgressProps) {
-  const { last30, previous30 } = stats;
-
-  const points = useMemo<Point[]>(() => {
-    if (!corpus.isReady) return [];
-    return items
-      .map((item) => {
-        const rank = corpus.rankOf(item.expression);
-        if (rank === null) return null;
-        return {
-          time: new Date(item.created_at).getTime(),
-          rank,
-          word: item.expression,
-          band: bandOf(rank),
-        };
-      })
-      .filter((p): p is Point => p !== null)
-      .sort((a, b) => a.time - b.time);
-  }, [items, corpus]);
-
-  /** La mediana semanal: la línea que debería subir con los meses. */
-  const weekly = useMemo(() => {
-    const byWeek = new Map<number, number[]>();
-    for (const point of points) {
-      const key = startOfWeek(point.time, { weekStartsOn: 1 }).getTime();
-      byWeek.set(key, [...(byWeek.get(key) ?? []), point.rank]);
-    }
-    return [...byWeek.entries()]
-      .map(([time, ranks]) => ({ time, rank: median(ranks) ?? 0 }))
-      .sort((a, b) => a.time - b.time);
-  }, [points]);
-
-  const overallMedian = useMemo(
-    () => median(points.map((p) => p.rank)),
-    [points]
+export function LearningProgress({
+  stats,
+  sessions,
+  items,
+  corpus,
+  goal,
+}: LearningProgressProps) {
+  /** Las sesiones en orden cronológico, cruzadas con el corpus. */
+  const points = useMemo<SessionPoint[]>(
+    () =>
+      [...sessions]
+        .reverse()
+        .map((session, index) => {
+          const video = corpus.videoOf(session.external_id);
+          return {
+            id: session.id,
+            externalId: session.external_id,
+            title: session.content_title ?? video?.title ?? "Sesión",
+            date: session.started_at,
+            comprehension: comprehensionScore(session),
+            difficulty: video?.difficulty ?? null,
+            stops: session.new_item_count,
+            rate: stopRate(session.new_item_count, session.consumed_seconds),
+            order: index,
+          };
+        }),
+    [sessions, corpus]
   );
 
-  /** Cuánto se movió la banda entre la primera mitad y la segunda. */
-  const shift = useMemo(() => {
-    if (points.length < 8) return null;
-    const half = Math.floor(points.length / 2);
-    const before = median(points.slice(0, half).map((p) => p.rank));
-    const after = median(points.slice(half).map((p) => p.rank));
-    if (before === null || after === null || before === 0) return null;
-    return { before, after, delta: (after - before) / before };
-  }, [points]);
+  const rankedCaptures = useMemo(
+    () =>
+      items
+        .map((item) => ({
+          word: item.expression,
+          rank: corpus.rankOf(item.expression),
+          date: item.created_at,
+        }))
+        .filter((x): x is { word: string; rank: number; date: string } =>
+          x.rank !== null
+        )
+        .sort((a, b) => a.date.localeCompare(b.date)),
+    [items, corpus]
+  );
 
-  const hasCorpus = corpus.isReady && corpus.totalTokens > 0;
+  const hasAnything = sessions.length > 0 || rankedCaptures.length > 0;
 
-  if (stats.allTime.sessionCount === 0 && !hasCorpus) {
+  if (!hasAnything) {
     return (
       <div className="rounded-2xl border border-dashed border-border/60 p-10 text-center">
         <p className="text-sm text-muted-foreground">
-          El progreso aparece cuando haya contenido que medir.
+          Termina un video y acá empieza a dibujarse tu trayectoria.
         </p>
       </div>
     );
@@ -105,484 +121,623 @@ export function LearningProgress({ stats, items, corpus }: LearningProgressProps
 
   return (
     <div className="space-y-4">
-      {/* ── Tu banda: la métrica madre ────────────────────── */}
-      {overallMedian !== null && (
-        <div className="rounded-2xl border border-border/60 bg-card p-5">
-          <p className="text-xs text-muted-foreground uppercase tracking-wide font-medium">
-            Tu banda
-          </p>
+      <FormCard stats={stats} goal={goal} />
+      <LearningCurve points={points} />
 
-          <div className="flex items-end justify-between gap-4 mt-3">
-            <div>
-              <p className="text-4xl font-bold tabular-nums leading-none text-primary">
-                {formatRank(Math.round(overallMedian))}
-              </p>
-              <p className="text-[11px] text-muted-foreground mt-2 max-w-[22ch] leading-snug">
-                el puesto mediano de las palabras que te frenan
-              </p>
-            </div>
-
-            {shift && (
-              <div className="text-right">
-                <p
-                  className={cn(
-                    "text-sm font-bold tabular-nums flex items-center justify-end gap-1",
-                    shift.delta > 0.05 ? "text-emerald-500" : "text-muted-foreground"
-                  )}
-                >
-                  {shift.delta > 0.05 ? (
-                    <ArrowUp className="h-3.5 w-3.5" />
-                  ) : shift.delta < -0.05 ? (
-                    <ArrowDown className="h-3.5 w-3.5" />
-                  ) : (
-                    <Minus className="h-3.5 w-3.5" />
-                  )}
-                  {Math.abs(Math.round(shift.delta * 100))}%
-                </p>
-                <p className="text-[11px] text-muted-foreground mt-1">
-                  {formatRank(Math.round(shift.before))} →{" "}
-                  {formatRank(Math.round(shift.after))}
-                </p>
-              </div>
-            )}
-          </div>
-
-          <p className="text-[11px] text-muted-foreground leading-relaxed mt-4 pt-4 border-t border-border/50">
-            Cada palabra del inglés tiene un puesto en el ranking de uso.
-            Mientras más arriba llegue el puesto de las que todavía te frenan,
-            más inglés entiendes — y no depende de que declares nada.
-          </p>
-        </div>
-      )}
-
-      {/* ── El gráfico: cada captura, un punto ────────────── */}
-      {points.length >= 4 && (
-        <div className="rounded-2xl border border-border/60 bg-card p-5">
-          <div className="flex items-baseline justify-between gap-3">
-            <p className="text-xs text-muted-foreground uppercase tracking-wide font-medium">
-              Lo que te frena, en el tiempo
-            </p>
-            <span className="text-[10px] text-muted-foreground">
-              más arriba = más raro
-            </span>
-          </div>
-
-          <div className="h-56 mt-4 -ml-2">
-            <ResponsiveContainer width="100%" height="100%">
-              <ScatterChart margin={{ top: 8, right: 8, bottom: 0, left: 0 }}>
-                <CartesianGrid
-                  strokeDasharray="3 3"
-                  stroke={CHART_COLORS.grid}
-                  vertical={false}
-                  opacity={0.4}
-                />
-                <XAxis
-                  type="number"
-                  dataKey="time"
-                  domain={["dataMin - 86400000", "dataMax + 86400000"]}
-                  tick={{ fontSize: 11, fill: CHART_COLORS.mutedAxis }}
-                  axisLine={false}
-                  tickLine={false}
-                  tickFormatter={(value: number) =>
-                    format(new Date(value), "d MMM", { locale: es })
-                  }
-                />
-                <YAxis
-                  type="number"
-                  dataKey="rank"
-                  scale="log"
-                  domain={[100, FREQUENCY_LIST_SIZE]}
-                  ticks={[100, 1_000, 10_000]}
-                  tick={{ fontSize: 11, fill: CHART_COLORS.mutedAxis }}
-                  axisLine={false}
-                  tickLine={false}
-                  width={44}
-                  tickFormatter={(value: number) => formatRank(value)}
-                />
-                <ZAxis range={[70, 70]} />
-
-                {overallMedian !== null && (
-                  <ReferenceLine
-                    y={overallMedian}
-                    stroke={CHART_COLORS.mutedAxis}
-                    strokeDasharray="4 4"
-                    strokeWidth={1}
-                  />
-                )}
-
-                <Tooltip
-                  cursor={{ strokeDasharray: "3 3", stroke: CHART_COLORS.grid }}
-                  content={<PointTooltip />}
-                />
-
-                <Scatter
-                  name="Capturas"
-                  data={points}
-                  shape={(props: unknown) => <BandDot {...(props as DotProps)} />}
-                />
-
-                {weekly.length >= 2 && (
-                  <Scatter
-                    name="Mediana semanal"
-                    data={weekly}
-                    line={{ stroke: CHART_COLORS.investment, strokeWidth: 2 }}
-                    shape={() => <g />}
-                    legendType="none"
-                  />
-                )}
-              </ScatterChart>
-            </ResponsiveContainer>
-          </div>
-
-          <div className="flex flex-wrap items-center gap-x-3 gap-y-1 mt-3 pt-3 border-t border-border/50">
-            <span className="flex items-center gap-1.5 text-[11px] text-muted-foreground">
-              <span className="h-2 w-2 rounded-full bg-muted-foreground/50" />
-              cada punto es una palabra que capturaste
-            </span>
-            {weekly.length >= 2 && (
-              <span className="flex items-center gap-1.5 text-[11px] text-muted-foreground">
-                <span
-                  className="h-0.5 w-4 rounded-full"
-                  style={{ backgroundColor: CHART_COLORS.investment }}
-                />
-                mediana semanal
-              </span>
-            )}
-          </div>
-        </div>
-      )}
-
-      {/* ── De qué está hecho el inglés que consumes ──────── */}
-      {hasCorpus && (
-        <div className="rounded-2xl border border-border/60 bg-card p-5">
-          <div className="flex items-baseline justify-between gap-3">
-            <p className="text-xs text-muted-foreground uppercase tracking-wide font-medium">
-              El inglés que consumes
-            </p>
-            <span className="text-[11px] text-muted-foreground tabular-nums">
-              {corpus.totalTokens.toLocaleString("es-CL")} palabras ·{" "}
-              {corpus.distinctLemmas.toLocaleString("es-CL")} distintas
-            </span>
-          </div>
-
-          <BandComposition bandTokens={corpus.bandTokens} legend className="mt-4" />
-
-          <div className="space-y-2.5 mt-5 pt-4 border-t border-border/50">
-            {corpus.videos.slice(0, 6).map((video) => (
-              <div key={video.externalId}>
-                <div className="flex items-baseline justify-between gap-3">
-                  <p className="text-xs font-medium truncate">
-                    {video.title ?? video.externalId}
-                  </p>
-                  <span className="text-[10px] text-muted-foreground shrink-0 tabular-nums">
-                    {video.stops > 0
-                      ? `${video.stops} te frenaron`
-                      : `hasta ${video.hardestBand.label.toLowerCase()}`}
-                  </span>
-                </div>
-                <BandComposition
-                  bandTokens={video.bandTokens}
-                  size="sm"
-                  className="mt-1.5"
-                />
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
-
-      {/* ── El hábito ────────────────────────────────────── */}
-      <HabitCalendar stats={stats} />
-
-      {/* ── Comprensión, cuando haya con qué ──────────────── */}
-      {stats.comprehensionSeries.length >= 3 && (
-        <div className="rounded-2xl border border-border/60 bg-card p-5">
-          <div className="flex items-baseline justify-between gap-3">
-            <p className="text-xs text-muted-foreground uppercase tracking-wide font-medium">
-              Comprensión por sesión
-            </p>
-            {last30.comprehension !== null && (
-              <span className="text-sm font-bold tabular-nums text-primary">
-                {last30.comprehension.toFixed(1)}
-                <span className="text-primary/50">/{MAX_COMPREHENSION}</span>
-              </span>
-            )}
-          </div>
-
-          <div className="h-36 mt-4 -ml-2">
-            <ResponsiveContainer width="100%" height="100%">
-              <AreaChart
-                data={stats.comprehensionSeries.map((point, index) => ({
-                  index,
-                  ...point,
-                }))}
-                margin={{ top: 4, right: 4, bottom: 0, left: 0 }}
-              >
-                <defs>
-                  <linearGradient id="comprehensionFill" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="0%" stopColor={CHART_COLORS.investment} stopOpacity={0.28} />
-                    <stop offset="100%" stopColor={CHART_COLORS.investment} stopOpacity={0} />
-                  </linearGradient>
-                </defs>
-                <CartesianGrid
-                  strokeDasharray="3 3"
-                  stroke={CHART_COLORS.grid}
-                  vertical={false}
-                  opacity={0.4}
-                />
-                <XAxis dataKey="index" hide />
-                <YAxis
-                  domain={[0, MAX_COMPREHENSION]}
-                  ticks={[0, 6, 12]}
-                  tick={{ fontSize: 11, fill: CHART_COLORS.mutedAxis }}
-                  axisLine={false}
-                  tickLine={false}
-                  width={28}
-                />
-                <Tooltip
-                  contentStyle={CHART_TOOLTIP_STYLE}
-                  labelFormatter={(_, payload) => {
-                    const raw = payload?.[0]?.payload?.date;
-                    return raw
-                      ? format(parseISO(raw), "d 'de' MMMM", { locale: es })
-                      : "";
-                  }}
-                  formatter={(value: number) => [
-                    `${value} / ${MAX_COMPREHENSION}`,
-                    "Comprensión",
-                  ]}
-                />
-                <Area
-                  type="monotone"
-                  dataKey="score"
-                  stroke={CHART_COLORS.investment}
-                  strokeWidth={2}
-                  fill="url(#comprehensionFill)"
-                  dot={{ r: 2.5, strokeWidth: 0, fill: CHART_COLORS.investment }}
-                />
-              </AreaChart>
-            </ResponsiveContainer>
-          </div>
-        </div>
-      )}
-
-      {/* ── Contexto ─────────────────────────────────────── */}
-      <div className="rounded-2xl border border-border/60 bg-card p-5">
-        <p className="text-xs text-muted-foreground uppercase tracking-wide font-medium">
-          Últimos 30 días
-        </p>
-
-        <div className="divide-y divide-border/50 mt-2">
-          <TrendRow
-            label="Estudiando"
-            current={last30.effectiveSeconds || null}
-            previous={previous30.effectiveSeconds || null}
-            format={(v) => formatDuration(v)}
-          />
-          <TrendRow
-            label="Sesiones"
-            current={last30.sessionCount || null}
-            previous={previous30.sessionCount || null}
-            format={(v) => String(Math.round(v))}
-          />
-          <TrendRow
-            label="Palabras nuevas"
-            current={last30.newItems || null}
-            previous={previous30.newItems || null}
-            format={(v) => String(Math.round(v))}
-          />
-        </div>
+      <div className="grid gap-4 sm:grid-cols-2">
+        <BandTile captures={rankedCaptures} />
+        <StopRateTile points={points} />
       </div>
+
+      <SessionLedger points={points} corpus={corpus} />
     </div>
   );
 }
 
-// ── Piezas del gráfico ──────────────────────────────────────
+// ── 1. Forma ────────────────────────────────────────────────
 
-interface DotProps {
-  cx?: number;
-  cy?: number;
-  payload?: Point;
+const FORM_TONE = {
+  hot: "text-emerald-500",
+  good: "text-primary",
+  warm: "text-amber-500",
+  cold: "text-muted-foreground",
+} as const;
+
+/**
+ * La forma, a lo Strava.
+ *
+ * Es lo único de esta pantalla que empeora sola con el tiempo, y por eso es lo
+ * primero: mide constancia, no logros acumulados. Un mes bueno seguido de tres
+ * semanas sin abrir la app tiene que verse como lo que es.
+ */
+function FormCard({ stats, goal }: { stats: LearningStats; goal: LearningGoal }) {
+  const curve = useMemo(
+    () => computeForm(stats.dailyMinutes, goal.daily_minutes_target),
+    [stats.dailyMinutes, goal.daily_minutes_target]
+  );
+
+  const current = curve.at(-1)?.form ?? 0;
+  const weekAgo = curve.at(-8)?.form ?? 0;
+  const delta = current - weekAgo;
+  const state = formState(current, delta, stats.daysSinceLastSession);
+
+  // Arranca el gráfico en el primer día con actividad: 60 días planos en cero
+  // antes de tu primera sesión no son información.
+  const firstActive = curve.findIndex((p) => p.minutes > 0);
+  const history = firstActive === -1 ? curve.slice(-14) : curve.slice(Math.max(0, firstActive - 2));
+
+  const projection = useMemo(() => {
+    const last = history.at(-1);
+    if (!last) return [];
+    const lastDate = parseISO(last.date);
+    return Array.from({ length: FORM_PROJECTION_DAYS }, (_, i) => ({
+      date: format(subDays(lastDate, -(i + 1)), "yyyy-MM-dd"),
+      projected: projectForm(last.form, i + 1),
+      form: null as number | null,
+      minutes: 0,
+    }));
+  }, [history]);
+
+  const data = useMemo(
+    () => [
+      ...history.map((p) => ({ ...p, projected: null as number | null })),
+      // El primer punto proyectado repite el último real para que la línea
+      // punteada nazca pegada a la sólida y no flotando.
+      ...(history.length > 0
+        ? [{ ...history.at(-1)!, projected: history.at(-1)!.form }]
+        : []),
+      ...projection,
+    ],
+    [history, projection]
+  );
+
+  const inAWeek = projectForm(current, 7);
+  const inTwoWeeks = projectFormAtPace(current, 14);
+
+  return (
+    <div className="rounded-2xl border border-border/60 bg-card p-5">
+      <div className="flex items-start justify-between gap-4">
+        <div>
+          <p className="text-xs text-muted-foreground uppercase tracking-wide font-medium">
+            Forma
+          </p>
+          <div className="flex items-end gap-2.5 mt-2">
+            <p
+              className={cn(
+                "text-5xl font-bold tabular-nums leading-none",
+                FORM_TONE[state.tone]
+              )}
+            >
+              {Math.round(current)}
+            </p>
+            <div className="pb-1">
+              <p className="text-sm font-semibold leading-none">{state.label}</p>
+              <p className="text-[11px] text-muted-foreground mt-1">{state.hint}</p>
+            </div>
+          </div>
+        </div>
+
+        <div className="text-right shrink-0">
+          <p
+            className={cn(
+              "text-sm font-bold tabular-nums flex items-center justify-end gap-1",
+              delta > 0.5
+                ? "text-emerald-500"
+                : delta < -0.5
+                  ? "text-rose-500"
+                  : "text-muted-foreground"
+            )}
+          >
+            {delta > 0.5 ? (
+              <ArrowUp className="h-3.5 w-3.5" />
+            ) : delta < -0.5 ? (
+              <ArrowDown className="h-3.5 w-3.5" />
+            ) : (
+              <Minus className="h-3.5 w-3.5" />
+            )}
+            {Math.abs(Math.round(delta))}
+          </p>
+          <p className="text-[11px] text-muted-foreground mt-1">esta semana</p>
+          {stats.streakDays > 1 && (
+            <p className="flex items-center justify-end gap-1 text-primary mt-2">
+              <Flame className="h-3.5 w-3.5" />
+              <span className="text-sm font-bold tabular-nums">
+                {stats.streakDays}
+              </span>
+            </p>
+          )}
+        </div>
+      </div>
+
+      <div className="h-36 mt-5 -ml-2">
+        <ResponsiveContainer width="100%" height="100%">
+          <AreaChart data={data} margin={{ top: 4, right: 4, bottom: 0, left: 0 }}>
+            <defs>
+              <linearGradient id="formFill" x1="0" y1="0" x2="0" y2="1">
+                <stop offset="0%" stopColor={CHART_COLORS.income} stopOpacity={0.32} />
+                <stop offset="100%" stopColor={CHART_COLORS.income} stopOpacity={0} />
+              </linearGradient>
+            </defs>
+            <CartesianGrid
+              strokeDasharray="3 3"
+              stroke={CHART_COLORS.grid}
+              vertical={false}
+              opacity={0.35}
+            />
+            <XAxis
+              dataKey="date"
+              tick={{ fontSize: 10, fill: CHART_COLORS.mutedAxis }}
+              axisLine={false}
+              tickLine={false}
+              minTickGap={28}
+              tickFormatter={(value: string) =>
+                format(parseISO(value), "d MMM", { locale: es })
+              }
+            />
+            <YAxis
+              domain={[0, (max: number) => Math.max(110, max * 1.1)]}
+              ticks={[0, 50, 100]}
+              tick={{ fontSize: 10, fill: CHART_COLORS.mutedAxis }}
+              axisLine={false}
+              tickLine={false}
+              width={26}
+            />
+            <ReferenceLine
+              y={100}
+              stroke={CHART_COLORS.mutedAxis}
+              strokeDasharray="4 4"
+              strokeWidth={1}
+            />
+            <Tooltip
+              contentStyle={CHART_TOOLTIP_STYLE}
+              labelFormatter={(value: string) =>
+                format(parseISO(value), "d 'de' MMMM", { locale: es })
+              }
+              formatter={(value: number, name) => [
+                Math.round(value),
+                name === "projected" ? "Si no estudias" : "Forma",
+              ]}
+            />
+            <Area
+              type="monotone"
+              dataKey="form"
+              stroke={CHART_COLORS.income}
+              strokeWidth={2}
+              fill="url(#formFill)"
+              connectNulls={false}
+              dot={false}
+            />
+            <Area
+              type="monotone"
+              dataKey="projected"
+              stroke={CHART_COLORS.mutedAxis}
+              strokeWidth={1.5}
+              strokeDasharray="4 4"
+              fill="none"
+              connectNulls
+              dot={false}
+            />
+          </AreaChart>
+        </ResponsiveContainer>
+      </div>
+
+      <p className="text-[11px] text-muted-foreground leading-relaxed mt-3 pt-3 border-t border-border/50">
+        100 es cumplir tu meta de {goal.daily_minutes_target} min todos los días.{" "}
+        {current < 40
+          ? `Cumpliéndola a diario llegas a ${Math.round(inTwoWeeks)} en dos semanas.`
+          : `Si paras una semana caes a ${Math.round(inAWeek)}.`}
+      </p>
+
+      <HabitStrip stats={stats} />
+    </div>
+  );
 }
 
-/** Un punto pintado con el color de su banda de frecuencia. */
-function BandDot({ cx, cy, payload }: DotProps) {
+/** Los últimos 42 días, uno por cuadrito. Vive dentro de la tarjeta de forma. */
+function HabitStrip({ stats }: { stats: LearningStats }) {
+  const days = stats.dailyMinutes.slice(-42);
+  const max = Math.max(...days.map((d) => d.minutes), 1);
+
+  return (
+    <div className="flex items-end gap-[3px] mt-4">
+      {days.map((day) => {
+        const level = day.minutes === 0 ? 0 : Math.ceil((day.minutes / max) * 4);
+        return (
+          <span
+            key={day.date}
+            title={`${format(parseISO(day.date), "d 'de' MMMM", { locale: es })} — ${Math.round(day.minutes)} min`}
+            className={cn(
+              "h-2.5 flex-1 rounded-[2px] min-w-[3px]",
+              level === 0 && "bg-muted",
+              level === 1 && "bg-primary/30",
+              level === 2 && "bg-primary/50",
+              level === 3 && "bg-primary/75",
+              level >= 4 && "bg-primary"
+            )}
+          />
+        );
+      })}
+    </div>
+  );
+}
+
+// ── 2. La curva de aprendizaje ──────────────────────────────
+
+/**
+ * Comprensión contra dificultad, video a video.
+ *
+ * Es la única forma honesta que encontré de mostrar progreso con pocos datos:
+ * entender un video fácil no dice nada y entender poco de uno difícil tampoco.
+ * Lo que sí dice algo es el movimiento — mantener la comprensión mientras el
+ * contenido se pone más duro. Arriba y a la derecha.
+ */
+function LearningCurve({ points }: { points: SessionPoint[] }) {
+  const usable = points.filter(
+    (p) => p.comprehension !== null && p.difficulty !== null
+  );
+
+  const path = usable.map((p) => ({
+    ...p,
+    x: p.difficulty!,
+    y: p.comprehension!,
+    /** Los más nuevos van más opacos: el tiempo se lee sin eje. */
+    weight: 0.35 + (0.65 * (p.order + 1)) / Math.max(1, points.length),
+  }));
+
+  return (
+    <div className="rounded-2xl border border-border/60 bg-card p-5">
+      <div className="flex items-baseline justify-between gap-3">
+        <p className="text-xs text-muted-foreground uppercase tracking-wide font-medium">
+          Tu curva
+        </p>
+        <span className="flex items-center gap-1 text-[10px] text-muted-foreground">
+          <MoveUpRight className="h-3 w-3" />
+          arriba y a la derecha
+        </span>
+      </div>
+
+      {path.length === 0 ? (
+        <p className="text-sm text-muted-foreground py-8 text-center">
+          Necesito un video terminado y evaluado, con su transcripción pegada.
+        </p>
+      ) : (
+        <>
+          <div className="h-52 mt-4 -ml-2">
+            <ResponsiveContainer width="100%" height="100%">
+              <ScatterChart margin={{ top: 8, right: 12, bottom: 4, left: 0 }}>
+                <CartesianGrid
+                  strokeDasharray="3 3"
+                  stroke={CHART_COLORS.grid}
+                  opacity={0.35}
+                />
+                <XAxis
+                  type="number"
+                  dataKey="x"
+                  domain={[0, (max: number) => Math.max(25, Math.ceil(max * 1.2))]}
+                  tick={{ fontSize: 10, fill: CHART_COLORS.mutedAxis }}
+                  axisLine={false}
+                  tickLine={false}
+                  tickFormatter={(v: number) => `${Math.round(v)}%`}
+                  label={{
+                    value: "dificultad del video",
+                    position: "insideBottomRight",
+                    offset: -2,
+                    fontSize: 10,
+                    fill: CHART_COLORS.mutedAxis,
+                  }}
+                />
+                <YAxis
+                  type="number"
+                  dataKey="y"
+                  domain={[0, MAX_COMPREHENSION]}
+                  ticks={[0, 6, 12]}
+                  tick={{ fontSize: 10, fill: CHART_COLORS.mutedAxis }}
+                  axisLine={false}
+                  tickLine={false}
+                  width={26}
+                  label={{
+                    value: "entendiste",
+                    angle: -90,
+                    position: "insideLeft",
+                    offset: 14,
+                    fontSize: 10,
+                    fill: CHART_COLORS.mutedAxis,
+                  }}
+                />
+                <ZAxis range={[80, 80]} />
+                <ReferenceLine
+                  y={MAX_COMPREHENSION / 2}
+                  stroke={CHART_COLORS.mutedAxis}
+                  strokeDasharray="4 4"
+                  strokeWidth={1}
+                />
+                <Tooltip cursor={false} content={<CurveTooltip />} />
+                <Scatter
+                  data={path}
+                  line={
+                    path.length > 1
+                      ? { stroke: CHART_COLORS.investment, strokeWidth: 1.5 }
+                      : false
+                  }
+                  shape={(props: unknown) => <CurveDot {...(props as CurveDotProps)} />}
+                />
+              </ScatterChart>
+            </ResponsiveContainer>
+          </div>
+
+          <p className="text-[11px] text-muted-foreground leading-relaxed mt-3 pt-3 border-t border-border/50">
+            {path.length === 1
+              ? "Un punto no es una curva. Con el segundo video ya se ve para dónde vas."
+              : "Cada punto es un video: la dificultad es qué porcentaje de sus palabras está fuera de las mil más usadas del inglés. El punto más opaco es el más reciente."}
+          </p>
+        </>
+      )}
+    </div>
+  );
+}
+
+interface CurveDotProps {
+  cx?: number;
+  cy?: number;
+  payload?: SessionPoint & { weight: number };
+}
+
+function CurveDot({ cx, cy, payload }: CurveDotProps) {
   if (cx === undefined || cy === undefined || !payload) return null;
   return (
     <circle
       cx={cx}
       cy={cy}
-      r={5}
-      fill={payload.band.color}
-      // Anillo del color de la superficie: separa los puntos que se pisan.
+      r={6}
+      fill={CHART_COLORS.investment}
+      fillOpacity={payload.weight}
       stroke="var(--card)"
       strokeWidth={2}
     />
   );
 }
 
-function PointTooltip({
+function CurveTooltip({
   active,
   payload,
 }: {
   active?: boolean;
-  payload?: { payload: Point }[];
+  payload?: { payload: SessionPoint }[];
 }) {
   if (!active || !payload?.length) return null;
   const point = payload[0].payload;
-  if (!point.word) return null;
 
   return (
-    <div style={CHART_TOOLTIP_STYLE} className="text-xs">
-      <p className="font-semibold">{point.word}</p>
-      <p className="text-muted-foreground mt-0.5">
-        puesto {point.rank.toLocaleString("es-CL")} · {point.band.label}
+    <div style={CHART_TOOLTIP_STYLE} className="text-xs max-w-[220px]">
+      <p className="font-semibold line-clamp-2">{point.title}</p>
+      <p className="text-muted-foreground mt-1">
+        entendiste {point.comprehension}/{MAX_COMPREHENSION} · dificultad{" "}
+        {Math.round(point.difficulty ?? 0)}%
       </p>
       <p className="text-muted-foreground">
-        {format(new Date(point.time), "d 'de' MMMM", { locale: es })}
+        {point.stops} {point.stops === 1 ? "freno" : "frenos"} ·{" "}
+        {format(parseISO(point.date), "d MMM", { locale: es })}
       </p>
     </div>
   );
 }
 
-// ── El hábito, como calendario ──────────────────────────────
+// ── 3. Las dos baldosas ─────────────────────────────────────
 
-/** Cuántos minutos hacen falta para pintar el día en cada escalón. */
-const HEAT_STEPS = [1, 15, 30, 60];
-
-function HabitCalendar({ stats }: { stats: LearningStats }) {
-  const days = stats.dailyMinutes;
-  if (days.length === 0) return null;
-
-  const total = days.reduce((acc, d) => acc + d.minutes, 0);
-  if (total === 0 && stats.streakDays === 0) return null;
-
-  // Se dibuja por semanas: una columna por semana, un cuadro por día.
-  const weeks: (typeof days)[] = [];
-  const first = parseISO(days[0].date);
-  const offset = (first.getDay() + 6) % 7; // lunes = 0
-  let current: typeof days = Array.from({ length: offset }, () => ({
-    date: "",
-    minutes: -1,
-  }));
-
-  for (const day of days) {
-    current.push(day);
-    if (current.length === 7) {
-      weeks.push(current);
-      current = [];
-    }
-  }
-  if (current.length > 0) weeks.push(current);
-
-  const step = (minutes: number) => {
-    if (minutes < 0) return -1;
-    let level = 0;
-    for (const threshold of HEAT_STEPS) if (minutes >= threshold) level += 1;
-    return level;
-  };
+/** Tu banda: el puesto de lo que te frena, y si se está moviendo. */
+function BandTile({
+  captures,
+}: {
+  captures: { word: string; rank: number; date: string }[];
+}) {
+  const overall = median(captures.map((c) => c.rank));
+  const trend = trendOf(captures.map((c) => c.rank));
 
   return (
     <div className="rounded-2xl border border-border/60 bg-card p-5">
-      <div className="flex items-baseline justify-between gap-3">
-        <p className="text-xs text-muted-foreground uppercase tracking-wide font-medium">
-          El hábito
+      <p className="text-xs text-muted-foreground uppercase tracking-wide font-medium">
+        Tu banda
+      </p>
+
+      <div className="flex items-end justify-between gap-3 mt-2">
+        <p className="text-3xl font-bold tabular-nums leading-none text-primary">
+          {overall === null ? "—" : formatRank(Math.round(overall))}
         </p>
-        <span className="text-[11px] text-muted-foreground tabular-nums">
-          {formatDuration(total * 60)} en {days.length} días
-        </span>
-      </div>
-
-      <div className="flex gap-[3px] mt-4 overflow-x-auto no-scrollbar">
-        {weeks.map((week, weekIndex) => (
-          <div key={weekIndex} className="flex flex-col gap-[3px] shrink-0">
-            {week.map((day, dayIndex) => {
-              const level = step(day.minutes);
-              return (
-                <div
-                  key={`${weekIndex}-${dayIndex}`}
-                  title={
-                    level < 0
-                      ? undefined
-                      : `${format(parseISO(day.date), "d 'de' MMMM", { locale: es })} — ${Math.round(day.minutes)} min`
-                  }
-                  className={cn(
-                    "h-3 w-3 rounded-[3px]",
-                    level < 0 && "opacity-0",
-                    level === 0 && "bg-muted",
-                    level === 1 && "bg-primary/25",
-                    level === 2 && "bg-primary/50",
-                    level === 3 && "bg-primary/75",
-                    level === 4 && "bg-primary"
-                  )}
-                />
-              );
-            })}
-          </div>
-        ))}
-      </div>
-
-      <div className="flex items-center justify-end gap-1.5 mt-3">
-        <span className="text-[10px] text-muted-foreground">menos</span>
-        {["bg-muted", "bg-primary/25", "bg-primary/50", "bg-primary/75", "bg-primary"].map(
-          (tone) => (
-            <span key={tone} className={cn("h-2.5 w-2.5 rounded-[3px]", tone)} />
-          )
+        {trend && (
+          <p
+            className={cn(
+              "text-xs font-bold tabular-nums flex items-center gap-0.5",
+              trend.delta > 0 ? "text-emerald-500" : "text-muted-foreground"
+            )}
+          >
+            {trend.delta > 0 ? (
+              <ArrowUp className="h-3 w-3" />
+            ) : (
+              <ArrowDown className="h-3 w-3" />
+            )}
+            {formatRank(Math.round(trend.first))} →{" "}
+            {formatRank(Math.round(trend.last))}
+          </p>
         )}
-        <span className="text-[10px] text-muted-foreground">más</span>
       </div>
+
+      {/* Cada captura, ubicada en el ranking. Se lee con un punto o con cien. */}
+      {captures.length > 0 && (
+        <div className="relative h-10 mt-4">
+          <div className="absolute inset-x-0 top-1/2 h-px bg-border" />
+          {captures.map((capture) => {
+            // Escala logarítmica: del puesto 100 al 50.000 hay tres órdenes de
+            // magnitud, y lineal apretaría todo contra la izquierda.
+            const left =
+              (Math.log10(Math.max(100, capture.rank)) - 2) / (Math.log10(50_000) - 2);
+            return (
+              <span
+                key={`${capture.word}-${capture.date}`}
+                title={`${capture.word} — puesto ${capture.rank.toLocaleString("es-CL")}`}
+                style={{
+                  left: `${Math.min(98, Math.max(0, left * 100))}%`,
+                  backgroundColor: bandOf(capture.rank).color,
+                }}
+                className="absolute top-1/2 -translate-y-1/2 h-2.5 w-2.5 rounded-full ring-2 ring-card"
+              />
+            );
+          })}
+          {overall !== null && (
+            <span
+              style={{
+                left: `${Math.min(98, Math.max(0, ((Math.log10(Math.max(100, overall)) - 2) / (Math.log10(50_000) - 2)) * 100))}%`,
+              }}
+              className="absolute top-0 bottom-0 w-px bg-primary"
+            />
+          )}
+        </div>
+      )}
+
+      <p className="text-[11px] text-muted-foreground leading-snug mt-2">
+        Más a la derecha, palabras más raras. La línea es tu mediana; sube
+        cuando dejan de frenarte las comunes.
+      </p>
     </div>
   );
 }
 
-// ── Una métrica con su comparación ──────────────────────────
-
-function TrendRow({
-  label,
-  current,
-  previous,
-  format: fmt,
-}: {
-  label: string;
-  current: number | null;
-  previous: number | null;
-  format: (v: number) => string;
-}) {
-  const hasBoth = current !== null && previous !== null;
-  const delta = hasBoth ? current - previous : null;
-  const isFlat = delta !== null && Math.abs(delta) < 0.05;
-  const improved = delta === null || isFlat ? null : delta > 0;
+/** Frenos por diez minutos: debería bajar aunque suba la dificultad. */
+function StopRateTile({ points }: { points: SessionPoint[] }) {
+  const rates = points
+    .map((p) => p.rate)
+    .filter((r): r is number => r !== null);
+  const last = rates.at(-1) ?? null;
+  const trend = trendOf(rates);
 
   return (
-    <div className="flex items-center justify-between gap-3 py-2.5">
-      <span className="text-sm font-medium">{label}</span>
+    <div className="rounded-2xl border border-border/60 bg-card p-5">
+      <p className="text-xs text-muted-foreground uppercase tracking-wide font-medium">
+        Frenos por 10 min
+      </p>
 
-      <div className="flex items-center gap-2 shrink-0">
-        {hasBoth && !isFlat && (
-          <span className="text-xs text-muted-foreground tabular-nums">
-            {fmt(previous)}
-            <span className="mx-1">→</span>
-          </span>
-        )}
-        <span className="text-sm font-bold tabular-nums">
-          {current !== null ? fmt(current) : "—"}
-        </span>
-        {improved !== null && (
-          <span
+      <div className="flex items-end justify-between gap-3 mt-2">
+        <p className="text-3xl font-bold tabular-nums leading-none">
+          {last === null ? "—" : last.toFixed(1)}
+        </p>
+        {trend && (
+          <p
             className={cn(
-              "flex items-center",
-              improved ? "text-emerald-500" : "text-muted-foreground"
+              "text-xs font-bold tabular-nums flex items-center gap-0.5",
+              trend.delta < 0 ? "text-emerald-500" : "text-muted-foreground"
             )}
           >
-            {improved ? (
-              <ArrowUp className="h-3.5 w-3.5" />
+            {trend.delta < 0 ? (
+              <ArrowDown className="h-3 w-3" />
             ) : (
-              <ArrowDown className="h-3.5 w-3.5" />
+              <ArrowUp className="h-3 w-3" />
             )}
-          </span>
+            {trend.first.toFixed(1)} → {trend.last.toFixed(1)}
+          </p>
         )}
-        {isFlat && <Minus className="h-3.5 w-3.5 text-muted-foreground" />}
       </div>
+
+      {/* Una barra por video, en orden. */}
+      {rates.length > 0 && (
+        <div className="flex items-end gap-1 h-10 mt-4">
+          {rates.map((rate, index) => (
+            <span
+              key={index}
+              title={`${rate.toFixed(1)} frenos / 10 min`}
+              style={{
+                height: `${Math.max(8, (rate / Math.max(...rates)) * 100)}%`,
+              }}
+              className="flex-1 rounded-[3px] bg-primary/60 min-w-[6px]"
+            />
+          ))}
+        </div>
+      )}
+
+      <p className="text-[11px] text-muted-foreground leading-snug mt-2">
+        Cuántas veces por diez minutos tuviste que parar. Solo significa algo
+        si seguiste capturando igual de seguido.
+      </p>
+    </div>
+  );
+}
+
+// ── 4. El libro de cuentas ──────────────────────────────────
+
+/** Cada video terminado, con lo que se puede comparar. Lo más nuevo arriba. */
+function SessionLedger({
+  points,
+  corpus,
+}: {
+  points: SessionPoint[];
+  corpus: Corpus;
+}) {
+  if (points.length === 0) return null;
+
+  return (
+    <div className="rounded-2xl border border-border/60 bg-card p-5">
+      <p className="text-xs text-muted-foreground uppercase tracking-wide font-medium">
+        Video por video
+      </p>
+
+      <div className="divide-y divide-border/50 mt-1">
+        {[...points].reverse().map((point) => {
+          const video = corpus.videoOf(point.externalId);
+          return (
+            <div key={point.id} className="py-3">
+              <div className="flex items-baseline justify-between gap-3">
+                <p className="text-sm font-medium truncate">
+                  {point.externalId ? (
+                    <a
+                      href={youTubeWatchUrl(point.externalId)}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="hover:text-primary transition-colors"
+                    >
+                      {point.title}
+                    </a>
+                  ) : (
+                    point.title
+                  )}
+                </p>
+                <span className="text-[10px] text-muted-foreground shrink-0 tabular-nums">
+                  {format(parseISO(point.date), "d MMM", { locale: es })}
+                </span>
+              </div>
+
+              <div className="flex items-center gap-3 mt-1.5 text-[11px] tabular-nums">
+                <span className="font-semibold text-primary">
+                  {point.comprehension ?? "—"}/{MAX_COMPREHENSION}
+                </span>
+                {point.difficulty !== null && (
+                  <span className="text-muted-foreground">
+                    dificultad {Math.round(point.difficulty)}%
+                  </span>
+                )}
+                <span className="text-muted-foreground">
+                  {point.stops} {point.stops === 1 ? "freno" : "frenos"}
+                </span>
+                {point.rate !== null && (
+                  <span className="text-muted-foreground">
+                    {point.rate.toFixed(1)}/10min
+                  </span>
+                )}
+              </div>
+
+              {video && (
+                <BandComposition
+                  bandTokens={video.bandTokens}
+                  size="sm"
+                  className="mt-2"
+                />
+              )}
+            </div>
+          );
+        })}
+      </div>
+
+      <p className="text-[11px] text-muted-foreground leading-relaxed mt-3 pt-3 border-t border-border/50">
+        La barra de cada video es de qué está hecho su inglés: de las mil
+        palabras más usadas a la izquierda, hasta las raras a la derecha.
+      </p>
     </div>
   );
 }

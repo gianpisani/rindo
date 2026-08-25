@@ -102,8 +102,20 @@ export default function Learning() {
     return map;
   }, [sessions, unfinished, queue]);
 
+  /**
+   * Lo escuchado de verdad: solo lo que tiene sesión. Tener la transcripción
+   * pegada no es haber escuchado nada.
+   */
+  const watchedIds = useMemo(() => {
+    const ids = new Set<string>();
+    for (const source of [...sessions, ...unfinished]) {
+      if (source.external_id) ids.add(source.external_id);
+    }
+    return ids;
+  }, [sessions, unfinished]);
+
   const stopped = useMemo(() => items.map((i) => i.expression), [items]);
-  const corpus = useCorpus(titles, stopped);
+  const corpus = useCorpus({ titles, watchedIds, stopped });
 
   // ── Acciones ──────────────────────────────────────────────
 
@@ -444,7 +456,13 @@ export default function Learning() {
           </TabsContent>
 
           <TabsContent value="progress" className="mt-4">
-            <LearningProgress stats={stats} items={items} corpus={corpus} />
+            <LearningProgress
+              stats={stats}
+              sessions={sessions}
+              items={items}
+              corpus={corpus}
+              goal={goal}
+            />
           </TabsContent>
         </Tabs>
       </div>

@@ -1,6 +1,7 @@
 import { useMemo } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { useQueries, useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
+import { fetchVideoOEmbed } from "@/lib/oembed";
 import type { Cue } from "@/lib/transcript";
 import {
   bandOf,
@@ -9,10 +10,10 @@ import {
   isOneEditAway,
   lemmatize,
   tokenize,
-  type Band,
   type BandKey,
   type RankLookup,
 } from "@/lib/corpus";
+import { lexicalDifficulty } from "@/lib/progress";
 import { useFrequencyList } from "./useFrequencyList";
 
 /** Un video del corpus, ya masticado. */
@@ -25,40 +26,12 @@ export interface CorpusVideo {
   distinct: number;
   /** Cuántas palabras dichas caen en cada banda de frecuencia. */
   bandTokens: Record<BandKey, number>;
-  /** La banda más rara que aporta al menos un 1% del video. */
-  hardestBand: Band;
+  /** 0–100: cuánto de lo dicho está fuera de las mil palabras más usadas. */
+  difficulty: number | null;
   /** Cuántas de tus capturas aparecen acá. */
   stops: number;
-}
-
-export interface Corpus {
-  isLoading: boolean;
-  /** Sin lista de frecuencias no hay bandas ni lemas: la UI se muestra sobria. */
-  isReady: boolean;
-  rank: RankLookup;
-
-  videoCount: number;
-  totalTokens: number;
-  distinctLemmas: number;
-  videos: CorpusVideo[];
-  /** Palabras dichas por banda, sumando todos los videos. */
-  bandTokens: Record<BandKey, number>;
-
-  /** Veces que una expresión aparece en todo lo que has visto. */
-  occurrences: (expression: string) => number;
-  /** En qué videos aparece. */
-  videosWith: (expression: string) => CorpusVideo[];
-  /** Puesto en el ranking de uso, para una palabra o una expresión. */
-  rankOf: (expression: string) => number | null;
-  /** Si no existe en inglés, la palabra real más parecida. */
-  suggestSpelling: (expression: string) => string | null;
-  /** Frases de tus propios videos donde se dice, con el minuto exacto. */
-  examples: (expression: string, limit?: number) => CorpusExample[];
-}
-
-interface TranscriptRow {
-  external_id: string;
-  cues: Cue[];
+  /** Lo viste (tiene sesión) o solo tienes la transcripción lista. */
+  watched: boolean;
 }
 
 /** Una frase real de tus videos donde se dice la expresión. */
@@ -67,6 +40,38 @@ export interface CorpusExample {
   title: string | null;
   seconds: number;
   text: string;
+}
+
+export interface Corpus {
+  isLoading: boolean;
+  /** Sin lista de frecuencias no hay bandas ni lemas: la UI se muestra sobria. */
+  isReady: boolean;
+  rank: RankLookup;
+
+  /** Lo que efectivamente escuchaste: videos con sesión. */
+  videos: CorpusVideo[];
+  /** Transcripciones listas de cosas que todavía no ves. */
+  upcoming: CorpusVideo[];
+  videoCount: number;
+  totalTokens: number;
+  distinctLemmas: number;
+  bandTokens: Record<BandKey, number>;
+
+  /** Veces que una expresión aparece en lo que ya escuchaste. */
+  occurrences: (expression: string) => number;
+  /** Veces que aparece en lo que tienes por ver: deuda futura. */
+  upcomingOccurrences: (expression: string) => number;
+  videosWith: (expression: string) => CorpusVideo[];
+  rankOf: (expression: string) => number | null;
+  suggestSpelling: (expression: string) => string | null;
+  examples: (expression: string, limit?: number) => CorpusExample[];
+  /** El video del corpus que corresponde a una sesión. */
+  videoOf: (externalId: string | null) => CorpusVideo | null;
+}
+
+interface TranscriptRow {
+  external_id: string;
+  cues: Cue[];
 }
 
 const emptyBands = (): Record<BandKey, number> => ({
@@ -98,34 +103,83 @@ function useTranscriptCorpus() {
 }
 
 /**
- * El corpus: todo el inglés que has escuchado, indexado.
+ * Títulos que no salen de ninguna tabla.
  *
- * Se arma entero en memoria porque es chico —diez videos son 22 mil palabras—
- * y porque tenerlo así permite responder al tiro "¿cuántas veces has oído
- * esta palabra?", que es la pregunta que vuelve útil al diccionario.
- *
- * @param titles  Título de cada video, si se conoce, para poder nombrarlos.
- * @param stopped Las expresiones que capturaste, para marcar dónde te frenaste.
+ * Pasa cuando borras la sesión o cuando pegaste la transcripción antes de
+ * encolar el video: queda el id de YouTube y nada más. Antes se mostraba el id
+ * pelado —"FylHa4_neOA"— que no le dice nada a nadie. YouTube devuelve el
+ * título por oEmbed sin pedir API key.
  */
-export function useCorpus(
-  titles: Map<string, string | null>,
-  stopped: string[]
-): Corpus {
+function useMissingTitles(ids: string[]) {
+  const results = useQueries({
+    queries: ids.map((id) => ({
+      queryKey: ["video-oembed", id],
+      staleTime: Infinity,
+      gcTime: Infinity,
+      retry: false,
+      queryFn: () => fetchVideoOEmbed(id),
+    })),
+  });
+
+  // Los títulos llegan de a uno; la firma cambia cuando se resuelve otro.
+  const signature = results.map((r) => r.data?.title ?? "").join("|");
+
+  return useMemo(() => {
+    const map = new Map<string, string>();
+    ids.forEach((id, index) => {
+      const title = results[index]?.data?.title;
+      if (title) map.set(id, title);
+    });
+    return map;
+  }, [ids, signature]); // eslint-disable-line react-hooks/exhaustive-deps
+}
+
+export interface CorpusInput {
+  /** Título conocido de cada video, de las sesiones y de la cola. */
+  titles: Map<string, string | null>;
+  /** Los videos que de verdad viste: los que tienen sesión. */
+  watchedIds: Set<string>;
+  /** Las expresiones que capturaste, para marcar dónde te frenaste. */
+  stopped: string[];
+}
+
+/**
+ * El corpus: el inglés que escuchaste, indexado contra el ranking de uso.
+ *
+ * Distingue lo visto de lo que solo tiene la transcripción cargada. Da lo
+ * mismo para buscar en el diccionario, pero es la diferencia entre medir tu
+ * exposición real y medir tu entusiasmo pegando subtítulos: si todo contara
+ * igual, preparar cinco videos de la cola inflaría el corpus sin que hayas
+ * escuchado una palabra.
+ */
+export function useCorpus({ titles, watchedIds, stopped }: CorpusInput): Corpus {
   const { frequency, isReady, isLoading: freqLoading } = useFrequencyList();
   const { data: transcripts = [], isLoading: transcriptsLoading } =
     useTranscriptCorpus();
 
   const rank = frequency.rank;
 
+  const unknownIds = useMemo(
+    () =>
+      transcripts
+        .map((t) => t.external_id)
+        .filter((id) => !titles.get(id))
+        .sort(),
+    [transcripts, titles]
+  );
+  const fetchedTitles = useMissingTitles(unknownIds);
+
   const index = useMemo(() => {
     // lema → { veces dicho, en qué videos }
     const words = new Map<string, { count: number; videos: Set<string> }>();
+    const upcomingWords = new Map<string, number>();
     const videos: CorpusVideo[] = [];
     const texts = new Map<string, string>();
     const cuesById = new Map<string, Cue[]>();
     const totals = emptyBands();
 
     for (const transcript of transcripts) {
+      const watched = watchedIds.has(transcript.external_id);
       texts.set(transcript.external_id, transcript.text);
       cuesById.set(transcript.external_id, transcript.cues);
 
@@ -137,72 +191,55 @@ export function useCorpus(
         const lemma = isReady ? lemmatize(token, rank) : token;
         seen.add(lemma);
 
-        const entry = words.get(lemma) ?? { count: 0, videos: new Set<string>() };
-        entry.count += 1;
-        entry.videos.add(transcript.external_id);
-        words.set(lemma, entry);
+        if (watched) {
+          const entry = words.get(lemma) ?? { count: 0, videos: new Set<string>() };
+          entry.count += 1;
+          entry.videos.add(transcript.external_id);
+          words.set(lemma, entry);
+        } else {
+          upcomingWords.set(lemma, (upcomingWords.get(lemma) ?? 0) + 1);
+        }
 
         const key = bandOf(isReady ? effectiveRank(lemma, rank) : null).key;
         bandTokens[key] += 1;
-        totals[key] += 1;
+        if (watched) totals[key] += 1;
       }
-
-      // La banda más rara que no sea anecdótica: una sola palabra rarísima no
-      // define la dificultad de un video de cuarenta minutos.
-      const floor = Math.max(3, tokens.length * 0.01);
-      const hardest =
-        [...Object.entries(bandTokens)]
-          .filter(([key, count]) => key !== "off" && count >= floor)
-          .map(([key]) => key as BandKey)
-          .pop() ?? "core";
 
       videos.push({
         externalId: transcript.external_id,
-        title: titles.get(transcript.external_id) ?? null,
+        title:
+          titles.get(transcript.external_id) ??
+          fetchedTitles.get(transcript.external_id) ??
+          null,
         tokens: tokens.length,
         distinct: seen.size,
         bandTokens,
-        hardestBand: bandOf(
-          hardest === "core" ? 1 : hardest === "common" ? 2_000 :
-          hardest === "mid" ? 5_000 : hardest === "advanced" ? 15_000 : 30_000
-        ),
+        difficulty: isReady ? lexicalDifficulty(bandTokens) : null,
         stops: 0,
+        watched,
       });
     }
 
-    videos.sort((a, b) => b.tokens - a.tokens);
-    return { words, videos, texts, cuesById, totals };
-  }, [transcripts, isReady, rank, titles]);
+    return { words, upcomingWords, videos, texts, cuesById, totals };
+  }, [transcripts, isReady, rank, titles, fetchedTitles, watchedIds]);
 
   return useMemo(() => {
-    const { words, videos, texts, cuesById, totals } = index;
+    const { words, upcomingWords, videos, texts, cuesById, totals } = index;
+
+    const lemmaOf = (word: string) => (isReady ? lemmatize(word, rank) : word);
 
     /**
-     * Una palabra suelta se cuenta por su lema; una expresión de varias
-     * palabras se busca literal en el texto, porque su lema no existe.
+     * Una palabra suelta se cuenta por su lema; algo de varias palabras se
+     * busca literal en el texto, porque su lema no existe.
      */
     const countIn = (text: string, expression: string): number => {
       const parts = tokenize(expression);
       if (parts.length === 0) return 0;
       if (parts.length === 1) {
-        const lemma = isReady ? lemmatize(parts[0], rank) : parts[0];
-        return tokenize(text).filter(
-          (token) => (isReady ? lemmatize(token, rank) : token) === lemma
-        ).length;
+        const lemma = lemmaOf(parts[0]);
+        return tokenize(text).filter((token) => lemmaOf(token) === lemma).length;
       }
-      const needle = parts.join(" ");
-      return text.split(needle).length - 1;
-    };
-
-    const occurrences = (expression: string): number => {
-      const parts = tokenize(expression);
-      if (parts.length === 1) {
-        const lemma = isReady ? lemmatize(parts[0], rank) : parts[0];
-        return words.get(lemma)?.count ?? 0;
-      }
-      let total = 0;
-      for (const text of texts.values()) total += countIn(text, expression);
-      return total;
+      return text.split(parts.join(" ")).length - 1;
     };
 
     // Dónde te frenaste, por video.
@@ -213,16 +250,70 @@ export function useCorpus(
       ).length,
     }));
 
+    const watched = withStops.filter((v) => v.watched);
+    const upcoming = withStops.filter((v) => !v.watched);
+
+    const countAcross = (list: CorpusVideo[], expression: string) =>
+      list.reduce(
+        (acc, video) => acc + countIn(texts.get(video.externalId) ?? "", expression),
+        0
+      );
+
+    const occurrences = (expression: string): number => {
+      const parts = tokenize(expression);
+      if (parts.length === 1) return words.get(lemmaOf(parts[0]))?.count ?? 0;
+      return countAcross(watched, expression);
+    };
+
+    const upcomingOccurrences = (expression: string): number => {
+      const parts = tokenize(expression);
+      if (parts.length === 1) return upcomingWords.get(lemmaOf(parts[0])) ?? 0;
+      return countAcross(upcoming, expression);
+    };
+
     const videosWith = (expression: string): CorpusVideo[] => {
       const parts = tokenize(expression);
       if (parts.length === 1) {
-        const lemma = isReady ? lemmatize(parts[0], rank) : parts[0];
-        const ids = words.get(lemma)?.videos ?? new Set<string>();
-        return withStops.filter((v) => ids.has(v.externalId));
+        const ids = words.get(lemmaOf(parts[0]))?.videos ?? new Set<string>();
+        return watched.filter((v) => ids.has(v.externalId));
       }
-      return withStops.filter(
+      return watched.filter(
         (v) => countIn(texts.get(v.externalId) ?? "", expression) > 0
       );
+    };
+
+    /**
+     * Las frases donde de verdad se dijo, sacadas de tus videos.
+     *
+     * Es lo que reemplaza al ejemplo inventado del diccionario: en vez de
+     * "I came across this tool", la frase exacta que escuchaste, con el link
+     * al segundo en que suena.
+     */
+    const examples = (expression: string, limit = 4): CorpusExample[] => {
+      const parts = tokenize(expression);
+      if (parts.length === 0) return [];
+      const lemma = lemmaOf(parts[0]);
+      const needle = parts.join(" ");
+      const out: CorpusExample[] = [];
+
+      for (const video of withStops) {
+        for (const cue of cuesById.get(video.externalId) ?? []) {
+          const hit =
+            parts.length === 1
+              ? tokenize(cue.text).some((token) => lemmaOf(token) === lemma)
+              : cue.text.toLowerCase().includes(needle);
+          if (!hit) continue;
+
+          out.push({
+            externalId: video.externalId,
+            title: video.title,
+            seconds: cue.t,
+            text: cue.text,
+          });
+          if (out.length >= limit) return out;
+        }
+      }
+      return out;
     };
 
     const suggestSpelling = (expression: string): string | null => {
@@ -239,56 +330,26 @@ export function useCorpus(
       return null;
     };
 
-    /**
-     * Las frases donde de verdad se dijo, sacadas de tus videos.
-     *
-     * Es lo que reemplaza al ejemplo inventado del diccionario: en vez de
-     * "I came across this tool", la frase exacta que escuchaste, con el link
-     * al segundo en que suena.
-     */
-    const examples = (expression: string, limit = 4): CorpusExample[] => {
-      const parts = tokenize(expression);
-      if (parts.length === 0) return [];
-      const lemma = isReady ? lemmatize(parts[0], rank) : parts[0];
-      const needle = parts.join(" ");
-      const out: CorpusExample[] = [];
-
-      for (const video of withStops) {
-        for (const cue of cuesById.get(video.externalId) ?? []) {
-          const hit =
-            parts.length === 1
-              ? tokenize(cue.text).some(
-                  (token) => (isReady ? lemmatize(token, rank) : token) === lemma
-                )
-              : cue.text.toLowerCase().includes(needle);
-          if (!hit) continue;
-
-          out.push({
-            externalId: video.externalId,
-            title: video.title,
-            seconds: cue.t,
-            text: cue.text,
-          });
-          if (out.length >= limit) return out;
-        }
-      }
-      return out;
-    };
-
     return {
       isLoading: freqLoading || transcriptsLoading,
-      isReady: isReady && transcripts.length > 0,
+      isReady: isReady && watched.length > 0,
       rank,
-      videoCount: withStops.length,
-      totalTokens: withStops.reduce((acc, v) => acc + v.tokens, 0),
+      videos: watched,
+      upcoming,
+      videoCount: watched.length,
+      totalTokens: watched.reduce((acc, v) => acc + v.tokens, 0),
       distinctLemmas: words.size,
-      videos: withStops,
       bandTokens: totals,
       occurrences,
+      upcomingOccurrences,
       videosWith,
       rankOf: (expression: string) => expressionRank(expression, rank),
       suggestSpelling,
       examples,
+      videoOf: (externalId: string | null) =>
+        externalId
+          ? withStops.find((v) => v.externalId === externalId) ?? null
+          : null,
     };
   }, [
     index,
@@ -297,7 +358,6 @@ export function useCorpus(
     frequency.words,
     freqLoading,
     transcriptsLoading,
-    transcripts.length,
     stopped,
   ]);
 }

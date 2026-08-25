@@ -127,11 +127,10 @@ function lemmaCandidates(word: string): string[] {
     }
   }
 
-  if (word.endsWith("est")) push(long(stem(3)));
-  if (word.endsWith("er")) {
-    push(long(stem(2)));
-    push(long(stem(1)));
-  }
+  // Nada de -er ni -est. Ganaban poco ("faster" → "fast") y arruinaban mucho:
+  // "cater" → "cat", "mother" → "moth", "cover" → "cove", "matter" → "matte".
+  // Todas esas raíces existen en la lista, así que ninguna validación las
+  // atrapa; la única defensa es no intentarlo.
   if (word.endsWith("ly")) push(long(stem(2)));
 
   return out;
@@ -183,15 +182,66 @@ export function effectiveRank(word: string, rank: RankLookup): number | null {
   return Math.min(own, lemmaRank);
 }
 
+// ── Qué guardaste: una palabra, una expresión o una frase ───
+
+export type ItemKind = "word" | "phrase" | "sentence";
+
+/** Hasta acá una captura sigue siendo una expresión y no una frase entera. */
+export const MAX_PHRASE_WORDS = 4;
+
 /**
- * Una expresión de varias palabras vale por la más rara que la compone: es la
- * que te frenó. Devuelve null si ninguna está en la lista.
+ * El tipo se deduce del texto, no de la etiqueta que elegiste al capturar.
+ *
+ * En la práctica la etiqueta sale mal seguido —"given" quedó marcada como
+ * frase y "threes" como expresión— porque se elige apurado en mitad del
+ * video. El largo del texto nunca miente.
+ */
+export function kindOf(expression: string): ItemKind {
+  const words = tokenize(expression).length;
+  if (words <= 1) return "word";
+  return words <= MAX_PHRASE_WORDS ? "phrase" : "sentence";
+}
+
+export const ITEM_KIND_CONFIG: Record<
+  ItemKind,
+  { label: string; plural: string }
+> = {
+  word: { label: "Palabra", plural: "Palabras" },
+  phrase: { label: "Expresión", plural: "Expresiones" },
+  sentence: { label: "Frase", plural: "Frases" },
+};
+
+/**
+ * El puesto de una captura: el de la palabra más rara que la compone, que es
+ * la que te frenó.
+ *
+ * Una frase entera **no tiene puesto** y devuelve null a propósito. En una
+ * oración de treinta palabras siempre hay alguna rarísima, así que puntuarla
+ * ensuciaría la banda: mediría el largo de lo que guardas, no tu inglés.
  */
 export function expressionRank(expression: string, rank: RankLookup): number | null {
-  const ranks = tokenize(expression)
+  const words = tokenize(expression);
+  if (words.length === 0 || words.length > MAX_PHRASE_WORDS) return null;
+
+  const ranks = words
     .map((w) => effectiveRank(w, rank))
     .filter((r): r is number => r !== null);
   return ranks.length === 0 ? null : Math.max(...ranks);
+}
+
+/** La palabra más rara de un texto largo, con su puesto. Para las frases. */
+export function rarestWord(
+  expression: string,
+  rank: RankLookup
+): { word: string; rank: number } | null {
+  let worst: { word: string; rank: number } | null = null;
+  for (const word of tokenize(expression)) {
+    const wordRank = effectiveRank(word, rank);
+    if (wordRank !== null && (!worst || wordRank > worst.rank)) {
+      worst = { word, rank: wordRank };
+    }
+  }
+  return worst;
 }
 
 // ── Estadística ─────────────────────────────────────────────

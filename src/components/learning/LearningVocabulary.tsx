@@ -20,7 +20,6 @@ import {
   X,
 } from "lucide-react";
 import {
-  ITEM_TYPE_CONFIG,
   MASTERY_CONFIG,
   MASTERY_ORDER,
   formatClock,
@@ -32,9 +31,13 @@ import {
   debtScore,
   formatRank,
   inferMastery,
+  kindOf,
   median,
+  rarestWord,
   INFERRED_MASTERY_CONFIG,
+  ITEM_KIND_CONFIG,
   type Band,
+  type ItemKind,
   type MasteryEvidence,
 } from "@/lib/corpus";
 import { useItemSightings, type LearningItem } from "@/hooks/useLearningItems";
@@ -62,10 +65,16 @@ type SortKey = (typeof SORTS)[number]["key"];
 /** Una entrada del diccionario con todo lo que el corpus sabe de ella. */
 interface Entry {
   item: LearningItem;
+  /** Palabra, expresión o frase — deducido del texto, no de la etiqueta. */
+  kind: ItemKind;
   initial: string;
   rank: number | null;
   band: Band;
+  /** La más rara que la compone. Es lo único rankeable de una frase larga. */
+  rarest: { word: string; rank: number } | null;
   occurrences: number;
+  /** Veces que aparece en lo que tienes por ver. */
+  upcoming: number;
   videos: number;
   evidence: MasteryEvidence;
   debt: number;
@@ -78,6 +87,7 @@ export function LearningVocabulary({
   onDelete,
 }: LearningVocabularyProps) {
   const [search, setSearch] = useState("");
+  const [kind, setKind] = useState<ItemKind | null>(null);
   const [letter, setLetter] = useState<string | null>(null);
   const [sort, setSort] = useState<SortKey>("debt");
   const [selected, setSelected] = useState<LearningItem | null>(null);
@@ -88,15 +98,21 @@ export function LearningVocabulary({
       items.map((item) => {
         const rank = corpus.rankOf(item.expression);
         const occurrences = corpus.occurrences(item.expression);
+        const upcoming = corpus.upcomingOccurrences(item.expression);
         return {
           item,
+          kind: kindOf(item.expression),
           initial: (item.normalized[0] ?? "?").toUpperCase(),
           rank,
           band: bandOf(rank),
+          rarest: rarestWord(item.expression, corpus.rank),
           occurrences,
+          upcoming,
           videos: corpus.videosWith(item.expression).length,
           evidence: inferMastery(occurrences, item.times_seen),
-          debt: debtScore(occurrences, rank),
+          // La deuda mira lo que viene: una palabra que aparece siete veces en
+          // tu cola te va a costar más que una que ya pasó.
+          debt: debtScore(occurrences + upcoming, rank),
         };
       }),
     [items, corpus]
@@ -119,14 +135,21 @@ export function LearningVocabulary({
   }, [entries]);
 
   const letters = useMemo(
-    () => new Set(entries.map((e) => e.initial)),
+    () => new Set(entries.filter((e) => e.kind !== "sentence").map((e) => e.initial)),
     [entries]
   );
+
+  const kindCounts = useMemo(() => {
+    const counts: Record<ItemKind, number> = { word: 0, phrase: 0, sentence: 0 };
+    for (const entry of entries) counts[entry.kind] += 1;
+    return counts;
+  }, [entries]);
 
   const filtered = useMemo(() => {
     const query = search.trim().toLowerCase();
 
     const matching = entries.filter((entry) => {
+      if (kind && entry.kind !== kind) return false;
       if (letter && entry.initial !== letter) return false;
       if (!query) return true;
       const { item } = entry;
@@ -154,7 +177,7 @@ export function LearningVocabulary({
         break;
     }
     return sorted;
-  }, [entries, search, letter, sort]);
+  }, [entries, search, kind, letter, sort]);
 
   if (items.length === 0) {
     return (
@@ -207,6 +230,42 @@ export function LearningVocabulary({
         )}
       </div>
 
+      {/* ── Qué guardaste: palabra, expresión o frase ────── */}
+      <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar">
+        <button
+          onClick={() => setKind(null)}
+          className={cn(
+            "px-2.5 py-1.5 rounded-xl text-xs font-medium border transition-all shrink-0",
+            kind === null
+              ? "border-primary bg-primary/10 text-foreground"
+              : "border-border/60 text-muted-foreground hover:border-border hover:text-foreground"
+          )}
+        >
+          Todas
+          <span className="opacity-60 ml-1 tabular-nums">{items.length}</span>
+        </button>
+        {(["word", "phrase", "sentence"] as ItemKind[]).map((option) => {
+          if (kindCounts[option] === 0) return null;
+          return (
+            <button
+              key={option}
+              onClick={() => setKind(kind === option ? null : option)}
+              className={cn(
+                "px-2.5 py-1.5 rounded-xl text-xs font-medium border transition-all shrink-0",
+                kind === option
+                  ? "border-primary bg-primary/10 text-foreground"
+                  : "border-border/60 text-muted-foreground hover:border-border hover:text-foreground"
+              )}
+            >
+              {ITEM_KIND_CONFIG[option].plural}
+              <span className="opacity-60 ml-1 tabular-nums">
+                {kindCounts[option]}
+              </span>
+            </button>
+          );
+        })}
+      </div>
+
       {/* ── Buscador ─────────────────────────────────────── */}
       <div className="relative">
         <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground pointer-events-none" />
@@ -251,8 +310,8 @@ export function LearningVocabulary({
         </span>
       </div>
 
-      {/* ── Índice alfabético ────────────────────────────── */}
-      <div className="flex flex-wrap gap-0.5">
+      {/* ── Índice alfabético (no aplica a las frases) ───── */}
+      <div className={cn("flex flex-wrap gap-0.5", kind === "sentence" && "hidden")}>
         {"ABCDEFGHIJKLMNOPQRSTUVWXYZ".split("").map((char) => {
           const has = letters.has(char);
           const isActive = letter === char;
@@ -320,37 +379,85 @@ function EntryRow({
   showBand: boolean;
   onOpen: () => void;
 }) {
-  const { item, band, rank, occurrences, videos, evidence } = entry;
+  const { item, kind, band, rank, rarest, occurrences, upcoming, videos, evidence } =
+    entry;
   const inferred = INFERRED_MASTERY_CONFIG[evidence.level];
   const gloss = item.translation_es ?? item.meaning_es ?? item.meaning;
+  const isSentence = kind === "sentence";
 
   return (
     <button
       onClick={onOpen}
       className={cn(
-        "w-full flex items-center gap-3 rounded-xl border border-border/60 bg-card px-3.5 py-3",
-        "transition-all hover:border-primary/20 hover:shadow-sm text-left"
+        "w-full flex gap-3 rounded-xl border border-border/60 bg-card px-3.5 py-3",
+        "transition-all hover:border-primary/20 hover:shadow-sm text-left",
+        isSentence ? "items-start" : "items-center"
       )}
     >
       <span
         title={evidence.reason}
-        className={cn("h-2 w-2 rounded-full shrink-0", inferred.dot)}
+        className={cn(
+          "h-2 w-2 rounded-full shrink-0",
+          inferred.dot,
+          isSentence && "mt-1.5"
+        )}
       />
 
       <div className="min-w-0 flex-1">
-        <p className="text-sm font-semibold truncate">{item.expression}</p>
+        {/* Una frase se lee entera; una palabra en una línea basta. */}
+        <p
+          className={cn(
+            "text-sm font-semibold",
+            isSentence ? "line-clamp-2 leading-snug" : "truncate"
+          )}
+        >
+          {item.expression}
+        </p>
         {gloss && (
-          <p className="text-xs text-muted-foreground truncate">{gloss}</p>
+          <p
+            className={cn(
+              "text-xs text-muted-foreground",
+              isSentence ? "line-clamp-1 mt-0.5" : "truncate"
+            )}
+          >
+            {gloss}
+          </p>
+        )}
+        {/* En una frase el puesto no significa nada: lo que frena es su
+            palabra más rara, y esa sí se muestra. */}
+        {isSentence && rarest && showBand && (
+          <span className="inline-flex items-center gap-1 text-[10px] text-muted-foreground mt-1">
+            más rara:
+            <span className="font-medium text-foreground">{rarest.word}</span>
+            <span
+              className="h-1.5 w-1.5 rounded-full"
+              style={{ backgroundColor: bandOf(rarest.rank).color }}
+            />
+            {formatRank(rarest.rank)}
+          </span>
         )}
       </div>
 
-      <div className="flex items-center gap-2 shrink-0">
+      <div
+        className={cn(
+          "flex items-center gap-2 shrink-0",
+          isSentence && "flex-col items-end gap-1 pt-0.5"
+        )}
+      >
         {occurrences > 0 && (
           <span
-            title={`${occurrences} veces en ${videos} ${videos === 1 ? "video" : "videos"} de tu corpus`}
+            title={`${occurrences} veces en ${videos} ${videos === 1 ? "video" : "videos"} que ya escuchaste`}
             className="text-[11px] font-medium tabular-nums text-muted-foreground"
           >
             {occurrences}×
+          </span>
+        )}
+        {upcoming > 0 && (
+          <span
+            title={`Aparece ${upcoming} veces en lo que tienes por ver`}
+            className="text-[11px] font-medium tabular-nums text-amber-500"
+          >
+            +{upcoming}
           </span>
         )}
         {item.times_seen > 1 && (
@@ -362,7 +469,7 @@ function EntryRow({
             {item.times_seen}
           </span>
         )}
-        {showBand && (
+        {showBand && !isSentence && (
           <BandPill
             label={formatRank(rank)}
             color={band.color}
@@ -397,9 +504,12 @@ function EntryDetail({
   const [mySentence, setMySentence] = useState(item.my_sentence ?? "");
   const [confirmDelete, setConfirmDelete] = useState(false);
 
+  const kind = kindOf(item.expression);
   const rank = corpus.rankOf(item.expression);
   const band = bandOf(rank);
+  const rarest = rarestWord(item.expression, corpus.rank);
   const occurrences = corpus.occurrences(item.expression);
+  const upcoming = corpus.upcomingOccurrences(item.expression);
   const videos = corpus.videosWith(item.expression);
   const evidence = inferMastery(occurrences, item.times_seen);
   const inferred = INFERRED_MASTERY_CONFIG[evidence.level];
@@ -426,7 +536,7 @@ function EntryDetail({
         open={open}
         onOpenChange={onOpenChange}
         title={item.expression}
-        description={ITEM_TYPE_CONFIG[item.item_type]?.label}
+        description={ITEM_KIND_CONFIG[kind].label}
         maxWidth="lg"
         footer={
           isDirty ? (
@@ -471,24 +581,36 @@ function EntryDetail({
 
           {/* Lo que el corpus sabe */}
           <div className="grid grid-cols-3 gap-2">
-            <Stat
-              value={formatRank(rank)}
-              label="puesto en inglés"
-              detail={corpus.isReady ? band.label : undefined}
-              color={band.color}
-            />
+            {/* Una frase entera no tiene puesto: se muestra la palabra que la
+                hace difícil, que es lo que de verdad te frenó. */}
+            {kind === "sentence" ? (
+              <Stat
+                value={rarest ? formatRank(rarest.rank) : "—"}
+                label="la más rara"
+                detail={rarest?.word}
+                color={rarest ? bandOf(rarest.rank).color : undefined}
+              />
+            ) : (
+              <Stat
+                value={formatRank(rank)}
+                label="puesto en inglés"
+                detail={corpus.isReady ? band.label : undefined}
+                color={band.color}
+              />
+            )}
             <Stat
               value={String(occurrences)}
-              label={occurrences === 1 ? "vez que se dice" : "veces que se dice"}
+              label={occurrences === 1 ? "vez que la oíste" : "veces que la oíste"}
               detail={
                 videos.length > 0
                   ? `en ${videos.length} ${videos.length === 1 ? "video" : "videos"}`
-                  : "en tu corpus"
+                  : "en lo que ya viste"
               }
             />
             <Stat
-              value={String(item.times_seen)}
-              label={item.times_seen === 1 ? "vez que te frenó" : "veces que te frenó"}
+              value={upcoming > 0 ? `+${upcoming}` : String(item.times_seen)}
+              label={upcoming > 0 ? "veces por venir" : "veces que te frenó"}
+              detail={upcoming > 0 ? "en tu cola" : undefined}
             />
           </div>
 
