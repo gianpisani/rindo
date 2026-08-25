@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { BaseModal } from "@/components/BaseModal";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
@@ -8,8 +8,9 @@ import {
   ExternalLink,
   ClipboardPaste,
   Check,
-  ChevronDown,
+  ChevronLeft,
   MousePointer2,
+  Sparkles,
 } from "lucide-react";
 import { TRANSCRIPT_BOOKMARKLET } from "@/lib/transcript-bookmarklet";
 
@@ -23,6 +24,32 @@ interface TranscriptHelpDialogProps {
 const isMac =
   typeof navigator !== "undefined" && /Mac|iPhone|iPad/.test(navigator.platform);
 const BAR_SHORTCUT = isMac ? "⌘ + ⇧ + B" : "Ctrl + Shift + B";
+
+const SETUP_KEY = "rindo:transcript-bookmarklet-listo";
+
+/** Recuerda si ya se configuró el marcador para no volver a explicarlo. */
+function useSetupDone() {
+  const [done, setDone] = useState(true);
+
+  useEffect(() => {
+    try {
+      setDone(localStorage.getItem(SETUP_KEY) === "1");
+    } catch {
+      setDone(false);
+    }
+  }, []);
+
+  const markDone = () => {
+    setDone(true);
+    try {
+      localStorage.setItem(SETUP_KEY, "1");
+    } catch {
+      /* modo privado: da igual, solo se pierde el recuerdo */
+    }
+  };
+
+  return { done, markDone };
+}
 
 function Step({
   n,
@@ -38,7 +65,7 @@ function Step({
       <div className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-primary/15 text-primary text-xs font-bold tabular-nums">
         {n}
       </div>
-      <div className="min-w-0 flex-1 pb-1">
+      <div className="min-w-0 flex-1">
         <p className="text-sm font-medium leading-snug">{title}</p>
         {children && <div className="mt-2">{children}</div>}
       </div>
@@ -52,43 +79,48 @@ export function TranscriptHelpDialog({
   externalId,
   onPasteFromClipboard,
 }: TranscriptHelpDialogProps) {
-  const [showManual, setShowManual] = useState(false);
+  const [view, setView] = useState<"usar" | "configurar">("usar");
+  const { done, markDone } = useSetupDone();
 
-  return (
-    <BaseModal
-      open={open}
-      onOpenChange={onOpenChange}
-      title="Traer los subtítulos"
-      description="Se configura una sola vez. Después es un clic por video."
-      maxWidth="lg"
-      footer={
-        <Button
-          onClick={() => {
-            onPasteFromClipboard();
-            onOpenChange(false);
-          }}
-          className="w-full h-12 text-base font-semibold rounded-xl"
-        >
-          <ClipboardPaste className="h-5 w-5 mr-2" />
-          Ya lo aprete — pegar acá
-        </Button>
-      }
-    >
-      <div className="space-y-5">
-        {/* Qué es esto */}
-        <div className="rounded-xl border border-border/50 bg-muted/20 p-3">
-          <p className="text-xs text-muted-foreground leading-relaxed">
-            YouTube no deja que Rindo baje los subtítulos por su cuenta. Pero sí
-            los muestra en su página. Este botón hace lo mismo que harías tú a
-            mano: los abre, los lee y te los copia.
-          </p>
-        </div>
+  // Cada vez que se abre, se vuelve a la vista de uso.
+  useEffect(() => {
+    if (open) setView("usar");
+  }, [open]);
 
-        {/* Configuración, una sola vez */}
-        <div>
-          <p className="text-[11px] font-semibold uppercase tracking-wide text-primary mb-3">
-            Una sola vez
-          </p>
+  const paste = () => {
+    markDone();
+    onPasteFromClipboard();
+    onOpenChange(false);
+  };
+
+  if (view === "configurar") {
+    return (
+      <BaseModal
+        open={open}
+        onOpenChange={onOpenChange}
+        title="Configurar el marcador"
+        description="Son tres pasos y no lo vuelves a hacer nunca."
+        maxWidth="lg"
+        footer={
+          <Button
+            onClick={() => {
+              markDone();
+              setView("usar");
+            }}
+            className="w-full h-12 text-base font-semibold rounded-xl"
+          >
+            Listo, ya lo arrastré
+          </Button>
+        }
+      >
+        <div className="space-y-5">
+          <button
+            onClick={() => setView("usar")}
+            className="flex items-center gap-1 -ml-1 text-xs text-muted-foreground hover:text-foreground transition-colors"
+          >
+            <ChevronLeft className="h-3.5 w-3.5" />
+            Volver
+          </button>
 
           <div className="space-y-4">
             <Step n={1} title="Muestra la barra de marcadores de Chrome">
@@ -130,106 +162,108 @@ export function TranscriptHelpDialog({
               </div>
             </Step>
 
-            <Step n={3} title="Chrome te va a preguntar: aprieta «Guardar»">
-              <div className="rounded-xl border border-border/50 bg-muted/20 p-3">
-                <p className="text-xs text-muted-foreground leading-relaxed">
-                  Se abre una ventana que dice{" "}
+            <Step n={3} title="Chrome te pregunta: aprieta «Guardar»">
+              <p className="text-xs flex items-start gap-1.5">
+                <Check className="h-3.5 w-3.5 text-emerald-500 shrink-0 mt-0.5" />
+                <span className="text-muted-foreground">
+                  Va a mostrar una URL larguísima llena de símbolos raros.{" "}
                   <span className="font-medium text-foreground">
-                    «Editar marcador»
-                  </span>{" "}
-                  con el nombre y una URL larguísima llena de símbolos raros.
-                </p>
-                <p className="text-xs mt-2 flex items-start gap-1.5">
-                  <Check className="h-3.5 w-3.5 text-emerald-500 shrink-0 mt-0.5" />
-                  <span className="text-muted-foreground">
-                    <span className="font-medium text-foreground">
-                      Eso es normal y significa que funcionó.
-                    </span>{" "}
-                    Esa URL rara es el programa. Solo aprieta Guardar.
+                    Eso es normal
                   </span>
-                </p>
-              </div>
-            </Step>
-          </div>
-        </div>
-
-        {/* Cada vez */}
-        <div className="border-t border-border/50 pt-4">
-          <p className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground mb-3">
-            Cada video, de ahí en adelante
-          </p>
-
-          <div className="space-y-4">
-            <Step n={4} title="Abre el video en YouTube">
-              <Button variant="outline" size="sm" asChild className="rounded-xl">
-                <a
-                  href={`https://www.youtube.com/watch?v=${externalId}`}
-                  target="_blank"
-                  rel="noreferrer"
-                >
-                  <ExternalLink className="h-3.5 w-3.5 mr-1.5" />
-                  Abrir este video
-                </a>
-              </Button>
-            </Step>
-
-            <Step
-              n={5}
-              title="Estando ahí, aprieta el marcador «Subtítulos → Rindo»"
-            >
-              <p className="text-xs text-muted-foreground">
-                Aparecerá un aviso verde diciendo cuántas líneas copió.
+                  : esa URL es el programa.
+                </span>
               </p>
             </Step>
+          </div>
 
-            <Step n={6} title="Vuelve a Rindo y aprieta el botón de abajo" />
+          <div className="border-t border-border/50 pt-4 space-y-3">
+            <p className="text-[11px] text-muted-foreground leading-relaxed">
+              YouTube no deja que Rindo baje los subtítulos por su cuenta, pero
+              sí los muestra en su página. El marcador hace lo mismo que harías
+              tú a mano: los abre, los lee y te los copia.
+            </p>
+            <p className="text-[11px] text-muted-foreground leading-relaxed">
+              <span className="font-medium text-foreground">Si el video está doblado</span>,
+              YouTube te dará los subtítulos en español. Cambia el idioma a
+              inglés en el panel de transcripción antes de apretar el marcador.
+            </p>
+            <p className="text-[11px] text-muted-foreground leading-relaxed">
+              <span className="font-medium text-foreground">Sin marcador:</span>{" "}
+              en YouTube abre «…más» bajo el video, aprieta «Mostrar
+              transcripción», selecciona todo ese panel y cópialo.
+            </p>
           </div>
         </div>
+      </BaseModal>
+    );
+  }
 
-        {/* Aviso de doblaje */}
-        <div className="rounded-xl border border-amber-500/25 bg-amber-500/5 p-3">
-          <p className="text-xs text-muted-foreground leading-relaxed">
-            <span className="font-medium text-foreground">Ojo:</span> si el video
-            está doblado, YouTube te dará los subtítulos en español. Cambia el
-            idioma a inglés en el panel de transcripción antes de apretar el
-            marcador.
-          </p>
-        </div>
-
-        {/* Salida manual */}
-        <div>
+  return (
+    <BaseModal
+      open={open}
+      onOpenChange={onOpenChange}
+      title="Traer los subtítulos"
+      description="Un clic en YouTube y los pegas acá."
+      maxWidth="lg"
+      footer={
+        <Button
+          onClick={paste}
+          className="w-full h-12 text-base font-semibold rounded-xl"
+        >
+          <ClipboardPaste className="h-5 w-5 mr-2" />
+          Ya lo apreté — pegar acá
+        </Button>
+      }
+    >
+      <div className="space-y-5">
+        {!done && (
           <button
-            onClick={() => setShowManual((v) => !v)}
-            className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground transition-colors"
+            onClick={() => setView("configurar")}
+            className={cn(
+              "w-full flex items-center gap-3 rounded-xl p-3 text-left",
+              "border border-primary/40 bg-primary/10",
+              "hover:bg-primary/15 transition-colors"
+            )}
           >
-            <ChevronDown
-              className={cn("h-3.5 w-3.5 transition-transform", showManual && "rotate-180")}
-            />
-            No quiero marcadores, prefiero hacerlo a mano
+            <Sparkles className="h-4 w-4 text-primary shrink-0" />
+            <span className="min-w-0 flex-1">
+              <span className="block text-sm font-medium text-primary">
+                Primero hay que configurarlo
+              </span>
+              <span className="block text-xs text-muted-foreground">
+                Una sola vez, tres pasos. Aprieta acá.
+              </span>
+            </span>
           </button>
+        )}
 
-          {showManual && (
-            <ol className="text-xs text-muted-foreground mt-3 space-y-2 list-decimal list-inside leading-relaxed">
-              <li>Abre el video en YouTube</li>
-              <li>
-                Bajo el video, en la descripción, aprieta{" "}
-                <span className="font-medium text-foreground">…más</span>
-              </li>
-              <li>
-                Abajo del todo aparece{" "}
-                <span className="font-medium text-foreground">
-                  Mostrar transcripción
-                </span>
-                . Apriétalo.
-              </li>
-              <li>
-                Se abre un panel a la derecha con el texto y los minutos.
-                Selecciona todo ese texto y cópialo.
-              </li>
-              <li>Vuelve acá y aprieta el botón de abajo.</li>
-            </ol>
-          )}
+        <div className="space-y-4">
+          <Step n={1} title="Abre el video en YouTube">
+            <Button variant="outline" size="sm" asChild className="rounded-xl">
+              <a
+                href={`https://www.youtube.com/watch?v=${externalId}`}
+                target="_blank"
+                rel="noreferrer"
+              >
+                <ExternalLink className="h-3.5 w-3.5 mr-1.5" />
+                Abrir este video
+              </a>
+            </Button>
+          </Step>
+
+          <Step n={2} title="Aprieta el marcador «Subtítulos → Rindo»" />
+
+          <Step n={3} title="Vuelve acá y pega con el botón de abajo" />
         </div>
+
+        {done && (
+          <button
+            onClick={() => setView("configurar")}
+            className="text-xs text-muted-foreground hover:text-foreground transition-colors underline underline-offset-4 decoration-border"
+          >
+            No tengo el marcador
+          </button>
+        )}
       </div>
     </BaseModal>
   );
