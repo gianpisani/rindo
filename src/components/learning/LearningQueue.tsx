@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
@@ -11,16 +11,21 @@ import {
   Captions,
   CheckCircle2,
   Loader2,
+  ExternalLink,
 } from "lucide-react";
 import {
   CONTENT_TYPE_CONFIG,
+  formatClock,
   parseYouTubeId,
   youTubeThumbnail,
+  youTubeWatchUrl,
 } from "@/lib/learning-config";
 import type { QueueItem } from "@/hooks/useLearningQueue";
+import { useSaveQueueDuration } from "@/hooks/useLearningQueue";
 import { useTranscriptStatuses } from "@/hooks/useTranscript";
 import { TranscriptHelpDialog } from "./TranscriptHelpDialog";
 import { useTranscript } from "@/hooks/useTranscript";
+import { YouTubePlayer } from "./YouTubePlayer";
 
 interface LearningQueueProps {
   queue: QueueItem[];
@@ -38,6 +43,10 @@ interface LearningQueueProps {
 
 /**
  * Cola de contenido para ver después.
+ *
+ * Se ve como una parrilla de videos y no como una lista de tareas: la portada
+ * en 16:9 con el largo encima es lo que uno mira para decidir qué ver ahora,
+ * y esa decisión es todo el propósito de esta sección.
  *
  * Los subtítulos se pueden adelantar acá: traerlos toma unos segundos y es
  * molesto tener que hacerlo justo cuando te sentaste a estudiar. El tilde
@@ -151,99 +160,23 @@ export function LearningQueue({
           </p>
         )
       ) : (
-        <div className="space-y-1.5">
-          {queue.map((item) => {
-            const ready = !!item.external_id && !!withTranscript?.has(item.external_id);
-
-            return (
-              <div
-                key={item.id}
-                className={cn(
-                  "group flex items-center gap-3 rounded-xl px-2.5 py-2 -mx-1",
-                  "transition-colors hover:bg-muted/50"
-                )}
-              >
-                {item.content_thumbnail ? (
-                  <img
-                    src={item.content_thumbnail}
-                    alt=""
-                    className="h-10 w-16 rounded-lg object-cover border border-border/50 shrink-0"
-                  />
-                ) : (
-                  <div className="h-10 w-16 rounded-lg bg-muted flex items-center justify-center shrink-0 text-base">
-                    {CONTENT_TYPE_CONFIG[item.content_type]?.emoji ?? "✨"}
-                  </div>
-                )}
-
-                <div className="min-w-0 flex-1">
-                  <p className="text-sm font-medium truncate">
-                    {item.content_title ?? "Video guardado"}
-                  </p>
-                  <div className="flex items-center gap-1.5 text-[11px] text-muted-foreground">
-                    <span className="truncate">
-                      {item.content_author ??
-                        CONTENT_TYPE_CONFIG[item.content_type]?.label}
-                    </span>
-
-                    {item.external_id && (
-                      <span
-                        className={cn(
-                          "flex items-center gap-0.5 shrink-0",
-                          ready ? "text-emerald-500" : "text-muted-foreground/60"
-                        )}
-                        title={
-                          ready
-                            ? "Subtítulos listos"
-                            : "Todavía sin subtítulos"
-                        }
-                      >
-                        ·
-                        {ready ? (
-                          <CheckCircle2 className="h-3 w-3" />
-                        ) : (
-                          <Captions className="h-3 w-3" />
-                        )}
-                        <span>{ready ? "subtítulos" : "sin subtítulos"}</span>
-                      </span>
-                    )}
-                  </div>
-                </div>
-
-                <div className="flex items-center gap-1 shrink-0">
-                  {item.external_id && !ready && (
-                    <Button
-                      onClick={() => setPrefetchFor(item.external_id)}
-                      variant="ghost"
-                      size="sm"
-                      aria-label="Traer subtítulos ahora"
-                      title="Adelantar los subtítulos"
-                      className="rounded-lg h-8 px-2 text-muted-foreground hover:text-primary"
-                    >
-                      <Captions className="h-3.5 w-3.5" />
-                    </Button>
-                  )}
-                  <Button
-                    onClick={() => onStart(item)}
-                    size="sm"
-                    className="rounded-lg h-8 px-2.5"
-                  >
-                    <Play className="h-3.5 w-3.5 fill-current" />
-                  </Button>
-                  <Button
-                    onClick={() => onRemove(item.id)}
-                    variant="ghost"
-                    size="sm"
-                    aria-label="Sacar de la lista"
-                    className="rounded-lg h-8 px-2 text-muted-foreground hover:text-destructive opacity-0 group-hover:opacity-100 focus-visible:opacity-100 transition-opacity"
-                  >
-                    <X className="h-3.5 w-3.5" />
-                  </Button>
-                </div>
-              </div>
-            );
-          })}
+        <div className="grid gap-3 sm:grid-cols-2">
+          {queue.map((item) => (
+            <QueueCard
+              key={item.id}
+              item={item}
+              transcriptReady={
+                !!item.external_id && !!withTranscript?.has(item.external_id)
+              }
+              onStart={() => onStart(item)}
+              onRemove={() => onRemove(item.id)}
+              onPrefetchTranscript={() => setPrefetchFor(item.external_id)}
+            />
+          ))}
         </div>
       )}
+
+      <DurationProbe queue={queue} />
 
       {prefetchFor && (
         <PrefetchTranscript
@@ -251,6 +184,219 @@ export function LearningQueue({
           onClose={() => setPrefetchFor(null)}
         />
       )}
+    </div>
+  );
+}
+
+// ── Tarjeta ─────────────────────────────────────────────────
+
+/**
+ * La portada grande, en 16:9 de verdad.
+ *
+ * `youTubeThumbnail` devuelve `hqdefault`, que viene en 4:3 con bandas negras:
+ * bien para un cuadradito de 64px, pobre para una tarjeta ancha. Esta no existe
+ * para todos los videos, así que la tarjeta cae de vuelta en la chica si falla.
+ */
+function youTubeCover(videoId: string): string {
+  return `https://i.ytimg.com/vi/${videoId}/maxresdefault.jpg`;
+}
+
+function QueueCard({
+  item,
+  transcriptReady,
+  onStart,
+  onRemove,
+  onPrefetchTranscript,
+}: {
+  item: QueueItem;
+  transcriptReady: boolean;
+  onStart: () => void;
+  onRemove: () => void;
+  onPrefetchTranscript: () => void;
+}) {
+  const videoId = item.external_id;
+  /** La portada grande no existe para todos los videos; se cae a la chica. */
+  const [thumbnailFailed, setThumbnailFailed] = useState(false);
+  const thumbnail = videoId
+    ? thumbnailFailed
+      ? youTubeThumbnail(videoId)
+      : youTubeCover(videoId)
+    : item.content_thumbnail;
+
+  return (
+    <article
+      className={cn(
+        "group relative overflow-hidden rounded-xl border border-border/60 bg-background/40",
+        "transition-colors hover:border-border"
+      )}
+    >
+      {/* Portada — es el botón de reproducir */}
+      <button
+        onClick={onStart}
+        aria-label={`Ver ${item.content_title ?? "el video guardado"}`}
+        className="relative block w-full aspect-video overflow-hidden bg-muted"
+      >
+        {thumbnail ? (
+          <img
+            src={thumbnail}
+            alt=""
+            loading="lazy"
+            onError={() => setThumbnailFailed(true)}
+            className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-[1.03]"
+          />
+        ) : (
+          <div className="flex h-full w-full items-center justify-center text-3xl">
+            {CONTENT_TYPE_CONFIG[item.content_type]?.emoji ?? "✨"}
+          </div>
+        )}
+
+        {/* Velo y play. En el teléfono no hay hover, así que se ve siempre. */}
+        <span className="absolute inset-0 bg-foreground/25 opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity duration-200" />
+        <span
+          className={cn(
+            "absolute inset-0 flex items-center justify-center",
+            "transition-all duration-200",
+            "sm:opacity-0 sm:scale-90 sm:group-hover:opacity-100 sm:group-hover:scale-100"
+          )}
+        >
+          <span className="flex size-12 items-center justify-center rounded-full bg-background/90 shadow-lg backdrop-blur-sm">
+            <Play className="h-5 w-5 translate-x-[1px] fill-current text-foreground" />
+          </span>
+        </span>
+
+        {/* Largo del video */}
+        {item.content_duration_seconds ? (
+          <span className="absolute bottom-1.5 right-1.5 rounded-md bg-black/80 px-1.5 py-0.5 text-[11px] font-medium tabular-nums text-white">
+            {formatClock(item.content_duration_seconds)}
+          </span>
+        ) : null}
+      </button>
+
+      {/* Sacar de la lista */}
+      <button
+        onClick={onRemove}
+        aria-label="Sacar de la lista"
+        className={cn(
+          "absolute right-1.5 top-1.5 flex size-7 items-center justify-center rounded-lg",
+          "bg-background/80 text-muted-foreground backdrop-blur-sm",
+          "opacity-0 transition-opacity hover:text-destructive",
+          "group-hover:opacity-100 focus-visible:opacity-100"
+        )}
+      >
+        <X className="h-3.5 w-3.5" />
+      </button>
+
+      {/* Datos */}
+      <div className="p-3">
+        <p className="text-sm font-medium leading-snug line-clamp-2">
+          {item.content_title ?? "Video guardado"}
+        </p>
+        <p className="mt-1 truncate text-[11px] text-muted-foreground">
+          {item.content_author ?? CONTENT_TYPE_CONFIG[item.content_type]?.label}
+        </p>
+
+        <div className="mt-2 flex items-center gap-1.5">
+          {videoId &&
+            (transcriptReady ? (
+              <span
+                className="flex items-center gap-1 rounded-md bg-emerald-500/10 px-1.5 py-0.5 text-[11px] font-medium text-emerald-500"
+                title="Los subtítulos ya están guardados"
+              >
+                <CheckCircle2 className="h-3 w-3" />
+                subtítulos
+              </span>
+            ) : (
+              <button
+                onClick={onPrefetchTranscript}
+                title="Traerlos ahora, para no hacerlo al empezar"
+                className={cn(
+                  "flex items-center gap-1 rounded-md px-1.5 py-0.5 text-[11px] font-medium",
+                  "bg-muted text-muted-foreground transition-colors hover:text-primary"
+                )}
+              >
+                <Captions className="h-3 w-3" />
+                traer subtítulos
+              </button>
+            ))}
+
+          {item.content_url && (
+            <a
+              href={
+                videoId ? youTubeWatchUrl(videoId) : item.content_url
+              }
+              target="_blank"
+              rel="noreferrer"
+              title="Abrir en YouTube"
+              className="ml-auto flex items-center gap-1 rounded-md px-1.5 py-0.5 text-[11px] text-muted-foreground transition-colors hover:text-foreground"
+            >
+              <ExternalLink className="h-3 w-3" />
+              abrir
+            </a>
+          )}
+        </div>
+      </div>
+    </article>
+  );
+}
+
+// ── Largo de los videos ─────────────────────────────────────
+
+/** Cuánto se espera al reproductor antes de dar por perdido un largo. */
+const DURATION_TIMEOUT_MS = 12000;
+
+/**
+ * Averigua el largo de los videos que todavía no lo tienen.
+ *
+ * Ninguna API abierta de YouTube lo entrega sin llave, pero el reproductor sí:
+ * se monta uno escondido, de a uno por vez para no cargar la página con varios
+ * iframes, y el dato queda guardado en la fila. A la segunda vuelta ya no hace
+ * falta montar nada.
+ */
+function DurationProbe({ queue }: { queue: QueueItem[] }) {
+  const saveDuration = useSaveQueueDuration();
+  /** Videos que no respondieron: no se reintentan en esta visita. */
+  const [skipped, setSkipped] = useState<string[]>([]);
+
+  const pending = queue.find(
+    (item) =>
+      !!item.external_id &&
+      item.content_duration_seconds == null &&
+      !skipped.includes(item.id)
+  );
+
+  useEffect(() => {
+    if (!pending) return;
+    const timer = setTimeout(
+      () => setSkipped((ids) => [...ids, pending.id]),
+      DURATION_TIMEOUT_MS
+    );
+    return () => clearTimeout(timer);
+  }, [pending]);
+
+  if (!pending?.external_id) return null;
+
+  return (
+    <div
+      aria-hidden
+      className="pointer-events-none fixed left-0 top-0 -z-10 h-px w-px overflow-hidden opacity-0"
+    >
+      <YouTubePlayer
+        key={pending.id}
+        videoId={pending.external_id}
+        onMeta={(meta) => {
+          if (meta.durationSeconds) {
+            saveDuration.mutate({
+              id: pending.id,
+              seconds: meta.durationSeconds,
+            });
+          } else {
+            setSkipped((ids) =>
+              ids.includes(pending.id) ? ids : [...ids, pending.id]
+            );
+          }
+        }}
+        className="h-px w-px"
+      />
     </div>
   );
 }

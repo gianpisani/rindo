@@ -118,3 +118,28 @@ export function useLearningQueue(goalId?: string) {
 
   return { queue, isLoading, add, markWatched, remove };
 }
+
+/**
+ * Guarda el largo de un video de la lista.
+ *
+ * Ninguna API abierta de YouTube entrega la duración sin llave, así que la
+ * pregunta el propio reproductor la primera vez que la tarjeta aparece y acá
+ * queda anotada para no volver a montar un player por lo mismo.
+ */
+export function useSaveQueueDuration() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async ({ id, seconds }: { id: string; seconds: number }) => {
+      const { error } = await supabase
+        .from("learning_queue")
+        .update({ content_duration_seconds: Math.round(seconds) })
+        .eq("id", id);
+      if (error) throw error;
+    },
+    onSuccess: () =>
+      queryClient.invalidateQueries({ queryKey: ["learning-queue"] }),
+    // Es un dato de adorno: si no se puede guardar, no se molesta a nadie.
+    onError: () => {},
+  });
+}
