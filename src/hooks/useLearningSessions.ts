@@ -161,6 +161,35 @@ export function useLearningSessions(goalId?: string) {
 }
 
 /**
+ * Guarda —o corrige después— la explicación en inglés de una sesión.
+ *
+ * Va suelta y no dentro de `useLearningSessions` porque se usa desde la
+ * tarjeta de cierre, que no tiene el objetivo a mano, y porque escribir la
+ * idea principal no forma parte de terminar la sesión: se puede hacer al
+ * momento o tres días después.
+ */
+export function useMainIdea() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async ({ id, text }: { id: string; text: string | null }) => {
+      const { error } = await supabase
+        .from("learning_sessions")
+        .update({ main_idea_text: text })
+        .eq("id", id);
+      if (error) throw error;
+      return text;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["learning-sessions"] });
+      queryClient.invalidateQueries({ queryKey: ["learning-open-session"] });
+      toast.success("Guardado");
+    },
+    onError: (error: Error) => toast.error(error.message),
+  });
+}
+
+/**
  * Fecha de la última sesión completada de cualquier objetivo activo.
  * La usa el recordatorio del inicio, sin cargar todo el historial.
  */

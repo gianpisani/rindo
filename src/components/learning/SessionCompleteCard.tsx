@@ -10,6 +10,7 @@ import {
 } from "@/lib/learning-config";
 import type { LearningSession } from "@/hooks/useLearningSessions";
 import { useSessionItems } from "@/hooks/useLearningItems";
+import { MainIdeaField } from "./MainIdeaField";
 
 interface SessionCompleteCardProps {
   open: boolean;
@@ -112,6 +113,16 @@ export function SessionCompleteCard({
               {newCount === 1 ? "expresión nueva" : "expresiones nuevas"}
             </p>
           </div>
+        </div>
+
+        {/* Explicarlo con tus palabras: opcional, y por eso está acá y no
+            en el check de salida. */}
+        <div className="rounded-2xl border border-border/60 bg-card p-4">
+          <MainIdeaField
+            sessionId={session.id}
+            value={session.main_idea_text}
+            explainScore={session.comp_explain}
+          />
         </div>
 
         {/* Contexto de la sesión */}

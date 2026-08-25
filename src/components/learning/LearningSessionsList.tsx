@@ -19,6 +19,7 @@ import {
 } from "@/lib/learning-config";
 import type { SessionWithItemCount } from "@/hooks/useLearningSessions";
 import { useSessionItems } from "@/hooks/useLearningItems";
+import { MainIdeaField } from "./MainIdeaField";
 
 interface LearningSessionsListProps {
   sessions: SessionWithItemCount[];
@@ -267,6 +268,13 @@ function SessionDetailModal({
             </span>
           </div>
         )}
+
+        {/* Se puede escribir o corregir cuando sea, no solo al terminar. */}
+        <MainIdeaField
+          sessionId={session.id}
+          value={session.main_idea_text}
+          explainScore={session.comp_explain}
+        />
 
         {/* Expresiones */}
         {captured.length > 0 && (
