@@ -877,7 +877,6 @@ export type Database = {
       }
       learning_sessions: {
         Row: {
-          comp_details: number | null
           comp_explain: number | null
           comp_main_idea: number | null
           comp_subtitles: number | null
@@ -907,7 +906,6 @@ export type Database = {
           user_id: string
         }
         Insert: {
-          comp_details?: number | null
           comp_explain?: number | null
           comp_main_idea?: number | null
           comp_subtitles?: number | null
@@ -937,7 +935,6 @@ export type Database = {
           user_id: string
         }
         Update: {
-          comp_details?: number | null
           comp_explain?: number | null
           comp_main_idea?: number | null
           comp_subtitles?: number | null

@@ -256,6 +256,7 @@ function SessionDetailModal({
         {difficulty && (
           <div className="flex justify-center">
             <span
+              title="Inferida del puntaje de comprensión, no se pregunta"
               className={cn(
                 "px-3 py-1.5 rounded-full text-xs font-medium border",
                 difficulty.border,
@@ -264,18 +265,6 @@ function SessionDetailModal({
             >
               {difficulty.emoji} {difficulty.label}
             </span>
-          </div>
-        )}
-
-        {/* Idea principal */}
-        {session.main_idea_text && (
-          <div className="space-y-1.5">
-            <p className="text-xs text-muted-foreground uppercase tracking-wide font-medium">
-              La idea principal, según tú
-            </p>
-            <p className="text-sm leading-relaxed rounded-xl bg-muted/30 border border-border/50 p-3">
-              {session.main_idea_text}
-            </p>
           </div>
         )}
 

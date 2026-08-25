@@ -29,7 +29,6 @@ export interface LearningSession {
   last_position_seconds: number;
 
   comp_main_idea: number | null;
-  comp_details: number | null;
   comp_subtitles: number | null;
   comp_explain: number | null;
   main_idea_text: string | null;

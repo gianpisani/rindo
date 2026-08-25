@@ -17,6 +17,11 @@ interface BaseModalProps {
   footer?: ReactNode;
   maxWidth?: "sm" | "md" | "lg" | "xl";
   variant?: "default" | "income" | "expense" | "investment";
+  /**
+   * En false no hay X, ni Escape, ni click afuera: la única salida es la
+   * acción del pie. Para diálogos que exigen una respuesta.
+   */
+  dismissible?: boolean;
 }
 
 const maxWidthClasses = {
@@ -57,7 +62,8 @@ export function BaseModal({
   children,
   footer,
   maxWidth = "lg",
-  variant = "default"
+  variant = "default",
+  dismissible = true,
 }: BaseModalProps) {
   const styles = variantStyles[variant];
   const scrollRef = useRef<HTMLDivElement>(null);
@@ -78,7 +84,11 @@ export function BaseModal({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent 
+      <DialogContent
+        hideClose={!dismissible}
+        onEscapeKeyDown={(e) => !dismissible && e.preventDefault()}
+        onPointerDownOutside={(e) => !dismissible && e.preventDefault()}
+        onInteractOutside={(e) => !dismissible && e.preventDefault()}
         className={cn(
           maxWidthClasses[maxWidth],
           "w-[92vw] max-h-[90vh] flex flex-col p-0 gap-0 rounded-2xl",

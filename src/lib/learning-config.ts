@@ -1,51 +1,66 @@
 // ── Aprendizaje — configuración, escalas y métricas ─────────
 //
 // Nota de diseño sobre las métricas:
-// La única métrica que mide capacidad adquirida de forma honesta es la
-// comprensión (/8), porque no depende de cuánto trabajo hiciste durante la
-// sesión. El resto (multiplicador, foco, densidad de vocabulario) también
-// "mejoran" cuando dejas de esforzarte —pausas menos, capturas menos— así que
-// se muestran como contexto de la sesión, nunca como la línea de progreso.
+// La línea de progreso NO vive acá: vive en `corpus.ts`, y es el puesto en el
+// ranking del inglés de las palabras que todavía te frenan. La comprensión
+// (/12) que se declara al terminar un video es el complemento subjetivo, lo
+// que el corpus no puede calcular solo. El resto —multiplicador, foco,
+// densidad de vocabulario— también "mejora" cuando dejas de esforzarte, así
+// que se muestra como contexto de la sesión, nunca como progreso.
 
 import type { LearningSession } from "@/hooks/useLearningSessions";
 
 // ── Escala de comprensión ───────────────────────────────────
 
 export interface ComprehensionQuestion {
-  key: "comp_main_idea" | "comp_details" | "comp_subtitles" | "comp_explain";
+  key: "comp_main_idea" | "comp_subtitles" | "comp_explain";
+  /** Se lee en un segundo: tres palabras y un emoji. */
+  icon: string;
   label: string;
-  hint: string;
-  options: [string, string, string]; // 0, 1, 2
+  /** Qué significan la cara del extremo izquierdo, la del medio y la derecha. */
+  anchors: [string, string, string];
 }
 
+/**
+ * Las caras. La misma escala para las tres preguntas, a propósito: lo que
+ * cambia es el rótulo de los extremos, no los dibujos. Así la mano aprende
+ * la posición y se contesta sin leer.
+ */
+export const COMPREHENSION_FACES = ["😵‍💫", "😕", "🙂", "😃", "🤩"] as const;
+
+/** Cuánto vale la cara de más a la derecha. */
+export const MAX_FACE_VALUE = COMPREHENSION_FACES.length - 1; // 4
+
+/**
+ * Tres preguntas, no cuatro.
+ *
+ * Son exactamente las que el corpus de transcripciones no puede responder
+ * solo: cuánto vocabulario te frenó ya se calcula de tus capturas, así que
+ * preguntarlo sería pedirte trabajo que la máquina ya hizo.
+ */
 export const COMPREHENSION_QUESTIONS: ComprehensionQuestion[] = [
   {
     key: "comp_main_idea",
-    label: "La idea principal",
-    hint: "¿Cachaste de qué se trataba en el fondo?",
-    options: ["No la pillé", "Más o menos", "Clarísima"],
-  },
-  {
-    key: "comp_details",
-    label: "Los detalles importantes",
-    hint: "Los argumentos, ejemplos y matices",
-    options: ["Pocos", "Algunos", "Casi todos"],
+    icon: "🧠",
+    label: "¿Seguiste el hilo?",
+    anchors: ["Perdido", "A medias", "Clarísimo"],
   },
   {
     key: "comp_subtitles",
-    label: "Dependencia de subtítulos",
-    hint: "Cuánto necesitaste leer para seguir",
-    options: ["Alta", "Algo", "Poca o nada"],
+    icon: "📖",
+    label: "¿Necesitaste subtítulos?",
+    anchors: ["Todo el rato", "A ratos", "Casi nada"],
   },
   {
     key: "comp_explain",
-    label: "¿Podrías explicarlo?",
-    hint: "En inglés, a otra persona, ahora mismo",
-    options: ["No", "En parte", "Sí"],
+    icon: "🗣️",
+    label: "¿Lo explicarías en inglés?",
+    anchors: ["Ni ahí", "Más o menos", "Fácil"],
   },
 ];
 
-export const MAX_COMPREHENSION = COMPREHENSION_QUESTIONS.length * 2; // 8
+export const MAX_COMPREHENSION =
+  COMPREHENSION_QUESTIONS.length * MAX_FACE_VALUE; // 12
 
 // ── Dificultad percibida ────────────────────────────────────
 
@@ -167,7 +182,7 @@ export const STALE_HEARTBEAT_MS = 90_000;
 // ── Métricas ────────────────────────────────────────────────
 
 export interface SessionMetrics {
-  /** 0–8, null si la sesión no tiene reflexión completa. */
+  /** 0–12, null si la sesión no tiene reflexión completa. */
   comprehension: number | null;
   /** Tiempo estudiando ÷ duración del contenido. */
   studyMultiplier: number | null;
@@ -178,11 +193,26 @@ export interface SessionMetrics {
 }
 
 export function comprehensionScore(
-  s: Pick<LearningSession, "comp_main_idea" | "comp_details" | "comp_subtitles" | "comp_explain">
+  s: Pick<LearningSession, "comp_main_idea" | "comp_subtitles" | "comp_explain">
 ): number | null {
-  const parts = [s.comp_main_idea, s.comp_details, s.comp_subtitles, s.comp_explain];
+  const parts = [s.comp_main_idea, s.comp_subtitles, s.comp_explain];
   if (parts.some((p) => p === null || p === undefined)) return null;
   return parts.reduce<number>((acc, p) => acc + (p ?? 0), 0);
+}
+
+/**
+ * La dificultad ya no se pregunta: es la cuarta decisión de un formulario que
+ * quiere durar cinco segundos, y sale sola del puntaje. Cómodo arriba,
+ * demasiado abajo, con el desafío justo al medio.
+ */
+export function inferDifficulty(score: number | null): Difficulty | null {
+  if (score === null) return null;
+  const ratio = score / MAX_COMPREHENSION;
+  if (ratio >= 0.9) return "easy";
+  if (ratio >= 0.7) return "comfortable";
+  if (ratio >= 0.5) return "challenge";
+  if (ratio >= 0.3) return "hard";
+  return "too_hard";
 }
 
 export function sessionMetrics(s: LearningSession, newItemCount = 0): SessionMetrics {

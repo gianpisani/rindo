@@ -3,11 +3,13 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import type { LearningSession } from "./useLearningSessions";
-import type { ContentType, Difficulty } from "@/lib/learning-config";
+import type { ContentType } from "@/lib/learning-config";
 import {
   HEARTBEAT_MS,
   IDLE_AUTO_PAUSE_MS,
   STALE_HEARTBEAT_MS,
+  comprehensionScore,
+  inferDifficulty,
 } from "@/lib/learning-config";
 
 export interface StartSessionInput {
@@ -31,11 +33,9 @@ export interface StartSessionInput {
  */
 export interface ReflectionInput {
   comp_main_idea: number | null;
-  comp_details: number | null;
   comp_subtitles: number | null;
   comp_explain: number | null;
   main_idea_text: string | null;
-  difficulty: Difficulty | null;
 }
 
 const OPEN_SESSION_KEY = ["learning-open-session"];
@@ -337,6 +337,8 @@ export function useActiveLearningSession() {
 
       return patch(session.id, {
         ...reflection,
+        // La dificultad ya no se pregunta: sale del puntaje.
+        difficulty: inferDifficulty(comprehensionScore(reflection)),
         status: "completed",
         ended_at: new Date(endMs).toISOString(),
         last_resumed_at: null,
