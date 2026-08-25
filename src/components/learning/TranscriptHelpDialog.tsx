@@ -10,7 +10,7 @@ import {
   Check,
   ChevronLeft,
   MousePointer2,
-  Sparkles,
+  HelpCircle,
 } from "lucide-react";
 import { TRANSCRIPT_BOOKMARKLET } from "@/lib/transcript-bookmarklet";
 
@@ -225,13 +225,13 @@ export function TranscriptHelpDialog({
               "hover:bg-primary/15 transition-colors"
             )}
           >
-            <Sparkles className="h-4 w-4 text-primary shrink-0" />
+            <HelpCircle className="h-4 w-4 text-primary shrink-0" />
             <span className="min-w-0 flex-1">
               <span className="block text-sm font-medium text-primary">
-                Primero hay que configurarlo
+                ¿Es primera vez?
               </span>
               <span className="block text-xs text-muted-foreground">
-                Una sola vez, tres pasos. Aprieta acá.
+                Hay que configurarlo una sola vez. Te muestro cómo.
               </span>
             </span>
           </button>
