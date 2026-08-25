@@ -16,6 +16,7 @@ import { contentProgress, formatClock } from "@/lib/learning-config";
 import { useLearningItems } from "@/hooks/useLearningItems";
 import { useLearningQueue, type QueueItem } from "@/hooks/useLearningQueue";
 import { useLearningStats } from "@/hooks/useLearningStats";
+import { useCorpus } from "@/hooks/useCorpus";
 import {
   useActiveLearningSession,
   type StartSessionInput,
@@ -87,6 +88,22 @@ export default function Learning() {
   const { queue, add: addToQueue, markWatched, remove: removeFromQueue } =
     useLearningQueue(goal?.id);
   const stats = useLearningStats(sessions);
+
+  /**
+   * El corpus: todo el inglés que has escuchado, indexado contra el ranking de
+   * uso del idioma. Es lo que convierte al diccionario en una medición y no en
+   * una lista, así que se arma acá arriba y lo comparten las dos pestañas.
+   */
+  const titles = useMemo(() => {
+    const map = new Map<string, string | null>();
+    for (const source of [...sessions, ...unfinished, ...queue]) {
+      if (source.external_id) map.set(source.external_id, source.content_title);
+    }
+    return map;
+  }, [sessions, unfinished, queue]);
+
+  const stopped = useMemo(() => items.map((i) => i.expression), [items]);
+  const corpus = useCorpus(titles, stopped);
 
   // ── Acciones ──────────────────────────────────────────────
 
@@ -420,13 +437,14 @@ export default function Learning() {
           <TabsContent value="vocabulary" className="mt-4">
             <LearningVocabulary
               items={items}
+              corpus={corpus}
               onUpdate={(updates) => updateItem.mutate(updates)}
               onDelete={(id) => deleteItem.mutate(id)}
             />
           </TabsContent>
 
           <TabsContent value="progress" className="mt-4">
-            <LearningProgress stats={stats} />
+            <LearningProgress stats={stats} items={items} corpus={corpus} />
           </TabsContent>
         </Tabs>
       </div>

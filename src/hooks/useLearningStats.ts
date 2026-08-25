@@ -14,15 +14,18 @@ export interface PeriodStats {
   consumedSeconds: number;
   contentSeconds: number;
   newItems: number;
-  /** Promedio de comprensión /8 entre las sesiones que la tienen. */
+  /** Promedio de comprensión /12 entre las sesiones que la tienen. */
   comprehension: number | null;
   /** Promedio ponderado: total efectivo ÷ total de contenido. */
   studyMultiplier: number | null;
-  /** Promedio de dependencia de subtítulos 0–2 (más alto = menos dependencia). */
+  /** Promedio de independencia de subtítulos 0–4 (más alto = menos dependencia). */
   subtitleIndependence: number | null;
   /** Expresiones nuevas por minuto de contenido consumido. */
   vocabDensity: number | null;
 }
+
+/** Cuántos días muestra el calendario del hábito. */
+const HEATMAP_DAYS = 84;
 
 const EMPTY: PeriodStats = {
   sessionCount: 0,
@@ -113,7 +116,7 @@ export interface LearningStats {
   allTime: PeriodStats;
   streakDays: number;
   daysSinceLastSession: number | null;
-  /** Minutos efectivos por día en los últimos 30 días, para el gráfico. */
+  /** Minutos efectivos por día en las últimas doce semanas, para el calendario. */
   dailyMinutes: { date: string; minutes: number }[];
   /** Comprensión por sesión en orden cronológico, para la tendencia. */
   comprehensionSeries: { date: string; score: number }[];
@@ -132,6 +135,7 @@ export function useLearningStats(sessions: SessionWithItemCount[]): LearningStat
 
     const day30 = subDays(now, 30);
     const day60 = subDays(now, 60);
+    const day84 = subDays(now, HEATMAP_DAYS);
 
     const todaySessions = sessions.filter(
       (s) => format(new Date(s.started_at), "yyyy-MM-dd") === todayKey
@@ -140,12 +144,12 @@ export function useLearningStats(sessions: SessionWithItemCount[]): LearningStat
     const last30Sessions = sessions.filter((s) => inRange(s, day30));
     const previous30Sessions = sessions.filter((s) => inRange(s, day60, day30));
 
-    // Minutos por día, últimos 30 días
+    // Minutos por día, para el calendario de calor
     const byDay = new Map<string, number>();
-    for (let i = 29; i >= 0; i--) {
+    for (let i = HEATMAP_DAYS - 1; i >= 0; i--) {
       byDay.set(format(subDays(now, i), "yyyy-MM-dd"), 0);
     }
-    for (const s of last30Sessions) {
+    for (const s of sessions.filter((x) => inRange(x, day84))) {
       const key = format(new Date(s.started_at), "yyyy-MM-dd");
       if (byDay.has(key)) {
         byDay.set(key, (byDay.get(key) ?? 0) + s.effective_seconds / 60);

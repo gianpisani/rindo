@@ -156,6 +156,18 @@ Based on Indigo, Blue, Cyan palette
     --info: 188 86% 43%;
     --info-foreground: 0 0% 100%;
 
+    /* Bandas de frecuencia del inglés — rampa secuencial de un solo tono.
+       Violeta porque es el acento que ya usa Aprendizaje y no pisa ninguna
+       semántica de plata. Más oscuro = palabra más rara. */
+    --band-hue: 292;
+    --band-1: oklch(0.82 0.055 var(--band-hue));
+    --band-2: oklch(0.73 0.10 var(--band-hue));
+    --band-3: oklch(0.64 0.145 var(--band-hue));
+    --band-4: oklch(0.55 0.18 var(--band-hue));
+    --band-5: oklch(0.44 0.19 var(--band-hue));
+    /* Fuera de las 46.717 palabras de la lista: nombres propios y erratas. */
+    --band-none: oklch(0.72 0.008 286);
+
     /* Semantic chart colors (hex for Recharts compatibility) */
     --color-income: #10b981;
     --color-expense: #e11d48;
@@ -225,6 +237,16 @@ Based on Indigo, Blue, Cyan palette
     --warning-foreground: 0 0% 0%;
     --info: 190 92% 55%;
     --info-foreground: 0 0% 100%;
+
+    /* La misma rampa, escalonada de nuevo contra el fondo oscuro: acá la
+       palabra rara es la más luminosa, no la más oscura. */
+    --band-hue: 292;
+    --band-1: oklch(0.40 0.075 var(--band-hue));
+    --band-2: oklch(0.50 0.115 var(--band-hue));
+    --band-3: oklch(0.60 0.15 var(--band-hue));
+    --band-4: oklch(0.70 0.17 var(--band-hue));
+    --band-5: oklch(0.82 0.14 var(--band-hue));
+    --band-none: oklch(0.42 0.008 286);
 
     /* Semantic chart colors — referencian los accents, sin duplicar valores */
     --color-income: oklch(var(--accent-emerald));

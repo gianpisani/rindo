@@ -203,6 +203,17 @@ export default {
         '.mt-safe': {
           marginTop: 'env(safe-area-inset-top)',
         },
+        /* Fila que se arrastra de lado sin mostrar la barra de scroll. */
+        '.no-scrollbar': {
+          '-ms-overflow-style': 'none',
+          'scrollbar-width': 'none',
+          '&::-webkit-scrollbar': { display: 'none' },
+        },
+        '.scrollbar-hide': {
+          '-ms-overflow-style': 'none',
+          'scrollbar-width': 'none',
+          '&::-webkit-scrollbar': { display: 'none' },
+        },
       }
       addUtilities(newUtilities)
     }
