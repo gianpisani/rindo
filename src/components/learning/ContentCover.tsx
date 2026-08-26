@@ -19,6 +19,22 @@ function youTubeCover(videoId: string): string {
   return `https://i.ytimg.com/vi/${videoId}/maxresdefault.jpg`;
 }
 
+/**
+ * Marca de "esto sigue abierto".
+ *
+ * Vidrio oscuro y no rojo sólido a propósito: el rojo de esta tarjeta se lo
+ * gana la barra de abajo, que es la que dice algo que cambia. Una etiqueta
+ * gritando del mismo color le robaría el único acento que importa.
+ */
+export function LiveBadge({ children }: { children: ReactNode }) {
+  return (
+    <span className="flex items-center gap-1.5 rounded-md bg-black/65 px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-white backdrop-blur-sm">
+      <span className="size-1.5 rounded-full bg-primary animate-breathe" />
+      {children}
+    </span>
+  );
+}
+
 interface ContentCoverProps {
   externalId: string | null;
   /** Portada guardada, para lo que no es YouTube. */
@@ -34,14 +50,15 @@ interface ContentCoverProps {
   /** Etiqueta chica encima de la portada, arriba a la izquierda. */
   ribbon?: ReactNode;
   onPlay: () => void;
+  className?: string;
 }
 
 /**
  * La portada de un contenido: es el botón de reproducir.
  *
- * La comparten "seguir viendo" y "para ver después" a propósito. Son dos
- * estanterías del mismo tipo de cosa —videos que te quedan por ver— y verse
- * distinto sería sugerir que una es una lista de tareas y la otra no.
+ * La comparten el héroe, "seguir viendo" y "para ver después" a propósito. Son
+ * el mismo tipo de cosa —videos que te quedan por ver— y verse distinto sería
+ * sugerir que una es una lista de tareas y la otra no.
  */
 export function ContentCover({
   externalId,
@@ -52,6 +69,7 @@ export function ContentCover({
   progressPercent,
   ribbon,
   onPlay,
+  className,
 }: ContentCoverProps) {
   /** La portada grande no existe para todos los videos; se cae a la chica. */
   const [coverFailed, setCoverFailed] = useState(false);
@@ -65,7 +83,10 @@ export function ContentCover({
     <button
       onClick={onPlay}
       aria-label={`Ver ${title ?? "el video guardado"}`}
-      className="relative block w-full aspect-video overflow-hidden bg-muted"
+      className={cn(
+        "relative block w-full aspect-video overflow-hidden bg-muted",
+        className
+      )}
     >
       {src ? (
         <img
@@ -73,7 +94,7 @@ export function ContentCover({
           alt=""
           loading="lazy"
           onError={() => setCoverFailed(true)}
-          className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-[1.03]"
+          className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-[1.04]"
         />
       ) : (
         <div className="flex h-full w-full items-center justify-center text-3xl">
@@ -86,17 +107,29 @@ export function ContentCover({
         <span className="absolute inset-x-0 bottom-0 h-12 bg-gradient-to-t from-black/70 via-black/25 to-transparent" />
       )}
 
-      {/* Velo y play. En el teléfono no hay hover, así que se ve siempre. */}
-      <span className="absolute inset-0 bg-foreground/25 opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity duration-200" />
+      {/*
+        En el teléfono no hay hover, así que antes el velo tapaba la portada
+        siempre y la parrilla se veía apagada, como deshabilitada. Ahora la
+        miniatura se ve limpia y solo queda una marca chica de video; el velo
+        grande es cosa del puntero.
+      */}
+      <span className="pointer-events-none absolute inset-0 bg-foreground/25 opacity-0 transition-opacity duration-200 group-hover:opacity-100 hidden sm:block" />
+
+      <span className="absolute inset-0 flex items-center justify-center sm:hidden">
+        <span className="flex size-8 items-center justify-center rounded-full bg-black/45 backdrop-blur-sm">
+          <Play className="h-3.5 w-3.5 translate-x-[1px] fill-current text-white" />
+        </span>
+      </span>
+
       <span
         className={cn(
-          "absolute inset-0 flex items-center justify-center",
-          "transition-all duration-200",
-          "sm:opacity-0 sm:scale-90 sm:group-hover:opacity-100 sm:group-hover:scale-100"
+          "absolute inset-0 hidden items-center justify-center sm:flex",
+          "opacity-0 scale-90 transition-all duration-200",
+          "group-hover:opacity-100 group-hover:scale-100"
         )}
       >
-        <span className="flex size-10 sm:size-12 items-center justify-center rounded-full bg-background/90 shadow-lg backdrop-blur-sm">
-          <Play className="h-4 w-4 sm:h-5 sm:w-5 translate-x-[1px] fill-current text-foreground" />
+        <span className="flex size-12 items-center justify-center rounded-full bg-background/90 shadow-lg backdrop-blur-sm">
+          <Play className="h-5 w-5 translate-x-[1px] fill-current text-foreground" />
         </span>
       </span>
 
@@ -104,7 +137,7 @@ export function ContentCover({
 
       {/* Largo del video, apoyado justo encima de la barra */}
       {durationSeconds ? (
-        <span className="absolute bottom-1.5 right-1.5 rounded-md bg-black/80 px-1.5 py-0.5 text-[11px] font-medium tabular-nums text-white">
+        <span className="absolute bottom-1.5 right-1.5 rounded-md bg-black/70 px-1.5 py-0.5 text-[11px] font-medium tabular-nums text-white backdrop-blur-sm">
           {formatClock(durationSeconds)}
         </span>
       ) : null}

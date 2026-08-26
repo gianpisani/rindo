@@ -1,7 +1,5 @@
-import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import type { ReactNode } from "react";
-import { Play, Flame, Check } from "lucide-react";
 import { format } from "date-fns";
 import { es } from "date-fns/locale";
 import {
@@ -10,6 +8,7 @@ import {
   formatDuration,
   CONTENT_TYPE_CONFIG,
 } from "@/lib/learning-config";
+import { TodayHero } from "./TodayHero";
 import type { LearningGoal } from "@/hooks/useLearningGoals";
 import type {
   LearningSession,
@@ -22,9 +21,11 @@ interface LearningOverviewProps {
   stats: LearningStats;
   sessions: SessionWithItemCount[];
   onStart: () => void;
-  /** Sesión abierta que quedó pausada al salir del estudio. */
-  openSession?: LearningSession | null;
-  onReturnToSession?: () => void;
+  /** Lo que te está esperando: la sesión abierta o lo último a medias. */
+  featured: LearningSession | null;
+  /** La destacada sigue abierta: volver la retoma tal cual. */
+  featuredIsLive: boolean;
+  onResumeFeatured: () => void;
   onOpenSession: (session: SessionWithItemCount) => void;
   /** La lista de "para ver después" se renderiza entre hoy y la semana. */
   queueSlot?: ReactNode;
@@ -61,97 +62,26 @@ export function LearningOverview({
   stats,
   sessions,
   onStart,
-  openSession,
-  onReturnToSession,
+  featured,
+  featuredIsLive,
+  onResumeFeatured,
   onOpenSession,
   queueSlot,
   continueSlot,
 }: LearningOverviewProps) {
-  const todayMinutes = stats.today.effectiveSeconds / 60;
-  const target = goal.daily_minutes_target;
-  const progress = Math.min(todayMinutes / target, 1);
-  const goalMet = todayMinutes >= target;
-
   const recent = sessions.slice(0, 5);
 
   return (
     <div className="space-y-4">
-      {/* ── Hoy ──────────────────────────────────────────── */}
-      <div className="rounded-2xl border border-border/60 bg-card p-5">
-        <div className="flex items-start justify-between gap-4">
-          <div>
-            <p className="text-xs text-muted-foreground uppercase tracking-wide font-medium">
-              Hoy
-            </p>
-            <p className="mt-1.5 text-3xl font-bold tabular-nums leading-none">
-              {Math.round(todayMinutes)}
-              <span className="text-lg text-muted-foreground font-semibold">
-                {" "}/ {target} min
-              </span>
-            </p>
-          </div>
-
-          <div className="flex items-center gap-3 shrink-0">
-            {stats.streakDays > 0 && (
-              <div className="flex items-center gap-1.5 text-primary">
-                <Flame className="h-4 w-4" />
-                <span className="text-sm font-bold tabular-nums">
-                  {stats.streakDays}
-                </span>
-              </div>
-            )}
-            {goalMet && (
-              <div className="h-8 w-8 rounded-full bg-emerald-500/15 flex items-center justify-center">
-                <Check className="h-4 w-4 text-emerald-500" />
-              </div>
-            )}
-          </div>
-        </div>
-
-        {/* Barra */}
-        <div className="mt-4 h-1.5 rounded-full bg-muted overflow-hidden">
-          <div
-            className={cn(
-              "h-full rounded-full transition-all duration-500",
-              goalMet ? "bg-emerald-500" : "bg-primary"
-            )}
-            style={{ width: `${Math.max(progress * 100, progress > 0 ? 4 : 0)}%` }}
-          />
-        </div>
-
-        {/* Acción principal */}
-        {openSession ? (
-          <button
-            onClick={onReturnToSession}
-            className={cn(
-              "w-full mt-5 rounded-xl border border-primary/30 bg-primary/[0.07]",
-              "px-4 py-3 flex items-center gap-3 text-left",
-              "hover:bg-primary/10 transition-colors"
-            )}
-          >
-            <div className="flex items-center justify-center size-10 rounded-full bg-primary/15 text-primary shrink-0">
-              <Play className="h-4 w-4 fill-current" />
-            </div>
-            <div className="min-w-0 flex-1">
-              <p className="text-sm font-semibold truncate">
-                Volver a la sesión
-              </p>
-              <p className="text-[11px] text-muted-foreground truncate">
-                {openSession.content_title ?? "En pausa"} ·{" "}
-                {formatDuration(openSession.effective_seconds)} estudiando
-              </p>
-            </div>
-          </button>
-        ) : (
-          <Button
-            onClick={onStart}
-            className="w-full mt-5 h-14 text-base font-semibold rounded-xl"
-          >
-            <Play className="h-5 w-5 mr-2 fill-current" />
-            Empezar sesión
-          </Button>
-        )}
-      </div>
+      {/* ── Hoy, sobre lo que estás viendo ───────────────── */}
+      <TodayHero
+        goal={goal}
+        stats={stats}
+        featured={featured}
+        featuredIsLive={featuredIsLive}
+        onResumeFeatured={onResumeFeatured}
+        onStart={onStart}
+      />
 
       {/* ── Seguir viendo ────────────────────────────────── */}
       {continueSlot}

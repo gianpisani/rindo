@@ -208,6 +208,23 @@ export default function Learning() {
     });
   };
 
+  /**
+   * Lo que te está esperando al abrir la vista: la sesión abierta si la hay, o
+   * si no lo último que dejaste a medias. Es lo que manda el héroe, y por eso
+   * no vuelve a aparecer en la fila de abajo.
+   */
+  const featured: LearningSession | null =
+    session.session ?? unfinished[0] ?? null;
+  const featuredIsLive = !!session.session;
+
+  const handleResumeFeatured = () => {
+    if (session.session) {
+      setMinimized(false);
+      return;
+    }
+    if (unfinished[0]) handleContinue(unfinished[0]);
+  };
+
   const handleFinishReflection = (reflection: ReflectionInput) => {
     session.finish.mutate(reflection, {
       onSuccess: (finished) => {
@@ -410,8 +427,9 @@ export default function Learning() {
               stats={stats}
               sessions={sessions}
               onStart={() => setStartDialogOpen(true)}
-              openSession={minimized ? session.session : null}
-              onReturnToSession={() => setMinimized(false)}
+              featured={featured}
+              featuredIsLive={featuredIsLive}
+              onResumeFeatured={handleResumeFeatured}
               onOpenSession={(s) => {
                 setSelectedSession(s);
                 setTab("sessions");
@@ -419,8 +437,7 @@ export default function Learning() {
               continueSlot={
                 <ContinueWatching
                   unfinished={unfinished}
-                  openSession={session.session}
-                  onReturnToOpen={() => setMinimized(false)}
+                  featured={featured}
                   onContinue={handleContinue}
                   onDismiss={(s) => markContentFinished.mutate(s)}
                 />
