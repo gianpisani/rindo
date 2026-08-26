@@ -4,7 +4,6 @@ import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
 import {
   Plus,
-  Play,
   X,
   Link2,
   Bookmark,
@@ -15,7 +14,6 @@ import {
 } from "lucide-react";
 import {
   CONTENT_TYPE_CONFIG,
-  formatClock,
   parseYouTubeId,
   youTubeThumbnail,
   youTubeWatchUrl,
@@ -26,6 +24,9 @@ import { useTranscriptStatuses } from "@/hooks/useTranscript";
 import { TranscriptHelpDialog } from "./TranscriptHelpDialog";
 import { useTranscript } from "@/hooks/useTranscript";
 import { YouTubePlayer } from "./YouTubePlayer";
+import { ContentCover } from "./ContentCover";
+import { ShelfSection } from "./ShelfSection";
+import { useShelfOpen } from "@/hooks/useShelfOpen";
 
 interface LearningQueueProps {
   queue: QueueItem[];
@@ -59,6 +60,7 @@ export function LearningQueue({
   onRemove,
   isAdding,
 }: LearningQueueProps) {
+  const [open, setOpen] = useShelfOpen("queue");
   const [adding, setAdding] = useState(false);
   const [url, setUrl] = useState("");
   /** Video al que se le están trayendo los subtítulos por adelantado. */
@@ -83,33 +85,32 @@ export function LearningQueue({
     setAdding(false);
   };
 
-  return (
-    <div className="rounded-2xl border border-border/60 bg-card p-5">
-      <div className="flex items-center justify-between gap-2 mb-3">
-        <div className="flex items-center gap-2">
-          <Bookmark className="h-4 w-4 text-primary" />
-          <p className="text-xs text-muted-foreground uppercase tracking-wide font-medium">
-            Para ver después
-          </p>
-          {queue.length > 0 && (
-            <span className="text-[11px] text-muted-foreground tabular-nums">
-              {queue.length}
-            </span>
-          )}
-        </div>
+  /** El "+" abre la estantería si estaba cerrada: pegar un link es abrirla. */
+  const startAdding = () => {
+    setOpen(true);
+    setAdding(true);
+  };
 
-        {!adding && (
+  return (
+    <ShelfSection
+      icon={<Bookmark className="h-4 w-4 text-primary" />}
+      title="Para ver después"
+      count={queue.length}
+      open={open}
+      onOpenChange={setOpen}
+      action={
+        !adding && (
           <Button
-            onClick={() => setAdding(true)}
+            onClick={startAdding}
             variant="ghost"
             size="sm"
-            className="rounded-xl h-7 px-2 text-muted-foreground"
+            className="rounded-xl h-7 px-2 text-muted-foreground shrink-0"
           >
             <Plus className="h-3.5 w-3.5" />
           </Button>
-        )}
-      </div>
-
+        )
+      }
+    >
       {adding && (
         <div className="space-y-2 mb-3">
           <div className="relative">
@@ -160,7 +161,7 @@ export function LearningQueue({
           </p>
         )
       ) : (
-        <div className="grid gap-3 sm:grid-cols-2">
+        <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
           {queue.map((item) => (
             <QueueCard
               key={item.id}
@@ -184,22 +185,11 @@ export function LearningQueue({
           onClose={() => setPrefetchFor(null)}
         />
       )}
-    </div>
+    </ShelfSection>
   );
 }
 
 // ── Tarjeta ─────────────────────────────────────────────────
-
-/**
- * La portada grande, en 16:9 de verdad.
- *
- * `youTubeThumbnail` devuelve `hqdefault`, que viene en 4:3 con bandas negras:
- * bien para un cuadradito de 64px, pobre para una tarjeta ancha. Esta no existe
- * para todos los videos, así que la tarjeta cae de vuelta en la chica si falla.
- */
-function youTubeCover(videoId: string): string {
-  return `https://i.ytimg.com/vi/${videoId}/maxresdefault.jpg`;
-}
 
 function QueueCard({
   item,
@@ -215,13 +205,6 @@ function QueueCard({
   onPrefetchTranscript: () => void;
 }) {
   const videoId = item.external_id;
-  /** La portada grande no existe para todos los videos; se cae a la chica. */
-  const [thumbnailFailed, setThumbnailFailed] = useState(false);
-  const thumbnail = videoId
-    ? thumbnailFailed
-      ? youTubeThumbnail(videoId)
-      : youTubeCover(videoId)
-    : item.content_thumbnail;
 
   return (
     <article
@@ -230,47 +213,14 @@ function QueueCard({
         "transition-colors hover:border-border"
       )}
     >
-      {/* Portada — es el botón de reproducir */}
-      <button
-        onClick={onStart}
-        aria-label={`Ver ${item.content_title ?? "el video guardado"}`}
-        className="relative block w-full aspect-video overflow-hidden bg-muted"
-      >
-        {thumbnail ? (
-          <img
-            src={thumbnail}
-            alt=""
-            loading="lazy"
-            onError={() => setThumbnailFailed(true)}
-            className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-[1.03]"
-          />
-        ) : (
-          <div className="flex h-full w-full items-center justify-center text-3xl">
-            {CONTENT_TYPE_CONFIG[item.content_type]?.emoji ?? "✨"}
-          </div>
-        )}
-
-        {/* Velo y play. En el teléfono no hay hover, así que se ve siempre. */}
-        <span className="absolute inset-0 bg-foreground/25 opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity duration-200" />
-        <span
-          className={cn(
-            "absolute inset-0 flex items-center justify-center",
-            "transition-all duration-200",
-            "sm:opacity-0 sm:scale-90 sm:group-hover:opacity-100 sm:group-hover:scale-100"
-          )}
-        >
-          <span className="flex size-12 items-center justify-center rounded-full bg-background/90 shadow-lg backdrop-blur-sm">
-            <Play className="h-5 w-5 translate-x-[1px] fill-current text-foreground" />
-          </span>
-        </span>
-
-        {/* Largo del video */}
-        {item.content_duration_seconds ? (
-          <span className="absolute bottom-1.5 right-1.5 rounded-md bg-black/80 px-1.5 py-0.5 text-[11px] font-medium tabular-nums text-white">
-            {formatClock(item.content_duration_seconds)}
-          </span>
-        ) : null}
-      </button>
+      <ContentCover
+        externalId={item.external_id}
+        thumbnail={item.content_thumbnail}
+        contentType={item.content_type}
+        title={item.content_title}
+        durationSeconds={item.content_duration_seconds}
+        onPlay={onStart}
+      />
 
       {/* Sacar de la lista */}
       <button

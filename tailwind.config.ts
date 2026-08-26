@@ -139,6 +139,22 @@ export default {
   					height: '0'
   				}
   			},
+  			'collapsible-down': {
+  				from: {
+  					height: '0'
+  				},
+  				to: {
+  					height: 'var(--radix-collapsible-content-height)'
+  				}
+  			},
+  			'collapsible-up': {
+  				from: {
+  					height: 'var(--radix-collapsible-content-height)'
+  				},
+  				to: {
+  					height: '0'
+  				}
+  			},
   			shimmer: {
   				'0%': {
   					transform: 'translateX(-100%)'
@@ -169,6 +185,8 @@ export default {
   		animation: {
   			'accordion-down': 'accordion-down 0.2s ease-out',
   			'accordion-up': 'accordion-up 0.2s ease-out',
+  			'collapsible-down': 'collapsible-down 0.2s ease-out',
+  			'collapsible-up': 'collapsible-up 0.2s ease-out',
   			shimmer: 'shimmer 2s infinite',
   			breathe: 'breathe 2s ease-in-out infinite',
   			float: 'float 3s ease-in-out infinite'

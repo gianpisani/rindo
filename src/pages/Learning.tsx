@@ -419,6 +419,8 @@ export default function Learning() {
               continueSlot={
                 <ContinueWatching
                   unfinished={unfinished}
+                  openSession={session.session}
+                  onReturnToOpen={() => setMinimized(false)}
                   onContinue={handleContinue}
                   onDismiss={(s) => markContentFinished.mutate(s)}
                 />

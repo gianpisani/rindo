@@ -1,13 +1,33 @@
-import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
-import { Play, X } from "lucide-react";
-import { CONTENT_TYPE_CONFIG, contentProgress } from "@/lib/learning-config";
-import type { SessionWithItemCount } from "@/hooks/useLearningSessions";
+import { X, History } from "lucide-react";
+import { contentProgress } from "@/lib/learning-config";
+import type {
+  LearningSession,
+  SessionWithItemCount,
+} from "@/hooks/useLearningSessions";
+import { ContentCover } from "./ContentCover";
+import { ShelfSection } from "./ShelfSection";
+import { useShelfOpen } from "@/hooks/useShelfOpen";
 
 interface ContinueWatchingProps {
   unfinished: SessionWithItemCount[];
+  /**
+   * La sesión que dejaste abierta al salir del estudio. Va primera y marcada:
+   * es la única que todavía tiene el reloj esperándote.
+   */
+  openSession?: LearningSession | null;
+  onReturnToOpen?: () => void;
   onContinue: (session: SessionWithItemCount) => void;
   onDismiss: (session: SessionWithItemCount) => void;
+}
+
+/** Lo que hay que saber de una tarjeta, venga de donde venga. */
+interface Entry {
+  session: LearningSession;
+  /** Sesión abierta: salir no la cerró, volver la retoma tal cual. */
+  live: boolean;
+  onPlay: () => void;
+  onDismiss?: () => void;
 }
 
 /**
@@ -15,89 +35,123 @@ interface ContinueWatchingProps {
  *
  * Dejar un video a la mitad es perfectamente válido —esa sesión ya contó con
  * su tiempo y su comprensión— así que esto no es una tarea pendiente ni una
- * culpa: es solo un atajo para retomarlo donde ibas.
+ * culpa: es solo un atajo para retomarlo donde ibas. Por eso se ve igual que
+ * la lista de "para ver después": son videos, no deberes.
  */
 export function ContinueWatching({
   unfinished,
+  openSession,
+  onReturnToOpen,
   onContinue,
   onDismiss,
 }: ContinueWatchingProps) {
-  if (unfinished.length === 0) return null;
+  const [open, setOpen] = useShelfOpen("continue");
+
+  const entries: Entry[] = [];
+
+  if (openSession) {
+    entries.push({
+      session: openSession,
+      live: true,
+      onPlay: () => onReturnToOpen?.(),
+    });
+  }
+
+  for (const session of unfinished) {
+    // Si la sesión abierta es de este mismo video, esa manda: es la de ahora.
+    if (
+      openSession?.external_id &&
+      session.external_id === openSession.external_id
+    ) {
+      continue;
+    }
+    entries.push({
+      session,
+      live: false,
+      onPlay: () => onContinue(session),
+      onDismiss: () => onDismiss(session),
+    });
+  }
+
+  if (entries.length === 0) return null;
 
   return (
-    <div className="rounded-2xl border border-border/60 bg-card p-5">
-      <p className="text-xs text-muted-foreground uppercase tracking-wide font-medium mb-3">
-        Seguir viendo
-      </p>
-
-      <div className="space-y-1.5">
-        {unfinished.slice(0, 3).map((session) => {
-          const progress = contentProgress(session);
-
-          return (
-            <div
-              key={session.id}
-              className={cn(
-                "group flex items-center gap-3 rounded-xl px-2.5 py-2 -mx-1",
-                "transition-colors hover:bg-muted/50"
-              )}
-            >
-              <div className="relative h-10 w-16 shrink-0">
-                {session.content_thumbnail ? (
-                  <img
-                    src={session.content_thumbnail}
-                    alt=""
-                    className="h-full w-full rounded-lg object-cover border border-border/50"
-                  />
-                ) : (
-                  <div className="h-full w-full rounded-lg bg-muted flex items-center justify-center text-base">
-                    {CONTENT_TYPE_CONFIG[session.content_type]?.emoji ?? "✨"}
-                  </div>
-                )}
-
-                {progress.ratio !== null && (
-                  <div className="absolute inset-x-1 bottom-1 h-1 rounded-full bg-black/50 overflow-hidden">
-                    <div
-                      className="h-full rounded-full bg-primary"
-                      style={{ width: `${Math.max(progress.percent ?? 0, 3)}%` }}
-                    />
-                  </div>
-                )}
-              </div>
-
-              <div className="min-w-0 flex-1">
-                <p className="text-sm font-medium truncate">
-                  {session.content_title ?? "Sesión"}
-                </p>
-                <p className="text-[11px] text-muted-foreground tabular-nums">
-                  {progress.label}
-                  {progress.percent !== null && ` · ${progress.percent}%`}
-                </p>
-              </div>
-
-              <div className="flex items-center gap-1 shrink-0">
-                <Button
-                  onClick={() => onContinue(session)}
-                  size="sm"
-                  className="rounded-lg h-8 px-2.5"
-                >
-                  <Play className="h-3.5 w-3.5 fill-current" />
-                </Button>
-                <Button
-                  onClick={() => onDismiss(session)}
-                  variant="ghost"
-                  size="sm"
-                  aria-label="No seguir con este"
-                  title="Marcar como terminado"
-                  className="rounded-lg h-8 px-2 text-muted-foreground hover:text-foreground opacity-0 group-hover:opacity-100 focus-visible:opacity-100 transition-opacity"
-                >
-                  <X className="h-3.5 w-3.5" />
-                </Button>
-              </div>
-            </div>
-          );
-        })}
+    <ShelfSection
+      icon={<History className="h-4 w-4 text-primary" />}
+      title="Seguir viendo"
+      count={entries.length}
+      open={open}
+      onOpenChange={setOpen}
+    >
+      <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
+        {entries.map((entry) => (
+          <ContinueCard key={entry.session.id} entry={entry} />
+        ))}
       </div>
-    </div>
+    </ShelfSection>
+  );
+}
+
+// ── Tarjeta ─────────────────────────────────────────────────
+
+function ContinueCard({ entry }: { entry: Entry }) {
+  const { session, live, onPlay, onDismiss } = entry;
+  const progress = contentProgress(session);
+
+  return (
+    <article
+      className={cn(
+        "group relative overflow-hidden rounded-xl border bg-background/40",
+        "transition-colors",
+        live
+          ? "border-primary/40 hover:border-primary/60"
+          : "border-border/60 hover:border-border"
+      )}
+    >
+      <ContentCover
+        externalId={session.external_id}
+        thumbnail={session.content_thumbnail}
+        contentType={session.content_type}
+        title={session.content_title}
+        durationSeconds={session.content_duration_seconds}
+        progressPercent={progress.percent}
+        ribbon={
+          live ? (
+            <span className="flex items-center gap-1 rounded-md bg-primary px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-primary-foreground">
+              <span className="size-1.5 rounded-full bg-primary-foreground animate-breathe" />
+              en curso
+            </span>
+          ) : null
+        }
+        onPlay={onPlay}
+      />
+
+      {/* Sacarlo de acá: darlo por terminado sin tener que verlo */}
+      {onDismiss && (
+        <button
+          onClick={onDismiss}
+          aria-label="No seguir con este"
+          title="Marcar como terminado"
+          className={cn(
+            "absolute right-1.5 top-1.5 flex size-7 items-center justify-center rounded-lg",
+            "bg-background/80 text-muted-foreground backdrop-blur-sm",
+            "opacity-0 transition-opacity hover:text-destructive",
+            "group-hover:opacity-100 focus-visible:opacity-100"
+          )}
+        >
+          <X className="h-3.5 w-3.5" />
+        </button>
+      )}
+
+      <div className="p-3">
+        <p className="text-sm font-medium leading-snug line-clamp-2">
+          {session.content_title ?? "Sesión"}
+        </p>
+        <p className="mt-1 truncate text-[11px] text-muted-foreground tabular-nums">
+          {progress.label ?? "Recién empezado"}
+          {progress.percent !== null && ` · ${progress.percent}%`}
+        </p>
+      </div>
+    </article>
   );
 }
