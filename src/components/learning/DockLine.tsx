@@ -22,8 +22,6 @@ interface DockLineProps {
   className?: string;
   /** Una selección de varias palabras manda por sobre el clic simple. */
   onSelectionPick?: () => boolean;
-  /** Línea de contexto: se lee, no se toca. */
-  inert?: boolean;
 }
 
 /**
@@ -40,7 +38,6 @@ export function DockLine({
   steps = DOCK_SCALE,
   className,
   onSelectionPick,
-  inert,
 }: DockLineProps) {
   const [hovered, setHovered] = useState<number | null>(null);
   /** Anchos naturales, medidos una sola vez por línea. */
@@ -70,7 +67,7 @@ export function DockLine({
   }, []);
 
   const dock =
-    !inert && hovered !== null && widths.length
+    hovered !== null && widths.length
       ? computeDock(parts, widths, hovered, steps)
       : null;
 
@@ -125,20 +122,13 @@ export function DockLine({
             key={index}
             data-part
             title={mark?.title}
-            onMouseEnter={
-              inert ? undefined : (e) => handleEnter(part.ord, e.currentTarget)
-            }
-            onClick={
-              inert
-                ? undefined
-                : () => {
-                    if (onSelectionPick?.()) return;
-                    onPick(part.value);
-                  }
-            }
+            onMouseEnter={(e) => handleEnter(part.ord, e.currentTarget)}
+            onClick={() => {
+              if (onSelectionPick?.()) return;
+              onPick(part.value);
+            }}
             className={cn(
-              "inline-block rounded",
-              !inert && "cursor-pointer",
+              "inline-block cursor-pointer rounded",
               isFocus && "font-bold text-primary"
             )}
             style={style}

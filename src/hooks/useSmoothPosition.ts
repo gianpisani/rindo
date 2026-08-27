@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState, type MutableRefObject } from "react";
+import { activeCueIndex, type Cue } from "@/lib/transcript";
 
 export interface PlaybackSample {
   /** Último segundo informado por el reproductor. */
@@ -44,4 +45,38 @@ export function useSmoothPosition(
   }, [ref]);
 
   return seconds;
+}
+
+/**
+ * Qué línea se está diciendo, al cuadro.
+ *
+ * Interpola igual que `useSmoothPosition` pero devuelve el índice y no el
+ * segundo, y esa diferencia es todo: la pista tiene cientos de líneas y
+ * repintarlas sesenta veces por segundo para mover un resaltado sería
+ * grotesco. Con el índice, React descarta el estado repetido y la lista solo
+ * se rehace cuando de verdad cambia la frase.
+ */
+export function useActiveCue(
+  ref: MutableRefObject<PlaybackSample>,
+  cues: Cue[]
+): number {
+  const [index, setIndex] = useState(-1);
+
+  useEffect(() => {
+    let frame: number;
+
+    const tick = () => {
+      const sample = ref.current;
+      const seconds = sample.playing
+        ? sample.seconds + (performance.now() - sample.at) / 1000
+        : sample.seconds;
+      setIndex(activeCueIndex(cues, seconds));
+      frame = requestAnimationFrame(tick);
+    };
+
+    frame = requestAnimationFrame(tick);
+    return () => cancelAnimationFrame(frame);
+  }, [ref, cues]);
+
+  return index;
 }

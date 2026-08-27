@@ -6,23 +6,21 @@ import ConfirmDialog from "@/components/ConfirmDialog";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 import {
-  Pause,
   Play,
   Plus,
-  Flag,
-  Trash2,
   Highlighter,
   Zap,
   Check,
-  ArrowLeft,
   Eye,
   Search,
   ChevronDown,
   ExternalLink,
 } from "lucide-react";
 import { YouTubePlayer, type YouTubePlayerHandle, type VideoMeta } from "./YouTubePlayer";
-import { TranscriptPanel } from "./TranscriptPanel";
-import { SubtitleStage } from "./SubtitleStage";
+import { SubtitleTrack } from "./SubtitleTrack";
+import { TranscriptActions } from "./TranscriptActions";
+import { VideoActionsPanel, type StudioState } from "./VideoActionsPanel";
+import { TranscriptHelpDialog } from "./TranscriptHelpDialog";
 import { PlayerTransport } from "./PlayerTransport";
 import { WordLookup } from "./WordLookup";
 import type { WordMark } from "./DockLine";
@@ -70,19 +68,15 @@ interface SessionStudioProps {
 const STUDIO_HEIGHT = "lg:h-[calc(100vh-6.5rem)]";
 
 /**
- * Ancho máximo del video, derivado del alto que queda libre: así el video se
- * hace todo lo grande que la pantalla permita sin empujar nada fuera de vista.
- * Descuenta la barra de estado, la barra de tiempo, los controles, la frase
- * grande y los espacios.
+ * Tope de ancho del video, que en realidad es un tope de alto.
  *
- * Nada de esto puede quedar bajo el pliegue: son las cuatro cosas que se miran
- * a la vez —lo que ves, dónde vas, lo que se dice y lo que guardaste—, así que
- * el que cede es el video.
- *
- * Su columna lleva `justify-center` porque en pantallas altas el límite pasa a
- * ser el ancho, y el video queda centrado en vez de dejar un hueco abajo.
+ * Casi siempre manda el ancho de la columna —el video ocupa los tres cuartos
+ * de la pantalla— y este cálculo no llega a aplicar. Solo entra en ventanas
+ * bajas, donde impide que el video empuje a los subtítulos fuera de vista:
+ * descuenta los controles, la pista y el espacio de la app, y el que cede es
+ * el video.
  */
-const VIDEO_MAX_WIDTH = "calc((100vh - 26rem) * 16 / 9)";
+const VIDEO_MAX_WIDTH = "calc((100vh - 21rem) * 16 / 9)";
 
 export function SessionStudio({
   session,
@@ -155,8 +149,31 @@ export function SessionStudio({
 
   // ── Lo que sabemos del texto ──────────────────────────────
 
-  const { transcript } = useTranscript(session.external_id);
+  const { transcript, save: saveTranscript, remove: removeTranscript } =
+    useTranscript(session.external_id);
   const cues = useMemo(() => transcript?.cues ?? [], [transcript]);
+
+  /** La pista de subtítulos va detrás del video hasta que la muevas tú. */
+  const [followSubtitles, setFollowSubtitles] = useState(true);
+  const [transcriptHelpOpen, setTranscriptHelpOpen] = useState(false);
+
+  const pasteTranscript = useCallback(async () => {
+    try {
+      const text = await navigator.clipboard.readText();
+      if (!text.trim()) {
+        toast.error("El portapapeles está vacío");
+        return;
+      }
+      saveTranscript.mutate(text, {
+        onSuccess: () => setTranscriptHelpOpen(false),
+      });
+    } catch {
+      toast.error("No pude leer el portapapeles", {
+        description: "Ábrelo con «Traer subtítulos» y pégalos ahí.",
+      });
+      setTranscriptHelpOpen(true);
+    }
+  }, [saveTranscript]);
   const { frequency, isReady: rankReady } = useFrequencyList();
 
   /** Todo tu diccionario, para reconocer una palabra tuya en el aire. */
@@ -432,35 +449,11 @@ export function SessionStudio({
 
   // ── Estado visual ─────────────────────────────────────────
 
-  const state: "studying" | "researching" | "paused" = isPaused
+  const state: StudioState = isPaused
     ? "paused"
     : isVideoPlaying || !hasPlayer
       ? "studying"
       : "researching";
-
-  const stateConfig = {
-    studying: {
-      label: "Estudiando",
-      dot: "bg-emerald-500",
-      text: "text-emerald-500",
-      ring: "border-emerald-500/25",
-      note: null as string | null,
-    },
-    researching: {
-      label: "Investigando",
-      dot: "bg-amber-500",
-      text: "text-amber-500",
-      ring: "border-amber-500/25",
-      note: "el reloj sigue: buscar una palabra también es estudiar",
-    },
-    paused: {
-      label: "Pausada",
-      dot: "bg-muted-foreground",
-      text: "text-muted-foreground",
-      ring: "border-border",
-      note: "el tiempo está detenido, pero puedes seguir buscando palabras",
-    },
-  }[state];
 
   const [confirmDiscard, setConfirmDiscard] = useState(false);
 
@@ -470,148 +463,29 @@ export function SessionStudio({
    */
   const [openItem, setOpenItem] = useState<string | null>(null);
 
-  const controls = (
-    <>
-      <Button
-        onClick={onLeave}
-        variant="ghost"
-        size="sm"
-        aria-label="Volver sin terminar"
-        title="Volver — se guarda el minuto donde quedaste"
-        className="rounded-xl h-9 px-2 text-muted-foreground hover:text-foreground"
-      >
-        <ArrowLeft className="h-4 w-4" />
-      </Button>
-
-      {isPaused ? (
-        <Button onClick={onResume} size="sm" className="rounded-xl h-9 font-semibold">
-          <Play className="h-3.5 w-3.5 mr-1.5 fill-current" />
-          Reanudar
-        </Button>
-      ) : (
-        <Button
-          onClick={onPause}
-          variant="outline"
-          size="sm"
-          className="rounded-xl h-9 font-medium"
-        >
-          <Pause className="h-3.5 w-3.5 mr-1.5" />
-          Pausar
-        </Button>
-      )}
-
-      <Button
-        onClick={onFinish}
-        variant="outline"
-        size="sm"
-        className="rounded-xl h-9 font-medium border-primary/30 text-primary hover:bg-primary/10 hover:text-primary"
-      >
-        <Flag className="h-3.5 w-3.5 mr-1.5" />
-        Terminar
-      </Button>
-
-      <Button
-        onClick={() => setConfirmDiscard(true)}
-        variant="ghost"
-        size="sm"
-        aria-label="Descartar sesión"
-        className="rounded-xl h-9 px-2 text-muted-foreground hover:text-destructive"
-      >
-        <Trash2 className="h-3.5 w-3.5" />
-      </Button>
-    </>
-  );
-
   return (
-    <div
-      className={cn("flex flex-col gap-3", STUDIO_HEIGHT)}
-      onPointerDown={onActivity}
-    >
-      {/* ── Barra de estado ──────────────────────────────── */}
-      <div
-        className={cn(
-          "rounded-2xl border bg-card px-4 py-3 transition-colors shrink-0",
-          stateConfig.ring
-        )}
-      >
-        <div className="flex items-center gap-4">
-          <div className="min-w-0 flex-1">
-            <div className="flex items-center gap-2 min-w-0">
-              <span className="relative flex h-1.5 w-1.5 shrink-0">
-                {state === "studying" && (
-                  <span
-                    className={cn(
-                      "absolute inline-flex h-full w-full rounded-full opacity-60 animate-ping",
-                      stateConfig.dot
-                    )}
-                  />
-                )}
-                <span
-                  className={cn("relative inline-flex h-1.5 w-1.5 rounded-full", stateConfig.dot)}
-                />
-              </span>
-              <span
-                className={cn(
-                  "text-[10px] font-bold uppercase tracking-wider shrink-0",
-                  stateConfig.text
-                )}
-              >
-                {stateConfig.label}
-              </span>
-              {stateConfig.note && (
-                <span className="text-[11px] text-muted-foreground truncate hidden lg:inline">
-                  · {stateConfig.note}
-                </span>
-              )}
-            </div>
-
-            <p className="font-semibold truncate mt-1 leading-tight">
-              {session.content_title ?? "Cargando…"}
-            </p>
-            {session.content_author && (
-              <p className="text-[11px] text-muted-foreground truncate">
-                {session.content_author}
-              </p>
-            )}
-          </div>
-
-          <div className="text-right shrink-0">
-            <p className="text-2xl sm:text-3xl font-bold tabular-nums leading-none">
-              {formatClock(liveEffectiveSeconds)}
-            </p>
-            <p className="text-[10px] text-muted-foreground mt-1">
-              efectivo · {formatDuration(liveElapsedSeconds)} total
-            </p>
-          </div>
-
-          <div className="hidden md:flex items-center gap-2 shrink-0 border-l border-border/50 pl-4">
-            {controls}
-          </div>
-        </div>
-
-        <div className="flex md:hidden items-center gap-2 mt-3">{controls}</div>
-      </div>
-
+    <div className={cn("flex flex-col", STUDIO_HEIGHT)} onPointerDown={onActivity}>
       {/* ── Reproductor y frase (izquierda) · captura (derecha) ── */}
       <div
         className={cn(
           "flex-1 min-h-0 grid gap-3",
-          hasPlayer ? "lg:grid-cols-10" : "lg:grid-cols-1"
+          hasPlayer ? "lg:grid-cols-12" : "lg:grid-cols-1"
         )}
       >
         {/* Columna del video */}
         {hasPlayer ? (
-          <div className="flex flex-col justify-center gap-2 min-h-0 min-w-0 lg:col-span-7">
+          <div className="flex min-h-0 min-w-0 flex-col gap-2 lg:col-span-9">
             {/*
-              El video, la barra y la frase son una sola pieza: comparten ancho
-              para que se lean como un reproductor y no como tres bloques que
-              cayeron uno encima del otro.
+              El video, los controles y la pista de subtítulos son una sola
+              pieza y comparten ancho. Sin la franja de estado encima, el video
+              se estira hasta donde da la columna y lo que sobra de alto se lo
+              queda la pista: nada de aire muerto entre medio.
             */}
             <div
-              className="mx-auto flex w-full flex-col gap-1.5"
+              className="mx-auto flex min-h-0 w-full flex-1 flex-col justify-center gap-2"
               style={{ maxWidth: VIDEO_MAX_WIDTH }}
             >
-              <div className="relative aspect-video overflow-hidden rounded-2xl border border-border/60 bg-black">
+              <div className="relative aspect-video w-full shrink-0 overflow-hidden rounded-2xl border border-border/60 bg-black">
                 <YouTubePlayer
                   ref={playerRef}
                   videoId={session.external_id!}
@@ -676,16 +550,21 @@ export function SessionStudio({
                 }
               />
 
-              <SubtitleStage
-                externalId={session.external_id!}
+              <SubtitleTrack
+                cues={cues}
                 playbackRef={playbackRef}
+                follow={followSubtitles}
+                onFollowChange={setFollowSubtitles}
                 onPick={pickFromTranscript}
                 onSeek={(seconds) => {
                   playerRef.current?.seekTo(seconds);
                   onActivity();
                 }}
                 markOf={markOf}
-                className="h-[7.5rem] shrink-0 sm:h-[8.5rem] lg:h-[9.5rem]"
+                onBringSubtitles={() => setTranscriptHelpOpen(true)}
+                onPasteClipboard={pasteTranscript}
+                isSaving={saveTranscript.isPending}
+                className="h-[9rem] shrink-0 lg:h-auto lg:min-h-[9rem] lg:max-h-[20rem] lg:flex-1"
               />
             </div>
           </div>
@@ -693,8 +572,8 @@ export function SessionStudio({
           <div className="rounded-2xl border border-border/60 bg-muted/20 p-8 text-center">
             <p className="text-sm font-medium">{session.content_title}</p>
             <p className="text-xs text-muted-foreground mt-2 max-w-sm mx-auto">
-              Este contenido se reproduce fuera de Rindo. El cronómetro de
-              arriba mide tu tiempo de estudio igual.
+              Este contenido se reproduce fuera de Rindo. El cronómetro de al
+              lado mide tu tiempo de estudio igual.
             </p>
             {session.content_url && (
               <Button variant="outline" size="sm" asChild className="mt-4 rounded-xl">
@@ -707,25 +586,36 @@ export function SessionStudio({
           </div>
         )}
 
-        {/* Columna derecha: la transcripción completa arriba, la captura abajo */}
+        {/* Columna derecha: la sesión, los subtítulos y lo que capturas */}
         <div className="flex flex-col gap-3 min-h-0 min-w-0 lg:col-span-3">
-          {hasPlayer && cues.length > 0 && (
-            <TranscriptPanel
-              externalId={session.external_id!}
-              positionSeconds={positionSeconds}
-              onPick={pickFromTranscript}
-              onSeek={(seconds) => {
-                playerRef.current?.seekTo(seconds);
-                onActivity();
-              }}
-              className="flex-1 min-h-0 lg:max-h-none max-h-[40vh]"
+          <VideoActionsPanel
+            state={state}
+            title={session.content_title}
+            author={session.content_author}
+            effectiveSeconds={liveEffectiveSeconds}
+            elapsedSeconds={liveElapsedSeconds}
+            isPaused={isPaused}
+            onPause={onPause}
+            onResume={onResume}
+            onFinish={onFinish}
+            onLeave={onLeave}
+            onDiscard={() => setConfirmDiscard(true)}
+          />
+
+          {hasPlayer && (
+            <TranscriptActions
+              cueCount={cues.length}
+              follow={followSubtitles}
+              onFollowChange={setFollowSubtitles}
+              onBring={() => setTranscriptHelpOpen(true)}
+              onDelete={() => removeTranscript.mutate()}
             />
           )}
 
           <div
             className={cn(
               "rounded-2xl border border-border/60 bg-card flex flex-col overflow-hidden",
-              "flex-[1.15] min-h-0 lg:max-h-none max-h-[50vh]"
+              "flex-1 min-h-0 max-h-[60vh] lg:max-h-full"
             )}
           >
             <div className="flex items-center justify-between gap-2 px-3 py-2 border-b border-border/50 shrink-0">
@@ -1055,6 +945,15 @@ export function SessionStudio({
           </div>
         </div>
       </div>
+
+      {session.external_id && (
+        <TranscriptHelpDialog
+          open={transcriptHelpOpen}
+          onOpenChange={setTranscriptHelpOpen}
+          externalId={session.external_id}
+          onPasteFromClipboard={pasteTranscript}
+        />
+      )}
 
       <ConfirmDialog
         open={confirmDiscard}

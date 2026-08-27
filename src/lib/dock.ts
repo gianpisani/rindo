@@ -12,9 +12,6 @@
 /** Cuánto crece la señalada, su vecina y la siguiente. */
 export const DOCK_SCALE = [1.3, 1.12, 1.04];
 
-/** Más suave, para texto que ya es grande: el mismo gesto sin aspaviento. */
-export const DOCK_SCALE_LARGE = [1.16, 1.06, 1.02];
-
 export interface DockLayout {
   scale: number[];
   shift: number[];
