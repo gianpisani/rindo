@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -19,12 +19,13 @@ import {
   Search,
   ChevronDown,
   ExternalLink,
-  RotateCcw,
-  RotateCw,
 } from "lucide-react";
 import { YouTubePlayer, type YouTubePlayerHandle, type VideoMeta } from "./YouTubePlayer";
 import { TranscriptPanel } from "./TranscriptPanel";
+import { SubtitleStage } from "./SubtitleStage";
+import { PlayerTransport } from "./PlayerTransport";
 import { WordLookup } from "./WordLookup";
+import type { WordMark } from "./DockLine";
 import {
   CAPTURE_TYPES,
   detectItemType,
@@ -33,7 +34,12 @@ import {
   youTubeWatchUrl,
   type ItemType,
 } from "@/lib/learning-config";
-import type { Cue } from "@/lib/transcript";
+import { activeCueIndex, normalizeLookup, type Cue } from "@/lib/transcript";
+import { bandOf, effectiveRank, lemmatize } from "@/lib/corpus";
+import { difficultyTrack } from "@/lib/heat";
+import { useTranscript } from "@/hooks/useTranscript";
+import { useFrequencyList } from "@/hooks/useFrequencyList";
+import type { PlaybackSample } from "@/hooks/useSmoothPosition";
 import type { LearningSession } from "@/hooks/useLearningSessions";
 import { useLearningItems, useSessionItems } from "@/hooks/useLearningItems";
 import { useCaptureKeyboard } from "@/hooks/useKeyboardCapture";
@@ -66,12 +72,17 @@ const STUDIO_HEIGHT = "lg:h-[calc(100vh-6.5rem)]";
 /**
  * Ancho máximo del video, derivado del alto que queda libre: así el video se
  * hace todo lo grande que la pantalla permita sin empujar nada fuera de vista.
- * Descuenta la barra de estado, la fila de controles y los espacios.
+ * Descuenta la barra de estado, la barra de tiempo, los controles, la frase
+ * grande y los espacios.
+ *
+ * Nada de esto puede quedar bajo el pliegue: son las cuatro cosas que se miran
+ * a la vez —lo que ves, dónde vas, lo que se dice y lo que guardaste—, así que
+ * el que cede es el video.
  *
  * Su columna lleva `justify-center` porque en pantallas altas el límite pasa a
  * ser el ancho, y el video queda centrado en vez de dejar un hueco abajo.
  */
-const VIDEO_MAX_WIDTH = "calc((100vh - 15.5rem) * 16 / 9)";
+const VIDEO_MAX_WIDTH = "calc((100vh - 26rem) * 16 / 9)";
 
 export function SessionStudio({
   session,
@@ -95,7 +106,7 @@ export function SessionStudio({
   const playerRef = useRef<YouTubePlayerHandle>(null);
   const expressionRef = useRef<HTMLInputElement>(null);
 
-  const { capture, updateItem } = useLearningItems(session.goal_id);
+  const { items, capture, updateItem } = useLearningItems(session.goal_id);
   const { data: captured = [] } = useSessionItems(session.id);
 
   const auto = useAutoCapture({
@@ -109,13 +120,132 @@ export function SessionStudio({
 
   const [positionSeconds, setPositionSeconds] = useState(startSeconds);
 
+  /**
+   * La última posición informada, con la hora exacta en que llegó. Vive en una
+   * `ref` para que la frase grande y la barra puedan interpolar cuadro a cuadro
+   * sin repintar el estudio entero sesenta veces por segundo.
+   */
+  const playbackRef = useRef<PlaybackSample>({
+    seconds: startSeconds,
+    playing: false,
+    at: performance.now(),
+  });
+
   const handlePlayback = useCallback(
     (seconds: number, playing: boolean) => {
+      playbackRef.current = { seconds, playing, at: performance.now() };
       setPositionSeconds(Math.floor(seconds));
       onPlayback(seconds, playing);
     },
     [onPlayback]
   );
+
+  /** El largo del video: lo dice el player apenas está listo. */
+  const [duration, setDuration] = useState(
+    session.content_duration_seconds ?? 0
+  );
+
+  const handleMeta = useCallback(
+    (meta: VideoMeta) => {
+      if (meta.durationSeconds) setDuration(meta.durationSeconds);
+      onMeta(meta);
+    },
+    [onMeta]
+  );
+
+  // ── Lo que sabemos del texto ──────────────────────────────
+
+  const { transcript } = useTranscript(session.external_id);
+  const cues = useMemo(() => transcript?.cues ?? [], [transcript]);
+  const { frequency, isReady: rankReady } = useFrequencyList();
+
+  /** Todo tu diccionario, para reconocer una palabra tuya en el aire. */
+  const known = useMemo(() => {
+    const set = new Set<string>();
+    for (const item of items) {
+      const expression = normalizeLookup(item.expression);
+      if (expression) set.add(expression);
+    }
+    return set;
+  }, [items]);
+
+  /**
+   * Qué se le marca a cada palabra de la frase.
+   *
+   * Solo dos cosas, y las dos accionables: que ya la cazaste antes —verla
+   * aparecer en la calle es media mitad de aprenderla— o que está por sobre las
+   * tres mil más usadas, el corte donde uno deja de seguir un podcast sin
+   * esfuerzo. Los nombres propios y las erratas no se marcan: que digan
+   * "Copenhague" no es vocabulario que te falte.
+   */
+  const markOf = useCallback(
+    (word: string): WordMark | null => {
+      const clean = normalizeLookup(word);
+      if (!clean) return null;
+
+      if (
+        known.has(clean) ||
+        (rankReady && known.has(lemmatize(clean, frequency.rank)))
+      ) {
+        return {
+          color: "var(--primary)",
+          solid: true,
+          title: "Ya está en tu diccionario",
+        };
+      }
+
+      if (!rankReady) return null;
+
+      const band = bandOf(effectiveRank(clean, frequency.rank));
+      if (band.key === "core" || band.key === "common" || band.key === "off") {
+        return null;
+      }
+
+      return {
+        color: band.color,
+        title: `${band.label} · ${band.hint} del inglés hablado`,
+      };
+    },
+    [known, frequency, rankReady]
+  );
+
+  /** El largo que usa la barra: el del player, o el último subtítulo. */
+  const trackDuration =
+    duration || (cues.length ? cues[cues.length - 1].t + 5 : 0);
+
+  /** Los hitos de la barra: dónde te frenaste a guardar algo. */
+  const captureMarkers = useMemo(
+    () =>
+      captured
+        .map((item) => item.timestamp_seconds)
+        .filter((at): at is number => at !== null),
+    [captured]
+  );
+
+  /** El relieve del video: dónde se pone difícil. */
+  const heat = useMemo(
+    () =>
+      rankReady ? difficultyTrack(cues, trackDuration, frequency.rank) : [],
+    [cues, trackDuration, frequency, rankReady]
+  );
+
+  /**
+   * Volver al principio de la frase que suena.
+   *
+   * Si recién empezó, se repite la anterior: apretar "repetir" en el primer
+   * medio segundo de una línea siempre quiere decir "esa que no alcancé a oír".
+   */
+  const repeatLine = useCallback(() => {
+    if (!cues.length) return;
+    const now = playerRef.current?.getCurrentTime() ?? 0;
+    let index = activeCueIndex(cues, now);
+    if (index < 0) index = 0;
+    if (index > 0 && now - cues[index].t < 0.6) index -= 1;
+
+    playerRef.current?.seekTo(cues[index].t);
+    playerRef.current?.play();
+    onActivity();
+  }, [cues, onActivity]);
 
   // ── Formulario de captura ─────────────────────────────────
 
@@ -290,12 +420,15 @@ export function SessionStudio({
         e.preventDefault();
         playerRef.current?.seekBy(10);
         onActivity();
+      } else if (e.key === "r" || e.key === "R") {
+        e.preventDefault();
+        repeatLine();
       }
     };
 
     window.addEventListener("keydown", handler);
     return () => window.removeEventListener("keydown", handler);
-  }, [openCapture, hasPlayer, onActivity]);
+  }, [openCapture, hasPlayer, onActivity, repeatLine]);
 
   // ── Estado visual ─────────────────────────────────────────
 
@@ -459,7 +592,7 @@ export function SessionStudio({
         <div className="flex md:hidden items-center gap-2 mt-3">{controls}</div>
       </div>
 
-      {/* ── Video (izquierda) · subtítulos + captura (derecha) ── */}
+      {/* ── Reproductor y frase (izquierda) · captura (derecha) ── */}
       <div
         className={cn(
           "flex-1 min-h-0 grid gap-3",
@@ -468,61 +601,92 @@ export function SessionStudio({
       >
         {/* Columna del video */}
         {hasPlayer ? (
-          <div className="flex flex-col justify-center gap-1.5 min-h-0 min-w-0 lg:col-span-7">
+          <div className="flex flex-col justify-center gap-2 min-h-0 min-w-0 lg:col-span-7">
+            {/*
+              El video, la barra y la frase son una sola pieza: comparten ancho
+              para que se lean como un reproductor y no como tres bloques que
+              cayeron uno encima del otro.
+            */}
             <div
-              className="mx-auto w-full rounded-2xl overflow-hidden border border-border/60 bg-black aspect-video"
+              className="mx-auto flex w-full flex-col gap-1.5"
               style={{ maxWidth: VIDEO_MAX_WIDTH }}
             >
-              <YouTubePlayer
-                ref={playerRef}
-                videoId={session.external_id!}
-                startSeconds={startSeconds}
-                onMeta={onMeta}
-                onPlayback={handlePlayback}
-                className="h-full w-full"
-              />
-            </div>
+              <div className="relative aspect-video overflow-hidden rounded-2xl border border-border/60 bg-black">
+                <YouTubePlayer
+                  ref={playerRef}
+                  videoId={session.external_id!}
+                  startSeconds={startSeconds}
+                  onMeta={handleMeta}
+                  onPlayback={handlePlayback}
+                  chromeless
+                  className="h-full w-full"
+                />
 
-            <div className="flex items-center gap-1 text-muted-foreground shrink-0">
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={() => {
-                  playerRef.current?.seekBy(-10);
-                  onActivity();
-                }}
-                className="rounded-lg h-7 px-2"
-              >
-                <RotateCcw className="h-3.5 w-3.5 mr-1" />
-                <span className="text-[11px]">10s</span>
-              </Button>
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={() => {
-                  playerRef.current?.seekBy(10);
-                  onActivity();
-                }}
-                className="rounded-lg h-7 px-2"
-              >
-                <RotateCw className="h-3.5 w-3.5 mr-1" />
-                <span className="text-[11px]">10s</span>
-              </Button>
-              <span className="hidden xl:inline text-[10px] ml-1">
-                Espacio play/pausa · ← → 10s · E capturar
-              </span>
-              <div className="flex-1" />
-              {session.external_id && (
-                <a
-                  href={youTubeWatchUrl(session.external_id, positionSeconds)}
-                  target="_blank"
-                  rel="noreferrer"
-                  className="text-[10px] hover:text-foreground transition-colors flex items-center gap-1 pr-1"
+                {/*
+                  Nuestra capa sobre el iframe. Se come el hover y el clic, así
+                  que YouTube no alcanza a mostrar su título, sus botones ni sus
+                  sugeridos: el video se ve, el resto es de Rindo.
+                */}
+                <button
+                  onClick={() => {
+                    playerRef.current?.toggle();
+                    onActivity();
+                  }}
+                  aria-label={isVideoPlaying ? "Pausar el video" : "Reproducir"}
+                  className="absolute inset-0 flex items-center justify-center"
                 >
-                  <ExternalLink className="h-3 w-3" />
-                  YouTube
-                </a>
-              )}
+                  <span
+                    className={cn(
+                      "flex size-16 items-center justify-center rounded-full",
+                      "bg-black/55 text-white backdrop-blur-sm transition-all duration-200",
+                      isVideoPlaying
+                        ? "scale-90 opacity-0"
+                        : "scale-100 opacity-100"
+                    )}
+                  >
+                    <Play className="h-7 w-7 translate-x-[2px] fill-current" />
+                  </span>
+                </button>
+              </div>
+
+              <PlayerTransport
+                playbackRef={playbackRef}
+                playing={isVideoPlaying}
+                durationSeconds={trackDuration}
+                cues={cues}
+                heat={heat}
+                markers={captureMarkers}
+                onSeek={(seconds) => {
+                  playerRef.current?.seekTo(seconds);
+                  onActivity();
+                }}
+                onSeekBy={(seconds) => {
+                  playerRef.current?.seekBy(seconds);
+                  onActivity();
+                }}
+                onToggle={() => {
+                  playerRef.current?.toggle();
+                  onActivity();
+                }}
+                onRepeatLine={repeatLine}
+                youtubeUrl={
+                  session.external_id
+                    ? youTubeWatchUrl(session.external_id, positionSeconds)
+                    : null
+                }
+              />
+
+              <SubtitleStage
+                externalId={session.external_id!}
+                playbackRef={playbackRef}
+                onPick={pickFromTranscript}
+                onSeek={(seconds) => {
+                  playerRef.current?.seekTo(seconds);
+                  onActivity();
+                }}
+                markOf={markOf}
+                className="h-[7.5rem] shrink-0 sm:h-[8.5rem] lg:h-[9.5rem]"
+              />
             </div>
           </div>
         ) : (
@@ -543,9 +707,9 @@ export function SessionStudio({
           </div>
         )}
 
-        {/* Columna derecha: subtítulos arriba, captura abajo */}
+        {/* Columna derecha: la transcripción completa arriba, la captura abajo */}
         <div className="flex flex-col gap-3 min-h-0 min-w-0 lg:col-span-3">
-          {hasPlayer && (
+          {hasPlayer && cues.length > 0 && (
             <TranscriptPanel
               externalId={session.external_id!}
               positionSeconds={positionSeconds}

@@ -78,16 +78,32 @@ interface YouTubePlayerProps {
   /** Posición y estado, ~2 veces por segundo. */
   onPlayback?: (positionSeconds: number, playing: boolean) => void;
   onEnded?: () => void;
+  /**
+   * Sin el cromo de YouTube: ni barra roja, ni título, ni botones. Los
+   * controles los pone Rindo, que es lo que convierte al embed en un
+   * reproductor propio en vez de una ventana a otra app.
+   */
+  chromeless?: boolean;
   className?: string;
 }
 
 export const YouTubePlayer = forwardRef<YouTubePlayerHandle, YouTubePlayerProps>(
   function YouTubePlayer(
-    { videoId, startSeconds = 0, onMeta, onPlayback, onEnded, className },
+    {
+      videoId,
+      startSeconds = 0,
+      onMeta,
+      onPlayback,
+      onEnded,
+      chromeless,
+      className,
+    },
     ref
   ) {
     const containerRef = useRef<HTMLDivElement>(null);
     const playerRef = useRef<YTPlayer | null>(null);
+    /** El player se crea una sola vez: el modo se lee al construirlo. */
+    const chromelessRef = useRef(chromeless);
 
     // Los callbacks viven en refs para no recrear el player en cada render.
     const onMetaRef = useRef(onMeta);
@@ -114,6 +130,17 @@ export const YouTubePlayer = forwardRef<YouTubePlayerHandle, YouTubePlayerProps>
             playsinline: 1,
             start: Math.floor(startSeconds) || 0,
             origin: window.location.origin,
+            ...(chromelessRef.current
+              ? {
+                  // `controls: 0` se lleva la barra entera —la roja incluida—;
+                  // el resto apaga anotaciones, teclado propio y pantalla
+                  // completa, que ahora manejamos nosotros.
+                  controls: 0,
+                  disablekb: 1,
+                  fs: 0,
+                  iv_load_policy: 3,
+                }
+              : {}),
           },
           events: {
             onReady: () => {

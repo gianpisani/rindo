@@ -1,11 +1,4 @@
-import {
-  useCallback,
-  useEffect,
-  useMemo,
-  useRef,
-  useState,
-  type CSSProperties,
-} from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { cn } from "@/lib/utils";
@@ -19,9 +12,10 @@ import {
   ClipboardPaste,
 } from "lucide-react";
 import { formatClock } from "@/lib/learning-config";
-import { activeCueIndex, splitWords, type Cue } from "@/lib/transcript";
+import { activeCueIndex, type Cue } from "@/lib/transcript";
 import { useTranscript } from "@/hooks/useTranscript";
 import { TranscriptHelpDialog } from "./TranscriptHelpDialog";
+import { DockLine } from "./DockLine";
 
 interface TranscriptPanelProps {
   externalId: string;
@@ -29,60 +23,6 @@ interface TranscriptPanelProps {
   onPick: (term: string, cue: Cue) => void;
   onSeek: (seconds: number) => void;
   className?: string;
-}
-
-/**
- * Magnificación tipo dock de macOS: la palabra bajo el cursor crece y sus
- * vecinas se apartan.
- *
- * El truco está en cómo se aparta cada una. Con márgenes reales la línea se
- * ensancha y la última palabra se va al renglón de abajo, que es horrible.
- * Así que nadie cambia de tamaño en el layout: la palabra crece con `scale` y
- * las demás se corren con `translateX`. Ninguna de las dos transformaciones
- * afecta al flujo, así que la línea jamás se reacomoda —igual que el dock, que
- * tampoco mueve el resto de la pantalla.
- */
-const DOCK_SCALE = [1.3, 1.12, 1.04];
-
-interface DockLayout {
-  scale: number[];
-  shift: number[];
-}
-
-/**
- * Calcula, para cada trozo de la línea, cuánto crece y cuánto se corre.
- *
- * El desplazamiento de un trozo es el ancho extra que aparece entre su centro
- * y el centro de la palabra señalada: la mitad del extra de la señalada, más
- * el extra completo de las que quedan en medio, más la mitad del suyo propio.
- */
-function computeDock(
-  parts: { isWord: boolean; ord: number }[],
-  widths: number[],
-  hoveredOrd: number
-): DockLayout {
-  const scale = parts.map((part) =>
-    part.isWord ? (DOCK_SCALE[Math.abs(hoveredOrd - part.ord)] ?? 1) : 1
-  );
-  const extra = scale.map((s, i) => (s - 1) * (widths[i] ?? 0));
-
-  const center = parts.findIndex((p) => p.isWord && p.ord === hoveredOrd);
-  const shift = parts.map(() => 0);
-  if (center === -1) return { scale, shift };
-
-  let running = extra[center] / 2;
-  for (let i = center + 1; i < parts.length; i++) {
-    shift[i] = running + extra[i] / 2;
-    running += extra[i];
-  }
-
-  running = extra[center] / 2;
-  for (let i = center - 1; i >= 0; i--) {
-    shift[i] = -(running + extra[i] / 2);
-    running += extra[i];
-  }
-
-  return { scale, shift };
 }
 
 export function TranscriptPanel({
@@ -97,14 +37,6 @@ export function TranscriptPanel({
   const [helpOpen, setHelpOpen] = useState(false);
   const [raw, setRaw] = useState("");
   const [follow, setFollow] = useState(true);
-  const [hovered, setHovered] = useState<{ cue: number; word: number } | null>(
-    null
-  );
-  /** Anchos naturales de las palabras de la línea que se está señalando. */
-  const [measured, setMeasured] = useState<{ cue: number; widths: number[] }>({
-    cue: -1,
-    widths: [],
-  });
 
   const activeRef = useRef<HTMLDivElement>(null);
 
@@ -112,46 +44,6 @@ export function TranscriptPanel({
   const activeIndex = useMemo(
     () => activeCueIndex(cues, positionSeconds),
     [cues, positionSeconds]
-  );
-
-  // Cada línea se parte una sola vez, no en cada render. `ord` es el número de
-  // palabra dentro de la línea: la distancia del dock se mide en palabras, no
-  // en trozos, para que los espacios no cuenten.
-  const wordsByCue = useMemo(
-    () =>
-      cues.map((c) => {
-        let ord = -1;
-        return splitWords(c.text).map((part) => {
-          if (part.isWord) ord += 1;
-          return { ...part, ord: part.isWord ? ord : -1 };
-        });
-      }),
-    [cues]
-  );
-
-  /**
-   * Mide los anchos naturales al entrar a una línea nueva. En ese momento
-   * ninguna de sus palabras está agrandada, así que la medida es la real.
-   */
-  const handleWordEnter = useCallback(
-    (cueIndex: number, ord: number, el: HTMLElement) => {
-      setHovered((prev) =>
-        prev?.cue === cueIndex && prev.word === ord
-          ? prev
-          : { cue: cueIndex, word: ord }
-      );
-
-      setMeasured((prev) => {
-        if (prev.cue === cueIndex) return prev;
-        const line = el.parentElement;
-        if (!line) return prev;
-        const widths = Array.from(line.querySelectorAll<HTMLElement>("[data-part]")).map(
-          (node) => node.getBoundingClientRect().width
-        );
-        return { cue: cueIndex, widths };
-      });
-    },
-    []
   );
 
   useEffect(() => {
@@ -328,24 +220,17 @@ export function TranscriptPanel({
 
       <div
         onWheel={() => setFollow(false)}
-        onMouseLeave={() => setHovered(null)}
         className="flex-1 min-h-0 overflow-y-auto overscroll-contain px-3 py-3"
         style={{ touchAction: "pan-y" }}
         onTouchMove={(e) => e.stopPropagation()}
       >
         {cues.map((cue, cueIndex) => {
           const isActive = cueIndex === activeIndex;
-          const words = wordsByCue[cueIndex];
-          const dock =
-            hovered?.cue === cueIndex && measured.cue === cueIndex
-              ? computeDock(words, measured.widths, hovered.word)
-              : null;
 
           return (
             <div
               key={`${cue.t}-${cueIndex}`}
               ref={isActive ? activeRef : undefined}
-              onMouseUp={() => takeSelection(cue)}
               className={cn(
                 "group/line relative rounded-xl px-3 py-2 transition-colors duration-300",
                 isActive && "bg-primary/[0.07]"
@@ -372,67 +257,17 @@ export function TranscriptPanel({
               </button>
 
               {/* El tamaño no cambia entre líneas: así nada salta al avanzar */}
-              <p
+              <DockLine
+                text={cue.text}
+                onPick={(word) => onPick(word, cue)}
+                onSelectionPick={() => takeSelection(cue)}
                 className={cn(
                   "text-sm sm:text-base leading-relaxed transition-colors duration-300",
                   isActive
                     ? "text-foreground font-medium"
                     : "text-muted-foreground/55 group-hover/line:text-muted-foreground"
                 )}
-              >
-                {words.map((part, partIndex) => {
-                  const scale = dock?.scale[partIndex] ?? 1;
-                  const shift = dock?.shift[partIndex] ?? 0;
-                  const isFocus = scale === DOCK_SCALE[0];
-
-                  const style: CSSProperties = {
-                    transform:
-                      shift || scale !== 1
-                        ? `translateX(${shift}px) scale(${scale})`
-                        : undefined,
-                    transformOrigin: "center bottom",
-                    transition:
-                      "transform 220ms cubic-bezier(0.22, 1, 0.36, 1), color 140ms ease-out",
-                    willChange: dock ? "transform" : undefined,
-                  };
-
-                  if (!part.isWord) {
-                    // `whitespace-pre` es obligatorio: un inline-block que solo
-                    // contiene un espacio lo colapsa a cero y las palabras
-                    // quedan pegadas.
-                    return (
-                      <span
-                        key={partIndex}
-                        data-part
-                        className="inline-block whitespace-pre"
-                        style={style}
-                      >
-                        {part.value}
-                      </span>
-                    );
-                  }
-
-                  return (
-                    <span
-                      key={partIndex}
-                      data-part
-                      onMouseEnter={(e) =>
-                        handleWordEnter(cueIndex, part.ord, e.currentTarget)
-                      }
-                      onClick={() => {
-                        if (!takeSelection(cue)) onPick(part.value, cue);
-                      }}
-                      className={cn(
-                        "inline-block cursor-pointer rounded",
-                        isFocus && "font-bold text-primary"
-                      )}
-                      style={style}
-                    >
-                      {part.value}
-                    </span>
-                  );
-                })}
-              </p>
+              />
             </div>
           );
         })}
