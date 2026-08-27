@@ -70,13 +70,13 @@ const STUDIO_HEIGHT = "lg:h-[calc(100vh-6.5rem)]";
 /**
  * Tope de ancho del video, que en realidad es un tope de alto.
  *
- * Casi siempre manda el ancho de la columna —el video ocupa los tres cuartos
- * de la pantalla— y este cálculo no llega a aplicar. Solo entra en ventanas
- * bajas, donde impide que el video empuje a los subtítulos fuera de vista:
- * descuenta los controles, la pista y el espacio de la app, y el que cede es
- * el video.
+ * Acá está la palanca de toda esta pantalla: el video crece a lo ancho solo si
+ * le sobra alto, así que cada fila que se saca de encima o debajo se convierte
+ * en video. Lo que queda descontado es lo mínimo —el espacio de la app y la
+ * pista de subtítulos—; los controles ya no cuestan nada porque viven dentro
+ * del marco.
  */
-const VIDEO_MAX_WIDTH = "calc((100vh - 21rem) * 16 / 9)";
+const VIDEO_MAX_WIDTH = "calc((100vh - 18rem) * 16 / 9)";
 
 export function SessionStudio({
   session,
@@ -476,16 +476,16 @@ export function SessionStudio({
         {hasPlayer ? (
           <div className="flex min-h-0 min-w-0 flex-col gap-2 lg:col-span-9">
             {/*
-              El video, los controles y la pista de subtítulos son una sola
-              pieza y comparten ancho. Sin la franja de estado encima, el video
-              se estira hasta donde da la columna y lo que sobra de alto se lo
-              queda la pista: nada de aire muerto entre medio.
+              Dos bloques y nada más: el marco del video —con sus controles
+              adentro— y la pista de subtítulos. Todo lo que antes vivía en
+              filas propias arriba y abajo se mudó al marco o a la columna de
+              la derecha, y ese alto es exactamente el que ganó el video.
             */}
             <div
               className="mx-auto flex min-h-0 w-full flex-1 flex-col justify-center gap-2"
               style={{ maxWidth: VIDEO_MAX_WIDTH }}
             >
-              <div className="relative aspect-video w-full shrink-0 overflow-hidden rounded-2xl border border-border/60 bg-black">
+              <div className="group relative aspect-video w-full shrink-0 overflow-hidden rounded-2xl border border-border/60 bg-black">
                 <YouTubePlayer
                   ref={playerRef}
                   videoId={session.external_id!}
@@ -521,34 +521,29 @@ export function SessionStudio({
                     <Play className="h-7 w-7 translate-x-[2px] fill-current" />
                   </span>
                 </button>
-              </div>
 
-              <PlayerTransport
-                playbackRef={playbackRef}
-                playing={isVideoPlaying}
-                durationSeconds={trackDuration}
-                cues={cues}
-                heat={heat}
-                markers={captureMarkers}
-                onSeek={(seconds) => {
-                  playerRef.current?.seekTo(seconds);
-                  onActivity();
-                }}
-                onSeekBy={(seconds) => {
-                  playerRef.current?.seekBy(seconds);
-                  onActivity();
-                }}
-                onToggle={() => {
-                  playerRef.current?.toggle();
-                  onActivity();
-                }}
-                onRepeatLine={repeatLine}
-                youtubeUrl={
-                  session.external_id
-                    ? youTubeWatchUrl(session.external_id, positionSeconds)
-                    : null
-                }
-              />
+                <PlayerTransport
+                  playbackRef={playbackRef}
+                  playing={isVideoPlaying}
+                  durationSeconds={trackDuration}
+                  cues={cues}
+                  heat={heat}
+                  markers={captureMarkers}
+                  onSeek={(seconds) => {
+                    playerRef.current?.seekTo(seconds);
+                    onActivity();
+                  }}
+                  onSeekBy={(seconds) => {
+                    playerRef.current?.seekBy(seconds);
+                    onActivity();
+                  }}
+                  onToggle={() => {
+                    playerRef.current?.toggle();
+                    onActivity();
+                  }}
+                  onRepeatLine={repeatLine}
+                />
+              </div>
 
               <SubtitleTrack
                 cues={cues}
@@ -564,7 +559,7 @@ export function SessionStudio({
                 onBringSubtitles={() => setTranscriptHelpOpen(true)}
                 onPasteClipboard={pasteTranscript}
                 isSaving={saveTranscript.isPending}
-                className="h-[9rem] shrink-0 lg:h-auto lg:min-h-[9rem] lg:max-h-[20rem] lg:flex-1"
+                className="h-[9rem] shrink-0 lg:h-auto lg:min-h-[10rem] lg:max-h-[20rem] lg:flex-1"
               />
             </div>
           </div>
@@ -600,6 +595,11 @@ export function SessionStudio({
             onFinish={onFinish}
             onLeave={onLeave}
             onDiscard={() => setConfirmDiscard(true)}
+            youtubeUrl={
+              session.external_id
+                ? youTubeWatchUrl(session.external_id, positionSeconds)
+                : null
+            }
           />
 
           {hasPlayer && (

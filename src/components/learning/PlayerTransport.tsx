@@ -5,15 +5,9 @@ import {
   useState,
   type MutableRefObject,
   type PointerEvent as ReactPointerEvent,
+  type ReactNode,
 } from "react";
-import {
-  ExternalLink,
-  Pause,
-  Play,
-  Repeat,
-  RotateCcw,
-  RotateCw,
-} from "lucide-react";
+import { Pause, Play, Repeat, RotateCcw, RotateCw } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { formatClock } from "@/lib/learning-config";
 import { activeCueIndex, type Cue } from "@/lib/transcript";
@@ -32,16 +26,20 @@ interface PlayerTransportProps {
   onSeekBy: (seconds: number) => void;
   onToggle: () => void;
   onRepeatLine: () => void;
-  youtubeUrl?: string | null;
 }
 
 /**
- * Los controles del video, que son nuestros y no de YouTube.
+ * Los controles, dentro del marco del video.
  *
- * La barra no es solo dónde vas: está pintada con el relieve del video, así que
- * ves dónde se pone difícil *antes* de llegar, y con los puntos de lo que
- * capturaste. Eso es lo que un embed nunca te va a dar, y es la razón entera de
- * haberle sacado el cromo al reproductor.
+ * Estaban en una fila debajo y costaban sesenta píxeles de alto. En esta
+ * pantalla el video está limitado por el alto —su ancho sale de ahí—, así que
+ * esos sesenta píxeles no eran una fila: eran un video un cuarto más chico.
+ *
+ * Así que la fila desaparece y queda lo único que informa algo cuando no estás
+ * tocando nada: una línea de tres píxeles al pie con el relieve del video. Al
+ * acercar el puntero —o al pausar, que es cuando de verdad los buscas— la línea
+ * engorda, aparece la aguja y sube la fila entera. Ni un píxel de la pantalla
+ * gastado en botones que no estás mirando.
  */
 export function PlayerTransport({
   playbackRef,
@@ -54,11 +52,13 @@ export function PlayerTransport({
   onSeekBy,
   onToggle,
   onRepeatLine,
-  youtubeUrl,
 }: PlayerTransportProps) {
   const seconds = useSmoothPosition(playbackRef);
   const trackRef = useRef<HTMLDivElement>(null);
   const [hoverRatio, setHoverRatio] = useState<number | null>(null);
+
+  /** En pausa los controles se quedan a la vista: es cuando los buscas. */
+  const revealed = !playing;
 
   const ratio = durationSeconds > 0 ? Math.min(seconds / durationSeconds, 1) : 0;
 
@@ -83,8 +83,7 @@ export function PlayerTransport({
   };
 
   const handlePointerMove = (event: ReactPointerEvent<HTMLDivElement>) => {
-    const next = ratioAt(event.clientX);
-    setHoverRatio(next);
+    setHoverRatio(ratioAt(event.clientX));
     // Arrastrar con el dedo o el botón apretado va buscando en vivo.
     if (event.buttons === 1) seekAt(event.clientX);
   };
@@ -94,141 +93,149 @@ export function PlayerTransport({
     hoverSeconds !== null ? cues[activeCueIndex(cues, hoverSeconds)] : undefined;
 
   return (
-    <div className="shrink-0">
-      {/* ── La barra ─────────────────────────────────────── */}
+    <div className="pointer-events-none absolute inset-x-0 bottom-0 z-10">
+      {/* Velo: apenas insinuado mientras corre, entero cuando hay que leer */}
       <div
-        ref={trackRef}
-        onPointerDown={handlePointerDown}
-        onPointerMove={handlePointerMove}
-        onPointerLeave={() => setHoverRatio(null)}
-        role="slider"
-        aria-label="Posición del video"
-        aria-valuemin={0}
-        aria-valuemax={Math.round(durationSeconds)}
-        aria-valuenow={Math.round(seconds)}
-        tabIndex={0}
-        className="group relative flex h-6 cursor-pointer touch-none items-center"
-      >
-        <div className="relative h-1.5 w-full overflow-hidden rounded-full bg-muted transition-all duration-150 group-hover:h-2.5">
-          <HeatTrack heat={heat} />
+        aria-hidden
+        className={cn(
+          "absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/80 via-black/30 to-transparent",
+          "transition-all duration-300",
+          revealed
+            ? "h-28 opacity-100"
+            : "h-12 opacity-50 group-hover:h-28 group-hover:opacity-100"
+        )}
+      />
+
+      <div className="pointer-events-auto relative">
+        {/* ── La barra ───────────────────────────────────── */}
+        <div
+          ref={trackRef}
+          onPointerDown={handlePointerDown}
+          onPointerMove={handlePointerMove}
+          onPointerLeave={() => setHoverRatio(null)}
+          role="slider"
+          aria-label="Posición del video"
+          aria-valuemin={0}
+          aria-valuemax={Math.round(durationSeconds)}
+          aria-valuenow={Math.round(seconds)}
+          tabIndex={0}
+          className="relative mx-4 mb-1 flex h-4 cursor-pointer touch-none items-end"
+        >
           <div
-            className="absolute inset-y-0 left-0 bg-primary"
-            style={{ width: `${ratio * 100}%` }}
+            className={cn(
+              "relative w-full overflow-hidden rounded-full bg-white/25 transition-all duration-200",
+              revealed ? "h-1.5" : "h-[3px] group-hover:h-1.5"
+            )}
+          >
+            <HeatTrack heat={heat} />
+            <div
+              className="absolute inset-y-0 left-0 bg-primary"
+              style={{ width: `${ratio * 100}%` }}
+            />
+          </div>
+
+          {/* Dónde capturaste algo */}
+          {durationSeconds > 0 &&
+            markers.map((at, index) => (
+              <span
+                key={`${at}-${index}`}
+                title={`Capturaste algo en ${formatClock(at)}`}
+                className={cn(
+                  "pointer-events-none absolute bottom-0 w-[2px] -translate-x-1/2 rounded-full bg-amber-300",
+                  "transition-all duration-200",
+                  revealed ? "h-1.5" : "h-[3px] group-hover:h-1.5"
+                )}
+                style={{ left: `${Math.min(at / durationSeconds, 1) * 100}%` }}
+              />
+            ))}
+
+          {/* La aguja solo cuando hay una mano cerca */}
+          <span
+            className={cn(
+              "pointer-events-none absolute bottom-0 size-3 -translate-x-1/2 translate-y-[0.1875rem]",
+              "rounded-full bg-primary shadow ring-2 ring-black/25 transition-transform duration-200",
+              revealed ? "scale-100" : "scale-0 group-hover:scale-100"
+            )}
+            style={{ left: `${ratio * 100}%` }}
           />
+
+          {/* Qué se dice ahí: nuestro equivalente a la miniatura de YouTube */}
+          {hoverRatio !== null && hoverSeconds !== null && (
+            <div
+              className={cn(
+                "pointer-events-none absolute bottom-full z-10 mb-1.5 w-max max-w-[18rem] -translate-x-1/2",
+                "rounded-lg bg-black/85 px-2.5 py-1.5 shadow-lg backdrop-blur-sm"
+              )}
+              style={{
+                left: `${Math.min(Math.max(hoverRatio, 0.08), 0.92) * 100}%`,
+              }}
+            >
+              <p className="text-[11px] font-semibold tabular-nums text-white">
+                {formatClock(hoverSeconds)}
+              </p>
+              {hoverCue && (
+                <p className="mt-0.5 line-clamp-2 text-[11px] leading-snug text-white/65">
+                  {hoverCue.text}
+                </p>
+              )}
+            </div>
+          )}
         </div>
 
-        {/* Dónde capturaste algo */}
-        {durationSeconds > 0 &&
-          markers.map((at, index) => (
-            <span
-              key={`${at}-${index}`}
-              title={`Capturaste algo en ${formatClock(at)}`}
-              className="pointer-events-none absolute top-1/2 size-1.5 -translate-x-1/2 -translate-y-1/2 rounded-full bg-amber-400 ring-1 ring-background"
-              style={{ left: `${Math.min(at / durationSeconds, 1) * 100}%` }}
-            />
-          ))}
-
-        {/* Dónde vas */}
-        <span
-          className="pointer-events-none absolute top-1/2 size-3 -translate-x-1/2 -translate-y-1/2 rounded-full bg-primary shadow-sm ring-2 ring-background transition-transform group-hover:scale-125"
-          style={{ left: `${ratio * 100}%` }}
-        />
-
-        {/* Qué se dice ahí: el equivalente nuestro a la miniatura de YouTube */}
-        {hoverRatio !== null && hoverSeconds !== null && (
-          <div
-            className="pointer-events-none absolute bottom-full z-10 mb-1 w-max max-w-[16rem] -translate-x-1/2 rounded-lg border border-border/60 bg-popover px-2 py-1 shadow-lg"
-            style={{
-              left: `${Math.min(Math.max(hoverRatio, 0.08), 0.92) * 100}%`,
-            }}
-          >
-            <p className="text-[11px] font-semibold tabular-nums">
-              {formatClock(hoverSeconds)}
-            </p>
-            {hoverCue && (
-              <p className="mt-0.5 line-clamp-2 text-[11px] leading-snug text-muted-foreground">
-                {hoverCue.text}
-              </p>
-            )}
-          </div>
-        )}
-      </div>
-
-      {/* ── Los botones ──────────────────────────────────── */}
-      <div className="mt-1 flex items-center gap-1">
-        <button
-          onClick={onToggle}
-          aria-label={playing ? "Pausar el video" : "Reproducir"}
+        {/* ── Los botones ────────────────────────────────── */}
+        <div
           className={cn(
-            "flex size-9 shrink-0 items-center justify-center rounded-full",
-            "bg-primary text-primary-foreground transition-transform hover:scale-105"
+            "flex items-center gap-0.5 overflow-hidden px-2 transition-all duration-200",
+            revealed
+              ? "h-11 opacity-100"
+              : "h-0 opacity-0 group-hover:h-11 group-hover:opacity-100"
           )}
         >
-          {playing ? (
-            <Pause className="h-4 w-4 fill-current" />
-          ) : (
-            <Play className="h-4 w-4 translate-x-[1px] fill-current" />
-          )}
-        </button>
+          <TransportButton
+            onClick={onToggle}
+            label={playing ? "Pausar el video" : "Reproducir"}
+            icon={
+              playing ? (
+                <Pause className="h-4 w-4 fill-current" />
+              ) : (
+                <Play className="h-4 w-4 translate-x-[1px] fill-current" />
+              )
+            }
+          />
+          <TransportButton
+            onClick={() => onSeekBy(-10)}
+            label="Retroceder 10 segundos"
+            icon={<RotateCcw className="h-3.5 w-3.5" />}
+            text="10s"
+          />
+          <TransportButton
+            onClick={() => onSeekBy(10)}
+            label="Adelantar 10 segundos"
+            icon={<RotateCw className="h-3.5 w-3.5" />}
+            text="10s"
+          />
+          <TransportButton
+            onClick={onRepeatLine}
+            label="Repetir la frase"
+            icon={<Repeat className="h-3.5 w-3.5" />}
+            text="Repetir frase"
+            shortcut="R"
+          />
 
-        <TransportButton
-          onClick={() => onSeekBy(-10)}
-          label="Retroceder 10 segundos"
-          icon={<RotateCcw className="h-3.5 w-3.5" />}
-          text="10s"
-        />
-        <TransportButton
-          onClick={() => onSeekBy(10)}
-          label="Adelantar 10 segundos"
-          icon={<RotateCw className="h-3.5 w-3.5" />}
-          text="10s"
-        />
-
-        <TransportButton
-          onClick={onRepeatLine}
-          label="Repetir la frase"
-          icon={<Repeat className="h-3.5 w-3.5" />}
-          text="Repetir frase"
-          shortcut="R"
-          highlight
-        />
-
-        <span className="ml-1.5 shrink-0 text-[11px] tabular-nums text-muted-foreground">
-          {formatClock(seconds)}
-          <span className="text-muted-foreground/60">
-            {" / "}
-            {formatClock(durationSeconds)}
+          <span className="ml-2 shrink-0 text-[11px] tabular-nums text-white/70">
+            {formatClock(seconds)}
+            <span className="text-white/40">
+              {" / "}
+              {formatClock(durationSeconds)}
+            </span>
           </span>
-        </span>
 
-        <div className="flex-1" />
+          <div className="flex-1" />
 
-        <span className="mr-3 hidden shrink-0 text-[10px] text-muted-foreground/70 lg:inline">
-          Espacio ⏯ · ← → 10s · E capturar
-        </span>
-
-        <span className="hidden shrink-0 items-center gap-2.5 text-[10px] text-muted-foreground xl:flex">
-          <span className="flex items-center gap-1">
-            <span className="h-0 w-3.5 border-b-2 border-dotted border-[var(--band-4)]" />
-            sobre tu nivel
+          <span className="hidden shrink-0 pr-1 text-[10px] text-white/40 lg:inline">
+            Espacio ⏯ · ← → 10s · E capturar
           </span>
-          <span className="flex items-center gap-1">
-            <span className="h-0 w-3.5 border-b-2 border-primary" />
-            ya la tienes
-          </span>
-        </span>
-
-        {youtubeUrl && (
-          <a
-            href={youtubeUrl}
-            target="_blank"
-            rel="noreferrer"
-            className="ml-2.5 flex shrink-0 items-center gap-1 text-[10px] text-muted-foreground transition-colors hover:text-foreground"
-          >
-            <ExternalLink className="h-3 w-3" />
-            YouTube
-          </a>
-        )}
+        </div>
       </div>
     </div>
   );
@@ -240,14 +247,12 @@ function TransportButton({
   icon,
   text,
   shortcut,
-  highlight,
 }: {
   onClick: () => void;
   label: string;
-  icon: React.ReactNode;
-  text: string;
+  icon: ReactNode;
+  text?: string;
   shortcut?: string;
-  highlight?: boolean;
 }) {
   return (
     <button
@@ -255,16 +260,14 @@ function TransportButton({
       aria-label={label}
       title={shortcut ? `${label} · tecla ${shortcut}` : label}
       className={cn(
-        "flex h-8 shrink-0 items-center gap-1 rounded-lg px-2 transition-colors",
-        highlight
-          ? "text-foreground hover:bg-primary/10 hover:text-primary"
-          : "text-muted-foreground hover:bg-muted hover:text-foreground"
+        "flex h-8 shrink-0 items-center gap-1.5 rounded-lg px-2 text-white/85",
+        "transition-colors hover:bg-white/15 hover:text-white"
       )}
     >
       {icon}
-      <span className="text-[11px] font-medium">{text}</span>
+      {text && <span className="text-[11px] font-medium">{text}</span>}
       {shortcut && (
-        <kbd className="ml-0.5 hidden rounded bg-muted px-1 py-0.5 font-mono text-[9px] sm:inline">
+        <kbd className="hidden rounded bg-white/15 px-1 py-0.5 font-mono text-[9px] text-white/80 sm:inline">
           {shortcut}
         </kbd>
       )}

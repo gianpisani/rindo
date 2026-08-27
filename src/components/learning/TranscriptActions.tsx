@@ -83,6 +83,18 @@ export function TranscriptActions({
           </Button>
         </>
       )}
+      {hasTranscript && (
+        <div className="mt-2.5 flex flex-wrap items-center gap-x-3 gap-y-1 border-t border-border/40 pt-2.5 text-[10px] text-muted-foreground">
+          <span className="flex items-center gap-1.5">
+            <span className="h-0 w-3.5 border-b-2 border-dotted border-[var(--band-4)]" />
+            sobre tu nivel
+          </span>
+          <span className="flex items-center gap-1.5">
+            <span className="h-0 w-3.5 border-b-2 border-primary" />
+            ya la tienes
+          </span>
+        </div>
+      )}
     </div>
   );
 }

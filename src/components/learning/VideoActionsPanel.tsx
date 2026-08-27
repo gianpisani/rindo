@@ -1,4 +1,4 @@
-import { ArrowLeft, Flag, Pause, Play, Trash2 } from "lucide-react";
+import { ArrowLeft, ExternalLink, Flag, Pause, Play, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { formatClock, formatDuration } from "@/lib/learning-config";
@@ -51,6 +51,8 @@ interface VideoActionsPanelProps {
   onFinish: () => void;
   onLeave: () => void;
   onDiscard: () => void;
+  /** El video sigue siendo de YouTube: la puerta de salida vive acá. */
+  youtubeUrl?: string | null;
 }
 
 /**
@@ -74,6 +76,7 @@ export function VideoActionsPanel({
   onFinish,
   onLeave,
   onDiscard,
+  youtubeUrl,
 }: VideoActionsPanelProps) {
   const config = STATE_CONFIG[state];
 
@@ -120,9 +123,25 @@ export function VideoActionsPanel({
       <p className="mt-2.5 line-clamp-2 font-semibold leading-tight">
         {title ?? "Cargando…"}
       </p>
-      {author && (
-        <p className="truncate text-[11px] text-muted-foreground">{author}</p>
-      )}
+      <div className="flex items-baseline gap-2">
+        {author && (
+          <p className="min-w-0 truncate text-[11px] text-muted-foreground">
+            {author}
+          </p>
+        )}
+        {youtubeUrl && (
+          <a
+            href={youtubeUrl}
+            target="_blank"
+            rel="noreferrer"
+            title="Abrir en YouTube en el minuto donde vas"
+            className="ml-auto flex shrink-0 items-center gap-1 text-[10px] text-muted-foreground transition-colors hover:text-foreground"
+          >
+            <ExternalLink className="h-3 w-3" />
+            YouTube
+          </a>
+        )}
+      </div>
 
       <div className="mt-3 flex items-baseline gap-2">
         <p className="text-3xl font-bold leading-none tabular-nums">
