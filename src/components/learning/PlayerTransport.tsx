@@ -7,7 +7,15 @@ import {
   type PointerEvent as ReactPointerEvent,
   type ReactNode,
 } from "react";
-import { Pause, Play, Repeat, RotateCcw, RotateCw } from "lucide-react";
+import {
+  Captions,
+  CaptionsOff,
+  Pause,
+  Play,
+  Repeat,
+  RotateCcw,
+  RotateCw,
+} from "lucide-react";
 import { cn } from "@/lib/utils";
 import { formatClock } from "@/lib/learning-config";
 import { activeCueIndex, type Cue } from "@/lib/transcript";
@@ -26,6 +34,9 @@ interface PlayerTransportProps {
   onSeekBy: (seconds: number) => void;
   onToggle: () => void;
   onRepeatLine: () => void;
+  /** El subtítulo sobre el video, encendido o no. */
+  captionOn: boolean;
+  onToggleCaption: () => void;
 }
 
 /**
@@ -52,6 +63,8 @@ export function PlayerTransport({
   onSeekBy,
   onToggle,
   onRepeatLine,
+  captionOn,
+  onToggleCaption,
 }: PlayerTransportProps) {
   const seconds = useSmoothPosition(playbackRef);
   const trackRef = useRef<HTMLDivElement>(null);
@@ -221,6 +234,19 @@ export function PlayerTransport({
             text="Repetir frase"
             shortcut="R"
           />
+          <TransportButton
+            onClick={onToggleCaption}
+            label={captionOn ? "Esconder el subtítulo" : "Mostrar el subtítulo"}
+            icon={
+              captionOn ? (
+                <Captions className="h-3.5 w-3.5" />
+              ) : (
+                <CaptionsOff className="h-3.5 w-3.5" />
+              )
+            }
+            shortcut="C"
+            muted={!captionOn}
+          />
 
           <span className="ml-2 shrink-0 text-[11px] tabular-nums text-white/70">
             {formatClock(seconds)}
@@ -233,7 +259,7 @@ export function PlayerTransport({
           <div className="flex-1" />
 
           <span className="hidden shrink-0 pr-1 text-[10px] text-white/40 lg:inline">
-            Espacio ⏯ · ← → 10s · E capturar
+            Espacio ⏯ · ← → 10s · E capturar · C subtítulo
           </span>
         </div>
       </div>
@@ -247,12 +273,15 @@ function TransportButton({
   icon,
   text,
   shortcut,
+  muted,
 }: {
   onClick: () => void;
   label: string;
   icon: ReactNode;
   text?: string;
   shortcut?: string;
+  /** Apagado: el botón sigue ahí, pero no compite con los que sí actúan. */
+  muted?: boolean;
 }) {
   return (
     <button
@@ -260,7 +289,8 @@ function TransportButton({
       aria-label={label}
       title={shortcut ? `${label} · tecla ${shortcut}` : label}
       className={cn(
-        "flex h-8 shrink-0 items-center gap-1.5 rounded-lg px-2 text-white/85",
+        "flex h-8 shrink-0 items-center gap-1.5 rounded-lg px-2",
+        muted ? "text-white/40" : "text-white/85",
         "transition-colors hover:bg-white/15 hover:text-white"
       )}
     >

@@ -85,6 +85,9 @@ const STUDIO_HEIGHT = "lg:h-[calc(100vh-6.5rem)]";
  */
 const VIDEO_MAX_WIDTH = "calc((100vh - 18rem) * 16 / 9)";
 
+/** El subtítulo sobre el video: encendido salvo que lo hayas apagado tú. */
+const CAPTION_PREF_KEY = "rindo:learning-caption";
+
 export function SessionStudio({
   session,
   isPaused,
@@ -162,6 +165,23 @@ export function SessionStudio({
 
   /** La pista de subtítulos va detrás del video hasta que la muevas tú. */
   const [followSubtitles, setFollowSubtitles] = useState(true);
+
+  /**
+   * El subtítulo sobre el video se puede apagar, y la elección queda hecha:
+   * es una preferencia de cómo miras, no algo que quieras volver a decidir
+   * cada vez que abres un video.
+   */
+  const [captionOn, setCaptionOn] = useState(
+    () => localStorage.getItem(CAPTION_PREF_KEY) !== "0"
+  );
+
+  const toggleCaption = useCallback(() => {
+    setCaptionOn((prev) => {
+      localStorage.setItem(CAPTION_PREF_KEY, prev ? "0" : "1");
+      return !prev;
+    });
+    onActivity();
+  }, [onActivity]);
   const [transcriptHelpOpen, setTranscriptHelpOpen] = useState(false);
 
   const pasteTranscript = useCallback(async () => {
@@ -464,12 +484,15 @@ export function SessionStudio({
       } else if (e.key === "r" || e.key === "R") {
         e.preventDefault();
         repeatLine();
+      } else if (e.key === "c" || e.key === "C") {
+        e.preventDefault();
+        toggleCaption();
       }
     };
 
     window.addEventListener("keydown", handler);
     return () => window.removeEventListener("keydown", handler);
-  }, [openCapture, hasPlayer, onActivity, repeatLine]);
+  }, [openCapture, hasPlayer, onActivity, repeatLine, toggleCaption]);
 
   // ── Estado visual ─────────────────────────────────────────
 
@@ -549,7 +572,9 @@ export function SessionStudio({
                 </button>
 
                 <SubtitleCaption
-                  block={spot.block >= 0 ? blocks[spot.block] : null}
+                  block={
+                    captionOn && spot.block >= 0 ? blocks[spot.block] : null
+                  }
                   word={spot.word}
                   onPick={pickFromTranscript}
                   markOf={markOf}
@@ -570,6 +595,8 @@ export function SessionStudio({
                     playerRef.current?.seekBy(seconds);
                     onActivity();
                   }}
+                  captionOn={captionOn}
+                  onToggleCaption={toggleCaption}
                   onToggle={() => {
                     playerRef.current?.toggle();
                     onActivity();
