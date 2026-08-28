@@ -1,4 +1,4 @@
-import { Flame, Play, Plus } from "lucide-react";
+import { Check, Flame, Play, Plus } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import {
@@ -9,7 +9,6 @@ import {
 import type { LearningGoal } from "@/hooks/useLearningGoals";
 import type { LearningSession } from "@/hooks/useLearningSessions";
 import type { LearningStats } from "@/hooks/useLearningStats";
-import { ContentCover, LiveBadge } from "./ContentCover";
 
 interface TodayHeroProps {
   goal: LearningGoal;
@@ -23,16 +22,17 @@ interface TodayHeroProps {
 }
 
 /**
- * La portada de Aprendizaje.
+ * La portada de Aprendizaje, en una banda.
  *
- * La decisión que tomas al abrir esta vista no es "cómo voy" sino "qué veo
- * ahora", así que el contenido dejó de vivir dentro de una tarjeta gris y pasó
- * a ser el fondo: la portada de lo que dejaste a medias, difuminada, con los
- * minutos del día encima.
+ * Era un bloque alto con la portada de fondo, el número gigante y el botón
+ * debajo. Se veía bien y costaba doscientos píxeles de alto en una página que
+ * ya tiene dos parrillas de video: apilaba en vertical lo que cabe de sobra en
+ * una fila.
  *
- * No es decoración. Antes "te faltan 12 min" era un número abstracto y "volver
- * a la sesión" un botón en otra parte; juntos, el minuto que falta es *de este
- * video*, y eso es lo que hace que uno le dé play.
+ * Ahora es una sola línea que se lee de izquierda a derecha, que es como se
+ * lee una frase: cuánto llevas hoy, qué te está esperando, y el botón para
+ * entrar. La portada del video sigue de fondo, difuminada, porque eso no
+ * ocupaba alto: ocupaba carácter.
  */
 export function TodayHero({
   goal,
@@ -46,6 +46,7 @@ export function TodayHero({
   const target = goal.daily_minutes_target;
   const ratio = target > 0 ? todayMinutes / target : 0;
   const goalMet = todayMinutes >= target;
+  const missingMinutes = Math.max(0, Math.ceil(target - todayMinutes));
 
   const progress = featured ? contentProgress(featured) : null;
 
@@ -67,7 +68,7 @@ export function TodayHero({
             src={art}
             alt=""
             aria-hidden
-            className="absolute inset-0 h-full w-full scale-125 object-cover blur-2xl opacity-50 dark:opacity-35"
+            className="absolute inset-0 h-full w-full scale-125 object-cover blur-2xl opacity-45 dark:opacity-30"
           />
           {/* El velo deja pasar el color del video, no la imagen: los textos
               siguen siendo los del tema y se leen igual de día que de noche. */}
@@ -75,87 +76,103 @@ export function TodayHero({
         </>
       )}
 
-      <div className="relative flex flex-col gap-5 p-5 sm:flex-row sm:items-center sm:gap-6">
-        {featured && (
-          <div
+      <div className="relative flex flex-wrap items-center gap-x-4 gap-y-3 p-4">
+        {/* ── Hoy ────────────────────────────────────────── */}
+        <div className="flex shrink-0 items-center gap-3">
+          <DayRing ratio={ratio} met={goalMet} streak={stats.streakDays} />
+
+          <div>
+            <p className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
+              Hoy
+            </p>
+            <p className="mt-0.5 text-2xl font-bold leading-none tracking-tight tabular-nums sm:text-3xl">
+              {Math.round(todayMinutes)}
+              <span className="text-base font-semibold text-muted-foreground">
+                {" "}/ {target} min
+              </span>
+            </p>
+          </div>
+        </div>
+
+        {/* ── Lo que te espera ───────────────────────────── */}
+        {featured ? (
+          <button
+            onClick={onResumeFeatured}
             className={cn(
-              "group relative shrink-0 overflow-hidden rounded-xl shadow-sm",
-              "border border-border/50 sm:order-2 sm:w-[38%]"
+              "-m-1 flex min-w-0 flex-1 items-center gap-3 rounded-xl p-1 text-left",
+              "transition-colors hover:bg-muted/50"
             )}
           >
-            <ContentCover
-              externalId={featured.external_id}
-              thumbnail={featured.content_thumbnail}
-              contentType={featured.content_type}
-              title={featured.content_title}
-              durationSeconds={featured.content_duration_seconds}
-              progressPercent={progress?.percent ?? null}
-              ribbon={featuredIsLive ? <LiveBadge>en curso</LiveBadge> : null}
-              onPlay={onResumeFeatured}
-            />
-          </div>
-        )}
+            <span className="relative aspect-video w-[5.5rem] shrink-0 overflow-hidden rounded-lg border border-border/50 bg-muted">
+              {art ? (
+                <img src={art} alt="" className="h-full w-full object-cover" />
+              ) : null}
 
-        <div className="min-w-0 flex-1 sm:order-1">
-          <div className="flex items-center justify-between gap-4">
-            <div className="min-w-0">
-              <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
-                Hoy
-              </p>
-              <p className="mt-1 text-5xl font-bold leading-none tracking-tight tabular-nums sm:text-6xl">
-                {Math.round(todayMinutes)}
-                <span className="text-lg font-semibold text-muted-foreground sm:text-xl">
-                  {" "}/ {target} min
+              {progress?.percent != null && (
+                <span className="absolute inset-x-0 bottom-0 h-[3px] bg-black/40">
+                  <span
+                    className="block h-full bg-primary"
+                    style={{ width: `${Math.max(progress.percent, 2)}%` }}
+                  />
                 </span>
-              </p>
-            </div>
+              )}
 
-            <DayRing ratio={ratio} met={goalMet} streak={stats.streakDays} />
-          </div>
+              {featuredIsLive && (
+                <span className="absolute left-1 top-1 size-1.5 rounded-full bg-primary ring-2 ring-black/40" />
+              )}
+            </span>
 
-          {featured && (
-            <p className="mt-4 truncate text-sm text-muted-foreground">
-              <span className="font-medium text-foreground">
+            <span className="min-w-0">
+              <span className="block truncate text-sm font-medium">
                 {featured.content_title ?? "Sesión"}
               </span>
-              {progress?.label && (
-                <span className="tabular-nums"> · {progress.label}</span>
-              )}
-            </p>
-          )}
-
-          <div className="mt-3 flex gap-2">
-            <Button
-              onClick={featured ? onResumeFeatured : onStart}
-              className="h-12 flex-1 rounded-xl text-base font-semibold"
-            >
-              <Play className="mr-2 h-5 w-5 fill-current" />
-              {featuredIsLive
-                ? "Volver a la sesión"
-                : featured
-                  ? "Seguir viendo"
-                  : "Empezar sesión"}
-            </Button>
-
-            {/* Con una sesión abierta no se puede abrir otra: el reloj es uno. */}
-            {featured && !featuredIsLive && (
-              <Button
-                onClick={onStart}
-                variant="outline"
-                className="h-12 rounded-xl px-3.5"
-                title="Empezar con otro video"
-                aria-label="Empezar con otro video"
-              >
-                <Plus className="h-5 w-5" />
-              </Button>
+              <span className="block truncate text-[11px] tabular-nums text-muted-foreground">
+                {featuredIsLive
+                  ? `En pausa · ${formatDuration(featured.effective_seconds)} estudiando`
+                  : (progress?.label ?? "Recién empezado")}
+              </span>
+            </span>
+          </button>
+        ) : (
+          /* Sin nada a medias el hueco dice lo único que falta saber */
+          <p className="min-w-0 flex-1 truncate text-sm text-muted-foreground">
+            {goalMet ? (
+              <span className="flex items-center gap-1.5 font-medium text-emerald-500">
+                <Check className="h-4 w-4" />
+                Meta del día cumplida
+              </span>
+            ) : (
+              `Te faltan ${missingMinutes} min para cerrar el día`
             )}
-          </div>
+          </p>
+        )}
 
-          {featuredIsLive && (
-            <p className="mt-2.5 text-[11px] text-muted-foreground">
-              Pausada · {formatDuration(featured!.effective_seconds)} estudiando
-            </p>
+        {/* ── Entrar ─────────────────────────────────────── */}
+        <div className="flex w-full shrink-0 items-center gap-2 sm:ml-auto sm:w-auto">
+          {/* Con una sesión abierta no se puede abrir otra: el reloj es uno. */}
+          {featured && !featuredIsLive && (
+            <Button
+              onClick={onStart}
+              variant="outline"
+              className="h-11 rounded-xl px-3"
+              title="Empezar con otro video"
+              aria-label="Empezar con otro video"
+            >
+              <Plus className="h-4 w-4" />
+            </Button>
           )}
+
+          <Button
+            onClick={featured ? onResumeFeatured : onStart}
+            className="h-11 flex-1 rounded-xl px-5 font-semibold sm:flex-none"
+          >
+            <Play className="mr-2 h-4 w-4 fill-current" />
+            {featuredIsLive
+              ? "Volver a la sesión"
+              : featured
+                ? "Seguir viendo"
+                : "Empezar sesión"}
+          </Button>
         </div>
       </div>
     </section>
@@ -164,14 +181,14 @@ export function TodayHero({
 
 // ── El anillo del día ───────────────────────────────────────
 
-const RING_SIZE = 72;
-const RING_STROKE = 6;
+const RING_SIZE = 48;
+const RING_STROKE = 4.5;
 
 /**
  * Los minutos de hoy como arco, y adentro la racha.
  *
  * Es un anillo y no una barra a propósito: la barra ya significa otra cosa en
- * esta vista —cuánto llevas de un video, en el borde de la portada— y repetir
+ * esta página —cuánto llevas de un video, en el borde de la portada— y repetir
  * la forma para dos ideas distintas es lo que vuelve ilegible una pantalla.
  * Cerrar el anillo es lo que alimenta el número de adentro.
  */
@@ -192,6 +209,9 @@ function DayRing({
     <div
       className="relative shrink-0"
       style={{ width: RING_SIZE, height: RING_SIZE }}
+      title={`${Math.round(clamped * 100)}% de la meta de hoy${
+        streak > 0 ? ` · ${streak} días seguidos` : ""
+      }`}
     >
       <svg width={RING_SIZE} height={RING_SIZE} className="-rotate-90">
         <circle
@@ -222,13 +242,13 @@ function DayRing({
       <div className="absolute inset-0 flex flex-col items-center justify-center">
         <Flame
           className={cn(
-            "h-3.5 w-3.5",
+            "h-3 w-3",
             streak > 0 ? "text-primary" : "text-muted-foreground/40"
           )}
         />
         <span
           className={cn(
-            "mt-0.5 text-sm font-bold leading-none tabular-nums",
+            "text-[11px] font-bold leading-none tabular-nums",
             streak === 0 && "text-muted-foreground/50"
           )}
         >
