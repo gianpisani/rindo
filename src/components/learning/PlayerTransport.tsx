@@ -1,5 +1,4 @@
 import {
-  memo,
   useCallback,
   useRef,
   useState,
@@ -15,16 +14,12 @@ import {
 } from "@/components/ui/dialog";
 import { cn } from "@/lib/utils";
 import { formatClock } from "@/lib/learning-config";
-import { activeCueIndex, type Cue } from "@/lib/transcript";
 import { useSmoothPosition, type PlaybackSample } from "@/hooks/useSmoothPosition";
 
 interface PlayerTransportProps {
   playbackRef: MutableRefObject<PlaybackSample>;
   playing: boolean;
   durationSeconds: number;
-  cues: Cue[];
-  /** Relieve de dificultad, un valor 0–1 por tramo. */
-  heat: number[];
   /** Segundos donde capturaste algo: quedan clavados como hitos. */
   markers: number[];
   onSeek: (seconds: number) => void;
@@ -34,6 +29,11 @@ interface PlayerTransportProps {
 
 /**
  * Mientras el video corre, esto es una línea de dos píxeles al pie. Nada más.
+ *
+ * Y la barra es la barra: dónde vas y nada encima. Tenía pintado el relieve de
+ * dificultad del video y, al pasar por encima, la frase que se decía ahí. Dos
+ * cosas ciertas y bien hechas que igual sobran: el relieve compite con lo único
+ * que la barra tiene que decir, y la frase ya se lee, grande, sobre el video.
  *
  * Antes había una fila de botones que subía con el puntero en cualquier parte
  * del cuadro. Con el subtítulo leyéndose encima del video, uno está adentro
@@ -49,8 +49,6 @@ export function PlayerTransport({
   playbackRef,
   playing,
   durationSeconds,
-  cues,
-  heat,
   markers,
   onSeek,
   near,
@@ -93,8 +91,6 @@ export function PlayerTransport({
   };
 
   const hoverSeconds = hoverRatio !== null ? hoverRatio * durationSeconds : null;
-  const hoverCue =
-    hoverSeconds !== null ? cues[activeCueIndex(cues, hoverSeconds)] : undefined;
 
   return (
     <div className="pointer-events-none absolute inset-x-0 bottom-0 z-10">
@@ -137,7 +133,6 @@ export function PlayerTransport({
                 : "h-[2px] rounded-none bg-white/20"
             )}
           >
-            <HeatTrack heat={heat} />
             <div
               className="absolute inset-y-0 left-0 bg-primary"
               style={{ width: `${ratio * 100}%` }}
@@ -173,8 +168,8 @@ export function PlayerTransport({
           {hoverRatio !== null && hoverSeconds !== null && (
             <div
               className={cn(
-                "pointer-events-none absolute bottom-full z-10 mb-1.5 w-max max-w-[18rem] -translate-x-1/2",
-                "rounded-lg bg-black/85 px-2.5 py-1.5 shadow-lg backdrop-blur-sm"
+                "pointer-events-none absolute bottom-full z-10 mb-1.5 w-max -translate-x-1/2",
+                "rounded-lg bg-black/85 px-2 py-1 shadow-lg backdrop-blur-sm"
               )}
               style={{
                 left: `${Math.min(Math.max(hoverRatio, 0.08), 0.92) * 100}%`,
@@ -183,11 +178,6 @@ export function PlayerTransport({
               <p className="text-[11px] font-semibold tabular-nums text-white">
                 {formatClock(hoverSeconds)}
               </p>
-              {hoverCue && (
-                <p className="mt-0.5 line-clamp-2 text-[11px] leading-snug text-white/65">
-                  {hoverCue.text}
-                </p>
-              )}
             </div>
           )}
         </div>
@@ -273,25 +263,3 @@ const KEYS: [string, string][] = [
   ["E", "capturar una expresión a mano"],
   ["C", "esconder el subtítulo"],
 ];
-
-
-/**
- * El relieve se repinta solo cuando cambia el video, nunca con el minuto: si
- * se reconciliara sesenta veces por segundo junto con la aguja, la barra
- * costaría más que el reproductor.
- */
-const HeatTrack = memo(function HeatTrack({ heat }: { heat: number[] }) {
-  if (heat.length === 0) return null;
-
-  return (
-    <div className="absolute inset-0 flex" aria-hidden>
-      {heat.map((value, index) => (
-        <span
-          key={index}
-          className="flex-1 bg-[var(--band-4)]"
-          style={{ opacity: value }}
-        />
-      ))}
-    </div>
-  );
-});

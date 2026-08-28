@@ -91,10 +91,9 @@ export function SubtitleTrack({
           Sin subtítulos esto es solo un video
         </p>
         <p className="max-w-lg text-xs leading-relaxed text-muted-foreground">
-          Con ellos cargados aparece sobre el video lo que se está diciendo,
-          puedes tocar cualquier palabra para ver qué significa y la barra de
-          arriba te marca dónde se pone difícil. Se traen una vez y quedan para
-          siempre.
+          Con ellos cargados aparece sobre el video lo que se está diciendo, y
+          puedes tocar cualquier palabra para ver qué significa. Se traen una
+          vez y quedan para siempre.
         </p>
         <div className="mt-1 flex flex-wrap justify-center gap-2">
           <Button onClick={onBringSubtitles} size="sm" className="rounded-xl">

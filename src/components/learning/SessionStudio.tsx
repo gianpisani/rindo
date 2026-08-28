@@ -44,7 +44,6 @@ import {
   type Cue,
 } from "@/lib/transcript";
 import { bandOf, effectiveRank, lemmatize } from "@/lib/corpus";
-import { difficultyTrack } from "@/lib/heat";
 import { useTranscript } from "@/hooks/useTranscript";
 import { useFrequencyList } from "@/hooks/useFrequencyList";
 import { useActiveSpot, type PlaybackSample } from "@/hooks/useSmoothPosition";
@@ -303,13 +302,6 @@ export function SessionStudio({
    * lugares que la muestran: el subtítulo sobre el video y la transcripción.
    */
   const spot = useActiveSpot(playbackRef, blocks, trackDuration);
-
-  /** El relieve del video: dónde se pone difícil. */
-  const heat = useMemo(
-    () =>
-      rankReady ? difficultyTrack(cues, trackDuration, frequency.rank) : [],
-    [cues, trackDuration, frequency, rankReady]
-  );
 
   /**
    * Volver al principio de la frase que suena.
@@ -639,8 +631,6 @@ export function SessionStudio({
                   playbackRef={playbackRef}
                   playing={isVideoPlaying}
                   durationSeconds={trackDuration}
-                  cues={cues}
-                  heat={heat}
                   markers={captureMarkers}
                   onSeek={(seconds) => {
                     playerRef.current?.seekTo(seconds);
