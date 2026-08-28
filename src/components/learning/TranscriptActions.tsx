@@ -1,6 +1,6 @@
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
-import { Crosshair, FileText, RefreshCw, Trash2 } from "lucide-react";
+import { Crosshair, FileText, List, RefreshCw, Trash2 } from "lucide-react";
 
 interface TranscriptActionsProps {
   cueCount: number;
@@ -9,14 +9,16 @@ interface TranscriptActionsProps {
   onFollowChange: (follow: boolean) => void;
   onBring: () => void;
   onDelete: () => void;
+  /** Abre la transcripción completa. */
+  onOpenText: () => void;
 }
 
 /**
  * Qué hacer con los subtítulos, ahora que el texto ya no vive acá.
  *
- * Tenerlos dos veces en pantalla —grandes bajo el video y chicos al costado—
- * era pagar media columna por leer lo mismo. Queda solo lo que se acciona:
- * traerlos, reemplazarlos, borrarlos y decidir si la pista te sigue.
+ * El texto ya no vive en la pantalla: se lee sobre el video, que es donde
+ * miras. Pero "¿dónde dijo eso?" sigue existiendo, así que la transcripción
+ * completa queda a un clic —abierta cuando la buscas, ocupando cero cuando no.
  */
 export function TranscriptActions({
   cueCount,
@@ -24,6 +26,7 @@ export function TranscriptActions({
   onFollowChange,
   onBring,
   onDelete,
+  onOpenText,
 }: TranscriptActionsProps) {
   const hasTranscript = cueCount > 0;
 
@@ -43,6 +46,12 @@ export function TranscriptActions({
 
       {hasTranscript ? (
         <div className="mt-2.5 flex flex-wrap gap-1.5">
+          <ActionChip
+            onClick={onOpenText}
+            icon={<List className="h-3 w-3" />}
+            label="Ver el texto"
+            title="La transcripción completa, para buscar dónde se dijo algo"
+          />
           <ActionChip
             onClick={() => onFollowChange(!follow)}
             icon={<Crosshair className="h-3 w-3" />}

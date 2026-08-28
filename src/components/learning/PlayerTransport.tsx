@@ -10,6 +10,7 @@ import {
 import {
   Captions,
   CaptionsOff,
+  HelpCircle,
   Pause,
   Play,
   Repeat,
@@ -37,6 +38,8 @@ interface PlayerTransportProps {
   /** El subtítulo sobre el video, encendido o no. */
   captionOn: boolean;
   onToggleCaption: () => void;
+  /** La mano está cerca del pie del video: recién ahí aparecen los controles. */
+  near: boolean;
 }
 
 /**
@@ -65,13 +68,21 @@ export function PlayerTransport({
   onRepeatLine,
   captionOn,
   onToggleCaption,
+  near,
 }: PlayerTransportProps) {
   const seconds = useSmoothPosition(playbackRef);
   const trackRef = useRef<HTMLDivElement>(null);
   const [hoverRatio, setHoverRatio] = useState<number | null>(null);
 
-  /** En pausa los controles se quedan a la vista: es cuando los buscas. */
-  const revealed = !playing;
+  /**
+   * Cuándo aparecen los controles.
+   *
+   * No con el puntero en cualquier parte del video: leyendo el subtítulo uno
+   * está adentro del cuadro todo el rato, y que se levante la fila entera cada
+   * vez es el video pidiendo atención mientras tú estás en otra cosa. Aparecen
+   * cuando la mano baja al pie —ahí sí los estás buscando— o cuando pausaste.
+   */
+  const revealed = !playing || near;
 
   const ratio = durationSeconds > 0 ? Math.min(seconds / durationSeconds, 1) : 0;
 
@@ -113,9 +124,7 @@ export function PlayerTransport({
         className={cn(
           "absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/80 via-black/30 to-transparent",
           "transition-all duration-300",
-          revealed
-            ? "h-28 opacity-100"
-            : "h-12 opacity-50 group-hover:h-28 group-hover:opacity-100"
+          revealed ? "h-28 opacity-100" : "h-12 opacity-0"
         )}
       />
 
@@ -132,12 +141,19 @@ export function PlayerTransport({
           aria-valuemax={Math.round(durationSeconds)}
           aria-valuenow={Math.round(seconds)}
           tabIndex={0}
-          className="relative mx-4 mb-1 flex h-4 cursor-pointer touch-none items-end"
+          className={cn(
+            "relative flex h-4 cursor-pointer touch-none items-end transition-all duration-200",
+            // A ras del borde mientras corre: pegada, sin margen y sin esquinas,
+            // que es como no estar. Al acercarte se despega y se vuelve barra.
+            revealed ? "mx-4 mb-1" : "mx-0 mb-0"
+          )}
         >
           <div
             className={cn(
-              "relative w-full overflow-hidden rounded-full bg-white/25 transition-all duration-200",
-              revealed ? "h-1.5" : "h-[3px] group-hover:h-1.5"
+              "relative w-full overflow-hidden transition-all duration-200",
+              revealed
+                ? "h-1.5 rounded-full bg-white/25"
+                : "h-[2px] rounded-none bg-white/20"
             )}
           >
             <HeatTrack heat={heat} />
@@ -156,7 +172,7 @@ export function PlayerTransport({
                 className={cn(
                   "pointer-events-none absolute bottom-0 w-[2px] -translate-x-1/2 rounded-full bg-amber-300",
                   "transition-all duration-200",
-                  revealed ? "h-1.5" : "h-[3px] group-hover:h-1.5"
+                  revealed ? "h-1.5" : "h-[2px]"
                 )}
                 style={{ left: `${Math.min(at / durationSeconds, 1) * 100}%` }}
               />
@@ -167,7 +183,7 @@ export function PlayerTransport({
             className={cn(
               "pointer-events-none absolute bottom-0 size-3 -translate-x-1/2 translate-y-[0.1875rem]",
               "rounded-full bg-primary shadow ring-2 ring-black/25 transition-transform duration-200",
-              revealed ? "scale-100" : "scale-0 group-hover:scale-100"
+              revealed ? "scale-100" : "scale-0"
             )}
             style={{ left: `${ratio * 100}%` }}
           />
@@ -199,9 +215,7 @@ export function PlayerTransport({
         <div
           className={cn(
             "flex items-center gap-0.5 overflow-hidden px-2 transition-all duration-200",
-            revealed
-              ? "h-11 opacity-100"
-              : "h-0 opacity-0 group-hover:h-11 group-hover:opacity-100"
+            revealed ? "h-11 opacity-100" : "h-0 opacity-0"
           )}
         >
           <TransportButton
@@ -258,12 +272,54 @@ export function PlayerTransport({
 
           <div className="flex-1" />
 
-          <span className="hidden shrink-0 pr-1 text-[10px] text-white/40 lg:inline">
-            Espacio ⏯ · ← → 10s · E capturar · C subtítulo
-          </span>
+          <ShortcutHint />
         </div>
       </div>
     </div>
+  );
+}
+
+/**
+ * Los atajos, guardados.
+ *
+ * Escritos al pie eran cuatro líneas de texto permanentes encima de la cara de
+ * alguien, para algo que se aprende una vez. Detrás de un signo de pregunta
+ * siguen estando a un gesto y dejan de ensuciar el cuadro.
+ */
+function ShortcutHint() {
+  return (
+    <span className="group/hint relative hidden shrink-0 lg:block">
+      <button
+        aria-label="Atajos de teclado"
+        className="flex size-7 items-center justify-center rounded-lg text-white/40 transition-colors hover:bg-white/15 hover:text-white"
+      >
+        <HelpCircle className="h-3.5 w-3.5" />
+      </button>
+
+      <span
+        className={cn(
+          "pointer-events-none absolute bottom-full right-0 mb-2 w-max",
+          "rounded-lg bg-black/90 px-3 py-2 shadow-lg backdrop-blur-sm",
+          "opacity-0 transition-opacity duration-150",
+          "group-hover/hint:opacity-100 group-focus-within/hint:opacity-100"
+        )}
+      >
+        {[
+          ["Espacio", "reproducir o pausar"],
+          ["← →", "10 segundos"],
+          ["R", "repetir la frase"],
+          ["E", "capturar una expresión"],
+          ["C", "esconder el subtítulo"],
+        ].map(([key, what]) => (
+          <span key={key} className="flex items-baseline gap-2 whitespace-nowrap">
+            <kbd className="min-w-8 rounded bg-white/15 px-1.5 py-0.5 text-center text-[10px] font-semibold text-white">
+              {key}
+            </kbd>
+            <span className="text-[11px] text-white/70">{what}</span>
+          </span>
+        ))}
+      </span>
+    </span>
   );
 }
 

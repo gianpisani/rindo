@@ -10,6 +10,8 @@ interface SubtitleCaptionProps {
   word: number;
   onPick: (term: string, cue: Cue) => void;
   markOf?: (word: string) => WordMark | null;
+  /** Los controles están a la vista: el subtítulo les hace lugar. */
+  lifted?: boolean;
 }
 
 /**
@@ -32,6 +34,7 @@ export function SubtitleCaption({
   word,
   onPick,
   markOf,
+  lifted,
 }: SubtitleCaptionProps) {
   const phrase = usePhraseSelection((span: PhraseSpan) => {
     if (!block) return;
@@ -50,8 +53,10 @@ export function SubtitleCaption({
       data-marking={phrase.marking || undefined}
       className={cn(
         "subtitle-caption pointer-events-none absolute inset-x-0 bottom-0 z-10",
-        // Deja libre el pie: ahí abajo vive la barra de controles.
-        "flex justify-center px-4 pb-12 sm:px-8 sm:pb-14"
+        // Mientras el video corre la barra es un pelo al borde, así que el
+        // subtítulo se apoya abajo. Cuando los controles suben, les hace lugar.
+        "flex justify-center px-4 transition-all duration-300 sm:px-8",
+        lifted ? "pb-14 sm:pb-16" : "pb-5 sm:pb-6"
       )}
     >
       <DockLine

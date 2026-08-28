@@ -3,6 +3,12 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import ConfirmDialog from "@/components/ConfirmDialog";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 import {
@@ -83,6 +89,9 @@ const STUDIO_HEIGHT = "lg:h-[calc(100vh-6.5rem)]";
  * pista de subtítulos—; los controles ya no cuestan nada porque viven dentro
  * del marco.
  */
+/** A cuántos píxeles del pie del video aparecen los controles. */
+const CONTROLS_REACH = 56;
+
 const VIDEO_MAX_WIDTH = "calc((100vh - 18rem) * 16 / 9)";
 
 /** El subtítulo sobre el video: encendido salvo que lo hayas apagado tú. */
@@ -183,6 +192,15 @@ export function SessionStudio({
     onActivity();
   }, [onActivity]);
   const [transcriptHelpOpen, setTranscriptHelpOpen] = useState(false);
+
+  /**
+   * La transcripción completa, a un clic y no permanente.
+   *
+   * Leer se lee sobre el video. Lo que la lista sigue sirviendo es para
+   * volver: "¿dónde dijo eso?". Eso pasa un par de veces por sesión y no vale
+   * un tercio de la pantalla todo el rato, así que se abre cuando la buscas.
+   */
+  const [transcriptOpen, setTranscriptOpen] = useState(false);
 
   const pasteTranscript = useCallback(async () => {
     try {
@@ -512,6 +530,13 @@ export function SessionStudio({
    */
   const [openItem, setOpenItem] = useState<string | null>(null);
 
+  /**
+   * Si la mano está al pie del video. Es lo que decide si aparecen los
+   * controles: leyendo el subtítulo uno está dentro del cuadro todo el rato, y
+   * que se levante la fila entera por eso es el reproductor interrumpiendo.
+   */
+  const [nearControls, setNearControls] = useState(false);
+
   return (
     <div className={cn("flex flex-col", STUDIO_HEIGHT)} onPointerDown={onActivity}>
       {/* ── Reproductor y frase (izquierda) · captura (derecha) ── */}
@@ -534,7 +559,14 @@ export function SessionStudio({
               className="mx-auto flex min-h-0 w-full flex-1 flex-col justify-center gap-2"
               style={{ maxWidth: VIDEO_MAX_WIDTH }}
             >
-              <div className="group relative aspect-video w-full shrink-0 overflow-hidden rounded-2xl border border-border/60 bg-black">
+              <div
+                onPointerMove={(event) => {
+                  const rect = event.currentTarget.getBoundingClientRect();
+                  setNearControls(rect.bottom - event.clientY <= CONTROLS_REACH);
+                }}
+                onPointerLeave={() => setNearControls(false)}
+                className="group relative aspect-video w-full shrink-0 overflow-hidden rounded-2xl border border-border/60 bg-black"
+              >
                 <YouTubePlayer
                   ref={playerRef}
                   videoId={session.external_id!}
@@ -562,7 +594,11 @@ export function SessionStudio({
                     className={cn(
                       "flex size-16 items-center justify-center rounded-full",
                       "bg-black/55 text-white backdrop-blur-sm transition-all duration-200",
-                      isVideoPlaying
+                      // Tocar una palabra también pausa, pero eso no fue "parar
+                      // el video": fue preguntar. El play gigante encima de la
+                      // cara convierte una consulta en una interrupción, así
+                      // que mientras hay una ficha abierta no aparece.
+                      isVideoPlaying || isCapturing
                         ? "scale-90 opacity-0"
                         : "scale-100 opacity-100"
                     )}
@@ -578,6 +614,7 @@ export function SessionStudio({
                   word={spot.word}
                   onPick={pickFromTranscript}
                   markOf={markOf}
+                  lifted={nearControls || !isVideoPlaying}
                 />
 
                 <PlayerTransport
@@ -597,6 +634,7 @@ export function SessionStudio({
                   }}
                   captionOn={captionOn}
                   onToggleCaption={toggleCaption}
+                  near={nearControls}
                   onToggle={() => {
                     playerRef.current?.toggle();
                     onActivity();
@@ -605,22 +643,354 @@ export function SessionStudio({
                 />
               </div>
 
-              <SubtitleTrack
-                blocks={blocks}
-                active={spot}
-                follow={followSubtitles}
-                onFollowChange={setFollowSubtitles}
-                onPick={pickFromTranscript}
-                onSeek={(seconds) => {
-                  playerRef.current?.seekTo(seconds);
-                  onActivity();
-                }}
-                markOf={markOf}
-                onBringSubtitles={() => setTranscriptHelpOpen(true)}
-                onPasteClipboard={pasteTranscript}
-                isSaving={saveTranscript.isPending}
-                className="h-[9rem] shrink-0 lg:h-auto lg:min-h-[10rem] lg:max-h-[20rem] lg:flex-1"
-              />
+              {/*
+                Lo que capturas, justo debajo del video.
+
+                Antes vivía en la columna angosta de la derecha, a un metro de
+                la palabra que lo dispara. Ahora la palabra que tocas y la ficha
+                que aparece están una encima de la otra, en la misma columna: el
+                ojo baja diez centímetros y ya está: por eso tocar una palabra
+                se lee como preguntar y no como que se abrió otra cosa en otra
+                parte de la pantalla.
+
+                Y el ancho no se desperdicia: a la izquierda lo que preguntas,
+                a la derecha lo que llevas juntado, siempre a la vista.
+              */}
+              <div
+                className={cn(
+                  "rounded-2xl border border-border/60 bg-card flex flex-col overflow-hidden",
+                  "min-h-0 h-[13rem] shrink-0 lg:h-auto lg:min-h-[9rem] lg:flex-1"
+                )}
+              >
+                <div className="flex items-center justify-between gap-2 px-3 py-2 border-b border-border/50 shrink-0">
+                  <div className="flex items-center gap-2 min-w-0">
+                    <Highlighter className="h-3.5 w-3.5 text-primary shrink-0" />
+                    <h3 className="text-xs font-semibold shrink-0">
+                      {lookupOnly ? "Consultar" : "Capturar"}
+                    </h3>
+                    {isCapturing && capturedAtRef.current !== null && (
+                      <span className="text-[11px] text-muted-foreground tabular-nums shrink-0">
+                        en {formatClock(capturedAtRef.current)}
+                      </span>
+                    )}
+                  </div>
+
+                  <div className="flex items-center gap-2 shrink-0">
+                    <button
+                      onClick={auto.toggle}
+                      title={
+                        auto.enabled
+                          ? "Automatico: tocar una palabra la guarda sola con su significado"
+                          : "Activar guardado automatico al tocar una palabra"
+                      }
+                      className={cn(
+                        "flex items-center gap-1 rounded-lg px-1.5 py-1 transition-colors",
+                        "text-[10px] font-bold uppercase tracking-wide",
+                        auto.enabled
+                          ? "bg-primary/15 text-primary"
+                          : "text-muted-foreground hover:text-foreground"
+                      )}
+                    >
+                      <Zap className={cn("h-3 w-3", auto.enabled && "fill-current")} />
+                      Auto
+                    </button>
+                    <span className="text-[11px] text-muted-foreground tabular-nums">
+                      {captured.length}
+                    </span>
+                  </div>
+                </div>
+
+                <div
+                  className="flex-1 min-h-0 overflow-hidden p-3"
+                  onTouchMove={(e) => e.stopPropagation()}
+                >
+                  <div className="flex h-full min-h-0 flex-col gap-3 lg:flex-row lg:gap-4">
+                    {/* Lo que estás preguntando ahora */}
+                    <div className="min-h-0 shrink-0 overflow-y-auto lg:w-[23rem]">
+                      {isCapturing ? (
+                        <div className="space-y-2.5">
+                          <Input
+                            ref={expressionRef}
+                            value={expression}
+                            onChange={(e) => setExpression(e.target.value)}
+                            onKeyDown={(e) => {
+                              if (e.key === "Enter") {
+                                e.preventDefault();
+                                if (!lookupOnly) submitCapture();
+                              } else if (e.key === "Escape") {
+                                e.preventDefault();
+                                closeCapture(true);
+                              }
+                            }}
+                            placeholder="come across"
+                            className="h-10 rounded-xl font-medium"
+                          />
+
+                          {expression.trim().length > 1 && (
+                            <WordLookup
+                              term={expression}
+                              contextSentence={context}
+                              onUseDefinition={setMeaning}
+                              onTranslation={setTranslation}
+                            />
+                          )}
+
+                          <Textarea
+                            value={context}
+                            onChange={(e) => setContext(e.target.value)}
+                            onKeyDown={(e) => {
+                              if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) {
+                                e.preventDefault();
+                                if (!lookupOnly) submitCapture();
+                              } else if (e.key === "Escape") {
+                                e.preventDefault();
+                                closeCapture(true);
+                              }
+                            }}
+                            placeholder="La frase donde apareció (opcional)"
+                            rows={2}
+                            className="rounded-xl resize-none text-sm"
+                          />
+
+                          {meaning && (
+                            <Input
+                              value={meaning}
+                              onChange={(e) => setMeaning(e.target.value)}
+                              placeholder="Significado"
+                              className="h-9 rounded-xl text-xs"
+                            />
+                          )}
+
+                          <div
+                            className={cn(
+                              "flex flex-wrap gap-1.5",
+                              (alreadySaved || lookupOnly) && "hidden"
+                            )}
+                          >
+                            {CAPTURE_TYPES.map(({ type, label, hint }) => (
+                              <button
+                                key={type}
+                                title={hint}
+                                onClick={() => {
+                                  setItemType(type);
+                                  setTypeTouched(true);
+                                }}
+                                className={cn(
+                                  "px-2.5 py-1 rounded-lg text-[11px] font-medium border transition-all",
+                                  itemType === type
+                                    ? "border-primary bg-primary/10 text-foreground"
+                                    : "border-border/60 text-muted-foreground hover:border-border hover:text-foreground"
+                                )}
+                              >
+                                {label}
+                              </button>
+                            ))}
+                          </div>
+
+                          {lookupOnly ? (
+                            <div className="space-y-2 pt-0.5">
+                              <p className="text-[11px] text-muted-foreground leading-relaxed">
+                                La sesión está pausada: esto es solo para mirar — no se
+                                guarda ni suma tiempo.
+                              </p>
+                              <div className="flex gap-2">
+                                <Button
+                                  onClick={resumeAndSave}
+                                  disabled={!expression.trim()}
+                                  variant="outline"
+                                  className="flex-1 rounded-xl h-9 font-semibold border-primary/30 text-primary hover:bg-primary/10 hover:text-primary"
+                                >
+                                  <Play className="h-3.5 w-3.5 mr-1.5 fill-current" />
+                                  Reanudar y guardar
+                                </Button>
+                                <Button
+                                  onClick={() => closeCapture(true)}
+                                  variant="ghost"
+                                  className="rounded-xl h-9"
+                                >
+                                  Cerrar
+                                </Button>
+                              </div>
+                            </div>
+                          ) : alreadySaved ? (
+                            <div className="flex items-center gap-2 pt-0.5">
+                              <span className="flex items-center gap-1.5 text-[11px] font-medium text-emerald-500">
+                                <Check className="h-3.5 w-3.5" />
+                                Guardada
+                              </span>
+                              <div className="flex-1" />
+                              <Button
+                                onClick={() => closeCapture(true)}
+                                className="rounded-xl h-9 font-semibold"
+                              >
+                                <Play className="h-3.5 w-3.5 mr-1.5 fill-current" />
+                                Seguir
+                              </Button>
+                            </div>
+                          ) : (
+                            <div className="flex gap-2 pt-0.5">
+                              <Button
+                                onClick={submitCapture}
+                                disabled={!expression.trim()}
+                                className="flex-1 rounded-xl h-9 font-semibold"
+                              >
+                                Guardar
+                              </Button>
+                              <Button
+                                onClick={() => closeCapture(true)}
+                                variant="ghost"
+                                className="rounded-xl h-9"
+                              >
+                                Cancelar
+                              </Button>
+                            </div>
+                          )}
+                        </div>
+                      ) : (
+                          <Button
+                            onClick={openCapture}
+                            variant="outline"
+                            className="w-full rounded-xl h-10 border-dashed font-medium"
+                          >
+                            {isPaused ? (
+                              <>
+                                <Search className="h-4 w-4 mr-2" />
+                                Buscar una palabra
+                              </>
+                            ) : (
+                              <>
+                                <Plus className="h-4 w-4 mr-2" />
+                                Nueva expresión
+                              </>
+                            )}
+                            <kbd className="ml-2 px-1.5 py-0.5 rounded bg-muted text-[10px] font-mono">
+                              E
+                            </kbd>
+                          </Button>
+                      )}
+                    </div>
+
+                    {/* Lo que llevas juntado en esta sesión */}
+                    <div className="min-h-0 min-w-0 flex-1 overflow-y-auto border-t border-border/50 pt-3 lg:border-l lg:border-t-0 lg:pl-4 lg:pt-0">
+                          {captured.length === 0 ? (
+                            <p className="mx-auto max-w-xs py-6 text-center text-[11px] leading-relaxed text-muted-foreground">
+                              {isPaused
+                                ? "En pausa puedes mirar cualquier palabra de los subtítulos: se ve su significado, pero no se guarda hasta que reanudes."
+                                : "Haz clic en cualquier palabra de los subtítulos. El video se pausa solo y vuelve a andar al guardar."}
+                            </p>
+                          ) : (
+                            <div className="grid gap-1.5 xl:grid-cols-2">
+                              {captured
+                                .slice()
+                                .reverse()
+                                .map((item) => {
+                                  // El significado en español manda; el inglés queda
+                                  // debajo porque es el que enseña el matiz.
+                                  const sense = item.meaning_es ?? item.meaning;
+                                  const canOpen = !!(sense || item.context);
+                                  const isOpen = openItem === item.sighting_id;
+
+                                  return (
+                                    <div
+                                      key={item.sighting_id}
+                                      className={cn(
+                                        "rounded-xl border bg-muted/20 transition-all duration-200",
+                                        item.pending && "opacity-60",
+                                        isOpen
+                                          ? "border-border bg-muted/40"
+                                          : "border-border/50 hover:border-border hover:bg-muted/40"
+                                      )}
+                                    >
+                                      <div className="flex items-baseline gap-2 px-3 py-2">
+                                        <button
+                                          onClick={() =>
+                                            setOpenItem(isOpen ? null : item.sighting_id)
+                                          }
+                                          disabled={!canOpen}
+                                          aria-expanded={canOpen ? isOpen : undefined}
+                                          className="flex-1 min-w-0 flex items-baseline gap-1.5 text-left disabled:cursor-default"
+                                        >
+                                          <span className="text-sm font-medium truncate shrink-0 max-w-[55%]">
+                                            {item.expression}
+                                          </span>
+                                          {item.translation_es && (
+                                            <>
+                                              <span className="text-[10px] text-muted-foreground shrink-0">
+                                                ·
+                                              </span>
+                                              <span className="text-xs text-primary font-medium truncate">
+                                                {item.translation_es}
+                                              </span>
+                                            </>
+                                          )}
+                                          {canOpen && (
+                                            <ChevronDown
+                                              className={cn(
+                                                "h-3 w-3 shrink-0 self-center text-muted-foreground transition-transform",
+                                                isOpen && "rotate-180"
+                                              )}
+                                            />
+                                          )}
+                                        </button>
+
+                                        {item.timestamp_seconds !== null &&
+                                          (hasPlayer ? (
+                                            <button
+                                              onClick={() => {
+                                                playerRef.current?.seekTo(
+                                                  item.timestamp_seconds!
+                                                );
+                                                onActivity();
+                                              }}
+                                              title="Volver a ese momento"
+                                              className="text-[10px] text-muted-foreground tabular-nums shrink-0 hover:text-primary transition-colors"
+                                            >
+                                              {formatClock(item.timestamp_seconds)}
+                                            </button>
+                                          ) : (
+                                            <span className="text-[10px] text-muted-foreground tabular-nums shrink-0">
+                                              {formatClock(item.timestamp_seconds)}
+                                            </span>
+                                          ))}
+                                      </div>
+
+                                      {!item.is_new && (
+                                        <span className="text-[10px] text-violet-500 flex items-center gap-1 px-3 pb-2 -mt-1">
+                                          <Eye className="h-2.5 w-2.5" />
+                                          ya la tenías
+                                        </span>
+                                      )}
+
+                                      {isOpen && (
+                                        <div className="px-3 pb-2.5 pt-2 space-y-1.5 border-t border-border/40">
+                                          {sense && (
+                                            <p className="text-[11px] leading-relaxed">
+                                              {sense}
+                                            </p>
+                                          )}
+                                          {item.meaning &&
+                                            item.meaning_es &&
+                                            item.meaning !== item.meaning_es && (
+                                              <p className="text-[11px] leading-relaxed text-muted-foreground italic">
+                                                {item.meaning}
+                                              </p>
+                                            )}
+                                          {item.context && (
+                                            <p className="text-[11px] text-muted-foreground italic border-l-2 border-primary/30 pl-2">
+                                              “{item.context}”
+                                            </p>
+                                          )}
+                                        </div>
+                                      )}
+                                    </div>
+                                  );
+                                })}
+                            </div>
+                          )}
+                    </div>
+                  </div>
+                </div>
+              </div>
             </div>
           </div>
         ) : (
@@ -671,342 +1041,45 @@ export function SessionStudio({
               onFollowChange={setFollowSubtitles}
               onBring={() => setTranscriptHelpOpen(true)}
               onDelete={() => removeTranscript.mutate()}
+              onOpenText={() => setTranscriptOpen(true)}
             />
           )}
 
-          <div
-            className={cn(
-              "rounded-2xl border border-border/60 bg-card flex flex-col overflow-hidden",
-              "flex-1 min-h-0 max-h-[60vh] lg:max-h-full"
-            )}
-          >
-            <div className="flex items-center justify-between gap-2 px-3 py-2 border-b border-border/50 shrink-0">
-              <div className="flex items-center gap-2 min-w-0">
-                <Highlighter className="h-3.5 w-3.5 text-primary shrink-0" />
-                <h3 className="text-xs font-semibold shrink-0">
-                  {lookupOnly ? "Consultar" : "Capturar"}
-                </h3>
-                {isCapturing && capturedAtRef.current !== null && (
-                  <span className="text-[11px] text-muted-foreground tabular-nums shrink-0">
-                    en {formatClock(capturedAtRef.current)}
-                  </span>
-                )}
-              </div>
-
-              <div className="flex items-center gap-2 shrink-0">
-                <button
-                  onClick={auto.toggle}
-                  title={
-                    auto.enabled
-                      ? "Automatico: tocar una palabra la guarda sola con su significado"
-                      : "Activar guardado automatico al tocar una palabra"
-                  }
-                  className={cn(
-                    "flex items-center gap-1 rounded-lg px-1.5 py-1 transition-colors",
-                    "text-[10px] font-bold uppercase tracking-wide",
-                    auto.enabled
-                      ? "bg-primary/15 text-primary"
-                      : "text-muted-foreground hover:text-foreground"
-                  )}
-                >
-                  <Zap className={cn("h-3 w-3", auto.enabled && "fill-current")} />
-                  Auto
-                </button>
-                <span className="text-[11px] text-muted-foreground tabular-nums">
-                  {captured.length}
-                </span>
-              </div>
-            </div>
-
-            <div
-              className="flex-1 min-h-0 overflow-y-auto overscroll-contain p-3"
-              onTouchMove={(e) => e.stopPropagation()}
-            >
-              {isCapturing ? (
-                <div className="space-y-2.5">
-                  <Input
-                    ref={expressionRef}
-                    value={expression}
-                    onChange={(e) => setExpression(e.target.value)}
-                    onKeyDown={(e) => {
-                      if (e.key === "Enter") {
-                        e.preventDefault();
-                        if (!lookupOnly) submitCapture();
-                      } else if (e.key === "Escape") {
-                        e.preventDefault();
-                        closeCapture(true);
-                      }
-                    }}
-                    placeholder="come across"
-                    className="h-10 rounded-xl font-medium"
-                  />
-
-                  {expression.trim().length > 1 && (
-                    <WordLookup
-                      term={expression}
-                      contextSentence={context}
-                      onUseDefinition={setMeaning}
-                      onTranslation={setTranslation}
-                    />
-                  )}
-
-                  <Textarea
-                    value={context}
-                    onChange={(e) => setContext(e.target.value)}
-                    onKeyDown={(e) => {
-                      if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) {
-                        e.preventDefault();
-                        if (!lookupOnly) submitCapture();
-                      } else if (e.key === "Escape") {
-                        e.preventDefault();
-                        closeCapture(true);
-                      }
-                    }}
-                    placeholder="La frase donde apareció (opcional)"
-                    rows={2}
-                    className="rounded-xl resize-none text-sm"
-                  />
-
-                  {meaning && (
-                    <Input
-                      value={meaning}
-                      onChange={(e) => setMeaning(e.target.value)}
-                      placeholder="Significado"
-                      className="h-9 rounded-xl text-xs"
-                    />
-                  )}
-
-                  <div
-                    className={cn(
-                      "flex flex-wrap gap-1.5",
-                      (alreadySaved || lookupOnly) && "hidden"
-                    )}
-                  >
-                    {CAPTURE_TYPES.map(({ type, label, hint }) => (
-                      <button
-                        key={type}
-                        title={hint}
-                        onClick={() => {
-                          setItemType(type);
-                          setTypeTouched(true);
-                        }}
-                        className={cn(
-                          "px-2.5 py-1 rounded-lg text-[11px] font-medium border transition-all",
-                          itemType === type
-                            ? "border-primary bg-primary/10 text-foreground"
-                            : "border-border/60 text-muted-foreground hover:border-border hover:text-foreground"
-                        )}
-                      >
-                        {label}
-                      </button>
-                    ))}
-                  </div>
-
-                  {lookupOnly ? (
-                    <div className="space-y-2 pt-0.5">
-                      <p className="text-[11px] text-muted-foreground leading-relaxed">
-                        La sesión está pausada: esto es solo para mirar — no se
-                        guarda ni suma tiempo.
-                      </p>
-                      <div className="flex gap-2">
-                        <Button
-                          onClick={resumeAndSave}
-                          disabled={!expression.trim()}
-                          variant="outline"
-                          className="flex-1 rounded-xl h-9 font-semibold border-primary/30 text-primary hover:bg-primary/10 hover:text-primary"
-                        >
-                          <Play className="h-3.5 w-3.5 mr-1.5 fill-current" />
-                          Reanudar y guardar
-                        </Button>
-                        <Button
-                          onClick={() => closeCapture(true)}
-                          variant="ghost"
-                          className="rounded-xl h-9"
-                        >
-                          Cerrar
-                        </Button>
-                      </div>
-                    </div>
-                  ) : alreadySaved ? (
-                    <div className="flex items-center gap-2 pt-0.5">
-                      <span className="flex items-center gap-1.5 text-[11px] font-medium text-emerald-500">
-                        <Check className="h-3.5 w-3.5" />
-                        Guardada
-                      </span>
-                      <div className="flex-1" />
-                      <Button
-                        onClick={() => closeCapture(true)}
-                        className="rounded-xl h-9 font-semibold"
-                      >
-                        <Play className="h-3.5 w-3.5 mr-1.5 fill-current" />
-                        Seguir
-                      </Button>
-                    </div>
-                  ) : (
-                    <div className="flex gap-2 pt-0.5">
-                      <Button
-                        onClick={submitCapture}
-                        disabled={!expression.trim()}
-                        className="flex-1 rounded-xl h-9 font-semibold"
-                      >
-                        Guardar
-                      </Button>
-                      <Button
-                        onClick={() => closeCapture(true)}
-                        variant="ghost"
-                        className="rounded-xl h-9"
-                      >
-                        Cancelar
-                      </Button>
-                    </div>
-                  )}
-                </div>
-              ) : (
-                <>
-                  <Button
-                    onClick={openCapture}
-                    variant="outline"
-                    className="w-full rounded-xl h-10 border-dashed font-medium"
-                  >
-                    {isPaused ? (
-                      <>
-                        <Search className="h-4 w-4 mr-2" />
-                        Buscar una palabra
-                      </>
-                    ) : (
-                      <>
-                        <Plus className="h-4 w-4 mr-2" />
-                        Nueva expresión
-                      </>
-                    )}
-                    <kbd className="ml-2 px-1.5 py-0.5 rounded bg-muted text-[10px] font-mono">
-                      E
-                    </kbd>
-                  </Button>
-
-                  <div className="mt-3">
-                    {captured.length === 0 ? (
-                      <p className="text-[11px] text-muted-foreground text-center py-4 px-1 leading-relaxed">
-                        {isPaused
-                          ? "En pausa puedes mirar cualquier palabra de los subtítulos: se ve su significado, pero no se guarda hasta que reanudes."
-                          : "Haz clic en cualquier palabra de los subtítulos. El video se pausa solo y vuelve a andar al guardar."}
-                      </p>
-                    ) : (
-                      <div className="space-y-1.5">
-                        {captured
-                          .slice()
-                          .reverse()
-                          .map((item) => {
-                            // El significado en español manda; el inglés queda
-                            // debajo porque es el que enseña el matiz.
-                            const sense = item.meaning_es ?? item.meaning;
-                            const canOpen = !!(sense || item.context);
-                            const isOpen = openItem === item.sighting_id;
-
-                            return (
-                              <div
-                                key={item.sighting_id}
-                                className={cn(
-                                  "rounded-xl border bg-muted/20 transition-all duration-200",
-                                  item.pending && "opacity-60",
-                                  isOpen
-                                    ? "border-border bg-muted/40"
-                                    : "border-border/50 hover:border-border hover:bg-muted/40"
-                                )}
-                              >
-                                <div className="flex items-baseline gap-2 px-3 py-2">
-                                  <button
-                                    onClick={() =>
-                                      setOpenItem(isOpen ? null : item.sighting_id)
-                                    }
-                                    disabled={!canOpen}
-                                    aria-expanded={canOpen ? isOpen : undefined}
-                                    className="flex-1 min-w-0 flex items-baseline gap-1.5 text-left disabled:cursor-default"
-                                  >
-                                    <span className="text-sm font-medium truncate shrink-0 max-w-[55%]">
-                                      {item.expression}
-                                    </span>
-                                    {item.translation_es && (
-                                      <>
-                                        <span className="text-[10px] text-muted-foreground shrink-0">
-                                          ·
-                                        </span>
-                                        <span className="text-xs text-primary font-medium truncate">
-                                          {item.translation_es}
-                                        </span>
-                                      </>
-                                    )}
-                                    {canOpen && (
-                                      <ChevronDown
-                                        className={cn(
-                                          "h-3 w-3 shrink-0 self-center text-muted-foreground transition-transform",
-                                          isOpen && "rotate-180"
-                                        )}
-                                      />
-                                    )}
-                                  </button>
-
-                                  {item.timestamp_seconds !== null &&
-                                    (hasPlayer ? (
-                                      <button
-                                        onClick={() => {
-                                          playerRef.current?.seekTo(
-                                            item.timestamp_seconds!
-                                          );
-                                          onActivity();
-                                        }}
-                                        title="Volver a ese momento"
-                                        className="text-[10px] text-muted-foreground tabular-nums shrink-0 hover:text-primary transition-colors"
-                                      >
-                                        {formatClock(item.timestamp_seconds)}
-                                      </button>
-                                    ) : (
-                                      <span className="text-[10px] text-muted-foreground tabular-nums shrink-0">
-                                        {formatClock(item.timestamp_seconds)}
-                                      </span>
-                                    ))}
-                                </div>
-
-                                {!item.is_new && (
-                                  <span className="text-[10px] text-violet-500 flex items-center gap-1 px-3 pb-2 -mt-1">
-                                    <Eye className="h-2.5 w-2.5" />
-                                    ya la tenías
-                                  </span>
-                                )}
-
-                                {isOpen && (
-                                  <div className="px-3 pb-2.5 pt-2 space-y-1.5 border-t border-border/40">
-                                    {sense && (
-                                      <p className="text-[11px] leading-relaxed">
-                                        {sense}
-                                      </p>
-                                    )}
-                                    {item.meaning &&
-                                      item.meaning_es &&
-                                      item.meaning !== item.meaning_es && (
-                                        <p className="text-[11px] leading-relaxed text-muted-foreground italic">
-                                          {item.meaning}
-                                        </p>
-                                      )}
-                                    {item.context && (
-                                      <p className="text-[11px] text-muted-foreground italic border-l-2 border-primary/30 pl-2">
-                                        “{item.context}”
-                                      </p>
-                                    )}
-                                  </div>
-                                )}
-                              </div>
-                            );
-                          })}
-                      </div>
-                    )}
-                  </div>
-                </>
-              )}
-            </div>
-          </div>
         </div>
       </div>
+
+      <Dialog open={transcriptOpen} onOpenChange={setTranscriptOpen}>
+        <DialogContent className="max-w-3xl p-0 gap-0">
+          <DialogHeader className="px-4 pb-2 pt-4">
+            <DialogTitle className="text-sm">
+              {session.content_title ?? "La transcripción"}
+            </DialogTitle>
+          </DialogHeader>
+
+          <SubtitleTrack
+            blocks={blocks}
+            active={spot}
+            follow={followSubtitles}
+            onFollowChange={setFollowSubtitles}
+            onPick={(term, cue) => {
+              // Preguntaste desde acá: la ficha aparece bajo el video, así que
+              // esto se cierra solo —si no, tapa la respuesta que pediste.
+              setTranscriptOpen(false);
+              pickFromTranscript(term, cue);
+            }}
+            onSeek={(seconds) => {
+              playerRef.current?.seekTo(seconds);
+              setTranscriptOpen(false);
+              onActivity();
+            }}
+            markOf={markOf}
+            onBringSubtitles={() => setTranscriptHelpOpen(true)}
+            onPasteClipboard={pasteTranscript}
+            isSaving={saveTranscript.isPending}
+            className="h-[65vh] border-0 rounded-none rounded-b-lg"
+          />
+        </DialogContent>
+      </Dialog>
 
       {session.external_id && (
         <TranscriptHelpDialog
