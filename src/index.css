@@ -630,6 +630,59 @@ Based on Indigo, Blue, Cyan palette
     opacity: 0.4;
   }
 
+  /* ── El estudio de aprendizaje: la sala ── */
+
+  /*
+   * El suelo de la sala.
+   *
+   * Más oscuro que el fondo de la app —entrar al estudio es bajar las luces— y
+   * con un halo del color de la marca cayendo desde arriba, para que la franja
+   * negra sobre la pantalla no se lea como un recorte sino como el aire de la
+   * sala. No hay un solo color escrito a mano: todo sale de las variables del
+   * tema, así que la sala se tiñe con el acento que el usuario eligió.
+   */
+  .studio-room {
+    background:
+      radial-gradient(
+        128% 88% at 50% -12%,
+        color-mix(in oklch, var(--primary) 9%, transparent),
+        transparent 62%
+      ),
+      color-mix(in oklch, var(--background) 52%, black);
+  }
+
+  /*
+   * La pantalla.
+   *
+   * Un borde de un píxel para separarla del suelo, y dos sombras: una del color
+   * del acento, ancha y baja, que es el reflejo de la imagen sobre la sala; y
+   * una negra y cerrada que la levanta. Es lo que hace que el video se lea como
+   * proyectado y no como un rectángulo pegado sobre un fondo oscuro.
+   */
+  .studio-screen {
+    box-shadow:
+      0 0 0 1px color-mix(in oklch, var(--border) 42%, transparent),
+      0 32px 120px -36px color-mix(in oklch, var(--primary) 26%, transparent),
+      0 18px 60px -28px rgb(0 0 0 / 0.9);
+  }
+
+  /*
+   * Lo que flota sobre la sala: los paneles y la ficha de captura.
+   *
+   * Vidrio y no tarjeta. Sobre negro una tarjeta opaca es un agujero; el vidrio
+   * deja pasar la imagen de atrás lo justo para que se siga leyendo como algo
+   * que está encima del video y no en otra pantalla.
+   */
+  .studio-glass {
+    background: color-mix(in oklch, var(--card) 82%, transparent);
+    backdrop-filter: blur(28px) saturate(170%);
+    -webkit-backdrop-filter: blur(28px) saturate(170%);
+    border: 1px solid color-mix(in oklch, var(--border) 55%, transparent);
+    box-shadow:
+      0 28px 70px -24px rgb(0 0 0 / 0.75),
+      0 0 0 0.5px color-mix(in oklch, var(--border) 22%, transparent);
+  }
+
   /* ── Mobile Bottom Tab Bar ── */
   .mobile-tab-bar {
     display: flex;

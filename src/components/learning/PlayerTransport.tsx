@@ -5,13 +5,6 @@ import {
   type MutableRefObject,
   type PointerEvent as ReactPointerEvent,
 } from "react";
-import { HelpCircle } from "lucide-react";
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
 import { cn } from "@/lib/utils";
 import { formatClock } from "@/lib/learning-config";
 import { useSmoothPosition, type PlaybackSample } from "@/hooks/useSmoothPosition";
@@ -23,27 +16,25 @@ interface PlayerTransportProps {
   /** Segundos donde capturaste algo: quedan clavados como hitos. */
   markers: number[];
   onSeek: (seconds: number) => void;
-  /** La mano está sobre la barra —o a unos píxeles— y no en cualquier parte. */
-  near: boolean;
+  className?: string;
 }
 
 /**
- * Mientras el video corre, esto es una línea de dos píxeles al pie. Nada más.
+ * Dónde vas, en su propia franja al pie de la pantalla.
  *
  * Y la barra es la barra: dónde vas y nada encima. Tenía pintado el relieve de
  * dificultad del video y, al pasar por encima, la frase que se decía ahí. Dos
  * cosas ciertas y bien hechas que igual sobran: el relieve compite con lo único
  * que la barra tiene que decir, y la frase ya se lee, grande, sobre el video.
  *
- * Antes había una fila de botones que subía con el puntero en cualquier parte
- * del cuadro. Con el subtítulo leyéndose encima del video, uno está adentro
- * del cuadro todo el rato: la fila se levantaba mientras leías, que es el
- * reproductor pidiendo atención justo cuando estás en otra cosa.
+ * Vivía dentro del cuadro, tapándole los dos píxeles de abajo y obligando a un
+ * cálculo de "¿está la mano cerca?" para no despertarse mientras leías el
+ * subtítulo. Ahora vive fuera de la imagen, pegada a su borde inferior: nada
+ * que tapar, nada que adivinar. Engorda cuando le pasas por encima —a ella, no
+ * al video— y cuando el video está detenido.
  *
- * Así que no hay fila. La barra engorda solo si la mano está sobre ella, y no
- * arrastra nada hacia arriba. Los diez segundos, repetir la frase y esconder
- * el subtítulo siguen ahí —son teclas— y viven explicados detrás del signo de
- * pregunta, que aparece con el video en pausa: cuando corre, sobra.
+ * Los diez segundos, repetir la frase y esconder el subtítulo siguen siendo
+ * teclas, y viven explicados en el signo de pregunta de la barra de abajo.
  */
 export function PlayerTransport({
   playbackRef,
@@ -51,16 +42,15 @@ export function PlayerTransport({
   durationSeconds,
   markers,
   onSeek,
-  near,
+  className,
 }: PlayerTransportProps) {
   const seconds = useSmoothPosition(playbackRef);
   const trackRef = useRef<HTMLDivElement>(null);
   const [hoverRatio, setHoverRatio] = useState<number | null>(null);
-
-  const [shortcutsOpen, setShortcutsOpen] = useState(false);
+  const [hovering, setHovering] = useState(false);
 
   /** La barra se vuelve barra: con la mano encima, o con el video detenido. */
-  const revealed = !playing || near;
+  const revealed = !playing || hovering;
 
   const ratio = durationSeconds > 0 ? Math.min(seconds / durationSeconds, 1) : 0;
 
@@ -93,173 +83,79 @@ export function PlayerTransport({
   const hoverSeconds = hoverRatio !== null ? hoverRatio * durationSeconds : null;
 
   return (
-    <div className="pointer-events-none absolute inset-x-0 bottom-0 z-10">
-      {/* Velo: apenas insinuado mientras corre, entero cuando hay que leer */}
+    <div
+      ref={trackRef}
+      onPointerDown={handlePointerDown}
+      onPointerMove={handlePointerMove}
+      onPointerEnter={() => setHovering(true)}
+      onPointerLeave={() => {
+        setHovering(false);
+        setHoverRatio(null);
+      }}
+      role="slider"
+      aria-label="Posición del video"
+      aria-valuemin={0}
+      aria-valuemax={Math.round(durationSeconds)}
+      aria-valuenow={Math.round(seconds)}
+      tabIndex={0}
+      className={cn(
+        "relative flex h-4 cursor-pointer touch-none items-center",
+        className
+      )}
+    >
       <div
-        aria-hidden
         className={cn(
-          "absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/75 via-black/25 to-transparent",
-          "transition-all duration-300",
-          // Mientras corre, ni un píxel de velo: el subtítulo trae el suyo.
-          playing ? "h-12 opacity-0" : "h-20 opacity-100"
+          "relative w-full overflow-hidden rounded-full transition-all duration-200",
+          revealed ? "h-1.5 bg-foreground/25" : "h-[3px] bg-foreground/15"
         )}
-      />
-
-      <div className="pointer-events-auto relative">
-        {/* ── La barra ───────────────────────────────────── */}
+      >
         <div
-          ref={trackRef}
-          onPointerDown={handlePointerDown}
-          onPointerMove={handlePointerMove}
-          onPointerLeave={() => setHoverRatio(null)}
-          role="slider"
-          aria-label="Posición del video"
-          aria-valuemin={0}
-          aria-valuemax={Math.round(durationSeconds)}
-          aria-valuenow={Math.round(seconds)}
-          tabIndex={0}
-          className={cn(
-            "relative flex h-4 cursor-pointer touch-none items-end transition-all duration-200",
-            // Nunca se aparta de los bordes: crece hacia arriba y nada más.
-            // Los cuatro píxeles de abajo son para que quepa la aguja.
-            revealed ? "mb-1" : "mb-0"
-          )}
-        >
-          <div
-            className={cn(
-              "relative w-full overflow-hidden transition-all duration-200",
-              revealed
-                ? "h-1.5 rounded-full bg-white/25"
-                : "h-[2px] rounded-none bg-white/20"
-            )}
-          >
-            <div
-              className="absolute inset-y-0 left-0 bg-primary"
-              style={{ width: `${ratio * 100}%` }}
-            />
-          </div>
-
-          {/* Dónde capturaste algo */}
-          {durationSeconds > 0 &&
-            markers.map((at, index) => (
-              <span
-                key={`${at}-${index}`}
-                title={`Capturaste algo en ${formatClock(at)}`}
-                className={cn(
-                  "pointer-events-none absolute bottom-0 w-[2px] -translate-x-1/2 rounded-full bg-amber-300",
-                  "transition-all duration-200",
-                  revealed ? "h-1.5" : "h-[2px]"
-                )}
-                style={{ left: `${Math.min(at / durationSeconds, 1) * 100}%` }}
-              />
-            ))}
-
-          {/* La aguja solo cuando hay una mano cerca */}
-          <span
-            className={cn(
-              "pointer-events-none absolute bottom-0 size-3 -translate-x-1/2 translate-y-[0.1875rem]",
-              "rounded-full bg-primary shadow ring-2 ring-black/25 transition-transform duration-200",
-              revealed ? "scale-100" : "scale-0"
-            )}
-            style={{ left: `${ratio * 100}%` }}
-          />
-
-          {/* Qué se dice ahí: nuestro equivalente a la miniatura de YouTube */}
-          {hoverRatio !== null && hoverSeconds !== null && (
-            <div
-              className={cn(
-                "pointer-events-none absolute bottom-full z-10 mb-1.5 w-max -translate-x-1/2",
-                "rounded-lg bg-black/85 px-2 py-1 shadow-lg backdrop-blur-sm"
-              )}
-              style={{
-                left: `${Math.min(Math.max(hoverRatio, 0.08), 0.92) * 100}%`,
-              }}
-            >
-              <p className="text-[11px] font-semibold tabular-nums text-white">
-                {formatClock(hoverSeconds)}
-              </p>
-            </div>
-          )}
-        </div>
-
+          className="absolute inset-y-0 left-0 bg-primary"
+          style={{ width: `${ratio * 100}%` }}
+        />
       </div>
 
-      {/*
-        En pausa aparece lo mínimo: dónde vas y dónde preguntar. Los botones no
-        vuelven —lo que hacían son teclas, y las teclas se aprenden una vez.
-      */}
-      {!playing && (
-        <div className="pointer-events-auto absolute inset-x-0 bottom-6 flex items-end justify-between px-4">
-          <span className="text-[11px] font-medium tabular-nums text-white/70">
-            {formatClock(seconds)}
-            <span className="text-white/35">
-              {" / "}
-              {formatClock(durationSeconds)}
-            </span>
-          </span>
-
-          <button
-            onClick={() => setShortcutsOpen(true)}
-            aria-label="Cómo se maneja esto"
-            title="Cómo se maneja esto"
+      {/* Dónde capturaste algo */}
+      {durationSeconds > 0 &&
+        markers.map((at, index) => (
+          <span
+            key={`${at}-${index}`}
+            title={`Capturaste algo en ${formatClock(at)}`}
             className={cn(
-              "flex size-7 items-center justify-center rounded-full",
-              "bg-black/40 text-white/60 backdrop-blur-sm transition-colors",
-              "hover:bg-black/60 hover:text-white"
+              "pointer-events-none absolute w-[2px] -translate-x-1/2 rounded-full bg-amber-300",
+              "transition-all duration-200",
+              revealed ? "h-1.5" : "h-[3px]"
             )}
-          >
-            <HelpCircle className="h-4 w-4" />
-          </button>
+            style={{ left: `${Math.min(at / durationSeconds, 1) * 100}%` }}
+          />
+        ))}
+
+      {/* La aguja solo cuando hay una mano cerca */}
+      <span
+        className={cn(
+          "pointer-events-none absolute size-3 -translate-x-1/2",
+          "rounded-full bg-primary shadow ring-2 ring-background/60 transition-transform duration-200",
+          revealed ? "scale-100" : "scale-0"
+        )}
+        style={{ left: `${ratio * 100}%` }}
+      />
+
+      {/* En qué minuto caería el clic */}
+      {hoverRatio !== null && hoverSeconds !== null && (
+        <div
+          className={cn(
+            "pointer-events-none absolute bottom-full z-10 mb-1 w-max -translate-x-1/2",
+            "studio-glass rounded-lg px-2 py-0.5"
+          )}
+          style={{
+            left: `${Math.min(Math.max(hoverRatio, 0.05), 0.95) * 100}%`,
+          }}
+        >
+          <p className="text-[11px] font-semibold tabular-nums">
+            {formatClock(hoverSeconds)}
+          </p>
         </div>
       )}
-
-      <Dialog open={shortcutsOpen} onOpenChange={setShortcutsOpen}>
-        <DialogContent className="max-w-[25rem] gap-0 p-0">
-          <div className="p-7">
-            <DialogHeader className="space-y-0 text-left">
-              <DialogTitle className="text-[15px] font-semibold">
-                Cómo se maneja esto
-              </DialogTitle>
-            </DialogHeader>
-
-            <dl className="mt-6 space-y-3.5">
-              {KEYS.map(([key, what]) => (
-                <div key={key} className="flex items-center gap-4">
-                  <dt className="w-[4.5rem] shrink-0 text-right">
-                    <kbd
-                      className={cn(
-                        "inline-flex h-6 items-center rounded-md px-2",
-                        "border border-border/70 bg-muted/50",
-                        "font-mono text-[11px] font-medium text-foreground"
-                      )}
-                    >
-                      {key}
-                    </kbd>
-                  </dt>
-                  <dd className="text-[13px] leading-snug text-muted-foreground">
-                    {what}
-                  </dd>
-                </div>
-              ))}
-            </dl>
-
-            <p className="mt-6 border-t border-border/50 pt-5 text-[13px] leading-relaxed text-muted-foreground">
-              Lo que más vas a usar no es una tecla. Toca cualquier palabra del
-              subtítulo y el video se detiene solo para mostrarte qué significa,
-              justo debajo. Al guardarla vuelve a andar.
-            </p>
-          </div>
-        </DialogContent>
-      </Dialog>
     </div>
   );
 }
-
-/** Lo que se puede hacer sin mover la mano de donde está. */
-const KEYS: [string, string][] = [
-  ["Espacio", "reproducir o pausar"],
-  ["← →", "diez segundos atrás o adelante"],
-  ["R", "repetir la frase que acaba de sonar"],
-  ["E", "capturar una expresión a mano"],
-  ["C", "esconder el subtítulo"],
-];

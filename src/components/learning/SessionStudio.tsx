@@ -1,6 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import ConfirmDialog from "@/components/ConfirmDialog";
 import {
   Dialog,
@@ -8,32 +7,32 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import { TooltipProvider } from "@/components/ui/tooltip";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
-import {
-  Play,
-  Plus,
-  Highlighter,
-  Zap,
-  Check,
-  Eye,
-  Search,
-  Pencil,
-  ExternalLink,
-} from "lucide-react";
+import { ExternalLink, Highlighter, HelpCircle, MoreHorizontal, Play, Plus } from "lucide-react";
 import { YouTubePlayer, type YouTubePlayerHandle, type VideoMeta } from "./YouTubePlayer";
 import { SubtitleTrack } from "./SubtitleTrack";
 import { SubtitleCaption } from "./SubtitleCaption";
-import { TranscriptActions } from "./TranscriptActions";
-import { VideoActionsPanel, type StudioState } from "./VideoActionsPanel";
 import { TranscriptHelpDialog } from "./TranscriptHelpDialog";
 import { PlayerTransport } from "./PlayerTransport";
-import { WordLookup } from "./WordLookup";
+import { CaptureSheet } from "./CaptureSheet";
+import { StudioShortcutsDialog } from "./StudioShortcutsDialog";
+import {
+  RailButton,
+  StudioControlRail,
+  StudioTopRail,
+  type StudioPanel,
+  type StudioState,
+} from "./StudioChrome";
+import {
+  CapturedPanel,
+  SessionPanel,
+  SubtitlesPanel,
+} from "./StudioPanels";
 import type { WordMark } from "./DockLine";
 import {
   detectItemType,
-  formatClock,
-  formatDuration,
   youTubeWatchUrl,
   type ItemType,
 } from "@/lib/learning-config";
@@ -72,30 +71,33 @@ interface SessionStudioProps {
 }
 
 /**
- * El estudio ocupa la pantalla completa menos la cabecera de la app y el
- * padding del main (3.5rem + 3rem).
+ * El alto que la sala se reserva fuera de la imagen: la barra de arriba, la
+ * franja donde vive la barra de progreso y la barra de abajo.
+ *
+ * Acá está la palanca de toda esta pantalla. El video crece a lo ancho solo si
+ * le sobra alto, así que cada rem que no se reserva se convierte en imagen.
+ * Antes lo descontado eran dieciocho rem —una columna de tarjetas y un panel de
+ * captura, permanentes los dos—; ahora son menos de nueve, y son dos barras que
+ * se van solas cuando dejas de mover la mano.
  */
-const STUDIO_HEIGHT = "lg:h-[calc(100vh-6.5rem)]";
+const RESERVED_HEIGHT = "8.75rem";
 
 /**
- * Tope de ancho del video, que en realidad es un tope de alto.
- *
- * Acá está la palanca de toda esta pantalla: el video crece a lo ancho solo si
- * le sobra alto, así que cada fila que se saca de encima o debajo se convierte
- * en video. Lo que queda descontado es lo mínimo —el espacio de la app y la
- * pista de subtítulos—; los controles ya no cuestan nada porque viven dentro
- * del marco.
+ * El ancho de la pantalla: lo que quepa a lo ancho, o lo que el alto permita a
+ * dieciséis novenos. Manda el más chico de los dos, y la imagen no se recorta
+ * nunca: lo que sobra queda en negro arriba y abajo, como en el cine.
  */
-/**
- * A cuántos píxeles del pie del video la barra se vuelve barra.
- *
- * Poco: unos pocos píxeles por encima de la línea, lo justo para no obligarte
- * a apuntar. Con un margen grande se despertaba sola mientras leías el
- * subtítulo, que ocupa la parte de abajo del cuadro.
- */
-const BAR_REACH = 20;
+const SCREEN_WIDTH = `min(calc(100vw - 1.5rem), calc((100dvh - ${RESERVED_HEIGHT}) * 16 / 9))`;
 
-const VIDEO_MAX_WIDTH = "calc((100vh - 18rem) * 16 / 9)";
+/**
+ * Cuánto aguanta el cromo antes de irse.
+ *
+ * Y de dónde vuelve: de fuera del cuadro. Dentro del cuadro la mano está
+ * leyendo —o yendo a tocar una palabra del subtítulo— y que eso levante las dos
+ * barras es el reproductor pidiendo atención justo cuando estás en otra cosa.
+ * Salir del cuadro, en cambio, ya es ir a buscar algo.
+ */
+const IDLE_MS = 2800;
 
 /** El subtítulo sobre el video: encendido salvo que lo hayas apagado tú. */
 const CAPTION_PREF_KEY = "rindo:learning-caption";
@@ -479,6 +481,73 @@ export function SessionStudio({
     setItemType(detectItemType(expression));
   }, [expression, isCapturing]);
 
+  /** Qué panel está abierto sobre la sala. Uno solo a la vez. */
+  const [panel, setPanel] = useState<StudioPanel>(null);
+
+  const [shortcutsOpen, setShortcutsOpen] = useState(false);
+
+  /**
+   * Si el cromo está a la vista.
+   *
+   * Las dos barras se van solas y la sala queda siendo el video y la frase. No
+   * es un efecto: es la forma que toma la idea de esta pantalla —mientras
+   * escuchas, nada de lo demás lo estás usando— sin que eso te cueste tener que
+   * pedirlo cada vez.
+   */
+  const [chromeOn, setChromeOn] = useState(true);
+  const idleRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  /** Si la mano está dentro del cuadro. Ahí moverse no despierta nada. */
+  const insideScreen = useRef(false);
+
+  const wake = useCallback(() => {
+    setChromeOn(true);
+    if (idleRef.current) clearTimeout(idleRef.current);
+    idleRef.current = setTimeout(() => setChromeOn(false), IDLE_MS);
+  }, []);
+
+  /** Moverse: despierta solo si fue fuera del cuadro. */
+  const wakeOutsideScreen = useCallback(() => {
+    if (insideScreen.current) return;
+    wake();
+  }, [wake]);
+
+  useEffect(() => {
+    wake();
+    return () => {
+      if (idleRef.current) clearTimeout(idleRef.current);
+    };
+  }, [wake]);
+
+  /**
+   * El cromo no se esconde si hace falta: con el video detenido, con la ficha
+   * abierta o con un panel abierto, lo que estás haciendo ES el cromo.
+   */
+  const chromeVisible =
+    chromeOn || !isVideoPlaying || isCapturing || panel !== null;
+
+  /**
+   * Entrar al estudio es bajar las luces de la casa.
+   *
+   * La clase va en el `body` y no en el `html` a propósito: los temas a medida
+   * escriben las variables como estilo en línea sobre el `html`, y un estilo en
+   * línea le gana a cualquier clase del mismo elemento. Declaradas un nivel más
+   * abajo, ganan las nuestras —y de paso alcanzan a los diálogos, que se montan
+   * en el `body` y quedarían claros sobre una sala negra.
+   */
+  useEffect(() => {
+    const body = document.body;
+    const wasDark = body.classList.contains("dark");
+    if (!wasDark) body.classList.add("dark");
+    const previousOverflow = body.style.overflow;
+    body.style.overflow = "hidden";
+
+    return () => {
+      if (!wasDark) body.classList.remove("dark");
+      body.style.overflow = previousOverflow;
+    };
+  }, []);
+
   // ── Atajos ────────────────────────────────────────────────
 
   useEffect(() => {
@@ -491,6 +560,31 @@ export function SessionStudio({
 
       if (inField) return;
       if (e.metaKey || e.ctrlKey || e.altKey) return;
+
+      // Cualquier tecla también despierta el cromo: si estás pidiendo algo,
+      // querés ver dónde caiste.
+      wake();
+
+      /**
+       * Escape cierra lo de más adentro y no lo de más afuera.
+       *
+       * Un diálogo abierto se queda con la tecla —es suya, y la maneja Radix—;
+       * si no hay ninguno, cierra el panel, después la ficha, y solo cuando no
+       * queda nada abierto sale del estudio. Salir no borra nada: pausa y
+       * guarda el minuto donde quedaste.
+       */
+      if (e.key === "Escape") {
+        const dialogOpen = document.querySelector(
+          '[data-state="open"][role="dialog"], [data-state="open"][role="alertdialog"]'
+        );
+        if (dialogOpen) return;
+
+        e.preventDefault();
+        if (panel) setPanel(null);
+        else if (isCapturing) closeCapture(true);
+        else onLeave();
+        return;
+      }
 
       if (e.key === "e" || e.key === "E") {
         e.preventDefault();
@@ -523,7 +617,18 @@ export function SessionStudio({
 
     window.addEventListener("keydown", handler);
     return () => window.removeEventListener("keydown", handler);
-  }, [openCapture, hasPlayer, onActivity, repeatLine, toggleCaption]);
+  }, [
+    openCapture,
+    hasPlayer,
+    onActivity,
+    repeatLine,
+    toggleCaption,
+    wake,
+    panel,
+    isCapturing,
+    closeCapture,
+    onLeave,
+  ]);
 
   // ── Estado visual ─────────────────────────────────────────
 
@@ -537,45 +642,72 @@ export function SessionStudio({
   const [confirmReset, setConfirmReset] = useState(false);
   const resetContent = useResetLearningContent();
 
-  /**
-   * Si la mano está sobre la barra de progreso. Nada más se levanta con eso:
-   * leyendo el subtítulo uno está dentro del cuadro todo el rato, y que el
-   * reproductor reaccione a eso es pedir atención justo cuando estás en otra
-   * cosa. Solo la barra, y solo cuando la mano está encima.
-   */
-  const [nearBar, setNearBar] = useState(false);
+  // ── La sala ───────────────────────────────────────────────
 
+  /**
+   * El estudio se sale de la app: pantalla completa, fondo oscuro y nada de
+   * barra lateral ni cabecera.
+   *
+   * No es que estorbaran: es que el video estaba definido como lo que sobra
+   * —el ancho lo repartían cuatro paneles permanentes— y por eso nunca podía
+   * ser grande. Acá la sala es del video, y todo lo demás es una capa que
+   * aparece cuando la pides y se va cuando no.
+   */
   return (
-    <div className={cn("flex flex-col", STUDIO_HEIGHT)} onPointerDown={onActivity}>
-      {/* ── Reproductor y frase (izquierda) · captura (derecha) ── */}
-      {/*
-        Flex y no grid, y con un ancho normal y no uno arbitrario: la columna de
-        la derecha es una lista de acciones, no contenido, así que mide lo que
-        mide y el resto se lo lleva el video. En una fila con `min-w-0` el video
-        no puede desbordar por ancho que pida; bajo el breakpoint la fila se
-        vuelve columna y la barra pasa a ser el pie de la página.
-      */}
-      <div className="flex min-h-0 flex-1 flex-col gap-3 lg:flex-row">
-        {/* Columna del video */}
-        {hasPlayer ? (
-          <div className="flex min-h-0 min-w-0 flex-1 flex-col gap-2">
-            {/*
-              Dos bloques y nada más: el marco del video —con sus controles
-              adentro— y la pista de subtítulos. Todo lo que antes vivía en
-              filas propias arriba y abajo se mudó al marco o a la columna de
-              la derecha, y ese alto es exactamente el que ganó el video.
-            */}
-            <div
-              className="mx-auto flex min-h-0 w-full flex-1 flex-col justify-center gap-2"
-              style={{ maxWidth: VIDEO_MAX_WIDTH }}
-            >
+    <TooltipProvider delayDuration={200}>
+      <div
+        className={cn(
+          "studio-room dark fixed inset-0 z-[60] flex h-[100dvh] flex-col",
+          "overflow-hidden text-foreground"
+        )}
+        onPointerMove={wakeOutsideScreen}
+        onPointerDown={onActivity}
+      >
+        {/* ── Arriba: de dónde vienes, qué ves y cuánto llevas ── */}
+        <div
+          className={cn(
+            "z-20 shrink-0 transition-opacity duration-300",
+            chromeVisible ? "opacity-100" : "pointer-events-none opacity-0"
+          )}
+        >
+          <StudioTopRail
+            title={session.content_title}
+            author={session.content_author}
+            state={state}
+            effectiveSeconds={liveEffectiveSeconds}
+            onLeave={onLeave}
+          />
+        </div>
+
+        {/* ── La pantalla ────────────────────────────────────── */}
+        <div className="relative flex min-h-0 flex-1 items-center justify-center">
+          {hasPlayer ? (
+            <div className="flex flex-col" style={{ width: SCREEN_WIDTH }}>
               <div
-                onPointerMove={(event) => {
-                  const rect = event.currentTarget.getBoundingClientRect();
-                  setNearBar(rect.bottom - event.clientY <= BAR_REACH);
+                /*
+                  Dentro del cuadro la mano no pide controles.
+                  Está leyendo el subtítulo, o yendo a tocar una palabra, así
+                  que vive adentro: si eso levantara las barras, estarían
+                  levantadas siempre. Salir del cuadro —a la franja negra o a
+                  cualquiera de las dos barras— es lo único que se lee como
+                  "quiero los controles".
+
+                  Se marca con una bandera y no cortando el evento: arrastrar
+                  para marcar una frase escucha el `pointermove` en la ventana,
+                  y React dispara sus handlers antes de que el evento llegue
+                  ahí. Un `stopPropagation` acá dejaba muerta la selección.
+                */
+                onPointerEnter={() => {
+                  insideScreen.current = true;
                 }}
-                onPointerLeave={() => setNearBar(false)}
-                className="group relative aspect-video w-full shrink-0 overflow-hidden rounded-2xl border border-border/60 bg-black"
+                onPointerLeave={() => {
+                  insideScreen.current = false;
+                  wake();
+                }}
+                className={cn(
+                  "studio-screen relative aspect-video w-full shrink-0",
+                  "overflow-hidden rounded-xl bg-black"
+                )}
               >
                 <YouTubePlayer
                   ref={playerRef}
@@ -590,10 +722,22 @@ export function SessionStudio({
                 {/*
                   Nuestra capa sobre el iframe. Se come el hover y el clic, así
                   que YouTube no alcanza a mostrar su título, sus botones ni sus
-                  sugeridos: el video se ve, el resto es de Rindo.
+                  sugeridos: el video se ve, el resto es de Rindo. Y es también
+                  lo que deja que mover el mouse sobre el video despierte el
+                  cromo —un iframe se traga los eventos, una capa propia no.
                 */}
                 <button
                   onClick={() => {
+                    // Con algo abierto encima, el clic en el video es "cerrá
+                    // eso": es donde uno hace clic para salir de una cosa.
+                    if (panel) {
+                      setPanel(null);
+                      return;
+                    }
+                    if (isCapturing) {
+                      closeCapture(true);
+                      return;
+                    }
                     playerRef.current?.toggle();
                     onActivity();
                   }}
@@ -602,7 +746,7 @@ export function SessionStudio({
                 >
                   <span
                     className={cn(
-                      "flex size-16 items-center justify-center rounded-full",
+                      "flex size-20 items-center justify-center rounded-full",
                       "bg-black/55 text-white backdrop-blur-sm transition-all duration-200",
                       // Tocar una palabra también pausa, pero eso no fue "parar
                       // el video": fue preguntar. El play gigante encima de la
@@ -613,7 +757,7 @@ export function SessionStudio({
                         : "scale-100 opacity-100"
                     )}
                   >
-                    <Play className="h-7 w-7 translate-x-[2px] fill-current" />
+                    <Play className="h-9 w-9 translate-x-[3px] fill-current" />
                   </span>
                 </button>
 
@@ -624,416 +768,290 @@ export function SessionStudio({
                   word={spot.word}
                   onPick={pickFromTranscript}
                   markOf={markOf}
-                  lifted={!isVideoPlaying}
+                  dimmed={isCapturing}
                 />
 
-                <PlayerTransport
-                  playbackRef={playbackRef}
-                  playing={isVideoPlaying}
-                  durationSeconds={trackDuration}
-                  markers={captureMarkers}
-                  onSeek={(seconds) => {
-                    playerRef.current?.seekTo(seconds);
-                    onActivity();
-                  }}
-                  near={nearBar}
-                />
-              </div>
-
-              {/*
-                Lo que capturas, justo debajo del video.
-
-                Antes vivía en la columna angosta de la derecha, a un metro de
-                la palabra que lo dispara. Ahora la palabra que tocas y la ficha
-                que aparece están una encima de la otra, en la misma columna: el
-                ojo baja diez centímetros y ya está: por eso tocar una palabra
-                se lee como preguntar y no como que se abrió otra cosa en otra
-                parte de la pantalla.
-
-                Y el ancho no se desperdicia: a la izquierda lo que preguntas,
-                a la derecha lo que llevas juntado, siempre a la vista.
-              */}
-              <div
-                className={cn(
-                  "rounded-2xl border border-border/60 bg-card flex flex-col overflow-hidden",
-                  "min-h-0 h-[13rem] shrink-0 lg:h-auto lg:min-h-[9rem] lg:flex-1"
-                )}
-              >
-                <div className="flex items-center justify-between gap-2 px-3 py-2 border-b border-border/50 shrink-0">
-                  <div className="flex items-center gap-2 min-w-0">
-                    <Highlighter className="h-3.5 w-3.5 text-primary shrink-0" />
-                    <h3 className="text-xs font-semibold shrink-0">
-                      {lookupOnly ? "Consultar" : "Capturar"}
-                    </h3>
-                    {isCapturing && capturedAtRef.current !== null && (
-                      <span className="text-[11px] text-muted-foreground tabular-nums shrink-0">
-                        en {formatClock(capturedAtRef.current)}
-                      </span>
-                    )}
-                  </div>
-
-                  <div className="flex items-center gap-2 shrink-0">
-                    <button
-                      onClick={auto.toggle}
-                      title={
-                        auto.enabled
-                          ? "Automatico: tocar una palabra la guarda sola con su significado"
-                          : "Activar guardado automatico al tocar una palabra"
-                      }
-                      className={cn(
-                        "flex items-center gap-1 rounded-lg px-1.5 py-1 transition-colors",
-                        "text-[10px] font-bold uppercase tracking-wide",
-                        auto.enabled
-                          ? "bg-primary/15 text-primary"
-                          : "text-muted-foreground hover:text-foreground"
-                      )}
-                    >
-                      <Zap className={cn("h-3 w-3", auto.enabled && "fill-current")} />
-                      Auto
-                    </button>
-                    <span className="text-[11px] text-muted-foreground tabular-nums">
-                      {captured.length}
-                    </span>
-                  </div>
-                </div>
-
+                {/*
+                  La penumbra.
+                  Cuando preguntas, el video no se encoge: se retira. El cuadro
+                  sigue detrás —es el contexto de la palabra, y con la imagen
+                  congelada uno sigue sabiendo dónde está— pero deja de competir
+                  con lo único que en ese momento importa, que es la respuesta.
+                */}
                 <div
-                  className="flex-1 min-h-0 overflow-hidden p-3"
-                  onTouchMove={(e) => e.stopPropagation()}
-                >
-                  <div className="flex h-full min-h-0 gap-3 lg:gap-5">
-                    {isCapturing ? (
-                      <>
-                        {/* La respuesta */}
-                        <div className="flex min-w-0 flex-1 flex-col gap-2 overflow-hidden">
-                          {editingTerm && (
-                            <Input
-                              ref={expressionRef}
-                              value={expression}
-                              onChange={(e) => setExpression(e.target.value)}
-                              onBlur={() =>
-                                expression.trim() && setEditingTerm(false)
-                              }
-                              onKeyDown={(e) => {
-                                if (e.key === "Enter") {
-                                  e.preventDefault();
-                                  setEditingTerm(false);
-                                  if (!lookupOnly && expression.trim())
-                                    submitCapture();
-                                } else if (e.key === "Escape") {
-                                  e.preventDefault();
-                                  closeCapture(true);
-                                }
-                              }}
-                              placeholder="come across"
-                              className="h-9 shrink-0 rounded-xl font-medium"
-                            />
-                          )}
-
-                          {expression.trim().length > 1 ? (
-                            <WordLookup
-                              compact
-                              term={expression}
-                              contextSentence={context}
-                              onUseDefinition={setMeaning}
-                              onTranslation={setTranslation}
-                              className="min-h-0 flex-1"
-                            />
-                          ) : (
-                            <p className="text-[13px] text-muted-foreground">
-                              Escribe la expresión que quieres guardar.
-                            </p>
-                          )}
-                        </div>
-
-                        {/*
-                          La salida, siempre a la vista. Era lo que quedaba
-                          debajo del pliegue: había que desplazarse para llegar
-                          a guardar, que es justo lo que uno viene a hacer.
-                        */}
-                        <div className="flex w-[9.5rem] shrink-0 flex-col justify-center gap-2 border-l border-border/50 pl-3 lg:pl-4">
-                          {lookupOnly ? (
-                            <>
-                              <p className="text-[10px] leading-snug text-muted-foreground">
-                                En pausa esto es solo para mirar.
-                              </p>
-                              <Button
-                                onClick={resumeAndSave}
-                                disabled={!expression.trim()}
-                                className="h-9 w-full rounded-xl font-semibold"
-                              >
-                                <Play className="mr-1.5 h-3.5 w-3.5 fill-current" />
-                                Reanudar
-                              </Button>
-                              <Button
-                                onClick={() => closeCapture(true)}
-                                variant="ghost"
-                                className="h-8 w-full rounded-xl text-xs"
-                              >
-                                Cerrar
-                              </Button>
-                            </>
-                          ) : alreadySaved ? (
-                            <>
-                              <span className="flex items-center gap-1.5 text-[11px] font-medium text-emerald-500">
-                                <Check className="h-3.5 w-3.5" />
-                                Guardada
-                              </span>
-                              <Button
-                                onClick={() => closeCapture(true)}
-                                className="h-9 w-full rounded-xl font-semibold"
-                              >
-                                <Play className="mr-1.5 h-3.5 w-3.5 fill-current" />
-                                Seguir
-                              </Button>
-                            </>
-                          ) : (
-                            <>
-                              <Button
-                                onClick={submitCapture}
-                                disabled={!expression.trim()}
-                                className="h-9 w-full rounded-xl font-semibold"
-                              >
-                                Guardar
-                                <kbd className="ml-2 rounded bg-black/15 px-1 text-[10px] font-mono">
-                                  ⏎
-                                </kbd>
-                              </Button>
-                              <div className="flex gap-1.5">
-                                <Button
-                                  onClick={() => {
-                                    setEditingTerm((v) => !v);
-                                    requestAnimationFrame(() =>
-                                      expressionRef.current?.focus()
-                                    );
-                                  }}
-                                  variant="ghost"
-                                  title="Corregir la expresión"
-                                  className="h-8 flex-1 rounded-xl px-0 text-xs"
-                                >
-                                  <Pencil className="h-3.5 w-3.5" />
-                                </Button>
-                                <Button
-                                  onClick={() => closeCapture(true)}
-                                  variant="ghost"
-                                  className="h-8 flex-1 rounded-xl text-xs"
-                                >
-                                  Cerrar
-                                </Button>
-                              </div>
-                            </>
-                          )}
-                        </div>
-                      </>
-                    ) : (
-                      <>
-                        {/* Cómo se pregunta */}
-                        <div className="flex w-[13rem] shrink-0 flex-col justify-center gap-2">
-                          <Button
-                            onClick={openCapture}
-                            variant="outline"
-                            className="h-9 w-full rounded-xl border-dashed font-medium"
-                          >
-                            {isPaused ? (
-                              <Search className="mr-2 h-4 w-4" />
-                            ) : (
-                              <Plus className="mr-2 h-4 w-4" />
-                            )}
-                            {isPaused ? "Buscar una palabra" : "Nueva expresión"}
-                            <kbd className="ml-2 rounded bg-muted px-1.5 py-0.5 font-mono text-[10px]">
-                              E
-                            </kbd>
-                          </Button>
-                          <p className="text-[11px] leading-relaxed text-muted-foreground">
-                            O toca cualquier palabra del subtítulo: el video se
-                            detiene solo y su significado aparece acá.
-                          </p>
-                        </div>
-
-                        {/*
-                          Lo que llevas juntado. Vive solo en este momento —
-                          cuando no hay nada que preguntar— porque compitiendo
-                          con la respuesta le robaba el espacio a lo que sí
-                          importa. Cada una vuelve a su minuto al tocarla.
-                        */}
-                        <div className="min-w-0 flex-1 overflow-y-auto border-l border-border/50 pl-3 lg:pl-4">
-                          {captured.length === 0 ? (
-                            <p className="flex h-full items-center text-[11px] text-muted-foreground">
-                              Todavía no has guardado nada en esta sesión.
-                            </p>
-                          ) : (
-                            <div className="flex flex-wrap content-start gap-1.5">
-                              {captured
-                                .slice()
-                                .reverse()
-                                .map((item) => (
-                                  <button
-                                    key={item.sighting_id}
-                                    onClick={() => {
-                                      if (item.timestamp_seconds === null) return;
-                                      playerRef.current?.seekTo(
-                                        item.timestamp_seconds
-                                      );
-                                      onActivity();
-                                    }}
-                                    title={
-                                      item.timestamp_seconds !== null
-                                        ? `Volver a ${formatClock(item.timestamp_seconds)}`
-                                        : undefined
-                                    }
-                                    className={cn(
-                                      "flex max-w-[15rem] items-baseline gap-1.5 rounded-lg border px-2 py-1",
-                                      "border-border/50 bg-muted/20 transition-colors",
-                                      "hover:border-border hover:bg-muted/40",
-                                      item.pending && "opacity-60"
-                                    )}
-                                  >
-                                    <span className="truncate text-xs font-medium">
-                                      {item.expression}
-                                    </span>
-                                    {item.translation_es && (
-                                      <span className="truncate text-[11px] text-primary">
-                                        {item.translation_es}
-                                      </span>
-                                    )}
-                                  </button>
-                                ))}
-                            </div>
-                          )}
-                        </div>
-                      </>
-                    )}
-                  </div>
-                </div>
+                  aria-hidden
+                  className={cn(
+                    "pointer-events-none absolute inset-0 z-20",
+                    "bg-background/80 backdrop-blur-[3px] transition-opacity duration-300",
+                    isCapturing ? "opacity-100" : "opacity-0"
+                  )}
+                />
               </div>
+
+              {/* Dónde vas: pegada al borde de abajo, fuera de la imagen */}
+              <PlayerTransport
+                playbackRef={playbackRef}
+                playing={isVideoPlaying}
+                durationSeconds={trackDuration}
+                markers={captureMarkers}
+                onSeek={(seconds) => {
+                  playerRef.current?.seekTo(seconds);
+                  onActivity();
+                }}
+                className="mt-1 shrink-0"
+              />
             </div>
-          </div>
-        ) : (
-          <div className="min-w-0 flex-1 rounded-2xl border border-border/60 bg-muted/20 p-8 text-center">
-            <p className="text-sm font-medium">{session.content_title}</p>
-            <p className="text-xs text-muted-foreground mt-2 max-w-sm mx-auto">
-              Este contenido se reproduce fuera de Rindo. El cronómetro de al
-              lado mide tu tiempo de estudio igual.
-            </p>
-            {session.content_url && (
-              <Button variant="outline" size="sm" asChild className="mt-4 rounded-xl">
-                <a href={session.content_url} target="_blank" rel="noreferrer">
-                  <ExternalLink className="h-3.5 w-3.5 mr-1.5" />
-                  Abrir
-                </a>
-              </Button>
-            )}
+          ) : (
+            <div className="studio-glass mx-4 max-w-md rounded-2xl p-8 text-center">
+              <p className="text-sm font-medium">{session.content_title}</p>
+              <p className="mt-2 text-xs leading-relaxed text-muted-foreground">
+                Este contenido se reproduce fuera de Rindo. El reloj de arriba
+                mide tu tiempo de estudio igual.
+              </p>
+              {session.content_url && (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  asChild
+                  className="mt-4 rounded-xl"
+                >
+                  <a
+                    href={session.content_url}
+                    target="_blank"
+                    rel="noreferrer"
+                  >
+                    <ExternalLink className="mr-1.5 h-3.5 w-3.5" />
+                    Abrir
+                  </a>
+                </Button>
+              )}
+            </div>
+          )}
+        </div>
+
+        {/* ── Abajo: el reproductor y lo que se abre ─────────── */}
+        <div
+          className={cn(
+            "z-20 shrink-0 transition-opacity duration-300",
+            chromeVisible ? "opacity-100" : "pointer-events-none opacity-0"
+          )}
+        >
+          {hasPlayer ? (
+            <StudioControlRail
+              playbackRef={playbackRef}
+              playing={isVideoPlaying}
+              durationSeconds={trackDuration}
+              onToggle={() => {
+                playerRef.current?.toggle();
+                onActivity();
+              }}
+              onRepeat={repeatLine}
+              captionOn={captionOn}
+              onToggleCaption={toggleCaption}
+              hasSubtitles={cues.length > 0}
+              capturedCount={captured.length}
+              onOpenCapture={openCapture}
+              isPaused={isPaused}
+              panel={panel}
+              onPanel={setPanel}
+              onHelp={() => setShortcutsOpen(true)}
+            />
+          ) : (
+            /* Sin reproductor no hay nada que manejar: queda la sesión. */
+            <div className="flex h-12 items-center justify-end gap-1 px-3 sm:px-5">
+              <RailButton
+                icon={<Plus className="h-4 w-4" />}
+                label="Nueva expresión"
+                onClick={openCapture}
+                tone="outline"
+              />
+              <RailButton
+                icon={<Highlighter className="h-4 w-4" />}
+                label="Capturadas"
+                onClick={() =>
+                  setPanel(panel === "captured" ? null : "captured")
+                }
+                active={panel === "captured"}
+                badge={captured.length}
+              />
+              <RailButton
+                icon={<MoreHorizontal className="h-4 w-4" />}
+                label="La sesión"
+                onClick={() => setPanel(panel === "session" ? null : "session")}
+                active={panel === "session"}
+              />
+              <RailButton
+                icon={<HelpCircle className="h-4 w-4" />}
+                label="Atajos"
+                onClick={() => setShortcutsOpen(true)}
+                hideLabel
+              />
+            </div>
+          )}
+        </div>
+
+        {/* ── Los paneles: anclados a su botón de la barra ───── */}
+        {panel === "captured" && (
+          <div className="absolute bottom-14 right-3 z-30 sm:right-5">
+            <CapturedPanel
+              items={captured}
+              onSeek={(seconds) => {
+                playerRef.current?.seekTo(seconds);
+                onActivity();
+              }}
+              onClose={() => setPanel(null)}
+            />
           </div>
         )}
 
-        {/* Columna derecha: la sesión y los subtítulos */}
-        <aside
-          className={cn(
-            "flex w-full shrink-0 flex-col gap-3",
-            // Si la ventana es baja, la columna se desplaza en vez de empujar
-            // el video: el video manda el alto de esta pantalla.
-            "lg:w-60 lg:min-h-0 lg:overflow-y-auto xl:w-64"
-          )}
-        >
-          <VideoActionsPanel
-            state={state}
-            title={session.content_title}
-            author={session.content_author}
-            effectiveSeconds={liveEffectiveSeconds}
-            elapsedSeconds={liveElapsedSeconds}
-            isPaused={isPaused}
-            onPause={onPause}
-            onResume={onResume}
-            onFinish={onFinish}
-            onLeave={onLeave}
-            onDiscard={() => setConfirmDiscard(true)}
-            onReset={() => setConfirmReset(true)}
-            canReset={!!session.external_id}
-            youtubeUrl={
-              session.external_id
-                ? youTubeWatchUrl(session.external_id, positionSeconds)
-                : null
-            }
-          />
-
-          {hasPlayer && (
-            <TranscriptActions
+        {panel === "subtitles" && (
+          <div className="absolute bottom-14 right-3 z-30 sm:right-5">
+            <SubtitlesPanel
               cueCount={cues.length}
               follow={followSubtitles}
               onFollowChange={setFollowSubtitles}
               onBring={() => setTranscriptHelpOpen(true)}
               onDelete={() => removeTranscript.mutate()}
-              onOpenText={() => setTranscriptOpen(true)}
+              onOpenText={() => {
+                setPanel(null);
+                setTranscriptOpen(true);
+              }}
+              onClose={() => setPanel(null)}
             />
-          )}
-        </aside>
-      </div>
+          </div>
+        )}
 
-      <Dialog open={transcriptOpen} onOpenChange={setTranscriptOpen}>
-        <DialogContent className="max-w-3xl p-0 gap-0">
-          <DialogHeader className="px-4 pb-2 pt-4">
-            <DialogTitle className="text-sm">
-              {session.content_title ?? "La transcripción"}
-            </DialogTitle>
-          </DialogHeader>
+        {panel === "session" && (
+          <div className="absolute bottom-14 right-3 z-30 sm:right-5">
+            <SessionPanel
+              state={state}
+              effectiveSeconds={liveEffectiveSeconds}
+              elapsedSeconds={liveElapsedSeconds}
+              isPaused={isPaused}
+              onPause={onPause}
+              onResume={onResume}
+              onFinish={onFinish}
+              onLeave={onLeave}
+              onDiscard={() => setConfirmDiscard(true)}
+              onReset={() => setConfirmReset(true)}
+              canReset={!!session.external_id}
+              youtubeUrl={
+                session.external_id
+                  ? youTubeWatchUrl(session.external_id, positionSeconds)
+                  : null
+              }
+              onClose={() => setPanel(null)}
+            />
+          </div>
+        )}
 
-          <SubtitleTrack
-            blocks={blocks}
-            active={spot}
-            follow={followSubtitles}
-            onFollowChange={setFollowSubtitles}
-            onPick={(term, cue) => {
-              // Preguntaste desde acá: la ficha aparece bajo el video, así que
-              // esto se cierra solo —si no, tapa la respuesta que pediste.
-              setTranscriptOpen(false);
-              pickFromTranscript(term, cue);
-            }}
-            onSeek={(seconds) => {
-              playerRef.current?.seekTo(seconds);
-              setTranscriptOpen(false);
-              onActivity();
-            }}
-            markOf={markOf}
-            onBringSubtitles={() => setTranscriptHelpOpen(true)}
-            onPasteClipboard={pasteTranscript}
-            isSaving={saveTranscript.isPending}
-            className="h-[65vh] border-0 rounded-none rounded-b-lg"
-          />
-        </DialogContent>
-      </Dialog>
+        {/*
+          La ficha, centrada al pie.
 
-      {session.external_id && (
-        <TranscriptHelpDialog
-          open={transcriptHelpOpen}
-          onOpenChange={setTranscriptHelpOpen}
-          externalId={session.external_id}
-          onPasteFromClipboard={pasteTranscript}
+          Aparece donde estaba la palabra que tocaste —abajo, en la frase— y
+          crece hacia arriba: eso es lo que hace que preguntar se lea como
+          preguntar y no como que se abrió otra cosa en otra parte de la
+          pantalla.
+        */}
+        {isCapturing && (
+          <div className="absolute bottom-14 left-1/2 z-40 -translate-x-1/2">
+            <CaptureSheet
+              lookupOnly={lookupOnly}
+              editingTerm={editingTerm}
+              expression={expression}
+              onExpressionChange={setExpression}
+              onExpressionDone={() => setEditingTerm(false)}
+              expressionRef={expressionRef}
+              context={context}
+              capturedAt={capturedAtRef.current}
+              autoEnabled={auto.enabled}
+              onToggleAuto={auto.toggle}
+              alreadySaved={alreadySaved}
+              onMeaning={setMeaning}
+              onTranslation={setTranslation}
+              onSave={submitCapture}
+              onResumeAndSave={resumeAndSave}
+              onEditTerm={() => {
+                setEditingTerm((value) => !value);
+                requestAnimationFrame(() => expressionRef.current?.focus());
+              }}
+              onClose={() => closeCapture(true)}
+            />
+          </div>
+        )}
+
+        {/* ── Lo que se abre en su propia ventana ────────────── */}
+        <Dialog open={transcriptOpen} onOpenChange={setTranscriptOpen}>
+          <DialogContent className="max-w-3xl gap-0 p-0">
+            <DialogHeader className="px-4 pb-2 pt-4">
+              <DialogTitle className="text-sm">
+                {session.content_title ?? "La transcripción"}
+              </DialogTitle>
+            </DialogHeader>
+
+            <SubtitleTrack
+              blocks={blocks}
+              active={spot}
+              follow={followSubtitles}
+              onFollowChange={setFollowSubtitles}
+              onPick={(term, cue) => {
+                // Preguntaste desde acá: la ficha aparece al pie de la sala,
+                // así que esto se cierra solo —si no, tapa la respuesta.
+                setTranscriptOpen(false);
+                pickFromTranscript(term, cue);
+              }}
+              onSeek={(seconds) => {
+                playerRef.current?.seekTo(seconds);
+                setTranscriptOpen(false);
+                onActivity();
+              }}
+              markOf={markOf}
+              onBringSubtitles={() => setTranscriptHelpOpen(true)}
+              onPasteClipboard={pasteTranscript}
+              isSaving={saveTranscript.isPending}
+              className="h-[65vh] rounded-none rounded-b-lg border-0"
+            />
+          </DialogContent>
+        </Dialog>
+
+        <StudioShortcutsDialog
+          open={shortcutsOpen}
+          onOpenChange={setShortcutsOpen}
         />
-      )}
 
-      <ConfirmDialog
-        open={confirmDiscard}
-        onOpenChange={setConfirmDiscard}
-        onConfirm={onDiscard}
-        title="¿Descartar la sesión?"
-        description="Se borra el tiempo registrado. Las expresiones que guardaste se mantienen en tu diccionario."
-        confirmText="Descartar"
-      />
+        {session.external_id && (
+          <TranscriptHelpDialog
+            open={transcriptHelpOpen}
+            onOpenChange={setTranscriptHelpOpen}
+            externalId={session.external_id}
+            onPasteFromClipboard={pasteTranscript}
+          />
+        )}
 
-      <ConfirmDialog
-        open={confirmReset}
-        onOpenChange={setConfirmReset}
-        onConfirm={() =>
-          session.external_id &&
-          resetContent.mutate({
-            goalId: session.goal_id,
-            externalId: session.external_id,
-          })
-        }
-        title="¿Reiniciar este video?"
-        description="Queda como si nunca lo hubieras visto y vuelve a Para ver después. Se borra su tiempo y las expresiones que solo salieron acá."
-        confirmText="Reiniciar"
-      />
-    </div>
+        <ConfirmDialog
+          open={confirmDiscard}
+          onOpenChange={setConfirmDiscard}
+          onConfirm={onDiscard}
+          title="¿Descartar la sesión?"
+          description="Se borra el tiempo registrado. Las expresiones que guardaste se mantienen en tu diccionario."
+          confirmText="Descartar"
+        />
+
+        <ConfirmDialog
+          open={confirmReset}
+          onOpenChange={setConfirmReset}
+          onConfirm={() =>
+            session.external_id &&
+            resetContent.mutate({
+              goalId: session.goal_id,
+              externalId: session.external_id,
+            })
+          }
+          title="¿Reiniciar este video?"
+          description="Queda como si nunca lo hubieras visto y vuelve a Para ver después. Se borra su tiempo y las expresiones que solo salieron acá."
+          confirmText="Reiniciar"
+        />
+      </div>
+    </TooltipProvider>
   );
 }

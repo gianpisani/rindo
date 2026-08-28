@@ -10,8 +10,8 @@ interface SubtitleCaptionProps {
   word: number;
   onPick: (term: string, cue: Cue) => void;
   markOf?: (word: string) => WordMark | null;
-  /** Los controles están a la vista: el subtítulo les hace lugar. */
-  lifted?: boolean;
+  /** Con la ficha abierta la frase se aparta: la respuesta manda. */
+  dimmed?: boolean;
 }
 
 /**
@@ -26,6 +26,11 @@ interface SubtitleCaptionProps {
  * entendiste aparece donde ya estabas mirando y se toca ahí mismo: se acabó el
  * viaje de bajar la vista, encontrar la línea y llegar dos segundos tarde.
  *
+ * En la sala es el segundo elemento de la jerarquía, después de la imagen, y el
+ * tamaño lo dice: es el material de lectura de esta pantalla, no un pie de foto.
+ * Ya no le hace lugar a ninguna fila de controles —esos viven fuera del cuadro—
+ * así que se apoya en el borde de abajo y se queda ahí.
+ *
  * El contenedor no recibe clics —el video de atrás se sigue pausando al tocarlo
  * donde no hay texto— y solo la frase los toma.
  */
@@ -34,7 +39,7 @@ export function SubtitleCaption({
   word,
   onPick,
   markOf,
-  lifted,
+  dimmed,
 }: SubtitleCaptionProps) {
   const phrase = usePhraseSelection((span: PhraseSpan) => {
     if (!block) return;
@@ -53,10 +58,9 @@ export function SubtitleCaption({
       data-marking={phrase.marking || undefined}
       className={cn(
         "subtitle-caption pointer-events-none absolute inset-x-0 bottom-0 z-10",
-        // Mientras el video corre la barra es un pelo al borde, así que el
-        // subtítulo se apoya abajo. Cuando los controles suben, les hace lugar.
-        "flex justify-center px-4 transition-all duration-300 sm:px-8",
-        lifted ? "pb-14 sm:pb-16" : "pb-5 sm:pb-6"
+        "flex justify-center px-4 pb-5 sm:px-8 sm:pb-7",
+        "transition-opacity duration-300",
+        dimmed ? "opacity-0" : "opacity-100"
       )}
     >
       <DockLine
@@ -68,8 +72,10 @@ export function SubtitleCaption({
         markOf={markOf}
         onWordDown={phrase.begin}
         className={cn(
-          "pointer-events-auto inline-block max-w-3xl text-center",
-          "text-base font-medium leading-snug text-white sm:text-lg lg:text-xl"
+          "pointer-events-auto inline-block text-center",
+          "max-w-[52rem] lg:max-w-[60rem]",
+          "text-lg font-medium leading-snug text-white",
+          "sm:text-xl lg:text-2xl xl:text-[1.75rem]"
         )}
       />
     </div>
