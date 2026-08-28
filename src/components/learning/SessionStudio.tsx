@@ -1,7 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Textarea } from "@/components/ui/textarea";
 import ConfirmDialog from "@/components/ConfirmDialog";
 import {
   Dialog,
@@ -19,7 +18,7 @@ import {
   Check,
   Eye,
   Search,
-  ChevronDown,
+  Pencil,
   ExternalLink,
 } from "lucide-react";
 import { YouTubePlayer, type YouTubePlayerHandle, type VideoMeta } from "./YouTubePlayer";
@@ -32,7 +31,6 @@ import { PlayerTransport } from "./PlayerTransport";
 import { WordLookup } from "./WordLookup";
 import type { WordMark } from "./DockLine";
 import {
-  CAPTURE_TYPES,
   detectItemType,
   formatClock,
   formatDuration,
@@ -335,12 +333,21 @@ export function SessionStudio({
   // ── Formulario de captura ─────────────────────────────────
 
   const [isCapturing, setIsCapturing] = useState(false);
+
+  /**
+   * Si la expresión se está escribiendo.
+   *
+   * Cuando llega de tocar una palabra ya está resuelta: mostrarla dentro de un
+   * campo de texto invita a corregir algo que nadie quiere corregir, y empuja
+   * la respuesta hacia abajo. El campo aparece cuando la escribes tú, o cuando
+   * pides corregirla.
+   */
+  const [editingTerm, setEditingTerm] = useState(false);
   const [expression, setExpression] = useState("");
   const [context, setContext] = useState("");
   const [meaning, setMeaning] = useState("");
   const [translation, setTranslation] = useState<string | null>(null);
   const [itemType, setItemType] = useState<ItemType>("expression");
-  const [typeTouched, setTypeTouched] = useState(false);
   /** En automático el formulario es solo lectura: ya se guardó. */
   const [alreadySaved, setAlreadySaved] = useState(false);
   /**
@@ -364,6 +371,7 @@ export function SessionStudio({
       : null;
     setAlreadySaved(false);
     setLookupOnly(isPaused);
+    setEditingTerm(true);
     setIsCapturing(true);
     if (!isPaused) onActivity();
     requestAnimationFrame(() => expressionRef.current?.focus());
@@ -387,9 +395,9 @@ export function SessionStudio({
       setMeaning("");
       setTranslation(null);
       setItemType(detectItemType(term));
-      setTypeTouched(false);
       setAlreadySaved(!lookup && auto.enabled);
       setLookupOnly(lookup);
+      setEditingTerm(false);
       setIsCapturing(true);
       if (!lookup) onActivity();
     },
@@ -398,12 +406,12 @@ export function SessionStudio({
 
   const closeCapture = useCallback((resumeVideo: boolean) => {
     setIsCapturing(false);
+    setEditingTerm(false);
     setExpression("");
     setContext("");
     setMeaning("");
     setTranslation(null);
     setItemType("expression");
-    setTypeTouched(false);
     setAlreadySaved(false);
     setLookupOnly(false);
     capturedAtRef.current = null;
@@ -467,10 +475,17 @@ export function SessionStudio({
     submitCapture();
   }, [onResume, submitCapture]);
 
+  /**
+   * El tipo se deduce del largo de la expresión y no se pregunta.
+   *
+   * Había una fila de chips para elegirlo, debajo de todo lo demás: cuatro
+   * botones que hay que leer y decidir cada vez que guardas una palabra, para
+   * un dato que se adivina solo mirando cuántas palabras tiene.
+   */
   useEffect(() => {
-    if (!isCapturing || typeTouched) return;
+    if (!isCapturing) return;
     setItemType(detectItemType(expression));
-  }, [expression, isCapturing, typeTouched]);
+  }, [expression, isCapturing]);
 
   // ── Atajos ────────────────────────────────────────────────
 
@@ -529,12 +544,6 @@ export function SessionStudio({
   const [confirmDiscard, setConfirmDiscard] = useState(false);
   const [confirmReset, setConfirmReset] = useState(false);
   const resetContent = useResetLearningContent();
-
-  /**
-   * Cuál de las expresiones capturadas está abierta. Solo una a la vez: la
-   * lista vive en una columna angosta y dos fichas abiertas la vuelven ilegible.
-   */
-  const [openItem, setOpenItem] = useState<string | null>(null);
 
   /**
    * Si la mano está sobre la barra de progreso. Nada más se levanta con eso:
@@ -702,290 +711,208 @@ export function SessionStudio({
                   className="flex-1 min-h-0 overflow-hidden p-3"
                   onTouchMove={(e) => e.stopPropagation()}
                 >
-                  <div className="flex h-full min-h-0 flex-col gap-3 lg:flex-row lg:gap-4">
-                    {/* Lo que estás preguntando ahora */}
-                    <div className="min-h-0 shrink-0 overflow-y-auto lg:w-[23rem]">
-                      {isCapturing ? (
-                        <div className="space-y-2.5">
-                          <Input
-                            ref={expressionRef}
-                            value={expression}
-                            onChange={(e) => setExpression(e.target.value)}
-                            onKeyDown={(e) => {
-                              if (e.key === "Enter") {
-                                e.preventDefault();
-                                if (!lookupOnly) submitCapture();
-                              } else if (e.key === "Escape") {
-                                e.preventDefault();
-                                closeCapture(true);
+                  <div className="flex h-full min-h-0 gap-3 lg:gap-5">
+                    {isCapturing ? (
+                      <>
+                        {/* La respuesta */}
+                        <div className="flex min-w-0 flex-1 flex-col gap-2 overflow-hidden">
+                          {editingTerm && (
+                            <Input
+                              ref={expressionRef}
+                              value={expression}
+                              onChange={(e) => setExpression(e.target.value)}
+                              onBlur={() =>
+                                expression.trim() && setEditingTerm(false)
                               }
-                            }}
-                            placeholder="come across"
-                            className="h-10 rounded-xl font-medium"
-                          />
+                              onKeyDown={(e) => {
+                                if (e.key === "Enter") {
+                                  e.preventDefault();
+                                  setEditingTerm(false);
+                                  if (!lookupOnly && expression.trim())
+                                    submitCapture();
+                                } else if (e.key === "Escape") {
+                                  e.preventDefault();
+                                  closeCapture(true);
+                                }
+                              }}
+                              placeholder="come across"
+                              className="h-9 shrink-0 rounded-xl font-medium"
+                            />
+                          )}
 
-                          {expression.trim().length > 1 && (
+                          {expression.trim().length > 1 ? (
                             <WordLookup
+                              compact
                               term={expression}
                               contextSentence={context}
                               onUseDefinition={setMeaning}
                               onTranslation={setTranslation}
+                              className="min-h-0 flex-1"
                             />
-                          )}
-
-                          <Textarea
-                            value={context}
-                            onChange={(e) => setContext(e.target.value)}
-                            onKeyDown={(e) => {
-                              if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) {
-                                e.preventDefault();
-                                if (!lookupOnly) submitCapture();
-                              } else if (e.key === "Escape") {
-                                e.preventDefault();
-                                closeCapture(true);
-                              }
-                            }}
-                            placeholder="La frase donde apareció (opcional)"
-                            rows={2}
-                            className="rounded-xl resize-none text-sm"
-                          />
-
-                          {meaning && (
-                            <Input
-                              value={meaning}
-                              onChange={(e) => setMeaning(e.target.value)}
-                              placeholder="Significado"
-                              className="h-9 rounded-xl text-xs"
-                            />
-                          )}
-
-                          <div
-                            className={cn(
-                              "flex flex-wrap gap-1.5",
-                              (alreadySaved || lookupOnly) && "hidden"
-                            )}
-                          >
-                            {CAPTURE_TYPES.map(({ type, label, hint }) => (
-                              <button
-                                key={type}
-                                title={hint}
-                                onClick={() => {
-                                  setItemType(type);
-                                  setTypeTouched(true);
-                                }}
-                                className={cn(
-                                  "px-2.5 py-1 rounded-lg text-[11px] font-medium border transition-all",
-                                  itemType === type
-                                    ? "border-primary bg-primary/10 text-foreground"
-                                    : "border-border/60 text-muted-foreground hover:border-border hover:text-foreground"
-                                )}
-                              >
-                                {label}
-                              </button>
-                            ))}
-                          </div>
-
-                          {lookupOnly ? (
-                            <div className="space-y-2 pt-0.5">
-                              <p className="text-[11px] text-muted-foreground leading-relaxed">
-                                La sesión está pausada: esto es solo para mirar — no se
-                                guarda ni suma tiempo.
-                              </p>
-                              <div className="flex gap-2">
-                                <Button
-                                  onClick={resumeAndSave}
-                                  disabled={!expression.trim()}
-                                  variant="outline"
-                                  className="flex-1 rounded-xl h-9 font-semibold border-primary/30 text-primary hover:bg-primary/10 hover:text-primary"
-                                >
-                                  <Play className="h-3.5 w-3.5 mr-1.5 fill-current" />
-                                  Reanudar y guardar
-                                </Button>
-                                <Button
-                                  onClick={() => closeCapture(true)}
-                                  variant="ghost"
-                                  className="rounded-xl h-9"
-                                >
-                                  Cerrar
-                                </Button>
-                              </div>
-                            </div>
-                          ) : alreadySaved ? (
-                            <div className="flex items-center gap-2 pt-0.5">
-                              <span className="flex items-center gap-1.5 text-[11px] font-medium text-emerald-500">
-                                <Check className="h-3.5 w-3.5" />
-                                Guardada
-                              </span>
-                              <div className="flex-1" />
-                              <Button
-                                onClick={() => closeCapture(true)}
-                                className="rounded-xl h-9 font-semibold"
-                              >
-                                <Play className="h-3.5 w-3.5 mr-1.5 fill-current" />
-                                Seguir
-                              </Button>
-                            </div>
                           ) : (
-                            <div className="flex gap-2 pt-0.5">
+                            <p className="text-[13px] text-muted-foreground">
+                              Escribe la expresión que quieres guardar.
+                            </p>
+                          )}
+                        </div>
+
+                        {/*
+                          La salida, siempre a la vista. Era lo que quedaba
+                          debajo del pliegue: había que desplazarse para llegar
+                          a guardar, que es justo lo que uno viene a hacer.
+                        */}
+                        <div className="flex w-[9.5rem] shrink-0 flex-col justify-center gap-2 border-l border-border/50 pl-3 lg:pl-4">
+                          {lookupOnly ? (
+                            <>
+                              <p className="text-[10px] leading-snug text-muted-foreground">
+                                En pausa esto es solo para mirar.
+                              </p>
                               <Button
-                                onClick={submitCapture}
+                                onClick={resumeAndSave}
                                 disabled={!expression.trim()}
-                                className="flex-1 rounded-xl h-9 font-semibold"
+                                className="h-9 w-full rounded-xl font-semibold"
                               >
-                                Guardar
+                                <Play className="mr-1.5 h-3.5 w-3.5 fill-current" />
+                                Reanudar
                               </Button>
                               <Button
                                 onClick={() => closeCapture(true)}
                                 variant="ghost"
-                                className="rounded-xl h-9"
+                                className="h-8 w-full rounded-xl text-xs"
                               >
-                                Cancelar
+                                Cerrar
                               </Button>
-                            </div>
+                            </>
+                          ) : alreadySaved ? (
+                            <>
+                              <span className="flex items-center gap-1.5 text-[11px] font-medium text-emerald-500">
+                                <Check className="h-3.5 w-3.5" />
+                                Guardada
+                              </span>
+                              <Button
+                                onClick={() => closeCapture(true)}
+                                className="h-9 w-full rounded-xl font-semibold"
+                              >
+                                <Play className="mr-1.5 h-3.5 w-3.5 fill-current" />
+                                Seguir
+                              </Button>
+                            </>
+                          ) : (
+                            <>
+                              <Button
+                                onClick={submitCapture}
+                                disabled={!expression.trim()}
+                                className="h-9 w-full rounded-xl font-semibold"
+                              >
+                                Guardar
+                                <kbd className="ml-2 rounded bg-black/15 px-1 text-[10px] font-mono">
+                                  ⏎
+                                </kbd>
+                              </Button>
+                              <div className="flex gap-1.5">
+                                <Button
+                                  onClick={() => {
+                                    setEditingTerm((v) => !v);
+                                    requestAnimationFrame(() =>
+                                      expressionRef.current?.focus()
+                                    );
+                                  }}
+                                  variant="ghost"
+                                  title="Corregir la expresión"
+                                  className="h-8 flex-1 rounded-xl px-0 text-xs"
+                                >
+                                  <Pencil className="h-3.5 w-3.5" />
+                                </Button>
+                                <Button
+                                  onClick={() => closeCapture(true)}
+                                  variant="ghost"
+                                  className="h-8 flex-1 rounded-xl text-xs"
+                                >
+                                  Cerrar
+                                </Button>
+                              </div>
+                            </>
                           )}
                         </div>
-                      ) : (
+                      </>
+                    ) : (
+                      <>
+                        {/* Cómo se pregunta */}
+                        <div className="flex w-[13rem] shrink-0 flex-col justify-center gap-2">
                           <Button
                             onClick={openCapture}
                             variant="outline"
-                            className="w-full rounded-xl h-10 border-dashed font-medium"
+                            className="h-9 w-full rounded-xl border-dashed font-medium"
                           >
                             {isPaused ? (
-                              <>
-                                <Search className="h-4 w-4 mr-2" />
-                                Buscar una palabra
-                              </>
+                              <Search className="mr-2 h-4 w-4" />
                             ) : (
-                              <>
-                                <Plus className="h-4 w-4 mr-2" />
-                                Nueva expresión
-                              </>
+                              <Plus className="mr-2 h-4 w-4" />
                             )}
-                            <kbd className="ml-2 px-1.5 py-0.5 rounded bg-muted text-[10px] font-mono">
+                            {isPaused ? "Buscar una palabra" : "Nueva expresión"}
+                            <kbd className="ml-2 rounded bg-muted px-1.5 py-0.5 font-mono text-[10px]">
                               E
                             </kbd>
                           </Button>
-                      )}
-                    </div>
+                          <p className="text-[11px] leading-relaxed text-muted-foreground">
+                            O toca cualquier palabra del subtítulo: el video se
+                            detiene solo y su significado aparece acá.
+                          </p>
+                        </div>
 
-                    {/* Lo que llevas juntado en esta sesión */}
-                    <div className="min-h-0 min-w-0 flex-1 overflow-y-auto border-t border-border/50 pt-3 lg:border-l lg:border-t-0 lg:pl-4 lg:pt-0">
+                        {/*
+                          Lo que llevas juntado. Vive solo en este momento —
+                          cuando no hay nada que preguntar— porque compitiendo
+                          con la respuesta le robaba el espacio a lo que sí
+                          importa. Cada una vuelve a su minuto al tocarla.
+                        */}
+                        <div className="min-w-0 flex-1 overflow-y-auto border-l border-border/50 pl-3 lg:pl-4">
                           {captured.length === 0 ? (
-                            <p className="mx-auto max-w-xs py-6 text-center text-[11px] leading-relaxed text-muted-foreground">
-                              {isPaused
-                                ? "En pausa puedes mirar cualquier palabra de los subtítulos: se ve su significado, pero no se guarda hasta que reanudes."
-                                : "Haz clic en cualquier palabra de los subtítulos. El video se pausa solo y vuelve a andar al guardar."}
+                            <p className="flex h-full items-center text-[11px] text-muted-foreground">
+                              Todavía no has guardado nada en esta sesión.
                             </p>
                           ) : (
-                            <div className="grid gap-1.5 xl:grid-cols-2">
+                            <div className="flex flex-wrap content-start gap-1.5">
                               {captured
                                 .slice()
                                 .reverse()
-                                .map((item) => {
-                                  // El significado en español manda; el inglés queda
-                                  // debajo porque es el que enseña el matiz.
-                                  const sense = item.meaning_es ?? item.meaning;
-                                  const canOpen = !!(sense || item.context);
-                                  const isOpen = openItem === item.sighting_id;
-
-                                  return (
-                                    <div
-                                      key={item.sighting_id}
-                                      className={cn(
-                                        "rounded-xl border bg-muted/20 transition-all duration-200",
-                                        item.pending && "opacity-60",
-                                        isOpen
-                                          ? "border-border bg-muted/40"
-                                          : "border-border/50 hover:border-border hover:bg-muted/40"
-                                      )}
-                                    >
-                                      <div className="flex items-baseline gap-2 px-3 py-2">
-                                        <button
-                                          onClick={() =>
-                                            setOpenItem(isOpen ? null : item.sighting_id)
-                                          }
-                                          disabled={!canOpen}
-                                          aria-expanded={canOpen ? isOpen : undefined}
-                                          className="flex-1 min-w-0 flex items-baseline gap-1.5 text-left disabled:cursor-default"
-                                        >
-                                          <span className="text-sm font-medium truncate shrink-0 max-w-[55%]">
-                                            {item.expression}
-                                          </span>
-                                          {item.translation_es && (
-                                            <>
-                                              <span className="text-[10px] text-muted-foreground shrink-0">
-                                                ·
-                                              </span>
-                                              <span className="text-xs text-primary font-medium truncate">
-                                                {item.translation_es}
-                                              </span>
-                                            </>
-                                          )}
-                                          {canOpen && (
-                                            <ChevronDown
-                                              className={cn(
-                                                "h-3 w-3 shrink-0 self-center text-muted-foreground transition-transform",
-                                                isOpen && "rotate-180"
-                                              )}
-                                            />
-                                          )}
-                                        </button>
-
-                                        {item.timestamp_seconds !== null &&
-                                          (hasPlayer ? (
-                                            <button
-                                              onClick={() => {
-                                                playerRef.current?.seekTo(
-                                                  item.timestamp_seconds!
-                                                );
-                                                onActivity();
-                                              }}
-                                              title="Volver a ese momento"
-                                              className="text-[10px] text-muted-foreground tabular-nums shrink-0 hover:text-primary transition-colors"
-                                            >
-                                              {formatClock(item.timestamp_seconds)}
-                                            </button>
-                                          ) : (
-                                            <span className="text-[10px] text-muted-foreground tabular-nums shrink-0">
-                                              {formatClock(item.timestamp_seconds)}
-                                            </span>
-                                          ))}
-                                      </div>
-
-                                      {!item.is_new && (
-                                        <span className="text-[10px] text-violet-500 flex items-center gap-1 px-3 pb-2 -mt-1">
-                                          <Eye className="h-2.5 w-2.5" />
-                                          ya la tenías
-                                        </span>
-                                      )}
-
-                                      {isOpen && (
-                                        <div className="px-3 pb-2.5 pt-2 space-y-1.5 border-t border-border/40">
-                                          {sense && (
-                                            <p className="text-[11px] leading-relaxed">
-                                              {sense}
-                                            </p>
-                                          )}
-                                          {item.meaning &&
-                                            item.meaning_es &&
-                                            item.meaning !== item.meaning_es && (
-                                              <p className="text-[11px] leading-relaxed text-muted-foreground italic">
-                                                {item.meaning}
-                                              </p>
-                                            )}
-                                          {item.context && (
-                                            <p className="text-[11px] text-muted-foreground italic border-l-2 border-primary/30 pl-2">
-                                              “{item.context}”
-                                            </p>
-                                          )}
-                                        </div>
-                                      )}
-                                    </div>
-                                  );
-                                })}
+                                .map((item) => (
+                                  <button
+                                    key={item.sighting_id}
+                                    onClick={() => {
+                                      if (item.timestamp_seconds === null) return;
+                                      playerRef.current?.seekTo(
+                                        item.timestamp_seconds
+                                      );
+                                      onActivity();
+                                    }}
+                                    title={
+                                      item.timestamp_seconds !== null
+                                        ? `Volver a ${formatClock(item.timestamp_seconds)}`
+                                        : undefined
+                                    }
+                                    className={cn(
+                                      "flex max-w-[15rem] items-baseline gap-1.5 rounded-lg border px-2 py-1",
+                                      "border-border/50 bg-muted/20 transition-colors",
+                                      "hover:border-border hover:bg-muted/40",
+                                      item.pending && "opacity-60"
+                                    )}
+                                  >
+                                    <span className="truncate text-xs font-medium">
+                                      {item.expression}
+                                    </span>
+                                    {item.translation_es && (
+                                      <span className="truncate text-[11px] text-primary">
+                                        {item.translation_es}
+                                      </span>
+                                    )}
+                                  </button>
+                                ))}
                             </div>
                           )}
-                    </div>
+                        </div>
+                      </>
+                    )}
                   </div>
                 </div>
               </div>

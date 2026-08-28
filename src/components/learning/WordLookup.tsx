@@ -12,6 +12,8 @@ interface WordLookupProps {
   onUseDefinition: (definition: string) => void;
   /** Se avisa hacia arriba para guardarla junto con la expresión. */
   onTranslation?: (translation: string | null) => void;
+  /** En banda: la identidad a la izquierda, el sentido a la derecha. */
+  compact?: boolean;
   className?: string;
 }
 
@@ -29,6 +31,7 @@ export function WordLookup({
   contextSentence,
   onUseDefinition,
   onTranslation,
+  compact,
   className,
 }: WordLookupProps) {
   const { data, isLoading, isError } = useDictionary(term);
@@ -77,6 +80,24 @@ export function WordLookup({
   useEffect(() => {
     onTranslation?.(termTranslation);
   }, [termTranslation, onTranslation]);
+
+  /**
+   * El significado se toma solo de la primera acepción.
+   *
+   * Antes había que hacer clic en una definición para "usarla": un paso de más
+   * justo cuando lo único que quieres es guardar y volver al video. Tocar otra
+   * acepción sigue funcionando, para las palabras donde la primera no es la
+   * que se dijo.
+   */
+  const suggested = senses[0]
+    ? (inSpanish ? translations[senses[0].definition] : null) ??
+      senses[0].definition
+    : null;
+  const useDefinition = useRef(onUseDefinition);
+  useDefinition.current = onUseDefinition;
+  useEffect(() => {
+    if (suggested) useDefinition.current(suggested);
+  }, [suggested]);
 
   const say = (text: string) => (inSpanish ? translations[text] ?? text : text);
 
@@ -140,6 +161,92 @@ export function WordLookup({
       return !prev;
     });
   };
+
+  /** El sentido: las acepciones y la frase donde apareció, ya en español. */
+  const meanings = (
+    <div className="min-w-0 space-y-1">
+      {senses.map((sense, index) => (
+        <button
+          key={index}
+          onClick={() => onUseDefinition(say(sense.definition))}
+          title="Usar esta acepción como significado"
+          className="group block w-full text-left"
+        >
+          <p className="line-clamp-2 text-[13px] leading-snug">
+            {sense.partOfSpeech && (
+              <span className="mr-1.5 italic text-muted-foreground">
+                {sense.partOfSpeech}
+              </span>
+            )}
+            <span className="transition-colors group-hover:text-primary">
+              {say(sense.definition)}
+            </span>
+          </p>
+        </button>
+      ))}
+
+      {contextSentence && translations[contextSentence.trim()] && (
+        <p className="line-clamp-2 border-l-2 border-primary/30 pl-2 text-[11px] italic leading-snug text-muted-foreground">
+          “{inSpanish ? translations[contextSentence.trim()] : contextSentence}”
+        </p>
+      )}
+    </div>
+  );
+
+  /**
+   * La banda: la palabra a la izquierda, lo que significa a la derecha.
+   *
+   * Apilada era una tarjeta que no cabía en la fila bajo el video, así que
+   * había que desplazarse para llegar al botón de guardar. Leer y guardar es
+   * un gesto, no un recorrido.
+   */
+  if (compact) {
+    return (
+      <div className={cn("flex min-h-0 gap-4", className)}>
+        <div className="w-[12rem] shrink-0">
+          <div className="flex items-baseline gap-2">
+            <p className="truncate text-lg font-semibold leading-tight">
+              {data?.term ?? term}
+            </p>
+            <button
+              onClick={toggleLang}
+              title={inSpanish ? "Ver en inglés" : "Ver en español"}
+              className={cn(
+                "ml-auto shrink-0 rounded-md px-1.5 py-0.5 text-[10px] font-bold transition-colors",
+                inSpanish
+                  ? "bg-primary/15 text-primary"
+                  : "text-muted-foreground hover:text-foreground"
+              )}
+            >
+              {inSpanish ? "ES" : "EN"}
+            </button>
+          </div>
+
+          <p className="truncate text-[15px] font-medium leading-tight text-primary">
+            {termTranslation ?? (translating ? "traduciendo…" : " ")}
+          </p>
+
+          <div className="mt-1">{pronunciation}</div>
+        </div>
+
+        <div className="min-w-0 flex-1 border-l border-border/50 pl-4">
+          {isLoading ? (
+            <p className="flex items-center gap-2 text-xs text-muted-foreground">
+              <Loader2 className="h-3.5 w-3.5 animate-spin" />
+              Buscando…
+            </p>
+          ) : senses.length ? (
+            meanings
+          ) : (
+            <p className="text-[13px] leading-snug text-muted-foreground">
+              El diccionario no la tiene. Guárdala igual con su frase: el
+              contexto suele enseñar más que la definición.
+            </p>
+          )}
+        </div>
+      </div>
+    );
+  }
 
   if (isLoading) {
     return (
