@@ -89,8 +89,14 @@ const STUDIO_HEIGHT = "lg:h-[calc(100vh-6.5rem)]";
  * pista de subtítulos—; los controles ya no cuestan nada porque viven dentro
  * del marco.
  */
-/** A cuántos píxeles del pie del video aparecen los controles. */
-const CONTROLS_REACH = 56;
+/**
+ * A cuántos píxeles del pie del video la barra se vuelve barra.
+ *
+ * Poco: unos pocos píxeles por encima de la línea, lo justo para no obligarte
+ * a apuntar. Con un margen grande se despertaba sola mientras leías el
+ * subtítulo, que ocupa la parte de abajo del cuadro.
+ */
+const BAR_REACH = 20;
 
 const VIDEO_MAX_WIDTH = "calc((100vh - 18rem) * 16 / 9)";
 
@@ -531,11 +537,12 @@ export function SessionStudio({
   const [openItem, setOpenItem] = useState<string | null>(null);
 
   /**
-   * Si la mano está al pie del video. Es lo que decide si aparecen los
-   * controles: leyendo el subtítulo uno está dentro del cuadro todo el rato, y
-   * que se levante la fila entera por eso es el reproductor interrumpiendo.
+   * Si la mano está sobre la barra de progreso. Nada más se levanta con eso:
+   * leyendo el subtítulo uno está dentro del cuadro todo el rato, y que el
+   * reproductor reaccione a eso es pedir atención justo cuando estás en otra
+   * cosa. Solo la barra, y solo cuando la mano está encima.
    */
-  const [nearControls, setNearControls] = useState(false);
+  const [nearBar, setNearBar] = useState(false);
 
   return (
     <div className={cn("flex flex-col", STUDIO_HEIGHT)} onPointerDown={onActivity}>
@@ -543,7 +550,10 @@ export function SessionStudio({
       <div
         className={cn(
           "flex-1 min-h-0 grid gap-3",
-          hasPlayer ? "lg:grid-cols-12" : "lg:grid-cols-1"
+          // La columna de la derecha es tan ancha como necesita ser: sus dos
+          // tarjetas son una lista de acciones, no contenido. Todo lo que deja
+          // de ocupar se lo lleva el video, que es lo único que se mira.
+          hasPlayer ? "lg:grid-cols-[minmax(0,1fr)_14.5rem]" : "lg:grid-cols-1"
         )}
       >
         {/* Columna del video */}
@@ -562,9 +572,9 @@ export function SessionStudio({
               <div
                 onPointerMove={(event) => {
                   const rect = event.currentTarget.getBoundingClientRect();
-                  setNearControls(rect.bottom - event.clientY <= CONTROLS_REACH);
+                  setNearBar(rect.bottom - event.clientY <= BAR_REACH);
                 }}
-                onPointerLeave={() => setNearControls(false)}
+                onPointerLeave={() => setNearBar(false)}
                 className="group relative aspect-video w-full shrink-0 overflow-hidden rounded-2xl border border-border/60 bg-black"
               >
                 <YouTubePlayer
@@ -614,7 +624,7 @@ export function SessionStudio({
                   word={spot.word}
                   onPick={pickFromTranscript}
                   markOf={markOf}
-                  lifted={nearControls || !isVideoPlaying}
+                  lifted={!isVideoPlaying}
                 />
 
                 <PlayerTransport
@@ -628,18 +638,7 @@ export function SessionStudio({
                     playerRef.current?.seekTo(seconds);
                     onActivity();
                   }}
-                  onSeekBy={(seconds) => {
-                    playerRef.current?.seekBy(seconds);
-                    onActivity();
-                  }}
-                  captionOn={captionOn}
-                  onToggleCaption={toggleCaption}
-                  near={nearControls}
-                  onToggle={() => {
-                    playerRef.current?.toggle();
-                    onActivity();
-                  }}
-                  onRepeatLine={repeatLine}
+                  near={nearBar}
                 />
               </div>
 
@@ -1012,7 +1011,7 @@ export function SessionStudio({
         )}
 
         {/* Columna derecha: la sesión, los subtítulos y lo que capturas */}
-        <div className="flex flex-col gap-3 min-h-0 min-w-0 lg:col-span-3">
+        <div className="flex flex-col gap-3 min-h-0 min-w-0">
           <VideoActionsPanel
             state={state}
             title={session.content_title}

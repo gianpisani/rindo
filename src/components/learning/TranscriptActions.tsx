@@ -45,7 +45,7 @@ export function TranscriptActions({
       </div>
 
       {hasTranscript ? (
-        <div className="mt-2.5 flex flex-wrap gap-1.5">
+        <div className="mt-2.5 flex flex-col gap-1.5">
           <ActionChip
             onClick={onOpenText}
             icon={<List className="h-3 w-3" />}
@@ -108,6 +108,13 @@ export function TranscriptActions({
   );
 }
 
+/**
+ * El mismo botón que la tarjeta de la sesión.
+ *
+ * Eran chips chicos envueltos en dos filas y la de arriba eran botones altos:
+ * dos lenguajes para lo mismo, pegados uno encima del otro. Ahora la columna
+ * entera es una sola lista de acciones, todas del mismo porte.
+ */
 function ActionChip({
   onClick,
   icon,
@@ -119,7 +126,7 @@ function ActionChip({
   onClick: () => void;
   icon: React.ReactNode;
   label: string;
-  title: string;
+  title?: string;
   active?: boolean;
   danger?: boolean;
 }) {
@@ -128,9 +135,10 @@ function ActionChip({
       onClick={onClick}
       title={title}
       className={cn(
-        "flex items-center gap-1.5 rounded-lg border px-2 py-1 text-[11px] font-medium transition-colors",
+        "flex h-9 items-center gap-2 rounded-xl border px-3 text-xs font-medium",
+        "transition-colors",
         active
-          ? "border-primary/40 bg-primary/10 text-primary"
+          ? "border-primary/30 text-primary hover:bg-primary/10"
           : "border-border/60 text-muted-foreground hover:border-border hover:text-foreground",
         danger && "hover:border-destructive/40 hover:text-destructive"
       )}

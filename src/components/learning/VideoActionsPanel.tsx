@@ -172,8 +172,12 @@ export function VideoActionsPanel({
         eran texto suelto bajo dos botones, y eso las hacía parecer notas al
         pie: son acciones, y una de ellas borra la sesión. Lo que jerarquiza es
         el color, no el tamaño.
+
+        En una columna y no en dos: una lista de acciones se lee de arriba
+        abajo, y así la tarjeta necesita la mitad del ancho —que se lo queda
+        el video.
       */}
-      <div className="mt-3.5 grid grid-cols-2 gap-2">
+      <div className="mt-3.5 flex flex-col gap-1.5">
         {isPaused ? (
           <ActionButton
             onClick={onResume}
@@ -222,7 +226,6 @@ export function VideoActionsPanel({
             title="Dejarlo como si nunca lo hubieras visto"
             tone="muted"
             danger
-            wide
           />
         )}
       </div>
@@ -240,7 +243,6 @@ function ActionButton({
   title,
   tone,
   danger,
-  wide,
 }: {
   onClick: () => void;
   icon: ReactNode;
@@ -248,14 +250,13 @@ function ActionButton({
   title?: string;
   tone: "primary" | "accent" | "neutral" | "muted";
   danger?: boolean;
-  wide?: boolean;
 }) {
   return (
     <button
       onClick={onClick}
       title={title}
       className={cn(
-        "flex h-9 items-center justify-center gap-1.5 rounded-xl border text-xs font-medium",
+        "flex h-9 items-center gap-2 rounded-xl border px-3 text-xs font-medium",
         "transition-colors",
         tone === "primary" &&
           "border-primary bg-primary text-primary-foreground hover:bg-primary/90",
@@ -264,8 +265,7 @@ function ActionButton({
         tone === "neutral" && "border-border text-foreground hover:bg-muted",
         tone === "muted" &&
           "border-border/60 text-muted-foreground hover:border-border hover:text-foreground",
-        danger && "hover:border-destructive/40 hover:text-destructive",
-        wide && "col-span-2"
+        danger && "hover:border-destructive/40 hover:text-destructive"
       )}
     >
       {icon}

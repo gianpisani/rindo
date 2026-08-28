@@ -5,18 +5,14 @@ import {
   useState,
   type MutableRefObject,
   type PointerEvent as ReactPointerEvent,
-  type ReactNode,
 } from "react";
+import { HelpCircle } from "lucide-react";
 import {
-  Captions,
-  CaptionsOff,
-  HelpCircle,
-  Pause,
-  Play,
-  Repeat,
-  RotateCcw,
-  RotateCw,
-} from "lucide-react";
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { cn } from "@/lib/utils";
 import { formatClock } from "@/lib/learning-config";
 import { activeCueIndex, type Cue } from "@/lib/transcript";
@@ -32,28 +28,22 @@ interface PlayerTransportProps {
   /** Segundos donde capturaste algo: quedan clavados como hitos. */
   markers: number[];
   onSeek: (seconds: number) => void;
-  onSeekBy: (seconds: number) => void;
-  onToggle: () => void;
-  onRepeatLine: () => void;
-  /** El subtítulo sobre el video, encendido o no. */
-  captionOn: boolean;
-  onToggleCaption: () => void;
-  /** La mano está cerca del pie del video: recién ahí aparecen los controles. */
+  /** La mano está sobre la barra —o a unos píxeles— y no en cualquier parte. */
   near: boolean;
 }
 
 /**
- * Los controles, dentro del marco del video.
+ * Mientras el video corre, esto es una línea de dos píxeles al pie. Nada más.
  *
- * Estaban en una fila debajo y costaban sesenta píxeles de alto. En esta
- * pantalla el video está limitado por el alto —su ancho sale de ahí—, así que
- * esos sesenta píxeles no eran una fila: eran un video un cuarto más chico.
+ * Antes había una fila de botones que subía con el puntero en cualquier parte
+ * del cuadro. Con el subtítulo leyéndose encima del video, uno está adentro
+ * del cuadro todo el rato: la fila se levantaba mientras leías, que es el
+ * reproductor pidiendo atención justo cuando estás en otra cosa.
  *
- * Así que la fila desaparece y queda lo único que informa algo cuando no estás
- * tocando nada: una línea de tres píxeles al pie con el relieve del video. Al
- * acercar el puntero —o al pausar, que es cuando de verdad los buscas— la línea
- * engorda, aparece la aguja y sube la fila entera. Ni un píxel de la pantalla
- * gastado en botones que no estás mirando.
+ * Así que no hay fila. La barra engorda solo si la mano está sobre ella, y no
+ * arrastra nada hacia arriba. Los diez segundos, repetir la frase y esconder
+ * el subtítulo siguen ahí —son teclas— y viven explicados detrás del signo de
+ * pregunta, que aparece con el video en pausa: cuando corre, sobra.
  */
 export function PlayerTransport({
   playbackRef,
@@ -63,25 +53,15 @@ export function PlayerTransport({
   heat,
   markers,
   onSeek,
-  onSeekBy,
-  onToggle,
-  onRepeatLine,
-  captionOn,
-  onToggleCaption,
   near,
 }: PlayerTransportProps) {
   const seconds = useSmoothPosition(playbackRef);
   const trackRef = useRef<HTMLDivElement>(null);
   const [hoverRatio, setHoverRatio] = useState<number | null>(null);
 
-  /**
-   * Cuándo aparecen los controles.
-   *
-   * No con el puntero en cualquier parte del video: leyendo el subtítulo uno
-   * está adentro del cuadro todo el rato, y que se levante la fila entera cada
-   * vez es el video pidiendo atención mientras tú estás en otra cosa. Aparecen
-   * cuando la mano baja al pie —ahí sí los estás buscando— o cuando pausaste.
-   */
+  const [shortcutsOpen, setShortcutsOpen] = useState(false);
+
+  /** La barra se vuelve barra: con la mano encima, o con el video detenido. */
   const revealed = !playing || near;
 
   const ratio = durationSeconds > 0 ? Math.min(seconds / durationSeconds, 1) : 0;
@@ -122,9 +102,10 @@ export function PlayerTransport({
       <div
         aria-hidden
         className={cn(
-          "absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/80 via-black/30 to-transparent",
+          "absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/75 via-black/25 to-transparent",
           "transition-all duration-300",
-          revealed ? "h-28 opacity-100" : "h-12 opacity-0"
+          // Mientras corre, ni un píxel de velo: el subtítulo trae el suyo.
+          playing ? "h-12 opacity-0" : "h-20 opacity-100"
         )}
       />
 
@@ -143,9 +124,9 @@ export function PlayerTransport({
           tabIndex={0}
           className={cn(
             "relative flex h-4 cursor-pointer touch-none items-end transition-all duration-200",
-            // A ras del borde mientras corre: pegada, sin margen y sin esquinas,
-            // que es como no estar. Al acercarte se despega y se vuelve barra.
-            revealed ? "mx-4 mb-1" : "mx-0 mb-0"
+            // Nunca se aparta de los bordes: crece hacia arriba y nada más.
+            // Los cuatro píxeles de abajo son para que quepa la aguja.
+            revealed ? "mb-1" : "mb-0"
           )}
         >
           <div
@@ -211,155 +192,74 @@ export function PlayerTransport({
           )}
         </div>
 
-        {/* ── Los botones ────────────────────────────────── */}
-        <div
-          className={cn(
-            "flex items-center gap-0.5 overflow-hidden px-2 transition-all duration-200",
-            revealed ? "h-11 opacity-100" : "h-0 opacity-0"
-          )}
-        >
-          <TransportButton
-            onClick={onToggle}
-            label={playing ? "Pausar el video" : "Reproducir"}
-            icon={
-              playing ? (
-                <Pause className="h-4 w-4 fill-current" />
-              ) : (
-                <Play className="h-4 w-4 translate-x-[1px] fill-current" />
-              )
-            }
-          />
-          <TransportButton
-            onClick={() => onSeekBy(-10)}
-            label="Retroceder 10 segundos"
-            icon={<RotateCcw className="h-3.5 w-3.5" />}
-            text="10s"
-          />
-          <TransportButton
-            onClick={() => onSeekBy(10)}
-            label="Adelantar 10 segundos"
-            icon={<RotateCw className="h-3.5 w-3.5" />}
-            text="10s"
-          />
-          <TransportButton
-            onClick={onRepeatLine}
-            label="Repetir la frase"
-            icon={<Repeat className="h-3.5 w-3.5" />}
-            text="Repetir frase"
-            shortcut="R"
-          />
-          <TransportButton
-            onClick={onToggleCaption}
-            label={captionOn ? "Esconder el subtítulo" : "Mostrar el subtítulo"}
-            icon={
-              captionOn ? (
-                <Captions className="h-3.5 w-3.5" />
-              ) : (
-                <CaptionsOff className="h-3.5 w-3.5" />
-              )
-            }
-            shortcut="C"
-            muted={!captionOn}
-          />
+      </div>
 
-          <span className="ml-2 shrink-0 text-[11px] tabular-nums text-white/70">
+      {/*
+        En pausa aparece lo mínimo: dónde vas y dónde preguntar. Los botones no
+        vuelven —lo que hacían son teclas, y las teclas se aprenden una vez.
+      */}
+      {!playing && (
+        <div className="pointer-events-auto absolute inset-x-0 bottom-6 flex items-end justify-between px-4">
+          <span className="text-[11px] font-medium tabular-nums text-white/70">
             {formatClock(seconds)}
-            <span className="text-white/40">
+            <span className="text-white/35">
               {" / "}
               {formatClock(durationSeconds)}
             </span>
           </span>
 
-          <div className="flex-1" />
-
-          <ShortcutHint />
+          <button
+            onClick={() => setShortcutsOpen(true)}
+            aria-label="Cómo se maneja esto"
+            title="Cómo se maneja esto"
+            className={cn(
+              "flex size-7 items-center justify-center rounded-full",
+              "bg-black/40 text-white/60 backdrop-blur-sm transition-colors",
+              "hover:bg-black/60 hover:text-white"
+            )}
+          >
+            <HelpCircle className="h-4 w-4" />
+          </button>
         </div>
-      </div>
+      )}
+
+      <Dialog open={shortcutsOpen} onOpenChange={setShortcutsOpen}>
+        <DialogContent className="max-w-sm">
+          <DialogHeader>
+            <DialogTitle className="text-base">Cómo se maneja esto</DialogTitle>
+          </DialogHeader>
+
+          <div className="space-y-2.5">
+            {KEYS.map(([key, what]) => (
+              <div key={key} className="flex items-baseline gap-3">
+                <kbd className="min-w-16 shrink-0 rounded-md border border-border/60 bg-muted px-2 py-1 text-center text-[11px] font-semibold">
+                  {key}
+                </kbd>
+                <span className="text-sm text-muted-foreground">{what}</span>
+              </div>
+            ))}
+          </div>
+
+          <p className="text-xs leading-relaxed text-muted-foreground">
+            Y lo principal no es una tecla: toca cualquier palabra del subtítulo
+            y el video se detiene solo para mostrarte qué significa, justo
+            debajo. Al guardarla vuelve a andar.
+          </p>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
 
-/**
- * Los atajos, guardados.
- *
- * Escritos al pie eran cuatro líneas de texto permanentes encima de la cara de
- * alguien, para algo que se aprende una vez. Detrás de un signo de pregunta
- * siguen estando a un gesto y dejan de ensuciar el cuadro.
- */
-function ShortcutHint() {
-  return (
-    <span className="group/hint relative hidden shrink-0 lg:block">
-      <button
-        aria-label="Atajos de teclado"
-        className="flex size-7 items-center justify-center rounded-lg text-white/40 transition-colors hover:bg-white/15 hover:text-white"
-      >
-        <HelpCircle className="h-3.5 w-3.5" />
-      </button>
+/** Lo que se puede hacer sin mover la mano de donde está. */
+const KEYS: [string, string][] = [
+  ["Espacio", "reproducir o pausar — o toca el video"],
+  ["← →", "diez segundos atrás o adelante"],
+  ["R", "repetir la frase que acaba de sonar"],
+  ["E", "capturar una expresión a mano"],
+  ["C", "esconder o mostrar el subtítulo"],
+];
 
-      <span
-        className={cn(
-          "pointer-events-none absolute bottom-full right-0 mb-2 w-max",
-          "rounded-lg bg-black/90 px-3 py-2 shadow-lg backdrop-blur-sm",
-          "opacity-0 transition-opacity duration-150",
-          "group-hover/hint:opacity-100 group-focus-within/hint:opacity-100"
-        )}
-      >
-        {[
-          ["Espacio", "reproducir o pausar"],
-          ["← →", "10 segundos"],
-          ["R", "repetir la frase"],
-          ["E", "capturar una expresión"],
-          ["C", "esconder el subtítulo"],
-        ].map(([key, what]) => (
-          <span key={key} className="flex items-baseline gap-2 whitespace-nowrap">
-            <kbd className="min-w-8 rounded bg-white/15 px-1.5 py-0.5 text-center text-[10px] font-semibold text-white">
-              {key}
-            </kbd>
-            <span className="text-[11px] text-white/70">{what}</span>
-          </span>
-        ))}
-      </span>
-    </span>
-  );
-}
-
-function TransportButton({
-  onClick,
-  label,
-  icon,
-  text,
-  shortcut,
-  muted,
-}: {
-  onClick: () => void;
-  label: string;
-  icon: ReactNode;
-  text?: string;
-  shortcut?: string;
-  /** Apagado: el botón sigue ahí, pero no compite con los que sí actúan. */
-  muted?: boolean;
-}) {
-  return (
-    <button
-      onClick={onClick}
-      aria-label={label}
-      title={shortcut ? `${label} · tecla ${shortcut}` : label}
-      className={cn(
-        "flex h-8 shrink-0 items-center gap-1.5 rounded-lg px-2",
-        muted ? "text-white/40" : "text-white/85",
-        "transition-colors hover:bg-white/15 hover:text-white"
-      )}
-    >
-      {icon}
-      {text && <span className="text-[11px] font-medium">{text}</span>}
-      {shortcut && (
-        <kbd className="hidden rounded bg-white/15 px-1 py-0.5 font-mono text-[9px] text-white/80 sm:inline">
-          {shortcut}
-        </kbd>
-      )}
-    </button>
-  );
-}
 
 /**
  * El relieve se repinta solo cuando cambia el video, nunca con el minuto: si
