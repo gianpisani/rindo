@@ -980,7 +980,7 @@ export function SessionStudio({
           })
         }
         title="¿Reiniciar este video?"
-        description="Se borran todas las sesiones de este video —su tiempo, su comprensión y el minuto donde ibas— y las expresiones que solo aparecen acá. Las que también salen en otros videos se quedan, y la transcripción también."
+        description="Queda como si nunca lo hubieras visto. Se borra su tiempo y las expresiones que solo salieron acá."
         confirmText="Reiniciar"
       />
     </div>
