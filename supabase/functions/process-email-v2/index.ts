@@ -425,7 +425,6 @@ Deno.serve(async (req) => {
     }
 
     const bankDescription = parsed.bankDescription ?? parsed.detail
-    parsed.detail = `🤖 ${parsed.detail}`
 
     console.log('💰 Parseado:', parsed)
 
@@ -444,9 +443,8 @@ Deno.serve(async (req) => {
     // Auto-categorize: check user's history for similar details
     let categoryName = 'Sin categoría'
     try {
-      // Use first meaningful word (skip the 🤖 prefix)
-      const searchDetail = parsed.detail.replace(/^🤖\s*/, '')
-      const searchTerm = searchDetail.split(/[\s(]/)[0]
+      // Use first meaningful word
+      const searchTerm = parsed.detail.split(/[\s(]/)[0]
 
       if (searchTerm && searchTerm.length > 2 && !/^transferencia$/i.test(searchTerm)) {
         const { data: similar } = await supabase
@@ -551,7 +549,7 @@ Deno.serve(async (req) => {
         }
 
         const top3 = weekTxns.slice(0, 3).map(t => ({
-          detail: t.detail.replace(/^🤖\s*/, ''),
+          detail: t.detail.replace(/^[🤖📱]\s*/u, ''),
           amount: t.amount,
         }))
 

@@ -90,6 +90,7 @@ import {
 } from "recharts";
 import type { TooltipProps } from "recharts";
 import type { LucideIcon } from "lucide-react";
+import { getCleanDetail } from "@/lib/import-source";
 
 // ─── Formatters ──────────────────────────────────────────
 
@@ -438,7 +439,7 @@ export function CategoryInsightsView() {
       null as Transaction | null
     );
     if (!top) return null;
-    return { label: top.detail || top.category_name, amount: Number(top.amount) };
+    return { label: getCleanDetail(top.detail) || top.category_name, amount: Number(top.amount) };
   };
 
   // ── Strip de veredictos: últimos 4 meses cerrados ──

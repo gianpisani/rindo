@@ -49,6 +49,7 @@ import {
 } from "recharts";
 import type { TooltipProps } from "recharts";
 import type { CategoryBreakdown } from "@/hooks/useMonthlySummary";
+import { getCleanDetail } from "@/lib/import-source";
 
 // ─── Donut Tooltip ──────────────────────────────────────
 function DonutTooltip({ active, payload }: TooltipProps<number, string>) {
@@ -594,9 +595,9 @@ const Index = () => {
                       <p className={cn("text-sm font-medium truncate leading-snug", isPrivacyMode && "privacy-blur")}>
                         {t.category_name}
                       </p>
-                      {t.detail && (
+                      {getCleanDetail(t.detail) && (
                         <p className={cn("text-xs text-muted-foreground truncate leading-snug", isPrivacyMode && "privacy-blur")}>
-                          {t.detail}
+                          {getCleanDetail(t.detail)}
                         </p>
                       )}
                     </div>

@@ -2,6 +2,7 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { useCallback, useRef } from "react";
+import type { ImportSource } from "@/lib/import-source";
 
 export interface Transaction {
   id: string;
@@ -16,6 +17,11 @@ export interface Transaction {
   installment_id: string | null;
   reimbursement_for_category: string | null;
   bank_description: string | null;
+  /**
+   * Origen de la fila. Los inserts del frontend no la mandan: la pone el
+   * DEFAULT 'manual' de la columna. NULL en las filas previas a la migración.
+   */
+  import_source: ImportSource | null;
 }
 
 export function useTransactions() {
@@ -48,7 +54,7 @@ export function useTransactions() {
   const futureTransactions = allTransactions.filter(t => new Date(t.date) > today);
 
   const addTransaction = useMutation({
-    mutationFn: async (transaction: Omit<Transaction, "id" | "user_id" | "created_at">) => {
+    mutationFn: async (transaction: Omit<Transaction, "id" | "user_id" | "created_at" | "import_source">) => {
       const { data: userData } = await supabase.auth.getUser();
       if (!userData.user) throw new Error("No user found");
 
@@ -254,12 +260,18 @@ export function useTransactions() {
       const { data: userData } = await supabase.auth.getUser();
       if (!userData.user) throw new Error("No user found");
 
+      // Deshacer un borrado devuelve la fila tal como estaba: se restauran
+      // también su origen y la descripción del banco. Sin eso, una fila que
+      // venía de bank-sync volvía marcada como manual y quedaba fuera de la
+      // deduplicación, que se apoya en bank_description.
       const toRestore = lastDeletedRef.current.map(t => ({
         date: t.date,
         detail: t.detail,
         category_name: t.category_name,
         type: t.type,
         amount: t.amount,
+        bank_description: t.bank_description,
+        import_source: t.import_source,
         user_id: userData.user!.id,
       }));
 

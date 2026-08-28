@@ -8,6 +8,7 @@ import { es } from "date-fns/locale";
 import { usePrivacyMode } from "@/hooks/usePrivacyMode";
 import { AnalyzingBadge } from "./AnalyzingBadge";
 import { cn } from "@/lib/utils";
+import { getCleanDetail } from "@/lib/import-source";
 
 const typeIcons = {
   Ingreso: TrendingUp,
@@ -85,9 +86,9 @@ export default function RecentTransactions() {
                           locale: es,
                         })}
                       </p>
-                      {transaction.detail && (
+                      {getCleanDetail(transaction.detail) && (
                         <p className={cn("text-xs text-muted-foreground mt-0.5 truncate", isPrivacyMode && "privacy-blur")}>
-                          {transaction.detail}
+                          {getCleanDetail(transaction.detail)}
                         </p>
                       )}
                     </div>

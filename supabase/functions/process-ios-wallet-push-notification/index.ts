@@ -81,10 +81,9 @@ Deno.serve(async (req) => {
       )
     }
 
-    // Build detail: "📱 Starbucks" or "📱 Starbucks (USD)"
     const divisaUpper = divisa ? divisa.toUpperCase() : 'CLP'
     const divisaSuffix = divisaUpper && divisaUpper !== 'CLP' ? ` (${divisaUpper})` : ''
-    const detail = `📱 ${comercio}${divisaSuffix}`
+    const detail = `${comercio}${divisaSuffix}`
 
     const bankName = banco || 'Banco'
     const transactionDate = new Date().toISOString()
@@ -200,7 +199,7 @@ Deno.serve(async (req) => {
         }
 
         const top3 = weekTxns.slice(0, 3).map(t => ({
-          detail: t.detail.replace(/^[🤖📱]\s*/, ''),
+          detail: t.detail.replace(/^[🤖📱]\s*/u, ''),
           amount: t.amount,
         }))
 
