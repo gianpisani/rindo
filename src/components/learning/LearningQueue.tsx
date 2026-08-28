@@ -1,11 +1,9 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
 import {
   Plus,
   X,
-  Link2,
   Bookmark,
   Captions,
   CheckCircle2,
@@ -14,7 +12,6 @@ import {
 } from "lucide-react";
 import {
   CONTENT_TYPE_CONFIG,
-  parseYouTubeId,
   youTubeThumbnail,
   youTubeWatchUrl,
 } from "@/lib/learning-config";
@@ -22,8 +19,7 @@ import type { QueueItem } from "@/hooks/useLearningQueue";
 import { useSaveQueueDuration } from "@/hooks/useLearningQueue";
 import { useTranscriptStatuses } from "@/hooks/useTranscript";
 import { TranscriptHelpDialog } from "./TranscriptHelpDialog";
-import { useVideoMeta } from "@/hooks/useVideoMeta";
-import { VideoPreview } from "./VideoPreview";
+import { AddVideoDialog } from "./AddVideoDialog";
 import { useTranscript } from "@/hooks/useTranscript";
 import { YouTubePlayer } from "./YouTubePlayer";
 import { ContentCover } from "./ContentCover";
@@ -64,36 +60,11 @@ export function LearningQueue({
 }: LearningQueueProps) {
   const [open, setOpen] = useShelfOpen("queue");
   const [adding, setAdding] = useState(false);
-  const [url, setUrl] = useState("");
   /** Video al que se le están trayendo los subtítulos por adelantado. */
   const [prefetchFor, setPrefetchFor] = useState<string | null>(null);
 
   const { data: withTranscript } = useTranscriptStatuses();
-  const videoId = useMemo(() => parseYouTubeId(url), [url]);
-  const canAdd = url.trim().length > 0;
-
-  const meta = useVideoMeta(videoId);
-
-  const submit = () => {
-    if (!canAdd) return;
-    onAdd({
-      content_type: videoId ? "youtube" : "other",
-      content_url: videoId
-        ? `https://www.youtube.com/watch?v=${videoId}`
-        : url.trim(),
-      external_id: videoId,
-      content_thumbnail: videoId ? youTubeThumbnail(videoId) : null,
-      // La vista previa ya preguntó el título: pasarlo evita que el guardado
-      // vuelva a preguntarlo, que es lo que lo hacía esperar antes de aparecer
-      // en la lista.
-      content_title: videoId ? meta.title : url.trim(),
-      ...(meta.author ? { content_author: meta.author } : {}),
-    });
-    setUrl("");
-    setAdding(false);
-  };
-
-  /** El "+" abre la estantería si estaba cerrada: pegar un link es abrirla. */
+  /** El "+" abre la estantería si estaba cerrada: guardar algo es abrirla. */
   const startAdding = () => {
     setOpen(true);
     setAdding(true);
@@ -107,75 +78,42 @@ export function LearningQueue({
       open={open}
       onOpenChange={setOpen}
       action={
-        !adding && (
-          <Button
-            onClick={startAdding}
-            variant="ghost"
-            size="sm"
-            className="rounded-xl h-7 px-2 text-muted-foreground shrink-0"
-          >
-            <Plus className="h-3.5 w-3.5" />
-          </Button>
-        )
+        <Button
+          onClick={startAdding}
+          variant="ghost"
+          size="sm"
+          className="rounded-xl h-7 px-2 text-muted-foreground shrink-0"
+        >
+          <Plus className="h-3.5 w-3.5" />
+        </Button>
       }
     >
-      {adding && (
-        <div className="space-y-2 mb-3">
-          <div className="relative">
-            <Link2 className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-            <Input
-              value={url}
-              onChange={(e) => setUrl(e.target.value)}
-              onKeyDown={(e) => {
-                if (e.key === "Enter") submit();
-                if (e.key === "Escape") {
-                  setAdding(false);
-                  setUrl("");
-                }
-              }}
-              placeholder="Pega el link del video"
-              autoFocus
-              className="pl-9 h-10 rounded-xl text-sm"
-            />
-          </div>
-          <VideoPreview
-            videoId={videoId}
-            invalid={!videoId && canAdd}
-            title={meta.title}
-            author={meta.author}
-            loading={meta.loading}
-          />
-
-          <div className="flex gap-2">
-            <Button
-              onClick={submit}
-              disabled={!canAdd || isAdding}
-              size="sm"
-              className="rounded-xl flex-1"
-            >
-              {isAdding ? <Loader2 className="h-4 w-4 animate-spin" /> : "Guardar"}
-            </Button>
-            <Button
-              onClick={() => {
-                setAdding(false);
-                setUrl("");
-              }}
-              variant="ghost"
-              size="sm"
-              className="rounded-xl"
-            >
-              Cancelar
-            </Button>
-          </div>
-        </div>
-      )}
+      <AddVideoDialog
+        open={adding}
+        onOpenChange={setAdding}
+        title="Para ver después"
+        description="Te espera hasta que tengas el rato"
+        cta="Guardar"
+        busy={isAdding}
+        onSubmit={(video) => {
+          onAdd({
+            content_type: "youtube",
+            content_url: video.url,
+            external_id: video.videoId,
+            content_thumbnail: youTubeThumbnail(video.videoId),
+            // La vista previa ya preguntó el título: pasarlo evita que el
+            // guardado vuelva a preguntarlo antes de aparecer en la lista.
+            content_title: video.title,
+            ...(video.author ? { content_author: video.author } : {}),
+          });
+          setAdding(false);
+        }}
+      />
 
       {queue.length === 0 ? (
-        !adding && (
-          <p className="text-xs text-muted-foreground py-2">
-            Cuando encuentres algo que quieras ver, pégalo acá y te espera.
-          </p>
-        )
+        <p className="py-2 text-xs text-muted-foreground">
+          Cuando encuentres algo que quieras ver, guárdalo acá y te espera.
+        </p>
       ) : (
         <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
           {queue.map((item) => (

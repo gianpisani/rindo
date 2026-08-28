@@ -37,9 +37,10 @@ export function VideoPreview({
     <div
       className={cn(
         "flex items-center gap-3 rounded-xl border p-2 transition-colors duration-300",
+        // Con el video puesto el marco sobra: la miniatura ya es una forma.
         videoId
-          ? "border-border/60 bg-muted/20"
-          : "border-dashed border-border/50",
+          ? "border-transparent"
+          : "border-dashed border-border/50 bg-muted/10",
         invalid && "border-destructive/40",
         className
       )}
