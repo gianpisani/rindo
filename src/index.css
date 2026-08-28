@@ -522,17 +522,32 @@ Based on Indigo, Blue, Cyan palette
   
   /* ── La frase que estás marcando en los subtítulos ── */
   /*
-   * La banda se levanta con box-shadow y no con padding: el padding le cambia
-   * el alto a la línea y el subtítulo entero pegaría un salto al empezar a
-   * arrastrar. El color va opaco a propósito —las sombras de dos palabras
-   * vecinas se pisan, y en translúcido esos cruces se ven como costuras.
+   * La banda es un solo rectángulo por renglón, medido sobre las palabras que
+   * abarca, y se desliza entre una palabra y la siguiente. El alto se lo da el
+   * box-shadow y no el padding: el padding le cambiaría el alto a la línea y el
+   * subtítulo entero pegaría un salto al empezar a arrastrar.
    */
+  .phrase-band {
+    position: absolute;
+    z-index: -1;
+    background: color-mix(in oklch, var(--primary) 26%, transparent);
+    box-shadow: 0 0 0 0.16em color-mix(in oklch, var(--primary) 26%, transparent);
+    transition:
+      left 150ms cubic-bezier(0.22, 1, 0.36, 1),
+      width 150ms cubic-bezier(0.22, 1, 0.36, 1),
+      top 150ms cubic-bezier(0.22, 1, 0.36, 1),
+      height 150ms cubic-bezier(0.22, 1, 0.36, 1);
+    animation: phrase-band-in 110ms ease-out;
+  }
+
+  @keyframes phrase-band-in {
+    from { opacity: 0; }
+    to   { opacity: 1; }
+  }
+
+  /* La palabra marcada no pinta fondo: se enciende y deja que la banda pase. */
   .phrase-mark {
-    background: color-mix(in oklch, var(--primary) 17%, var(--card));
-    box-shadow: 0 0 0 0.16em color-mix(in oklch, var(--primary) 17%, var(--card));
-    border-radius: 0;
     color: var(--foreground);
-    transition: background-color 120ms ease-out, color 120ms ease-out;
   }
 
   /*
@@ -555,15 +570,11 @@ Based on Indigo, Blue, Cyan palette
     opacity: 0.18;
   }
 
-  /* Solo los extremos se redondean: en el medio la banda tiene que ser una. */
-  .phrase-mark-start {
-    border-top-left-radius: 0.35em;
-    border-bottom-left-radius: 0.35em;
-  }
-
-  .phrase-mark-end {
-    border-top-right-radius: 0.35em;
-    border-bottom-right-radius: 0.35em;
+  @media (prefers-reduced-motion: reduce) {
+    .phrase-band {
+      transition: none;
+      animation: none;
+    }
   }
 
   /* ── Mobile Bottom Tab Bar ── */
