@@ -980,7 +980,7 @@ export function SessionStudio({
           })
         }
         title="¿Reiniciar este video?"
-        description="Queda como si nunca lo hubieras visto. Se borra su tiempo y las expresiones que solo salieron acá."
+        description="Queda como si nunca lo hubieras visto y vuelve a Para ver después. Se borra su tiempo y las expresiones que solo salieron acá."
         confirmText="Reiniciar"
       />
     </div>

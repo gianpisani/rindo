@@ -218,6 +218,8 @@ export interface ResetContentResult {
   sessions: number;
   items: number;
   sightings: number;
+  /** Volvió a quedar pendiente en "para ver después". */
+  queued: number;
 }
 
 /**
@@ -233,7 +235,8 @@ export interface ResetContentResult {
  * NULL— y el diccionario quedaría contando apariciones fantasma.
  *
  * No toca la transcripción, que es del video y no tuya, ni las expresiones que
- * además aparecen en otros videos.
+ * además aparecen en otros videos. Y el video vuelve a "para ver después":
+ * reiniciar es querer empezarlo de nuevo, no perderlo de vista.
  */
 export function useResetLearningContent() {
   const queryClient = useQueryClient();
@@ -261,17 +264,10 @@ export function useResetLearningContent() {
         predicate: (query) => String(query.queryKey[0]).startsWith("learning"),
       });
 
-      const pieces = [
-        `${result.sessions} ${result.sessions === 1 ? "sesión" : "sesiones"}`,
-      ];
-      if (result.items > 0) {
-        pieces.push(
-          `${result.items} ${result.items === 1 ? "expresión" : "expresiones"}`
-        );
-      }
-
       toast.success("Video reiniciado", {
-        description: `Se borró ${pieces.join(" y ")}. La transcripción se queda.`,
+        description: result.queued
+          ? "Te espera de nuevo en Para ver después."
+          : "Quedó como si nunca lo hubieras visto.",
       });
     },
 
