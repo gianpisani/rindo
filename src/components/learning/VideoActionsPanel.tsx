@@ -1,5 +1,13 @@
-import { ArrowLeft, ExternalLink, Flag, Pause, Play, Trash2 } from "lucide-react";
-import { Button } from "@/components/ui/button";
+import {
+  ArrowLeft,
+  ExternalLink,
+  Flag,
+  Pause,
+  Play,
+  RotateCcw,
+  Trash2,
+} from "lucide-react";
+import type { ReactNode } from "react";
 import { cn } from "@/lib/utils";
 import { formatClock, formatDuration } from "@/lib/learning-config";
 
@@ -51,6 +59,9 @@ interface VideoActionsPanelProps {
   onFinish: () => void;
   onLeave: () => void;
   onDiscard: () => void;
+  /** Borrar todo rastro de este video: se usa cuando probaste algo. */
+  onReset: () => void;
+  canReset: boolean;
   /** El video sigue siendo de YouTube: la puerta de salida vive acá. */
   youtubeUrl?: string | null;
 }
@@ -76,6 +87,8 @@ export function VideoActionsPanel({
   onFinish,
   onLeave,
   onDiscard,
+  onReset,
+  canReset,
   youtubeUrl,
 }: VideoActionsPanelProps) {
   const config = STATE_CONFIG[state];
@@ -154,57 +167,109 @@ export function VideoActionsPanel({
         </p>
       </div>
 
+      {/*
+        Todos del mismo porte y con su nombre escrito. Antes las dos salidas
+        eran texto suelto bajo dos botones, y eso las hacía parecer notas al
+        pie: son acciones, y una de ellas borra la sesión. Lo que jerarquiza es
+        el color, no el tamaño.
+      */}
       <div className="mt-3.5 grid grid-cols-2 gap-2">
         {isPaused ? (
-          <Button
+          <ActionButton
             onClick={onResume}
-            size="sm"
-            className="h-9 rounded-xl font-semibold"
-          >
-            <Play className="mr-1.5 h-3.5 w-3.5 fill-current" />
-            Reanudar
-          </Button>
+            icon={<Play className="h-3.5 w-3.5 fill-current" />}
+            label="Reanudar"
+            tone="primary"
+          />
         ) : (
-          <Button
+          <ActionButton
             onClick={onPause}
-            variant="outline"
-            size="sm"
-            className="h-9 rounded-xl font-medium"
-          >
-            <Pause className="mr-1.5 h-3.5 w-3.5" />
-            Pausar
-          </Button>
+            icon={<Pause className="h-3.5 w-3.5" />}
+            label="Pausar"
+            tone="neutral"
+          />
         )}
 
-        <Button
+        <ActionButton
           onClick={onFinish}
-          variant="outline"
-          size="sm"
-          className="h-9 rounded-xl border-primary/30 font-medium text-primary hover:bg-primary/10 hover:text-primary"
-        >
-          <Flag className="mr-1.5 h-3.5 w-3.5" />
-          Terminar
-        </Button>
-      </div>
+          icon={<Flag className="h-3.5 w-3.5" />}
+          label="Terminar"
+          tone="accent"
+        />
 
-      <div className="mt-2 flex items-center justify-between">
-        <button
+        <ActionButton
           onClick={onLeave}
+          icon={<ArrowLeft className="h-3.5 w-3.5" />}
+          label="Volver atrás"
           title="Se guarda el minuto donde quedaste"
-          className="flex items-center gap-1.5 rounded-lg px-1.5 py-1 text-[11px] text-muted-foreground transition-colors hover:text-foreground"
-        >
-          <ArrowLeft className="h-3.5 w-3.5" />
-          Volver sin terminar
-        </button>
+          tone="muted"
+        />
 
-        <button
+        <ActionButton
           onClick={onDiscard}
-          className="flex items-center gap-1.5 rounded-lg px-1.5 py-1 text-[11px] text-muted-foreground transition-colors hover:text-destructive"
-        >
-          <Trash2 className="h-3.5 w-3.5" />
-          Descartar
-        </button>
+          icon={<Trash2 className="h-3.5 w-3.5" />}
+          label="Descartar"
+          title="Borrar esta sesión y su tiempo"
+          tone="muted"
+          danger
+        />
+
+        {canReset && (
+          <ActionButton
+            onClick={onReset}
+            icon={<RotateCcw className="h-3.5 w-3.5" />}
+            label="Reiniciar video"
+            title="Dejarlo como si nunca lo hubieras visto"
+            tone="muted"
+            danger
+            wide
+          />
+        )}
       </div>
     </div>
+  );
+}
+
+/**
+ * El botón de esta tarjeta. Uno solo, con cuatro tonos.
+ */
+function ActionButton({
+  onClick,
+  icon,
+  label,
+  title,
+  tone,
+  danger,
+  wide,
+}: {
+  onClick: () => void;
+  icon: ReactNode;
+  label: string;
+  title?: string;
+  tone: "primary" | "accent" | "neutral" | "muted";
+  danger?: boolean;
+  wide?: boolean;
+}) {
+  return (
+    <button
+      onClick={onClick}
+      title={title}
+      className={cn(
+        "flex h-9 items-center justify-center gap-1.5 rounded-xl border text-xs font-medium",
+        "transition-colors",
+        tone === "primary" &&
+          "border-primary bg-primary text-primary-foreground hover:bg-primary/90",
+        tone === "accent" &&
+          "border-primary/30 text-primary hover:bg-primary/10",
+        tone === "neutral" && "border-border text-foreground hover:bg-muted",
+        tone === "muted" &&
+          "border-border/60 text-muted-foreground hover:border-border hover:text-foreground",
+        danger && "hover:border-destructive/40 hover:text-destructive",
+        wide && "col-span-2"
+      )}
+    >
+      {icon}
+      {label}
+    </button>
   );
 }

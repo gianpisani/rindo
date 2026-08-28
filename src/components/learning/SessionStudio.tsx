@@ -40,6 +40,7 @@ import { useFrequencyList } from "@/hooks/useFrequencyList";
 import type { PlaybackSample } from "@/hooks/useSmoothPosition";
 import type { LearningSession } from "@/hooks/useLearningSessions";
 import { useLearningItems, useSessionItems } from "@/hooks/useLearningItems";
+import { useResetLearningContent } from "@/hooks/useLearningSessions";
 import { useCaptureKeyboard } from "@/hooks/useKeyboardCapture";
 import { useAutoCapture } from "@/hooks/useAutoCapture";
 
@@ -456,6 +457,8 @@ export function SessionStudio({
       : "researching";
 
   const [confirmDiscard, setConfirmDiscard] = useState(false);
+  const [confirmReset, setConfirmReset] = useState(false);
+  const resetContent = useResetLearningContent();
 
   /**
    * Cuál de las expresiones capturadas está abierta. Solo una a la vez: la
@@ -595,6 +598,8 @@ export function SessionStudio({
             onFinish={onFinish}
             onLeave={onLeave}
             onDiscard={() => setConfirmDiscard(true)}
+            onReset={() => setConfirmReset(true)}
+            canReset={!!session.external_id}
             youtubeUrl={
               session.external_id
                 ? youTubeWatchUrl(session.external_id, positionSeconds)
@@ -962,6 +967,21 @@ export function SessionStudio({
         title="¿Descartar la sesión?"
         description="Se borra el tiempo registrado. Las expresiones que guardaste se mantienen en tu diccionario."
         confirmText="Descartar"
+      />
+
+      <ConfirmDialog
+        open={confirmReset}
+        onOpenChange={setConfirmReset}
+        onConfirm={() =>
+          session.external_id &&
+          resetContent.mutate({
+            goalId: session.goal_id,
+            externalId: session.external_id,
+          })
+        }
+        title="¿Reiniciar este video?"
+        description="Se borran todas las sesiones de este video —su tiempo, su comprensión y el minuto donde ibas— y las expresiones que solo aparecen acá. Las que también salen en otros videos se quedan, y la transcripción también."
+        confirmText="Reiniciar"
       />
     </div>
   );

@@ -211,3 +211,70 @@ export function useLastLearningSession() {
     staleTime: 1000 * 60 * 5,
   });
 }
+
+// ── Reiniciar un contenido ──────────────────────────────────
+
+export interface ResetContentResult {
+  sessions: number;
+  items: number;
+  sightings: number;
+}
+
+/**
+ * Deja un video como si nunca lo hubieras visto.
+ *
+ * Abrir algo para probar y salirse deja minutos, comprensión y expresiones
+ * registradas como estudio de verdad, y acá todas las métricas se calculan
+ * sobre lo que efectivamente escuchaste: esa basura corre la línea de progreso.
+ * Poder deshacerlo es lo que permite tocar la app sin miedo.
+ *
+ * Va contra una función de la base porque tiene que pasar entero: los
+ * avistamientos no se borran solos al borrar la sesión —el esquema los deja en
+ * NULL— y el diccionario quedaría contando apariciones fantasma.
+ *
+ * No toca la transcripción, que es del video y no tuya, ni las expresiones que
+ * además aparecen en otros videos.
+ */
+export function useResetLearningContent() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async ({
+      goalId,
+      externalId,
+    }: {
+      goalId: string;
+      externalId: string;
+    }) => {
+      const { data, error } = await supabase.rpc("reset_learning_content", {
+        p_goal_id: goalId,
+        p_external_id: externalId,
+      });
+      if (error) throw error;
+      return data as unknown as ResetContentResult;
+    },
+
+    onSuccess: (result) => {
+      // La sesión abierta se fue con el resto: el estudio se cierra solo.
+      queryClient.setQueryData(["learning-open-session"], null);
+      queryClient.invalidateQueries({
+        predicate: (query) => String(query.queryKey[0]).startsWith("learning"),
+      });
+
+      const pieces = [
+        `${result.sessions} ${result.sessions === 1 ? "sesión" : "sesiones"}`,
+      ];
+      if (result.items > 0) {
+        pieces.push(
+          `${result.items} ${result.items === 1 ? "expresión" : "expresiones"}`
+        );
+      }
+
+      toast.success("Video reiniciado", {
+        description: `Se borró ${pieces.join(" y ")}. La transcripción se queda.`,
+      });
+    },
+
+    onError: (error: Error) => toast.error(error.message),
+  });
+}

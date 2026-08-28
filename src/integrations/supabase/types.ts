@@ -1602,6 +1602,10 @@ export type Database = {
           total_pending: number
         }[]
       }
+      reset_learning_content: {
+        Args: { p_external_id: string; p_goal_id: string }
+        Returns: Json
+      }
     }
     Enums: {
       [_ in never]: never
