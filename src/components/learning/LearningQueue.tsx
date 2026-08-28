@@ -22,6 +22,8 @@ import type { QueueItem } from "@/hooks/useLearningQueue";
 import { useSaveQueueDuration } from "@/hooks/useLearningQueue";
 import { useTranscriptStatuses } from "@/hooks/useTranscript";
 import { TranscriptHelpDialog } from "./TranscriptHelpDialog";
+import { useVideoMeta } from "@/hooks/useVideoMeta";
+import { VideoPreview } from "./VideoPreview";
 import { useTranscript } from "@/hooks/useTranscript";
 import { YouTubePlayer } from "./YouTubePlayer";
 import { ContentCover } from "./ContentCover";
@@ -70,6 +72,8 @@ export function LearningQueue({
   const videoId = useMemo(() => parseYouTubeId(url), [url]);
   const canAdd = url.trim().length > 0;
 
+  const meta = useVideoMeta(videoId);
+
   const submit = () => {
     if (!canAdd) return;
     onAdd({
@@ -79,7 +83,11 @@ export function LearningQueue({
         : url.trim(),
       external_id: videoId,
       content_thumbnail: videoId ? youTubeThumbnail(videoId) : null,
-      content_title: videoId ? null : url.trim(),
+      // La vista previa ya preguntó el título: pasarlo evita que el guardado
+      // vuelva a preguntarlo, que es lo que lo hacía esperar antes de aparecer
+      // en la lista.
+      content_title: videoId ? meta.title : url.trim(),
+      ...(meta.author ? { content_author: meta.author } : {}),
     });
     setUrl("");
     setAdding(false);
@@ -130,6 +138,14 @@ export function LearningQueue({
               className="pl-9 h-10 rounded-xl text-sm"
             />
           </div>
+          <VideoPreview
+            videoId={videoId}
+            invalid={!videoId && canAdd}
+            title={meta.title}
+            author={meta.author}
+            loading={meta.loading}
+          />
+
           <div className="flex gap-2">
             <Button
               onClick={submit}

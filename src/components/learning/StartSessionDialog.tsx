@@ -13,6 +13,8 @@ import {
   type ContentType,
 } from "@/lib/learning-config";
 import type { StartSessionInput } from "@/hooks/useActiveLearningSession";
+import { useVideoMeta } from "@/hooks/useVideoMeta";
+import { VideoPreview } from "./VideoPreview";
 
 interface StartSessionDialogProps {
   open: boolean;
@@ -52,6 +54,8 @@ export function StartSessionDialog({
   const isYouTube = type === "youtube";
   const canStart = isYouTube ? !!videoId : title.trim().length > 0;
 
+  const meta = useVideoMeta(videoId);
+
   const handleStart = () => {
     if (!canStart) return;
 
@@ -63,7 +67,11 @@ export function StartSessionDialog({
           content_url: `https://www.youtube.com/watch?v=${videoId}`,
           external_id: videoId,
           content_thumbnail: youTubeThumbnail(videoId),
-          // Título, canal y duración los entrega el propio reproductor.
+          // El reproductor los confirma al montar, pero para entonces la
+          // pantalla ya se dibujó: con lo que trajo la vista previa, la sesión
+          // arranca con su nombre puesto en vez de con un "Cargando…".
+          ...(meta.title ? { content_title: meta.title } : {}),
+          ...(meta.author ? { content_author: meta.author } : {}),
         },
         parseYouTubeStart(url)
       );
@@ -137,10 +145,7 @@ export function StartSessionDialog({
         {/* YouTube: solo el link */}
         {isYouTube ? (
           <div className="space-y-3">
-            <div className="space-y-1.5">
-              <Label htmlFor="learning-url" className="text-xs text-muted-foreground">
-                Link del video
-              </Label>
+            <div>
               <div className="relative">
                 <Link2 className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                 <Input
@@ -157,23 +162,13 @@ export function StartSessionDialog({
               </div>
             </div>
 
-            {videoId ? (
-              <div className="rounded-xl overflow-hidden border border-border/60 bg-muted/30">
-                <img
-                  src={youTubeThumbnail(videoId)}
-                  alt=""
-                  className="w-full aspect-video object-cover"
-                />
-                <p className="px-3 py-2 text-xs text-muted-foreground">
-                  El video se reproduce dentro de Rindo. Título, canal y duración
-                  se completan solos.
-                </p>
-              </div>
-            ) : url.trim() ? (
-              <p className="text-xs text-destructive">
-                No reconozco ese link de YouTube.
-              </p>
-            ) : null}
+            <VideoPreview
+              videoId={videoId}
+              invalid={!videoId && url.trim().length > 0}
+              title={meta.title}
+              author={meta.author}
+              loading={meta.loading}
+            />
           </div>
         ) : (
           /* Resto: título y duración a mano */
