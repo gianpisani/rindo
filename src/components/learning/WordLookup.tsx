@@ -77,8 +77,11 @@ export function WordLookup({
     ),
     ...(contextSentence ? [contextSentence] : []),
   ];
-  const { data: translations = {}, isFetching: translating } =
-    useTranslations(toTranslate);
+  const {
+    data: translations = {},
+    isFetching: translating,
+    isError: translationFailed,
+  } = useTranslations(toTranslate);
 
   const termTranslation = translations[term.trim()] ?? null;
 
@@ -246,14 +249,33 @@ export function WordLookup({
             </button>
           </div>
 
+          {/*
+            La traducción, o por qué no la hay.
+
+            Mostraba un renglón en blanco cuando algo fallaba, que se lee igual
+            que "esta palabra no tiene traducción" y no se puede depurar. Ahora
+            un fallo del traductor se dice: es lo único que separa "no hay" de
+            "no llegué".
+          */}
           <Peek full={termTranslation ?? ""}>
             <p
               className={cn(
-                "font-medium leading-snug text-primary",
+                "font-medium leading-snug",
+                translationFailed ? "text-muted-foreground" : "text-primary",
                 isPhrase ? "line-clamp-2 text-[15px]" : "truncate text-[15px]"
               )}
+              title={
+                translationFailed
+                  ? "Las dos fuentes de traducción no respondieron. Suele ser la red o un bloqueador del navegador."
+                  : undefined
+              }
             >
-              {termTranslation ?? (translating ? "traduciendo…" : " ")}
+              {termTranslation ??
+                (translating
+                  ? "traduciendo…"
+                  : translationFailed
+                    ? "no pude traducirla"
+                    : " ")}
             </p>
           </Peek>
 
