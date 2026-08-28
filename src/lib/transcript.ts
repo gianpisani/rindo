@@ -167,3 +167,35 @@ export function normalizeLookup(term: string): string {
     .replace(/^[^\w'’-]+|[^\w'’-]+$/g, "")
     .replace(/\s+/g, " ");
 }
+
+/**
+ * El texto entre dos palabras de una línea, ambas incluidas.
+ *
+ * Se devuelve tal cual está escrito —con sus comas y sus apóstrofes— porque
+ * eso es lo que se manda a traducir: "no me digas" no es lo mismo que
+ * "no me digas," pegado a la frase de al lado.
+ *
+ * `to` puede ser Infinity: la frase sigue en la línea de abajo.
+ */
+export function sliceWords(text: string, from: number, to: number): string {
+  const parts = splitWords(text);
+
+  let ord = -1;
+  let start = -1;
+  let end = -1;
+  parts.forEach((part, index) => {
+    if (!part.isWord) return;
+    ord += 1;
+    if (ord === from) start = index;
+    if (ord === to) end = index;
+  });
+
+  if (start === -1) return "";
+  if (end === -1) end = parts.length - 1;
+
+  return parts
+    .slice(start, end + 1)
+    .map((part) => part.value)
+    .join("")
+    .trim();
+}

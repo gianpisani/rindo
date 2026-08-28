@@ -1,7 +1,8 @@
-import { useCallback, useEffect, useMemo, useState, type CSSProperties } from "react";
+import { memo, useCallback, useEffect, useMemo, useState, type CSSProperties } from "react";
 import { cn } from "@/lib/utils";
 import { splitWords } from "@/lib/transcript";
 import { computeDock, numberWords, DOCK_SCALE } from "@/lib/dock";
+import type { LineRange, WordAt } from "@/hooks/usePhraseSelection";
 
 /** Cómo se marca una palabra: el subrayado dice de qué se trata. */
 export interface WordMark {
@@ -14,14 +15,16 @@ export interface WordMark {
 
 interface DockLineProps {
   text: string;
-  onPick: (word: string) => void;
+  /** Número de línea: lo lee el arrastre para saber por dónde va la frase. */
+  line: number;
+  onWordDown: (at: WordAt, event: React.PointerEvent) => void;
+  /** El tramo de esta línea que está marcado, si lo está. */
+  selection?: LineRange | null;
   /** Marca por palabra. Devuelve null para dejarla limpia. */
   markOf?: (word: string) => WordMark | null;
   /** Cuánto crece la palabra señalada y sus vecinas. */
   steps?: number[];
   className?: string;
-  /** Una selección de varias palabras manda por sobre el clic simple. */
-  onSelectionPick?: () => boolean;
 }
 
 /**
@@ -30,14 +33,24 @@ interface DockLineProps {
  * Vive aparte porque la usan los dos lugares donde se lee: la frase grande
  * bajo el video y la transcripción completa del costado. Que el gesto sea el
  * mismo en ambos es la mitad de que la pantalla se sienta una sola cosa.
+ *
+ * Hay dos maneras de mirar la línea y no conviven: el dock agranda la palabra
+ * que señalas, y la marca pinta la frase que arrastras. En cuanto la frase pasa
+ * de una palabra el dock se apaga —si no, las palabras siguen creciéndose y
+ * corriéndose unas a otras, y la banda de color queda partida en pedazos.
+ *
+ * Va memoizada porque la pista son cientos de líneas y al arrastrar el estado
+ * cambia en cada palabra: sin esto se redibujaría la transcripción entera
+ * varias veces por segundo, que es justo el momento en que tiene que ir suave.
  */
-export function DockLine({
+export const DockLine = memo(function DockLine({
   text,
-  onPick,
+  line,
+  onWordDown,
+  selection,
   markOf,
   steps = DOCK_SCALE,
   className,
-  onSelectionPick,
 }: DockLineProps) {
   const [hovered, setHovered] = useState<number | null>(null);
   /** Anchos naturales, medidos una sola vez por línea. */
@@ -51,36 +64,69 @@ export function DockLine({
   }, [text]);
 
   /**
+   * Qué trozos van pintados. Los espacios y los signos que quedan en medio
+   * también: si no, la frase se lee como parches sueltos en vez de una banda.
+   */
+  const marked = useMemo(() => {
+    if (!selection) return null;
+
+    const flags = parts.map(
+      (part) =>
+        part.isWord && part.ord >= selection.from && part.ord <= selection.to
+    );
+    const first = flags.indexOf(true);
+    const last = flags.lastIndexOf(true);
+    if (first === -1) return null;
+    for (let i = first; i <= last; i++) flags[i] = true;
+
+    return { flags, first, last };
+  }, [parts, selection]);
+
+  /** La frase ya es más de una palabra: el dock le deja el paso a la marca. */
+  const marking = marked !== null && marked.first !== marked.last;
+  useEffect(() => {
+    if (marking) setHovered(null);
+  }, [marking]);
+
+  /**
    * Mide al entrar por primera vez a la línea. En ese momento ninguna de sus
    * palabras está agrandada, así que la medida es la real.
    */
-  const handleEnter = useCallback((ord: number, el: HTMLElement) => {
-    setHovered(ord);
-    setWidths((prev) => {
-      if (prev.length) return prev;
-      const line = el.parentElement;
-      if (!line) return prev;
-      return Array.from(line.querySelectorAll<HTMLElement>("[data-part]")).map(
-        (node) => node.getBoundingClientRect().width
-      );
-    });
-  }, []);
+  const handleEnter = useCallback(
+    (ord: number, el: HTMLElement) => {
+      if (marked) return;
+      setHovered(ord);
+      setWidths((prev) => {
+        if (prev.length) return prev;
+        const row = el.parentElement;
+        if (!row) return prev;
+        return Array.from(
+          row.querySelectorAll<HTMLElement>("[data-part]")
+        ).map((node) => node.getBoundingClientRect().width);
+      });
+    },
+    [marked]
+  );
 
   const dock =
-    hovered !== null && widths.length
+    hovered !== null && widths.length && !marking
       ? computeDock(parts, widths, hovered, steps)
       : null;
 
   return (
     <p
+      data-line={line}
       onMouseLeave={() => setHovered(null)}
-      onMouseUp={onSelectionPick ? () => onSelectionPick() : undefined}
-      className={className}
+      className={cn("select-none", className)}
+      // `pan-y` es lo que reparte el gesto en el teléfono: hacia abajo la pista
+      // sigue haciendo scroll, hacia el lado se marca la frase.
+      style={{ touchAction: "pan-y", WebkitTouchCallout: "none" }}
     >
       {parts.map((part, index) => {
         const scale = dock?.scale[index] ?? 1;
         const shift = dock?.shift[index] ?? 0;
         const isFocus = scale === steps[0];
+        const isMarked = marked?.flags[index] ?? false;
 
         const style: CSSProperties = {
           transform:
@@ -89,9 +135,18 @@ export function DockLine({
               : undefined,
           transformOrigin: "center bottom",
           transition:
-            "transform 220ms cubic-bezier(0.22, 1, 0.36, 1), color 140ms ease-out",
+            "transform 220ms cubic-bezier(0.22, 1, 0.36, 1), color 140ms ease-out, opacity 160ms ease-out",
           willChange: dock ? "transform" : undefined,
         };
+
+        // Los extremos solo se cierran donde la frase de verdad empieza y
+        // termina: si sigue en la línea de abajo, el borde queda abierto —es
+        // la misma convención de un resaltador sobre un texto que da la vuelta.
+        const markClass = isMarked && [
+          "phrase-mark",
+          index === marked?.first && !selection?.openStart && "phrase-mark-start",
+          index === marked?.last && !selection?.openEnd && "phrase-mark-end",
+        ];
 
         if (!part.isWord) {
           // `whitespace-pre` es obligatorio: un inline-block que solo contiene
@@ -100,7 +155,7 @@ export function DockLine({
             <span
               key={index}
               data-part
-              className="inline-block whitespace-pre"
+              className={cn("inline-block whitespace-pre", markClass)}
               style={style}
             >
               {part.value}
@@ -121,15 +176,16 @@ export function DockLine({
           <span
             key={index}
             data-part
+            data-ord={part.ord}
             title={mark?.title}
             onMouseEnter={(e) => handleEnter(part.ord, e.currentTarget)}
-            onClick={() => {
-              if (onSelectionPick?.()) return;
-              onPick(part.value);
-            }}
+            onPointerDown={(event) => onWordDown({ line, ord: part.ord }, event)}
             className={cn(
-              "inline-block cursor-pointer rounded",
-              isFocus && "font-bold text-primary"
+              "inline-block cursor-pointer",
+              // El redondeo propio le haría muescas a la banda de la frase.
+              !isMarked && "rounded",
+              isFocus && "font-bold text-primary",
+              markClass
             )}
             style={style}
           >
@@ -139,4 +195,4 @@ export function DockLine({
       })}
     </p>
   );
-}
+});

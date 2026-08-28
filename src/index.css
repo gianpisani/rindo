@@ -520,6 +520,52 @@ Based on Indigo, Blue, Cyan palette
     box-shadow: none;
   }
   
+  /* ── La frase que estás marcando en los subtítulos ── */
+  /*
+   * La banda se levanta con box-shadow y no con padding: el padding le cambia
+   * el alto a la línea y el subtítulo entero pegaría un salto al empezar a
+   * arrastrar. El color va opaco a propósito —las sombras de dos palabras
+   * vecinas se pisan, y en translúcido esos cruces se ven como costuras.
+   */
+  .phrase-mark {
+    background: color-mix(in oklch, var(--primary) 17%, var(--card));
+    box-shadow: 0 0 0 0.16em color-mix(in oklch, var(--primary) 17%, var(--card));
+    border-radius: 0;
+    color: var(--foreground);
+    transition: background-color 120ms ease-out, color 120ms ease-out;
+  }
+
+  /*
+   * Mientras marcas, la pista entera se apaga y la frase queda sola encendida.
+   *
+   * Es lo que hace que una frase partida en dos líneas se lea como una sola
+   * cosa y no como dos selecciones: la hora del medio y el texto que sobra a
+   * los lados dejan de competir. Va en CSS y no en React a propósito —son
+   * cientos de líneas y esto pasa en medio de un arrastre.
+   */
+  .subtitle-track[data-marking] [data-part]:not(.phrase-mark) {
+    opacity: 0.32;
+  }
+
+  .subtitle-track [data-clock] {
+    transition: opacity 160ms ease-out, color 140ms ease-out;
+  }
+
+  .subtitle-track[data-marking] [data-clock] {
+    opacity: 0.18;
+  }
+
+  /* Solo los extremos se redondean: en el medio la banda tiene que ser una. */
+  .phrase-mark-start {
+    border-top-left-radius: 0.35em;
+    border-bottom-left-radius: 0.35em;
+  }
+
+  .phrase-mark-end {
+    border-top-right-radius: 0.35em;
+    border-bottom-right-radius: 0.35em;
+  }
+
   /* ── Mobile Bottom Tab Bar ── */
   .mobile-tab-bar {
     display: flex;

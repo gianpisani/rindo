@@ -3,9 +3,10 @@ import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { ArrowDown, ClipboardPaste, Wand2 } from "lucide-react";
 import { formatClock } from "@/lib/learning-config";
-import { type Cue } from "@/lib/transcript";
+import { sliceWords, type Cue } from "@/lib/transcript";
 import { useActiveCue, type PlaybackSample } from "@/hooks/useSmoothPosition";
 import { DockLine, type WordMark } from "./DockLine";
+import { usePhraseSelection, type PhraseSpan } from "@/hooks/usePhraseSelection";
 
 interface SubtitleTrackProps {
   cues: Cue[];
@@ -53,11 +54,39 @@ export function SubtitleTrack({
   const activeRef = useRef<HTMLDivElement>(null);
 
   /**
+   * Marcar una frase es arrastrar por encima de las palabras; soltar es
+   * preguntar. Un toque sin arrastre marca una sola palabra, así que el gesto
+   * de siempre no cambió: es el mismo, nada más que ahora se puede estirar.
+   */
+  const phrase = usePhraseSelection((span: PhraseSpan) => {
+    const lines: string[] = [];
+    for (let line = span.from.line; line <= span.to.line; line++) {
+      const range = phraseRangeOf(span, line);
+      const piece = sliceWords(cues[line].text, range.from, range.to);
+      if (piece) lines.push(piece);
+    }
+
+    const term = lines.join(" ").trim();
+    if (!term) return;
+
+    // El contexto que se guarda es todo lo que la frase abarca: una expresión
+    // partida entre dos líneas no se entiende con la mitad de la oración.
+    const spanned = cues.slice(span.from.line, span.to.line + 1);
+    onPick(term, {
+      t: spanned[0].t,
+      text: spanned.map((cue) => cue.text).join(" "),
+    });
+  });
+
+  /**
    * Se centra a mano y no con `scrollIntoView`: ese arrastra también a los
    * contenedores de arriba y en el teléfono te mueve la página entera.
+   *
+   * Mientras marcas una frase la pista se queda quieta aunque siga corriendo el
+   * video: si se centrara sola, el texto se te escaparía de abajo del dedo.
    */
   useEffect(() => {
-    if (!follow || index < 0) return;
+    if (!follow || index < 0 || phrase.dragging) return;
     const box = boxRef.current;
     const line = activeRef.current;
     if (!box || !line) return;
@@ -66,17 +95,7 @@ export function SubtitleTrack({
       top: line.offsetTop - box.clientHeight / 2 + line.clientHeight / 2,
       behavior: "smooth",
     });
-  }, [index, follow]);
-
-  /** Una selección de varias palabras manda por sobre el clic simple. */
-  const takeSelection = (cue: Cue) => {
-    const selected = window.getSelection()?.toString().trim();
-    if (selected && selected.split(/\s+/).length > 1) {
-      onPick(selected, cue);
-      return true;
-    }
-    return false;
-  };
+  }, [index, follow, phrase.dragging]);
 
   // ── Sin subtítulos ────────────────────────────────────────
 
@@ -131,9 +150,16 @@ export function SubtitleTrack({
         onWheel={() => onFollowChange(false)}
         onTouchMove={(event) => {
           event.stopPropagation();
-          onFollowChange(false);
+          // Arrastrar para marcar no es irse a mirar otra parte.
+          if (!phrase.dragging) onFollowChange(false);
         }}
-        className="relative h-full overflow-y-auto overscroll-contain px-3 py-4 sm:px-4"
+        data-marking={phrase.marking || undefined}
+        className={cn(
+          "subtitle-track relative h-full overflow-y-auto overscroll-contain px-3 py-4 sm:px-4",
+          // Nadie selecciona texto acá: el gesto es marcar una frase, y si el
+          // navegador puede seleccionar por su cuenta se lleva hasta la hora.
+          "select-none"
+        )}
         style={{
           touchAction: "pan-y",
           maskImage:
@@ -163,6 +189,7 @@ export function SubtitleTrack({
               />
 
               <button
+                data-clock
                 onClick={() => onSeek(cue.t)}
                 title={`Ir a ${formatClock(cue.t)}`}
                 className={cn(
@@ -178,9 +205,10 @@ export function SubtitleTrack({
               {/* El tamaño no cambia entre líneas: así nada salta al avanzar */}
               <DockLine
                 text={cue.text}
+                line={cueIndex}
                 markOf={isActive ? markOf : undefined}
-                onPick={(word) => onPick(word, cue)}
-                onSelectionPick={() => takeSelection(cue)}
+                selection={phrase.rangeOf(cueIndex)}
+                onWordDown={phrase.begin}
                 className={cn(
                   "flex-1 text-base leading-relaxed transition-colors duration-300 sm:text-lg",
                   isActive
@@ -209,4 +237,12 @@ export function SubtitleTrack({
       )}
     </div>
   );
+}
+
+/** Qué tramo de la frase cae en una línea; Infinity = sigue en la de abajo. */
+function phraseRangeOf(span: PhraseSpan, line: number) {
+  return {
+    from: line === span.from.line ? span.from.ord : 0,
+    to: line === span.to.line ? span.to.ord : Number.POSITIVE_INFINITY,
+  };
 }
