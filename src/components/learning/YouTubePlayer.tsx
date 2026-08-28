@@ -15,6 +15,8 @@ interface YTPlayer {
   getDuration(): number;
   getPlayerState(): number;
   getVideoData(): { title?: string; author?: string; video_id?: string };
+  /** Apaga un módulo del reproductor: lo usamos para los subtítulos. */
+  unloadModule?(module: string): void;
   destroy(): void;
 }
 
@@ -149,6 +151,18 @@ export const YouTubePlayer = forwardRef<YouTubePlayerHandle, YouTubePlayerProps>
           events: {
             onReady: () => {
               if (cancelled) return;
+
+              // `cc_load_policy: 0` pide que no vengan encendidos, pero una
+              // cuenta que los fuerza le gana al parámetro. Descargar el módulo
+              // no admite discusión —y son dos nombres porque el reproductor
+              // viejo y el nuevo no lo llaman igual.
+              try {
+                player.unloadModule?.("captions");
+                player.unloadModule?.("cc");
+              } catch {
+                // Un reproductor sin módulo de subtítulos ya está como queremos.
+              }
+
               const data = player.getVideoData();
               const duration = player.getDuration();
               onMetaRef.current?.({
