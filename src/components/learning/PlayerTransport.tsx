@@ -224,27 +224,41 @@ export function PlayerTransport({
       )}
 
       <Dialog open={shortcutsOpen} onOpenChange={setShortcutsOpen}>
-        <DialogContent className="max-w-sm">
-          <DialogHeader>
-            <DialogTitle className="text-base">Cómo se maneja esto</DialogTitle>
-          </DialogHeader>
+        <DialogContent className="max-w-[25rem] gap-0 p-0">
+          <div className="p-7">
+            <DialogHeader className="space-y-0 text-left">
+              <DialogTitle className="text-[15px] font-semibold">
+                Cómo se maneja esto
+              </DialogTitle>
+            </DialogHeader>
 
-          <div className="space-y-2.5">
-            {KEYS.map(([key, what]) => (
-              <div key={key} className="flex items-baseline gap-3">
-                <kbd className="min-w-16 shrink-0 rounded-md border border-border/60 bg-muted px-2 py-1 text-center text-[11px] font-semibold">
-                  {key}
-                </kbd>
-                <span className="text-sm text-muted-foreground">{what}</span>
-              </div>
-            ))}
+            <dl className="mt-6 space-y-3.5">
+              {KEYS.map(([key, what]) => (
+                <div key={key} className="flex items-center gap-4">
+                  <dt className="w-[4.5rem] shrink-0 text-right">
+                    <kbd
+                      className={cn(
+                        "inline-flex h-6 items-center rounded-md px-2",
+                        "border border-border/70 bg-muted/50",
+                        "font-mono text-[11px] font-medium text-foreground"
+                      )}
+                    >
+                      {key}
+                    </kbd>
+                  </dt>
+                  <dd className="text-[13px] leading-snug text-muted-foreground">
+                    {what}
+                  </dd>
+                </div>
+              ))}
+            </dl>
+
+            <p className="mt-6 border-t border-border/50 pt-5 text-[13px] leading-relaxed text-muted-foreground">
+              Lo que más vas a usar no es una tecla. Toca cualquier palabra del
+              subtítulo y el video se detiene solo para mostrarte qué significa,
+              justo debajo. Al guardarla vuelve a andar.
+            </p>
           </div>
-
-          <p className="text-xs leading-relaxed text-muted-foreground">
-            Y lo principal no es una tecla: toca cualquier palabra del subtítulo
-            y el video se detiene solo para mostrarte qué significa, justo
-            debajo. Al guardarla vuelve a andar.
-          </p>
         </DialogContent>
       </Dialog>
     </div>
@@ -253,11 +267,11 @@ export function PlayerTransport({
 
 /** Lo que se puede hacer sin mover la mano de donde está. */
 const KEYS: [string, string][] = [
-  ["Espacio", "reproducir o pausar — o toca el video"],
+  ["Espacio", "reproducir o pausar"],
   ["← →", "diez segundos atrás o adelante"],
   ["R", "repetir la frase que acaba de sonar"],
   ["E", "capturar una expresión a mano"],
-  ["C", "esconder o mostrar el subtítulo"],
+  ["C", "esconder el subtítulo"],
 ];
 
 

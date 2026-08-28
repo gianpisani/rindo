@@ -547,18 +547,17 @@ export function SessionStudio({
   return (
     <div className={cn("flex flex-col", STUDIO_HEIGHT)} onPointerDown={onActivity}>
       {/* ── Reproductor y frase (izquierda) · captura (derecha) ── */}
-      <div
-        className={cn(
-          "flex-1 min-h-0 grid gap-3",
-          // La columna de la derecha es tan ancha como necesita ser: sus dos
-          // tarjetas son una lista de acciones, no contenido. Todo lo que deja
-          // de ocupar se lo lleva el video, que es lo único que se mira.
-          hasPlayer ? "lg:grid-cols-[minmax(0,1fr)_14.5rem]" : "lg:grid-cols-1"
-        )}
-      >
+      {/*
+        Flex y no grid, y con un ancho normal y no uno arbitrario: la columna de
+        la derecha es una lista de acciones, no contenido, así que mide lo que
+        mide y el resto se lo lleva el video. En una fila con `min-w-0` el video
+        no puede desbordar por ancho que pida; bajo el breakpoint la fila se
+        vuelve columna y la barra pasa a ser el pie de la página.
+      */}
+      <div className="flex min-h-0 flex-1 flex-col gap-3 lg:flex-row">
         {/* Columna del video */}
         {hasPlayer ? (
-          <div className="flex min-h-0 min-w-0 flex-col gap-2 lg:col-span-9">
+          <div className="flex min-h-0 min-w-0 flex-1 flex-col gap-2">
             {/*
               Dos bloques y nada más: el marco del video —con sus controles
               adentro— y la pista de subtítulos. Todo lo que antes vivía en
@@ -993,7 +992,7 @@ export function SessionStudio({
             </div>
           </div>
         ) : (
-          <div className="rounded-2xl border border-border/60 bg-muted/20 p-8 text-center">
+          <div className="min-w-0 flex-1 rounded-2xl border border-border/60 bg-muted/20 p-8 text-center">
             <p className="text-sm font-medium">{session.content_title}</p>
             <p className="text-xs text-muted-foreground mt-2 max-w-sm mx-auto">
               Este contenido se reproduce fuera de Rindo. El cronómetro de al
@@ -1010,8 +1009,15 @@ export function SessionStudio({
           </div>
         )}
 
-        {/* Columna derecha: la sesión, los subtítulos y lo que capturas */}
-        <div className="flex flex-col gap-3 min-h-0 min-w-0">
+        {/* Columna derecha: la sesión y los subtítulos */}
+        <aside
+          className={cn(
+            "flex w-full shrink-0 flex-col gap-3",
+            // Si la ventana es baja, la columna se desplaza en vez de empujar
+            // el video: el video manda el alto de esta pantalla.
+            "lg:w-60 lg:min-h-0 lg:overflow-y-auto xl:w-64"
+          )}
+        >
           <VideoActionsPanel
             state={state}
             title={session.content_title}
@@ -1043,8 +1049,7 @@ export function SessionStudio({
               onOpenText={() => setTranscriptOpen(true)}
             />
           )}
-
-        </div>
+        </aside>
       </div>
 
       <Dialog open={transcriptOpen} onOpenChange={setTranscriptOpen}>
