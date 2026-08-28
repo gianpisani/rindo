@@ -1,7 +1,13 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, type ReactNode } from "react";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 import { Volume2, Loader2, BookOpen, Languages } from "lucide-react";
+import * as TooltipPrimitive from "@radix-ui/react-tooltip";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 import { useDictionary, usePronunciation } from "@/hooks/useDictionary";
 import { useTranslations } from "@/hooks/useTranslation";
 
@@ -162,7 +168,7 @@ export function WordLookup({
     });
   };
 
-  /** El sentido: las acepciones y la frase donde apareció, ya en español. */
+  /** Las acepciones. Solo existen para palabras sueltas. */
   const meanings = (
     <div className="min-w-0 space-y-1">
       {senses.map((sense, index) => (
@@ -184,35 +190,53 @@ export function WordLookup({
           </p>
         </button>
       ))}
-
-      {contextSentence && translations[contextSentence.trim()] && (
-        <p className="line-clamp-2 border-l-2 border-primary/30 pl-2 text-[11px] italic leading-snug text-muted-foreground">
-          “{inSpanish ? translations[contextSentence.trim()] : contextSentence}”
-        </p>
-      )}
     </div>
   );
 
+  /** La frase donde apareció, ya en español. */
+  const quoted = contextSentence && translations[contextSentence.trim()];
+  const quote = quoted && (
+    <Peek full={quoted}>
+      <p className="line-clamp-3 border-l-2 border-primary/30 pl-2 text-[12px] italic leading-snug text-muted-foreground">
+        “{inSpanish ? quoted : contextSentence}”
+      </p>
+    </Peek>
+  );
+
   /**
-   * La banda: la palabra a la izquierda, lo que significa a la derecha.
+   * La banda: la expresión a la izquierda, lo que significa a la derecha.
    *
-   * Apilada era una tarjeta que no cabía en la fila bajo el video, así que
-   * había que desplazarse para llegar al botón de guardar. Leer y guardar es
-   * un gesto, no un recorrido.
+   * Con una forma para cada cosa. Una palabra suelta tiene diccionario, así que
+   * su identidad es corta y el ancho es para las acepciones. Una frase no lo
+   * tiene —ninguno los tiene— y ahí la mitad ancha se gastaba en avisar que no
+   * la encontró, mientras la frase y su traducción, que es todo lo que hay que
+   * leer, se apretaban en doce rem y salían cortadas.
    */
   if (compact) {
+    // Se decide por el texto y no por la respuesta del diccionario: así la
+    // banda no cambia de forma a mitad de camino cuando llega la búsqueda.
+    const isPhrase = /\s/.test(term.trim());
+
     return (
       <div className={cn("flex min-h-0 gap-4", className)}>
-        <div className="w-[12rem] shrink-0">
+        <div className={cn("min-w-0", isPhrase ? "flex-1" : "w-[12rem] shrink-0")}>
           <div className="flex items-baseline gap-2">
-            <p className="truncate text-lg font-semibold leading-tight">
-              {data?.term ?? term}
-            </p>
+            <Peek full={data?.term ?? term} className="min-w-0 flex-1">
+              <p
+                className={cn(
+                  "font-semibold leading-snug",
+                  isPhrase ? "line-clamp-2 text-[17px]" : "truncate text-lg"
+                )}
+              >
+                {data?.term ?? term}
+              </p>
+            </Peek>
+
             <button
               onClick={toggleLang}
               title={inSpanish ? "Ver en inglés" : "Ver en español"}
               className={cn(
-                "ml-auto shrink-0 rounded-md px-1.5 py-0.5 text-[10px] font-bold transition-colors",
+                "shrink-0 rounded-md px-1.5 py-0.5 text-[10px] font-bold transition-colors",
                 inSpanish
                   ? "bg-primary/15 text-primary"
                   : "text-muted-foreground hover:text-foreground"
@@ -222,28 +246,44 @@ export function WordLookup({
             </button>
           </div>
 
-          <p className="truncate text-[15px] font-medium leading-tight text-primary">
-            {termTranslation ?? (translating ? "traduciendo…" : " ")}
-          </p>
+          <Peek full={termTranslation ?? ""}>
+            <p
+              className={cn(
+                "font-medium leading-snug text-primary",
+                isPhrase ? "line-clamp-2 text-[15px]" : "truncate text-[15px]"
+              )}
+            >
+              {termTranslation ?? (translating ? "traduciendo…" : " ")}
+            </p>
+          </Peek>
 
           <div className="mt-1">{pronunciation}</div>
         </div>
 
-        <div className="min-w-0 flex-1 border-l border-border/50 pl-4">
-          {isLoading ? (
-            <p className="flex items-center gap-2 text-xs text-muted-foreground">
-              <Loader2 className="h-3.5 w-3.5 animate-spin" />
-              Buscando…
-            </p>
-          ) : senses.length ? (
-            meanings
-          ) : (
-            <p className="text-[13px] leading-snug text-muted-foreground">
-              El diccionario no la tiene. Guárdala igual con su frase: el
-              contexto suele enseñar más que la definición.
-            </p>
-          )}
-        </div>
+        {isPhrase ? (
+          quote && (
+            <div className="min-w-0 flex-1 border-l border-border/50 pl-4">
+              {quote}
+            </div>
+          )
+        ) : (
+          <div className="min-w-0 flex-1 space-y-1.5 border-l border-border/50 pl-4">
+            {isLoading ? (
+              <p className="flex items-center gap-2 text-xs text-muted-foreground">
+                <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                Buscando…
+              </p>
+            ) : senses.length ? (
+              meanings
+            ) : (
+              <p className="text-[13px] leading-snug text-muted-foreground">
+                El diccionario no la tiene. Guárdala igual con su frase: el
+                contexto suele enseñar más que la definición.
+              </p>
+            )}
+            {quote}
+          </div>
+        )}
       </div>
     );
   }
@@ -379,5 +419,45 @@ export function WordLookup({
           : "Toca una definición para copiarla al significado."}
       </p>
     </div>
+  );
+}
+
+
+/**
+ * El texto entero al pasar por encima, cuando no cabe.
+ *
+ * El del navegador tarda casi un segundo y aparece donde quiere; este sale al
+ * tiro y se ve como el resto. Va en un portal a propósito: la banda de captura
+ * recorta lo que se salga de ella, así que ahí dentro cualquier globo quedaría
+ * cortado por la mitad.
+ */
+function Peek({
+  children,
+  full,
+  className,
+}: {
+  children: ReactNode;
+  full: string;
+  className?: string;
+}) {
+  const worth = full.trim().length > 18;
+
+  if (!worth) return <div className={cn("min-w-0", className)}>{children}</div>;
+
+  return (
+    <Tooltip delayDuration={120}>
+      <TooltipTrigger asChild>
+        <div className={cn("min-w-0 cursor-default", className)}>{children}</div>
+      </TooltipTrigger>
+      <TooltipPrimitive.Portal>
+        <TooltipContent
+          side="top"
+          align="start"
+          className="max-w-sm text-[13px] leading-snug"
+        >
+          {full}
+        </TooltipContent>
+      </TooltipPrimitive.Portal>
+    </Tooltip>
   );
 }
