@@ -48,6 +48,8 @@ import type { SyncScheduleId } from "@/lib/banks";
 import { BankSyncSettings } from "@/components/BankSyncSettings";
 import { BankSyncHistory } from "@/components/BankSyncHistory";
 
+const FORM_ID = "bank-sync-form";
+
 // ── Status labels during polling ─────────────────────────────────────────────
 
 const STATUS_MESSAGES: Record<string, string> = {
@@ -293,6 +295,64 @@ export function BankSyncModal({
     : activeStep === "form" && selectedBank ? "Ingresa tus credenciales para sincronizar"
     : "Selecciona tu banco para comenzar";
 
+  // El pie es el único lugar con peso primary: una acción terminal por paso.
+  // Las acciones contextuales (eliminar/importar seleccionadas) viven junto a
+  // su lista, en `outline`, para que la jerarquía la marque la posición.
+  const modalFooter = tab !== "sync" ? undefined
+    : activeStep === "form" && selectedBank ? (
+      <div className="flex gap-3">
+        <Button
+          type="button"
+          variant="outline"
+          onClick={() => onOpenChange(false)}
+          size="cta"
+          className="flex-1"
+        >
+          Cancelar
+        </Button>
+        <Button
+          type="submit"
+          form={FORM_ID}
+          disabled={syncStep === "submitting" || (!storedCred && (!rut || !rutValid || !password))}
+          size="cta"
+          className="flex-1"
+          style={{ backgroundColor: selectedBank.color, borderColor: selectedBank.color }}
+        >
+          {syncStep === "submitting" && <Loader2 className="h-4 w-4 animate-spin mr-2" />}
+          Sincronizar
+        </Button>
+      </div>
+    )
+    : activeStep === "polling" ? (
+      <Button
+        variant="ghost"
+        onClick={() => onOpenChange(false)}
+        size="cta"
+        className="text-xs font-normal text-muted-foreground"
+      >
+        Minimizar — sigue corriendo en segundo plano
+      </Button>
+    )
+    : activeStep === "result" && result && "error" in result ? (
+      <div className="flex gap-3">
+        <Button
+          variant="outline"
+          onClick={() => onOpenChange(false)}
+          size="cta"
+          className="flex-1"
+        >
+          Cerrar
+        </Button>
+        <Button onClick={handleRetry} size="cta" className="flex-1">
+          Reintentar
+        </Button>
+      </div>
+    )
+    : activeStep === "result" && result ? (
+      <Button onClick={handleClose} size="cta">Listo</Button>
+    )
+    : undefined;
+
   return (
     <BaseModal
       open={open}
@@ -300,6 +360,7 @@ export function BankSyncModal({
       title={modalTitle}
       description={modalDescription}
       maxWidth={activeStep === "result" && result && !("error" in result) ? "lg" : "md"}
+      footer={modalFooter}
     >
       {/* ── Tab bar (only when not syncing) ─────────────────────────────── */}
       {!isSyncing && (
@@ -377,7 +438,7 @@ export function BankSyncModal({
           )}
 
           {activeStep === "form" && selectedBank && (
-            <form onSubmit={handleSubmit} className="space-y-5 pt-1">
+            <form id={FORM_ID} onSubmit={handleSubmit} className="space-y-5 pt-1">
               {/* ── Dynamic bank header ─────────────────────────────────── */}
               <div
                 className="relative flex items-center gap-4 p-4 rounded-2xl overflow-hidden"
@@ -565,22 +626,6 @@ export function BankSyncModal({
                   )}
                 </div>
               )}
-
-              {/* ── Actions ─────────────────────────────────────────────── */}
-              <div className="flex gap-3 pt-1">
-                <Button type="button" variant="outline" onClick={() => onOpenChange(false)} className="flex-1 rounded-xl h-10">
-                  Cancelar
-                </Button>
-                <Button
-                  type="submit"
-                  disabled={syncStep === "submitting" || (!storedCred && (!rut || !rutValid || !password))}
-                  className="flex-1 rounded-xl h-10"
-                  style={{ backgroundColor: selectedBank.color, borderColor: selectedBank.color }}
-                >
-                  {syncStep === "submitting" && <Loader2 className="h-4 w-4 animate-spin mr-2" />}
-                  Sincronizar
-                </Button>
-              </div>
             </form>
           )}
 
@@ -601,9 +646,6 @@ export function BankSyncModal({
                     <Loader2 className="h-3 w-3 animate-spin" />
                     Esperando aprobación...
                   </div>
-                  <Button variant="ghost" size="sm" className="text-xs text-muted-foreground" onClick={() => onOpenChange(false)}>
-                    Minimizar — sigue corriendo en segundo plano
-                  </Button>
                 </div>
               ) : (
                 <div className="flex flex-col items-center space-y-4">
@@ -616,9 +658,6 @@ export function BankSyncModal({
                     <p className="text-sm text-muted-foreground">{STATUS_MESSAGES[pollStatus] ?? "Procesando..."}</p>
                   </div>
                   <p className="text-xs text-muted-foreground/60">Esto puede tardar hasta 90 segundos</p>
-                  <Button variant="ghost" size="sm" className="text-xs text-muted-foreground" onClick={() => onOpenChange(false)}>
-                    Minimizar — sigue corriendo en segundo plano
-                  </Button>
                 </div>
               )}
             </div>
@@ -633,10 +672,6 @@ export function BankSyncModal({
                   <div className="text-center space-y-1">
                     <p className="text-lg font-semibold">Error en la sincronización</p>
                     <p className="text-sm text-muted-foreground">{result.error}</p>
-                  </div>
-                  <div className="flex gap-3 w-full">
-                    <Button variant="outline" onClick={() => onOpenChange(false)} className="flex-1 rounded-xl">Cerrar</Button>
-                    <Button onClick={handleRetry} className="flex-1 rounded-xl">Reintentar</Button>
                   </div>
                 </div>
               ) : (
@@ -788,8 +823,6 @@ export function BankSyncModal({
                   {result.imported === 0 && result.skipped === 0 && (
                     <p className="text-center text-sm text-muted-foreground py-4">No se encontraron transacciones nuevas.</p>
                   )}
-
-                  <Button onClick={handleClose} className="w-full rounded-xl h-10">Listo</Button>
                 </>
               )}
             </div>

@@ -21,6 +21,14 @@ const buttonVariants = cva(
         sm: "h-9 rounded-md px-3",
         lg: "h-11 rounded-md px-8",
         icon: "h-10 w-10",
+        /**
+         * La acción que cierra un diálogo. Vive en el `footer` de BaseModal —
+         * ahí es donde el ancla y el separador le dan su peso; suelta en el
+         * cuerpo scrolleable se lee como un campo más del formulario.
+         * Para un par (Cancelar / Confirmar), `size="cta" className="flex-1"`:
+         * el flex-basis gana sobre el w-full y quedan dos mitades.
+         */
+        cta: "h-12 w-full rounded-xl px-4 text-base font-semibold",
       },
     },
     defaultVariants: {

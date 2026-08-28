@@ -128,7 +128,7 @@ export default function Categories() {
               <Button
                 type="submit"
                 form="category-form"
-                className="w-full rounded-full"
+                size="cta"
                 disabled={addCategory.isPending || updateCategory.isPending}
               >
                 {editingCategory ? "Guardar" : "Crear"}

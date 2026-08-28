@@ -6,6 +6,8 @@ import { Label } from './ui/label'
 import { Loader2, Shield, Eye, EyeOff } from 'lucide-react'
 import { Alert, AlertDescription } from './ui/alert'
 
+const FORM_ID = 'fintual-connection-form'
+
 interface FintualConnectionModalProps {
   open: boolean
   onOpenChange: (open: boolean) => void
@@ -41,6 +43,30 @@ export function FintualConnectionModal({
       description="Sincroniza tus inversiones de Fintual"
       maxWidth="md"
       variant="investment"
+      footer={
+        isLoading ? undefined : (
+          <div className="flex gap-3">
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => onOpenChange(false)}
+              size="cta"
+              className="flex-1"
+            >
+              Cancelar
+            </Button>
+            <Button
+              type="submit"
+              form={FORM_ID}
+              disabled={!email || !password}
+              size="cta"
+              className="flex-1 bg-blue-500 hover:bg-blue-600"
+            >
+              Conectar
+            </Button>
+          </div>
+        )
+      }
     >
       {isLoading ? (
         // Loading personalizado de Fintual
@@ -74,7 +100,7 @@ export function FintualConnectionModal({
           </div>
         </div>
       ) : (
-        <form onSubmit={handleSubmit} className="space-y-6">
+        <form id={FORM_ID} onSubmit={handleSubmit} className="space-y-6">
           {/* Logo de Fintual */}
           <div className="flex justify-center">
             <img 
@@ -136,25 +162,6 @@ export function FintualConnectionModal({
               </Button>
             </div>
           </div>
-        </div>
-
-        <div className="flex gap-3">
-          <Button
-            type="button"
-            variant="outline"
-            onClick={() => onOpenChange(false)}
-            disabled={isLoading}
-            className="flex-1"
-          >
-            Cancelar
-          </Button>
-          <Button
-            type="submit"
-            disabled={isLoading || !email || !password}
-            className="flex-1 bg-blue-500 hover:bg-blue-600"
-          >
-            Conectar
-          </Button>
         </div>
       </form>
       )}

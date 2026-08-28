@@ -13,6 +13,8 @@ interface CreditCardModalProps {
   onSave: (card: Omit<CreditCard, "id" | "user_id" | "created_at" | "updated_at">) => Promise<void>;
 }
 
+const FORM_ID = "credit-card-form";
+
 const CARD_COLORS = [
   "#6366f1", // indigo
   "#818cf8", // indigo-light
@@ -92,8 +94,18 @@ export function CreditCardModal({ open, onOpenChange, card, onSave }: CreditCard
       title={isEditing ? "Editar Tarjeta" : "Nueva Tarjeta"}
       description="Configura los datos de tu tarjeta de crédito"
       maxWidth="md"
+      footer={
+        <Button
+          type="submit"
+          form={FORM_ID}
+          size="cta"
+          disabled={!name || !creditLimit || isSubmitting}
+        >
+          {isSubmitting ? "Guardando..." : isEditing ? "Guardar Cambios" : "Agregar Tarjeta"}
+        </Button>
+      }
     >
-      <form onSubmit={handleSubmit} className="space-y-6">
+      <form id={FORM_ID} onSubmit={handleSubmit} className="space-y-6">
         {/* Card Preview */}
         <div
           className="relative h-60 rounded-2xl p-5 text-white shadow-lg overflow-hidden"
@@ -211,15 +223,6 @@ export function CreditCardModal({ open, onOpenChange, card, onSave }: CreditCard
             ))}
           </div>
         </div>
-
-        {/* Submit */}
-        <Button
-          type="submit"
-          className="w-full h-12 text-base font-semibold"
-          disabled={!name || !creditLimit || isSubmitting}
-        >
-          {isSubmitting ? "Guardando..." : isEditing ? "Guardar Cambios" : "Agregar Tarjeta"}
-        </Button>
       </form>
     </BaseModal>
   );

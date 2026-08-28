@@ -102,6 +102,18 @@ export function ImportCSVModal({
       title="Importar Transacciones"
       description="Sube un archivo CSV con tus transacciones"
       maxWidth="xl"
+      footer={
+        selectedFile && !isImporting ? (
+          <Button
+            onClick={handleConfirmImport}
+            size="cta"
+            className="gap-2 bg-emerald-600 hover:bg-emerald-700 text-white"
+          >
+            <Upload className="h-4 w-4" />
+            Importar transacciones
+          </Button>
+        ) : undefined
+      }
     >
       <div className="space-y-5">
         {/* Excel-like preview */}
@@ -266,17 +278,6 @@ export function ImportCSVModal({
             </>
           )}
         </div>
-
-        {/* Import button */}
-        {selectedFile && !isImporting && (
-          <Button
-            onClick={handleConfirmImport}
-            className="w-full rounded-xl h-11 gap-2 bg-emerald-600 hover:bg-emerald-700 text-white"
-          >
-            <Upload className="h-4 w-4" />
-            Importar transacciones
-          </Button>
-        )}
       </div>
     </BaseModal>
   );

@@ -79,7 +79,7 @@ export function AddVideoDialog({
         <Button
           onClick={submit}
           disabled={!videoId || busy}
-          className="h-11 w-full rounded-xl text-sm font-semibold"
+          size="cta"
         >
           {busy ? (
             <Loader2 className="h-4 w-4 animate-spin" />

@@ -545,7 +545,7 @@ function EntryDetail({
                 save();
                 onOpenChange(false);
               }}
-              className="w-full h-11 font-semibold rounded-xl"
+              size="cta"
             >
               Guardar
             </Button>

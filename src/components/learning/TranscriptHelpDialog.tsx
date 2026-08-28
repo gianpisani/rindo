@@ -107,7 +107,7 @@ export function TranscriptHelpDialog({
               markDone();
               setView("usar");
             }}
-            className="w-full h-12 text-base font-semibold rounded-xl"
+            size="cta"
           >
             Listo, ya lo arrastré
           </Button>
@@ -208,7 +208,7 @@ export function TranscriptHelpDialog({
       footer={
         <Button
           onClick={paste}
-          className="w-full h-12 text-base font-semibold rounded-xl"
+          size="cta"
         >
           <ClipboardPaste className="h-5 w-5 mr-2" />
           Pegar los subtítulos

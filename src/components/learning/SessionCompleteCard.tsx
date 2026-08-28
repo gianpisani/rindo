@@ -70,7 +70,7 @@ export function SessionCompleteCard({
       footer={
         <Button
           onClick={() => onOpenChange(false)}
-          className="w-full h-12 text-base font-semibold rounded-xl"
+          size="cta"
         >
           Listo
         </Button>

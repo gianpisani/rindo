@@ -85,7 +85,7 @@ export function GoalSetupDialog({
         <Button
           onClick={handleSave}
           disabled={!canSave || isSaving}
-          className="w-full h-12 text-base font-semibold rounded-xl"
+          size="cta"
         >
           {isSaving ? (
             <Loader2 className="h-5 w-5 animate-spin" />

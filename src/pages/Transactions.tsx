@@ -649,7 +649,7 @@ export default function Transactions() {
               <Button
                 type="submit"
                 form={CATEGORY_FORM_ID}
-                className="w-full h-11 text-[15px] font-semibold"
+                size="cta"
                 disabled={addCategory.isPending}
               >
                 Crear categoría
@@ -658,7 +658,8 @@ export default function Transactions() {
               <Button
                 type="submit"
                 form="transaction-form"
-                className="w-full h-11 text-[15px] font-semibold gap-2"
+                size="cta"
+                className="gap-2"
                 disabled={addTransaction.isPending || updateTransaction.isPending}
               >
                 <span>

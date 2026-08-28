@@ -75,6 +75,9 @@ import { ChevronDoubleLeftIcon, ChevronDoubleRightIcon } from "@heroicons/react/
 
 // ── Status config ──────────────────────────────────────────
 
+const QUICK_ADD_FORM_ID = "tutoring-quick-add-form";
+const STUDENT_FORM_ID = "tutoring-student-form";
+
 const statusConfig = {
   scheduled: { label: "Agendada", icon: Clock, color: "text-blue-500", bg: "bg-blue-500/10", border: "border-blue-500/20" },
   completed: { label: "Realizada", icon: CircleCheckBig, color: "text-emerald-500", bg: "bg-emerald-500/10", border: "border-emerald-500/20" },
@@ -1356,8 +1359,19 @@ export default function TutoringClasses() {
         title="Agregar Clase"
         description="Registra una clase rápidamente"
         maxWidth="md"
+        footer={
+          <Button
+            type="submit"
+            form={QUICK_ADD_FORM_ID}
+            size="cta"
+            className="bg-emerald-500 hover:bg-emerald-600"
+            disabled={!quickForm.student_id || !quickForm.price_per_hour || addClass.isPending}
+          >
+            {addClass.isPending ? "Guardando..." : "Agregar Clase"}
+          </Button>
+        }
       >
-        <form onSubmit={handleQuickSubmit} className="space-y-4">
+        <form id={QUICK_ADD_FORM_ID} onSubmit={handleQuickSubmit} className="space-y-4">
           {/* Student select */}
           <div className="space-y-2">
             <Label className="text-sm font-medium">Alumno</Label>
@@ -1473,15 +1487,6 @@ export default function TutoringClasses() {
             onChange={(e) => setQuickForm({ ...quickForm, notes: e.target.value })}
             className="h-10 rounded-xl"
           />
-
-          <Button
-            type="submit"
-            size="lg"
-            className="w-full h-14 text-base font-semibold rounded-2xl bg-emerald-500 hover:bg-emerald-600"
-            disabled={!quickForm.student_id || !quickForm.price_per_hour || addClass.isPending}
-          >
-            {addClass.isPending ? "Guardando..." : "Agregar Clase"}
-          </Button>
         </form>
       </BaseModal>
 
@@ -1501,7 +1506,7 @@ export default function TutoringClasses() {
           <Button
             type="submit"
             form="class-form"
-            className="w-full"
+            size="cta"
             disabled={addClass.isPending || updateClass.isPending}
           >
             {editingClass ? "Guardar Cambios" : "Agregar"}
@@ -1627,8 +1632,18 @@ export default function TutoringClasses() {
         onOpenChange={setIsStudentDialogOpen}
         title="Nuevo Alumno"
         maxWidth="sm"
+        footer={
+          <Button
+            type="submit"
+            form={STUDENT_FORM_ID}
+            size="cta"
+            disabled={!newStudentName.trim() || addStudent.isPending}
+          >
+            {addStudent.isPending ? "Guardando..." : "Agregar Alumno"}
+          </Button>
+        }
       >
-        <form onSubmit={handleAddStudent} className="space-y-4">
+        <form id={STUDENT_FORM_ID} onSubmit={handleAddStudent} className="space-y-4">
           <Input
             placeholder="Nombre del alumno"
             value={newStudentName}
@@ -1636,10 +1651,6 @@ export default function TutoringClasses() {
             className="h-10 rounded-xl"
             autoFocus
           />
-          <Button type="submit" className="w-full" disabled={!newStudentName.trim() || addStudent.isPending}>
-            {addStudent.isPending ? "Guardando..." : "Agregar Alumno"}
-          </Button>
-
           {/* Existing students list */}
           {students.length > 0 && (
             <div className="space-y-2 pt-2 border-t">

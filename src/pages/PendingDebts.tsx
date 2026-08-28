@@ -418,7 +418,8 @@ export default function PendingDebts() {
         variant="expense"
         footer={
           <Button
-            className="w-full rounded-full bg-destructive hover:bg-destructive/90"
+            variant="destructive"
+            size="cta"
             onClick={handleAddDebt}
             disabled={
               !newDebt.name.trim() ||

@@ -2126,7 +2126,7 @@ export function TransactionsTable({
           <Button
             type="submit"
             form={CATEGORY_FORM_ID}
-            className="w-full rounded-full"
+            size="cta"
             disabled={addCategory.isPending}
           >
             Crear categoría

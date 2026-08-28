@@ -127,7 +127,7 @@ export function ReflectionDialog({
           <Button
             onClick={submit}
             disabled={isSubmitting}
-            className="w-full h-12 text-base font-semibold rounded-xl"
+            size="cta"
           >
             {isSubmitting ? (
               <Loader2 className="h-5 w-5 animate-spin" />
@@ -145,7 +145,7 @@ export function ReflectionDialog({
             ) : isComplete && autoSaved ? (
               <Button
                 onClick={submit}
-                className="w-full h-11 font-semibold rounded-xl"
+                size="cta"
               >
                 Guardar sesión
               </Button>

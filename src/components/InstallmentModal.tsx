@@ -35,6 +35,8 @@ interface InstallmentModalProps {
   ) => Promise<void>;
 }
 
+const FORM_ID = "installment-form";
+
 const INSTALLMENT_OPTIONS = [1, 2, 3, 6, 10, 12, 18, 24, 36, 48];
 
 export function InstallmentModal({
@@ -138,8 +140,20 @@ export function InstallmentModal({
       description="Registra una compra para llevar el control de tus cuotas"
       maxWidth="lg"
       variant="expense"
+      footer={
+        <Button
+          type="submit"
+          form={FORM_ID}
+          variant="destructive"
+          size="cta"
+          disabled={!description || !totalAmount || !cardId || isSubmitting}
+        >
+          <Receipt className="mr-2 h-4 w-4" />
+          {isSubmitting ? "Guardando..." : isEditing ? "Guardar Cambios" : "Agregar Compra"}
+        </Button>
+      }
     >
-      <form onSubmit={handleSubmit} className="space-y-5">
+      <form id={FORM_ID} onSubmit={handleSubmit} className="space-y-5">
         {/* Summary Card */}
         <div className="bg-destructive/5 border border-destructive/20 rounded-xl p-4">
           <div className="flex items-center gap-3 mb-3">
@@ -320,16 +334,6 @@ export function InstallmentModal({
             rows={2}
           />
         </div>
-
-        {/* Submit */}
-        <Button
-          type="submit"
-          className="w-full h-12 text-base font-semibold bg-destructive hover:bg-destructive/90"
-          disabled={!description || !totalAmount || !cardId || isSubmitting}
-        >
-          <Receipt className="mr-2 h-4 w-4" />
-          {isSubmitting ? "Guardando..." : isEditing ? "Guardar Cambios" : "Agregar Compra"}
-        </Button>
       </form>
     </BaseModal>
   );

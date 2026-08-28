@@ -104,17 +104,19 @@ export default function SharedExpenseDrawer({
       title="Gasto Compartido"
       maxWidth="md"
       footer={
-        <div className="flex gap-2">
-          <Button 
-            variant="outline" 
+        <div className="flex gap-3">
+          <Button
+            variant="outline"
+            size="cta"
             className="flex-1"
             onClick={() => onOpenChange(false)}
           >
             Cancelar
           </Button>
-          <Button 
-            onClick={handleConfirm} 
+          <Button
+            onClick={handleConfirm}
             disabled={!isValid}
+            size="cta"
             className="flex-1"
           >
             Confirmar
