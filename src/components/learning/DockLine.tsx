@@ -29,6 +29,11 @@ interface DockLineProps {
   onWordDown: (at: WordAt, event: React.PointerEvent) => void;
   /** El tramo de esta línea que está marcado, si lo está. */
   selection?: LineRange | null;
+  /**
+   * Hasta qué palabra llegó la voz. Las de más allá se ven apagadas: es lo que
+   * hace que un bloque de diez segundos no se quede quieto los diez.
+   */
+  sweep?: number | null;
   /** Marca por palabra. Devuelve null para dejarla limpia. */
   markOf?: (word: string) => WordMark | null;
   /** Cuánto crece la palabra señalada y sus vecinas. */
@@ -74,6 +79,7 @@ export const DockLine = memo(function DockLine({
   line,
   onWordDown,
   selection,
+  sweep,
   markOf,
   steps = DOCK_SCALE,
   className,
@@ -226,6 +232,15 @@ export const DockLine = memo(function DockLine({
         const isFocus = scale === steps[0];
         const isMarked = marked?.flags[index] ?? false;
 
+        // La voz no cae de golpe: la palabra que viene queda a media luz y el
+        // resto apagado, así el borde se lee como un barrido y no como un corte.
+        const ahead =
+          sweep == null || !part.isWord || part.ord <= sweep
+            ? null
+            : part.ord === sweep + 1
+              ? "dock-next"
+              : "dock-ahead";
+
         const style: CSSProperties = {
           transform:
             shift || scale !== 1
@@ -277,6 +292,7 @@ export const DockLine = memo(function DockLine({
             className={cn(
               "inline-block cursor-pointer rounded",
               isFocus && "font-bold text-primary",
+              ahead,
               markClass
             )}
             style={style}

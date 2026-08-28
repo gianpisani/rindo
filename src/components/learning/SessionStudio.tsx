@@ -18,6 +18,7 @@ import {
 } from "lucide-react";
 import { YouTubePlayer, type YouTubePlayerHandle, type VideoMeta } from "./YouTubePlayer";
 import { SubtitleTrack } from "./SubtitleTrack";
+import { SubtitleCaption } from "./SubtitleCaption";
 import { TranscriptActions } from "./TranscriptActions";
 import { VideoActionsPanel, type StudioState } from "./VideoActionsPanel";
 import { TranscriptHelpDialog } from "./TranscriptHelpDialog";
@@ -32,12 +33,17 @@ import {
   youTubeWatchUrl,
   type ItemType,
 } from "@/lib/learning-config";
-import { activeCueIndex, normalizeLookup, type Cue } from "@/lib/transcript";
+import {
+  activeCueIndex,
+  groupCues,
+  normalizeLookup,
+  type Cue,
+} from "@/lib/transcript";
 import { bandOf, effectiveRank, lemmatize } from "@/lib/corpus";
 import { difficultyTrack } from "@/lib/heat";
 import { useTranscript } from "@/hooks/useTranscript";
 import { useFrequencyList } from "@/hooks/useFrequencyList";
-import type { PlaybackSample } from "@/hooks/useSmoothPosition";
+import { useActiveSpot, type PlaybackSample } from "@/hooks/useSmoothPosition";
 import type { LearningSession } from "@/hooks/useLearningSessions";
 import { useLearningItems, useSessionItems } from "@/hooks/useLearningItems";
 import { useResetLearningContent } from "@/hooks/useLearningSessions";
@@ -240,6 +246,22 @@ export function SessionStudio({
     [captured]
   );
 
+  /**
+   * Lo que se lee no son las líneas de tiempo: son bloques.
+   *
+   * Los cues de YouTube se cortan cada dos segundos sin mirar dónde —en esta
+   * biblioteca, hasta el 79% termina a media frase— así que como unidad de
+   * lectura no sirven. `groupCues` los cose en bloques eligiendo dónde cortar,
+   * y cada trozo conserva su segundo para el barrido y para el salto.
+   */
+  const blocks = useMemo(() => groupCues(cues), [cues]);
+
+  /**
+   * Dónde va la voz, hasta la palabra. Lo calcula una sola vez para los dos
+   * lugares que la muestran: el subtítulo sobre el video y la transcripción.
+   */
+  const spot = useActiveSpot(playbackRef, blocks, trackDuration);
+
   /** El relieve del video: dónde se pone difícil. */
   const heat = useMemo(
     () =>
@@ -253,17 +275,18 @@ export function SessionStudio({
    * Si recién empezó, se repite la anterior: apretar "repetir" en el primer
    * medio segundo de una línea siempre quiere decir "esa que no alcancé a oír".
    */
+  /** "Repetir frase" ahora repite la frase, no la tajada de dos segundos. */
   const repeatLine = useCallback(() => {
-    if (!cues.length) return;
+    if (!blocks.length) return;
     const now = playerRef.current?.getCurrentTime() ?? 0;
-    let index = activeCueIndex(cues, now);
+    let index = activeCueIndex(blocks, now);
     if (index < 0) index = 0;
-    if (index > 0 && now - cues[index].t < 0.6) index -= 1;
+    if (index > 0 && now - blocks[index].t < 0.6) index -= 1;
 
-    playerRef.current?.seekTo(cues[index].t);
+    playerRef.current?.seekTo(blocks[index].t);
     playerRef.current?.play();
     onActivity();
-  }, [cues, onActivity]);
+  }, [blocks, onActivity]);
 
   // ── Formulario de captura ─────────────────────────────────
 
@@ -525,6 +548,13 @@ export function SessionStudio({
                   </span>
                 </button>
 
+                <SubtitleCaption
+                  block={spot.block >= 0 ? blocks[spot.block] : null}
+                  word={spot.word}
+                  onPick={pickFromTranscript}
+                  markOf={markOf}
+                />
+
                 <PlayerTransport
                   playbackRef={playbackRef}
                   playing={isVideoPlaying}
@@ -549,8 +579,8 @@ export function SessionStudio({
               </div>
 
               <SubtitleTrack
-                cues={cues}
-                playbackRef={playbackRef}
+                blocks={blocks}
+                active={spot}
                 follow={followSubtitles}
                 onFollowChange={setFollowSubtitles}
                 onPick={pickFromTranscript}

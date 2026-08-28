@@ -1,16 +1,17 @@
-import { useEffect, useRef, type MutableRefObject } from "react";
+import { useEffect, useRef } from "react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { ArrowDown, ClipboardPaste, Wand2 } from "lucide-react";
 import { formatClock } from "@/lib/learning-config";
-import { sliceWords, type Cue } from "@/lib/transcript";
-import { useActiveCue, type PlaybackSample } from "@/hooks/useSmoothPosition";
+import { sliceWords, segmentAtWord, type Block, type Cue } from "@/lib/transcript";
+import type { ActiveSpot } from "@/hooks/useSmoothPosition";
 import { DockLine, type WordMark } from "./DockLine";
 import { usePhraseSelection, type PhraseSpan } from "@/hooks/usePhraseSelection";
 
 interface SubtitleTrackProps {
-  cues: Cue[];
-  playbackRef: MutableRefObject<PlaybackSample>;
+  blocks: Block[];
+  /** Dónde va la voz: bloque y palabra. */
+  active: ActiveSpot;
   /** La pista va detrás del video, o la mueves tú. */
   follow: boolean;
   onFollowChange: (follow: boolean) => void;
@@ -24,20 +25,19 @@ interface SubtitleTrackProps {
 }
 
 /**
- * Los subtítulos, debajo del video y a tamaño de leer.
+ * La transcripción, debajo del video.
  *
- * Es una pista que corre, no tres renglones fijos: las transcripciones reales
- * traen líneas de una palabra y párrafos de cuarenta, así que cualquier alto
- * fijo termina pisando texto. Acá la línea que suena se ilumina y la pista se
- * mueve sola para dejarla al centro; lo de antes y lo que viene siguen ahí,
- * apagados, que es exactamente lo que uno necesita para no perder el hilo.
+ * Ya no es la superficie de lectura —esa se mudó encima del video, que es donde
+ * están tus ojos mientras alguien habla— sino el mapa: se escanea, se salta, se
+ * busca dónde quedó algo. Por eso puede ser más densa que antes.
  *
- * Las marcas de vocabulario van solo en la línea activa: marcarlas todas
- * convierte la pista en un sarpullido y deja de leerse.
+ * Y no muestra líneas de tiempo sino bloques de lectura: los cues de YouTube se
+ * cortan cada dos segundos sin mirar dónde, así que como unidad de lectura no
+ * sirven. Lo que se lee es la frase; lo que se resalta, la palabra que suena.
  */
 export function SubtitleTrack({
-  cues,
-  playbackRef,
+  blocks,
+  active,
   follow,
   onFollowChange,
   onPick,
@@ -48,35 +48,14 @@ export function SubtitleTrack({
   isSaving,
   className,
 }: SubtitleTrackProps) {
-  const index = useActiveCue(playbackRef, cues);
+  const index = active.block;
 
   const boxRef = useRef<HTMLDivElement>(null);
   const activeRef = useRef<HTMLDivElement>(null);
 
-  /**
-   * Marcar una frase es arrastrar por encima de las palabras; soltar es
-   * preguntar. Un toque sin arrastre marca una sola palabra, así que el gesto
-   * de siempre no cambió: es el mismo, nada más que ahora se puede estirar.
-   */
-  const phrase = usePhraseSelection((span: PhraseSpan) => {
-    const lines: string[] = [];
-    for (let line = span.from.line; line <= span.to.line; line++) {
-      const range = phraseRangeOf(span, line);
-      const piece = sliceWords(cues[line].text, range.from, range.to);
-      if (piece) lines.push(piece);
-    }
-
-    const term = lines.join(" ").trim();
-    if (!term) return;
-
-    // El contexto que se guarda es todo lo que la frase abarca: una expresión
-    // partida entre dos líneas no se entiende con la mitad de la oración.
-    const spanned = cues.slice(span.from.line, span.to.line + 1);
-    onPick(term, {
-      t: spanned[0].t,
-      text: spanned.map((cue) => cue.text).join(" "),
-    });
-  });
+  const phrase = usePhraseSelection((span: PhraseSpan) =>
+    onPick(...pickFromBlocks(blocks, span))
+  );
 
   /**
    * Se centra a mano y no con `scrollIntoView`: ese arrastra también a los
@@ -99,7 +78,7 @@ export function SubtitleTrack({
 
   // ── Sin subtítulos ────────────────────────────────────────
 
-  if (cues.length === 0) {
+  if (blocks.length === 0) {
     return (
       <div
         className={cn(
@@ -112,9 +91,10 @@ export function SubtitleTrack({
           Sin subtítulos esto es solo un video
         </p>
         <p className="max-w-lg text-xs leading-relaxed text-muted-foreground">
-          Con ellos cargados aparece acá lo que se está diciendo, puedes tocar
-          cualquier palabra para ver qué significa y la barra de arriba te marca
-          dónde se pone difícil. Se traen una vez y quedan para siempre.
+          Con ellos cargados aparece sobre el video lo que se está diciendo,
+          puedes tocar cualquier palabra para ver qué significa y la barra de
+          arriba te marca dónde se pone difícil. Se traen una vez y quedan para
+          siempre.
         </p>
         <div className="mt-1 flex flex-wrap justify-center gap-2">
           <Button onClick={onBringSubtitles} size="sm" className="rounded-xl">
@@ -155,7 +135,7 @@ export function SubtitleTrack({
         }}
         data-marking={phrase.marking || undefined}
         className={cn(
-          "subtitle-track relative h-full overflow-y-auto overscroll-contain px-3 py-4 sm:px-4",
+          "subtitle-track relative h-full overflow-y-auto overscroll-contain px-3 py-3 sm:px-4",
           // Nadie selecciona texto acá: el gesto es marcar una frase, y si el
           // navegador puede seleccionar por su cuenta se lleva hasta la hora.
           "select-none"
@@ -168,12 +148,12 @@ export function SubtitleTrack({
             "linear-gradient(to bottom, transparent, #000 1.25rem, #000 calc(100% - 1.25rem), transparent)",
         }}
       >
-        {cues.map((cue, cueIndex) => {
-          const isActive = cueIndex === index;
+        {blocks.map((block, blockIndex) => {
+          const isActive = blockIndex === index;
 
           return (
             <div
-              key={`${cue.t}-${cueIndex}`}
+              key={`${block.t}-${blockIndex}`}
               ref={isActive ? activeRef : undefined}
               className={cn(
                 "group/line relative flex gap-3 rounded-xl py-1.5 pl-3 pr-2 transition-colors duration-300",
@@ -190,8 +170,8 @@ export function SubtitleTrack({
 
               <button
                 data-clock
-                onClick={() => onSeek(cue.t)}
-                title={`Ir a ${formatClock(cue.t)}`}
+                onClick={() => onSeek(block.t)}
+                title={`Ir a ${formatClock(block.t)}`}
                 className={cn(
                   "w-11 shrink-0 pt-1 text-left text-[11px] tabular-nums transition-colors",
                   isActive
@@ -199,18 +179,19 @@ export function SubtitleTrack({
                     : "text-muted-foreground/40 hover:text-foreground"
                 )}
               >
-                {formatClock(cue.t)}
+                {formatClock(block.t)}
               </button>
 
-              {/* El tamaño no cambia entre líneas: así nada salta al avanzar */}
+              {/* El tamaño no cambia entre bloques: así nada salta al avanzar */}
               <DockLine
-                text={cue.text}
-                line={cueIndex}
+                text={block.text}
+                line={blockIndex}
                 markOf={isActive ? markOf : undefined}
-                selection={phrase.rangeOf(cueIndex)}
+                selection={phrase.rangeOf(blockIndex)}
+                sweep={isActive ? active.word : null}
                 onWordDown={phrase.begin}
                 className={cn(
-                  "flex-1 text-base leading-relaxed transition-colors duration-300 sm:text-lg",
+                  "flex-1 text-[15px] leading-relaxed transition-colors duration-300 sm:text-base",
                   isActive
                     ? "font-medium text-foreground"
                     : "text-muted-foreground/50 group-hover/line:text-muted-foreground/80"
@@ -239,10 +220,30 @@ export function SubtitleTrack({
   );
 }
 
-/** Qué tramo de la frase cae en una línea; Infinity = sigue en la de abajo. */
-function phraseRangeOf(span: PhraseSpan, line: number) {
-  return {
-    from: line === span.from.line ? span.from.ord : 0,
-    to: line === span.to.line ? span.to.ord : Number.POSITIVE_INFINITY,
-  };
+/**
+ * Qué preguntaste y desde dónde.
+ *
+ * El segundo que se guarda es el del trozo original donde empieza la frase, no
+ * el del bloque: el bloque puede durar diez segundos y volver a su principio
+ * sería volver a otra parte. El contexto, en cambio, es todo lo que la frase
+ * abarca —una expresión partida no se entiende con la mitad de la oración.
+ */
+function pickFromBlocks(blocks: Block[], span: PhraseSpan): [string, Cue] {
+  const parts: string[] = [];
+
+  for (let line = span.from.line; line <= span.to.line; line++) {
+    const from = line === span.from.line ? span.from.ord : 0;
+    const to = line === span.to.line ? span.to.ord : Number.POSITIVE_INFINITY;
+    const piece = sliceWords(blocks[line].text, from, to);
+    if (piece) parts.push(piece);
+  }
+
+  const spanned = blocks.slice(span.from.line, span.to.line + 1);
+  return [
+    parts.join(" ").trim(),
+    {
+      t: segmentAtWord(blocks[span.from.line], span.from.ord).t,
+      text: spanned.map((block) => block.text).join(" "),
+    },
+  ];
 }

@@ -8,7 +8,8 @@
     "build": "vite build",
     "build:dev": "vite build --mode development",
     "lint": "eslint .",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "check:blocks": "esbuild scripts/check-blocks.ts --bundle --platform=node --format=cjs --outfile=node_modules/.cache/check-blocks.cjs --log-level=error && node node_modules/.cache/check-blocks.cjs"
   },
   "dependencies": {
     "@dnd-kit/core": "^6.3.1",

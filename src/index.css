@@ -577,6 +577,59 @@ Based on Indigo, Blue, Cyan palette
     }
   }
 
+  /*
+   * El barrido: hasta dónde llegó la voz dentro del bloque.
+   *
+   * Se apaga lo que todavía no se dice, con un escalón intermedio en la palabra
+   * que viene. El borde así se lee como un barrido y no como un corte, que es
+   * la diferencia entre parecer vivo y parecer una máquina de estados. Es color
+   * y nunca grosor: cambiar el peso de la letra movería el texto en cada
+   * palabra, y el bloque entero temblaría mientras alguien habla.
+   */
+  .dock-next {
+    color: color-mix(in oklch, currentColor 72%, transparent);
+  }
+
+  .dock-ahead {
+    color: color-mix(in oklch, currentColor 45%, transparent);
+  }
+
+  /*
+   * El subtítulo sobre el video.
+   *
+   * Sin caja: una caja sólida sobre la imagen se ve pegada encima. Lo que hace
+   * legible un subtítulo sobre cualquier fondo es la sombra —la misma que usa
+   * el cine— y un velo suave al pie del cuadro que baja el contraste de la
+   * imagen justo donde va el texto.
+   */
+  .subtitle-caption::before {
+    content: "";
+    position: absolute;
+    inset: -150% 0 0 0;
+    background: linear-gradient(to top, rgb(0 0 0 / 0.55), transparent);
+    pointer-events: none;
+  }
+
+  .subtitle-caption [data-part] {
+    text-shadow:
+      0 1px 3px rgb(0 0 0 / 0.9),
+      0 0 12px rgb(0 0 0 / 0.5);
+  }
+
+  /* Sobre el video la banda de la frase va más fuerte: compite con la imagen. */
+  .subtitle-caption .phrase-band {
+    background: color-mix(in oklch, var(--primary) 55%, transparent);
+    box-shadow: 0 0 0 0.16em color-mix(in oklch, var(--primary) 55%, transparent);
+  }
+
+  .subtitle-caption .phrase-mark {
+    color: #fff;
+  }
+
+  .subtitle-caption[data-marking] [data-part]:not(.phrase-mark) {
+    opacity: 0.4;
+  }
+
   /* ── Mobile Bottom Tab Bar ── */
   .mobile-tab-bar {
     display: flex;

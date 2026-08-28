@@ -127,6 +127,10 @@ export const YouTubePlayer = forwardRef<YouTubePlayerHandle, YouTubePlayerProps>
           playerVars: {
             rel: 0,
             modestbranding: 1,
+            // Los subtítulos de YouTube quedan fuera: los pinta el iframe sobre
+            // la cara, con su propio corte y su propio texto, y no se pueden
+            // tocar. Ese lugar es del subtítulo de Rindo.
+            cc_load_policy: 0,
             playsinline: 1,
             start: Math.floor(startSeconds) || 0,
             origin: window.location.origin,

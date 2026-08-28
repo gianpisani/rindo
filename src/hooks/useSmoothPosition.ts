@@ -1,5 +1,11 @@
-import { useEffect, useRef, useState, type MutableRefObject } from "react";
-import { activeCueIndex, type Cue } from "@/lib/transcript";
+import {
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  type MutableRefObject,
+} from "react";
+import { activeCueIndex, wordTimes, type Block } from "@/lib/transcript";
 
 export interface PlaybackSample {
   /** Último segundo informado por el reproductor. */
@@ -47,20 +53,40 @@ export function useSmoothPosition(
   return seconds;
 }
 
+/** Dónde va la voz: en qué bloque y en qué palabra de ese bloque. */
+export interface ActiveSpot {
+  block: number;
+  word: number;
+}
+
+const NOWHERE: ActiveSpot = { block: -1, word: -1 };
+
 /**
- * Qué línea se está diciendo, al cuadro.
+ * Qué se está diciendo, hasta la palabra.
  *
- * Interpola igual que `useSmoothPosition` pero devuelve el índice y no el
- * segundo, y esa diferencia es todo: la pista tiene cientos de líneas y
- * repintarlas sesenta veces por segundo para mover un resaltado sería
- * grotesco. Con el índice, React descarta el estado repetido y la lista solo
- * se rehace cuando de verdad cambia la frase.
+ * Un bloque dura diez segundos. Si lo único que se supiera es cuál es el bloque,
+ * el subtítulo se encendería entero y se quedaría quieto todo ese rato —más
+ * muerto que las líneas de dos segundos que había antes—. Lo que lo mantiene
+ * vivo es que adentro del bloque la voz avance palabra por palabra.
+ *
+ * Los tiempos por palabra se calculan una vez por transcripción; en el cuadro
+ * solo se busca. Y se devuelve el mismo objeto cuando nada cambió, así que
+ * React no repinta sesenta veces por segundo para no mover nada.
  */
-export function useActiveCue(
+export function useActiveSpot(
   ref: MutableRefObject<PlaybackSample>,
-  cues: Cue[]
-): number {
-  const [index, setIndex] = useState(-1);
+  blocks: Block[],
+  endSeconds: number
+): ActiveSpot {
+  const [spot, setSpot] = useState<ActiveSpot>(NOWHERE);
+
+  const times = useMemo(
+    () =>
+      blocks.map((block, index) =>
+        wordTimes(block, blocks[index + 1]?.t ?? endSeconds)
+      ),
+    [blocks, endSeconds]
+  );
 
   useEffect(() => {
     let frame: number;
@@ -70,13 +96,30 @@ export function useActiveCue(
       const seconds = sample.playing
         ? sample.seconds + (performance.now() - sample.at) / 1000
         : sample.seconds;
-      setIndex(activeCueIndex(cues, seconds));
+
+      const block = activeCueIndex(blocks, seconds);
+      let word = -1;
+      if (block >= 0) {
+        const marks = times[block];
+        // Los bloques son de una docena de palabras: buscar de atrás para
+        // adelante llega antes que armar una búsqueda binaria.
+        for (let i = marks.length - 1; i >= 0; i--) {
+          if (marks[i] <= seconds) {
+            word = i;
+            break;
+          }
+        }
+      }
+
+      setSpot((prev) =>
+        prev.block === block && prev.word === word ? prev : { block, word }
+      );
       frame = requestAnimationFrame(tick);
     };
 
     frame = requestAnimationFrame(tick);
     return () => cancelAnimationFrame(frame);
-  }, [ref, cues]);
+  }, [ref, blocks, times]);
 
-  return index;
+  return spot;
 }
