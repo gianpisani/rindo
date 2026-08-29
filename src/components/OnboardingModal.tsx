@@ -138,9 +138,11 @@ function ThemePreviewCard({
 function HueSlider({
   value,
   onChange,
+  mode,
 }: {
   value: number;
   onChange: (hue: number) => void;
+  mode: "light" | "dark";
 }) {
   const trackRef = useRef<HTMLDivElement>(null);
 
@@ -169,6 +171,12 @@ function HueSlider({
   );
 
   const pct = (value / 360) * 100;
+  // La barra muestra los acentos de verdad, no un arcoíris decorativo: el
+  // color bajo el dedo es exactamente el que va a quedar en la app.
+  const track = Array.from({ length: 13 }, (_, i) =>
+    generatePaletteFromHue(i * 30, mode).primary
+  ).join(", ");
+  const thumb = generatePaletteFromHue(value, mode).primary;
 
   return (
     <div
@@ -177,12 +185,11 @@ function HueSlider({
       onPointerDown={handlePointerDown}
       onPointerMove={handlePointerMove}
     >
-      {/* Rainbow track */}
+      {/* Barra de tonos */}
       <div
         className="absolute inset-y-[10px] inset-x-0 rounded-full"
         style={{
-          background:
-            "linear-gradient(to right, oklch(0.65 0.25 0), oklch(0.65 0.25 45), oklch(0.65 0.25 90), oklch(0.65 0.25 135), oklch(0.65 0.25 180), oklch(0.65 0.25 225), oklch(0.65 0.25 270), oklch(0.65 0.25 315), oklch(0.65 0.25 360))",
+          background: `linear-gradient(to right, ${track})`,
           boxShadow: "inset 0 1px 3px rgba(0,0,0,0.15)",
         }}
       />
@@ -191,7 +198,7 @@ function HueSlider({
         className="absolute top-1/2 -translate-y-1/2 size-[22px] rounded-full pointer-events-none transition-[left] duration-75 ease-out"
         style={{
           left: `calc(${pct}% - 11px)`,
-          backgroundColor: `oklch(0.65 0.25 ${value})`,
+          backgroundColor: thumb,
           border: "3px solid rgba(255,255,255,0.9)",
           boxShadow:
             "0 2px 8px rgba(0,0,0,0.3), 0 0 0 1px rgba(0,0,0,0.08), inset 0 1px 2px rgba(255,255,255,0.3)",
@@ -643,7 +650,7 @@ export function OnboardingModal({
                     />
                   );
                 })}
-                {/* Custom — gradient card with icon */}
+                {/* Custom — la tarjeta muestra el gradiente que va a aplicar */}
                 <button
                   onClick={() => handleSelectTheme("custom")}
                   className={cn(
@@ -656,7 +663,7 @@ export function OnboardingModal({
                   <div
                     className="w-full aspect-[4/3] rounded-lg overflow-hidden flex items-center justify-center"
                     style={{
-                      background: `linear-gradient(135deg, oklch(0.6 0.22 ${customHue}), oklch(0.7 0.18 ${customHue + 80}))`,
+                      background: `linear-gradient(135deg, ${customPalette.primary}, ${customPalette.ring})`,
                     }}
                   >
                     <Paintbrush className="size-5 text-white/90 drop-shadow-md" />
@@ -670,7 +677,7 @@ export function OnboardingModal({
               {/* Hue slider — slides in when custom selected */}
               {selectedTheme === "custom" && (
                 <div className="mt-3 animate-in fade-in slide-in-from-top-1 duration-200">
-                  <HueSlider value={customHue} onChange={handleCustomHue} />
+                  <HueSlider value={customHue} onChange={handleCustomHue} mode={currentMode} />
                 </div>
               )}
             </div>

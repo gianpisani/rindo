@@ -232,18 +232,15 @@ const Index = () => {
     }).format(value);
   };
 
-  // Insight type → gradient color for icon background
-  const insightGradient: Record<string, string> = {
-    alert: "from-amber-500/25 to-transparent",
-    achievement: "from-emerald-500/25 to-transparent",
-    opportunity: "from-sky-500/25 to-transparent",
-    pattern: "from-violet-500/25 to-transparent",
-  };
-  const insightBorder: Record<string, string> = {
-    alert: "border-amber-500/20",
-    achievement: "border-emerald-500/20",
-    opportunity: "border-sky-500/20",
-    pattern: "border-violet-500/20",
+  // Insights — el tipo elige el tono, la fila elige con cuánta fuerza se
+  // muestra. Guardamos el token crudo (triplete OKLCH) en vez de un color
+  // cerrado: así la misma constante sirve para el lomo a fuerza completa,
+  // el relleno translúcido y el borde, sin repetir el color en ningún lado.
+  const insightTone: Record<string, string> = {
+    alert: "var(--insight-alert)",
+    achievement: "var(--insight-achievement)",
+    opportunity: "var(--insight-opportunity)",
+    pattern: "var(--insight-pattern)",
   };
 
   // ─── Balance Card (shared between mobile/desktop) ─────
@@ -468,49 +465,69 @@ const Index = () => {
         <div className="flex-1 overflow-y-auto px-3 pb-3 space-y-1.5">
           {topInsights.map((insight, i) => {
             const emoji = insight.category ? getCatEmoji(insight.category) : "💡";
-            const border = insightBorder[insight.type] || insightBorder.pattern;
             const hasProgress = insight.percentage != null;
             const pct = hasProgress ? Math.min(insight.percentage!, 100) : 0;
             const isOver = (insight.percentage ?? 0) > 100;
-
-            // Progress bar fill color per type
-            const fillColor = isOver
-              ? "bg-red-500/20"
-              : insight.type === "alert"
-                ? "bg-amber-500/15"
-                : insight.type === "achievement"
-                  ? "bg-emerald-500/15"
-                  : insight.type === "opportunity"
-                    ? "bg-sky-500/15"
-                    : "bg-violet-500/15";
+            // Pasarse del límite tiene tono propio: el mismo rojo con el que
+            // la app escribe los gastos. Lo demás lo tiñe su tipo.
+            const tone = isOver
+              ? "var(--insight-danger)"
+              : insightTone[insight.type] ?? insightTone.pattern;
+            const at = (alpha: number) => `oklch(${tone} / ${alpha})`;
 
             return (
               <div
                 key={i}
-                className={cn(
-                  "relative flex items-start gap-2.5 rounded-lg border p-2.5 transition-all hover:brightness-110 overflow-hidden",
-                  border,
-                  isOver && "border-red-500/30"
-                )}
+                className="relative flex items-center gap-2.5 overflow-hidden rounded-xl border py-2 pl-3 pr-2.5 transition-all duration-200 hover:-translate-y-px hover:brightness-110"
+                style={{
+                  // Negro real bajo el color: la fila es más oscura que la
+                  // tarjeta que la contiene, y el tono se apoya en ese contraste.
+                  backgroundColor: "var(--background)",
+                  borderColor: at(isOver ? 0.45 : 0.28),
+                }}
               >
-                {/* Progress bar background fill */}
+                {/* Avance del presupuesto: el color entra por la izquierda y
+                    se apaga hacia la derecha, el largo se lee de un ojo */}
                 {hasProgress && (
                   <div
-                    className={cn(
-                      "absolute inset-y-0 left-0 transition-all duration-700 ease-out rounded-l-lg",
-                      fillColor,
-                      isOver && "rounded-r-lg"
-                    )}
-                    style={{ width: `${pct}%` }}
+                    className="absolute inset-y-0 left-0 transition-[width] duration-700 ease-out"
+                    style={{
+                      width: `${pct}%`,
+                      background: `linear-gradient(90deg, ${at(0.32)}, ${at(0.07)})`,
+                    }}
                   />
                 )}
-                <span className="relative text-base shrink-0 flex items-center justify-center size-7">{emoji}</span>
+                {/* Lomo: el tono a fuerza completa, con su propio brillo */}
+                <div
+                  className="absolute inset-y-0 left-0 w-[3px]"
+                  style={{
+                    backgroundColor: `oklch(${tone})`,
+                    boxShadow: `0 0 10px ${at(0.75)}`,
+                  }}
+                />
+                <span
+                  className="relative grid size-7 shrink-0 place-items-center rounded-lg text-base"
+                  style={{
+                    backgroundColor: at(0.18),
+                    boxShadow: `inset 0 0 0 1px ${at(0.32)}`,
+                  }}
+                >
+                  {emoji}
+                </span>
                 <div className="relative min-w-0 flex-1">
-                  <p className="text-[11px] font-medium leading-snug">{insight.title}</p>
+                  <p className="truncate text-[11px] font-semibold leading-snug">{insight.title}</p>
                   <p className={cn("text-[10px] text-muted-foreground leading-snug mt-0.5", isPrivacyMode && "privacy-blur")}>
                     {insight.description}
                   </p>
                 </div>
+                {hasProgress && (
+                  <span
+                    className="relative shrink-0 font-mono text-[11px] font-bold tabular-nums"
+                    style={{ color: `oklch(${tone})` }}
+                  >
+                    {Math.round(insight.percentage!)}%
+                  </span>
+                )}
               </div>
             );
           })}

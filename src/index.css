@@ -143,6 +143,15 @@ Based on Indigo, Blue, Cyan palette
     --accent-emerald: 0.696 0.149 162.5; /* = #10b981 (emerald-500) */
     --accent-blue: 0.623 0.188 259.8;    /* = #3b82f6 (blue-500) */
     --accent-amber: 0.769 0.165 70.1;    /* = #f59e0b (amber-500) */
+    --accent-violet: 0.606 0.25 292.7;   /* = #8b5cf6 (violet-500) */
+
+    /* Insights — un tono por tipo. Tripletes crudos: cada fila los compone
+       con alpha (spine sólido, relleno translúcido) sin duplicar el color. */
+    --insight-danger: var(--accent-rose);
+    --insight-alert: var(--accent-amber);
+    --insight-achievement: var(--accent-emerald);
+    --insight-opportunity: var(--accent-blue);
+    --insight-pattern: var(--accent-violet);
 
     --border: oklch(0.835 0.008 286);
     --input: oklch(0.835 0.008 286);
@@ -214,11 +223,23 @@ Based on Indigo, Blue, Cyan palette
        Es LA perilla del sistema: subir para más punch, bajar para más
        elegancia. Si algún hue no alcanza ese chroma en la pantalla, el
        gamut mapping de CSS Color 4 lo reduce solo (preservando L y H). */
-    --accent-chroma: 0.19;
+    /* 0.21 es el techo real del rosa a esta luminosidad: pedir más no lo
+       hace más vivo, solo lo recorta el navegador. Los otros tonos llegan
+       algo antes y el gamut mapping los baja preservando tono y luz. */
+    --accent-chroma: 0.21;
     --accent-rose: 0.68 var(--accent-chroma) 18;
     --accent-emerald: 0.8 var(--accent-chroma) 162;
     --accent-blue: 0.66 var(--accent-chroma) 259;
     --accent-amber: 0.83 var(--accent-chroma) 78;
+    --accent-violet: 0.66 var(--accent-chroma) 295;
+
+    /* Insights — mismos tripletes crudos que en claro, ya en su versión
+       oscura: el tipo de insight elige el tono, la fila elige el alpha. */
+    --insight-danger: var(--accent-rose);
+    --insight-alert: var(--accent-amber);
+    --insight-achievement: var(--accent-emerald);
+    --insight-opportunity: var(--accent-blue);
+    --insight-pattern: var(--accent-violet);
 
     /* Un solo rojo en dark: destructive ES el rose accent */
     --destructive: var(--accent-rose);

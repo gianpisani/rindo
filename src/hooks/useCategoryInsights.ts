@@ -227,13 +227,15 @@ export function useCategoryInsights(
     const insights: CategoryInsight[] = [];
 
     // Alerts for over limit (using effectiveAmount)
+    // El porcentaje no va en la descripción: viaja en `percentage` y cada
+    // vista decide cómo mostrarlo (el panel de Insights lo pinta al lado).
     categorySpending.forEach((spending) => {
       const pct = Math.round((spending.effectiveAmount / (spending.limit || 1)) * 100);
       if (spending.isOverLimit) {
         insights.push({
           type: "alert",
           title: `Límite superado en ${spending.category}`,
-          description: `Has gastado $${spending.effectiveAmount.toLocaleString("es-CL")} de $${spending.limit?.toLocaleString("es-CL")} (${pct}%)`,
+          description: `Has gastado $${spending.effectiveAmount.toLocaleString("es-CL")} de $${spending.limit?.toLocaleString("es-CL")}`,
           category: spending.category,
           impact: spending.effectiveAmount - (spending.limit || 0),
           percentage: pct,
@@ -242,7 +244,7 @@ export function useCategoryInsights(
         insights.push({
           type: "alert",
           title: `Cerca del límite en ${spending.category}`,
-          description: `Has gastado $${spending.effectiveAmount.toLocaleString("es-CL")} de $${spending.limit?.toLocaleString("es-CL")} (${pct}%)`,
+          description: `Has gastado $${spending.effectiveAmount.toLocaleString("es-CL")} de $${spending.limit?.toLocaleString("es-CL")}`,
           category: spending.category,
           percentage: pct,
         });
