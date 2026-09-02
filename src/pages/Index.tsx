@@ -40,30 +40,6 @@ import { LearningNudge } from "@/components/learning/LearningNudge";
 import { useUserProfile } from "@/hooks/useUserProfile";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import { getCategoryIcon } from "@/components/TransactionsTable";
-import {
-  PieChart,
-  Pie,
-  Cell,
-  Tooltip as ChartTooltip,
-  ResponsiveContainer,
-} from "recharts";
-import type { TooltipProps } from "recharts";
-import type { CategoryBreakdown } from "@/hooks/useMonthlySummary";
-
-// ─── Donut Tooltip ──────────────────────────────────────
-function DonutTooltip({ active, payload }: TooltipProps<number, string>) {
-  if (!active || !payload?.length) return null;
-  const data = payload[0].payload as CategoryBreakdown;
-  return (
-    <div className="bg-card border border-border/50 rounded-xl p-3 shadow-lg">
-      <p className="font-semibold text-sm text-foreground">{data.category}</p>
-      <p className="text-xs text-muted-foreground mt-0.5">
-        ${data.amount.toLocaleString("es-CL")} · {data.percentage.toFixed(0)}%
-      </p>
-    </div>
-  );
-}
-
 const Index = () => {
   const { transactions, isLoading } = useTransactions();
   const { categories } = useCategories();
@@ -146,7 +122,11 @@ const Index = () => {
   const currentMonthSummary = useMonthlySummary(transactions, categories, limits, now);
 
   // Category insights
-  const { insights: currentInsights } = useCategoryInsights(transactions, limits, now);
+  const { insights: currentInsights, categorySpending } = useCategoryInsights(
+    transactions,
+    limits,
+    now
+  );
 
   // Last month data for Monthly Story
   const lastMonthSummary = useMonthlySummary(transactions, categories, limits, lastMonth);
@@ -160,34 +140,14 @@ const Index = () => {
       .reduce((s, t) => s + Number(t.amount), 0);
   }, [lastMonthTransactions]);
 
-  // Donut chart data (top 5 + others)
-  const donutData = useMemo(() => {
-    const breakdown = currentMonthSummary.categoryBreakdown;
-    if (breakdown.length <= 6) return breakdown;
-    const top5 = breakdown.slice(0, 5);
-    const others = breakdown.slice(5);
-    const othersTotal = others.reduce((s, c) => s + c.amount, 0);
-    const totalExp = breakdown.reduce((s, c) => s + c.amount, 0);
-    return [
-      ...top5,
-      {
-        category: "Otros",
-        amount: othersTotal,
-        effectiveAmount: othersTotal,
-        reimbursedAmount: 0,
-        percentage: totalExp > 0 ? (othersTotal / totalExp) * 100 : 0,
-        color: "#94a3b8",
-        count: others.reduce((s, c) => s + c.count, 0),
-        prevAmount: 0,
-        trend: "stable" as const,
-        trendPercentage: 0,
-        isOverLimit: false,
-        isNearLimit: false,
-      },
-    ];
-  }, [currentMonthSummary.categoryBreakdown]);
-
-  const donutTotal = donutData.reduce((s, c) => s + c.amount, 0);
+  // Los gastos del mes, de mayor a menor. Sin agrupar en "Otros": la lista
+  // muestra las que caben y el header dice cuántas quedaron fuera.
+  const topCategories = currentMonthSummary.categoryBreakdown.slice(0, 5);
+  const monthExpenses = currentMonthSummary.categoryBreakdown.reduce(
+    (s, c) => s + c.amount,
+    0
+  );
+  const hiddenCategories = currentMonthSummary.categoryBreakdown.length - topCategories.length;
 
   const formatCompact = (value: number) =>
     new Intl.NumberFormat("es-CL", {
@@ -368,167 +328,256 @@ const Index = () => {
     </div>
   );
 
-  // ─── Donut Chart Card (desktop top row) ────────────────
-  const donutCard = (
-    <Card className="border-border/50 overflow-hidden flex flex-col h-full">
-      <div className="px-3 pt-2.5 pb-0">
-        <span className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider">
+  // ─── Gastos del mes (desktop top row) ──────────────────
+  // El donut no mostraba un solo número y dejaba media tarjeta vacía. Acá
+  // cada categoría es una fila cuyo fondo mide lo que pesa, y las filas se
+  // reparten el alto disponible: con dos categorías o con cinco, la tarjeta
+  // se ve igual de llena.
+  const expensesCard = (
+    <Card className="border-border/50 flex h-full flex-col overflow-hidden">
+      <div className="flex items-baseline justify-between gap-2 px-4 pt-3 pb-2">
+        <span className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
           Gastos del mes
         </span>
+        <span
+          className={cn(
+            "font-mono text-[11px] font-semibold tabular-nums",
+            isPrivacyMode && "privacy-blur"
+          )}
+        >
+          {formatCurrency(monthExpenses)}
+        </span>
       </div>
-      {donutData.length === 0 ? (
-        <div className="flex-1 flex items-center justify-center">
-          <p className="text-xs text-muted-foreground">Sin gastos</p>
+
+      {topCategories.length === 0 ? (
+        <div className="flex flex-1 items-center justify-center pb-3">
+          <p className="text-xs text-muted-foreground">Sin gastos este mes</p>
         </div>
       ) : (
-        <div className="flex-1 flex items-center justify-center gap-3 px-3 pb-2 min-h-0">
-          {/* Donut */}
-          <div className="relative shrink-0 w-[110px] h-[110px]">
-            <ResponsiveContainer width="100%" height="100%">
-              <PieChart>
-                <Pie
-                  data={donutData}
-                  dataKey="amount"
-                  nameKey="category"
-                  cx="50%"
-                  cy="50%"
-                  innerRadius={30}
-                  outerRadius={50}
-                  paddingAngle={2}
-                  strokeWidth={0}
-                  className={cn(isPrivacyMode && "privacy-blur")}
-                >
-                  {donutData.map((entry, i) => (
-                    <Cell
-                      key={i}
-                      fill={entry.color}
-                      className="transition-opacity hover:opacity-80 cursor-pointer"
-                    />
-                  ))}
-                </Pie>
-                <ChartTooltip content={<DonutTooltip />} />
-              </PieChart>
-            </ResponsiveContainer>
-            <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-              <p className={cn(
-                "text-[10px] font-bold font-mono tabular-nums",
-                isPrivacyMode && "privacy-blur"
-              )}>
-                {formatCompact(donutTotal)}
-              </p>
-            </div>
-          </div>
-          {/* Legend */}
-          <div className="space-y-0.5 overflow-hidden">
-            {donutData.map((cat) => (
-              <div key={cat.category} className="flex items-center gap-1.5 min-w-0">
-                <span className="size-1.5 rounded-full shrink-0" style={{ backgroundColor: cat.color }} />
-                <span className="text-[10px] text-muted-foreground truncate">
-                  {getCatEmoji(cat.category)} {cat.category}
-                </span>
-              </div>
-            ))}
-          </div>
+        <div className="flex min-h-0 flex-1 flex-col gap-1 px-3 pb-3">
+          {topCategories.map((cat) => (
+            <button
+              key={cat.category}
+              onClick={() => navigate("/budget")}
+              className="group relative flex min-h-[24px] flex-1 items-center gap-2 overflow-hidden rounded-md px-2 text-left"
+            >
+              {/* El peso de la categoría es el fondo de su fila */}
+              <div
+                className="absolute inset-y-0 left-0 rounded-l-md transition-[width] duration-700 ease-out group-hover:opacity-90"
+                style={{
+                  width: `${Math.max(cat.percentage, 1.5)}%`,
+                  backgroundColor: cat.color,
+                  opacity: 0.17,
+                }}
+              />
+              <div
+                className="absolute inset-y-0 left-0 w-[2px]"
+                style={{ backgroundColor: cat.color }}
+              />
+              <span className="relative min-w-0 flex-1 truncate text-[11px]">
+                {getCatEmoji(cat.category)} {cat.category}
+              </span>
+              <span
+                className={cn(
+                  "relative shrink-0 font-mono text-[11px] font-medium tabular-nums",
+                  isPrivacyMode && "privacy-blur"
+                )}
+              >
+                {formatCurrency(cat.amount)}
+              </span>
+              <span className="relative w-7 shrink-0 text-right font-mono text-[10px] tabular-nums text-muted-foreground">
+                {Math.round(cat.percentage)}%
+              </span>
+            </button>
+          ))}
+          {hiddenCategories > 0 && (
+            <p className="shrink-0 pl-2 pt-0.5 text-[10px] text-muted-foreground/70">
+              +{hiddenCategories} categoría{hiddenCategories === 1 ? "" : "s"} más
+            </p>
+          )}
         </div>
       )}
     </Card>
   );
 
-  // ─── Insights Panel (desktop) ─────────────────────────
-  const topInsights = currentInsights.slice(0, 6);
+  // ─── Insights: el tablero de límites ──────────────────
+  // Seis frases que decían lo mismo ("Bien hecho en X, te quedan $Y") eran
+  // seis veces la misma información. Una categoría es una fila, no un
+  // párrafo: el nombre, cuánto va de cuánto, y el avance. Diecisiete
+  // insights caben en la altura donde antes entraban seis.
+  const budgetRows = categorySpending
+    .filter((c) => c.limit && c.limit > 0)
+    .map((c) => ({
+      ...c,
+      usage: (c.effectiveAmount / (c.limit as number)) * 100,
+    }))
+    .sort((a, b) => b.usage - a.usage);
+
+  const budgetSpent = budgetRows.reduce((s, c) => s + c.effectiveAmount, 0);
+  const budgetTotal = budgetRows.reduce((s, c) => s + (c.limit as number), 0);
+
+  // Arriba del tablero, la única frase que sigue mereciendo ser frase: lo
+  // que pasa a llevar un límite o cambió de golpe. Las felicitaciones no.
+  const headlineRank: Record<string, number> = {
+    alert: 0,
+    pattern: 1,
+    opportunity: 2,
+    achievement: 9,
+  };
+  const rankOf = (i: (typeof currentInsights)[number]) =>
+    (i.percentage ?? 0) > 100 ? -1 : headlineRank[i.type] ?? 5;
+  const headline = [...currentInsights]
+    .filter((i) => i.type !== "achievement")
+    .sort((a, b) => rankOf(a) - rankOf(b))[0];
+
+  const usageTone = (usage: number, alertAt?: number) => {
+    if (usage > 100) return "var(--insight-danger)";
+    if (usage >= (alertAt ?? 80)) return "var(--insight-alert)";
+    if (usage > 0) return "var(--insight-achievement)";
+    return null;
+  };
+
   const insightsPanel = (
     <Card className="border-border/50 overflow-hidden flex flex-col h-full">
-      <div className="flex items-center justify-between px-4 pt-3 pb-2 shrink-0">
-        <div className="flex items-center gap-2">
-          <h2 className="text-sm font-semibold">Insights</h2>
-          {currentInsights.length > 0 && (
-            <span className="text-[10px] font-medium text-muted-foreground tabular-nums">
-              {currentInsights.length}
+      <div className="flex items-baseline justify-between gap-2 px-4 pt-3 pb-2 shrink-0">
+        <div className="flex items-baseline gap-2">
+          <h2 className="text-sm font-semibold">Límites</h2>
+          {budgetRows.length > 0 && (
+            <span className="font-mono text-[10px] tabular-nums text-muted-foreground">
+              {budgetRows.length}
             </span>
           )}
         </div>
-        <Button
-          onClick={() => navigate("/overview")}
-          variant="ghost"
-          size="sm"
-          className="gap-1 text-[11px] h-6 px-2 -mr-1"
-        >
-          Ver más
-          <Eye className="h-3 w-3" />
-        </Button>
+        {budgetTotal > 0 && (
+          <span
+            className={cn(
+              "font-mono text-[10px] tabular-nums text-muted-foreground",
+              isPrivacyMode && "privacy-blur"
+            )}
+          >
+            <span className="font-semibold text-foreground">
+              {formatCurrency(budgetSpent)}
+            </span>{" "}
+            de {formatCurrency(budgetTotal)}
+          </span>
+        )}
       </div>
-      {topInsights.length === 0 ? (
-        <div className="flex-1 flex items-center justify-center py-4 px-3">
-          <p className="text-xs text-muted-foreground">Sin insights aún</p>
+
+      {/* La frase que sí es un insight */}
+      {headline && (
+        <div className="shrink-0 px-4 pb-2">
+          <div
+            className="flex items-start gap-2 rounded-lg border px-2.5 py-2"
+            style={{
+              borderColor: `oklch(${
+                (headline.percentage ?? 0) > 100
+                  ? "var(--insight-danger)"
+                  : insightTone[headline.type] ?? insightTone.pattern
+              } / 0.3)`,
+              backgroundColor: `oklch(${
+                (headline.percentage ?? 0) > 100
+                  ? "var(--insight-danger)"
+                  : insightTone[headline.type] ?? insightTone.pattern
+              } / 0.07)`,
+            }}
+          >
+            <span className="shrink-0 text-[13px] leading-tight">
+              {headline.category ? getCatEmoji(headline.category) : "💡"}
+            </span>
+            <p className="min-w-0 text-[11px] leading-snug">
+              <span className="font-semibold">{headline.title}</span>
+              <span
+                className={cn(
+                  "text-muted-foreground",
+                  isPrivacyMode && "privacy-blur"
+                )}
+              >
+                {" · "}
+                {headline.description}
+              </span>
+            </p>
+          </div>
         </div>
+      )}
+
+      {budgetRows.length === 0 ? (
+        <button
+          onClick={() => navigate("/budget")}
+          className="flex flex-1 flex-col items-center justify-center gap-1 px-4 pb-4 text-center transition-colors hover:bg-muted/30"
+        >
+          <p className="text-xs font-medium">Aún no pones límites</p>
+          <p className="text-[11px] text-muted-foreground">
+            Ponle un techo a una categoría y aparece acá
+          </p>
+        </button>
       ) : (
-        <div className="flex-1 overflow-y-auto px-3 pb-3 space-y-1.5">
-          {topInsights.map((insight, i) => {
-            const emoji = insight.category ? getCatEmoji(insight.category) : "💡";
-            const hasProgress = insight.percentage != null;
-            const pct = hasProgress ? Math.min(insight.percentage!, 100) : 0;
-            const isOver = (insight.percentage ?? 0) > 100;
-            // Pasarse del límite tiene tono propio: el mismo rojo con el que
-            // la app escribe los gastos. Lo demás lo tiñe su tipo.
-            const tone = isOver
-              ? "var(--insight-danger)"
-              : insightTone[insight.type] ?? insightTone.pattern;
-            const at = (alpha: number) => `oklch(${tone} / ${alpha})`;
+        <div className="flex min-h-0 flex-1 flex-col gap-1.5 overflow-y-auto px-3 pb-3">
+          {budgetRows.map((cat) => {
+            const usage = cat.usage;
+            const tone = usageTone(usage, cat.alertPercentage);
+            const filled = Math.min(usage, 100);
 
             return (
-              <div
-                key={i}
-                className="relative flex items-center gap-2.5 overflow-hidden rounded-xl border py-2 pl-3 pr-2.5 transition-all duration-200 hover:-translate-y-px hover:brightness-110"
-                style={{
-                  // Negro real bajo el color: la fila es más oscura que la
-                  // tarjeta que la contiene, y el tono se apoya en ese contraste.
-                  backgroundColor: "var(--background)",
-                  borderColor: at(isOver ? 0.45 : 0.28),
-                }}
+              <button
+                key={cat.category}
+                onClick={() => navigate("/budget")}
+                className="group relative flex min-h-[44px] flex-1 flex-col justify-center gap-1 rounded-t-md px-2 pb-2.5 pt-1.5 text-left transition-colors hover:bg-muted/40"
               >
-                {/* Avance del presupuesto: el color entra por la izquierda y
-                    se apaga hacia la derecha, el largo se lee de un ojo */}
-                {hasProgress && (
-                  <div
-                    className="absolute inset-y-0 left-0 transition-[width] duration-700 ease-out"
-                    style={{
-                      width: `${pct}%`,
-                      background: `linear-gradient(90deg, ${at(0.32)}, ${at(0.07)})`,
-                    }}
-                  />
-                )}
-                {/* Lomo: el tono a fuerza completa, con su propio brillo */}
+                <div className="flex items-center gap-2">
+                  <span className="w-4 shrink-0 text-center text-[13px] leading-none">
+                    {getCatEmoji(cat.category)}
+                  </span>
+                  <span className="min-w-0 flex-1 truncate text-xs font-medium">
+                    {cat.category}
+                  </span>
+                  <span
+                    className="shrink-0 font-mono text-xs font-semibold tabular-nums"
+                    style={{ color: tone ? `oklch(${tone})` : undefined }}
+                  >
+                    {Math.round(usage)}%
+                  </span>
+                </div>
+                <p
+                  className={cn(
+                    "pl-6 font-mono text-[10px] tabular-nums text-muted-foreground",
+                    isPrivacyMode && "privacy-blur"
+                  )}
+                >
+                  {formatCurrency(cat.effectiveAmount)} de{" "}
+                  {formatCurrency(cat.limit as number)}
+                  {/* La barra se queda en 100%: el exceso lo dice el texto,
+                      que es donde un 101% y un 180% se distinguen. */}
+                  {usage > 100 && (
+                    <span
+                      className="ml-1 font-semibold"
+                      style={{ color: "oklch(var(--insight-danger))" }}
+                    >
+                      +{formatCurrency(cat.effectiveAmount - (cat.limit as number))}
+                    </span>
+                  )}
+                </p>
+                {/* El separador de la fila ES la barra: siempre visible,
+                    siempre en el borde, y no gasta una línea extra. */}
                 <div
-                  className="absolute inset-y-0 left-0 w-[3px]"
+                  className="absolute inset-x-0 bottom-0 h-[3px] overflow-hidden rounded-full"
                   style={{
-                    backgroundColor: `oklch(${tone})`,
-                    boxShadow: `0 0 10px ${at(0.75)}`,
-                  }}
-                />
-                <span
-                  className="relative grid size-7 shrink-0 place-items-center rounded-lg text-base"
-                  style={{
-                    backgroundColor: at(0.18),
-                    boxShadow: `inset 0 0 0 1px ${at(0.32)}`,
+                    backgroundColor:
+                      "color-mix(in oklch, var(--muted-foreground) 22%, transparent)",
                   }}
                 >
-                  {emoji}
-                </span>
-                <div className="relative min-w-0 flex-1">
-                  <p className="truncate text-[11px] font-semibold leading-snug">{insight.title}</p>
-                  <p className={cn("text-[10px] text-muted-foreground leading-snug mt-0.5", isPrivacyMode && "privacy-blur")}>
-                    {insight.description}
-                  </p>
+                  <div
+                    className="h-full rounded-full transition-[width] duration-700 ease-out"
+                    style={{
+                      // Un 1% tiene que dejar marca: si no, la fila miente.
+                      width: usage > 0 ? `max(3px, ${filled}%)` : "0%",
+                      backgroundColor: tone
+                        ? `oklch(${tone})`
+                        : "var(--muted-foreground)",
+                      boxShadow: tone ? `0 0 8px oklch(${tone} / 0.55)` : undefined,
+                    }}
+                  />
                 </div>
-                {hasProgress && (
-                  <span
-                    className="relative shrink-0 font-mono text-[11px] font-bold tabular-nums"
-                    style={{ color: `oklch(${tone})` }}
-                  >
-                    {Math.round(insight.percentage!)}%
-                  </span>
-                )}
-              </div>
+              </button>
             );
           })}
         </div>
@@ -732,7 +781,7 @@ const Index = () => {
           {/* Top row: Balance | Donut | Quick Actions */}
           <div className="grid grid-cols-12 gap-3 items-stretch">
             <div className="col-span-5">{balanceCard}</div>
-            <div className="col-span-3 min-h-0">{donutCard}</div>
+            <div className="col-span-3 min-h-0">{expensesCard}</div>
             <div className="col-span-4">{quickActions}</div>
           </div>
 
