@@ -183,14 +183,7 @@ export default function Layout({ children }: LayoutProps) {
         <SidebarInset>
           {/* Top Bar with Trigger and Actions */}
           <header className="sticky top-0 z-40 flex h-14 shrink-0 items-center gap-2 border-b border-border/40 shadow-[0_1px_2px_-1px_rgba(0,0,0,0.06)] bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 px-4">
-            {!isMobile && (
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <SidebarTrigger className="-ml-1" />
-                </TooltipTrigger>
-                <TooltipContent side="right">Toggle sidebar</TooltipContent>
-              </Tooltip>
-            )}
+            {!isMobile && <SidebarTrigger className="-ml-1" />}
             <div className="flex flex-1 items-center justify-between">
               <div className="flex items-center gap-2">
                 <span className="text-lg font-bold tracking-tight">

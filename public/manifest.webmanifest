@@ -52,10 +52,10 @@
   "prefer_related_applications": false,
   "shortcuts": [
     {
-      "name": "Dashboard",
+      "name": "Inicio",
       "short_name": "Inicio",
       "description": "Ver resumen financiero",
-      "url": "/dashboard",
+      "url": "/",
       "icons": [{ "src": "/icon-192x192.png?v=3", "sizes": "192x192" }]
     },
     {
