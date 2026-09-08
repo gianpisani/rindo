@@ -30,9 +30,20 @@ import {
 
 interface LayoutProps {
   children: ReactNode;
+  /**
+   * Para vistas que son una pantalla exacta y no scrollean: le da altura
+   * DEFINIDA al shell (`h-svh`, no `min-h-svh`), que es lo único que
+   * permite que un `flex-1` adentro sepa contra qué medirse. Sin esto, un
+   * hijo con `overflow-y-auto` no tiene techo y crece con su contenido,
+   * estirando a sus vecinos del grid.
+   *
+   * El alto del header y los paddings los descuenta el flex solo: no hay
+   * ningún número que se pueda desincronizar.
+   */
+  fit?: boolean;
 }
 
-export default function Layout({ children }: LayoutProps) {
+export default function Layout({ children, fit = false }: LayoutProps) {
   const { isPrivacyMode, togglePrivacyMode } = usePrivacyMode();
   const { soundEnabled, toggleSound } = useSoundPreferences();
   const { playToggleOn, playToggleOff } = useSoundFX();
@@ -180,7 +191,7 @@ export default function Layout({ children }: LayoutProps) {
         {/* Desktop Sidebar */}
         <AppSidebar />
 
-        <SidebarInset>
+        <SidebarInset className={cn(fit && "h-svh")}>
           {/* Top Bar with Trigger and Actions */}
           <header className="sticky top-0 z-40 flex h-14 shrink-0 items-center gap-2 border-b border-border/40 shadow-[0_1px_2px_-1px_rgba(0,0,0,0.06)] bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 px-4">
             {!isMobile && <SidebarTrigger className="-ml-1" />}
@@ -308,7 +319,11 @@ export default function Layout({ children }: LayoutProps) {
           <main
             className={cn(
               "flex flex-1 flex-col gap-4 p-4 sm:p-6 overflow-x-clip max-w-full",
-              isMobile && "pb-28 pb-safe"
+              isMobile && "pb-28 pb-safe",
+              // Con altura definida el contenido calza justo; si la pantalla
+              // es más baja que el mínimo de las cards, scrollea acá adentro
+              // en vez de quedar cortado.
+              fit && "min-h-0 overflow-y-auto"
             )}
             data-scrollable
           >

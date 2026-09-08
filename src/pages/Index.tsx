@@ -752,9 +752,9 @@ const Index = () => {
   );
 
   return (
-    <Layout>
-      {/* El inicio es una pantalla exacta: columna flex que se mide sola, sin
-          restar a mano lo que hay arriba. */}
+    // `fit`: el inicio es una pantalla exacta. Le da altura definida al shell,
+    // que es lo que permite medir el resto sin restar nada a mano.
+    <Layout fit>
       <div className="flex flex-1 flex-col gap-4 min-h-0">
         {/* Greeting — compact. A la derecha, los avisos: es la única fila que
             puede crecer sin empujar las cards fuera del fold. */}
