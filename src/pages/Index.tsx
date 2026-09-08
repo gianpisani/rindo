@@ -41,7 +41,21 @@ import { useUserProfile } from "@/hooks/useUserProfile";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import { getCategoryIcon } from "@/components/TransactionsTable";
 import { InvestmentMoveDrawer } from "@/components/InvestmentMoveDrawer";
-import type { TransactionType } from "@/lib/ledger";
+import { signPrefix, type TransactionType } from "@/lib/ledger";
+/**
+ * El lomo y el monto de cada movimiento en Recientes. Un mapa por tipo en
+ * vez de una cadena de ternarios: así un tipo nuevo no se cuela sin color
+ * ni, peor, con el signo al revés.
+ */
+const RECENT_TONES: Record<TransactionType, { spine: string; text: string }> = {
+  Ingreso: { spine: "bg-success", text: "text-success" },
+  Gasto: { spine: "bg-destructive", text: "text-destructive" },
+  Inversión: { spine: "bg-blue", text: "text-blue" },
+  Rescate: { spine: "bg-cyan-500", text: "text-cyan-500" },
+  Rendimiento: { spine: "bg-violet-500", text: "text-violet-500" },
+  Reembolso: { spine: "bg-amber-500", text: "text-amber-500" },
+};
+
 const Index = () => {
   const { transactions, isLoading } = useTransactions();
   const { categories } = useCategories();
@@ -685,9 +699,7 @@ const Index = () => {
                   <div className="flex items-center gap-3 min-w-0 flex-1">
                     <div className={cn(
                       "w-[3px] h-[28px] rounded-full flex-shrink-0",
-                      t.type === "Ingreso" && "bg-success",
-                      t.type === "Gasto" && "bg-destructive",
-                      t.type === "Inversión" && "bg-blue"
+                      RECENT_TONES[t.type]?.spine
                     )} />
                     <div className="min-w-0 flex-1">
                       <p className={cn("text-sm font-medium truncate leading-snug", isPrivacyMode && "privacy-blur")}>
@@ -702,12 +714,11 @@ const Index = () => {
                   </div>
                   <span className={cn(
                     "text-sm font-semibold font-mono tabular-nums ml-4 flex-shrink-0",
-                    t.type === "Ingreso" && "text-success",
-                    t.type === "Gasto" && "text-destructive",
-                    t.type === "Inversión" && "text-blue",
+                    RECENT_TONES[t.type]?.text,
                     isPrivacyMode && "privacy-blur"
                   )}>
-                    {t.type === "Ingreso" ? "+" : "−"}{formatCurrency(Number(t.amount))}
+                    {signPrefix(t.type, Number(t.amount))}
+                    {formatCurrency(Math.abs(Number(t.amount)))}
                   </span>
                 </div>
               ))}
