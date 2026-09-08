@@ -36,7 +36,8 @@ import { cn } from "@/lib/utils";
 import NumberFlow from "@number-flow/react";
 import { usePrivacyMode } from "@/hooks/usePrivacyMode";
 import { MonthlyStory } from "@/components/MonthlyStory";
-import { LearningNudge } from "@/components/learning/LearningNudge";
+import { HomeNotices, type HomeNotice } from "@/components/HomeNotices";
+import { useLearningNotice } from "@/hooks/useLearningNotice";
 import { useUserProfile } from "@/hooks/useUserProfile";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import { getCategoryIcon } from "@/components/TransactionsTable";
@@ -176,6 +177,27 @@ const Index = () => {
       currency: "CLP",
       notation: "compact",
     }).format(value);
+
+  // ─── Avisos ───────────────────────────────────────────
+  // Viven en la fila del saludo: ver HomeNotices para el por qué.
+  const learningNotice = useLearningNotice();
+  const notices = useMemo(() => {
+    const list: HomeNotice[] = [];
+    if (sweepAlert) {
+      list.push({
+        id: "sweep",
+        icon: PiggyBank,
+        label: `${formatCompact(sweepAlert.amount)} sin invertir`,
+        detail: `Cerraste ${format(lastMonth, "MMMM", { locale: es })} con ${formatCompact(
+          sweepAlert.amount
+        )} ahorrados que no barriste a inversión.`,
+        tone: "warning",
+        onClick: () => navigate("/budget"),
+      });
+    }
+    if (learningNotice) list.push(learningNotice);
+    return list;
+  }, [sweepAlert, learningNotice, lastMonth, navigate]);
 
   function getCatEmoji(categoryName: string) {
     const cat = categories.find((c) => c.name === categoryName);
@@ -731,9 +753,12 @@ const Index = () => {
 
   return (
     <Layout>
-      <div className="space-y-4">
-        {/* Greeting — compact */}
-        <div className="flex items-center gap-2.5">
+      {/* El inicio es una pantalla exacta: columna flex que se mide sola, sin
+          restar a mano lo que hay arriba. */}
+      <div className="flex flex-1 flex-col gap-4 min-h-0">
+        {/* Greeting — compact. A la derecha, los avisos: es la única fila que
+            puede crecer sin empujar las cards fuera del fold. */}
+        <div className="flex items-center gap-2.5 shrink-0">
           {displayName && (
             <button onClick={() => openProfileEdit()} className="focus:outline-none group">
               <div className="rounded-full p-[2px] accent-gradient-bg transition-all duration-300 group-hover:scale-105 group-hover:shadow-[0_0_16px_var(--primary)]">
@@ -746,44 +771,14 @@ const Index = () => {
               </div>
             </button>
           )}
-          <h1 className="text-xl font-bold tracking-tight">
+          <h1 className="min-w-0 truncate text-xl font-bold tracking-tight">
             {getGreeting()}{displayName ? <>, <span className="animated-gradient-text">{displayName}</span></> : ""}
           </h1>
+          <HomeNotices notices={notices} className="ml-auto shrink-0" />
         </div>
 
-        {/* ─── Recordatorio: días sin una sesión de aprendizaje ─── */}
-        <LearningNudge />
-
-        {/* ─── Card de sweep: ahorro del mes pasado sin invertir ─── */}
-        {sweepAlert && (
-          <button
-            onClick={() => navigate("/budget")}
-            className="w-full text-left rounded-xl border border-amber-500/30 bg-amber-500/[0.06] px-4 py-3 flex items-center gap-3 hover:bg-amber-500/10 transition-colors native-press focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/60"
-          >
-            <div className="flex items-center justify-center size-9 rounded-full bg-amber-500/15 text-amber-600 dark:text-amber-500 shrink-0">
-              <PiggyBank className="h-4 w-4" />
-            </div>
-            <div className="flex-1 min-w-0">
-              <p className="text-sm font-semibold">Te quedó plata sin invertir</p>
-              <p className={cn("text-xs text-muted-foreground", isPrivacyMode && "privacy-blur")}>
-                Cerraste{" "}
-                <span className="capitalize">
-                  {format(lastMonth, "MMMM", { locale: es })}
-                </span>{" "}
-                con{" "}
-                <span className="font-mono font-semibold tabular-nums">
-                  {formatCompact(sweepAlert.amount)}
-                </span>{" "}
-                ahorrados que no barriste a inversión.
-              </p>
-            </div>
-            <ChevronRight className="h-4 w-4 text-muted-foreground shrink-0" />
-          </button>
-        )}
-
         {/* ─── MOBILE LAYOUT (< lg) ─── */}
-        {/* 100dvh minus: header 56px + main-padding 16px + greeting ~36px + gap 16px + bottom-padding 112px */}
-        <div className="lg:hidden flex flex-col gap-3" style={{ height: "calc(100dvh - 236px)" }}>
+        <div className="lg:hidden flex flex-1 min-h-0 flex-col gap-3">
           {/* Balance + Quick Actions */}
           <div className="grid grid-cols-1 md:grid-cols-[3fr,2fr] gap-3 shrink-0">
             {balanceCard}
@@ -821,16 +816,16 @@ const Index = () => {
         </div>
 
         {/* ─── DESKTOP LAYOUT (lg+) ─── */}
-        <div className="hidden lg:block space-y-3">
+        <div className="hidden lg:flex flex-1 min-h-0 flex-col gap-3">
           {/* Top row: Balance | Donut | Quick Actions */}
-          <div className="grid grid-cols-12 gap-3 items-stretch">
+          <div className="grid shrink-0 grid-cols-12 gap-3 items-stretch">
             <div className="col-span-5">{balanceCard}</div>
             <div className="col-span-3 min-h-0">{expensesCard}</div>
             <div className="col-span-4">{quickActions}</div>
           </div>
 
           {/* Bottom row: Transactions | Insights + Wrapped — fills remaining viewport */}
-          <div className="grid grid-cols-12 gap-3 items-stretch" style={{ height: "calc(100vh - 340px)", minHeight: 260 }}>
+          <div className="grid flex-1 min-h-0 grid-cols-12 gap-3 items-stretch" style={{ minHeight: 260 }}>
             <div className="col-span-8 min-h-0">{transactionsCard}</div>
             <div className="col-span-4 min-h-0 flex flex-col gap-3">
               <div className="flex-1 min-h-0">{insightsPanel}</div>
