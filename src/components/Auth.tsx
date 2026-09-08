@@ -392,7 +392,7 @@ export default function Auth() {
             <RindoLogo size={56} className="text-white mx-auto" />
           </motion.div>
 
-          <h1 className="text-3xl font-bold text-white tracking-tight">
+          <h1 className="page-title text-3xl text-white">
             rindo<span className="text-primary">.</span>
           </h1>
 
@@ -464,7 +464,7 @@ export default function Auth() {
                         key={domain}
                         type="button"
                         onClick={() => handleDomainChipClick(domain)}
-                        className="px-2.5 py-1 text-[11px] rounded-full bg-white/[0.04] border border-white/[0.08] text-white/30 hover:bg-white/[0.08] hover:text-white/50 active:bg-white/[0.1] active:text-white/60 transition-colors"
+                        className="px-2.5 py-1 text-[11px] rounded-sm bg-white/[0.04] border border-white/[0.08] text-white/30 hover:bg-white/[0.08] hover:text-white/50 active:bg-white/[0.1] active:text-white/60 transition-colors"
                       >
                         @{domain}
                       </button>

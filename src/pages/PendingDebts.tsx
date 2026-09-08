@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect } from "react";
 import Layout from "@/components/Layout";
-import { GlassCard } from "@/components/GlassCard";
+import { Screen, Row, Panel } from "@/components/HairlineGrid";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -17,7 +17,6 @@ import {
   Trash2,
   Users,
   ChevronDown,
-  DollarSign,
   Receipt,
   HandCoins,
 } from "lucide-react";
@@ -153,246 +152,280 @@ export default function PendingDebts() {
   }
 
   return (
-    <Layout>
-      <div className="space-y-6">
-        {/* Header */}
-        <div className="flex items-center justify-between">
-          <div>
-            <h1 className="text-2xl font-bold tracking-tight mb-1">Deudas</h1>
-            <p className="text-sm text-muted-foreground">
-              Gestiona gastos compartidos
+    <Layout bleed>
+      {/* Mismo chasis que Inicio: identidad, el conmutador de dirección
+          como franja de dos celdas, los tres indicadores, y la lista de
+          personas como la fila que cede. El historial de pagados va
+          abajo del pliegue: es archivo, no lo que estás mirando. */}
+      <Screen>
+        {/* ── Fila 1 — identidad y el verbo de la página ─────────── */}
+        <Panel className="flex flex-wrap items-center gap-x-3 gap-y-2 px-4 py-3 md:px-5 lg:shrink-0">
+          <div className="min-w-0">
+            <h1 className="page-title text-xl md:text-2xl">Deudas</h1>
+            <p className="eyebrow mt-1">
+              {summary.length} {summary.length === 1 ? "persona" : "personas"}
+              {" · "}
+              {totalExpenses} {totalExpenses === 1 ? "gasto" : "gastos"}
             </p>
           </div>
-          <Button
-            className="rounded-full h-10 w-10 p-0 md:w-auto md:px-5 md:h-10"
-            onClick={() => setShowAddModal(true)}
-          >
-            <Plus className="h-4 w-4 md:mr-2" />
-            <span className="hidden md:inline text-sm">Nueva deuda</span>
+          <Button size="sm" className="ml-auto gap-2" onClick={() => setShowAddModal(true)}>
+            <Plus className="h-4 w-4" />
+            <span className="hidden sm:inline">Nueva deuda</span>
           </Button>
-        </div>
+        </Panel>
 
-        {/* Direction toggle */}
-        <div className="inline-flex rounded-full border border-border/60 p-1 bg-muted/30">
+        {/* ── Fila 2 — de qué lado estás mirando. Dos celdas, y la
+            activa es el bloque de acento: la pastilla dentro de una
+            caja era una forma flotando dentro de otra. ──────────── */}
+        <Row className="grid-cols-2 lg:shrink-0">
           <button
-            className={cn(
-              "px-4 py-1.5 rounded-full text-sm font-medium transition-colors",
-              isOwedToMe ? "bg-background shadow-sm text-foreground" : "text-muted-foreground"
-            )}
             onClick={() => setDirection("they_owe_me")}
+            className={cn(
+              "native-press section-title bg-card px-4 py-2.5 text-[11px] transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring",
+              isOwedToMe
+                ? "bg-primary text-primary-foreground"
+                : "text-muted-foreground hover:text-foreground"
+            )}
           >
             Me deben
           </button>
           <button
-            className={cn(
-              "px-4 py-1.5 rounded-full text-sm font-medium transition-colors",
-              !isOwedToMe ? "bg-background shadow-sm text-foreground" : "text-muted-foreground"
-            )}
             onClick={() => setDirection("i_owe_them")}
+            className={cn(
+              "native-press section-title bg-card px-4 py-2.5 text-[11px] transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring",
+              !isOwedToMe
+                ? "bg-primary text-primary-foreground"
+                : "text-muted-foreground hover:text-foreground"
+            )}
           >
             Yo debo
           </button>
-        </div>
+        </Row>
 
-        {/* Compact Stats Row */}
-        {summary.length > 0 && (
-          <div className="flex items-center gap-4 text-sm">
-            <div className={cn("flex items-center gap-1.5", isOwedToMe ? "text-amber-500" : "text-destructive")}>
-              <DollarSign className="h-4 w-4" />
-              <span className={cn("font-semibold tabular-nums", isPrivacyMode && "privacy-blur")}>
-                {fmt(totalPending)}
-              </span>
-              <span className="text-muted-foreground">pendiente</span>
-            </div>
-            <span className="text-border">|</span>
-            <div className="flex items-center gap-1.5 text-muted-foreground">
-              <Users className="h-3.5 w-3.5" />
-              <span className="tabular-nums">{summary.length}</span>
-            </div>
-            <span className="text-border">|</span>
-            <div className="flex items-center gap-1.5 text-muted-foreground">
-              <Receipt className="h-3.5 w-3.5" />
-              <span className="tabular-nums">{totalExpenses}</span>
-            </div>
-          </div>
-        )}
-
-        {/* Pending Debts - Flat List by Person */}
-        {summary.length === 0 ? (
-          <div className="rounded-2xl border border-dashed border-border/60 py-16 text-center">
-            <Users className="h-12 w-12 mx-auto text-muted-foreground/30 mb-3" />
-            <p className="text-base font-medium text-muted-foreground mb-1">
-              {isOwedToMe ? "No hay deudas pendientes" : "No le debes plata a nadie"}
-            </p>
-            <p className="text-sm text-muted-foreground/60 mb-4">
-              {isOwedToMe ? "Agrega una deuda o divide un gasto compartido" : "Registra una deuda que le debas a alguien"}
-            </p>
-            <Button
-              variant="outline"
-              size="sm"
-              className="rounded-full"
-              onClick={() => setShowAddModal(true)}
+        {/* ── Fila 3 — los tres indicadores ──────────────────────── */}
+        <Row className="grid-cols-3 lg:shrink-0">
+          <Panel className="px-4 py-3 md:px-5">
+            <p className="eyebrow">Pendiente</p>
+            <p
+              className={cn(
+                "mt-1.5 font-mono text-base font-bold tracking-tight tabular-nums md:text-lg",
+                isOwedToMe ? "text-warning" : "text-destructive",
+                isPrivacyMode && "privacy-blur"
+              )}
             >
-              <Plus className="h-4 w-4 mr-1.5" />
-              Nueva deuda
-            </Button>
-          </div>
-        ) : (
-          <div className="space-y-3">
-            {summary.map((person) => {
-              const expenses = getExpensesForPerson(person.name);
+              {fmt(totalPending)}
+            </p>
+          </Panel>
 
-              return (
-                <GlassCard key={person.name}>
-                  {/* Person Header */}
-                  <div className="flex items-center gap-3 px-4 py-3">
-                    <div className={cn("h-9 w-9 rounded-full flex items-center justify-center shrink-0", isOwedToMe ? "bg-primary/10" : "bg-destructive/10")}>
-                      <span className={cn("text-sm font-bold", isOwedToMe ? "text-primary" : "text-destructive")}>
-                        {person.name.charAt(0).toUpperCase()}
-                      </span>
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <p className="font-semibold text-sm truncate">
-                        {person.name}
-                      </p>
-                      <p className="text-xs text-muted-foreground">
-                        {person.count_expenses}{" "}
-                        {person.count_expenses === 1 ? "gasto" : "gastos"}
-                      </p>
-                    </div>
-                    <span
-                      className={cn(
-                        "text-base font-bold tabular-nums",
-                        isOwedToMe ? "text-amber-500" : "text-destructive",
-                        isPrivacyMode && "privacy-blur"
-                      )}
-                    >
-                      {fmt(person.total_owed)}
-                    </span>
-                  </div>
+          <Panel className="px-4 py-3 md:px-5">
+            <p className="eyebrow">{isOwedToMe ? "Te deben" : "Le debes a"}</p>
+            <p className="mt-1.5 flex items-center gap-1.5 font-mono text-base font-bold tracking-tight tabular-nums md:text-lg">
+              <Users className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
+              {summary.length}
+            </p>
+          </Panel>
 
-                  {/* Individual expenses */}
-                  {expenses.length > 0 && (
-                    <div className="border-t border-border/40">
-                      {expenses.map((expense, i) => (
-                        <div
-                          key={expense.id}
+          <Panel className="px-4 py-3 md:px-5">
+            <p className="eyebrow">Gastos</p>
+            <p className="mt-1.5 flex items-center gap-1.5 font-mono text-base font-bold tracking-tight tabular-nums md:text-lg">
+              <Receipt className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
+              {totalExpenses}
+            </p>
+          </Panel>
+        </Row>
+
+        {/* ── Fila 4 — la lista por persona. Esta es la que cede:
+            scrollea por dentro y llena cualquier alto. ─────────── */}
+        <Panel className="flex flex-col lg:min-h-0 lg:flex-1">
+          {summary.length === 0 ? (
+            <div className="flex flex-1 flex-col items-center justify-center gap-2 px-4 py-14 text-center">
+              <div className="flex size-14 items-center justify-center border border-border">
+                <Users className="h-6 w-6 text-muted-foreground/50" />
+              </div>
+              <p className="section-title text-sm">
+                {isOwedToMe ? "No hay deudas pendientes" : "No le debes plata a nadie"}
+              </p>
+              <p className="max-w-xs text-xs text-muted-foreground">
+                {isOwedToMe
+                  ? "Agrega una deuda o divide un gasto compartido."
+                  : "Registra una deuda que le debas a alguien."}
+              </p>
+              <Button
+                variant="outline"
+                size="sm"
+                className="mt-2 gap-1.5"
+                onClick={() => setShowAddModal(true)}
+              >
+                <Plus className="h-4 w-4" />
+                Nueva deuda
+              </Button>
+            </div>
+          ) : (
+            <div className="overflow-y-auto lg:min-h-0 lg:flex-1">
+              {summary.map((person) => {
+                const expenses = getExpensesForPerson(person.name);
+
+                return (
+                  <div key={person.name}>
+                    {/* La persona queda pegada arriba mientras scrolleás
+                        sus gastos — la misma gramática que los días en
+                        Inicio. */}
+                    <div className="sticky top-0 z-10 flex items-center gap-2.5 border-b border-border bg-card px-4 py-2 md:px-5">
+                      <div
+                        className={cn(
+                          "flex size-7 shrink-0 items-center justify-center rounded-full",
+                          isOwedToMe ? "bg-primary/10" : "bg-destructive/10"
+                        )}
+                      >
+                        <span
                           className={cn(
-                            "flex items-center gap-2 px-4 py-2.5 hover:bg-accent/30 transition-colors",
-                            i < expenses.length - 1 && "border-b border-border/20"
+                            "text-[11px] font-bold",
+                            isOwedToMe ? "text-primary" : "text-destructive"
                           )}
                         >
-                          <div className="flex-1 min-w-0">
-                            <p className="text-sm truncate">
-                              {expense.transaction_detail || expense.detail || "Sin detalle"}
-                            </p>
-                            <p className="text-xs text-muted-foreground">
-                              {expense.transaction_date
-                                ? new Date(expense.transaction_date).toLocaleDateString("es-CL", { day: "numeric", month: "short" })
-                                : new Date(expense.created_at).toLocaleDateString("es-CL", { day: "numeric", month: "short" })}
-                              {expense.transaction_category && (
-                                <>
-                                  {" · "}
-                                  {expense.transaction_category}
-                                </>
-                              )}
-                            </p>
-                          </div>
-                          <span
-                            className={cn(
-                              "text-sm font-medium tabular-nums shrink-0",
-                              isPrivacyMode && "privacy-blur"
-                            )}
-                          >
-                            {fmt(expense.amount_owed)}
-                          </span>
-                          {/* Actions */}
-                          <div className="flex items-center gap-1 shrink-0">
-                            <button
-                              className="h-9 w-9 rounded-full flex items-center justify-center hover:bg-success/10 active:bg-success/20 transition-colors"
-                              title={isOwedToMe ? "Marcar como pagado" : "Marcar como saldada"}
-                              onClick={() =>
-                                isOwedToMe
-                                  ? setConfirmPaid({
-                                      id: expense.id,
-                                      name: expense.debtor_name,
-                                      amount: expense.amount_owed,
-                                      detail: expense.transaction_detail || undefined,
-                                    })
-                                  : setSettleTarget({
-                                      id: expense.id,
-                                      name: expense.debtor_name,
-                                      amount: expense.amount_owed,
-                                    })
-                              }
-                            >
-                              <CheckCircle2 className="h-[18px] w-[18px] text-success" />
-                            </button>
-                            <button
-                              className="h-9 w-9 rounded-full flex items-center justify-center hover:bg-destructive/10 active:bg-destructive/20 transition-colors"
-                              title="Eliminar"
-                              onClick={() => setConfirmDelete({ open: true, id: expense.id })}
-                            >
-                              <Trash2 className="h-4 w-4 text-muted-foreground hover:text-destructive transition-colors" />
-                            </button>
-                          </div>
-                        </div>
-                      ))}
+                          {person.name.charAt(0).toUpperCase()}
+                        </span>
+                      </div>
+                      <p className="min-w-0 flex-1 truncate text-xs font-semibold">
+                        {person.name}
+                      </p>
+                      <span className="shrink-0 font-mono text-[10px] tabular-nums text-muted-foreground">
+                        {person.count_expenses}
+                      </span>
+                      <span
+                        className={cn(
+                          "shrink-0 font-mono text-sm font-bold tabular-nums",
+                          isOwedToMe ? "text-warning" : "text-destructive",
+                          isPrivacyMode && "privacy-blur"
+                        )}
+                      >
+                        {fmt(person.total_owed)}
+                      </span>
                     </div>
-                  )}
-                </GlassCard>
-              );
-            })}
-          </div>
-        )}
 
-        {/* Paid History */}
-        {paidExpenses.length > 0 && (
-          <div>
+                    {expenses.map((expense) => (
+                      <div
+                        key={expense.id}
+                        className="flex items-center gap-2 border-b border-border px-4 py-2 transition-colors hover:bg-muted md:px-5"
+                      >
+                        <div className="min-w-0 flex-1">
+                          <p className="truncate text-xs">
+                            {expense.transaction_detail || expense.detail || "Sin detalle"}
+                          </p>
+                          <p className="mt-0.5 font-mono text-[10px] tabular-nums text-muted-foreground">
+                            {expense.transaction_date
+                              ? new Date(expense.transaction_date).toLocaleDateString("es-CL", { day: "numeric", month: "short" })
+                              : new Date(expense.created_at).toLocaleDateString("es-CL", { day: "numeric", month: "short" })}
+                            {expense.transaction_category && (
+                              <>
+                                {" · "}
+                                {expense.transaction_category}
+                              </>
+                            )}
+                          </p>
+                        </div>
+                        <span
+                          className={cn(
+                            "shrink-0 font-mono text-xs font-medium tabular-nums",
+                            isPrivacyMode && "privacy-blur"
+                          )}
+                        >
+                          {fmt(expense.amount_owed)}
+                        </span>
+                        {/* Botones de ícono: círculos de verdad, siguen
+                            redondos. */}
+                        <div className="flex shrink-0 items-center gap-0.5">
+                          <button
+                            className="flex size-8 items-center justify-center rounded-full transition-colors hover:bg-success/10 active:bg-success/20 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                            title={isOwedToMe ? "Marcar como pagado" : "Marcar como saldada"}
+                            onClick={() =>
+                              isOwedToMe
+                                ? setConfirmPaid({
+                                  id: expense.id,
+                                  name: expense.debtor_name,
+                                  amount: expense.amount_owed,
+                                  detail: expense.transaction_detail || undefined,
+                                })
+                                : setSettleTarget({
+                                  id: expense.id,
+                                  name: expense.debtor_name,
+                                  amount: expense.amount_owed,
+                                })
+                            }
+                          >
+                            <CheckCircle2 className="h-4 w-4 text-success" />
+                          </button>
+                          <button
+                            className="flex size-8 items-center justify-center rounded-full transition-colors hover:bg-destructive/10 active:bg-destructive/20 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                            title="Eliminar"
+                            onClick={() => setConfirmDelete({ open: true, id: expense.id })}
+                          >
+                            <Trash2 className="h-3.5 w-3.5 text-muted-foreground transition-colors hover:text-destructive" />
+                          </button>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </Panel>
+      </Screen>
+
+      {/* ── ABAJO DEL PLIEGUE — el archivo de lo ya saldado ──────── */}
+      {paidExpenses.length > 0 && (
+        <div className="grid gap-px border-b border-border bg-border">
+          <Panel>
             <button
-              className="flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground transition-colors mb-3"
+              className="flex w-full items-center gap-2 px-4 py-2.5 text-left transition-colors hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring md:px-5"
               onClick={() => setShowPaid(!showPaid)}
             >
               <ChevronDown
                 className={cn(
-                  "h-4 w-4 transition-transform",
+                  "h-4 w-4 shrink-0 text-muted-foreground transition-transform",
                   showPaid && "rotate-180"
                 )}
               />
-              <CheckCircle2 className="h-4 w-4 text-success" />
-              <span>{isOwedToMe ? "Pagados" : "Saldadas"} ({paidExpenses.length})</span>
+              <CheckCircle2 className="h-4 w-4 shrink-0 text-success" />
+              <h2 className="section-title text-xs">
+                {isOwedToMe ? "Pagados" : "Saldadas"}
+              </h2>
+              <span className="ml-auto font-mono text-[10px] tabular-nums text-muted-foreground">
+                {paidExpenses.length}
+              </span>
             </button>
 
             {showPaid && (
-              <div className="space-y-1">
+              <div className="border-t border-border">
                 {paidExpenses.slice(0, 15).map((expense) => (
                   <div
                     key={expense.id}
-                    className="flex items-center gap-3 px-3 py-2 rounded-lg text-sm text-muted-foreground hover:bg-muted/30 transition-colors"
+                    className="flex items-center gap-2.5 border-b border-border px-4 py-2 text-xs text-muted-foreground transition-colors last:border-b-0 hover:bg-muted md:px-5"
                   >
-                    <div className="h-7 w-7 rounded-full bg-success/10 flex items-center justify-center shrink-0">
-                      <span className="text-xs font-bold text-success">
+                    <div className="flex size-6 shrink-0 items-center justify-center rounded-full bg-success/10">
+                      <span className="text-[10px] font-bold text-success">
                         {expense.debtor_name.charAt(0).toUpperCase()}
                       </span>
                     </div>
-                    <div className="flex-1 min-w-0 truncate">
-                      <span>
+                    <div className="min-w-0 flex-1 truncate">
+                      <span className="font-medium text-foreground">
                         {expense.debtor_name}
                       </span>
                       <span className="mx-1.5">·</span>
-                      <span className="text-xs">
+                      <span>
                         {expense.transaction_detail || expense.detail || "Sin detalle"}
                       </span>
                     </div>
                     <span
                       className={cn(
-                        "tabular-nums text-xs shrink-0",
+                        "shrink-0 font-mono tabular-nums",
                         isPrivacyMode && "privacy-blur"
                       )}
                     >
                       {fmt(expense.amount_owed)}
                     </span>
-                    <span className="text-xs shrink-0">
+                    <span className="shrink-0 font-mono text-[10px] tabular-nums">
                       {new Date(expense.paid_at!).toLocaleDateString("es-CL", {
                         day: "numeric",
                         month: "short",
@@ -402,9 +435,9 @@ export default function PendingDebts() {
                 ))}
               </div>
             )}
-          </div>
-        )}
-      </div>
+          </Panel>
+        </div>
+      )}
 
       {/* Quick Add Debt Modal */}
       <BaseModal
@@ -434,13 +467,16 @@ export default function PendingDebts() {
         }
       >
         <div className="space-y-5">
-          {/* Direction toggle inside modal */}
-          <div className="inline-flex w-full rounded-full border border-border/60 p-1 bg-muted/30">
+          {/* El mismo conmutador de la página: dos celdas separadas por
+              la línea, y la activa es el bloque de acento. */}
+          <div className="grid grid-cols-2 gap-px border border-border bg-border">
             <button
               type="button"
               className={cn(
-                "flex-1 px-4 py-1.5 rounded-full text-sm font-medium transition-colors",
-                direction === "they_owe_me" ? "bg-background shadow-sm text-foreground" : "text-muted-foreground"
+                "bg-card px-4 py-2 text-sm font-medium transition-colors",
+                direction === "they_owe_me"
+                  ? "bg-primary text-primary-foreground"
+                  : "text-muted-foreground hover:text-foreground"
               )}
               onClick={() => setDirection("they_owe_me")}
             >
@@ -449,8 +485,10 @@ export default function PendingDebts() {
             <button
               type="button"
               className={cn(
-                "flex-1 px-4 py-1.5 rounded-full text-sm font-medium transition-colors",
-                direction === "i_owe_them" ? "bg-background shadow-sm text-foreground" : "text-muted-foreground"
+                "bg-card px-4 py-2 text-sm font-medium transition-colors",
+                direction === "i_owe_them"
+                  ? "bg-primary text-primary-foreground"
+                  : "text-muted-foreground hover:text-foreground"
               )}
               onClick={() => setDirection("i_owe_them")}
             >
@@ -474,7 +512,7 @@ export default function PendingDebts() {
                 if (e.key === "Enter") handleAddDebt();
               }}
               style={{ fontSize: "clamp(1.5rem, 5vw, 2.25rem)" }}
-              className="h-24 text-center font-bold font-mono rounded-3xl border-2 border-destructive/30 focus:border-destructive focus:ring-4 focus:ring-destructive/20 transition-all bg-transparent placeholder:text-muted-foreground/50 focus-visible:ring-transparent"
+              className="h-24 rounded-sm border-2 border-destructive bg-transparent text-center font-mono font-bold transition-all placeholder:text-muted-foreground/50 focus-visible:ring-transparent"
             />
           </div>
 
@@ -487,7 +525,7 @@ export default function PendingDebts() {
               value={newDebt.name}
               onChange={(name) => setNewDebt({ ...newDebt, name })}
               suggestions={uniqueDebtorNames(direction)}
-              className="h-11 rounded-full px-5"
+              className="h-11 rounded-sm px-5"
             />
           </div>
           <div className="space-y-1.5">
@@ -498,7 +536,7 @@ export default function PendingDebts() {
               placeholder="ej. Cena del viernes"
               value={newDebt.detail}
               onChange={(e) => setNewDebt({ ...newDebt, detail: e.target.value })}
-              className="h-11 rounded-full px-5"
+              className="h-11 rounded-sm px-5"
               onKeyDown={(e) => {
                 if (e.key === "Enter") handleAddDebt();
               }}
@@ -536,9 +574,9 @@ export default function PendingDebts() {
               Elige el gasto con el que le pagaste {fmt(settleTarget.amount)} a {settleTarget.name}.
             </p>
           )}
-          <div className="max-h-[320px] overflow-y-auto space-y-1.5">
+          <div className="max-h-[320px] overflow-y-auto border border-border">
             {recentGastos.length === 0 && (
-              <p className="text-sm text-muted-foreground text-center py-6">
+              <p className="py-6 text-center text-sm text-muted-foreground">
                 No tienes gastos registrados todavía.
               </p>
             )}
@@ -548,7 +586,7 @@ export default function PendingDebts() {
                 type="button"
                 disabled={settleDebtsIOwe.isPending}
                 onClick={() => handleSettleWithTransaction(tx.id)}
-                className="w-full flex items-center justify-between rounded-lg border border-border bg-background p-3 gap-3 text-left hover:border-primary/40 hover:bg-accent/30 transition-colors"
+                className="flex w-full items-center justify-between gap-3 border-b border-border px-3 py-2.5 text-left transition-colors last:border-b-0 hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring"
               >
                 <div className="flex items-center gap-2 min-w-0">
                   <HandCoins className="h-4 w-4 text-muted-foreground shrink-0" />

@@ -284,12 +284,12 @@ export function WordLookup({
 
         {isPhrase ? (
           quote && (
-            <div className="min-w-0 flex-1 border-l border-border/50 pl-4">
+            <div className="min-w-0 flex-1 border-l border-border pl-4">
               {quote}
             </div>
           )
         ) : (
-          <div className="min-w-0 flex-1 space-y-1.5 border-l border-border/50 pl-4">
+          <div className="min-w-0 flex-1 space-y-1.5 border-l border-border pl-4">
             {isLoading ? (
               <p className="flex items-center gap-2 text-xs text-muted-foreground">
                 <Loader2 className="h-3.5 w-3.5 animate-spin" />
@@ -314,7 +314,7 @@ export function WordLookup({
     return (
       <div
         className={cn(
-          "rounded-xl border border-border/50 bg-muted/20 px-3 py-2.5",
+          "rounded-xl border border-border bg-muted/20 px-3 py-2.5",
           "flex items-center gap-2 text-xs text-muted-foreground",
           className
         )}
@@ -330,7 +330,7 @@ export function WordLookup({
     return (
       <div
         className={cn(
-          "rounded-xl border border-border/50 bg-muted/20 px-3 py-2.5 space-y-1.5",
+          "rounded-xl border border-border bg-muted/20 px-3 py-2.5 space-y-1.5",
           className
         )}
       >
@@ -361,7 +361,7 @@ export function WordLookup({
   return (
     <div
       className={cn(
-        "rounded-xl border border-border/50 bg-muted/20 px-3 py-2.5 space-y-2",
+        "rounded-xl border border-border bg-muted/20 px-3 py-2.5 space-y-2",
         className
       )}
     >

@@ -18,6 +18,10 @@ import { initSounds } from "@/lib/snd";
 import { ShortcutsPopover } from "@/components/ShortcutsPopover";
 import { RindoLogo } from "./RindoLogo";
 import { usePushNotifications } from "@/hooks/usePushNotifications";
+import { useLocation } from "react-router-dom";
+import { APP_ROUTES } from "@/lib/routes-config";
+import { format } from "date-fns";
+import { es } from "date-fns/locale";
 import { MobileBottomBar } from "./MobileBottomBar";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { useNavPreferencesSync } from "@/hooks/useNavPreferencesSync";
@@ -30,9 +34,24 @@ import {
 
 interface LayoutProps {
   children: ReactNode;
+  /**
+   * Sin padding ni gap en el main: la página arma su propia grilla y topa
+   * con el chasis. Lo usa Inicio, donde las líneas de pelo tienen que
+   * llegar hasta el sidebar y el header para leerse como una sola grilla.
+   */
+  bleed?: boolean;
 }
 
-export default function Layout({ children }: LayoutProps) {
+/** Los grupos del sidebar, en palabras. La miga los reusa para no
+ *  inventar un segundo vocabulario de navegación. */
+const GROUP_LABEL: Record<string, string> = {
+  main: "Principal",
+  tools: "Herramientas",
+};
+
+export default function Layout({ children, bleed = false }: LayoutProps) {
+  const location = useLocation();
+  const currentRoute = APP_ROUTES.find((r) => r.url === location.pathname);
   const { isPrivacyMode, togglePrivacyMode } = usePrivacyMode();
   const { soundEnabled, toggleSound } = useSoundPreferences();
   const { playToggleOn, playToggleOff } = useSoundFX();
@@ -182,13 +201,27 @@ export default function Layout({ children }: LayoutProps) {
 
         <SidebarInset>
           {/* Top Bar with Trigger and Actions */}
-          <header className="sticky top-0 z-40 flex h-14 shrink-0 items-center gap-2 border-b border-border/40 shadow-[0_1px_2px_-1px_rgba(0,0,0,0.06)] bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 px-4">
+          <header className="sticky top-0 z-40 flex h-14 shrink-0 items-center gap-2 border-b border-border bg-background pl-4">
             {!isMobile && <SidebarTrigger className="-ml-1" />}
             <div className="flex flex-1 items-center justify-between">
               <div className="flex items-center gap-2">
-                <span className="text-lg font-bold tracking-tight">
+                <span
+                  className={cn(
+                    "text-lg font-bold tracking-tight",
+                    currentRoute && "lg:hidden"
+                  )}
+                >
                   rindo<span className="text-primary">.</span>
                 </span>
+                {currentRoute && (
+                  <p className="eyebrow hidden lg:block">
+                    {GROUP_LABEL[currentRoute.group] ?? "Rindo"}
+                    <span className="px-1.5 opacity-40">/</span>
+                    <span className="text-foreground">
+                      {currentRoute.title}
+                    </span>
+                  </p>
+                )}
               </div>
               <div className="flex items-center gap-3">
                 {pushSupported && (
@@ -203,7 +236,7 @@ export default function Layout({ children }: LayoutProps) {
                         size="sm"
                         aria-label={pushSubscribed ? "Desactivar notificaciones" : "Activar notificaciones"}
                         className={cn(
-                          "rounded-full h-8 w-8 p-0 transition-all duration-200",
+                          "rounded-full h-8 w-8 p-0 border border-border transition-all duration-200",
                           pushSubscribed
                             ? "bg-primary/20 text-primary hover:bg-primary/30"
                             : "bg-muted/10 text-muted-foreground hover:bg-muted hover:text-foreground"
@@ -234,7 +267,7 @@ export default function Layout({ children }: LayoutProps) {
                       size="sm"
                       aria-label={soundEnabled ? "Desactivar sonidos" : "Activar sonidos"}
                       className={cn(
-                        "rounded-full h-8 w-8 p-0 transition-all duration-200",
+                        "rounded-full h-8 w-8 p-0 border border-border transition-all duration-200",
                         soundEnabled
                           ? "bg-muted/10 text-muted-foreground hover:bg-muted hover:text-foreground"
                           : "bg-primary/20 text-primary hover:bg-primary/30"
@@ -261,7 +294,7 @@ export default function Layout({ children }: LayoutProps) {
                       size="sm"
                       aria-label={isPrivacyMode ? "Desactivar modo privado" : "Activar modo privado"}
                       className={cn(
-                        "rounded-full h-8 w-8 p-0 transition-all duration-200",
+                        "rounded-full h-8 w-8 p-0 border border-border transition-all duration-200",
                         isPrivacyMode
                           ? "bg-primary/20 text-primary hover:bg-primary/30"
                           : "bg-muted/10 text-muted-foreground hover:bg-muted hover:text-foreground"
@@ -302,12 +335,18 @@ export default function Layout({ children }: LayoutProps) {
                 </div>
               </div>
             </div>
+            {/* En un teléfono angosto el año no cabe junto al wordmark y
+                los tres botones: ahí el chip dice solo el mes. */}
+            <span className="chip-month self-stretch border-l border-border px-3 sm:px-4">
+              {format(new Date(), isMobile ? "MMM" : "MMM yyyy", { locale: es })}
+            </span>
           </header>
 
           {/* Main Content */}
           <main
             className={cn(
-              "flex flex-1 flex-col gap-4 p-4 sm:p-6 overflow-x-clip max-w-full",
+              "flex flex-1 flex-col overflow-x-clip max-w-full",
+              bleed ? "gap-0 p-0" : "gap-4 p-4 sm:p-6",
               isMobile && "pb-28 pb-safe"
             )}
             data-scrollable

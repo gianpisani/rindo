@@ -126,7 +126,7 @@ export function CategoryDetailContent({ category, monthName }: CategoryDetailCon
 
         {category.limit && (
           <div className="space-y-2">
-            <h3 className="text-sm font-semibold text-muted-foreground">Límite configurado</h3>
+            <h3 className="section-title text-sm text-muted-foreground">Límite configurado</h3>
             <div className="p-4 bg-muted/50 rounded-lg">
               <div className="text-2xl font-bold font-mono tabular-nums">
                 {formatCurrency(category.limit)}
@@ -229,7 +229,7 @@ export function CategoryDetailContent({ category, monthName }: CategoryDetailCon
 
       {/* Insights Section */}
       <div className="space-y-3">
-        <h3 className="text-lg font-semibold flex items-center gap-2">
+        <h3 className="section-title text-lg flex items-center gap-2">
           <Lightbulb className="h-5 w-5" />
           Insights
         </h3>
@@ -347,7 +347,7 @@ export function CategoryDetailContent({ category, monthName }: CategoryDetailCon
 
       {/* Transactions List */}
       <div className="space-y-3">
-        <h3 className="text-lg font-semibold flex items-center gap-2">
+        <h3 className="section-title text-lg flex items-center gap-2">
           <Calendar className="h-5 w-5" />
           Desglose por fecha
         </h3>

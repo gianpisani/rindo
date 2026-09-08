@@ -3,7 +3,10 @@ import * as React from "react";
 import { cn } from "@/lib/utils";
 
 const Card = React.forwardRef<HTMLDivElement, React.HTMLAttributes<HTMLDivElement>>(({ className, ...props }, ref) => (
-  <div ref={ref} className={cn("rounded-lg border border-border/50 bg-card text-card-foreground shadow-[0_1px_3px_rgba(0,0,0,0.04)] dark:shadow-none", className)} {...props} />
+  // El borde va a fuerza completa y sin sombra: en esta arquitectura lo que
+  // separa la tarjeta del fondo es la línea, no un halo. El /50 de antes
+  // dejaba la línea a mitad de camino justo donde ahora carga el diseño.
+  <div ref={ref} className={cn("rounded-lg border border-border bg-card text-card-foreground", className)} {...props} />
 ));
 Card.displayName = "Card";
 
@@ -16,7 +19,7 @@ CardHeader.displayName = "CardHeader";
 
 const CardTitle = React.forwardRef<HTMLParagraphElement, React.HTMLAttributes<HTMLHeadingElement>>(
   ({ className, ...props }, ref) => (
-    <h3 ref={ref} className={cn("text-2xl font-semibold leading-none tracking-tight", className)} {...props} />
+    <h3 ref={ref} className={cn("section-title text-2xl leading-none", className)} {...props} />
   ),
 );
 CardTitle.displayName = "CardTitle";

@@ -110,7 +110,7 @@ export function BankSyncPreferencesDialog({ cred, onOpenChange }: BankSyncPrefer
                 />
               </div>
 
-              <div className="rounded-xl border border-border/50 p-3 space-y-2">
+              <div className="rounded-xl border border-border p-3 space-y-2">
                 <div className="flex items-center gap-2.5">
                   <Settings2 className="h-4 w-4 text-muted-foreground shrink-0" />
                   <p className="text-sm font-medium">Horario de sync</p>

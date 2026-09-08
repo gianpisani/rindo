@@ -46,7 +46,7 @@ export function StudioShortcutsDialog({
                   <kbd
                     className={cn(
                       "inline-flex h-6 items-center rounded-md px-2",
-                      "border border-border/70 bg-muted/50",
+                      "border border-border bg-muted/50",
                       "font-mono text-[11px] font-medium text-foreground"
                     )}
                   >
@@ -60,7 +60,7 @@ export function StudioShortcutsDialog({
             ))}
           </dl>
 
-          <p className="mt-6 border-t border-border/50 pt-5 text-[13px] leading-relaxed text-muted-foreground">
+          <p className="mt-6 border-t border-border pt-5 text-[13px] leading-relaxed text-muted-foreground">
             Lo que más vas a usar no es una tecla. Toca cualquier palabra del
             subtítulo y el video se detiene solo para mostrarte qué significa.
             Al guardarla vuelve a andar.

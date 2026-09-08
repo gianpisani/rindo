@@ -1,6 +1,6 @@
 import { useState, useMemo, useEffect, useRef } from "react";
 import Layout from "@/components/Layout";
-import { GlassCard } from "@/components/GlassCard";
+import { Screen, Row, Panel } from "@/components/HairlineGrid";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
@@ -90,7 +90,7 @@ function DonutTooltip({
   if (!active || !payload?.length) return null;
   const data = payload[0].payload as CategoryBreakdown;
   return (
-    <div className="bg-card border border-border/50 rounded-xl p-3 shadow-lg">
+    <div className="bg-card border border-border rounded-xl p-3 shadow-lg">
       <p className="font-semibold text-sm text-foreground">{data.category}</p>
       <p
         className="text-sm font-mono tabular-nums font-semibold"
@@ -114,30 +114,36 @@ function getCatEmoji(categoryName: string, categories: { name: string; icon: str
 
 // ─── Section Card ────────────────────────────────────────
 
+/**
+ * Una sección de análisis: ya no es una tarjeta flotando, es una celda de
+ * la grilla. El rótulo va en su propia franja, separado del cuerpo por la
+ * línea. Con `flush` el cuerpo pierde el padding, para que una lista de
+ * filas llegue a los cantos del panel.
+ */
 function SectionCard({
   title,
   icon: Icon,
   tooltip,
   children,
   className,
+  flush = false,
 }: {
   title: string;
   icon?: LucideIcon;
   tooltip?: string;
   children: React.ReactNode;
   className?: string;
+  flush?: boolean;
 }) {
   return (
-    <GlassCard className={cn("flex flex-col", className)}>
-      <div className="flex items-center gap-2 px-4 pt-3 pb-1.5 border-b border-border/20">
-        {Icon && <Icon className="h-3 w-3 text-primary/60" />}
-        <h3 className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider">
-          {title}
-        </h3>
+    <Panel className={cn("flex flex-col", className)}>
+      <div className="flex shrink-0 items-center gap-2 border-b border-border px-4 py-2">
+        {Icon && <Icon className="h-3 w-3 shrink-0 text-primary" />}
+        <h3 className="eyebrow">{title}</h3>
         {tooltip && (
           <Tooltip>
             <TooltipTrigger asChild>
-              <Info className="h-3 w-3 text-muted-foreground/40 hover:text-muted-foreground transition-colors cursor-help" />
+              <Info className="h-3 w-3 cursor-help text-muted-foreground/60 transition-colors hover:text-muted-foreground" />
             </TooltipTrigger>
             <TooltipContent side="top" className="max-w-xs">
               {tooltip}
@@ -145,8 +151,15 @@ function SectionCard({
           </Tooltip>
         )}
       </div>
-      <div className="flex-1 p-4 pt-3">{children}</div>
-    </GlassCard>
+      <div
+        className={cn(
+          "flex-1 overflow-y-auto lg:min-h-0",
+          !flush && "p-4"
+        )}
+      >
+        {children}
+      </div>
+    </Panel>
   );
 }
 
@@ -158,8 +171,6 @@ interface KPICardProps {
   value: number;
   prev: number;
   iconColor: string;
-  iconBg: string;
-  gradient: string;
   invertDelta: boolean;
   prevMonthLabel: string;
   isPrivacyMode: boolean;
@@ -171,8 +182,6 @@ function KPICard({
   value,
   prev,
   iconColor,
-  iconBg,
-  gradient,
   invertDelta,
   prevMonthLabel,
   isPrivacyMode,
@@ -184,63 +193,51 @@ function KPICard({
   // Hide delta if prev was 0, or if the change is absurdly large (>500%) — not useful info
   const showDelta = prev !== 0 && Math.abs(rawDelta) <= 500;
 
+  /* Celda plana: el rótulo arriba, el número grande, y el delta como
+     texto con color — no como pastilla teñida flotando. */
   return (
     <Tooltip>
       <TooltipTrigger asChild>
-        <div>
-          <GlassCard className="relative overflow-hidden group hover:scale-[1.02] transition-transform duration-200">
-            <div
-              className={cn(
-                "absolute inset-0 bg-gradient-to-br to-transparent",
-                gradient
-              )}
+        <Panel className="px-4 py-3.5 md:px-5">
+          <div className="flex items-center gap-1.5">
+            <Icon className={cn("h-3 w-3 shrink-0", iconColor)} />
+            <span className="eyebrow truncate">{label}</span>
+          </div>
+          <div
+            className={cn(
+              "mt-2 font-mono text-lg font-bold tracking-tight tabular-nums md:text-xl",
+              isPrivacyMode && "privacy-blur"
+            )}
+          >
+            $
+            <NumberFlow
+              value={value}
+              format={{
+                style: "decimal",
+                minimumFractionDigits: 0,
+                maximumFractionDigits: 0,
+              }}
+              locales="es-CL"
             />
-            <div className="relative p-4">
-              <div className="flex items-center gap-1.5 mb-2">
-                <div className={cn("p-1 rounded-md", iconBg)}>
-                  <Icon className={cn("h-3 w-3", iconColor)} />
-                </div>
-                <span className="text-[10px] font-medium text-muted-foreground uppercase tracking-wider">
-                  {label}
-                </span>
-              </div>
-              <div
+          </div>
+          {showDelta ? (
+            <p className="mt-1 text-[11px] text-muted-foreground">
+              <span
                 className={cn(
-                  "text-xl font-bold font-mono tabular-nums",
-                  isPrivacyMode && "privacy-blur"
+                  "font-mono font-semibold tabular-nums",
+                  isGood ? "text-success" : "text-destructive"
                 )}
               >
-                $
-                <NumberFlow
-                  value={value}
-                  format={{
-                    style: "decimal",
-                    minimumFractionDigits: 0,
-                    maximumFractionDigits: 0,
-                  }}
-                  locales="es-CL"
-                />
-              </div>
-              {showDelta && (
-                <div className="mt-1.5 flex items-center gap-1">
-                  <span
-                    className={cn(
-                      "inline-flex items-center gap-0.5 text-[10px] font-semibold px-1 py-0.5 rounded",
-                      isGood
-                        ? "text-emerald-600 bg-emerald-500/10"
-                        : "text-rose-600 bg-rose-500/10"
-                    )}
-                  >
-                    {isPositive ? "▲" : "▼"} {Math.abs(delta).toFixed(0)}%
-                  </span>
-                  <span className="text-[9px] text-muted-foreground">
-                    vs anterior
-                  </span>
-                </div>
-              )}
-            </div>
-          </GlassCard>
-        </div>
+                {isPositive ? "▲" : "▼"} {Math.abs(delta).toFixed(0)}%
+              </span>{" "}
+              vs {prevMonthLabel}
+            </p>
+          ) : (
+            <p className="mt-1 text-[11px] text-muted-foreground">
+              Sin comparación
+            </p>
+          )}
+        </Panel>
       </TooltipTrigger>
       <TooltipContent side="bottom">
         <p className="text-xs">
@@ -384,9 +381,7 @@ export default function Overview() {
       icon: TrendingUp,
       value: kpis.income,
       prev: kpis.prevIncome,
-      iconColor: "text-emerald-500",
-      iconBg: "bg-emerald-500/10",
-      gradient: "from-emerald-500/[0.03]",
+      iconColor: "text-success",
       invertDelta: false,
     },
     {
@@ -394,9 +389,7 @@ export default function Overview() {
       icon: TrendingDown,
       value: kpis.expenses,
       prev: kpis.prevExpenses,
-      iconColor: "text-rose-500",
-      iconBg: "bg-rose-500/10",
-      gradient: "from-rose-500/[0.03]",
+      iconColor: "text-destructive",
       invertDelta: true,
     },
     {
@@ -404,9 +397,7 @@ export default function Overview() {
       icon: PiggyBank,
       value: kpis.investments,
       prev: kpis.prevInvestments,
-      iconColor: "text-sky-500",
-      iconBg: "bg-sky-500/10",
-      gradient: "from-sky-500/[0.03]",
+      iconColor: "text-info",
       invertDelta: false,
     },
     {
@@ -415,13 +406,7 @@ export default function Overview() {
       value: kpis.balance,
       prev: kpis.prevBalance,
       iconColor:
-        kpis.balance >= 0 ? "text-emerald-500" : "text-rose-500",
-      iconBg:
-        kpis.balance >= 0 ? "bg-emerald-500/10" : "bg-rose-500/10",
-      gradient:
-        kpis.balance >= 0
-          ? "from-emerald-500/[0.03]"
-          : "from-rose-500/[0.03]",
+        kpis.balance >= 0 ? "text-success" : "text-destructive",
       invertDelta: false,
     },
   ];
@@ -451,7 +436,7 @@ export default function Overview() {
         category: "Otros",
         amount: othersTotal,
         percentage: totalExp > 0 ? (othersTotal / totalExp) * 100 : 0,
-        color: "#94a3b8",
+        color: CHART_COLORS.mutedAxis,
         count: others.reduce((s, c) => s + c.count, 0),
         prevAmount: 0,
         trend: "stable" as const,
@@ -593,7 +578,7 @@ export default function Overview() {
           acc.push({
             name: t.category_name,
             value: Number(t.amount),
-            color: category?.color || "#ef4444",
+            color: category?.color || CHART_COLORS.expense,
           });
         }
         return acc;
@@ -604,45 +589,58 @@ export default function Overview() {
 
   const hasBudget = (budgetSummary?.totalBudget ?? 0) > 0;
 
+  /* La celda de una pestaña: bloque de acento cuando está activa. */
+  const TAB_CELL =
+    "section-title min-w-0 truncate rounded-sm bg-card px-4 py-1.5 text-[11px] font-bold text-muted-foreground transition-colors hover:text-foreground data-[state=active]:bg-primary data-[state=active]:text-primary-foreground";
+
   return (
-    <Layout>
-      <div className="space-y-4">
-        {/* ─── Header ────────────────────────────────── */}
-        <div className="flex items-center justify-between">
-          <div>
-            <h1 className="text-2xl font-bold tracking-tight mb-1">
-              Finanzas
-            </h1>
-            <p className="text-sm text-muted-foreground">
-              {activeTab === "mes"
-                ? isLoading
-                  ? "Cargando..."
-                  : `${transactionCount} movimientos en ${format(selectedMonth, "MMMM", { locale: es })}`
-                : "Visión general de tu historial financiero"}
-            </p>
-          </div>
-        </div>
-
-        {/* ─── Tabs ──────────────────────────────────── */}
-        <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-          <TabsList className="h-9 rounded-lg bg-muted/60 p-0.5">
-            <TabsTrigger value="mes" className="rounded-md text-xs px-4 data-[state=active]:shadow-sm">
-              Mes
-            </TabsTrigger>
-            <TabsTrigger value="historico" className="rounded-md text-xs px-4 data-[state=active]:shadow-sm">
-              Histórico
-            </TabsTrigger>
-          </TabsList>
+    <Layout bleed>
+      {/* Mismo chasis que Inicio, pero esta es la página de análisis: las
+          franjas de arriba son datos, no atajos. El Tabs hace de
+          contenedor de filas — identidad arriba y el cuerpo de la
+          pestaña repartiéndose lo que sobra del viewport. Las dos listas
+          largas viven abajo del pliegue, que es donde se leen. */}
+      <Screen>
+        <Tabs
+          value={activeTab}
+          onValueChange={setActiveTab}
+          className="flex min-h-0 flex-1 flex-col gap-px bg-border"
+        >
+          {/* ── Fila 1 — identidad y de qué mirada hablamos ─────── */}
+          <Panel className="flex flex-wrap items-center gap-x-3 gap-y-2 px-4 py-3 md:px-5 lg:shrink-0">
+            <div className="min-w-0">
+              <h1 className="page-title text-xl md:text-2xl">Finanzas</h1>
+              <p className="eyebrow mt-1">
+                {activeTab === "mes"
+                  ? isLoading
+                    ? "Cargando"
+                    : `${transactionCount} ${transactionCount === 1 ? "movimiento" : "movimientos"} en ${format(selectedMonth, "MMMM", { locale: es })}`
+                  : `${historicalStats.monthsWithData} ${historicalStats.monthsWithData === 1 ? "mes" : "meses"} de historial`}
+              </p>
+            </div>
+            <TabsList className="ml-auto grid h-auto shrink-0 grid-cols-2 gap-px border border-border bg-border p-0">
+              <TabsTrigger value="mes" className={TAB_CELL}>
+                Mes
+              </TabsTrigger>
+              <TabsTrigger value="historico" className={TAB_CELL}>
+                Histórico
+              </TabsTrigger>
+            </TabsList>
+          </Panel>
 
           {/* ════════════════════════════════════════════ */}
-          {/* TAB: MES                                     */}
+          {/* PESTAÑA: MES                                 */}
           {/* ════════════════════════════════════════════ */}
-          <TabsContent value="mes" className="mt-4 space-y-4">
-            {/* Month Strip + Story */}
-            <div className="flex items-center gap-3">
+          <TabsContent
+            value="mes"
+            className="mt-0 flex flex-col gap-px bg-border lg:min-h-0 lg:flex-1"
+          >
+            {/* ── Los meses. Franja de chrome: celdas cuadradas y la
+                activa es el bloque de acento. ──────────────────── */}
+            <Panel className="flex items-center gap-2 px-4 py-2 md:px-5 lg:shrink-0">
               <div
                 ref={monthStripRef}
-                className="flex items-center gap-1 overflow-x-auto scrollbar-hide flex-1"
+                className="flex flex-1 items-center gap-px overflow-x-auto scrollbar-hide"
               >
                 {monthPills.map((month, idx) => {
                   const isActive = isSameMonth(month, selectedMonth);
@@ -655,82 +653,80 @@ export default function Overview() {
                       data-active={isActive}
                       onClick={() => setSelectedMonth(month)}
                       className={cn(
-                        "relative flex flex-col items-center rounded-xl transition-all duration-200 shrink-0",
-                        "text-center px-3 py-1.5 min-w-0",
+                        "relative flex shrink-0 flex-col items-center px-2.5 py-1 text-center transition-colors",
                         isActive
-                          ? "bg-primary text-primary-foreground shadow-md shadow-primary/20"
-                          : "hover:bg-accent/60 text-muted-foreground hover:text-foreground"
+                          ? "bg-primary text-primary-foreground"
+                          : "text-muted-foreground hover:bg-muted hover:text-foreground"
                       )}
                     >
                       {showYear && (
-                        <span className={cn(
-                          "text-[9px] uppercase tracking-widest font-medium leading-none",
-                          isActive ? "text-primary-foreground/60" : "text-muted-foreground/40"
-                        )}>
+                        <span
+                          className={cn(
+                            "font-mono text-[9px] uppercase leading-none tracking-widest",
+                            isActive ? "opacity-70" : "opacity-50"
+                          )}
+                        >
                           {format(month, "yyyy")}
                         </span>
                       )}
-                      <span className={cn(
-                        "text-[13px] font-semibold capitalize leading-tight",
-                        isActive ? "text-primary-foreground" : ""
-                      )}>
+                      <span className="text-[13px] font-semibold capitalize leading-tight">
                         {format(month, "MMM", { locale: es })}
                       </span>
                       {isCurrent && !isActive && (
-                        <span className="absolute -bottom-0.5 left-1/2 -translate-x-1/2 w-1 h-1 rounded-full bg-primary" />
+                        <span className="absolute inset-x-1 bottom-0 h-[2px] bg-primary" />
                       )}
                     </button>
                   );
                 })}
               </div>
 
-              {/* Monthly Story trigger */}
+              {/* El resumen del mes en video */}
               <Tooltip>
                 <TooltipTrigger asChild>
                   <Button
-                    variant="ghost"
+                    variant="outline"
                     size="icon"
-                    className="h-9 w-9 rounded-xl bg-primary/10 text-primary hover:bg-primary/20 shrink-0"
+                    className="h-8 w-8 shrink-0"
                     onClick={() => setStoryOpen(true)}
                     disabled={transactionCount === 0}
                   >
-                    <Play className="h-3.5 w-3.5 ml-0.5" />
+                    <Play className="ml-0.5 h-3.5 w-3.5" />
                   </Button>
                 </TooltipTrigger>
                 <TooltipContent side="bottom">
                   <p className="text-xs">Resumen del mes</p>
                 </TooltipContent>
               </Tooltip>
-            </div>
+            </Panel>
 
             {isLoading ? (
-              <div className="space-y-6">
-                <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+              <>
+                <Row className="grid-cols-2 lg:shrink-0 lg:grid-cols-4">
                   {Array.from({ length: 4 }).map((_, i) => (
-                    <Skeleton key={i} className="h-32 rounded-xl" />
+                    <Panel key={i} className="p-4">
+                      <Skeleton className="h-16 w-full" />
+                    </Panel>
                   ))}
-                </div>
-                <Skeleton className="h-12 rounded-xl" />
-                <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                  <Skeleton className="h-80 rounded-xl" />
-                  <Skeleton className="h-80 rounded-xl" />
-                </div>
-              </div>
+                </Row>
+                <Panel className="p-4 lg:min-h-0 lg:flex-1">
+                  <Skeleton className="h-40 w-full lg:h-full" />
+                </Panel>
+              </>
             ) : transactionCount === 0 ? (
-              <div className="flex flex-col items-center justify-center py-20 text-center">
-                <CalendarDays className="h-12 w-12 text-muted-foreground/30 mb-4" />
-                <h3 className="text-lg font-semibold text-muted-foreground">
-                  Sin movimientos
-                </h3>
-                <p className="text-sm text-muted-foreground/60 mt-1">
+              <Panel className="flex flex-col items-center justify-center gap-2 px-4 py-16 text-center lg:min-h-0 lg:flex-1">
+                <div className="flex size-14 items-center justify-center border border-border">
+                  <CalendarDays className="h-6 w-6 text-muted-foreground/50" />
+                </div>
+                <p className="section-title text-sm">Sin movimientos</p>
+                <p className="text-xs text-muted-foreground">
                   No hay transacciones en{" "}
                   {format(selectedMonth, "MMMM yyyy", { locale: es })}
                 </p>
-              </div>
+              </Panel>
             ) : (
               <>
-                {/* KPI Cards */}
-                <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+                {/* ── Los cuatro indicadores del mes ───────────── */}
+                <Row className="grid-cols-2 lg:shrink-0 lg:grid-cols-4">
                   {kpiCards.map((card) => (
                     <KPICard
                       key={card.label}
@@ -739,586 +735,447 @@ export default function Overview() {
                       isPrivacyMode={isPrivacyMode}
                     />
                   ))}
-                </div>
+                </Row>
 
-                {/* ── Insights Row ── */}
-                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                  {/* Savings Rate Ring */}
+                {/* ── Los tres datos de contexto ───────────────── */}
+                <Row className="grid-cols-1 sm:grid-cols-3 lg:shrink-0">
+                  {/* Tasa de ahorro. El anillo es un anillo: sigue
+                      redondo, como cualquier medidor circular. */}
                   {(() => {
                     const showSavings = kpis.income > 0 || kpis.projectedSavingsRate !== null;
-                    if (!showSavings) return <div />;
+                    if (!showSavings) return <Panel>{null}</Panel>;
                     const isProjected = kpis.projectedSavingsRate !== null && kpis.income === 0;
                     const displayRate = isProjected ? kpis.projectedSavingsRate! : kpis.savingsRate;
                     const absRate = Math.min(Math.abs(displayRate), 100);
                     const circumference = 2 * Math.PI * 28;
                     const strokeDash = (absRate / 100) * circumference;
                     return (
-                      <GlassCard className="p-4">
+                      <Panel className="px-4 py-3 md:px-5">
                         <div className="flex items-center gap-3">
-                          <div className="relative w-[68px] h-[68px] shrink-0">
-                            <svg viewBox="0 0 64 64" className="w-full h-full -rotate-90">
-                              <circle cx="32" cy="32" r="28" fill="none" stroke="currentColor" strokeWidth="5" className="text-muted/30" />
+                          <div className="relative h-[60px] w-[60px] shrink-0">
+                            <svg viewBox="0 0 64 64" className="h-full w-full -rotate-90">
+                              <circle cx="32" cy="32" r="28" fill="none" stroke="currentColor" strokeWidth="5" className="text-muted" />
                               <circle
-                                cx="32" cy="32" r="28" fill="none" strokeWidth="5" strokeLinecap="round"
-                                stroke={displayRate >= 0 ? "#8b5cf6" : "#f43f5e"}
+                                cx="32" cy="32" r="28" fill="none" strokeWidth="5"
+                                style={{
+                                  stroke:
+                                    displayRate >= 0
+                                      ? "oklch(var(--insight-pattern))"
+                                      : "oklch(var(--destructive))",
+                                }}
                                 strokeDasharray={`${strokeDash} ${circumference}`}
                               />
                             </svg>
                             <div className="absolute inset-0 flex items-center justify-center">
-                              <span className={cn(
-                                "text-sm font-bold font-mono tabular-nums",
-                                displayRate >= 0 ? "text-violet-500" : "text-rose-500",
-                                isPrivacyMode && "privacy-blur"
-                              )}>
+                              <span
+                                className={cn(
+                                  "font-mono text-xs font-bold tabular-nums",
+                                  displayRate < 0 && "text-destructive",
+                                  isPrivacyMode && "privacy-blur"
+                                )}
+                                style={
+                                  displayRate >= 0
+                                    ? { color: "oklch(var(--insight-pattern))" }
+                                    : undefined
+                                }
+                              >
                                 {displayRate.toFixed(0)}%
                               </span>
                             </div>
                           </div>
                           <div className="min-w-0">
-                            <p className="text-[10px] text-muted-foreground uppercase tracking-wider font-medium">
-                              {isProjected ? "Ahorro (proy.)" : "Tasa de Ahorro"}
+                            <p className="eyebrow">
+                              {isProjected ? "Ahorro (proy.)" : "Tasa de ahorro"}
                             </p>
-                            <div className={cn(
-                              "text-lg font-bold font-mono tabular-nums",
-                              displayRate >= 0 ? "text-violet-500" : "text-rose-500",
-                              isPrivacyMode && "privacy-blur"
-                            )}>
+                            <div
+                              className={cn(
+                                "mt-1 font-mono text-lg font-bold tracking-tight tabular-nums",
+                                displayRate < 0 && "text-destructive",
+                                isPrivacyMode && "privacy-blur"
+                              )}
+                              style={
+                                displayRate >= 0
+                                  ? { color: "oklch(var(--insight-pattern))" }
+                                  : undefined
+                              }
+                            >
                               <NumberFlow value={displayRate} format={{ maximumFractionDigits: 1 }} />%
                             </div>
                             {kpis.prevSavingsRate !== 0 && (
-                              <p className={cn("text-[10px] text-muted-foreground font-mono tabular-nums", isPrivacyMode && "privacy-blur")}>
+                              <p className={cn("mt-0.5 font-mono text-[10px] tabular-nums text-muted-foreground", isPrivacyMode && "privacy-blur")}>
                                 Ant: {kpis.prevSavingsRate.toFixed(1)}%
                               </p>
                             )}
                           </div>
                         </div>
-                      </GlassCard>
+                      </Panel>
                     );
                   })()}
 
-                  {/* Daily Spending Stats */}
+                  {/* Gasto diario */}
                   {dailySpending.length > 0 ? (
-                    <GlassCard className="p-4">
-                      <p className="text-[10px] text-muted-foreground uppercase tracking-wider font-medium mb-1.5">
-                        Gasto Diario
-                      </p>
-                      <div className={cn("text-lg font-bold font-mono tabular-nums", isPrivacyMode && "privacy-blur")}>
+                    <Panel className="px-4 py-3 md:px-5">
+                      <p className="eyebrow">Gasto diario</p>
+                      <div className={cn("mt-1.5 font-mono text-lg font-bold tracking-tight tabular-nums", isPrivacyMode && "privacy-blur")}>
                         {formatCompact(dailyStats.avgDaily)}
                         <span className="text-xs font-normal text-muted-foreground">/día</span>
                       </div>
-                      <div className="flex items-center gap-3 mt-2 text-[11px] text-muted-foreground">
+                      <div className="mt-2 flex items-center gap-3 text-[11px] text-muted-foreground">
                         {dailyStats.peakDay && (
                           <span className="flex items-center gap-1">
-                            <Flame className="h-3 w-3 text-orange-500" />
-                            <span className={cn("font-semibold text-foreground font-mono tabular-nums", isPrivacyMode && "privacy-blur")}>
+                            <Flame className="h-3 w-3 text-warning" />
+                            <span className={cn("font-mono font-semibold tabular-nums text-foreground", isPrivacyMode && "privacy-blur")}>
                               {formatCompact(dailyStats.peakDay.amount)}
                             </span>
                           </span>
                         )}
-                        <span>
-                          📅 {dailyStats.daysWithSpending}/{dailyStats.totalDays} días
+                        <span className="font-mono tabular-nums">
+                          {dailyStats.daysWithSpending}/{dailyStats.totalDays} días
                         </span>
                       </div>
-                    </GlassCard>
-                  ) : <div />}
+                    </Panel>
+                  ) : <Panel>{null}</Panel>}
 
-                  {/* Credit Cards Mini */}
+                  {/* Tarjetas */}
                   {monthlyCardSpending.length > 0 ? (
-                    <GlassCard className="p-4">
-                      <div className="flex items-center justify-between mb-1.5">
-                        <p className="text-[10px] text-muted-foreground uppercase tracking-wider font-medium">
-                          Tarjetas
-                        </p>
-                        <Link to="/credit-cards" className="text-[10px] text-primary hover:underline">
+                    <Panel className="px-4 py-3 md:px-5">
+                      <div className="flex items-center justify-between gap-2">
+                        <p className="eyebrow">Tarjetas</p>
+                        <Link to="/credit-cards" className="eyebrow text-primary hover:underline">
                           Ver →
                         </Link>
                       </div>
                       {cardTotals.totalLimit > 0 && (
-                        <div className="mb-2">
-                          <div className="flex items-center justify-between text-[10px] text-muted-foreground mb-0.5">
+                        <div className="mt-1.5">
+                          <div className="mb-1 flex items-center justify-between text-[10px] text-muted-foreground">
                             <span>Cupo usado</span>
                             <span className={cn("font-mono tabular-nums", isPrivacyMode && "privacy-blur")}>
                               {Math.round((cardTotals.totalUsed / cardTotals.totalLimit) * 100)}%
                             </span>
                           </div>
-                          <div className="h-1.5 rounded-full bg-muted/60 overflow-hidden">
+                          <div className="h-1.5 overflow-hidden rounded-sm bg-muted">
                             <div
-                              className="h-full rounded-full bg-primary/70"
+                              className="h-full rounded-sm bg-primary"
                               style={{ width: `${Math.min((cardTotals.totalUsed / cardTotals.totalLimit) * 100, 100)}%` }}
                             />
                           </div>
                         </div>
                       )}
-                      <div className="space-y-1.5">
+                      <div className="mt-2 space-y-1.5">
                         {monthlyCardSpending.slice(0, 3).map((card) => (
                           <div key={card.id} className="flex items-center gap-2">
-                            <div className="w-1.5 h-1.5 rounded-full shrink-0" style={{ backgroundColor: card.color || "#6b7280" }} />
-                            <span className="text-[11px] truncate flex-1">{card.name}</span>
-                            <span className={cn("text-[11px] font-mono font-semibold tabular-nums shrink-0", isPrivacyMode && "privacy-blur")}>
+                            <div className="h-1.5 w-1.5 shrink-0 rounded-full" style={{ backgroundColor: card.color || "var(--muted-foreground)" }} />
+                            <span className="flex-1 truncate text-[11px]">{card.name}</span>
+                            <span className={cn("shrink-0 font-mono text-[11px] font-semibold tabular-nums", isPrivacyMode && "privacy-blur")}>
                               {formatCompact(card.spent)}
                             </span>
                           </div>
                         ))}
                       </div>
-                    </GlassCard>
-                  ) : <div />}
-                </div>
+                    </Panel>
+                  ) : <Panel>{null}</Panel>}
+                </Row>
 
-                {/* Donut + Comparison */}
-                <div className="grid grid-cols-1 lg:grid-cols-12 gap-4">
-                  <div className="lg:col-span-7">
-                    <SectionCard
-                      title="Gastos por Categoría"
-                      tooltip="Distribución de gastos del mes por categoría"
-                    >
-                      {categoryBreakdown.length === 0 ? (
-                        <p className="text-xs text-muted-foreground text-center py-6">
-                          Sin gastos registrados
-                        </p>
-                      ) : (
-                        <div className="flex flex-col items-center">
-                          <div className="relative w-full max-w-[220px]">
-                            <ResponsiveContainer width="100%" height={220}>
-                              <PieChart>
-                                <Pie
-                                  data={donutData}
-                                  dataKey="amount"
-                                  nameKey="category"
-                                  cx="50%"
-                                  cy="50%"
-                                  innerRadius={60}
-                                  outerRadius={90}
-                                  paddingAngle={3}
-                                  strokeWidth={0}
-                                  className={cn(isPrivacyMode && "privacy-blur")}
-                                >
-                                  {donutData.map((entry, i) => (
-                                    <Cell
-                                      key={i}
-                                      fill={entry.color}
-                                      className="transition-opacity hover:opacity-80"
-                                    />
-                                  ))}
-                                </Pie>
-                                <ChartTooltip content={<DonutTooltip />} />
-                              </PieChart>
-                            </ResponsiveContainer>
-                            <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-                              <div className="text-center">
-                                <p className="text-[9px] text-muted-foreground uppercase tracking-wider">
-                                  Total
-                                </p>
-                                <p
-                                  className={cn(
-                                    "text-base font-bold font-mono tabular-nums",
-                                    isPrivacyMode && "privacy-blur"
-                                  )}
-                                >
-                                  {formatCompact(filteredTotal)}
-                                </p>
-                              </div>
-                            </div>
-                          </div>
-                          <div className="flex flex-wrap justify-center gap-x-3 gap-y-1 mt-1">
-                            {donutData.map((cat) => (
-                              <div
-                                key={cat.category}
-                                className="flex items-center gap-1"
+                {/* ── La fila que cede: la torta y la comparación.
+                    Las dos scrollean por dentro. ─────────────── */}
+                <Row className="lg:min-h-0 lg:flex-1 lg:grid-cols-[7fr_5fr]">
+                  <SectionCard
+                    title="Gastos por categoría"
+                    tooltip="Distribución de gastos del mes por categoría"
+                  >
+                    {categoryBreakdown.length === 0 ? (
+                      <p className="py-6 text-center text-xs text-muted-foreground">
+                        Sin gastos registrados
+                      </p>
+                    ) : (
+                      <div className="flex flex-col items-center">
+                        <div className="relative w-full max-w-[220px]">
+                          <ResponsiveContainer width="100%" height={200}>
+                            <PieChart>
+                              <Pie
+                                data={donutData}
+                                dataKey="amount"
+                                nameKey="category"
+                                cx="50%"
+                                cy="50%"
+                                innerRadius={56}
+                                outerRadius={84}
+                                paddingAngle={3}
+                                strokeWidth={0}
+                                className={cn(isPrivacyMode && "privacy-blur")}
                               >
-                                <span className="text-[11px] leading-none">{getCatEmoji(cat.category, categories)}</span>
-                                <span className="text-[10px] text-muted-foreground">
-                                  {cat.category}
-                                </span>
-                                <span className="text-[10px] font-semibold tabular-nums">
-                                  {cat.percentage.toFixed(0)}%
-                                </span>
-                              </div>
-                            ))}
-                          </div>
-                        </div>
-                      )}
-                    </SectionCard>
-                  </div>
-
-                  <div className="lg:col-span-5">
-                    <SectionCard
-                      title="vs Mes Anterior"
-                      icon={ArrowRight}
-                      tooltip={`Comparación con ${prevMonthLabel}`}
-                    >
-                      <div className="space-y-3">
-                        {comparisonData.map((item) => {
-                          const maxVal =
-                            Math.max(item.current, item.previous) || 1;
-                          return (
-                            <div key={item.label} className="space-y-1">
-                              <div className="flex items-center justify-between">
-                                <span className="text-xs font-medium">
-                                  {item.label}
-                                </span>
-                                <span
-                                  className={cn(
-                                    "text-xs font-mono font-semibold tabular-nums",
-                                    isPrivacyMode && "privacy-blur"
-                                  )}
-                                >
-                                  {formatCompact(item.current)}
-                                </span>
-                              </div>
-                              <div className="h-2 rounded-full bg-muted/60 overflow-hidden">
-                                <div
-                                  className="h-full rounded-full transition-all duration-700 ease-out"
-                                  style={{
-                                    width: `${(item.current / maxVal) * 100}%`,
-                                    backgroundColor: item.color,
-                                  }}
-                                />
-                              </div>
-                              <div className="h-1 rounded-full bg-muted/60 overflow-hidden">
-                                <div
-                                  className="h-full rounded-full transition-all duration-700 ease-out opacity-35"
-                                  style={{
-                                    width: `${(item.previous / maxVal) * 100}%`,
-                                    backgroundColor: item.color,
-                                  }}
-                                />
-                              </div>
-                              <div className="flex items-center justify-between">
-                                <span
-                                  className={cn(
-                                    "text-[9px] text-muted-foreground",
-                                    isPrivacyMode && "privacy-blur"
-                                  )}
-                                >
-                                  {format(
-                                    subMonths(selectedMonth, 1),
-                                    "MMM",
-                                    { locale: es }
-                                  )}
-                                  : {formatCompact(item.previous)}
-                                </span>
-                                {item.delta !== 0 && (
-                                  <span
-                                    className={cn(
-                                      "text-[10px] font-semibold",
-                                      item.isGood
-                                        ? "text-emerald-500"
-                                        : "text-rose-500"
-                                    )}
-                                  >
-                                    {item.delta > 0 ? "+" : ""}
-                                    {item.delta.toFixed(0)}%
-                                  </span>
+                                {donutData.map((entry, i) => (
+                                  <Cell
+                                    key={i}
+                                    fill={entry.color}
+                                    className="transition-opacity hover:opacity-80"
+                                  />
+                                ))}
+                              </Pie>
+                              <ChartTooltip content={<DonutTooltip />} />
+                            </PieChart>
+                          </ResponsiveContainer>
+                          <div className="pointer-events-none absolute inset-0 flex items-center justify-center">
+                            <div className="text-center">
+                              <p className="eyebrow">Total</p>
+                              <p
+                                className={cn(
+                                  "mt-0.5 font-mono text-base font-bold tabular-nums",
+                                  isPrivacyMode && "privacy-blur"
                                 )}
-                              </div>
+                              >
+                                {formatCompact(filteredTotal)}
+                              </p>
                             </div>
-                          );
-                        })}
-                        {summaryInsight && (
-                          <div
-                            className={cn(
-                              "mt-2 px-2.5 py-2 rounded-lg text-[11px] font-medium border",
-                              summaryInsight.isGood
-                                ? "bg-emerald-500/5 border-emerald-500/20 text-emerald-600"
-                                : "bg-rose-500/5 border-rose-500/20 text-rose-600"
-                            )}
-                          >
-                            {summaryInsight.text}
                           </div>
-                        )}
-                      </div>
-                    </SectionCard>
-                  </div>
-                </div>
-
-
-                {/* Gastos + Presupuesto side by side */}
-                {categoryBreakdown.length > 0 && (
-                  <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-                    {/* Gastos por Categoría */}
-                    <SectionCard title="Gastos por Categoría">
-                      <div className="space-y-0.5">
-                        {/* Select all header */}
-                        <div className="flex items-center gap-2 pb-1 mb-0.5 border-b border-border/40">
-                          <Checkbox
-                            checked={excludedCategories.size === 0}
-                            onCheckedChange={(checked) => {
-                              if (checked) setExcludedCategories(new Set());
-                              else setExcludedCategories(new Set(categoryBreakdown.map((c) => c.category)));
-                            }}
-                            className="shrink-0"
-                          />
-                          <span className="text-[10px] text-muted-foreground">Todas las categorías</span>
                         </div>
-                        {categoryBreakdown.map((cat) => {
-                          const isExcluded = excludedCategories.has(cat.category);
-                          return (
-                            <div
-                              key={cat.category}
-                              className={cn(
-                                "flex items-center gap-2 py-1.5 group hover:bg-accent/30 -mx-2 px-2 rounded-lg transition-colors cursor-pointer",
-                                isExcluded && "opacity-40"
-                              )}
-                              onClick={() => toggleCategory(cat.category)}
-                            >
-                              <Checkbox
-                                checked={!isExcluded}
-                                onCheckedChange={() => toggleCategory(cat.category)}
-                                className="shrink-0"
-                                onClick={(e) => e.stopPropagation()}
-                              />
-                              <span className="text-sm leading-none shrink-0">{getCatEmoji(cat.category, categories)}</span>
-                              <span className="text-xs font-medium truncate flex-1 min-w-0">
+                        <div className="mt-1 flex flex-wrap justify-center gap-x-3 gap-y-1">
+                          {donutData.map((cat) => (
+                            <div key={cat.category} className="flex items-center gap-1">
+                              <span className="text-[11px] leading-none">{getCatEmoji(cat.category, categories)}</span>
+                              <span className="text-[10px] text-muted-foreground">
                                 {cat.category}
                               </span>
-                              <span className="text-[10px] text-muted-foreground tabular-nums shrink-0">
-                                {cat.count} mov
+                              <span className="font-mono text-[10px] font-semibold tabular-nums">
+                                {cat.percentage.toFixed(0)}%
                               </span>
-                              <div className="w-12 h-1 rounded-full bg-muted/60 overflow-hidden shrink-0 hidden sm:block">
-                                <div
-                                  className="h-full rounded-full"
-                                  style={{ width: `${cat.percentage}%`, backgroundColor: cat.color }}
-                                />
-                              </div>
-                              <span className={cn(
-                                "text-xs font-mono font-semibold tabular-nums shrink-0 w-[72px] text-right",
-                                isPrivacyMode && "privacy-blur"
-                              )}>
-                                {formatCompact(cat.effectiveAmount)}
-                              </span>
-                              {cat.prevAmount > 0 && cat.trendPercentage <= 500 ? (
-                                <span className={cn(
-                                  "text-[10px] font-semibold tabular-nums shrink-0 w-10 text-right",
-                                  cat.trend === "down" ? "text-emerald-500" : cat.trend === "up" ? "text-rose-500" : "text-muted-foreground"
-                                )}>
-                                  {cat.trend === "up" ? "▲" : cat.trend === "down" ? "▼" : "─"}{cat.trendPercentage.toFixed(0)}%
-                                </span>
-                              ) : (
-                                <span className="text-[10px] text-muted-foreground/50 shrink-0 w-10 text-right">—</span>
-                              )}
-                              <button
-                                onClick={(e) => { e.stopPropagation(); openCategoryDetail(cat); }}
-                                className="shrink-0 opacity-0 group-hover:opacity-100 transition-opacity text-muted-foreground hover:text-foreground"
-                              >
-                                <ArrowRight className="w-3.5 h-3.5" />
-                              </button>
                             </div>
-                          );
-                        })}
-                      </div>
-                    </SectionCard>
-
-                    {/* Presupuesto por Categoría */}
-                    <SectionCard title="Presupuesto por Categoría">
-                      {!hasBudget ? (
-                        <div className="flex flex-col items-center justify-center py-6 text-center">
-                          <p className="text-sm text-muted-foreground mb-3">
-                            Sin presupuesto configurado
-                          </p>
-                          <Button variant="outline" size="sm" className="rounded-lg text-xs" asChild>
-                            <Link to="/budget">🎯 Configurar</Link>
-                          </Button>
+                          ))}
                         </div>
-                      ) : (
-                        <div className="space-y-0.5">
-                          {categoryBreakdown.map((cat) => {
-                            const usage = cat.limitUsage ?? 0;
-                            const hasLimit = !!cat.limit;
-                            return (
-                              <div
-                                key={cat.category}
-                                className="flex items-center gap-2 py-1.5 group hover:bg-accent/30 -mx-2 px-2 rounded-lg transition-colors"
-                              >
-                                <span className="text-sm leading-none shrink-0">{getCatEmoji(cat.category, categories)}</span>
-                                <span className="text-xs font-medium truncate flex-1 min-w-0">
-                                  {cat.category}
-                                </span>
-                                {hasLimit ? (
-                                  <>
-                                    <div className="w-20 h-1.5 rounded-full bg-muted/60 overflow-hidden shrink-0">
-                                      <div
-                                        className={cn(
-                                          "h-full rounded-full transition-all",
-                                          cat.isOverLimit ? "bg-rose-500" : cat.isNearLimit ? "bg-amber-500" : "bg-emerald-500"
-                                        )}
-                                        style={{ width: `${Math.min(usage, 100)}%` }}
-                                      />
-                                    </div>
-                                    <span className={cn(
-                                      "text-[11px] font-semibold tabular-nums shrink-0 w-10 text-right",
-                                      cat.isOverLimit ? "text-rose-500" : cat.isNearLimit ? "text-amber-500" : "text-emerald-500"
-                                    )}>
-                                      {usage.toFixed(0)}%
-                                    </span>
-                                    <span className={cn(
-                                      "text-[10px] text-muted-foreground tabular-nums shrink-0 w-16 text-right",
-                                      isPrivacyMode && "privacy-blur"
-                                    )}>
-                                      {formatCompact(cat.effectiveAmount)}/{formatCompact(cat.limit!)}
-                                    </span>
-                                  </>
-                                ) : (
-                                  <span className="text-[10px] text-muted-foreground/40 shrink-0">
-                                    sin límite
-                                  </span>
+                      </div>
+                    )}
+                  </SectionCard>
+
+                  <SectionCard
+                    title="vs mes anterior"
+                    icon={ArrowRight}
+                    tooltip={`Comparación con ${prevMonthLabel}`}
+                  >
+                    <div className="space-y-3">
+                      {comparisonData.map((item) => {
+                        const maxVal = Math.max(item.current, item.previous) || 1;
+                        return (
+                          <div key={item.label} className="space-y-1">
+                            <div className="flex items-center justify-between">
+                              <span className="text-xs font-medium">{item.label}</span>
+                              <span
+                                className={cn(
+                                  "font-mono text-xs font-semibold tabular-nums",
+                                  isPrivacyMode && "privacy-blur"
                                 )}
-                              </div>
-                            );
-                          })}
+                              >
+                                {formatCompact(item.current)}
+                              </span>
+                            </div>
+                            <div className="h-2 overflow-hidden rounded-sm bg-muted">
+                              <div
+                                className="h-full rounded-sm transition-[width] duration-700 ease-out"
+                                style={{
+                                  width: `${(item.current / maxVal) * 100}%`,
+                                  backgroundColor: item.color,
+                                }}
+                              />
+                            </div>
+                            <div className="h-1 overflow-hidden rounded-sm bg-muted">
+                              <div
+                                className="h-full rounded-sm opacity-35 transition-[width] duration-700 ease-out"
+                                style={{
+                                  width: `${(item.previous / maxVal) * 100}%`,
+                                  backgroundColor: item.color,
+                                }}
+                              />
+                            </div>
+                            <div className="flex items-center justify-between">
+                              <span
+                                className={cn(
+                                  "font-mono text-[9px] tabular-nums text-muted-foreground",
+                                  isPrivacyMode && "privacy-blur"
+                                )}
+                              >
+                                {format(subMonths(selectedMonth, 1), "MMM", { locale: es })}
+                                : {formatCompact(item.previous)}
+                              </span>
+                              {item.delta !== 0 && (
+                                <span
+                                  className={cn(
+                                    "font-mono text-[10px] font-semibold tabular-nums",
+                                    item.isGood ? "text-success" : "text-destructive"
+                                  )}
+                                >
+                                  {item.delta > 0 ? "+" : ""}
+                                  {item.delta.toFixed(0)}%
+                                </span>
+                              )}
+                            </div>
+                          </div>
+                        );
+                      })}
+                      {/* El cierre de la comparación: tira de pelo con su
+                          tono, no una caja teñida. */}
+                      {summaryInsight && (
+                        <div className="flex items-start gap-2.5 border-t border-border pt-2.5">
+                          <div
+                            className={cn(
+                              "mt-0.5 h-[22px] w-[3px] shrink-0",
+                              summaryInsight.isGood ? "bg-success" : "bg-destructive"
+                            )}
+                          />
+                          <p className="min-w-0 text-[11px] font-medium leading-snug">
+                            {summaryInsight.text}
+                          </p>
                         </div>
                       )}
-                    </SectionCard>
-                  </div>
-                )}
-
+                    </div>
+                  </SectionCard>
+                </Row>
               </>
             )}
           </TabsContent>
 
           {/* ════════════════════════════════════════════ */}
-          {/* TAB: HISTÓRICO                               */}
+          {/* PESTAÑA: HISTÓRICO                           */}
           {/* ════════════════════════════════════════════ */}
-          <TabsContent value="historico" className="mt-4 space-y-4">
+          <TabsContent
+            value="historico"
+            className="mt-0 flex flex-col gap-px bg-border lg:min-h-0 lg:flex-1"
+          >
             {isLoading ? (
-              <div className="space-y-4">
-                <Skeleton className="h-24 rounded-xl" />
-                <Skeleton className="h-64 rounded-xl" />
-                <Skeleton className="h-64 rounded-xl" />
-              </div>
+              <>
+                <Row className="grid-cols-2 lg:shrink-0 lg:grid-cols-4">
+                  {Array.from({ length: 4 }).map((_, i) => (
+                    <Panel key={i} className="p-4">
+                      <Skeleton className="h-16 w-full" />
+                    </Panel>
+                  ))}
+                </Row>
+                <Panel className="p-4 lg:min-h-0 lg:flex-1">
+                  <Skeleton className="h-40 w-full lg:h-full" />
+                </Panel>
+              </>
             ) : (
               <>
-                {/* ── KPI Cards (promedios mensuales) ── */}
-                <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+                {/* ── Los promedios del historial ──────────────── */}
+                <Row className="grid-cols-2 lg:shrink-0 lg:grid-cols-4">
                   {[
-                    { label: "Patrimonio", icon: Wallet, value: historicalStats.patrimonio, iconColor: "text-emerald-500", iconBg: "bg-emerald-500/10", gradient: "from-emerald-500/[0.03]" },
-                    { label: "Prom. Ingresos", icon: TrendingUp, value: historicalStats.avgIncome, iconColor: "text-emerald-500", iconBg: "bg-emerald-500/10", gradient: "from-emerald-500/[0.03]" },
-                    { label: "Prom. Gastos", icon: TrendingDown, value: historicalStats.avgExpenses, iconColor: "text-rose-500", iconBg: "bg-rose-500/10", gradient: "from-rose-500/[0.03]" },
-                    { label: "Prom. Balance", icon: CalendarDays, value: historicalStats.avgBalance, iconColor: historicalStats.avgBalance >= 0 ? "text-emerald-500" : "text-rose-500", iconBg: historicalStats.avgBalance >= 0 ? "bg-emerald-500/10" : "bg-rose-500/10", gradient: historicalStats.avgBalance >= 0 ? "from-emerald-500/[0.03]" : "from-rose-500/[0.03]" },
+                    { label: "Patrimonio", icon: Wallet, value: historicalStats.patrimonio, iconColor: "text-success" },
+                    { label: "Prom. ingresos", icon: TrendingUp, value: historicalStats.avgIncome, iconColor: "text-success" },
+                    { label: "Prom. gastos", icon: TrendingDown, value: historicalStats.avgExpenses, iconColor: "text-destructive" },
+                    { label: "Prom. balance", icon: CalendarDays, value: historicalStats.avgBalance, iconColor: historicalStats.avgBalance >= 0 ? "text-success" : "text-destructive" },
                   ].map((card) => {
                     const Icon = card.icon;
                     return (
-                      <GlassCard key={card.label} className={cn("relative overflow-hidden")}>
-                        <div className={cn("absolute inset-0 bg-gradient-to-br opacity-60 pointer-events-none", card.gradient)} />
-                        <div className="relative px-3 py-3">
-                          <div className="flex items-center gap-2 mb-1">
-                            <div className={cn("p-1 rounded-md", card.iconBg)}>
-                              <Icon className={cn("h-3 w-3", card.iconColor)} />
-                            </div>
-                            <span className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider">{card.label}</span>
-                          </div>
-                          <div className={cn("text-lg font-bold font-mono tabular-nums", isPrivacyMode && "privacy-blur")}>
-                            <NumberFlow value={card.value} format={{ style: "currency", currency: "CLP", minimumFractionDigits: 0, maximumFractionDigits: 0 }} locales="es-CL" />
-                          </div>
+                      <Panel key={card.label} className="px-4 py-3.5 md:px-5">
+                        <div className="flex items-center gap-1.5">
+                          <Icon className={cn("h-3 w-3 shrink-0", card.iconColor)} />
+                          <span className="eyebrow truncate">{card.label}</span>
                         </div>
-                      </GlassCard>
+                        <div className={cn("mt-2 font-mono text-lg font-bold tracking-tight tabular-nums md:text-xl", isPrivacyMode && "privacy-blur")}>
+                          <NumberFlow value={card.value} format={{ style: "currency", currency: "CLP", minimumFractionDigits: 0, maximumFractionDigits: 0 }} locales="es-CL" />
+                        </div>
+                      </Panel>
                     );
                   })}
-                </div>
+                </Row>
 
-                {/* ── Insights Row ── */}
-                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                  {/* Composition: Disponible / Invertido / Ahorro */}
-                  <GlassCard className="p-4">
-                    <p className="text-[10px] text-muted-foreground uppercase tracking-wider font-medium mb-2.5">
-                      Composición
-                    </p>
-                    <div className="space-y-2">
+                {/* ── Los tres datos de contexto ───────────────── */}
+                <Row className="grid-cols-1 sm:grid-cols-3 lg:shrink-0">
+                  {/* Composición del patrimonio */}
+                  <Panel className="px-4 py-3 md:px-5">
+                    <p className="eyebrow">Composición</p>
+                    <div className="mt-2 space-y-2">
                       <div className="flex items-center gap-2">
-                        <Wallet className="h-3 w-3 text-emerald-500 shrink-0" />
-                        <span className="text-[11px] text-muted-foreground flex-1">Disponible</span>
-                        <span className={cn("text-xs font-bold font-mono tabular-nums text-emerald-600 dark:text-emerald-400", isPrivacyMode && "privacy-blur")}>
+                        <Wallet className="h-3 w-3 shrink-0 text-success" />
+                        <span className="flex-1 text-[11px] text-muted-foreground">Disponible</span>
+                        <span className={cn("font-mono text-xs font-bold tabular-nums text-success ", isPrivacyMode && "privacy-blur")}>
                           {formatCurrency(historicalStats.totalLiquid)}
                         </span>
                       </div>
                       <div className="flex items-center gap-2">
-                        <PiggyBank className="h-3 w-3 text-sky-500 shrink-0" />
-                        <span className="text-[11px] text-muted-foreground flex-1">Invertido</span>
-                        <span className={cn("text-xs font-bold font-mono tabular-nums text-sky-600 dark:text-sky-400", isPrivacyMode && "privacy-blur")}>
+                        <PiggyBank className="h-3 w-3 shrink-0 text-info" />
+                        <span className="flex-1 text-[11px] text-muted-foreground">Invertido</span>
+                        <span className={cn("font-mono text-xs font-bold tabular-nums text-info", isPrivacyMode && "privacy-blur")}>
                           {formatCurrency(historicalStats.totalInvested)}
                         </span>
                       </div>
                       {historicalStats.savingsRate > 0 && (
                         <div className="flex items-center gap-2">
-                          <Target className="h-3 w-3 text-violet-500 shrink-0" />
-                          <span className="text-[11px] text-muted-foreground flex-1">Tasa ahorro</span>
-                          <span className={cn("text-xs font-bold font-mono tabular-nums text-violet-600 dark:text-violet-400", isPrivacyMode && "privacy-blur")}>
+                          <Target
+                          className="h-3 w-3 shrink-0"
+                          style={{ color: "oklch(var(--insight-pattern))" }}
+                        />
+                          <span className="flex-1 text-[11px] text-muted-foreground">Tasa ahorro</span>
+                          <span className={cn("font-mono text-xs font-bold tabular-nums", isPrivacyMode && "privacy-blur")}
+                            style={{ color: "oklch(var(--insight-pattern))" }}>
                             {historicalStats.savingsRate.toFixed(1)}%
                           </span>
                         </div>
                       )}
                     </div>
-                  </GlassCard>
+                  </Panel>
 
-                  {/* Best & Worst months */}
-                  <GlassCard className="p-4">
-                    <p className="text-[10px] text-muted-foreground uppercase tracking-wider font-medium mb-2.5">
-                      Hitos
-                    </p>
+                  {/* El mejor y el peor mes */}
+                  <Panel className="px-4 py-3 md:px-5">
+                    <p className="eyebrow">Hitos</p>
                     {historicalStats.bestMonth && historicalStats.worstMonth ? (
-                      <div className="space-y-2.5">
+                      <div className="mt-2 space-y-2.5">
                         <div className="flex items-center gap-2">
-                          <Trophy className="h-3.5 w-3.5 text-emerald-500 shrink-0" />
+                          <Trophy className="h-3.5 w-3.5 shrink-0 text-success" />
                           <div className="min-w-0 flex-1">
-                            <p className="text-[10px] text-muted-foreground leading-none">Mejor mes</p>
-                            <p className="text-xs font-semibold capitalize truncate">{historicalStats.bestMonth.name}</p>
+                            <p className="eyebrow">Mejor mes</p>
+                            <p className="truncate text-xs font-semibold capitalize">{historicalStats.bestMonth.name}</p>
                           </div>
-                          <span className={cn("text-[11px] font-bold font-mono tabular-nums text-emerald-600 shrink-0", isPrivacyMode && "privacy-blur")}>
+                          <span className={cn("shrink-0 font-mono text-[11px] font-bold tabular-nums text-success", isPrivacyMode && "privacy-blur")}>
                             +{formatCurrency(historicalStats.bestMonth.balance)}
                           </span>
                         </div>
                         <div className="flex items-center gap-2">
-                          <Calendar className="h-3.5 w-3.5 text-rose-500 shrink-0" />
+                          <Calendar className="h-3.5 w-3.5 shrink-0 text-destructive" />
                           <div className="min-w-0 flex-1">
-                            <p className="text-[10px] text-muted-foreground leading-none">Peor mes</p>
-                            <p className="text-xs font-semibold capitalize truncate">{historicalStats.worstMonth.name}</p>
+                            <p className="eyebrow">Peor mes</p>
+                            <p className="truncate text-xs font-semibold capitalize">{historicalStats.worstMonth.name}</p>
                           </div>
-                          <span className={cn("text-[11px] font-bold font-mono tabular-nums text-rose-600 shrink-0", isPrivacyMode && "privacy-blur")}>
+                          <span className={cn("shrink-0 font-mono text-[11px] font-bold tabular-nums text-destructive", isPrivacyMode && "privacy-blur")}>
                             {formatCurrency(historicalStats.worstMonth.balance)}
                           </span>
                         </div>
                       </div>
                     ) : (
-                      <p className="text-xs text-muted-foreground">Necesitas al menos 2 meses</p>
+                      <p className="mt-2 text-xs text-muted-foreground">Necesitas al menos 2 meses</p>
                     )}
-                    <p className="text-[10px] text-muted-foreground/40 font-mono tabular-nums mt-2">
-                      {historicalStats.monthsWithData} {historicalStats.monthsWithData === 1 ? "mes" : "meses"} de datos
-                    </p>
-                  </GlassCard>
+                  </Panel>
 
-                  {/* Credit Cards Mini */}
-                  <GlassCard className="p-4">
-                    <div className="flex items-center justify-between mb-2">
-                      <p className="text-[10px] text-muted-foreground uppercase tracking-wider font-medium">
-                        Tarjetas
-                      </p>
-                      <Link to="/credit-cards" className="text-[10px] text-primary hover:underline">
+                  {/* Tarjetas */}
+                  <Panel className="px-4 py-3 md:px-5">
+                    <div className="flex items-center justify-between gap-2">
+                      <p className="eyebrow">Tarjetas</p>
+                      <Link to="/credit-cards" className="eyebrow text-primary hover:underline">
                         Ver →
                       </Link>
                     </div>
                     {cardSummaries.length > 0 ? (
                       <>
                         {cardTotals.totalLimit > 0 && (
-                          <div className="mb-2">
-                            <div className="flex items-center justify-between text-[10px] text-muted-foreground mb-0.5">
+                          <div className="mt-1.5">
+                            <div className="mb-1 flex items-center justify-between text-[10px] text-muted-foreground">
                               <span>Cupo usado</span>
                               <span className={cn("font-mono tabular-nums", isPrivacyMode && "privacy-blur")}>
                                 {Math.round((cardTotals.totalUsed / cardTotals.totalLimit) * 100)}%
                               </span>
                             </div>
-                            <div className="h-1.5 rounded-full bg-muted/60 overflow-hidden">
+                            <div className="h-1.5 overflow-hidden rounded-sm bg-muted">
                               <div
-                                className="h-full rounded-full bg-primary/70"
+                                className="h-full rounded-sm bg-primary"
                                 style={{ width: `${Math.min((cardTotals.totalUsed / cardTotals.totalLimit) * 100, 100)}%` }}
                               />
                             </div>
                           </div>
                         )}
-                        <div className="space-y-1.5">
+                        <div className="mt-2 space-y-1.5">
                           {cardSummaries.slice(0, 3).map((card) => (
                             <div key={card.id} className="flex items-center gap-2">
-                              <div className="w-1.5 h-1.5 rounded-full shrink-0" style={{ backgroundColor: card.color || "#6b7280" }} />
-                              <span className="text-[11px] truncate flex-1">{card.name}</span>
-                              <span className={cn("text-[11px] font-mono font-semibold tabular-nums shrink-0", isPrivacyMode && "privacy-blur")}>
+                              <div className="h-1.5 w-1.5 shrink-0 rounded-full" style={{ backgroundColor: card.color || "var(--muted-foreground)" }} />
+                              <span className="flex-1 truncate text-[11px]">{card.name}</span>
+                              <span className={cn("shrink-0 font-mono text-[11px] font-semibold tabular-nums", isPrivacyMode && "privacy-blur")}>
                                 {formatCompact(card.total_used_credit)}
                               </span>
                             </div>
@@ -1326,65 +1183,206 @@ export default function Overview() {
                         </div>
                       </>
                     ) : (
-                      <p className="text-xs text-muted-foreground">Sin tarjetas</p>
+                      <p className="mt-2 text-xs text-muted-foreground">Sin tarjetas</p>
                     )}
-                  </GlassCard>
-                </div>
+                  </Panel>
+                </Row>
 
-                {/* Monthly Evolution */}
+                {/* ── La fila que cede: la evolución del historial ─ */}
                 <SectionCard
-                  title="Evolución Mensual"
+                  title="Evolución mensual"
                   tooltip="Tendencia de ingresos, gastos e inversiones a lo largo de todo tu historial"
+                  className="lg:min-h-0 lg:flex-1"
                 >
                   <MonthlyEvolutionChart data={monthlyData} />
                 </SectionCard>
-
-                {/* Projection + Expenses side by side */}
-                <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-                  {/* Expenses by Category — historical accumulation */}
-                  {expensesByCategory.length > 0 && (
-                    <SectionCard title="Gasto Acumulado por Categoría" tooltip="Top categorías con mayor gasto en todo tu historial">
-                      <div className="space-y-0.5">
-                        {expensesByCategory.map((cat) => {
-                          const maxVal = expensesByCategory[0]?.value || 1;
-                          return (
-                            <div
-                              key={cat.name}
-                              className="flex items-center gap-2 py-1.5 group hover:bg-accent/30 -mx-2 px-2 rounded-lg transition-colors"
-                            >
-                              <span className="text-sm leading-none shrink-0">{getCatEmoji(cat.name, categories)}</span>
-                              <span className="text-xs font-medium truncate flex-1 min-w-0">
-                                {cat.name}
-                              </span>
-                              <div className="w-16 h-1 rounded-full bg-muted/60 overflow-hidden shrink-0">
-                                <div
-                                  className="h-full rounded-full"
-                                  style={{ width: `${(cat.value / maxVal) * 100}%`, backgroundColor: cat.color }}
-                                />
-                              </div>
-                              <span className={cn(
-                                "text-xs font-mono font-semibold tabular-nums shrink-0 w-[72px] text-right",
-                                isPrivacyMode && "privacy-blur"
-                              )}>
-                                {formatCurrency(cat.value)}
-                              </span>
-                            </div>
-                          );
-                        })}
-                      </div>
-                    </SectionCard>
-                  )}
-
-                  {/* Projection */}
-                  <SectionCard title="Proyección Financiera" tooltip="Proyección de patrimonio basada en tu historial">
-                    <ProjectionCard />
-                  </SectionCard>
-                </div>
               </>
             )}
           </TabsContent>
         </Tabs>
-      </div>
+      </Screen>
+
+      {/* ── ABAJO DEL PLIEGUE ─────────────────────────────────────
+          Las listas largas: son para leer con detención, no para
+          espiar de reojo en la primera pantalla. ───────────────── */}
+      {activeTab === "mes" && !isLoading && transactionCount > 0 && categoryBreakdown.length > 0 && (
+        <Row className="border-b border-border lg:grid-cols-2">
+          <SectionCard title="Gastos por categoría" flush>
+            {/* Cabecera de la lista: elegir todas */}
+            <div className="flex items-center gap-2 border-b border-border px-4 py-1.5">
+              <Checkbox
+                checked={excludedCategories.size === 0}
+                onCheckedChange={(checked) => {
+                  if (checked) setExcludedCategories(new Set());
+                  else setExcludedCategories(new Set(categoryBreakdown.map((c) => c.category)));
+                }}
+                className="shrink-0"
+              />
+              <span className="eyebrow">Todas las categorías</span>
+            </div>
+            {categoryBreakdown.map((cat) => {
+              const isExcluded = excludedCategories.has(cat.category);
+              return (
+                <div
+                  key={cat.category}
+                  className={cn(
+                    "group flex cursor-pointer items-center gap-2 border-b border-border px-4 py-1.5 transition-colors last:border-b-0 hover:bg-muted",
+                    isExcluded && "opacity-40"
+                  )}
+                  onClick={() => toggleCategory(cat.category)}
+                >
+                  <Checkbox
+                    checked={!isExcluded}
+                    onCheckedChange={() => toggleCategory(cat.category)}
+                    className="shrink-0"
+                    onClick={(e) => e.stopPropagation()}
+                  />
+                  <span className="shrink-0 text-sm leading-none">{getCatEmoji(cat.category, categories)}</span>
+                  <span className="min-w-0 flex-1 truncate text-xs font-medium">
+                    {cat.category}
+                  </span>
+                  <span className="shrink-0 font-mono text-[10px] tabular-nums text-muted-foreground">
+                    {cat.count} mov
+                  </span>
+                  <div className="hidden h-1 w-12 shrink-0 overflow-hidden rounded-sm bg-muted sm:block">
+                    <div
+                      className="h-full rounded-sm"
+                      style={{ width: `${cat.percentage}%`, backgroundColor: cat.color }}
+                    />
+                  </div>
+                  <span className={cn(
+                    "w-[72px] shrink-0 text-right font-mono text-xs font-semibold tabular-nums",
+                    isPrivacyMode && "privacy-blur"
+                  )}>
+                    {formatCompact(cat.effectiveAmount)}
+                  </span>
+                  {cat.prevAmount > 0 && cat.trendPercentage <= 500 ? (
+                    <span className={cn(
+                      "w-10 shrink-0 text-right font-mono text-[10px] font-semibold tabular-nums",
+                      cat.trend === "down" ? "text-success" : cat.trend === "up" ? "text-destructive" : "text-muted-foreground"
+                    )}>
+                      {cat.trend === "up" ? "▲" : cat.trend === "down" ? "▼" : "─"}{cat.trendPercentage.toFixed(0)}%
+                    </span>
+                  ) : (
+                    <span className="w-10 shrink-0 text-right text-[10px] text-muted-foreground/50">—</span>
+                  )}
+                  <button
+                    onClick={(e) => { e.stopPropagation(); openCategoryDetail(cat); }}
+                    className="shrink-0 text-muted-foreground opacity-0 transition-opacity hover:text-foreground focus-visible:opacity-100 group-hover:opacity-100"
+                    aria-label={`Ver detalle de ${cat.category}`}
+                  >
+                    <ArrowRight className="h-3.5 w-3.5" />
+                  </button>
+                </div>
+              );
+            })}
+          </SectionCard>
+
+          <SectionCard title="Presupuesto por categoría" flush={hasBudget}>
+            {!hasBudget ? (
+              <div className="flex flex-col items-center justify-center gap-3 py-6 text-center">
+                <p className="text-sm text-muted-foreground">
+                  Sin presupuesto configurado
+                </p>
+                <Button variant="outline" size="sm" asChild>
+                  <Link to="/budget">🎯 Configurar</Link>
+                </Button>
+              </div>
+            ) : (
+              categoryBreakdown.map((cat) => {
+                const usage = cat.limitUsage ?? 0;
+                const hasLimit = !!cat.limit;
+                return (
+                  <div
+                    key={cat.category}
+                    className="flex items-center gap-2 border-b border-border px-4 py-1.5 transition-colors last:border-b-0 hover:bg-muted"
+                  >
+                    <span className="shrink-0 text-sm leading-none">{getCatEmoji(cat.category, categories)}</span>
+                    <span className="min-w-0 flex-1 truncate text-xs font-medium">
+                      {cat.category}
+                    </span>
+                    {hasLimit ? (
+                      <>
+                        <div className="h-1.5 w-20 shrink-0 overflow-hidden rounded-sm bg-muted">
+                          <div
+                            className={cn(
+                              "h-full rounded-sm transition-all",
+                              cat.isOverLimit ? "bg-destructive" : cat.isNearLimit ? "bg-warning" : "bg-success"
+                            )}
+                            style={{ width: `${Math.min(usage, 100)}%` }}
+                          />
+                        </div>
+                        <span className={cn(
+                          "w-10 shrink-0 text-right font-mono text-[11px] font-semibold tabular-nums",
+                          cat.isOverLimit ? "text-destructive" : cat.isNearLimit ? "text-warning" : "text-success"
+                        )}>
+                          {usage.toFixed(0)}%
+                        </span>
+                        <span className={cn(
+                          "w-16 shrink-0 text-right font-mono text-[10px] tabular-nums text-muted-foreground",
+                          isPrivacyMode && "privacy-blur"
+                        )}>
+                          {formatCompact(cat.effectiveAmount)}/{formatCompact(cat.limit!)}
+                        </span>
+                      </>
+                    ) : (
+                      <span className="shrink-0 text-[10px] text-muted-foreground/40">
+                        sin límite
+                      </span>
+                    )}
+                  </div>
+                );
+              })
+            )}
+          </SectionCard>
+        </Row>
+      )}
+
+      {activeTab === "historico" && !isLoading && (
+        /* Si no hay gasto acumulado, la fila es de una sola celda: dos
+                  columnas con una vacía dejaría un hueco del color del borde. */
+        <Row
+          className={cn(
+            "border-b border-border",
+            expensesByCategory.length > 0 && "lg:grid-cols-2"
+          )}
+        >
+          {expensesByCategory.length > 0 && (
+            <SectionCard title="Gasto acumulado por categoría" tooltip="Top categorías con mayor gasto en todo tu historial" flush>
+              {expensesByCategory.map((cat) => {
+                const maxVal = expensesByCategory[0]?.value || 1;
+                return (
+                  <div
+                    key={cat.name}
+                    className="flex items-center gap-2 border-b border-border px-4 py-1.5 transition-colors last:border-b-0 hover:bg-muted"
+                  >
+                    <span className="shrink-0 text-sm leading-none">{getCatEmoji(cat.name, categories)}</span>
+                    <span className="min-w-0 flex-1 truncate text-xs font-medium">
+                      {cat.name}
+                    </span>
+                    <div className="h-1 w-16 shrink-0 overflow-hidden rounded-sm bg-muted">
+                      <div
+                        className="h-full rounded-sm"
+                        style={{ width: `${(cat.value / maxVal) * 100}%`, backgroundColor: cat.color }}
+                      />
+                    </div>
+                    <span className={cn(
+                      "w-[72px] shrink-0 text-right font-mono text-xs font-semibold tabular-nums",
+                      isPrivacyMode && "privacy-blur"
+                    )}>
+                      {formatCurrency(cat.value)}
+                    </span>
+                  </div>
+                );
+              })}
+            </SectionCard>
+          )}
+
+          <SectionCard title="Proyección financiera" tooltip="Proyección de patrimonio basada en tu historial">
+            <ProjectionCard />
+          </SectionCard>
+        </Row>
+      )}
 
       {/* Monthly Story */}
       <MonthlyStory

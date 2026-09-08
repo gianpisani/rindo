@@ -16,6 +16,15 @@ interface PaletteVars {
   ring: string;
   sidebar: string;
   sidebarBorder: string;
+  /**
+   * Tinta sobre un bloque de acento a fuerza completa.
+   *
+   * No es lo mismo que `primaryForeground`: ese sigue la regla de marca
+   * de Rindo —casi blanco, aunque apenas pase de 3:1— porque son cuatro
+   * palabras en un botón. Acá el acento es un panel entero con párrafos
+   * encima, así que gana el que más contraste dé, sin umbral que ajustar.
+   */
+  inkOnAccent: string;
   /** Tono OKLCH del acento — de acá salen los colores de los gráficos. */
   hue: number;
 }
@@ -172,19 +181,37 @@ const MIN_ON_ACCENT_CONTRAST = 3.1;
  */
 export function generatePaletteFromHue(
   hue: number,
-  mode: "light" | "dark"
+  mode: "light" | "dark",
+  /**
+   * Fija la L del acento fuera de la banda. Solo para un tema cuyo color
+   * ES un valor concreto y no "el punto más vivo de su tono": el
+   * destacador de Wero vive en L 0.954, muy por encima del techo.
+   */
+  accentL?: { light?: number; dark?: number }
 ): PaletteVars {
   const h = +(((hue % 360) + 360) % 360).toFixed(1);
   // El ring corre el tono unos grados: el gradiente del sistema vive
   // entre el primary y el ring, y ese corrimiento es lo que lo hace brillar.
   const hRing = (h + 26) % 360;
   const band = mode === "dark" ? DARK_ACCENT_BAND : LIGHT_ACCENT_BAND;
-  const primary = vividAccent(h, band[0], band[1]);
+  const pinned = accentL?.[mode];
+  const primary =
+    pinned !== undefined
+      ? vividAccent(h, pinned, pinned)
+      : vividAccent(h, band[0], band[1]);
+  // El ring no se fija nunca, ni cuando el acento sí: su trabajo es ser
+  // visible, no ser la marca. Un foco a L 0.954 sobre blanco no existe.
   const ring = vividAccent(hRing, band[0], band[1]);
+  const accentLum = relLuminance(primary.L, primary.C, h);
   const onAccent =
-    contrast(relLuminance(primary.L, primary.C, h), relLuminance(0.98, 0.015, h)) <
-    MIN_ON_ACCENT_CONTRAST
+    contrast(accentLum, relLuminance(0.98, 0.015, h)) < MIN_ON_ACCENT_CONTRAST
       ? `oklch(0.16 0.04 ${h})`
+      : `oklch(0.98 0.015 ${h})`;
+  // Para un panel entero de acento no hay umbral: gana el que más da.
+  const inkOnAccent =
+    contrast(accentLum, relLuminance(0.16, 0.02, h)) >
+    contrast(accentLum, relLuminance(0.98, 0.015, h))
+      ? `oklch(0.16 0.02 ${h})`
       : `oklch(0.98 0.015 ${h})`;
 
   if (mode === "light") {
@@ -196,11 +223,12 @@ export function generatePaletteFromHue(
       primaryForeground: onAccent,
       muted: `oklch(0.935 0.008 ${h})`,
       mutedForeground: `oklch(0.42 0.02 ${h})`,
-      border: `oklch(0.855 0.012 ${h})`,
-      input: `oklch(0.855 0.012 ${h})`,
+      border: `oklch(0.56 0.02 ${h})`,
+      input: `oklch(0.56 0.02 ${h})`,
       ring: ring.css,
       sidebar: `oklch(0.955 0.006 ${h})`,
-      sidebarBorder: `oklch(0.855 0.012 ${h})`,
+      sidebarBorder: `oklch(0.56 0.02 ${h})`,
+      inkOnAccent,
       hue: h,
     };
   }
@@ -216,7 +244,8 @@ export function generatePaletteFromHue(
     input: `oklch(0.25 0.016 ${h})`,
     ring: ring.css,
     sidebar: `oklch(0.12 0.011 ${h})`,
-    sidebarBorder: `oklch(0.25 0.016 ${h})`,
+    sidebarBorder: `oklch(0.28 0.016 ${h})`,
+    inkOnAccent,
     hue: h,
   };
 }
@@ -228,7 +257,15 @@ export function generatePaletteFromHue(
 // puede quedarse a medio camino. Los tonos están repartidos por la rueda
 // para que ninguno se confunda con el vecino ni con el rosa de Rindo.
 
-const PRESET_HUES: { id: string; name: string; hue: number }[] = [
+interface PresetDef {
+  id: string;
+  name: string;
+  hue: number;
+  /** Ver `accentL` en generatePaletteFromHue. */
+  accentL?: { light?: number; dark?: number };
+}
+
+const PRESET_HUES: PresetDef[] = [
   { id: "atardecer", name: "Atardecer", hue: 45 },
   { id: "arena", name: "Arena", hue: 85 },
   { id: "bosque", name: "Bosque", hue: 148 },
@@ -237,15 +274,28 @@ const PRESET_HUES: { id: string; name: string; hue: number }[] = [
   { id: "medianoche", name: "Medianoche", hue: 275 },
   { id: "lavanda", name: "Lavanda", hue: 305 },
   { id: "cereza", name: "Cereza", hue: 340 },
+  // Wero. El único preset que no es "el punto más vivo de su tono": su
+  // amarillo es un valor concreto, el destacador #fff48d, que en OKLCH
+  // vive en L 0.954 — muy por encima del techo de la banda. Fijando esa L
+  // el propio maxChroma del sistema cae en #fff48c: un punto de azul de
+  // diferencia con el de Wero, imperceptible. Nada de hex a mano.
+  //
+  // Solo en oscuro. Un destacador es un acento sobre negro; sobre blanco
+  // no es un color, es papel. Y --primary no es solo relleno: se usa como
+  // texto en 146 lugares, y a L 0.954 sobre un fondo claro no se lee
+  // ninguno. En claro cae en la banda y queda un oro profundo.
+  { id: "wero", name: "Wero", hue: 103, accentL: { dark: 0.954 } },
 ];
 
-export const THEME_PRESETS: ThemePreset[] = PRESET_HUES.map(({ id, name, hue }) => ({
-  id,
-  name,
-  hue,
-  light: generatePaletteFromHue(hue, "light"),
-  dark: generatePaletteFromHue(hue, "dark"),
-}));
+export const THEME_PRESETS: ThemePreset[] = PRESET_HUES.map(
+  ({ id, name, hue, accentL }) => ({
+    id,
+    name,
+    hue,
+    light: generatePaletteFromHue(hue, "light", accentL),
+    dark: generatePaletteFromHue(hue, "dark", accentL),
+  })
+);
 
 // ── CSS variable names to override ──────────────────────────────────
 
@@ -275,6 +325,7 @@ const CSS_VARS = [
   "--sidebar-accent-foreground",
   "--sidebar-border",
   "--sidebar-ring",
+  "--ink-on-accent",
   "--accent-gradient",
   "--chart-1",
   "--chart-2",
@@ -324,6 +375,7 @@ function applyPalette(root: HTMLElement, p: PaletteVars) {
   root.style.setProperty("--sidebar-accent-foreground", p.foreground);
   root.style.setProperty("--sidebar-border", p.sidebarBorder);
   root.style.setProperty("--sidebar-ring", p.ring);
+  root.style.setProperty("--ink-on-accent", p.inkOnAccent);
   root.style.setProperty(
     "--accent-gradient",
     `linear-gradient(135deg, ${p.primary}, ${p.ring})`

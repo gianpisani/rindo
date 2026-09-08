@@ -151,13 +151,13 @@ export function ImportCSVModal({
               <table className="w-full text-xs">
                 <thead>
                   <tr className="bg-muted/60 dark:bg-muted/30">
-                    <th className="w-8 px-2 py-2 text-center text-muted-foreground/60 font-normal border-r border-border/50">
+                    <th className="w-8 px-2 py-2 text-center text-muted-foreground/60 font-normal border-r border-border">
                       #
                     </th>
                     {TEMPLATE_COLUMNS.map((col) => (
                       <th
                         key={col}
-                        className="px-3 py-2 text-left font-semibold border-r border-border/50 last:border-r-0"
+                        className="px-3 py-2 text-left font-semibold border-r border-border last:border-r-0"
                       >
                         <div className="flex flex-col gap-0.5">
                           <span className="flex items-center gap-1">
@@ -179,18 +179,18 @@ export function ImportCSVModal({
                     <tr
                       key={i}
                       className={cn(
-                        "border-t border-border/30",
+                        "border-t border-border",
                         i % 2 === 0 ? "bg-background" : "bg-muted/20"
                       )}
                     >
-                      <td className="w-8 px-2 py-1.5 text-center text-muted-foreground/50 border-r border-border/50 tabular-nums">
+                      <td className="w-8 px-2 py-1.5 text-center text-muted-foreground/50 border-r border-border tabular-nums">
                         {i + 1}
                       </td>
                       {row.map((cell, j) => (
                         <td
                           key={j}
                           className={cn(
-                            "px-3 py-1.5 border-r border-border/30 last:border-r-0 font-mono",
+                            "px-3 py-1.5 border-r border-border last:border-r-0 font-mono",
                             j === 3 &&
                               (cell === "Ingreso"
                                 ? "text-emerald-600 dark:text-emerald-400"

@@ -21,6 +21,31 @@ import { CHART_COLORS } from '@/lib/chart-config'
 import { ZoomIn, ZoomOut, RotateCcw, BarChart3 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 
+/**
+ * Un acento del tema, ya resuelto a un color concreto.
+ *
+ * Los tokens --accent-* guardan el triple L C H, no un color completo, así
+ * que hay que envolverlos en oklch(). Y hay que resolverlos acá y no pasar
+ * `oklch(var(--x))`: Recharts escribe stroke y fill como atributos del SVG,
+ * donde var() no se sustituye y el trazo saldría negro.
+ */
+/** Un token que ya es color completo (--card, --primary), resuelto. */
+function themeColor(name: string, fallback: string): string {
+  if (typeof window === 'undefined') return fallback
+  const value = getComputedStyle(document.documentElement)
+    .getPropertyValue(name)
+    .trim()
+  return value || fallback
+}
+
+function accentColor(name: string, fallback: string): string {
+  if (typeof window === 'undefined') return fallback
+  const triple = getComputedStyle(document.documentElement)
+    .getPropertyValue(name)
+    .trim()
+  return triple ? `oklch(${triple})` : fallback
+}
+
 interface FintualInvestment {
   id: string
   goal_id: string
@@ -85,7 +110,7 @@ const CustomTooltip = ({ active, payload, label, activeGoals, goalColors }: Cust
   const totalProfitPercent = totalDeposited > 0 ? (totalProfit / totalDeposited) * 100 : 0
 
   return (
-    <div className="bg-card/95 backdrop-blur-sm border border-border/50 rounded-xl p-4 shadow-xl min-w-[240px]">
+    <div className="min-w-[240px] border border-border bg-card p-4 shadow-xl">
       <p className="font-semibold text-sm text-foreground mb-3 pb-2 border-b border-border">{label}</p>
       
       <div className="space-y-3">
@@ -167,13 +192,18 @@ export function FintualHistoryChart({ investments }: FintualHistoryChartProps) {
 
   // Colores para cada goal
   const goalColors: Record<string, string> = useMemo(() => {
+    /* Los cinco acentos del tema, no hex escritos a mano: así el gráfico
+       habla el mismo idioma de color que el resto de la app y se mapea
+       solo al gamut de oscuro (--accent-chroma). Se leen resueltos, como
+       hace chart-config: Recharts pone stroke y fill como ATRIBUTOS del
+       SVG, y ahí var() no se sustituye. */
     const colors = [
-      '#3b82f6', // blue-500
-      '#10b981', // green-500
-      '#f59e0b', // amber-500
-      '#ef4444', // red-500
-      '#6366f1', // indigo-500
-      '#ec4899', // pink-500
+      accentColor('--accent-blue', '#3b82f6'),
+      accentColor('--accent-emerald', '#10b981'),
+      accentColor('--accent-amber', '#f59e0b'),
+      accentColor('--accent-rose', '#f43f5e'),
+      accentColor('--accent-violet', '#8b5cf6'),
+      accentColor('--accent-blue', '#3b82f6'),
     ]
     
     const goals = [...new Set(investments.map(inv => inv.goal_name))].sort()
@@ -390,47 +420,34 @@ export function FintualHistoryChart({ investments }: FintualHistoryChartProps) {
 
   if (chartData.length === 0) {
     return (
-      <div className="flex items-center justify-center py-12 text-muted-foreground">
-        <div className="text-center">
-          <BarChart3 className="h-10 w-10 mx-auto mb-3 opacity-20" />
-          <p className="text-sm">No hay datos históricos suficientes para mostrar</p>
-          <p className="text-xs mt-1">Los datos aparecerán cuando haya más registros</p>
+      <div className="flex flex-col items-center justify-center gap-2 py-12 text-center">
+        <div className="flex size-14 items-center justify-center border border-border">
+          <BarChart3 className="h-6 w-6 text-muted-foreground/50" />
         </div>
+        <p className="section-title text-sm">Sin historial suficiente</p>
+        <p className="text-xs text-muted-foreground">
+          Aparece cuando haya más de un registro.
+        </p>
       </div>
     )
   }
 
   return (
     <div className={cn("w-full space-y-4", isPrivacyMode && "privacy-blur")}>
-      {/* Stats cards */}
+      {/* Valor total, ganancia y rentabilidad ya están en la franja de
+          totales de la página: repetirlos acá gastaba una fila de cuatro
+          tarjetas para decir tres cosas que el usuario acaba de leer. Lo
+          único que este gráfico sabe y la página no es el techo
+          histórico, y va como rótulo, no como tarjeta. */}
       {stats && (
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-          <div className="bg-muted/50 rounded-lg p-3 text-center">
-            <p className="text-xs text-muted-foreground">Valor Total</p>
-            <p className="text-lg font-bold font-mono tabular-nums">{formatCurrencyExact(stats.totalNav)}</p>
-          </div>
-          <div className="bg-muted/50 rounded-lg p-3 text-center">
-            <p className="text-xs text-muted-foreground">Ganancia</p>
-            <p className={cn(
-              "text-lg font-bold font-mono tabular-nums",
-              stats.totalProfit >= 0 ? "text-success" : "text-destructive"
-            )}>
-              {stats.totalProfit >= 0 ? "+" : ""}{formatCurrencyExact(stats.totalProfit)}
-            </p>
-          </div>
-          <div className="bg-muted/50 rounded-lg p-3 text-center">
-            <p className="text-xs text-muted-foreground">Rentabilidad</p>
-            <p className={cn(
-              "text-lg font-bold font-mono tabular-nums",
-              stats.profitPercent >= 0 ? "text-success" : "text-destructive"
-            )}>
-              {stats.profitPercent >= 0 ? "+" : ""}{stats.profitPercent.toFixed(2)}%
-            </p>
-          </div>
-          <div className="bg-muted/50 rounded-lg p-3 text-center">
-            <p className="text-xs text-muted-foreground">Máximo histórico</p>
-            <p className="text-lg font-bold font-mono tabular-nums text-amber-500">{formatCurrencyExact(stats.maxNav)}</p>
-          </div>
+        <div className="flex items-baseline gap-2">
+          <span className="eyebrow">Máximo histórico</span>
+          <span
+            className="font-mono text-sm font-bold tabular-nums"
+            style={{ color: "oklch(var(--insight-alert))" }}
+          >
+            {formatCurrencyExact(stats.maxNav)}
+          </span>
         </div>
       )}
 
@@ -553,7 +570,7 @@ export function FintualHistoryChart({ investments }: FintualHistoryChartProps) {
                 activeDot={{ 
                   r: 4, 
                   fill: color, 
-                  stroke: '#ffffff', 
+                  stroke: themeColor('--card', '#ffffff'), 
                   strokeWidth: 2,
                   opacity: 0.7
                 }}
@@ -580,7 +597,7 @@ export function FintualHistoryChart({ investments }: FintualHistoryChartProps) {
                 activeDot={{ 
                   r: 6, 
                   fill: color, 
-                  stroke: '#ffffff', 
+                  stroke: themeColor('--card', '#ffffff'), 
                   strokeWidth: 2 
                 }}
                 connectNulls
@@ -597,7 +614,7 @@ export function FintualHistoryChart({ investments }: FintualHistoryChartProps) {
               x1={refAreaLeft}
               x2={refAreaRight}
               strokeOpacity={0.3}
-              fill="#6b7280"
+              fill={CHART_COLORS.mutedAxis}
               fillOpacity={0.25}
             />
           )}
@@ -625,7 +642,7 @@ export function FintualHistoryChart({ investments }: FintualHistoryChartProps) {
             <Brush
               dataKey="displayDate"
               height={40}
-              stroke="#3b82f6"
+              stroke={themeColor('--primary', '#3b82f6')}
               fill="transparent"
               travellerWidth={10}
               startIndex={zoomDomain?.start ?? 0}

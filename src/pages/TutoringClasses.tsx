@@ -7,7 +7,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { Checkbox } from "@/components/ui/checkbox";
-import { Card, CardContent } from "@/components/ui/card";
+import { Screen, Row, Panel } from "@/components/HairlineGrid";
 import {
   Select,
   SelectContent,
@@ -79,16 +79,25 @@ const QUICK_ADD_FORM_ID = "tutoring-quick-add-form";
 const STUDENT_FORM_ID = "tutoring-student-form";
 
 const statusConfig = {
-  scheduled: { label: "Agendada", icon: Clock, color: "text-blue-500", bg: "bg-blue-500/10", border: "border-blue-500/20" },
-  completed: { label: "Realizada", icon: CircleCheckBig, color: "text-emerald-500", bg: "bg-emerald-500/10", border: "border-emerald-500/20" },
-  cancelled: { label: "Cancelada", icon: CircleX, color: "text-rose-500", bg: "bg-rose-500/10", border: "border-rose-500/20" },
+  scheduled: { label: "Agendada", icon: Clock, color: "text-info", bg: "bg-info/10", border: "border-info" },
+  completed: { label: "Realizada", icon: CircleCheckBig, color: "text-success", bg: "bg-success/10", border: "border-success" },
+  cancelled: { label: "Cancelada", icon: CircleX, color: "text-destructive", bg: "bg-destructive/10", border: "border-destructive" },
 };
 
 // ── Avatar helpers ──────────────────────────────────────────
 
+/* Los acentos del tema, no hex escritos a mano. Van dentro de oklch()
+   porque los tokens guardan el triple L C H, y se usan solo en `style`
+   (propiedad CSS), que es donde var() sí se sustituye. */
 const AVATAR_PALETTE = [
-  "#6366f1", "#8b5cf6", "#ec4899", "#f59e0b",
-  "#10b981", "#3b82f6", "#f97316", "#14b8a6",
+  "oklch(var(--accent-blue))",
+  "oklch(var(--accent-violet))",
+  "oklch(var(--accent-rose))",
+  "oklch(var(--accent-amber))",
+  "oklch(var(--accent-emerald))",
+  "oklch(var(--accent-blue) / 0.7)",
+  "oklch(var(--accent-violet) / 0.7)",
+  "oklch(var(--accent-emerald) / 0.7)",
 ];
 
 function getAvatarColor(str: string): string {
@@ -616,7 +625,7 @@ export default function TutoringClasses() {
           const total = row.original.duration_hours * row.original.price_per_hour;
           return (
             <div className={cn("text-right font-semibold font-mono tabular-nums text-sm", isPrivacyMode && "privacy-blur")}>
-              <span className={row.original.status === "cancelled" ? "text-muted-foreground line-through" : "text-emerald-500"}>
+              <span className={row.original.status === "cancelled" ? "text-muted-foreground line-through" : "text-success"}>
                 {formatCurrency(total)}
               </span>
             </div>
@@ -720,38 +729,46 @@ export default function TutoringClasses() {
   // ── Render ────────────────────────────────────────────────
 
   return (
-    <Layout>
-      <div className="space-y-4 sm:space-y-6">
-        {/* Header */}
-        <div className="flex items-center justify-between">
-          <div>
-            <h1 className="text-xl sm:text-2xl font-bold tracking-tight mb-0.5">Clases</h1>
-            <p className="text-xs sm:text-sm text-muted-foreground">
-              Trackea tus clases particulares
+    <Layout bleed>
+      {/* Mismo chasis que Transacciones: identidad y verbos arriba, la
+          próxima clase como tira de pelo, los filtros en su franja, y el
+          contenido (alumnos o tabla) como la fila que cede. El tablero de
+          totales va abajo del pliegue: es el cierre, no el titular. */}
+      <Screen className="lg:min-h-[560px]">
+        {/* ── Fila 1 — identidad y los verbos de la página ───────── */}
+        <Panel className="flex flex-wrap items-center gap-x-3 gap-y-2 px-4 py-3 md:px-5 lg:shrink-0">
+          <div className="min-w-0">
+            <h1 className="page-title text-xl md:text-2xl">Clases</h1>
+            <p className="eyebrow mt-1">
+              {filteredData.length}{" "}
+              {filteredData.length === 1 ? "clase" : "clases"}
+              {" · "}
+              {stats.totalHours}h
             </p>
           </div>
-          <div className="flex items-center gap-2">
+          <div className="ml-auto flex flex-wrap items-center justify-end gap-2">
             <Button
               variant="outline"
               size="sm"
-              className="rounded-full gap-2"
+              className="gap-2"
               onClick={() => setIsStudentDialogOpen(true)}
             >
               <UserPlus className="h-4 w-4" />
               <span className="hidden sm:inline">Alumno</span>
             </Button>
             <Button
-              className="rounded-full h-10 w-10 p-0 md:w-auto md:h-12 md:px-6"
+              size="sm"
+              className="gap-2"
               onClick={() => {
                 resetQuickForm();
                 setIsQuickAddOpen(true);
               }}
             >
-              <Plus className="h-5 w-5 md:mr-2" />
-              <span className="hidden md:inline">Agregar</span>
+              <Plus className="h-4 w-4" />
+              <span className="hidden sm:inline">Agregar</span>
             </Button>
           </div>
-        </div>
+        </Panel>
 
         {/* Next class indicator */}
         {(() => {
@@ -770,491 +787,515 @@ export default function TutoringClasses() {
           const dayLabel = nextDayStr === todayStr ? "Hoy" : nextDayStr === tomorrowStr ? "Mañana" : format(nextDate, "EEEE d", { locale: es });
           const timeLabel = format(nextDate, "HH:mm") !== "00:00" ? ` a las ${format(nextDate, "HH:mm")}` : "";
 
+          /* Tira de pelo con su tono, no una caja teñida: la misma
+                      gramática que el insight de Inicio. */
           return (
-            <div className="flex items-center gap-2 sm:gap-3 px-3 py-2 rounded-lg bg-blue-500/5 border border-blue-500/10">
-              <Clock className="h-3.5 w-3.5 text-blue-500 flex-shrink-0" />
-              <div className="flex flex-wrap items-center gap-x-1.5 gap-y-0 text-xs sm:text-sm min-w-0">
-                <span className="text-blue-500 font-medium">{dayLabel}{timeLabel}</span>
+            <Panel className="flex items-center gap-2.5 px-4 py-2 md:px-5 lg:shrink-0">
+              <Clock className="h-3.5 w-3.5 shrink-0 text-info" />
+              <div className="flex min-w-0 flex-wrap items-center gap-x-1.5 text-xs">
+                <span className="font-semibold text-info">{dayLabel}{timeLabel}</span>
                 <span className="text-muted-foreground">—</span>
-                <span className="font-medium truncate">{next.student_name}</span>
-                <span className="text-muted-foreground text-[11px] hidden sm:inline">({next.duration_hours}h · {formatCurrency(next.price_per_hour)}/h)</span>
+                <span className="truncate font-medium">{next.student_name}</span>
+                <span className="hidden text-[11px] text-muted-foreground sm:inline">
+                  ({next.duration_hours}h · {formatCurrency(next.price_per_hour)}/h)
+                </span>
               </div>
               {after && (
-                <span className="text-[11px] text-muted-foreground/60 ml-auto hidden md:block flex-shrink-0">
+                <span className="ml-auto hidden shrink-0 text-[11px] text-muted-foreground md:block">
                   luego {after.student_name} · {format(new Date(after.date), "EEE d", { locale: es })}
                 </span>
               )}
-            </div>
+            </Panel>
           );
         })()}
 
-        {/* Toolbar — row 1: toggle + search + month */}
-        <div className="space-y-2">
-          <div className="flex items-center gap-2">
-            {/* View toggle */}
-            <div className="flex items-center rounded-lg border border-border/50 p-0.5 flex-shrink-0">
-              <Button
-                variant={viewMode === "students" ? "secondary" : "ghost"}
-                size="sm"
-                className="h-8 px-2.5 sm:px-3 rounded-md gap-1.5"
-                onClick={() => setViewMode("students")}
-              >
-                <Users className="h-3.5 w-3.5" />
-                <span className="hidden sm:inline text-xs">Alumnos</span>
-              </Button>
-              <Button
-                variant={viewMode === "list" ? "secondary" : "ghost"}
-                size="sm"
-                className="h-8 px-2.5 sm:px-3 rounded-md gap-1.5"
-                onClick={() => setViewMode("list")}
-              >
-                <LayoutList className="h-3.5 w-3.5" />
-                <span className="hidden sm:inline text-xs">Tabla</span>
-              </Button>
-            </div>
-
-            {/* Month filter */}
-            <div className="flex items-center gap-0.5 rounded-lg border border-border/50 px-1 h-9 flex-shrink-0">
-              <Button
-                variant="ghost"
-                size="sm"
-                className="h-7 w-7 p-0"
-                disabled={!selectedMonth}
-                onClick={() => setSelectedMonth((m) => m ? subMonths(m, 1) : null)}
-              >
-                <ChevronLeft className="h-3.5 w-3.5" />
-              </Button>
-              <button
-                className={cn(
-                  "text-xs font-medium px-1 sm:px-2 capitalize transition-colors min-w-[60px] sm:min-w-[100px] text-center",
-                  selectedMonth ? "text-foreground hover:text-muted-foreground" : "text-muted-foreground hover:text-foreground"
-                )}
-                onClick={() => setSelectedMonth((m) => m ? null : new Date())}
-                title={selectedMonth ? "Mostrar todo" : "Filtrar por mes"}
-              >
-                {monthLabel}
-              </button>
-              <Button
-                variant="ghost"
-                size="sm"
-                className="h-7 w-7 p-0"
-                disabled={!selectedMonth}
-                onClick={() => setSelectedMonth((m) => m ? addMonths(m, 1) : null)}
-              >
-                <ChevronRight className="h-3.5 w-3.5" />
-              </Button>
-            </div>
-
-            <div className="flex-1" />
-
-            {/* Search */}
-            <div className="relative flex-shrink-0">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-              <Input
-                ref={searchInputRef}
-                placeholder="Buscar..."
-                value={searchValue}
-                onChange={(e) => setSearchValue(e.target.value)}
-                onKeyDown={(e) => {
-                  if (e.key === "Escape") e.currentTarget.blur();
-                }}
-                className="pl-9 w-36 sm:w-56"
-              />
-              {searchValue && (
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  className="absolute right-1 top-1/2 -translate-y-1/2 h-7 w-7 p-0"
-                  onClick={() => setSearchValue("")}
-                >
-                  <X className="h-4 w-4" />
-                </Button>
+        {/* ── Fila 3 — cómo estás mirando y qué estás filtrando.
+            Franja de chrome: todo compacto (h-8) y en una línea. En una
+            franja de cromo un control de 40px pesa más que el dato que
+            filtra. ─────────────────────────────────────────────────── */}
+        <Panel className="flex flex-wrap items-center gap-2 px-4 py-2.5 md:px-5 lg:shrink-0">
+          {/* El modo de vista: dos celdas, y la activa es el bloque de
+              acento. Antes era una pastilla dentro de una caja. */}
+          <div className="flex h-8 shrink-0 items-stretch gap-px border border-border bg-border">
+            <button
+              onClick={() => setViewMode("students")}
+              className={cn(
+                "flex items-center gap-1.5 bg-card px-2.5 text-xs transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring sm:px-3",
+                viewMode === "students"
+                  ? "bg-primary text-primary-foreground"
+                  : "text-muted-foreground hover:text-foreground"
               )}
-            </div>
+            >
+              <Users className="h-3.5 w-3.5" />
+              <span className="hidden sm:inline">Alumnos</span>
+            </button>
+            <button
+              onClick={() => setViewMode("list")}
+              className={cn(
+                "flex items-center gap-1.5 bg-card px-2.5 text-xs transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring sm:px-3",
+                viewMode === "list"
+                  ? "bg-primary text-primary-foreground"
+                  : "text-muted-foreground hover:text-foreground"
+              )}
+            >
+              <LayoutList className="h-3.5 w-3.5" />
+              <span className="hidden sm:inline">Tabla</span>
+            </button>
           </div>
 
-          {/* Toolbar — row 2: filters */}
-          <div className="flex items-center gap-2">
-            <Select value={statusFilter} onValueChange={setStatusFilter}>
-              <SelectTrigger className="w-full sm:w-[140px] h-9">
-                <SelectValue placeholder="Estado" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">Todos</SelectItem>
-                <SelectItem value="scheduled">Agendadas</SelectItem>
-                <SelectItem value="completed">Realizadas</SelectItem>
-                <SelectItem value="cancelled">Canceladas</SelectItem>
-              </SelectContent>
-            </Select>
-
-            <Select value={studentFilter} onValueChange={setStudentFilter}>
-              <SelectTrigger className="w-full sm:w-[150px] h-9">
-                <SelectValue placeholder="Alumno" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">Todos</SelectItem>
-                {students.map((s) => (
-                  <SelectItem key={s.id} value={s.id}>
-                    {s.name}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-
-            <Select value={paidFilter} onValueChange={setPaidFilter}>
-              <SelectTrigger className="w-full sm:w-[130px] h-9">
-                <SelectValue placeholder="Pago" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">Todos</SelectItem>
-                <SelectItem value="paid">Pagados</SelectItem>
-                <SelectItem value="unpaid">Pendientes</SelectItem>
-              </SelectContent>
-            </Select>
+          {/* El mes */}
+          <div className="flex h-8 shrink-0 items-center gap-0.5 border border-border px-1">
+            <Button
+              variant="ghost"
+              size="sm"
+              className="h-6 w-6 p-0"
+              disabled={!selectedMonth}
+              onClick={() => setSelectedMonth((m) => m ? subMonths(m, 1) : null)}
+            >
+              <ChevronLeft className="h-3.5 w-3.5" />
+            </Button>
+            <button
+              className={cn(
+                "min-w-[60px] px-1 text-center text-xs font-medium capitalize transition-colors sm:min-w-[100px] sm:px-2",
+                selectedMonth ? "text-foreground hover:text-muted-foreground" : "text-muted-foreground hover:text-foreground"
+              )}
+              onClick={() => setSelectedMonth((m) => m ? null : new Date())}
+              title={selectedMonth ? "Mostrar todo" : "Filtrar por mes"}
+            >
+              {monthLabel}
+            </button>
+            <Button
+              variant="ghost"
+              size="sm"
+              className="h-6 w-6 p-0"
+              disabled={!selectedMonth}
+              onClick={() => setSelectedMonth((m) => m ? addMonths(m, 1) : null)}
+            >
+              <ChevronRight className="h-3.5 w-3.5" />
+            </Button>
           </div>
-        </div>
 
-        {/* ── Students View ───────────────────────────────── */}
-        {viewMode === "students" && (
-          <div className="space-y-2">
-            {studentBreakdown.length === 0 ? (
-              <div className="py-16 text-center text-sm text-muted-foreground">
-                No hay datos de alumnos aún
-              </div>
-            ) : (
-              <>
-                {/* Legend — once at top */}
-                <div className="flex items-center gap-4 px-1 pb-1">
-                  <div className="flex items-center gap-1.5">
-                    <div className="w-2 h-2 rounded-full bg-emerald-500/30 ring-1 ring-emerald-500/40" />
-                    <span className="text-[10px] text-muted-foreground">Pagada</span>
+          {/* Buscar */}
+          <div className="relative shrink-0">
+            <Search className="pointer-events-none absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />
+            <Input
+              ref={searchInputRef}
+              placeholder="Buscar..."
+              value={searchValue}
+              onChange={(e) => setSearchValue(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === "Escape") e.currentTarget.blur();
+              }}
+              className="h-8 w-36 pl-9 sm:w-56"
+            />
+            {searchValue && (
+              <Button
+                variant="ghost"
+                size="sm"
+                className="absolute right-0.5 top-1/2 h-7 w-7 -translate-y-1/2 p-0"
+                onClick={() => setSearchValue("")}
+              >
+                <X className="h-4 w-4" />
+              </Button>
+            )}
+          </div>
+
+          <Select value={statusFilter} onValueChange={setStatusFilter}>
+            <SelectTrigger className="h-8 w-[130px] sm:w-[140px]">
+              <SelectValue placeholder="Estado" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">Todos</SelectItem>
+              <SelectItem value="scheduled">Agendadas</SelectItem>
+              <SelectItem value="completed">Realizadas</SelectItem>
+              <SelectItem value="cancelled">Canceladas</SelectItem>
+            </SelectContent>
+          </Select>
+
+          <Select value={studentFilter} onValueChange={setStudentFilter}>
+            <SelectTrigger className="h-8 w-[130px] sm:w-[150px]">
+              <SelectValue placeholder="Alumno" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">Todos</SelectItem>
+              {students.map((s) => (
+                <SelectItem key={s.id} value={s.id}>
+                  {s.name}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+
+          <Select value={paidFilter} onValueChange={setPaidFilter}>
+            <SelectTrigger className="h-8 w-[120px] sm:w-[130px]">
+              <SelectValue placeholder="Pago" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">Todos</SelectItem>
+              <SelectItem value="paid">Pagados</SelectItem>
+              <SelectItem value="unpaid">Pendientes</SelectItem>
+            </SelectContent>
+          </Select>
+        </Panel>
+
+        {/* ── Fila 4 — el contenido. Esta es la que cede: scrollea
+            por dentro y llena cualquier alto. ───────────────────── */}
+        <Panel className="flex flex-col lg:min-h-0 lg:flex-1">
+          {/* ── Vista por alumno ────────────────────────────── */}
+          {viewMode === "students" && (
+            <div className="flex min-h-0 flex-1 flex-col">
+              {studentBreakdown.length === 0 ? (
+                <div className="flex flex-1 flex-col items-center justify-center gap-2 px-4 py-14 text-center">
+                  <div className="flex size-14 items-center justify-center border border-border">
+                    <Users className="h-6 w-6 text-muted-foreground/50" />
                   </div>
-                  <div className="flex items-center gap-1.5">
-                    <div className="w-2 h-2 rounded-full bg-emerald-500/20" />
-                    <span className="text-[10px] text-muted-foreground">Realizada</span>
-                  </div>
-                  <div className="flex items-center gap-1.5">
-                    <div className="w-2 h-2 rounded-full bg-blue-500/20" />
-                    <span className="text-[10px] text-muted-foreground">Agendada</span>
-                  </div>
-                  <div className="flex items-center gap-1.5">
-                    <div className="w-2 h-2 rounded-full bg-muted/50 border border-dashed border-border/40" />
-                    <span className="text-[10px] text-muted-foreground">Sin clase</span>
-                  </div>
+                  <p className="section-title text-sm">Sin alumnos todavía</p>
+                  <p className="text-xs text-muted-foreground">
+                    Agrega uno y sus clases aparecen acá.
+                  </p>
                 </div>
+              ) : (
+                <div className="overflow-y-auto lg:min-h-0 lg:flex-1">
+                  {/* La leyenda, una sola vez arriba */}
+                  <div className="sticky top-0 z-10 flex items-center gap-4 border-b border-border bg-card px-4 py-1.5 md:px-5">
+                    <div className="flex items-center gap-1.5">
+                      <div className="w-2 h-2 rounded-full bg-success/30 ring-1 ring-success" />
+                      <span className="text-[10px] text-muted-foreground">Pagada</span>
+                    </div>
+                    <div className="flex items-center gap-1.5">
+                      <div className="w-2 h-2 rounded-full bg-success/20" />
+                      <span className="text-[10px] text-muted-foreground">Realizada</span>
+                    </div>
+                    <div className="flex items-center gap-1.5">
+                      <div className="w-2 h-2 rounded-full bg-info/20" />
+                      <span className="text-[10px] text-muted-foreground">Agendada</span>
+                    </div>
+                    <div className="flex items-center gap-1.5">
+                      <div className="w-2 h-2 rounded-full bg-muted/50 border border-dashed border-border" />
+                      <span className="text-[10px] text-muted-foreground">Sin clase</span>
+                    </div>
+                  </div>
 
-                {studentBreakdown.map(({ student, pricePerHour, lastDuration, totalClasses, totalHours, totalEarned, totalPaid, totalPending, classes: studentClasses }) => {
-                  const avatarColor = getAvatarColor(student.name);
-                  const initial = student.name.charAt(0).toUpperCase();
+                  {studentBreakdown.map(({ student, pricePerHour, lastDuration, totalClasses, totalHours, totalEarned, totalPaid, totalPending, classes: studentClasses }) => {
+                    const avatarColor = getAvatarColor(student.name);
+                    const initial = student.name.charAt(0).toUpperCase();
 
-                  return (
-                    <div key={student.id} className="rounded-lg border border-border/50 bg-card px-4 py-3 overflow-hidden">
-                      {/* Desktop: single row | Mobile: stacked */}
-                      <div className="flex flex-col md:flex-row md:items-center gap-2 md:gap-3">
-                        {/* Avatar + Name */}
-                        <div className="flex items-center gap-3 md:w-40 md:flex-shrink-0">
-                          <div
-                            className="w-9 h-9 rounded-full flex items-center justify-center text-white text-xs font-bold select-none flex-shrink-0"
-                            style={{ backgroundColor: avatarColor }}
-                          >
-                            {initial}
+                    return (
+                      <div
+                        key={student.id}
+                        className="overflow-hidden border-b border-border px-4 py-3 last:border-b-0 md:px-5"
+                      >
+                        {/* Desktop: single row | Mobile: stacked */}
+                        <div className="flex flex-col md:flex-row md:items-center gap-2 md:gap-3">
+                          {/* Avatar + Name */}
+                          <div className="flex items-center gap-3 md:w-40 md:flex-shrink-0">
+                            <div
+                              className="w-9 h-9 rounded-full flex items-center justify-center text-white text-xs font-bold select-none flex-shrink-0"
+                              style={{ backgroundColor: avatarColor }}
+                            >
+                              {initial}
+                            </div>
+                            <div className="flex-1 min-w-0 md:flex-initial">
+                              <h3 className="font-semibold text-sm truncate">{student.name}</h3>
+                              <p className="text-[11px] text-muted-foreground truncate">
+                                {formatCurrency(pricePerHour)}/h · {totalClasses} clase{totalClasses !== 1 ? "s" : ""} · {totalHours}h
+                              </p>
+                            </div>
+                            {/* Totals — mobile only (right side of header) */}
+                            <div className={cn("text-right flex-shrink-0 md:hidden", isPrivacyMode && "privacy-blur")}>
+                              <p className="text-sm font-bold font-mono tabular-nums text-success">{formatCurrency(totalEarned)}</p>
+                              {totalPending > 0 && (
+                                <p className="text-[10px] text-warning font-medium">
+                                  {formatCurrency(totalPending)} pend.
+                                </p>
+                              )}
+                            </div>
                           </div>
-                          <div className="flex-1 min-w-0 md:flex-initial">
-                            <h3 className="font-semibold text-sm truncate">{student.name}</h3>
-                            <p className="text-[11px] text-muted-foreground truncate">
-                              {formatCurrency(pricePerHour)}/h · {totalClasses} clase{totalClasses !== 1 ? "s" : ""} · {totalHours}h
-                            </p>
+
+                          {/* Class squares */}
+                          <div className="flex-1 min-w-0 flex items-center gap-1.5 overflow-x-auto py-0.5">
+                            {studentClasses.map((cls) => {
+                              const cfg = statusConfig[cls.status];
+                              const StatusIcon = cfg.icon;
+                              const dateLabel = format(new Date(cls.date), "dd MMM", { locale: es });
+
+                              return (
+                                <DropdownMenu key={cls.id}>
+                                  <DropdownMenuTrigger asChild>
+                                    <button className="flex flex-col items-center gap-0.5 min-w-[38px] cursor-pointer focus:outline-none group">
+                                      <div className="relative">
+                                        <div
+                                          className={cn(
+                                            "w-7 h-7 rounded-md flex items-center justify-center transition-all group-hover:scale-110",
+                                            cfg.bg,
+                                            "border",
+                                            cfg.border,
+                                            cls.is_paid && cls.status === "completed" && "ring-1 ring-success"
+                                          )}
+                                        >
+                                          {cls.status === "completed" && cls.is_paid ? (
+                                            <DollarSign className="h-3 w-3 text-success" />
+                                          ) : (
+                                            <StatusIcon className={cn("h-3 w-3", cfg.color)} />
+                                          )}
+                                        </div>
+                                        {cls.notes && (
+                                          <div className="absolute -top-0.5 -right-0.5 w-2 h-2 rounded-full bg-warning border border-card" />
+                                        )}
+                                      </div>
+                                      <span className={cn("text-[9px] font-medium leading-none", cfg.color)}>{dateLabel}</span>
+                                    </button>
+                                  </DropdownMenuTrigger>
+                                  <DropdownMenuContent align="center" className="min-w-[200px]" onClick={(e) => e.stopPropagation()}>
+                                    {(Object.entries(statusConfig) as [TutoringClass["status"], typeof statusConfig.scheduled][]).map(
+                                      ([key, val]) => (
+                                        <DropdownMenuItem
+                                          key={key}
+                                          onClick={() => handleInlineUpdate(cls.id, "status", key)}
+                                          className="flex items-center gap-2"
+                                        >
+                                          <val.icon className={cn("h-3.5 w-3.5", val.color)} />
+                                          <span className="text-sm">{val.label}</span>
+                                          {key === cls.status && <Check className="h-3.5 w-3.5 ml-auto" />}
+                                        </DropdownMenuItem>
+                                      )
+                                    )}
+                                    <DropdownMenuSeparator />
+                                    <DropdownMenuItem
+                                      onClick={() => handleInlineUpdate(cls.id, "is_paid", !cls.is_paid)}
+                                      className="flex items-center gap-2"
+                                    >
+                                      <DollarSign className={cn("h-3.5 w-3.5", cls.is_paid ? "text-success" : "text-muted-foreground")} />
+                                      <span className="text-sm">{cls.is_paid ? "No pagada" : "Pagada"}</span>
+                                    </DropdownMenuItem>
+                                    <DropdownMenuSeparator />
+                                    {/* Post-it notes */}
+                                    <div
+                                      className="mx-1.5 my-1.5 rounded-lg bg-warning/5 border border-warning/40 p-2"
+                                      onClick={(e) => e.stopPropagation()}
+                                      onKeyDown={(e) => e.stopPropagation()}
+                                    >
+                                      <div className="flex items-center gap-1.5 mb-1.5">
+                                        <StickyNote className="h-3 w-3 text-warning/70" />
+                                        <span className="text-[10px] font-semibold text-warning/70 uppercase tracking-wider">Notas</span>
+                                      </div>
+                                      <textarea
+                                        className="w-full bg-transparent text-xs font-mono leading-relaxed resize-none placeholder:text-muted-foreground/30 focus:outline-none min-h-[48px] text-foreground/80"
+                                        placeholder="Escribe una nota..."
+                                        defaultValue={cls.notes || ""}
+                                        rows={2}
+                                        onBlur={(e) => {
+                                          const val = e.target.value.trim();
+                                          if (val !== (cls.notes || "")) {
+                                            handleInlineUpdate(cls.id, "notes", val || null);
+                                          }
+                                        }}
+                                      />
+                                    </div>
+                                    <DropdownMenuSeparator />
+                                    {/* Date picker */}
+                                    <div className="px-1 py-1">
+                                      <InlineDateTimePicker
+                                        value={new Date(cls.date)}
+                                        onChange={(newDate) => handleInlineUpdate(cls.id, "date", newDate.toISOString())}
+                                        showTime={true}
+                                      />
+                                    </div>
+                                    <DropdownMenuSeparator />
+                                    <DropdownMenuItem
+                                      onClick={() => handleEdit(cls)}
+                                      className="flex items-center gap-2"
+                                    >
+                                      <Pencil className="h-3.5 w-3.5" />
+                                      <span className="text-sm">Editar todo</span>
+                                    </DropdownMenuItem>
+                                    <DropdownMenuSeparator />
+                                    <DropdownMenuItem
+                                      onClick={() => handleDelete(cls.id)}
+                                      className="flex items-center gap-2 text-destructive focus:text-destructive"
+                                    >
+                                      <Trash2 className="h-3.5 w-3.5" />
+                                      <span className="text-sm">Eliminar</span>
+                                    </DropdownMenuItem>
+                                  </DropdownMenuContent>
+                                </DropdownMenu>
+                              );
+                            })}
+
+                            {/* Quick-add + button */}
+                            <button
+                              className="flex flex-col items-center gap-0.5 min-w-[38px] cursor-pointer group"
+                              onClick={() => {
+                                const lastCls = studentClasses[studentClasses.length - 1];
+                                handleQuickAddForStudent(student.id, pricePerHour, lastDuration, lastCls?.date || new Date().toISOString());
+                              }}
+                              title="Agendar clase"
+                            >
+                              <div className="w-7 h-7 rounded-md border border-dashed border-border flex items-center justify-center transition-all group-hover:border-primary/50 group-hover:bg-primary/5 group-hover:scale-110">
+                                <Plus className="h-3 w-3 text-muted-foreground/40 group-hover:text-primary transition-colors" />
+                              </div>
+                              <span className="text-[9px] text-muted-foreground/30 leading-none group-hover:text-primary/60">nueva</span>
+                            </button>
                           </div>
-                          {/* Totals — mobile only (right side of header) */}
-                          <div className={cn("text-right flex-shrink-0 md:hidden", isPrivacyMode && "privacy-blur")}>
-                            <p className="text-sm font-bold font-mono tabular-nums text-emerald-500">{formatCurrency(totalEarned)}</p>
+
+                          {/* Totals — desktop only (end of row) */}
+                          <div className={cn("text-right flex-shrink-0 pl-3 hidden md:block", isPrivacyMode && "privacy-blur")}>
+                            <p className="text-sm font-bold font-mono tabular-nums text-success">{formatCurrency(totalEarned)}</p>
                             {totalPending > 0 && (
-                              <p className="text-[10px] text-amber-500 font-medium">
+                              <p className="text-[10px] text-warning font-medium">
                                 {formatCurrency(totalPending)} pend.
                               </p>
                             )}
                           </div>
                         </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+          )}
 
-                        {/* Class squares */}
-                        <div className="flex-1 min-w-0 flex items-center gap-1.5 overflow-x-auto py-0.5">
-                          {studentClasses.map((cls) => {
-                            const cfg = statusConfig[cls.status];
-                            const StatusIcon = cfg.icon;
-                            const dateLabel = format(new Date(cls.date), "dd MMM", { locale: es });
+          {/* ── La lista en teléfono ──────────────────────────── */}
+          {viewMode === "list" && (isMobile ? (
+            <div className="flex min-h-0 flex-1 flex-col">
+              {filteredData.length === 0 ? (
+                <div className="flex flex-1 flex-col items-center justify-center gap-2 px-4 py-14 text-center">
+                  <div className="flex size-14 items-center justify-center border border-border">
+                    <LayoutList className="h-6 w-6 text-muted-foreground/50" />
+                  </div>
+                  <p className="section-title text-sm">No se encontraron clases</p>
+                </div>
+              ) : (
+                filteredData.map((cls) => {
+                  const cfg = statusConfig[cls.status];
+                  const StatusIcon = cfg.icon;
+                  const name = cls.student_name || "—";
+                  const initial = name.charAt(0).toUpperCase();
+                  const avatarColor = getAvatarColor(name);
+                  const total = cls.duration_hours * cls.price_per_hour;
 
-                            return (
-                              <DropdownMenu key={cls.id}>
-                                <DropdownMenuTrigger asChild>
-                                  <button className="flex flex-col items-center gap-0.5 min-w-[38px] cursor-pointer focus:outline-none group">
-                                    <div className="relative">
-                                      <div
-                                        className={cn(
-                                          "w-7 h-7 rounded-md flex items-center justify-center transition-all group-hover:scale-110",
-                                          cfg.bg,
-                                          "border",
-                                          cfg.border,
-                                          cls.is_paid && cls.status === "completed" && "ring-1 ring-emerald-500/30"
-                                        )}
-                                      >
-                                        {cls.status === "completed" && cls.is_paid ? (
-                                          <DollarSign className="h-3 w-3 text-emerald-500" />
-                                        ) : (
-                                          <StatusIcon className={cn("h-3 w-3", cfg.color)} />
-                                        )}
-                                      </div>
-                                      {cls.notes && (
-                                        <div className="absolute -top-0.5 -right-0.5 w-2 h-2 rounded-full bg-amber-400 border border-card" />
-                                      )}
-                                    </div>
-                                    <span className={cn("text-[9px] font-medium leading-none", cfg.color)}>{dateLabel}</span>
-                                  </button>
-                                </DropdownMenuTrigger>
-                                <DropdownMenuContent align="center" className="min-w-[200px]" onClick={(e) => e.stopPropagation()}>
-                                  {(Object.entries(statusConfig) as [TutoringClass["status"], typeof statusConfig.scheduled][]).map(
-                                    ([key, val]) => (
-                                      <DropdownMenuItem
-                                        key={key}
-                                        onClick={() => handleInlineUpdate(cls.id, "status", key)}
-                                        className="flex items-center gap-2"
-                                      >
-                                        <val.icon className={cn("h-3.5 w-3.5", val.color)} />
-                                        <span className="text-sm">{val.label}</span>
-                                        {key === cls.status && <Check className="h-3.5 w-3.5 ml-auto" />}
-                                      </DropdownMenuItem>
-                                    )
-                                  )}
-                                  <DropdownMenuSeparator />
-                                  <DropdownMenuItem
-                                    onClick={() => handleInlineUpdate(cls.id, "is_paid", !cls.is_paid)}
-                                    className="flex items-center gap-2"
-                                  >
-                                    <DollarSign className={cn("h-3.5 w-3.5", cls.is_paid ? "text-emerald-500" : "text-muted-foreground")} />
-                                    <span className="text-sm">{cls.is_paid ? "No pagada" : "Pagada"}</span>
-                                  </DropdownMenuItem>
-                                  <DropdownMenuSeparator />
-                                  {/* Post-it notes */}
-                                  <div
-                                    className="mx-1.5 my-1.5 rounded-lg bg-amber-500/5 border border-amber-500/15 p-2"
-                                    onClick={(e) => e.stopPropagation()}
-                                    onKeyDown={(e) => e.stopPropagation()}
-                                  >
-                                    <div className="flex items-center gap-1.5 mb-1.5">
-                                      <StickyNote className="h-3 w-3 text-amber-500/70" />
-                                      <span className="text-[10px] font-semibold text-amber-500/70 uppercase tracking-wider">Notas</span>
-                                    </div>
-                                    <textarea
-                                      className="w-full bg-transparent text-xs font-mono leading-relaxed resize-none placeholder:text-muted-foreground/30 focus:outline-none min-h-[48px] text-foreground/80"
-                                      placeholder="Escribe una nota..."
-                                      defaultValue={cls.notes || ""}
-                                      rows={2}
-                                      onBlur={(e) => {
-                                        const val = e.target.value.trim();
-                                        if (val !== (cls.notes || "")) {
-                                          handleInlineUpdate(cls.id, "notes", val || null);
-                                        }
-                                      }}
-                                    />
-                                  </div>
-                                  <DropdownMenuSeparator />
-                                  {/* Date picker */}
-                                  <div className="px-1 py-1">
-                                    <InlineDateTimePicker
-                                      value={new Date(cls.date)}
-                                      onChange={(newDate) => handleInlineUpdate(cls.id, "date", newDate.toISOString())}
-                                      showTime={true}
-                                    />
-                                  </div>
-                                  <DropdownMenuSeparator />
-                                  <DropdownMenuItem
-                                    onClick={() => handleEdit(cls)}
-                                    className="flex items-center gap-2"
-                                  >
-                                    <Pencil className="h-3.5 w-3.5" />
-                                    <span className="text-sm">Editar todo</span>
-                                  </DropdownMenuItem>
-                                  <DropdownMenuSeparator />
-                                  <DropdownMenuItem
-                                    onClick={() => handleDelete(cls.id)}
-                                    className="flex items-center gap-2 text-destructive focus:text-destructive"
-                                  >
-                                    <Trash2 className="h-3.5 w-3.5" />
-                                    <span className="text-sm">Eliminar</span>
-                                  </DropdownMenuItem>
-                                </DropdownMenuContent>
-                              </DropdownMenu>
-                            );
-                          })}
+                  return (
+                    <div
+                      key={cls.id}
+                      className={cn(
+                        "flex cursor-pointer items-center gap-3 border-b border-border px-4 py-2.5 transition-colors last:border-b-0 hover:bg-muted",
+                        cls.status === "cancelled" && "opacity-60"
+                      )}
+                      onClick={() => handleEdit(cls)}
+                    >
+                      {/* Avatar */}
+                      <div
+                        className="w-10 h-10 rounded-full flex items-center justify-center text-white text-sm font-bold select-none flex-shrink-0"
+                        style={{ backgroundColor: avatarColor }}
+                      >
+                        {initial}
+                      </div>
 
-                          {/* Quick-add + button */}
-                          <button
-                            className="flex flex-col items-center gap-0.5 min-w-[38px] cursor-pointer group"
-                            onClick={() => {
-                              const lastCls = studentClasses[studentClasses.length - 1];
-                              handleQuickAddForStudent(student.id, pricePerHour, lastDuration, lastCls?.date || new Date().toISOString());
-                            }}
-                            title="Agendar clase"
+                      {/* Content */}
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-2">
+                          <span className="font-semibold text-sm truncate">{name}</span>
+                          <Badge
+                            variant="outline"
+                            className={cn("text-[10px] px-1.5 py-0 rounded-sm", cfg.color, cfg.border)}
                           >
-                            <div className="w-7 h-7 rounded-md border border-dashed border-border/40 flex items-center justify-center transition-all group-hover:border-primary/50 group-hover:bg-primary/5 group-hover:scale-110">
-                              <Plus className="h-3 w-3 text-muted-foreground/40 group-hover:text-primary transition-colors" />
-                            </div>
-                            <span className="text-[9px] text-muted-foreground/30 leading-none group-hover:text-primary/60">nueva</span>
-                          </button>
+                            {cfg.label}
+                          </Badge>
                         </div>
-
-                        {/* Totals — desktop only (end of row) */}
-                        <div className={cn("text-right flex-shrink-0 pl-3 hidden md:block", isPrivacyMode && "privacy-blur")}>
-                          <p className="text-sm font-bold font-mono tabular-nums text-emerald-500">{formatCurrency(totalEarned)}</p>
-                          {totalPending > 0 && (
-                            <p className="text-[10px] text-amber-500 font-medium">
-                              {formatCurrency(totalPending)} pend.
-                            </p>
+                        <div className="flex items-center gap-2 text-xs text-muted-foreground mt-0.5">
+                          <span>{format(new Date(cls.date), "dd MMM", { locale: es })}</span>
+                          <span>·</span>
+                          <span>{cls.duration_hours}h</span>
+                          {cls.is_paid && (
+                            <>
+                              <span>·</span>
+                              <Check className="h-3 w-3 text-success" />
+                            </>
                           )}
                         </div>
                       </div>
+
+                      {/* Total */}
+                      <div className={cn("text-right flex-shrink-0", isPrivacyMode && "privacy-blur")}>
+                        <span
+                          className={cn(
+                            "font-semibold font-mono text-sm",
+                            cls.status === "cancelled" ? "text-muted-foreground line-through" : "text-success"
+                          )}
+                        >
+                          {formatCurrency(total)}
+                        </span>
+                      </div>
                     </div>
                   );
-                })}
-              </>
-            )}
-          </div>
-        )}
-
-        {/* ── Mobile Card List ─────────────────────────────── */}
-        {viewMode === "list" && (isMobile ? (
-          <div className="space-y-1">
-            {filteredData.length === 0 ? (
-              <div className="py-16 text-center text-sm text-muted-foreground">
-                No se encontraron clases
-              </div>
-            ) : (
-              filteredData.map((cls) => {
-                const cfg = statusConfig[cls.status];
-                const StatusIcon = cfg.icon;
-                const name = cls.student_name || "—";
-                const initial = name.charAt(0).toUpperCase();
-                const avatarColor = getAvatarColor(name);
-                const total = cls.duration_hours * cls.price_per_hour;
-
-                return (
-                  <div
-                    key={cls.id}
-                    className={cn(
-                      "flex items-center gap-3 p-3 rounded-xl border border-border/50 hover:bg-muted/50 transition-colors cursor-pointer",
-                      cls.status === "cancelled" && "opacity-60"
-                    )}
-                    onClick={() => handleEdit(cls)}
-                  >
-                    {/* Avatar */}
-                    <div
-                      className="w-10 h-10 rounded-full flex items-center justify-center text-white text-sm font-bold select-none flex-shrink-0"
-                      style={{ backgroundColor: avatarColor }}
-                    >
-                      {initial}
-                    </div>
-
-                    {/* Content */}
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-2">
-                        <span className="font-semibold text-sm truncate">{name}</span>
-                        <Badge
-                          variant="outline"
-                          className={cn("text-[10px] px-1.5 py-0 rounded-full", cfg.color, cfg.border)}
-                        >
-                          {cfg.label}
-                        </Badge>
-                      </div>
-                      <div className="flex items-center gap-2 text-xs text-muted-foreground mt-0.5">
-                        <span>{format(new Date(cls.date), "dd MMM", { locale: es })}</span>
-                        <span>·</span>
-                        <span>{cls.duration_hours}h</span>
-                        {cls.is_paid && (
-                          <>
-                            <span>·</span>
-                            <Check className="h-3 w-3 text-emerald-500" />
-                          </>
-                        )}
-                      </div>
-                    </div>
-
-                    {/* Total */}
-                    <div className={cn("text-right flex-shrink-0", isPrivacyMode && "privacy-blur")}>
-                      <span
-                        className={cn(
-                          "font-semibold font-mono text-sm",
-                          cls.status === "cancelled" ? "text-muted-foreground line-through" : "text-emerald-500"
-                        )}
-                      >
-                        {formatCurrency(total)}
-                      </span>
-                    </div>
-                  </div>
-                );
-              })
-            )}
-          </div>
-        ) : (
-          /* ── Desktop Table ─────────────────────────────── */
-          <div className="border border-border/50 rounded-lg overflow-hidden">
-            <div className="overflow-x-auto">
-              <table className="w-full table-fixed">
-                <thead className="bg-card border-b border-border sticky top-0 z-10 shadow-sm">
-                  {table.getHeaderGroups().map((headerGroup) => (
-                    <tr key={headerGroup.id}>
-                      {headerGroup.headers.map((header) => (
-                        <th
-                          key={header.id}
-                          className="px-4 py-3 text-left text-xs font-semibold text-foreground uppercase tracking-wide"
-                          style={{
-                            width: header.column.columnDef.size,
-                            minWidth: header.column.columnDef.minSize,
-                            maxWidth: header.column.columnDef.maxSize,
-                          }}
-                        >
-                          {header.isPlaceholder
-                            ? null
-                            : flexRender(header.column.columnDef.header, header.getContext())}
-                        </th>
-                      ))}
-                    </tr>
-                  ))}
-                </thead>
-                <tbody className="divide-y divide-border/50 bg-card">
-                  {table.getRowModel().rows.length === 0 ? (
-                    <tr>
-                      <td colSpan={columns.length} className="px-4 py-12 text-center text-sm text-muted-foreground">
-                        No se encontraron clases
-                      </td>
-                    </tr>
-                  ) : groupedRows ? (
-                    groupedRows.map((group) => (
-                      <React.Fragment key={group.dayKey}>
-                        <tr>
-                          <td
-                            colSpan={columns.length}
-                            className="px-4 py-0.5 bg-muted/20"
-                          >
-                            <span className="text-[11px] font-medium text-muted-foreground/70 capitalize">
-                              {formatGroupDate(group.dayKey)}
-                            </span>
-                          </td>
-                        </tr>
-                        {group.rows.map(renderRow)}
-                      </React.Fragment>
-                    ))
-                  ) : (
-                    table.getRowModel().rows.map(renderRow)
-                  )}
-                </tbody>
-              </table>
+                })
+              )}
             </div>
-          </div>
-        ))}
+          ) : (
+            /* ── La tabla en escritorio. El panel ya pone los cantos,
+                así que la tabla no lleva borde propio: solo scrollea. ── */
+            <div className="overflow-auto lg:min-h-0 lg:flex-1">
+              <div>
+                <table className="w-full table-fixed">
+                  <thead className="sticky top-0 z-10 border-b border-border bg-card">
+                    {table.getHeaderGroups().map((headerGroup) => (
+                      <tr key={headerGroup.id} className="border-b border-border">
+                        {headerGroup.headers.map((header) => (
+                          <th
+                            key={header.id}
+                            className="eyebrow px-4 py-2 text-left"
+                            style={{
+                              width: header.column.columnDef.size,
+                              minWidth: header.column.columnDef.minSize,
+                              maxWidth: header.column.columnDef.maxSize,
+                            }}
+                          >
+                            {header.isPlaceholder
+                              ? null
+                              : flexRender(header.column.columnDef.header, header.getContext())}
+                          </th>
+                        ))}
+                      </tr>
+                    ))}
+                  </thead>
+                  <tbody className="divide-y divide-border bg-card">
+                    {table.getRowModel().rows.length === 0 ? (
+                      <tr>
+                        <td colSpan={columns.length} className="px-4 py-12 text-center text-sm text-muted-foreground">
+                          No se encontraron clases
+                        </td>
+                      </tr>
+                    ) : groupedRows ? (
+                      groupedRows.map((group) => (
+                        <React.Fragment key={group.dayKey}>
+                          <tr>
+                            <td
+                              colSpan={columns.length}
+                              className="border-y border-border bg-muted px-4 py-1"
+                            >
+                              <span className="eyebrow capitalize">
+                                {formatGroupDate(group.dayKey)}
+                              </span>
+                            </td>
+                          </tr>
+                          {group.rows.map(renderRow)}
+                        </React.Fragment>
+                      ))
+                    ) : (
+                      table.getRowModel().rows.map(renderRow)
+                    )}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          ))}
+        </Panel>
 
-        {/* Pagination */}
+        {/* ── Fila 5 — la paginación. Franja de cromo al pie. ────── */}
         {viewMode === "list" && table.getPageCount() > 1 && (
-          <div className="flex items-center justify-between px-2">
-            <p className="text-xs text-muted-foreground">
+          <Panel className="flex items-center justify-between gap-2 px-4 py-2 md:px-5 lg:shrink-0">
+            <p className="eyebrow">
               {filteredData.length} clase{filteredData.length !== 1 ? "s" : ""}
             </p>
             <div className="flex items-center gap-1">
@@ -1274,83 +1315,77 @@ export default function TutoringClasses() {
                 <ChevronDoubleRightIcon className="h-4 w-4" />
               </Button>
             </div>
-          </div>
+          </Panel>
         )}
+      </Screen>
 
-        {/* ── Dashboard Summary ─────────────────────────── */}
-        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-6 gap-2">
-          <Card className="rounded-xl border-border/50">
-            <CardContent className="p-3">
-              <div className="flex items-center gap-1.5 text-muted-foreground mb-1">
-                <GraduationCap className="h-3.5 w-3.5" />
-                <span className="text-[11px] font-medium">Clases</span>
-              </div>
-              <p className="text-xl font-bold">{stats.completed}</p>
-              {stats.scheduled > 0 && (
-                <p className="text-[10px] text-blue-500 mt-0.5">{stats.scheduled} agendada{stats.scheduled > 1 ? "s" : ""}</p>
-              )}
-            </CardContent>
-          </Card>
+      {/* ── ABAJO DEL PLIEGUE — el tablero de totales ────────────── */}
+      <Row className="grid-cols-2 border-b border-border sm:grid-cols-3 md:grid-cols-6">
+        <Panel className="px-4 py-3">
+          <div className="flex items-center gap-1.5">
+            <GraduationCap className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
+            <span className="eyebrow truncate">Clases</span>
+          </div>
+          <p className="mt-1.5 font-mono text-lg font-bold tracking-tight tabular-nums md:text-xl">
+            {stats.completed}
+          </p>
+          {stats.scheduled > 0 && (
+            <p className="mt-0.5 font-mono text-[10px] tabular-nums text-info">
+              {stats.scheduled} agendada{stats.scheduled > 1 ? "s" : ""}
+            </p>
+          )}
+        </Panel>
 
-          <Card className="rounded-xl border-border/50">
-            <CardContent className="p-3">
-              <div className="flex items-center gap-1.5 text-muted-foreground mb-1">
-                <Clock className="h-3.5 w-3.5" />
-                <span className="text-[11px] font-medium">Horas</span>
-              </div>
-              <p className="text-xl font-bold">{stats.totalHours}h</p>
-            </CardContent>
-          </Card>
+        <Panel className="px-4 py-3">
+          <div className="flex items-center gap-1.5">
+            <Clock className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
+            <span className="eyebrow truncate">Horas</span>
+          </div>
+          <p className="mt-1.5 font-mono text-lg font-bold tracking-tight tabular-nums md:text-xl">
+            {stats.totalHours}h
+          </p>
+        </Panel>
 
-          <Card className="rounded-xl border-border/50">
-            <CardContent className="p-3">
-              <div className="flex items-center gap-1.5 text-muted-foreground mb-1">
-                <CircleDollarSign className="h-3.5 w-3.5" />
-                <span className="text-[11px] font-medium">Cobrado</span>
-              </div>
-              <p className={cn("text-xl font-bold text-emerald-500", isPrivacyMode && "privacy-blur")}>
-                {formatCurrency(stats.totalPaid)}
-              </p>
-            </CardContent>
-          </Card>
+        <Panel className="px-4 py-3">
+          <div className="flex items-center gap-1.5">
+            <CircleDollarSign className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
+            <span className="eyebrow truncate">Cobrado</span>
+          </div>
+          <p className={cn("mt-1.5 font-mono text-lg font-bold tracking-tight tabular-nums text-success md:text-xl", isPrivacyMode && "privacy-blur")}>
+            {formatCurrency(stats.totalPaid)}
+          </p>
+        </Panel>
 
-          <Card className="rounded-xl border-border/50">
-            <CardContent className="p-3">
-              <div className="flex items-center gap-1.5 text-muted-foreground mb-1">
-                <AlertCircle className="h-3.5 w-3.5" />
-                <span className="text-[11px] font-medium">Por cobrar</span>
-              </div>
-              <p className={cn("text-xl font-bold", stats.totalPending > 0 ? "text-amber-500" : "text-muted-foreground", isPrivacyMode && "privacy-blur")}>
-                {formatCurrency(stats.totalPending)}
-              </p>
-            </CardContent>
-          </Card>
+        <Panel className="px-4 py-3">
+          <div className="flex items-center gap-1.5">
+            <AlertCircle className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
+            <span className="eyebrow truncate">Por cobrar</span>
+          </div>
+          <p className={cn("mt-1.5 font-mono text-lg font-bold tracking-tight tabular-nums md:text-xl", stats.totalPending > 0 ? "text-warning" : "text-muted-foreground", isPrivacyMode && "privacy-blur")}>
+            {formatCurrency(stats.totalPending)}
+          </p>
+        </Panel>
 
-          <Card className="rounded-xl border-border/50">
-            <CardContent className="p-3">
-              <div className="flex items-center gap-1.5 text-muted-foreground mb-1">
-                <CalendarDays className="h-3.5 w-3.5" />
-                <span className="text-[11px] font-medium">Por ganar</span>
-              </div>
-              <p className={cn("text-xl font-bold text-blue-500", isPrivacyMode && "privacy-blur")}>
-                {formatCurrency(stats.scheduledValue)}
-              </p>
-            </CardContent>
-          </Card>
+        <Panel className="px-4 py-3">
+          <div className="flex items-center gap-1.5">
+            <CalendarDays className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
+            <span className="eyebrow truncate">Por ganar</span>
+          </div>
+          <p className={cn("mt-1.5 font-mono text-lg font-bold tracking-tight tabular-nums text-info md:text-xl", isPrivacyMode && "privacy-blur")}>
+            {formatCurrency(stats.scheduledValue)}
+          </p>
+        </Panel>
 
-          <Card className="rounded-xl border-border/50">
-            <CardContent className="p-3">
-              <div className="flex items-center gap-1.5 text-muted-foreground mb-1">
-                <TrendingUp className="h-3.5 w-3.5" />
-                <span className="text-[11px] font-medium">Total</span>
-              </div>
-              <p className={cn("text-xl font-bold", isPrivacyMode && "privacy-blur")}>
-                {formatCurrency(stats.grandTotal)}
-              </p>
-            </CardContent>
-          </Card>
-        </div>
-      </div>
+        <Panel className="px-4 py-3">
+          <div className="flex items-center gap-1.5">
+            <TrendingUp className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
+            <span className="eyebrow truncate">Total</span>
+          </div>
+          <p className={cn("mt-1.5 font-mono text-lg font-bold tracking-tight tabular-nums md:text-xl", isPrivacyMode && "privacy-blur")}>
+            {formatCurrency(stats.grandTotal)}
+          </p>
+        </Panel>
+      </Row>
 
       {/* ── Quick Add Modal ──────────────────────────────── */}
       <BaseModal
@@ -1364,7 +1399,7 @@ export default function TutoringClasses() {
             type="submit"
             form={QUICK_ADD_FORM_ID}
             size="cta"
-            className="bg-emerald-500 hover:bg-emerald-600"
+            className="bg-success hover:bg-success/90"
             disabled={!quickForm.student_id || !quickForm.price_per_hour || addClass.isPending}
           >
             {addClass.isPending ? "Guardando..." : "Agregar Clase"}
@@ -1463,7 +1498,7 @@ export default function TutoringClasses() {
                 }
               />
               <label htmlFor="quick-completed" className="text-sm font-medium cursor-pointer flex items-center gap-2">
-                <CircleCheckBig className="h-4 w-4 text-emerald-500" />
+                <CircleCheckBig className="h-4 w-4 text-success" />
                 Ya realizada
               </label>
             </div>
@@ -1474,7 +1509,7 @@ export default function TutoringClasses() {
                 onCheckedChange={(checked) => setQuickForm({ ...quickForm, is_paid: !!checked })}
               />
               <label htmlFor="quick-paid" className="text-sm font-medium cursor-pointer flex items-center gap-2">
-                <DollarSign className="h-4 w-4 text-emerald-500" />
+                <DollarSign className="h-4 w-4 text-success" />
                 Ya pagada
               </label>
             </div>
@@ -1609,7 +1644,7 @@ export default function TutoringClasses() {
               onCheckedChange={(checked) => setFormData({ ...formData, is_paid: !!checked })}
             />
             <label htmlFor="form-paid" className="text-sm font-medium cursor-pointer flex items-center gap-2">
-              <DollarSign className="h-4 w-4 text-emerald-500" />
+              <DollarSign className="h-4 w-4 text-success" />
               Pagada
             </label>
           </div>
@@ -1653,7 +1688,7 @@ export default function TutoringClasses() {
           />
           {/* Existing students list */}
           {students.length > 0 && (
-            <div className="space-y-2 pt-2 border-t">
+            <div className="space-y-2 border-t border-border pt-2">
               <p className="text-xs text-muted-foreground font-medium">Alumnos existentes</p>
               {students.map((s) => (
                 <div key={s.id} className="flex items-center justify-between py-1.5">

@@ -1,4 +1,5 @@
 import { useMemo } from "react";
+import { Row, Panel } from "@/components/HairlineGrid";
 import { format, parseISO, subDays } from "date-fns";
 import { es } from "date-fns/locale";
 import {
@@ -111,35 +112,38 @@ export function LearningProgress({
 
   if (!hasAnything) {
     return (
-      <div className="rounded-2xl border border-dashed border-border/60 p-10 text-center">
-        <p className="text-sm text-muted-foreground">
-          Termina un video y acá empieza a dibujarse tu trayectoria.
+      <Panel className="flex flex-col items-center gap-2 px-4 py-12 text-center">
+        <p className="section-title text-sm">Sin trayectoria todavía</p>
+        <p className="text-xs text-muted-foreground">
+          Termina un video y acá empieza a dibujarse.
         </p>
-      </div>
+      </Panel>
     );
   }
 
+  /* Columna de celdas separadas por 1px. Las dos tejas de en medio
+     comparten fila: el gap entre ellas es la línea vertical. */
   return (
-    <div className="space-y-4">
+    <Row>
       <FormCard stats={stats} goal={goal} />
       <LearningCurve points={points} />
 
-      <div className="grid gap-4 sm:grid-cols-2">
+      <Row className="sm:grid-cols-2">
         <BandTile captures={rankedCaptures} />
         <StopRateTile points={points} />
-      </div>
+      </Row>
 
       <SessionLedger points={points} corpus={corpus} />
-    </div>
+    </Row>
   );
 }
 
 // ── 1. Forma ────────────────────────────────────────────────
 
 const FORM_TONE = {
-  hot: "text-emerald-500",
+  hot: "text-success",
   good: "text-primary",
-  warm: "text-amber-500",
+  warm: "text-warning",
   cold: "text-muted-foreground",
 } as const;
 
@@ -195,12 +199,10 @@ function FormCard({ stats, goal }: { stats: LearningStats; goal: LearningGoal })
   const inTwoWeeks = projectFormAtPace(current, 14);
 
   return (
-    <div className="rounded-2xl border border-border/60 bg-card p-5">
+    <Panel className="px-4 py-4 md:px-5">
       <div className="flex items-start justify-between gap-4">
         <div>
-          <p className="text-xs text-muted-foreground uppercase tracking-wide font-medium">
-            Forma
-          </p>
+          <p className="eyebrow">Forma</p>
           <div className="flex items-end gap-2.5 mt-2">
             <p
               className={cn(
@@ -222,9 +224,9 @@ function FormCard({ stats, goal }: { stats: LearningStats; goal: LearningGoal })
             className={cn(
               "text-sm font-bold tabular-nums flex items-center justify-end gap-1",
               delta > 0.5
-                ? "text-emerald-500"
+                ? "text-success"
                 : delta < -0.5
-                  ? "text-rose-500"
+                  ? "text-destructive"
                   : "text-muted-foreground"
             )}
           >
@@ -321,7 +323,7 @@ function FormCard({ stats, goal }: { stats: LearningStats; goal: LearningGoal })
         </ResponsiveContainer>
       </div>
 
-      <p className="text-[11px] text-muted-foreground leading-relaxed mt-3 pt-3 border-t border-border/50">
+      <p className="text-[11px] text-muted-foreground leading-relaxed mt-3 pt-3 border-t border-border">
         100 es cumplir tu meta de {goal.daily_minutes_target} min todos los días.{" "}
         {current < 40
           ? `Cumpliéndola a diario llegas a ${Math.round(inTwoWeeks)} en dos semanas.`
@@ -329,7 +331,7 @@ function FormCard({ stats, goal }: { stats: LearningStats; goal: LearningGoal })
       </p>
 
       <HabitStrip stats={stats} />
-    </div>
+    </Panel>
   );
 }
 
@@ -385,9 +387,9 @@ function LearningCurve({ points }: { points: SessionPoint[] }) {
   }));
 
   return (
-    <div className="rounded-2xl border border-border/60 bg-card p-5">
+    <Panel className="px-4 py-4 md:px-5">
       <div className="flex items-baseline justify-between gap-3">
-        <p className="text-xs text-muted-foreground uppercase tracking-wide font-medium">
+        <p className="eyebrow">
           Tu curva
         </p>
         <span className="flex items-center gap-1 text-[10px] text-muted-foreground">
@@ -465,14 +467,14 @@ function LearningCurve({ points }: { points: SessionPoint[] }) {
             </ResponsiveContainer>
           </div>
 
-          <p className="text-[11px] text-muted-foreground leading-relaxed mt-3 pt-3 border-t border-border/50">
+          <p className="text-[11px] text-muted-foreground leading-relaxed mt-3 pt-3 border-t border-border">
             {path.length === 1
               ? "Un punto no es una curva. Con el segundo video ya se ve para dónde vas."
               : "Cada punto es un video: la dificultad es qué porcentaje de sus palabras está fuera de las mil más usadas del inglés. El punto más opaco es el más reciente."}
           </p>
         </>
       )}
-    </div>
+    </Panel>
   );
 }
 
@@ -534,8 +536,8 @@ function BandTile({
   const trend = trendOf(captures.map((c) => c.rank));
 
   return (
-    <div className="rounded-2xl border border-border/60 bg-card p-5">
-      <p className="text-xs text-muted-foreground uppercase tracking-wide font-medium">
+    <Panel className="px-4 py-4 md:px-5">
+      <p className="eyebrow">
         Tu banda
       </p>
 
@@ -547,7 +549,7 @@ function BandTile({
           <p
             className={cn(
               "text-xs font-bold tabular-nums flex items-center gap-0.5",
-              trend.delta > 0 ? "text-emerald-500" : "text-muted-foreground"
+              trend.delta > 0 ? "text-success" : "text-muted-foreground"
             )}
           >
             {trend.delta > 0 ? (
@@ -597,7 +599,7 @@ function BandTile({
         Más a la derecha, palabras más raras. La línea es tu mediana; sube
         cuando dejan de frenarte las comunes.
       </p>
-    </div>
+    </Panel>
   );
 }
 
@@ -610,8 +612,8 @@ function StopRateTile({ points }: { points: SessionPoint[] }) {
   const trend = trendOf(rates);
 
   return (
-    <div className="rounded-2xl border border-border/60 bg-card p-5">
-      <p className="text-xs text-muted-foreground uppercase tracking-wide font-medium">
+    <Panel className="px-4 py-4 md:px-5">
+      <p className="eyebrow">
         Frenos por 10 min
       </p>
 
@@ -623,7 +625,7 @@ function StopRateTile({ points }: { points: SessionPoint[] }) {
           <p
             className={cn(
               "text-xs font-bold tabular-nums flex items-center gap-0.5",
-              trend.delta < 0 ? "text-emerald-500" : "text-muted-foreground"
+              trend.delta < 0 ? "text-success" : "text-muted-foreground"
             )}
           >
             {trend.delta < 0 ? (
@@ -656,7 +658,7 @@ function StopRateTile({ points }: { points: SessionPoint[] }) {
         Cuántas veces por diez minutos tuviste que parar. Solo significa algo
         si seguiste capturando igual de seguido.
       </p>
-    </div>
+    </Panel>
   );
 }
 
@@ -673,12 +675,12 @@ function SessionLedger({
   if (points.length === 0) return null;
 
   return (
-    <div className="rounded-2xl border border-border/60 bg-card p-5">
-      <p className="text-xs text-muted-foreground uppercase tracking-wide font-medium">
+    <Panel className="px-4 py-4 md:px-5">
+      <p className="eyebrow">
         Video por video
       </p>
 
-      <div className="divide-y divide-border/50 mt-1">
+      <div className="divide-y divide-border mt-1">
         {[...points].reverse().map((point) => {
           const video = corpus.videoOf(point.externalId);
           return (
@@ -734,10 +736,10 @@ function SessionLedger({
         })}
       </div>
 
-      <p className="text-[11px] text-muted-foreground leading-relaxed mt-3 pt-3 border-t border-border/50">
+      <p className="text-[11px] text-muted-foreground leading-relaxed mt-3 pt-3 border-t border-border">
         La barra de cada video es de qué está hecho su inglés: de las mil
         palabras más usadas a la izquierda, hasta las raras a la derecha.
       </p>
-    </div>
+    </Panel>
   );
 }

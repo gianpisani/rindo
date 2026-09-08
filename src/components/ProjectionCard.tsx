@@ -62,7 +62,7 @@ const CustomTooltip = ({ active, payload, label }: TooltipProps<number, string>)
   const bandaUpper = (bandaLower != null && bandWidthVal != null) ? bandaLower + bandWidthVal : undefined;
 
   return (
-    <div className="bg-card/95 backdrop-blur-sm border border-border/50 rounded-xl p-3 shadow-xl min-w-[220px]">
+    <div className="bg-card/95 backdrop-blur-sm border border-border rounded-xl p-3 shadow-xl min-w-[220px]">
       <p className="font-semibold text-xs text-foreground mb-2 pb-1.5 border-b border-border">{label}</p>
       <div className="space-y-1.5 text-xs">
         {patrimonio != null && (
@@ -78,7 +78,7 @@ const CustomTooltip = ({ active, payload, label }: TooltipProps<number, string>)
           <TooltipRow color={CHART_COLORS.mutedAxis} label="Sin inversión" value={fmtFull(sinInversion)} />
         )}
         {bandaUpper != null && bandaLower != null && (
-          <div className="pt-1.5 mt-1.5 border-t border-border/50">
+          <div className="pt-1.5 mt-1.5 border-t border-border">
             <p className="text-[10px] text-muted-foreground">
               Rango 80%: {fmtCompact(bandaLower)} — {fmtCompact(bandaUpper)}
             </p>
@@ -351,7 +351,7 @@ export default function ProjectionCard() {
       {/* Header */}
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2">
-          <h3 className="text-lg font-bold text-foreground">Proyección</h3>
+          <h3 className="section-title text-lg text-foreground">Proyección</h3>
           {hasReturns && (
             <Badge variant="outline" className="text-[10px] font-mono tabular-nums gap-1 h-5">
               <TrendingUp className="h-3 w-3" />
@@ -398,7 +398,7 @@ export default function ProjectionCard() {
       <Collapsible open={showSettings} onOpenChange={setShowSettings}>
         <CollapsibleContent className="space-y-2.5 pt-1">
           {/* Calculation method */}
-          <div className="p-2.5 rounded-xl bg-muted/20 border border-border/50 space-y-2">
+          <div className="p-2.5 rounded-xl bg-muted/20 border border-border space-y-2">
             <Label className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">Método de cálculo</Label>
             <ToggleGroup type="single" value={calculationMode}
               onValueChange={v => v && setCalculationMode(v as typeof calculationMode)}
@@ -426,7 +426,7 @@ export default function ProjectionCard() {
           </div>
 
           {/* Inflation */}
-          <div className="p-2.5 rounded-xl bg-muted/20 border border-border/50 space-y-1.5">
+          <div className="p-2.5 rounded-xl bg-muted/20 border border-border space-y-1.5">
             <Label className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">Inflación anual</Label>
             <div className="flex items-center gap-2">
               <Input type="number" value={inflationRate} onChange={e => setInflationRate(Number(e.target.value))}
@@ -436,7 +436,7 @@ export default function ProjectionCard() {
           </div>
 
           {/* Risk config */}
-          <div className="p-2.5 rounded-xl bg-muted/20 border border-border/50 space-y-1.5">
+          <div className="p-2.5 rounded-xl bg-muted/20 border border-border space-y-1.5">
             <Label className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">Riesgo por inversión</Label>
             <p className="text-[10px] text-muted-foreground leading-relaxed">
               Más riesgo = más retorno a largo plazo, pero más volatilidad a corto plazo. La banda en el gráfico refleja esta incertidumbre.
@@ -446,7 +446,7 @@ export default function ProjectionCard() {
             ) : (
               <div className="space-y-1 max-h-[200px] overflow-y-auto">
                 {uniqueCategories.map(cat => (
-                  <div key={cat} className="flex items-center justify-between gap-2 p-1.5 rounded-lg bg-card border border-border/30">
+                  <div key={cat} className="flex items-center justify-between gap-2 p-1.5 rounded-lg bg-card border border-border">
                     <div className="min-w-0">
                       <p className="text-xs font-medium truncate">{cat}</p>
                       <p className="text-[10px] text-muted-foreground font-mono">{((categoryWeights[cat] || 0) * 100).toFixed(0)}%</p>
@@ -476,7 +476,7 @@ export default function ProjectionCard() {
       {/* Chart + metrics */}
       {isDataSufficient ? (
         <>
-          <div className={cn("rounded-xl bg-muted/10 border border-border/30 p-2 pb-1")}>
+          <div className={cn("rounded-xl bg-muted/10 border border-border p-2 pb-1")}>
             <div className={cn(isPrivacyMode && "privacy-blur")}>
               <ResponsiveContainer width="100%" height={240}>
                 <ComposedChart data={chartData}>
@@ -582,7 +582,7 @@ export default function ProjectionCard() {
           </p>
         </>
       ) : (
-        <div className="p-3 rounded-xl bg-muted/20 border border-border/30">
+        <div className="p-3 rounded-xl bg-muted/20 border border-border">
           <div className="flex items-start gap-2">
             <Info className="h-4 w-4 text-muted-foreground flex-shrink-0 mt-0.5" />
             <p className="text-xs text-muted-foreground">
@@ -619,7 +619,7 @@ function MetricCard({ label, value, sublabel, highlight, amber }: {
   return (
     <div className={cn(
       "p-2 rounded-xl border space-y-0.5",
-      highlight ? "bg-primary/5 border-primary/20" : amber ? "bg-amber-500/5 border-amber-500/20" : "bg-muted/20 border-border/30"
+      highlight ? "bg-primary/5 border-primary/20" : amber ? "bg-amber-500/5 border-amber-500/20" : "bg-muted/20 border-border"
     )}>
       <p className={cn("text-[10px] font-medium", highlight ? "text-primary" : amber ? "text-amber-600 dark:text-amber-400" : "text-muted-foreground")}>{label}</p>
       <p className={cn(

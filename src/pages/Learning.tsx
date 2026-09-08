@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import Layout from "@/components/Layout";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Screen, Row, Panel } from "@/components/HairlineGrid";
 import { cn } from "@/lib/utils";
 import { Plus, Pencil, Flame } from "lucide-react";
 import { toast } from "sonner";
@@ -258,34 +259,50 @@ export default function Learning() {
   // ── Estados de carga y vacío ──────────────────────────────
 
   if (goalsLoading || session.isLoading) {
+    /* El esqueleto imita el chasis real: identidad, la franja de pestañas
+       y el cuerpo que cede. Así no salta nada al llegar los datos. */
     return (
-      <Layout>
-        <div className="space-y-3 animate-pulse">
-          <div className="h-8 w-40 rounded-lg bg-muted" />
-          <div className="h-40 rounded-2xl bg-muted" />
-          <div className="h-24 rounded-2xl bg-muted" />
-        </div>
+      <Layout bleed>
+        <Screen>
+          <Panel className="px-4 py-3 md:px-5 lg:shrink-0">
+            <div className="h-6 w-40 animate-pulse bg-muted" />
+          </Panel>
+          <Row className="grid-cols-4 lg:shrink-0">
+            {[0, 1, 2, 3].map((i) => (
+              <Panel key={i} className="px-3 py-3">
+                <div className="h-3 w-full animate-pulse bg-muted" />
+              </Panel>
+            ))}
+          </Row>
+          <Panel className="p-4 md:p-5 lg:min-h-0 lg:flex-1">
+            <div className="h-40 animate-pulse bg-muted lg:h-full" />
+          </Panel>
+        </Screen>
       </Layout>
     );
   }
 
   if (!goal) {
     return (
-      <Layout>
-        <div className="max-w-md mx-auto py-12 text-center">
-          <h1 className="text-2xl font-bold">Aprendizaje</h1>
-          <p className="text-sm text-muted-foreground mt-3 leading-relaxed">
-            Define qué quieres aprender, consume contenido real y deja que Rindo
-            mida si de verdad estás entendiendo más.
-          </p>
-          <Button
-            onClick={() => openGoalDialog(null)}
-            className="mt-6 h-12 px-6 rounded-xl font-semibold"
-          >
-            <Plus className="h-5 w-5 mr-2" />
-            Crear objetivo
-          </Button>
-        </div>
+      <Layout bleed>
+        <Screen>
+          <Panel className="px-4 py-3 md:px-5 lg:shrink-0">
+            <h1 className="page-title text-xl md:text-2xl">Aprendizaje</h1>
+            <p className="eyebrow mt-1">Sin objetivo</p>
+          </Panel>
+
+          <Panel className="flex flex-col items-center justify-center gap-2 px-5 py-16 text-center lg:min-h-0 lg:flex-1">
+            <p className="section-title text-base">Define qué quieres aprender</p>
+            <p className="max-w-sm text-sm text-muted-foreground">
+              Consume contenido real y deja que Rindo mida si de verdad estás
+              entendiendo más.
+            </p>
+            <Button onClick={() => openGoalDialog(null)} size="lg" className="mt-3 gap-2">
+              <Plus className="h-5 w-5" />
+              Crear objetivo
+            </Button>
+          </Panel>
+        </Screen>
 
         <GoalSetupDialog
           open={goalDialogOpen}
@@ -339,56 +356,65 @@ export default function Learning() {
 
   // ── Vista normal ──────────────────────────────────────────
 
+  const TAB_CELL =
+    "section-title min-w-0 truncate rounded-sm bg-card px-2 py-2.5 text-[11px] font-bold text-muted-foreground transition-colors hover:text-foreground data-[state=active]:bg-primary data-[state=active]:text-primary-foreground sm:text-xs";
+
   return (
-    <Layout>
-      <div className="space-y-5">
-        {/* Encabezado */}
-        <div className="flex items-start justify-between gap-4">
-          <div className="min-w-0">
-            <div className="flex items-center gap-2.5">
-              <span className="text-2xl leading-none">{goal.emoji}</span>
-              <h1 className="text-2xl font-bold tracking-tight truncate">
-                {goal.topic}
-              </h1>
-              {stats.streakDays > 0 && (
-                <span className="flex items-center gap-1 text-primary shrink-0">
-                  <Flame className="h-4 w-4" />
-                  <span className="text-sm font-bold tabular-nums">
-                    {stats.streakDays}
-                  </span>
-                </span>
-              )}
-            </div>
+    <Layout bleed>
+      {/* Mismo chasis que Inicio: identidad y objetivos como franjas, la
+          barra de pestañas como la franja de cuatro celdas, y el cuerpo de
+          la pestaña como lo que cede. El contenido de cada pestaña arma su
+          propia columna de celdas (LearningOverview, LearningProgress…), así
+          que acá no va padding: los paneles topan con los cantos. */}
+      <Screen>
+        {/* ── Fila 1 — identidad del objetivo ────────────────────── */}
+        <Panel className="flex flex-wrap items-center gap-x-3 gap-y-2 px-4 py-3 md:px-5 lg:shrink-0">
+          <span className="shrink-0 text-2xl leading-none">{goal.emoji}</span>
+          <div className="min-w-0 flex-1">
+            <h1 className="page-title truncate text-xl md:text-2xl">{goal.topic}</h1>
             {goal.north_star && (
-              <p className="text-sm text-muted-foreground mt-1 line-clamp-2">
+              <p className="mt-1 line-clamp-2 text-xs text-muted-foreground">
                 {goal.north_star}
               </p>
             )}
           </div>
 
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={() => openGoalDialog(goal)}
-            className="rounded-xl shrink-0 text-muted-foreground"
-          >
-            <Pencil className="h-4 w-4" />
-          </Button>
-        </div>
+          <div className="ml-auto flex shrink-0 items-center gap-2">
+            {stats.streakDays > 0 && (
+              <span className="inline-flex items-center gap-1.5 border border-border px-2 py-1.5">
+                <Flame className="h-3.5 w-3.5 text-primary" />
+                <span className="font-mono text-[11px] font-semibold tabular-nums">
+                  {stats.streakDays}
+                </span>
+                <span className="eyebrow">
+                  {stats.streakDays === 1 ? "día" : "días"}
+                </span>
+              </span>
+            )}
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => openGoalDialog(goal)}
+              className="text-muted-foreground"
+              aria-label="Editar objetivo"
+            >
+              <Pencil className="h-4 w-4" />
+            </Button>
+          </div>
+        </Panel>
 
-        {/* Selector de objetivos, solo si hay más de uno */}
+        {/* ── Fila 2 — los otros objetivos, solo si hay más de uno ─ */}
         {activeGoals.length > 1 && (
-          <div className="flex flex-wrap gap-1.5">
+          <Panel className="flex flex-wrap items-center gap-1.5 px-4 py-2 md:px-5 lg:shrink-0">
             {activeGoals.map((g) => (
               <button
                 key={g.id}
                 onClick={() => setSelectedGoalId(g.id)}
                 className={cn(
-                  "px-3 py-1.5 rounded-xl text-xs font-medium border transition-all",
-                  "flex items-center gap-1.5",
+                  "flex items-center gap-1.5 border px-2.5 py-1 text-[11px] font-medium transition-colors",
                   g.id === goal.id
-                    ? "border-primary bg-primary/10 text-foreground"
-                    : "border-border/60 text-muted-foreground hover:border-border hover:text-foreground"
+                    ? "border-primary bg-primary text-primary-foreground"
+                    : "border-border text-muted-foreground hover:text-foreground"
                 )}
               >
                 <span>{g.emoji}</span>
@@ -397,31 +423,41 @@ export default function Learning() {
             ))}
             <button
               onClick={() => openGoalDialog(null)}
-              className="px-2.5 py-1.5 rounded-xl border border-dashed border-border/60 text-muted-foreground hover:text-foreground hover:border-border transition-all"
+              className="border border-border px-2 py-1 text-muted-foreground transition-colors hover:text-foreground"
+              aria-label="Crear objetivo"
             >
               <Plus className="h-3.5 w-3.5" />
             </button>
-          </div>
+          </Panel>
         )}
 
-        {/* Pestañas */}
-        <Tabs value={tab} onValueChange={setTab}>
-          <TabsList className="w-full grid grid-cols-4 h-10">
-            <TabsTrigger value="overview" className="text-xs sm:text-sm">
+        {/* ── Las pestañas. El Tabs hace de contenedor de filas: la
+            lista es una franja de cuatro celdas y el cuerpo es lo que
+            cede y scrollea por dentro. ─────────────────────────── */}
+        <Tabs
+          value={tab}
+          onValueChange={setTab}
+          className="flex flex-col gap-px bg-border lg:min-h-0 lg:flex-1"
+        >
+          <TabsList className="grid h-auto w-full shrink-0 grid-cols-4 gap-px bg-border p-0">
+            <TabsTrigger value="overview" className={TAB_CELL}>
               Resumen
             </TabsTrigger>
-            <TabsTrigger value="sessions" className="text-xs sm:text-sm">
+            <TabsTrigger value="sessions" className={TAB_CELL}>
               Sesiones
             </TabsTrigger>
-            <TabsTrigger value="vocabulary" className="text-xs sm:text-sm">
+            <TabsTrigger value="vocabulary" className={TAB_CELL}>
               Diccionario
             </TabsTrigger>
-            <TabsTrigger value="progress" className="text-xs sm:text-sm">
+            <TabsTrigger value="progress" className={TAB_CELL}>
               Progreso
             </TabsTrigger>
           </TabsList>
 
-          <TabsContent value="overview" className="mt-4">
+          <TabsContent
+            value="overview"
+            className="mt-0 bg-card lg:min-h-0 lg:flex-1 lg:overflow-y-auto"
+          >
             <LearningOverview
               goal={goal}
               stats={stats}
@@ -456,7 +492,10 @@ export default function Learning() {
             />
           </TabsContent>
 
-          <TabsContent value="sessions" className="mt-4">
+          <TabsContent
+            value="sessions"
+            className="mt-0 bg-card lg:min-h-0 lg:flex-1 lg:overflow-y-auto"
+          >
             <LearningSessionsList
               sessions={sessions}
               selected={selectedSession}
@@ -465,7 +504,10 @@ export default function Learning() {
             />
           </TabsContent>
 
-          <TabsContent value="vocabulary" className="mt-4">
+          <TabsContent
+            value="vocabulary"
+            className="mt-0 bg-card lg:min-h-0 lg:flex-1 lg:overflow-y-auto"
+          >
             <LearningVocabulary
               items={items}
               corpus={corpus}
@@ -474,7 +516,10 @@ export default function Learning() {
             />
           </TabsContent>
 
-          <TabsContent value="progress" className="mt-4">
+          <TabsContent
+            value="progress"
+            className="mt-0 bg-card lg:min-h-0 lg:flex-1 lg:overflow-y-auto"
+          >
             <LearningProgress
               stats={stats}
               sessions={sessions}
@@ -484,7 +529,7 @@ export default function Learning() {
             />
           </TabsContent>
         </Tabs>
-      </div>
+      </Screen>
 
       {/* Diálogos */}
       <GoalSetupDialog

@@ -514,7 +514,7 @@ function CategoryCombobox({ value, options, onSave, renderValue, className, plac
                 setSearch("");
                 onCreate(name);
               }}
-              className="flex w-full items-center gap-2 border-t border-border/60 px-2 py-2 text-left text-xs text-primary transition-colors hover:bg-muted/60"
+              className="flex w-full items-center gap-2 border-t border-border px-2 py-2 text-left text-xs text-primary transition-colors hover:bg-muted/60"
             >
               <Plus className="h-3.5 w-3.5 flex-shrink-0" />
               <span className="truncate">
@@ -544,7 +544,7 @@ function ReimbursementPill({ value, options, onSave }: ReimbursementPillProps) {
       <PopoverTrigger asChild>
         <button
           className={cn(
-            "inline-flex items-center gap-1 rounded-full px-1.5 py-0.5 text-[10px] leading-none flex-shrink-0",
+            "inline-flex items-center gap-1 rounded-sm px-1.5 py-0.5 text-[10px] leading-none flex-shrink-0",
             "cursor-pointer transition-all hover:brightness-125",
             "focus:outline-none",
             value
@@ -622,6 +622,15 @@ interface TransactionsTableProps {
   onCardFilterChange?: (v: string) => void;
   dateRange?: DateRangeValue;
   onDateRangeChange?: (v: DateRangeValue) => void;
+  /**
+   * La tabla llena el alto que le da su contenedor en vez de calcularlo
+   * ella. Lo usa /transactions, donde la fila de la grilla ya sabe cuánto
+   * espacio sobra del viewport: un `max-h-[calc(100vh-320px)]` acá adentro
+   * es un número mágico que se desincroniza con cualquier cambio de
+   * chasis. Debajo de lg sigue habiendo un tope, porque ahí manda el
+   * scroll de la página.
+   */
+  fill?: boolean;
 }
 
 const EMPTY_DATE_RANGE: DateRangeValue = {};
@@ -648,6 +657,7 @@ export function TransactionsTable({
   cardFilter: externalCardFilter,
   onCardFilterChange,
   dateRange: externalDateRange,
+  fill = false,
   onDateRangeChange,
 }: TransactionsTableProps) {
   const [searchParams] = useSearchParams();
@@ -1306,7 +1316,12 @@ export function TransactionsTable({
   // ── Render ────────────────────────────────────────────────────────────────
 
   return (
-    <div className="space-y-4 mx-auto">
+    <div
+      className={cn(
+        "mx-auto",
+        fill ? "flex h-full min-h-0 flex-col gap-3 lg:gap-0" : "space-y-4"
+      )}
+    >
       {/* Filters — solo se renderizan si no están controlados externamente */}
       {!isControlled && (
         <div className="flex flex-col sm:flex-row gap-3">
@@ -1393,7 +1408,7 @@ export function TransactionsTable({
             <div
               className={cn(
                 "flex flex-col items-center gap-1 py-2.5 px-1 rounded-xl",
-                "bg-background/95 backdrop-blur-xl border border-border/60",
+                "border border-border bg-card",
                 "shadow-lg shadow-black/8 dark:shadow-black/25"
               )}
             >
@@ -1428,13 +1443,13 @@ export function TransactionsTable({
             <div
               className={cn(
                 "rounded-xl overflow-hidden",
-                "bg-background/95 backdrop-blur-xl border border-border/60",
+                "border border-border bg-card",
                 "shadow-xl shadow-black/10 dark:shadow-black/30",
                 "animate-in slide-in-from-right-3 fade-in-0 duration-200"
               )}
             >
               {/* Header with drag handle */}
-              <div className="flex items-center gap-2 px-3 py-2 border-b border-border/40 bg-muted/30">
+              <div className="flex items-center gap-2 px-3 py-2 border-b border-border bg-muted/30">
                 <div
                   className="cursor-grab active:cursor-grabbing text-muted-foreground/40 hover:text-muted-foreground/70 transition-colors"
                   onMouseDown={handleDragStart}
@@ -1505,7 +1520,7 @@ export function TransactionsTable({
                   <span className="text-[13px]">Duplicar</span>
                 </button>
 
-                <div className="my-1 border-t border-border/40" />
+                <div className="my-1 border-t border-border" />
 
                 <button
                   onClick={handleBatchDelete}
@@ -1518,7 +1533,7 @@ export function TransactionsTable({
 
               {/* Quick summary */}
               {summaryStats && (
-                <div className="px-3 py-2 border-t border-border/40 bg-muted/20">
+                <div className="px-3 py-2 border-t border-border bg-muted/20">
                   <div className="grid grid-cols-2 gap-x-4 gap-y-1">
                     <div className="flex items-center justify-between">
                       <span className="text-[10px] text-muted-foreground/60 uppercase tracking-wide">Suma</span>
@@ -1546,7 +1561,7 @@ export function TransactionsTable({
                     </div>
                   </div>
                   {summaryStats.mixed && (
-                    <div className="flex items-center justify-between mt-1.5 pt-1.5 border-t border-border/30">
+                    <div className="flex items-center justify-between mt-1.5 pt-1.5 border-t border-border">
                       <span className={cn("text-[10px] font-mono tabular-nums text-emerald-500", isPrivacyMode && "privacy-blur")}>
                         +{formatCurrency(summaryStats.income)}
                       </span>
@@ -1559,7 +1574,7 @@ export function TransactionsTable({
               )}
 
               {/* Deselect */}
-              <div className="px-2 py-1.5 border-t border-border/40">
+              <div className="px-2 py-1.5 border-t border-border">
                 <button
                   onClick={() => setRowSelection({})}
                   className="w-full flex items-center justify-center gap-1 py-1 rounded-lg text-[11px] text-muted-foreground hover:bg-muted/60 transition-colors"
@@ -1871,8 +1886,24 @@ export function TransactionsTable({
       ) : (
         <>
           {/* ── Desktop Table ──────────────────────────────────────────────── */}
-          <div className="border border-border/50 rounded-lg overflow-hidden">
-            <div className="overflow-x-auto overflow-y-auto max-h-[calc(100vh-320px)] min-h-[300px]">
+          {/* Con `fill` el borde lo pone la grilla de la página, no la tabla:
+              dos hairlines contiguas se leen como una línea de 2px. */}
+          <div
+            className={cn(
+              "overflow-hidden",
+              fill
+                ? "flex min-h-0 flex-1 flex-col"
+                : "rounded-lg border border-border"
+            )}
+          >
+            <div
+              className={cn(
+                "overflow-x-auto overflow-y-auto",
+                fill
+                  ? "min-h-0 flex-1 max-h-[calc(100dvh-17rem)] lg:max-h-none"
+                  : "max-h-[calc(100vh-320px)] min-h-[300px]"
+              )}
+            >
               <table className="w-full table-fixed">
                 <thead className="bg-card border-b border-border sticky top-0 z-10 shadow-sm">
                   {table.getHeaderGroups().map((headerGroup) => (
@@ -1893,7 +1924,7 @@ export function TransactionsTable({
                     </tr>
                   ))}
                 </thead>
-                <tbody ref={tbodyRef} className="divide-y divide-border/50 bg-card">
+                <tbody ref={tbodyRef} className="divide-y divide-border bg-card">
                   {table.getRowModel().rows.length === 0 ? (
                     <tr>
                       <td colSpan={columns.length}>
@@ -1913,9 +1944,9 @@ export function TransactionsTable({
                           <tr>
                             <td
                               colSpan={columns.length}
-                              className="px-4 py-1 bg-muted/30 border-t border-border/30 first:border-t-0"
+                              className="px-4 py-1 bg-muted/30 border-t border-border first:border-t-0"
                             >
-                              <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
+                              <span className="text-xs eyebrow">
                                 {formatGroupDate(group.dayKey)}
                               </span>
                             </td>
@@ -1981,7 +2012,7 @@ export function TransactionsTable({
 
             {/* ── Summary Footer (Excel-style) ─────────────────────────────── */}
             {summaryStats && (
-              <div className="border-t border-border/50 bg-muted/20 px-3 py-1.5 flex items-center justify-end gap-6">
+              <div className="border-t border-border bg-muted/20 px-3 py-1.5 flex items-center justify-end gap-6">
                 {hasSelection && (
                   <span className="text-[11px] text-muted-foreground/60 mr-auto">
                     {summaryStats.count} seleccionada{summaryStats.count > 1 ? "s" : ""}
@@ -2032,7 +2063,12 @@ export function TransactionsTable({
           </div>
 
           {/* Desktop Pagination */}
-          <div className="flex items-center justify-between flex-wrap gap-3">
+          <div
+            className={cn(
+              "flex flex-wrap items-center justify-between gap-3",
+              fill && "shrink-0 border-t border-border px-4 py-2.5 md:px-5"
+            )}
+          >
             <div className="text-sm text-muted-foreground">
               {hasSelection ? (
                 <span className="mr-2 font-medium text-primary">

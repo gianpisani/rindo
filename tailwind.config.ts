@@ -22,6 +22,13 @@ export default {
   			mono: [
   				'JetBrains Mono',
   				'monospace'
+  			],
+  			// La voz de los titulares. Sale de un token para que el
+  			// selector de fuentes del tema pueda cambiarla sin tocar acá.
+  			display: [
+  				'var(--font-display)',
+  				'Outfit',
+  				'sans-serif'
   			]
   		},
 		colors: {
@@ -118,9 +125,31 @@ export default {
 			}
   		},
   		borderRadius: {
+  			none: '0px',
+  			sm: 'calc(var(--radius) * 0.5)',
+  			DEFAULT: 'calc(var(--radius) * 0.75)',
+  			md: 'calc(var(--radius) * 0.75)',
   			lg: 'var(--radius)',
-  			md: 'calc(var(--radius) - 2px)',
-  			sm: 'calc(var(--radius) - 4px)'
+  			xl: 'calc(var(--radius) * 1.5)',
+  			'2xl': 'calc(var(--radius) * 2)',
+  			'3xl': 'calc(var(--radius) * 3)',
+  			// Los círculos se quedan: son la única curva de Wero.
+  			full: '9999px'
+  		},
+  		boxShadow: {
+  			// En una arquitectura de líneas, la sombra difusa sobra: lo que
+  			// separa dos superficies es el borde. Las que quedan flotando
+  			// son las que de verdad están por encima del plano.
+  			none: 'none',
+  			sm: 'none',
+  			DEFAULT: 'none',
+  			md: 'var(--shadow-float)',
+  			lg: 'var(--shadow-float)',
+  			xl: 'var(--shadow-float)',
+  			'2xl': 'var(--shadow-float)',
+  			// La de Wero: sin blur, apoyada.
+  			hard: 'var(--shadow-hard)',
+  			'hard-sm': 'var(--shadow-hard-sm)'
   		},
   		keyframes: {
   			'accordion-down': {

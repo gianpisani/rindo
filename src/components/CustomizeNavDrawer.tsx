@@ -99,7 +99,7 @@ export function CustomizeNavDrawer({ open, onOpenChange }: CustomizeNavDrawerPro
         <div className="px-5 pt-3 pb-1">
           {/* Header */}
           <div className="flex items-center justify-between mb-4">
-            <h3 className="text-base font-semibold">Personalizar</h3>
+            <h3 className="section-title text-base">Personalizar</h3>
             <button
               onClick={handleReset}
               className="flex items-center gap-1.5 text-xs text-muted-foreground active:text-foreground px-2.5 py-1.5 rounded-lg active:bg-muted transition-colors"

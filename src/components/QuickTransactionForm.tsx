@@ -291,7 +291,7 @@ export default function QuickTransactionForm({ onSuccess, defaultType = "Gasto" 
                 <button
                   type="button"
                   onClick={() => setReimbursementCategory(null)}
-                  className="flex items-center gap-1.5 rounded-full border border-emerald-500/30 bg-emerald-500/10 px-3 py-1 text-xs font-medium text-emerald-600 dark:text-emerald-500 hover:bg-emerald-500/15 transition-colors"
+                  className="flex items-center gap-1.5 rounded-sm border border-emerald-500/30 bg-emerald-500/10 px-3 py-1 text-xs font-medium text-emerald-600 dark:text-emerald-500 hover:bg-emerald-500/15 transition-colors"
                 >
                   <Undo2 className="h-3 w-3" />
                   Reembolso de{" "}
@@ -309,7 +309,7 @@ export default function QuickTransactionForm({ onSuccess, defaultType = "Gasto" 
                     value=""
                     onValueChange={(v) => setReimbursementCategory(v)}
                   >
-                    <SelectTrigger className="h-7 w-[160px] rounded-full text-xs">
+                    <SelectTrigger className="h-7 w-[160px] rounded-sm text-xs">
                       <SelectValue placeholder="Sí, de…" />
                     </SelectTrigger>
                     <SelectContent>

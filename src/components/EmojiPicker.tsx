@@ -61,7 +61,7 @@ export function EmojiPicker({ value, onSelect }: EmojiPickerProps) {
           value={search}
           onChange={(e) => setSearch(e.target.value)}
           placeholder="Buscar emoji..."
-          className="h-8 pl-8 rounded-full text-sm"
+          className="h-8 pl-8 rounded-sm text-sm"
         />
       </div>
 

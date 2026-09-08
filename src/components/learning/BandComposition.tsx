@@ -41,7 +41,7 @@ export function BandComposition({
       {/* El gap deja ver el fondo entre segmentos: separa sin agregar tinta. */}
       <div
         className={cn(
-          "flex gap-[2px] w-full overflow-hidden rounded-full",
+          "flex gap-[2px] w-full overflow-hidden rounded-sm",
           size === "sm" ? "h-2" : "h-7"
         )}
       >

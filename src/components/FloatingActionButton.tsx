@@ -26,11 +26,11 @@ export function FloatingActionButton({ onClick, className }: FloatingActionButto
           "h-14 w-14 rounded-full",
           "bg-primary",
           "hover:bg-primary/90",
-          "shadow-[0_8px_30px_rgb(79,70,229,0.5)]",
-          "hover:shadow-[0_12px_40px_rgb(79,70,229,0.6)]",
-          "transition-all duration-300",
-          "active:scale-95",
-          "border-2 border-primary/20 dark:border-white/10"
+          // Apoyado, no flotando: la sombra dura de Wero, del color de la
+          // línea, y el botón se hunde al apretarlo en vez de encogerse.
+          "shadow-hard press",
+          "transition-all duration-200",
+          "border border-border"
         )}
       >
         <Plus className="h-6 w-6 text-primary-foreground drop-shadow-lg" strokeWidth={2.5} />

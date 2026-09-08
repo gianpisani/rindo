@@ -70,7 +70,7 @@ const CustomTooltip = ({ active, payload, label }: TooltipProps<number, string>)
   const ahorro = ingresos - gastos
 
   return (
-    <div className="bg-card/95 backdrop-blur-sm border border-border/50 rounded-xl p-4 shadow-xl min-w-[240px]">
+    <div className="bg-card/95 backdrop-blur-sm border border-border rounded-xl p-4 shadow-xl min-w-[240px]">
       <p className="font-semibold text-sm text-foreground mb-3 pb-2 border-b border-border">{label}</p>
       <div className="space-y-2">
         <div className="flex items-center justify-between gap-4">
@@ -102,7 +102,7 @@ const CustomTooltip = ({ active, payload, label }: TooltipProps<number, string>)
         </div>
 
         {/* Patrimonio acumulado */}
-        <div className="flex items-center justify-between gap-4 pt-2 mt-1 border-t border-border/50">
+        <div className="flex items-center justify-between gap-4 pt-2 mt-1 border-t border-border">
           <div className="flex items-center gap-2">
             <div className="w-3 h-3 rounded-full" style={{ backgroundColor: PATRIMONIO_COLOR }} />
             <span className="text-xs text-muted-foreground">Patrimonio:</span>
@@ -116,7 +116,7 @@ const CustomTooltip = ({ active, payload, label }: TooltipProps<number, string>)
         </div>
 
         {/* Ahorro = Ingresos - Gastos */}
-        <div className="flex items-center justify-between gap-4 pt-2 mt-1 border-t border-border/50">
+        <div className="flex items-center justify-between gap-4 pt-2 mt-1 border-t border-border">
           <div className="flex items-center gap-2">
             <div className="w-3 h-3 rounded-full bg-amber-500" />
             <span className="text-xs text-muted-foreground">Ahorro:</span>
@@ -271,19 +271,19 @@ export function MonthlyEvolutionChart({ data }: MonthlyEvolutionChartProps) {
       {stats && (
         <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-2">
           <div className="bg-success/10 rounded-xl p-3 text-center">
-            <p className="text-[10px] text-success font-semibold uppercase tracking-wider mb-1">Total Ingresos</p>
+            <p className="text-[10px] text-success eyebrow mb-1">Total Ingresos</p>
             <p className="text-sm font-bold font-mono tabular-nums text-success">{formatCurrencyFull(stats.totalIngresos)}</p>
           </div>
           <div className="bg-destructive/10 rounded-xl p-3 text-center">
-            <p className="text-[10px] text-destructive font-semibold uppercase tracking-wider mb-1">Total Gastos</p>
+            <p className="text-[10px] text-destructive eyebrow mb-1">Total Gastos</p>
             <p className="text-sm font-bold font-mono tabular-nums text-destructive">{formatCurrencyFull(stats.totalGastos)}</p>
           </div>
           <div className="bg-sky-500/10 rounded-xl p-3 text-center">
-            <p className="text-[10px] text-sky-500 font-semibold uppercase tracking-wider mb-1">Total Inversión</p>
+            <p className="text-[10px] text-sky-500 eyebrow mb-1">Total Inversión</p>
             <p className="text-sm font-bold font-mono tabular-nums text-sky-500">{formatCurrencyFull(stats.totalInversiones)}</p>
           </div>
           <div className="bg-violet-500/10 rounded-xl p-3 text-center">
-            <p className="text-[10px] text-violet-500 font-semibold uppercase tracking-wider mb-1">Patrimonio</p>
+            <p className="text-[10px] text-violet-500 eyebrow mb-1">Patrimonio</p>
             <p className={cn(
               "text-sm font-bold font-mono tabular-nums",
               stats.patrimonio >= 0 ? "text-violet-500" : "text-destructive"
@@ -293,7 +293,7 @@ export function MonthlyEvolutionChart({ data }: MonthlyEvolutionChartProps) {
           </div>
           <div className="col-span-2 sm:col-span-1 bg-amber-500/10 rounded-xl p-3 text-center">
             <p className={cn(
-              "text-[10px] font-semibold uppercase tracking-wider mb-1",
+              "text-[10px] eyebrow mb-1",
               stats.tasaAhorro >= 35 ? "text-success" : stats.tasaAhorro >= 10 ? "text-amber-500" : "text-destructive"
             )}>Tasa Ahorro</p>
             <p className={cn(

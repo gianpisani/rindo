@@ -83,7 +83,7 @@ export function SessionCompleteCard({
             <img
               src={session.content_thumbnail}
               alt=""
-              className="h-14 w-24 rounded-lg object-cover border border-border/50 shrink-0"
+              className="h-14 w-24 rounded-lg object-cover border border-border shrink-0"
             />
           )}
           <div className="min-w-0">
@@ -107,7 +107,7 @@ export function SessionCompleteCard({
             </p>
             <p className="text-[11px] text-muted-foreground mt-1.5">comprensión</p>
           </div>
-          <div className="rounded-2xl border border-border/60 bg-card p-4 text-center">
+          <div className="rounded-2xl border border-border bg-card p-4 text-center">
             <p className="text-3xl font-bold tabular-nums leading-none">{newCount}</p>
             <p className="text-[11px] text-muted-foreground mt-1.5">
               {newCount === 1 ? "expresión nueva" : "expresiones nuevas"}
@@ -117,7 +117,7 @@ export function SessionCompleteCard({
 
         {/* Explicarlo con tus palabras: opcional, y por eso está acá y no
             en el check de salida. */}
-        <div className="rounded-2xl border border-border/60 bg-card p-4">
+        <div className="rounded-2xl border border-border bg-card p-4">
           <MainIdeaField
             sessionId={session.id}
             value={session.main_idea_text}
@@ -126,7 +126,7 @@ export function SessionCompleteCard({
         </div>
 
         {/* Contexto de la sesión */}
-        <div className="rounded-2xl border border-border/60 bg-muted/20 p-4">
+        <div className="rounded-2xl border border-border bg-muted/20 p-4">
           <div className="grid grid-cols-3 gap-3">
             <Stat value={formatDuration(session.effective_seconds)} label="estudiando" />
             <Stat
@@ -144,7 +144,7 @@ export function SessionCompleteCard({
           </div>
 
           {(metrics.studyMultiplier || metrics.focusRatio) && (
-            <div className="grid grid-cols-2 gap-3 mt-4 pt-4 border-t border-border/50">
+            <div className="grid grid-cols-2 gap-3 mt-4 pt-4 border-t border-border">
               <Stat
                 value={
                   metrics.studyMultiplier
@@ -169,7 +169,7 @@ export function SessionCompleteCard({
           <div className="flex justify-center">
             <span
               className={cn(
-                "px-3 py-1.5 rounded-full text-xs font-medium border",
+                "px-3 py-1.5 rounded-sm text-xs font-medium border",
                 difficulty.border,
                 difficulty.bg
               )}
@@ -185,7 +185,7 @@ export function SessionCompleteCard({
             "rounded-2xl border p-4 flex items-center gap-3",
             goalMet
               ? "border-emerald-500/25 bg-emerald-500/5"
-              : "border-border/60 bg-card"
+              : "border-border bg-card"
           )}
         >
           {goalMet ? (

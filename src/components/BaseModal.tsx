@@ -100,7 +100,7 @@ export function BaseModal({
           styles.header
         )}>
           <DialogTitle className={cn(
-            "text-2xl text-center font-bold",
+            "page-title text-2xl text-center",
             styles.accent
           )}>
             {title}
@@ -128,7 +128,7 @@ export function BaseModal({
         </div>
 
         {footer && (
-          <div className="flex-shrink-0 px-6 pb-6 pt-4 border-t border-border/50">
+          <div className="flex-shrink-0 px-6 pb-6 pt-4 border-t border-border">
             {footer}
           </div>
         )}

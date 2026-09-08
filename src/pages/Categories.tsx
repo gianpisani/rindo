@@ -7,6 +7,7 @@ import { Input } from "@/components/ui/input";
 import { Dialog, DialogTrigger } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Screen, Row, Panel } from "@/components/HairlineGrid";
 import { Plus, Pencil, Trash2, TrendingUp, TrendingDown, PiggyBank, ArrowLeftRight } from "lucide-react";
 import { useCategories } from "@/hooks/useCategories";
 import { cn } from "@/lib/utils";
@@ -16,7 +17,7 @@ const typeConfig = {
   Ingreso: { icon: TrendingUp, label: "Ingresos", color: "text-success", bg: "bg-success/10" },
   Gasto: { icon: TrendingDown, label: "Gastos", color: "text-destructive", bg: "bg-destructive/10" },
   Inversión: { icon: PiggyBank, label: "Inversiones", color: "text-info", bg: "bg-info/10" },
-  Reembolso: { icon: ArrowLeftRight, label: "Reembolsos", color: "text-amber-500", bg: "bg-amber-500/10" },
+  Reembolso: { icon: ArrowLeftRight, label: "Reembolsos", color: "text-warning", bg: "bg-warning/10" },
 };
 
 const defaultColors = [
@@ -91,182 +92,212 @@ export default function Categories() {
   };
 
   return (
-    <Layout>
-      <div className="space-y-8">
-        {/* Header */}
-        <div className="flex items-center justify-between">
-          <div>
-            <h1 className="text-2xl font-bold tracking-tight mb-1">Categorías</h1>
-            <p className="text-sm text-muted-foreground">
-              Gestiona tus categorías de transacciones
+    <Layout bleed>
+      {/* Mismo chasis que Inicio: identidad como franja y la taxonomía
+          como la fila que cede. Los cuatro tipos son cuatro columnas
+          separadas por la línea, no cuatro secciones apiladas con aire
+          entre ellas. */}
+      <Screen>
+        {/* ── Fila 1 — identidad y la única acción de página ─────── */}
+        <Panel className="flex flex-wrap items-center gap-x-3 gap-y-2 px-4 py-3 md:px-5 lg:shrink-0">
+          <div className="min-w-0">
+            <h1 className="page-title text-xl md:text-2xl">Categorías</h1>
+            <p className="eyebrow mt-1">
+              {categories.length}{" "}
+              {categories.length === 1 ? "categoría" : "categorías"}
             </p>
           </div>
-          <Dialog
-            open={isDialogOpen}
-            onOpenChange={(open) => {
-              setIsDialogOpen(open);
-              if (!open) { setEditingCategory(null); resetForm(); }
-            }}
-          >
-            <DialogTrigger asChild>
-              <Button className="rounded-full h-10 w-10 p-0 md:w-auto md:px-5 md:h-10">
-                <Plus className="h-4 w-4 md:mr-2" />
-                <span className="hidden md:inline text-sm">Agregar</span>
-              </Button>
-            </DialogTrigger>
-          </Dialog>
+          <div className="ml-auto flex items-center gap-2">
+            <Dialog
+              open={isDialogOpen}
+              onOpenChange={(open) => {
+                setIsDialogOpen(open);
+                if (!open) { setEditingCategory(null); resetForm(); }
+              }}
+            >
+              <DialogTrigger asChild>
+                <Button size="sm" className="gap-2">
+                  <Plus className="h-4 w-4" />
+                  <span className="hidden sm:inline">Agregar</span>
+                </Button>
+              </DialogTrigger>
+            </Dialog>
 
-          <BaseModal
-            open={isDialogOpen}
-            onOpenChange={(open) => {
-              setIsDialogOpen(open);
-              if (!open) { setEditingCategory(null); resetForm(); }
-            }}
-            title={editingCategory ? "Editar categoría" : "Nueva categoría"}
-            maxWidth="sm"
-            footer={
-              <Button
-                type="submit"
-                form="category-form"
-                size="cta"
-                disabled={addCategory.isPending || updateCategory.isPending}
-              >
-                {editingCategory ? "Guardar" : "Crear"}
-              </Button>
-            }
-          >
-            <form id="category-form" onSubmit={handleSubmit} className="space-y-5">
-              {/* Preview */}
-              <div className="flex justify-center">
-                <div
-                  className="inline-flex items-center gap-2 px-4 py-2 rounded-full text-sm font-medium"
-                  style={{ backgroundColor: formData.color + "22", color: formData.color }}
+            <BaseModal
+              open={isDialogOpen}
+              onOpenChange={(open) => {
+                setIsDialogOpen(open);
+                if (!open) { setEditingCategory(null); resetForm(); }
+              }}
+              title={editingCategory ? "Editar categoría" : "Nueva categoría"}
+              maxWidth="sm"
+              footer={
+                <Button
+                  type="submit"
+                  form="category-form"
+                  size="cta"
+                  disabled={addCategory.isPending || updateCategory.isPending}
                 >
-                  <span>{formData.icon}</span>
-                  <span>{formData.name || "Nombre"}</span>
-                </div>
-              </div>
-
-              <div className="space-y-1.5">
-                <Label className="text-sm font-medium">Nombre</Label>
-                <Input
-                  placeholder="ej. Supermercado"
-                  value={formData.name}
-                  onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                  className="h-11 rounded-full px-5"
-                  required
-                  autoFocus
-                />
-              </div>
-
-              <div className="space-y-1.5">
-                <Label className="text-sm font-medium">Tipo</Label>
-                <Select
-                  value={formData.type}
-                  onValueChange={(v: any) => setFormData({ ...formData, type: v })}
-                >
-                  <SelectTrigger className="h-11 rounded-full px-5">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="Ingreso">Ingreso</SelectItem>
-                    <SelectItem value="Gasto">Gasto</SelectItem>
-                    <SelectItem value="Inversión">Inversión</SelectItem>
-                    <SelectItem value="Reembolso">Reembolso</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-
-              {/* Emoji picker */}
-              <div className="space-y-2">
-                <Label className="text-sm font-medium">Emoji</Label>
-                <EmojiPicker
-                  value={formData.icon ?? ""}
-                  onSelect={(emoji) => setFormData({ ...formData, icon: emoji })}
-                />
-              </div>
-
-              {/* Color picker */}
-              <div className="space-y-2">
-                <Label className="text-sm font-medium">Color</Label>
-                <div className="grid grid-cols-8 gap-2">
-                  {defaultColors.map((color) => (
-                    <button
-                      key={color}
-                      type="button"
-                      className={cn(
-                        "h-8 w-8 rounded-full border-2 transition-all duration-150",
-                        formData.color === color
-                          ? "border-foreground scale-110 shadow-md"
-                          : "border-transparent hover:scale-105"
-                      )}
-                      style={{ backgroundColor: color }}
-                      onClick={() => setFormData({ ...formData, color })}
+                  {editingCategory ? "Guardar" : "Crear"}
+                </Button>
+              }
+            >
+              <form id="category-form" onSubmit={handleSubmit} className="space-y-5">
+                {/* Preview: la misma forma que tendrá en la lista — regla
+                    de color a la izquierda, no relleno teñido. */}
+                <div className="flex justify-center">
+                  <div className="inline-flex items-stretch border border-border">
+                    <span
+                      className="w-[3px] shrink-0"
+                      style={{ backgroundColor: formData.color }}
+                      aria-hidden
                     />
-                  ))}
-                </div>
-                <input
-                  type="color"
-                  value={formData.color}
-                  onChange={(e) => setFormData({ ...formData, color: e.target.value })}
-                  className="h-9 w-full rounded-lg cursor-pointer border border-border bg-transparent px-1"
-                />
-              </div>
-            </form>
-          </BaseModal>
-        </div>
-
-        {/* Sections */}
-        {(Object.entries(grouped) as [keyof typeof typeConfig, Category[]][]).map(([type, cats]) => {
-          const { icon: Icon, label, color } = typeConfig[type];
-          return (
-            <div key={type}>
-              <div className="flex items-center gap-2 mb-3">
-                <Icon className={cn("h-4 w-4", color)} />
-                <span className="text-sm font-semibold">{label}</span>
-                <span className="text-xs text-muted-foreground tabular-nums">({cats.length})</span>
-              </div>
-
-              {cats.length === 0 ? (
-                <div className="rounded-2xl border border-dashed border-border/60 py-8 text-center text-sm text-muted-foreground">
-                  Sin categorías de tipo {type.toLowerCase()}
-                </div>
-              ) : (
-                <div className="flex flex-wrap gap-2">
-                  {cats.map((cat) => (
-                    <div
-                      key={cat.id}
-                      className="group relative inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-sm font-medium transition-all"
-                      style={{
-                        backgroundColor: (cat.color || "#888") + "22",
-                        color: cat.color || "#888",
-                      }}
-                    >
-                      <span className="text-base leading-none">{cat.icon || "🏷️"}</span>
-                      <span>{cat.name}</span>
-                      {/* Hover actions */}
-                      <div className="absolute inset-0 rounded-full flex items-center justify-end pr-1.5 gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity bg-background/80 backdrop-blur-sm">
-                        <button
-                          className="h-6 w-6 rounded-full flex items-center justify-center hover:bg-muted transition-colors"
-                          onClick={() => handleEdit(cat)}
-                        >
-                          <Pencil className="h-3 w-3 text-muted-foreground" />
-                        </button>
-                        <button
-                          className="h-6 w-6 rounded-full flex items-center justify-center hover:bg-destructive/10 transition-colors"
-                          onClick={() => handleDelete(cat.id)}
-                        >
-                          <Trash2 className="h-3 w-3 text-destructive" />
-                        </button>
-                      </div>
+                    <div className="flex items-center gap-2 px-3 py-2 text-sm font-medium">
+                      <span>{formData.icon}</span>
+                      <span>{formData.name || "Nombre"}</span>
                     </div>
-                  ))}
+                  </div>
                 </div>
-              )}
-            </div>
-          );
-        })}
-      </div>
+
+                <div className="space-y-1.5">
+                  <Label className="text-sm font-medium">Nombre</Label>
+                  <Input
+                    placeholder="ej. Supermercado"
+                    value={formData.name}
+                    onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                    className="h-11 rounded-sm px-5"
+                    required
+                    autoFocus
+                  />
+                </div>
+
+                <div className="space-y-1.5">
+                  <Label className="text-sm font-medium">Tipo</Label>
+                  <Select
+                    value={formData.type}
+                    onValueChange={(v: any) => setFormData({ ...formData, type: v })}
+                  >
+                    <SelectTrigger className="h-11 rounded-sm px-5">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="Ingreso">Ingreso</SelectItem>
+                      <SelectItem value="Gasto">Gasto</SelectItem>
+                      <SelectItem value="Inversión">Inversión</SelectItem>
+                      <SelectItem value="Reembolso">Reembolso</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                {/* Emoji picker */}
+                <div className="space-y-2">
+                  <Label className="text-sm font-medium">Emoji</Label>
+                  <EmojiPicker
+                    value={formData.icon ?? ""}
+                    onSelect={(emoji) => setFormData({ ...formData, icon: emoji })}
+                  />
+                </div>
+
+                {/* Color picker. Los puntos siguen redondos —  son puntos
+                    de color de verdad — pero el elegido se marca con el
+                    borde, no con un halo. */}
+                <div className="space-y-2">
+                  <Label className="text-sm font-medium">Color</Label>
+                  <div className="grid grid-cols-8 gap-2">
+                    {defaultColors.map((color) => (
+                      <button
+                        key={color}
+                        type="button"
+                        className={cn(
+                          "h-8 w-8 rounded-full border-2 transition-all duration-150",
+                          formData.color === color
+                            ? "border-foreground scale-110"
+                            : "border-transparent hover:scale-105"
+                        )}
+                        style={{ backgroundColor: color }}
+                        onClick={() => setFormData({ ...formData, color })}
+                      />
+                    ))}
+                  </div>
+                  <input
+                    type="color"
+                    value={formData.color}
+                    onChange={(e) => setFormData({ ...formData, color: e.target.value })}
+                    className="h-9 w-full rounded-sm cursor-pointer border border-border bg-transparent px-1"
+                  />
+                </div>
+              </form>
+            </BaseModal>
+          </div>
+        </Panel>
+
+        {/* ── Fila 2 — los cuatro tipos. Esta es la que cede: cada
+            columna scrollea por dentro, así llena cualquier alto. ── */}
+        <Row className="lg:min-h-0 lg:flex-1 sm:grid-cols-2 lg:grid-cols-4">
+          {(Object.entries(grouped) as [keyof typeof typeConfig, Category[]][]).map(([type, cats]) => {
+            const { icon: Icon, label, color } = typeConfig[type];
+            return (
+              <Panel key={type} className="flex flex-col">
+                <div className="flex shrink-0 items-center gap-2 border-b border-border px-3 py-2.5 md:px-4">
+                  <Icon className={cn("h-3.5 w-3.5 shrink-0", color)} />
+                  <h2 className="section-title truncate text-xs">{label}</h2>
+                  <span className="ml-auto font-mono text-[10px] tabular-nums text-muted-foreground">
+                    {cats.length}
+                  </span>
+                </div>
+
+                {cats.length === 0 ? (
+                  <p className="px-3 py-8 text-center text-xs text-muted-foreground md:px-4">
+                    Sin categorías de {label.toLowerCase()}
+                  </p>
+                ) : (
+                  <div className="overflow-y-auto lg:min-h-0 lg:flex-1">
+                    {cats.map((cat) => (
+                      <div
+                        key={cat.id}
+                        className="group relative flex items-stretch border-b border-border transition-colors last:border-b-0 hover:bg-muted"
+                      >
+                        {/* El color de la categoría, como regla de 3px */}
+                        <span
+                          className="w-[3px] shrink-0"
+                          style={{ backgroundColor: cat.color || "var(--muted-foreground)" }}
+                          aria-hidden
+                        />
+                        <div className="flex min-w-0 flex-1 items-center gap-2 px-2.5 py-2 md:px-3">
+                          <span className="w-4 shrink-0 text-center text-[13px] leading-none">
+                            {cat.icon || "🏷️"}
+                          </span>
+                          <span className="min-w-0 flex-1 truncate text-xs font-medium">
+                            {cat.name}
+                          </span>
+                        </div>
+                        {/* Las acciones aparecen sobre la fila, sin vidrio:
+                            el fondo es el mismo del hover. */}
+                        <div className="absolute inset-y-0 right-0 flex items-center gap-0.5 bg-muted pl-5 pr-2 opacity-0 transition-opacity focus-within:opacity-100 group-hover:opacity-100">
+                          <button
+                            className="flex size-6 items-center justify-center rounded-full transition-colors hover:bg-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                            onClick={() => handleEdit(cat)}
+                            aria-label={`Editar ${cat.name}`}
+                          >
+                            <Pencil className="h-3 w-3 text-muted-foreground" />
+                          </button>
+                          <button
+                            className="flex size-6 items-center justify-center rounded-full transition-colors hover:bg-destructive/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                            onClick={() => handleDelete(cat.id)}
+                            aria-label={`Eliminar ${cat.name}`}
+                          >
+                            <Trash2 className="h-3 w-3 text-destructive" />
+                          </button>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </Panel>
+            );
+          })}
+        </Row>
+      </Screen>
 
       <ConfirmDialog
         open={confirmDelete.open}

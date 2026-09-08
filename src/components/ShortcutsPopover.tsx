@@ -98,7 +98,7 @@ export function ShortcutsPopover({ isVisible, onClose }: ShortcutsPopoverProps) 
             <div className="p-1.5 rounded-lg bg-primary/10">
               <Command className="h-4 w-4" />
             </div>
-            <h3 className="font-bold text-sm">Atajos del teclado</h3>
+            <h3 className="section-title text-sm">Atajos del teclado</h3>
           </div>
         </div>
 

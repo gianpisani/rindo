@@ -82,7 +82,7 @@ export function LearningQueue({
           onClick={startAdding}
           variant="ghost"
           size="sm"
-          className="rounded-xl h-7 px-2 text-muted-foreground shrink-0"
+          className="h-7 shrink-0 px-2 text-muted-foreground"
         >
           <Plus className="h-3.5 w-3.5" />
         </Button>
@@ -163,8 +163,7 @@ function QueueCard({
   return (
     <article
       className={cn(
-        "group relative overflow-hidden rounded-xl border border-border/60 bg-background/40",
-        "transition-colors hover:border-border"
+        "group relative overflow-hidden border border-border bg-card"
       )}
     >
       <ContentCover
@@ -181,8 +180,8 @@ function QueueCard({
         onClick={onRemove}
         aria-label="Sacar de la lista"
         className={cn(
-          "absolute right-1.5 top-1.5 flex size-7 items-center justify-center rounded-lg",
-          "bg-background/80 text-muted-foreground backdrop-blur-sm",
+          "absolute right-1.5 top-1.5 flex size-7 items-center justify-center",
+          "border border-border bg-card text-muted-foreground",
           "opacity-0 transition-opacity hover:text-destructive",
           "group-hover:opacity-100 focus-visible:opacity-100"
         )}
@@ -203,7 +202,7 @@ function QueueCard({
           {videoId &&
             (transcriptReady ? (
               <span
-                className="flex items-center gap-1 rounded-md bg-emerald-500/10 px-1.5 py-0.5 text-[11px] font-medium text-emerald-500"
+                className="flex items-center gap-1 rounded-sm border border-success px-1.5 py-0.5 text-[11px] font-medium text-success"
                 title="Los subtítulos ya están guardados"
               >
                 <CheckCircle2 className="h-3 w-3" />
@@ -214,8 +213,8 @@ function QueueCard({
                 onClick={onPrefetchTranscript}
                 title="Traerlos ahora, para no hacerlo al empezar"
                 className={cn(
-                  "flex items-center gap-1 rounded-md px-1.5 py-0.5 text-[11px] font-medium",
-                  "bg-muted text-muted-foreground transition-colors hover:text-primary"
+                  "flex items-center gap-1 rounded-sm border border-border px-1.5 py-0.5 text-[11px] font-medium",
+                  "text-muted-foreground transition-colors hover:border-primary hover:text-primary"
                 )}
               >
                 <Captions className="h-3 w-3" />
@@ -231,7 +230,7 @@ function QueueCard({
               target="_blank"
               rel="noreferrer"
               title="Abrir en YouTube"
-              className="ml-auto flex items-center gap-1 rounded-md px-1.5 py-0.5 text-[11px] text-muted-foreground transition-colors hover:text-foreground"
+              className="ml-auto flex items-center gap-1 rounded-sm px-1.5 py-0.5 text-[11px] text-muted-foreground transition-colors hover:text-foreground"
             >
               <ExternalLink className="h-3 w-3" />
               abrir

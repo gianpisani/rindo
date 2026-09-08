@@ -34,30 +34,29 @@ export function ShelfSection({
   children,
 }: ShelfSectionProps) {
   return (
-    <Collapsible
-      open={open}
-      onOpenChange={onOpenChange}
-      className="rounded-2xl border border-border/60 bg-card"
-    >
-      <div className="flex items-center justify-between gap-2 px-5 py-4">
+    /* Ya no es una tarjeta con borde propio: es una celda de la grilla, y
+       la línea que la separa de la de arriba la pone el gap del Row. */
+    <Collapsible open={open} onOpenChange={onOpenChange} className="bg-card">
+      <div className="flex items-center justify-between gap-2 px-4 py-2.5 md:px-5">
         <CollapsibleTrigger
           className={cn(
             "group flex min-w-0 flex-1 items-center gap-2 text-left",
-            "transition-colors hover:text-foreground"
+            "transition-colors hover:text-foreground focus-visible:outline-none",
+            "focus-visible:ring-2 focus-visible:ring-ring"
           )}
         >
           {icon}
-          <span className="truncate text-xs font-medium uppercase tracking-wide text-muted-foreground">
-            {title}
-          </span>
+          <span className="section-title truncate text-xs">{title}</span>
 
+          {/* Cerrada, la cuenta es un bloque de acento: es la única pista
+              de que ahí adentro hay algo. Abierta, ya se ve. */}
           <span
             className={cn(
-              "inline-flex h-5 min-w-5 shrink-0 items-center justify-center rounded-full px-1.5",
-              "text-[11px] font-bold tabular-nums transition-colors",
+              "inline-flex h-4 min-w-4 shrink-0 items-center justify-center px-1",
+              "font-mono text-[10px] font-bold tabular-nums transition-colors",
               open
-                ? "bg-muted text-muted-foreground"
-                : "bg-primary/10 text-primary"
+                ? "text-muted-foreground"
+                : "bg-primary text-primary-foreground"
             )}
           >
             {count}
@@ -65,7 +64,7 @@ export function ShelfSection({
 
           <ChevronDown
             className={cn(
-              "h-4 w-4 shrink-0 text-muted-foreground transition-transform duration-200",
+              "h-3.5 w-3.5 shrink-0 text-muted-foreground transition-transform duration-200",
               !open && "-rotate-90"
             )}
           />
@@ -80,7 +79,7 @@ export function ShelfSection({
           "data-[state=open]:animate-collapsible-down data-[state=closed]:animate-collapsible-up"
         )}
       >
-        <div className="px-5 pb-5">{children}</div>
+        <div className="px-4 pb-4 md:px-5 md:pb-5">{children}</div>
       </CollapsibleContent>
     </Collapsible>
   );

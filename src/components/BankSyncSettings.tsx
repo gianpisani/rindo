@@ -101,7 +101,7 @@ function CredentialRow({
   return (
     <div
       className={`flex flex-col gap-3 p-4 rounded-xl border bg-card transition-opacity ${
-        cred.is_active ? "border-border/50" : "border-border/50 opacity-70"
+        cred.is_active ? "border-border" : "border-border opacity-70"
       }`}
     >
       {/* Top row: logo + name + settings gear */}
@@ -217,7 +217,7 @@ export function BankSyncSettings({ onAddBank }: BankSyncSettingsProps) {
       </div>
 
       {!credentials || credentials.length === 0 ? (
-        <div className="flex flex-col items-center justify-center py-8 text-center space-y-2 rounded-xl border border-dashed border-border/50">
+        <div className="flex flex-col items-center justify-center py-8 text-center space-y-2 rounded-xl border border-dashed border-border">
           <Settings2 className="h-8 w-8 text-muted-foreground/40" />
           <p className="text-sm text-muted-foreground">
             No hay bancos configurados para auto-sync.

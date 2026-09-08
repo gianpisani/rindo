@@ -162,7 +162,7 @@ export function ReflectionDialog({
                   <span
                     key={q.key}
                     className={cn(
-                      "h-1.5 rounded-full transition-all",
+                      "h-1.5 rounded-sm transition-all",
                       answers[q.key] !== undefined
                         ? "w-6 bg-primary"
                         : "w-6 bg-border"
@@ -239,7 +239,7 @@ function FaceQuestion({
                 "transition-all duration-150 active:scale-95",
                 isSelected
                   ? "border-primary bg-primary/10 scale-[1.06] shadow-sm"
-                  : "border-border/60 hover:border-border hover:bg-muted/40"
+                  : "border-border hover:border-border hover:bg-muted/40"
               )}
             >
               <span

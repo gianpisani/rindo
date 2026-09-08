@@ -53,7 +53,7 @@ function CreateCategoryAction({
       type="button"
       onClick={() => onCreate(name)}
       className={cn(
-        "flex w-full items-center gap-2.5 border-border/60 text-left text-primary transition-colors hover:bg-muted/60",
+        "flex w-full items-center gap-2.5 border-border text-left text-primary transition-colors hover:bg-muted/60",
         // En mobile va bajo el buscador (la lista no tiene scroll propio);
         // en desktop cierra el popover, bajo la lista.
         size === "lg" ? "mt-1 gap-3 rounded-xl px-3 py-3 text-base" : "border-t px-3 py-2.5 text-sm"
@@ -134,7 +134,7 @@ export function CategorySelect({
         </button>
       </PopoverTrigger>
       <PopoverContent
-        className="w-[var(--radix-popover-trigger-width)] min-w-[220px] rounded-xl border-border/60 p-0 shadow-lg shadow-black/10 dark:shadow-black/30"
+        className="w-[var(--radix-popover-trigger-width)] min-w-[220px] rounded-xl border-border p-0 shadow-lg shadow-black/10 dark:shadow-black/30"
         align="start"
         sideOffset={4}
       >

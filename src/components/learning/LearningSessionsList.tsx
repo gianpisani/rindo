@@ -5,7 +5,7 @@ import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { BaseModal } from "@/components/BaseModal";
 import ConfirmDialog from "@/components/ConfirmDialog";
-import { ExternalLink, Trash2 } from "lucide-react";
+import { ExternalLink, History, Trash2 } from "lucide-react";
 import {
   CONTENT_TYPE_CONFIG,
   DIFFICULTY_CONFIG,
@@ -20,6 +20,7 @@ import {
 import type { SessionWithItemCount } from "@/hooks/useLearningSessions";
 import { useSessionItems } from "@/hooks/useLearningItems";
 import { MainIdeaField } from "./MainIdeaField";
+import { Panel } from "@/components/HairlineGrid";
 
 interface LearningSessionsListProps {
   sessions: SessionWithItemCount[];
@@ -38,17 +39,23 @@ export function LearningSessionsList({
 
   if (sessions.length === 0) {
     return (
-      <div className="rounded-2xl border border-dashed border-border/60 p-10 text-center">
-        <p className="text-sm text-muted-foreground">
-          Las sesiones que termines aparecen acá.
+      <Panel className="flex flex-col items-center justify-center gap-2 px-4 py-12 text-center">
+        <div className="flex size-14 items-center justify-center border border-border">
+          <History className="h-6 w-6 text-muted-foreground/50" />
+        </div>
+        <p className="section-title text-sm">Sin sesiones todavía</p>
+        <p className="text-xs text-muted-foreground">
+          Las que termines aparecen acá.
         </p>
-      </div>
+      </Panel>
     );
   }
 
   return (
     <>
-      <div className="space-y-2">
+      {/* Un panel con filas, no una pila de tarjetas separadas por aire:
+         lo único que separa dos sesiones es 1px de línea. */}
+      <Panel>
         {sessions.map((s) => {
           const score = comprehensionScore(s);
           const difficulty = s.difficulty ? DIFFICULTY_CONFIG[s.difficulty] : null;
@@ -59,8 +66,9 @@ export function LearningSessionsList({
               key={s.id}
               onClick={() => onSelect(s)}
               className={cn(
-                "w-full flex items-center gap-3 rounded-2xl border border-border/60 bg-card p-3",
-                "transition-all hover:border-primary/20 hover:shadow-sm text-left"
+                "flex w-full items-center gap-3 border-b border-border px-4 py-2.5 text-left md:px-5",
+                "transition-colors last:border-b-0 hover:bg-muted",
+                "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring"
               )}
             >
               <div className="relative h-14 w-24 shrink-0">
@@ -68,20 +76,20 @@ export function LearningSessionsList({
                   <img
                     src={s.content_thumbnail}
                     alt=""
-                    className="h-full w-full rounded-xl object-cover border border-border/50"
+                    className="h-full w-full border border-border object-cover"
                   />
                 ) : (
-                  <div className="h-full w-full rounded-xl bg-muted flex items-center justify-center text-xl">
+                  <div className="flex h-full w-full items-center justify-center border border-border bg-muted text-xl">
                     {CONTENT_TYPE_CONFIG[s.content_type]?.emoji ?? "✨"}
                   </div>
                 )}
 
                 {progress.ratio !== null && (
-                  <div className="absolute inset-x-1 bottom-1 h-1 rounded-full bg-black/50 overflow-hidden">
+                  <div className="absolute inset-x-1 bottom-1 h-1 rounded-sm bg-black/50 overflow-hidden">
                     <div
                       className={cn(
-                        "h-full rounded-full",
-                        progress.isComplete ? "bg-emerald-500" : "bg-primary"
+                        "h-full rounded-sm",
+                        progress.isComplete ? "bg-success" : "bg-primary"
                       )}
                       style={{ width: `${Math.max(progress.percent ?? 0, 3)}%` }}
                     />
@@ -105,7 +113,7 @@ export function LearningSessionsList({
                   <p className="text-[11px] tabular-nums mt-0.5">
                     <span
                       className={cn(
-                        progress.isComplete ? "text-emerald-500" : "text-primary"
+                        progress.isComplete ? "text-success" : "text-primary"
                       )}
                     >
                       {progress.label}
@@ -136,7 +144,7 @@ export function LearningSessionsList({
             </button>
           );
         })}
-      </div>
+      </Panel>
 
       {/* Detalle */}
       {selected && (
@@ -207,12 +215,12 @@ function SessionDetailModal({
           <img
             src={session.content_thumbnail}
             alt=""
-            className="w-full aspect-video object-cover rounded-xl border border-border/50"
+            className="aspect-video w-full border border-border object-cover"
           />
         )}
 
         {/* Métricas */}
-        <div className="rounded-2xl border border-border/60 bg-muted/20 p-4 space-y-4">
+        <div className="border border-border p-4 space-y-4">
           <div className="grid grid-cols-3 gap-3">
             <DetailStat
               value={`${metrics.comprehension ?? "—"}/${MAX_COMPREHENSION}`}
@@ -228,7 +236,7 @@ function SessionDetailModal({
             />
           </div>
 
-          <div className="grid grid-cols-3 gap-3 pt-4 border-t border-border/50">
+          <div className="grid grid-cols-3 gap-3 pt-4 border-t border-border">
             <DetailStat
               value={
                 session.content_duration_seconds
@@ -259,7 +267,7 @@ function SessionDetailModal({
             <span
               title="Inferida del puntaje de comprensión, no se pregunta"
               className={cn(
-                "px-3 py-1.5 rounded-full text-xs font-medium border",
+                "px-3 py-1.5 rounded-sm text-xs font-medium border",
                 difficulty.border,
                 difficulty.bg
               )}
@@ -279,14 +287,16 @@ function SessionDetailModal({
         {/* Expresiones */}
         {captured.length > 0 && (
           <div className="space-y-2">
-            <p className="text-xs text-muted-foreground uppercase tracking-wide font-medium">
+            <p className="eyebrow">
               Lo que capturaste
             </p>
-            <div className="space-y-1.5">
+            {/* Lista con líneas: el borde de cada fila es el separador,
+               así que no lleva espacio entre filas. */}
+            <div className="border border-border">
               {captured.map((item) => (
                 <div
                   key={item.sighting_id}
-                  className="rounded-xl border border-border/50 bg-muted/20 px-3 py-2"
+                  className="border-b border-border px-3 py-2 last:border-b-0"
                 >
                   <div className="flex items-baseline justify-between gap-2">
                     <span className="text-sm font-medium">{item.expression}</span>
@@ -319,7 +329,7 @@ function SessionDetailModal({
 
         <div className="flex items-center gap-2 pt-1">
           {session.content_url && (
-            <Button variant="outline" size="sm" asChild className="rounded-xl">
+            <Button variant="outline" size="sm" asChild>
               <a href={session.content_url} target="_blank" rel="noreferrer">
                 <ExternalLink className="h-3.5 w-3.5 mr-1.5" />
                 Abrir contenido
@@ -331,7 +341,7 @@ function SessionDetailModal({
             variant="ghost"
             size="sm"
             onClick={onRequestDelete}
-            className="rounded-xl text-muted-foreground hover:text-destructive"
+            className="text-muted-foreground hover:text-destructive"
           >
             <Trash2 className="h-3.5 w-3.5 mr-1.5" />
             Eliminar

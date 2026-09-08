@@ -36,6 +36,7 @@ import Papa from "papaparse";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { categorizeTransaction, debounce } from "@/lib/categorizer";
+import { Screen, Panel } from "@/components/HairlineGrid";
 import { cn } from "@/lib/utils";
 import { CategorySelect, CategoryPickerInline } from "@/components/CategorySelect";
 import { CategoryCreateInline, CATEGORY_FORM_ID } from "@/components/CategoryCreateInline";
@@ -601,994 +602,1010 @@ export default function Transactions() {
 
 
   return (
-    <Layout>
-      <div className="space-y-6">
-        <div className="flex items-center justify-between">
-          <div>
-            <h1 className="text-2xl font-bold tracking-tight mb-1">Transacciones</h1>
-            <p className="text-sm text-muted-foreground">
-              Gestiona todas tus transacciones
-            </p>
-          </div>
-          <Dialog open={isDialogOpen} onOpenChange={(open) => {
-            setIsDialogOpen(open);
-            if (!open) {
-              setEditingTransaction(null);
-              resetForm();
-            }
-          }}>
-            <DialogTrigger asChild>
-              <Button className="rounded-full h-12 w-12 p-0 md:w-auto md:px-6">
-                <Plus className="h-5 w-5 md:mr-2" />
-                <span className="hidden md:inline">Agregar</span>
-              </Button>
-            </DialogTrigger>
-          </Dialog>
+    <Layout bleed>
+      {/* Mismo chasis que Inicio: alto exacto del viewport menos el header,
+          identidad y filtros como franjas, y la tabla como la fila que cede.
+          Acá las tres filas son de un panel a lo ancho, así que el Panel va
+          directo como hijo de Screen y no hace falta envolverlo en un Row. */}
+      <Screen className="lg:min-h-[560px]">
+          {/* ── Fila 1 — identidad y acciones de página ───────────── */}
+          <Panel className="flex flex-wrap items-center gap-x-3 gap-y-2 px-4 py-3 md:px-5 lg:shrink-0">
+            <div className="min-w-0">
+              <h1 className="page-title text-xl md:text-2xl">Transacciones</h1>
+              <p className="eyebrow mt-1">
+                {transactions.length}{" "}
+                {transactions.length === 1 ? "movimiento" : "movimientos"}
+              </p>
+            </div>
+            <div className="ml-auto flex flex-wrap items-center justify-end gap-2">
+              <Dialog open={isDialogOpen} onOpenChange={(open) => {
+                setIsDialogOpen(open);
+                if (!open) {
+                  setEditingTransaction(null);
+                  resetForm();
+                }
+              }}>
+                <DialogTrigger asChild>
+                  <Button size="sm" className="gap-2">
+                    <Plus className="h-4 w-4" />
+                    <span className="hidden sm:inline">Agregar</span>
+                  </Button>
+                </DialogTrigger>
+              </Dialog>
 
-          <BaseModal
-            open={isDialogOpen}
-            onOpenChange={(open) => {
-              setIsDialogOpen(open);
-              if (!open) {
-                setEditingTransaction(null);
-                resetForm();
-                setSuggestion(null);
-                setIsCategoryPickerOpen(false);
-                setNewCategoryName(null);
-              }
-            }}
-            title={
-              newCategoryName !== null
-                ? "Nueva categoría"
-                : isCategoryPickerOpen
-                ? "Elegir categoría"
-                : editingTransaction ? "Editar transacción" : "Nueva transacción"
-            }
-            maxWidth="lg"
-            footer={newCategoryName !== null ? (
-              <Button
-                type="submit"
-                form={CATEGORY_FORM_ID}
-                size="cta"
-                disabled={addCategory.isPending}
-              >
-                Crear categoría
-              </Button>
-            ) : isCategoryPickerOpen ? undefined : (
-              <Button
-                type="submit"
-                form="transaction-form"
-                size="cta"
-                className="gap-2"
-                disabled={addTransaction.isPending || updateTransaction.isPending}
-              >
-                <span>
-                  {editingTransaction ? "Guardar cambios" : "Agregar"}
-                  {formData.amount && (
-                    <span className="font-mono tabular-nums">
-                      {" "}· ${parseInt(formData.amount).toLocaleString("es-CL")}
-                    </span>
-                  )}
-                </span>
-                <kbd className="hidden sm:inline-flex h-5 items-center rounded border border-primary-foreground/25 bg-primary-foreground/10 px-1.5 font-mono text-[10px] leading-none">
-                  ⏎
-                </kbd>
-              </Button>
-            )}
-          >
-            {newCategoryName !== null ? (
-              <CategoryCreateInline
-                initialName={newCategoryName}
-                type={formData.type}
-                onBack={() => setNewCategoryName(null)}
-                onSubmit={async (category) => {
-                  try {
-                    await addCategory.mutateAsync(category);
-                  } catch {
-                    // addCategory ya notifica el error; quedarse en el form.
-                    return;
+              <BaseModal
+                open={isDialogOpen}
+                onOpenChange={(open) => {
+                  setIsDialogOpen(open);
+                  if (!open) {
+                    setEditingTransaction(null);
+                    resetForm();
+                    setSuggestion(null);
+                    setIsCategoryPickerOpen(false);
+                    setNewCategoryName(null);
                   }
-                  setFormData((prev) => ({ ...prev, category_name: category.name }));
-                  setNewCategoryName(null);
-                  setIsCategoryPickerOpen(false);
                 }}
-              />
-            ) : isCategoryPickerOpen ? (
-              <CategoryPickerInline
-                value={formData.category_name}
-                options={categoryOptions}
-                onSelect={(value) => {
-                  setFormData({ ...formData, category_name: value });
-                  setIsCategoryPickerOpen(false);
-                }}
-                onBack={() => setIsCategoryPickerOpen(false)}
-                onCreate={(name) => setNewCategoryName(name)}
-              />
-            ) : (
-            <form id="transaction-form" onSubmit={handleSubmit} className="space-y-4 pt-2">
-                {/* Tipo — segmented control */}
-                <div className="grid grid-cols-4 gap-1.5" role="radiogroup" aria-label="Tipo de transacción">
-                  {TYPE_OPTIONS.map((opt) => {
-                    const Icon = opt.icon;
-                    const isActive = formData.type === opt.value;
-                    return (
-                      <button
-                        key={opt.value}
-                        type="button"
-                        role="radio"
-                        aria-checked={isActive}
-                        onClick={() => {
-                          setFormData({ ...formData, type: opt.value, category_name: "" });
-                          if (opt.value !== "Ingreso" && opt.value !== "Reembolso") setDebtsToLink([]);
-                          if (opt.value !== "Gasto") setDebtsIOweToSettle([]);
+                title={
+                  newCategoryName !== null
+                    ? "Nueva categoría"
+                    : isCategoryPickerOpen
+                    ? "Elegir categoría"
+                    : editingTransaction ? "Editar transacción" : "Nueva transacción"
+                }
+                maxWidth="lg"
+                footer={newCategoryName !== null ? (
+                  <Button
+                    type="submit"
+                    form={CATEGORY_FORM_ID}
+                    size="cta"
+                    disabled={addCategory.isPending}
+                  >
+                    Crear categoría
+                  </Button>
+                ) : isCategoryPickerOpen ? undefined : (
+                  <Button
+                    type="submit"
+                    form="transaction-form"
+                    size="cta"
+                    className="gap-2"
+                    disabled={addTransaction.isPending || updateTransaction.isPending}
+                  >
+                    <span>
+                      {editingTransaction ? "Guardar cambios" : "Agregar"}
+                      {formData.amount && (
+                        <span className="font-mono tabular-nums">
+                          {" "}· ${parseInt(formData.amount).toLocaleString("es-CL")}
+                        </span>
+                      )}
+                    </span>
+                    <kbd className="hidden sm:inline-flex h-5 items-center rounded border border-primary-foreground/25 bg-primary-foreground/10 px-1.5 font-mono text-[10px] leading-none">
+                      ⏎
+                    </kbd>
+                  </Button>
+                )}
+              >
+                {newCategoryName !== null ? (
+                  <CategoryCreateInline
+                    initialName={newCategoryName}
+                    type={formData.type}
+                    onBack={() => setNewCategoryName(null)}
+                    onSubmit={async (category) => {
+                      try {
+                        await addCategory.mutateAsync(category);
+                      } catch {
+                        // addCategory ya notifica el error; quedarse en el form.
+                        return;
+                      }
+                      setFormData((prev) => ({ ...prev, category_name: category.name }));
+                      setNewCategoryName(null);
+                      setIsCategoryPickerOpen(false);
+                    }}
+                  />
+                ) : isCategoryPickerOpen ? (
+                  <CategoryPickerInline
+                    value={formData.category_name}
+                    options={categoryOptions}
+                    onSelect={(value) => {
+                      setFormData({ ...formData, category_name: value });
+                      setIsCategoryPickerOpen(false);
+                    }}
+                    onBack={() => setIsCategoryPickerOpen(false)}
+                    onCreate={(name) => setNewCategoryName(name)}
+                  />
+                ) : (
+                <form id="transaction-form" onSubmit={handleSubmit} className="space-y-4 pt-2">
+                    {/* Tipo — segmented control */}
+                    <div className="grid grid-cols-4 gap-1.5" role="radiogroup" aria-label="Tipo de transacción">
+                      {TYPE_OPTIONS.map((opt) => {
+                        const Icon = opt.icon;
+                        const isActive = formData.type === opt.value;
+                        return (
+                          <button
+                            key={opt.value}
+                            type="button"
+                            role="radio"
+                            aria-checked={isActive}
+                            onClick={() => {
+                              setFormData({ ...formData, type: opt.value, category_name: "" });
+                              if (opt.value !== "Ingreso" && opt.value !== "Reembolso") setDebtsToLink([]);
+                              if (opt.value !== "Gasto") setDebtsIOweToSettle([]);
+                            }}
+                            className={cn(
+                              "flex flex-col items-center gap-1 rounded-xl border py-2.5 px-1 transition-all",
+                              "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
+                              isActive
+                                ? cn(opt.active, "font-semibold")
+                                : "border-border text-muted-foreground hover:border-border hover:bg-muted/50"
+                            )}
+                          >
+                            <Icon className="h-4 w-4" />
+                            <span className="text-[11px] leading-none">{opt.label}</span>
+                          </button>
+                        );
+                      })}
+                    </div>
+
+                    {/* Monto — protagonista */}
+                    <div className="py-1">
+                      <Label htmlFor="amount" className="sr-only">Monto</Label>
+                      <input
+                        id="amount"
+                        type="text"
+                        inputMode="numeric"
+                        autoComplete="off"
+                        placeholder="$0"
+                        required
+                        value={formData.amount ? `$${parseInt(formData.amount).toLocaleString("es-CL")}` : ""}
+                        onChange={(e) => {
+                          const number = e.target.value.replace(/\D/g, "");
+                          setFormData({ ...formData, amount: number });
                         }}
                         className={cn(
-                          "flex flex-col items-center gap-1 rounded-xl border py-2.5 px-1 transition-all",
-                          "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
-                          isActive
-                            ? cn(opt.active, "font-semibold")
-                            : "border-border/60 text-muted-foreground hover:border-border hover:bg-muted/50"
+                          "w-full bg-transparent text-center font-mono text-4xl font-bold tabular-nums tracking-tight",
+                          "border-0 outline-none placeholder:text-muted-foreground/25",
+                          "transition-colors duration-200",
+                          TYPE_OPTIONS.find((o) => o.value === formData.type)?.amount
                         )}
-                      >
-                        <Icon className="h-4 w-4" />
-                        <span className="text-[11px] leading-none">{opt.label}</span>
-                      </button>
-                    );
-                  })}
-                </div>
-
-                {/* Monto — protagonista */}
-                <div className="py-1">
-                  <Label htmlFor="amount" className="sr-only">Monto</Label>
-                  <input
-                    id="amount"
-                    type="text"
-                    inputMode="numeric"
-                    autoComplete="off"
-                    placeholder="$0"
-                    required
-                    value={formData.amount ? `$${parseInt(formData.amount).toLocaleString("es-CL")}` : ""}
-                    onChange={(e) => {
-                      const number = e.target.value.replace(/\D/g, "");
-                      setFormData({ ...formData, amount: number });
-                    }}
-                    className={cn(
-                      "w-full bg-transparent text-center font-mono text-4xl font-bold tabular-nums tracking-tight",
-                      "border-0 outline-none placeholder:text-muted-foreground/25",
-                      "transition-colors duration-200",
-                      TYPE_OPTIONS.find((o) => o.value === formData.type)?.amount
-                    )}
-                  />
-                </div>
-
-                {/* Detalle + sugerencia IA */}
-                <div className="space-y-2">
-                  <Label htmlFor="detail" className="text-xs font-medium text-muted-foreground">
-                    Detalle
-                  </Label>
-                  <Input
-                    id="detail"
-                    placeholder="¿En qué fue? (ayuda a categorizar)"
-                    value={formData.detail}
-                    onChange={(e) => setFormData({ ...formData, detail: e.target.value })}
-                    className="h-10 rounded-xl px-4"
-                  />
-
-                  {isAnalyzing && (
-                    <div className="flex items-center gap-2 px-1 text-xs text-muted-foreground">
-                      <Sparkles className="h-3.5 w-3.5 animate-pulse text-primary" />
-                      <span className="animate-pulse">Buscando categoría…</span>
+                      />
                     </div>
-                  )}
 
-                  {suggestion && !isAnalyzing && (
-                    <div className="flex items-center gap-2 rounded-xl border border-primary/25 bg-primary/5 py-1.5 pl-3 pr-1.5 animate-in fade-in slide-in-from-top-1 duration-200">
-                      <Sparkles className="h-3.5 w-3.5 shrink-0 text-primary" />
-                      <span className="min-w-0 flex-1 truncate text-xs">
-                        <span className="font-semibold">
-                          {categories.find((c) => c.name === suggestion.category)?.icon || getCategoryIcon(suggestion.category)}{" "}
-                          {suggestion.category}
-                        </span>
-                        <span className="text-muted-foreground"> · {suggestion.confidence}% seguro</span>
-                      </span>
-                      <Button
-                        type="button"
-                        size="sm"
-                        onClick={applySuggestion}
-                        className="h-7 rounded-lg px-2.5 text-xs"
-                      >
-                        Aplicar
-                      </Button>
-                      <Button
-                        type="button"
-                        variant="ghost"
-                        size="sm"
-                        onClick={dismissSuggestion}
-                        className="h-7 w-7 shrink-0 rounded-lg p-0 text-muted-foreground"
-                      >
-                        <X className="h-3.5 w-3.5" />
-                      </Button>
-                    </div>
-                  )}
-                </div>
-
-                {/* Categoría + Tarjeta */}
-                <div className="grid grid-cols-2 gap-3">
-                  <div className={cn(
-                    "space-y-2",
-                    (formData.type === "Inversión" || creditCards.length === 0) && "col-span-2"
-                  )}>
-                    <Label htmlFor="category" className="text-xs font-medium text-muted-foreground">Categoría</Label>
-                    <CategorySelect
-                      value={formData.category_name}
-                      onChange={(value) => setFormData({ ...formData, category_name: value })}
-                      options={categoryOptions}
-                      onOpenMobile={() => setIsCategoryPickerOpen(true)}
-                      onCreate={(name) => setNewCategoryName(name)}
-                    />
-                  </div>
-                  {formData.type !== "Inversión" && creditCards.length > 0 && (
+                    {/* Detalle + sugerencia IA */}
                     <div className="space-y-2">
-                      <Label htmlFor="card" className="text-xs font-medium text-muted-foreground">Tarjeta</Label>
-                      <Select
-                        value={formData.card_id ?? "none"}
-                        onValueChange={(value) =>
-                          setFormData({ ...formData, card_id: value === "none" ? null : value })
-                        }
-                      >
-                        <SelectTrigger className="h-10 rounded-xl px-3">
-                          <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="none">Cuenta</SelectItem>
-                          {creditCards
-                            .filter((c) => c.is_active)
-                            .map((card) => (
-                              <SelectItem key={card.id} value={card.id}>
-                                <div className="flex items-center gap-2">
-                                  <span
-                                    className="inline-block h-3 w-3 rounded-full"
-                                    style={{ backgroundColor: card.color || "#6366f1" }}
-                                  />
-                                  {card.name}
-                                  {card.last_4_digits && (
-                                    <span className="text-muted-foreground">···· {card.last_4_digits}</span>
-                                  )}
-                                </div>
-                              </SelectItem>
-                            ))}
-                        </SelectContent>
-                      </Select>
-                    </div>
-                  )}
-                </div>
+                      <Label htmlFor="detail" className="text-xs font-medium text-muted-foreground">
+                        Detalle
+                      </Label>
+                      <Input
+                        id="detail"
+                        placeholder="¿En qué fue? (ayuda a categorizar)"
+                        value={formData.detail}
+                        onChange={(e) => setFormData({ ...formData, detail: e.target.value })}
+                        className="h-10 rounded-xl px-4"
+                      />
 
-                {/* Fecha */}
-                <div className="space-y-2">
-                  <Label className="text-xs font-medium text-muted-foreground">Fecha y hora</Label>
-                  <DateTimePicker
-                    value={formData.date}
-                    onChange={(date) => date && setFormData({ ...formData, date })}
-                    showTime={true}
-                    className="w-full h-10 rounded-xl"
-                  />
-                </div>
+                      {isAnalyzing && (
+                        <div className="flex items-center gap-2 px-1 text-xs text-muted-foreground">
+                          <Sparkles className="h-3.5 w-3.5 animate-pulse text-primary" />
+                          <span className="animate-pulse">Buscando categoría…</span>
+                        </div>
+                      )}
 
-                {/* Vincular a deuda(s) pendiente(s) — para Ingreso/Reembolso */}
-                {(formData.type === "Ingreso" || formData.type === "Reembolso") && (() => {
-                  // Al editar: ocultar si ya está vinculada
-                  if (editingTransaction) {
-                    const linkedTxIds = new Set(
-                      sharedExpenses.filter(se => se.paid_transaction_id).map(se => se.paid_transaction_id!)
-                    );
-                    if (linkedTxIds.has(editingTransaction.id)) return null;
-                  }
-
-                  const pendingDebts = sharedExpensesWithTransaction.filter(se => !se.paid && se.direction === "they_owe_me");
-                  if (pendingDebts.length === 0) return null;
-
-                  const txAmount = parseFloat(formData.amount || "0");
-                  const selectedTotal = debtsToLink.reduce((sum, d) => sum + d.amount, 0);
-                  const totalMismatch = txAmount > 0 && debtsToLink.length > 0 && Math.abs(txAmount - selectedTotal) > 1;
-
-                  const toggleDebt = (debt: typeof pendingDebts[number]) => {
-                    setDebtsToLink(prev => {
-                      const exists = prev.some(d => d.id === debt.id);
-                      if (exists) return prev.filter(d => d.id !== debt.id);
-                      return [...prev, { id: debt.id, debtorName: debt.debtor_name, amount: debt.amount_owed, transactionDetail: debt.transaction_detail || undefined }];
-                    });
-                    if (!editingTransaction) {
-                      setFormData(prev => ({ ...prev, type: "Reembolso", category_name: "" }));
-                    }
-                  };
-
-                  return (
-                    <div className="space-y-3 rounded-xl border-2 border-amber-500/20 bg-amber-500/5 p-4">
-                      <div className="flex items-center gap-2">
-                        <Users className="h-4 w-4 text-amber-500" />
-                        <span className="text-sm font-semibold">Vincular a deuda(s) pendiente(s)</span>
-                      </div>
-                      <div className="space-y-2">
-                        {pendingDebts.map((debt) => {
-                          const isSelected = debtsToLink.some(d => d.id === debt.id);
-                          const amountMismatch = txAmount > 0 && Math.abs(txAmount - debt.amount_owed) > 1;
-                          return (
-                            <div
-                              key={debt.id}
-                              role="checkbox"
-                              aria-checked={isSelected}
-                              tabIndex={0}
-                              onClick={() => toggleDebt(debt)}
-                              onKeyDown={(e) => {
-                                if (e.key === "Enter" || e.key === " ") {
-                                  e.preventDefault();
-                                  toggleDebt(debt);
-                                }
-                              }}
-                              className={`w-full flex items-center justify-between rounded-lg border bg-background p-3 gap-3 transition-colors text-left cursor-pointer select-none ${isSelected ? "border-amber-500 bg-amber-500/5" : "border-border"}`}
-                            >
-                              {/* Indicador visual, NO un Checkbox de Radix: un Checkbox
-                                  controlado dentro de un <form> monta un input oculto que
-                                  re-despacha un evento 'click' burbujeante cada vez que
-                                  cambia `checked`. Ese click vuelve a este contenedor,
-                                  re-dispara toggleDebt y entra en loop infinito
-                                  ("Maximum update depth exceeded"). */}
-                              <span
-                                aria-hidden
-                                className={cn(
-                                  "flex h-4 w-4 shrink-0 items-center justify-center rounded-sm border transition-colors",
-                                  isSelected ? "border-amber-500 bg-amber-500 text-white" : "border-input"
-                                )}
-                              >
-                                {isSelected && <Check className="h-3 w-3" />}
-                              </span>
-                              <div className="flex-1 min-w-0">
-                                <div className="flex items-center gap-1.5">
-                                  <span className="text-sm font-medium truncate">{debt.debtor_name}</span>
-                                  <span className="text-xs text-muted-foreground">·</span>
-                                  <span className="text-sm font-semibold text-amber-600">
-                                    ${new Intl.NumberFormat("es-CL").format(debt.amount_owed)}
-                                  </span>
-                                </div>
-                                <p className="text-xs text-muted-foreground truncate mt-0.5">
-                                  {debt.transaction_detail || "Sin detalle"} · {new Date(debt.transaction_date).toLocaleDateString("es-CL", { day: "numeric", month: "short" })}
-                                </p>
-                                {debtsToLink.length <= 1 && amountMismatch && (
-                                  <p className="text-xs text-amber-600 mt-0.5">
-                                    Monto diferente a la deuda (${new Intl.NumberFormat("es-CL").format(debt.amount_owed)})
-                                  </p>
-                                )}
-                              </div>
-                            </div>
-                          );
-                        })}
-                      </div>
-                      {debtsToLink.length > 0 && (
-                        <div className="space-y-2 pt-1 border-t border-amber-500/20">
-                          <div className="flex items-center justify-between text-xs pt-2">
-                            <span className="text-muted-foreground">
-                              {debtsToLink.length} deuda{debtsToLink.length > 1 ? "s" : ""} seleccionada{debtsToLink.length > 1 ? "s" : ""}
+                      {suggestion && !isAnalyzing && (
+                        <div className="flex items-center gap-2 rounded-xl border border-primary/25 bg-primary/5 py-1.5 pl-3 pr-1.5 animate-in fade-in slide-in-from-top-1 duration-200">
+                          <Sparkles className="h-3.5 w-3.5 shrink-0 text-primary" />
+                          <span className="min-w-0 flex-1 truncate text-xs">
+                            <span className="font-semibold">
+                              {categories.find((c) => c.name === suggestion.category)?.icon || getCategoryIcon(suggestion.category)}{" "}
+                              {suggestion.category}
                             </span>
-                            <span className={`font-semibold ${totalMismatch ? "text-amber-600" : "text-foreground"}`}>
-                              ${new Intl.NumberFormat("es-CL").format(selectedTotal)}
-                            </span>
-                          </div>
-                          {editingTransaction ? (
-                            <Button
-                              type="button"
-                              size="sm"
-                              className="w-full h-8 text-xs"
-                              disabled={linkExistingTransactionToDebts.isPending}
-                              onClick={async () => {
-                                await linkExistingTransactionToDebts.mutateAsync({
-                                  debts: debtsToLink.map((d) => ({
-                                    sharedExpenseId: d.id,
-                                    amount: d.amount,
-                                    debtorName: d.debtorName,
-                                    transactionDetail: d.transactionDetail,
-                                  })),
-                                  existingTransactionId: editingTransaction.id,
-                                });
-                                setIsDialogOpen(false);
-                                setEditingTransaction(null);
-                                resetForm();
-                              }}
-                            >
-                              Vincular seleccionadas
-                            </Button>
-                          ) : (
-                            <p className="text-xs text-amber-600">
-                              Al guardar, esta transacción se vinculará como pago de {[...new Set(debtsToLink.map(d => d.debtorName))].join(", ")} y quedará registrada como Reembolso.
-                            </p>
-                          )}
+                            <span className="text-muted-foreground"> · {suggestion.confidence}% seguro</span>
+                          </span>
+                          <Button
+                            type="button"
+                            size="sm"
+                            onClick={applySuggestion}
+                            className="h-7 rounded-lg px-2.5 text-xs"
+                          >
+                            Aplicar
+                          </Button>
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="sm"
+                            onClick={dismissSuggestion}
+                            className="h-7 w-7 shrink-0 rounded-lg p-0 text-muted-foreground"
+                          >
+                            <X className="h-3.5 w-3.5" />
+                          </Button>
                         </div>
                       )}
                     </div>
-                  );
-                })()}
 
-                {/* Gasto Compartido — solo para Gastos */}
-                {formData.type === "Gasto" && (() => {
-                  const existingShared = editingTransaction
-                    ? getSharedExpensesByTransaction(editingTransaction.id)
-                    : [];
-                  const hasExisting = existingShared.length > 0;
-
-                  if (hasExisting) {
-                    return (
-                      <div className="space-y-3 rounded-xl border-2 border-primary/20 bg-primary/5 p-4">
-                        <div className="flex items-center justify-between">
-                          <div className="flex items-center gap-2">
-                            <Users className="h-4 w-4 text-primary" />
-                            <span className="text-sm font-semibold">Gasto compartido</span>
-                          </div>
-                          {!addingDebtor && (
-                            <Button
-                              type="button"
-                              variant="outline"
-                              size="sm"
-                              className="h-7 text-xs gap-1"
-                              onClick={() => setAddingDebtor(true)}
-                            >
-                              <Plus className="h-3 w-3" />
-                              Agregar persona
-                            </Button>
-                          )}
-                        </div>
-
+                    {/* Categoría + Tarjeta */}
+                    <div className="grid grid-cols-2 gap-3">
+                      <div className={cn(
+                        "space-y-2",
+                        (formData.type === "Inversión" || creditCards.length === 0) && "col-span-2"
+                      )}>
+                        <Label htmlFor="category" className="text-xs font-medium text-muted-foreground">Categoría</Label>
+                        <CategorySelect
+                          value={formData.category_name}
+                          onChange={(value) => setFormData({ ...formData, category_name: value })}
+                          options={categoryOptions}
+                          onOpenMobile={() => setIsCategoryPickerOpen(true)}
+                          onCreate={(name) => setNewCategoryName(name)}
+                        />
+                      </div>
+                      {formData.type !== "Inversión" && creditCards.length > 0 && (
                         <div className="space-y-2">
-                          {existingShared.map((se) => {
-                            const isEditingThis = editingDebtorId === se.id;
-                            const editAmount = parseFloat(editingDebtorAmount || "0");
-                            const otherAssigned = existingShared.filter(s => s.id !== se.id).reduce((sum, s) => sum + s.amount_owed, 0);
-                            const editRemaining = parseFloat(formData.amount || "0") - otherAssigned;
-                            const editExceeds = editAmount > editRemaining;
-                            const editValid = editingDebtorAmount && editAmount > 0 && !editExceeds;
-
-                            return (
-                              <div key={se.id} className="rounded-lg border bg-background px-3 py-2 space-y-2">
-                                <div className="flex items-center justify-between">
-                                  <div className="flex items-center gap-2">
-                                    {se.paid ? (
-                                      <CheckCircle2 className="h-4 w-4 text-success shrink-0" />
-                                    ) : (
-                                      <Clock className="h-4 w-4 text-amber-500 shrink-0" />
-                                    )}
-                                    <div>
-                                      <p className="text-sm font-medium">{se.debtor_name}</p>
-                                      {se.paid && (
-                                        <p className="text-xs text-muted-foreground">
-                                          Pagado {se.paid_at ? new Date(se.paid_at).toLocaleDateString("es-CL") : ""}
-                                        </p>
+                          <Label htmlFor="card" className="text-xs font-medium text-muted-foreground">Tarjeta</Label>
+                          <Select
+                            value={formData.card_id ?? "none"}
+                            onValueChange={(value) =>
+                              setFormData({ ...formData, card_id: value === "none" ? null : value })
+                            }
+                          >
+                            <SelectTrigger className="h-10 rounded-xl px-3">
+                              <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="none">Cuenta</SelectItem>
+                              {creditCards
+                                .filter((c) => c.is_active)
+                                .map((card) => (
+                                  <SelectItem key={card.id} value={card.id}>
+                                    <div className="flex items-center gap-2">
+                                      <span
+                                        className="inline-block h-3 w-3 rounded-full"
+                                        style={{ backgroundColor: card.color || "#6366f1" }}
+                                      />
+                                      {card.name}
+                                      {card.last_4_digits && (
+                                        <span className="text-muted-foreground">···· {card.last_4_digits}</span>
                                       )}
                                     </div>
-                                  </div>
-                                  <div className="flex items-center gap-2">
-                                    {!isEditingThis && (
-                                      <span className="text-sm font-bold">
-                                        ${new Intl.NumberFormat("es-CL").format(se.amount_owed)}
-                                      </span>
+                                  </SelectItem>
+                                ))}
+                            </SelectContent>
+                          </Select>
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Fecha */}
+                    <div className="space-y-2">
+                      <Label className="text-xs font-medium text-muted-foreground">Fecha y hora</Label>
+                      <DateTimePicker
+                        value={formData.date}
+                        onChange={(date) => date && setFormData({ ...formData, date })}
+                        showTime={true}
+                        className="w-full h-10 rounded-xl"
+                      />
+                    </div>
+
+                    {/* Vincular a deuda(s) pendiente(s) — para Ingreso/Reembolso */}
+                    {(formData.type === "Ingreso" || formData.type === "Reembolso") && (() => {
+                      // Al editar: ocultar si ya está vinculada
+                      if (editingTransaction) {
+                        const linkedTxIds = new Set(
+                          sharedExpenses.filter(se => se.paid_transaction_id).map(se => se.paid_transaction_id!)
+                        );
+                        if (linkedTxIds.has(editingTransaction.id)) return null;
+                      }
+
+                      const pendingDebts = sharedExpensesWithTransaction.filter(se => !se.paid && se.direction === "they_owe_me");
+                      if (pendingDebts.length === 0) return null;
+
+                      const txAmount = parseFloat(formData.amount || "0");
+                      const selectedTotal = debtsToLink.reduce((sum, d) => sum + d.amount, 0);
+                      const totalMismatch = txAmount > 0 && debtsToLink.length > 0 && Math.abs(txAmount - selectedTotal) > 1;
+
+                      const toggleDebt = (debt: typeof pendingDebts[number]) => {
+                        setDebtsToLink(prev => {
+                          const exists = prev.some(d => d.id === debt.id);
+                          if (exists) return prev.filter(d => d.id !== debt.id);
+                          return [...prev, { id: debt.id, debtorName: debt.debtor_name, amount: debt.amount_owed, transactionDetail: debt.transaction_detail || undefined }];
+                        });
+                        if (!editingTransaction) {
+                          setFormData(prev => ({ ...prev, type: "Reembolso", category_name: "" }));
+                        }
+                      };
+
+                      return (
+                        <div className="space-y-3 rounded-xl border-2 border-amber-500/20 bg-amber-500/5 p-4">
+                          <div className="flex items-center gap-2">
+                            <Users className="h-4 w-4 text-amber-500" />
+                            <span className="text-sm font-semibold">Vincular a deuda(s) pendiente(s)</span>
+                          </div>
+                          <div className="space-y-2">
+                            {pendingDebts.map((debt) => {
+                              const isSelected = debtsToLink.some(d => d.id === debt.id);
+                              const amountMismatch = txAmount > 0 && Math.abs(txAmount - debt.amount_owed) > 1;
+                              return (
+                                <div
+                                  key={debt.id}
+                                  role="checkbox"
+                                  aria-checked={isSelected}
+                                  tabIndex={0}
+                                  onClick={() => toggleDebt(debt)}
+                                  onKeyDown={(e) => {
+                                    if (e.key === "Enter" || e.key === " ") {
+                                      e.preventDefault();
+                                      toggleDebt(debt);
+                                    }
+                                  }}
+                                  className={`w-full flex items-center justify-between rounded-lg border bg-background p-3 gap-3 transition-colors text-left cursor-pointer select-none ${isSelected ? "border-amber-500 bg-amber-500/5" : "border-border"}`}
+                                >
+                                  {/* Indicador visual, NO un Checkbox de Radix: un Checkbox
+                                      controlado dentro de un <form> monta un input oculto que
+                                      re-despacha un evento 'click' burbujeante cada vez que
+                                      cambia `checked`. Ese click vuelve a este contenedor,
+                                      re-dispara toggleDebt y entra en loop infinito
+                                      ("Maximum update depth exceeded"). */}
+                                  <span
+                                    aria-hidden
+                                    className={cn(
+                                      "flex h-4 w-4 shrink-0 items-center justify-center rounded-sm border transition-colors",
+                                      isSelected ? "border-amber-500 bg-amber-500 text-white" : "border-input"
                                     )}
-                                    {!se.paid && !isEditingThis && (
-                                      <>
+                                  >
+                                    {isSelected && <Check className="h-3 w-3" />}
+                                  </span>
+                                  <div className="flex-1 min-w-0">
+                                    <div className="flex items-center gap-1.5">
+                                      <span className="text-sm font-medium truncate">{debt.debtor_name}</span>
+                                      <span className="text-xs text-muted-foreground">·</span>
+                                      <span className="text-sm font-semibold text-amber-600">
+                                        ${new Intl.NumberFormat("es-CL").format(debt.amount_owed)}
+                                      </span>
+                                    </div>
+                                    <p className="text-xs text-muted-foreground truncate mt-0.5">
+                                      {debt.transaction_detail || "Sin detalle"} · {new Date(debt.transaction_date).toLocaleDateString("es-CL", { day: "numeric", month: "short" })}
+                                    </p>
+                                    {debtsToLink.length <= 1 && amountMismatch && (
+                                      <p className="text-xs text-amber-600 mt-0.5">
+                                        Monto diferente a la deuda (${new Intl.NumberFormat("es-CL").format(debt.amount_owed)})
+                                      </p>
+                                    )}
+                                  </div>
+                                </div>
+                              );
+                            })}
+                          </div>
+                          {debtsToLink.length > 0 && (
+                            <div className="space-y-2 pt-1 border-t border-amber-500/20">
+                              <div className="flex items-center justify-between text-xs pt-2">
+                                <span className="text-muted-foreground">
+                                  {debtsToLink.length} deuda{debtsToLink.length > 1 ? "s" : ""} seleccionada{debtsToLink.length > 1 ? "s" : ""}
+                                </span>
+                                <span className={`font-semibold ${totalMismatch ? "text-amber-600" : "text-foreground"}`}>
+                                  ${new Intl.NumberFormat("es-CL").format(selectedTotal)}
+                                </span>
+                              </div>
+                              {editingTransaction ? (
+                                <Button
+                                  type="button"
+                                  size="sm"
+                                  className="w-full h-8 text-xs"
+                                  disabled={linkExistingTransactionToDebts.isPending}
+                                  onClick={async () => {
+                                    await linkExistingTransactionToDebts.mutateAsync({
+                                      debts: debtsToLink.map((d) => ({
+                                        sharedExpenseId: d.id,
+                                        amount: d.amount,
+                                        debtorName: d.debtorName,
+                                        transactionDetail: d.transactionDetail,
+                                      })),
+                                      existingTransactionId: editingTransaction.id,
+                                    });
+                                    setIsDialogOpen(false);
+                                    setEditingTransaction(null);
+                                    resetForm();
+                                  }}
+                                >
+                                  Vincular seleccionadas
+                                </Button>
+                              ) : (
+                                <p className="text-xs text-amber-600">
+                                  Al guardar, esta transacción se vinculará como pago de {[...new Set(debtsToLink.map(d => d.debtorName))].join(", ")} y quedará registrada como Reembolso.
+                                </p>
+                              )}
+                            </div>
+                          )}
+                        </div>
+                      );
+                    })()}
+
+                    {/* Gasto Compartido — solo para Gastos */}
+                    {formData.type === "Gasto" && (() => {
+                      const existingShared = editingTransaction
+                        ? getSharedExpensesByTransaction(editingTransaction.id)
+                        : [];
+                      const hasExisting = existingShared.length > 0;
+
+                      if (hasExisting) {
+                        return (
+                          <div className="space-y-3 rounded-xl border-2 border-primary/20 bg-primary/5 p-4">
+                            <div className="flex items-center justify-between">
+                              <div className="flex items-center gap-2">
+                                <Users className="h-4 w-4 text-primary" />
+                                <span className="text-sm font-semibold">Gasto compartido</span>
+                              </div>
+                              {!addingDebtor && (
+                                <Button
+                                  type="button"
+                                  variant="outline"
+                                  size="sm"
+                                  className="h-7 text-xs gap-1"
+                                  onClick={() => setAddingDebtor(true)}
+                                >
+                                  <Plus className="h-3 w-3" />
+                                  Agregar persona
+                                </Button>
+                              )}
+                            </div>
+
+                            <div className="space-y-2">
+                              {existingShared.map((se) => {
+                                const isEditingThis = editingDebtorId === se.id;
+                                const editAmount = parseFloat(editingDebtorAmount || "0");
+                                const otherAssigned = existingShared.filter(s => s.id !== se.id).reduce((sum, s) => sum + s.amount_owed, 0);
+                                const editRemaining = parseFloat(formData.amount || "0") - otherAssigned;
+                                const editExceeds = editAmount > editRemaining;
+                                const editValid = editingDebtorAmount && editAmount > 0 && !editExceeds;
+
+                                return (
+                                  <div key={se.id} className="rounded-lg border bg-background px-3 py-2 space-y-2">
+                                    <div className="flex items-center justify-between">
+                                      <div className="flex items-center gap-2">
+                                        {se.paid ? (
+                                          <CheckCircle2 className="h-4 w-4 text-success shrink-0" />
+                                        ) : (
+                                          <Clock className="h-4 w-4 text-amber-500 shrink-0" />
+                                        )}
+                                        <div>
+                                          <p className="text-sm font-medium">{se.debtor_name}</p>
+                                          {se.paid && (
+                                            <p className="text-xs text-muted-foreground">
+                                              Pagado {se.paid_at ? new Date(se.paid_at).toLocaleDateString("es-CL") : ""}
+                                            </p>
+                                          )}
+                                        </div>
+                                      </div>
+                                      <div className="flex items-center gap-2">
+                                        {!isEditingThis && (
+                                          <span className="text-sm font-bold">
+                                            ${new Intl.NumberFormat("es-CL").format(se.amount_owed)}
+                                          </span>
+                                        )}
+                                        {!se.paid && !isEditingThis && (
+                                          <>
+                                            <Button
+                                              type="button"
+                                              size="sm"
+                                              variant="ghost"
+                                              className="h-7 w-7 p-0"
+                                              onClick={() => {
+                                                setEditingDebtorId(se.id);
+                                                setEditingDebtorAmount(se.amount_owed.toString());
+                                              }}
+                                            >
+                                              <Pencil className="h-3 w-3" />
+                                            </Button>
+                                            <Button
+                                              type="button"
+                                              size="sm"
+                                              variant="outline"
+                                              className="h-7 text-xs px-2"
+                                              onClick={() => setConfirmPaid({
+                                                id: se.id,
+                                                name: se.debtor_name,
+                                                amount: se.amount_owed,
+                                                detail: editingTransaction?.detail || undefined,
+                                              })}
+                                            >
+                                              <CheckCircle2 className="h-3 w-3 mr-1" />
+                                              Pagado
+                                            </Button>
+                                          </>
+                                        )}
                                         <Button
                                           type="button"
                                           size="sm"
                                           variant="ghost"
                                           className="h-7 w-7 p-0"
-                                          onClick={() => {
-                                            setEditingDebtorId(se.id);
-                                            setEditingDebtorAmount(se.amount_owed.toString());
-                                          }}
+                                          onClick={() => deleteSharedExpense.mutate(se.id)}
                                         >
-                                          <Pencil className="h-3 w-3" />
+                                          <Trash2 className="h-3 w-3 text-destructive" />
                                         </Button>
-                                        <Button
-                                          type="button"
-                                          size="sm"
-                                          variant="outline"
-                                          className="h-7 text-xs px-2"
-                                          onClick={() => setConfirmPaid({
-                                            id: se.id,
-                                            name: se.debtor_name,
-                                            amount: se.amount_owed,
-                                            detail: editingTransaction?.detail || undefined,
-                                          })}
-                                        >
-                                          <CheckCircle2 className="h-3 w-3 mr-1" />
-                                          Pagado
-                                        </Button>
-                                      </>
+                                      </div>
+                                    </div>
+
+                                    {isEditingThis && (
+                                      <div className="space-y-1.5">
+                                        <div className="flex gap-2 items-center">
+                                          <Input
+                                            type="text"
+                                            inputMode="numeric"
+                                            value={editingDebtorAmount}
+                                            onChange={(e) => setEditingDebtorAmount(e.target.value.replace(/\D/g, ""))}
+                                            className={`h-8 text-sm flex-1 ${editExceeds ? "border-destructive focus-visible:ring-destructive" : ""}`}
+                                            autoFocus
+                                          />
+                                          <Button
+                                            type="button"
+                                            size="sm"
+                                            className="h-8 px-3 text-xs"
+                                            disabled={!editValid}
+                                            onClick={async () => {
+                                              await updateSharedExpenseAmount.mutateAsync({ id: se.id, amount_owed: editAmount });
+                                              setEditingDebtorId(null);
+                                              setEditingDebtorAmount("");
+                                            }}
+                                          >
+                                            Guardar
+                                          </Button>
+                                          <Button
+                                            type="button"
+                                            size="sm"
+                                            variant="ghost"
+                                            className="h-8 w-8 p-0"
+                                            onClick={() => { setEditingDebtorId(null); setEditingDebtorAmount(""); }}
+                                          >
+                                            <X className="h-3.5 w-3.5" />
+                                          </Button>
+                                        </div>
+                                        {editExceeds && (
+                                          <p className="text-xs text-destructive">
+                                            Máximo disponible: ${new Intl.NumberFormat("es-CL").format(editRemaining)}
+                                          </p>
+                                        )}
+                                      </div>
                                     )}
+                                  </div>
+                                );
+                              })}
+                            </div>
+
+                            {/* Tu parte */}
+                            {(() => {
+                              const liveTxAmount = editingTransaction
+                                ? (transactions.find(t => t.id === editingTransaction.id)?.amount ?? parseFloat(formData.amount || "0"))
+                                : parseFloat(formData.amount || "0");
+                              const alreadyAssigned = existingShared.filter(se => !se.paid).reduce((sum, se) => sum + se.amount_owed, 0);
+                              const myShare = liveTxAmount - alreadyAssigned;
+                              return myShare >= 0 ? (
+                                <div className="bg-info/10 text-info p-3 rounded-lg">
+                                  <div className="flex justify-between items-center text-sm">
+                                    <span>Tu parte:</span>
+                                    <span className="font-bold">
+                                      ${new Intl.NumberFormat("es-CL").format(myShare)}
+                                    </span>
+                                  </div>
+                                </div>
+                              ) : null;
+                            })()}
+
+                            {/* Formulario inline para agregar nueva persona */}
+                            {addingDebtor && (() => {
+                              const totalAmount = editingTransaction
+                                ? (transactions.find(t => t.id === editingTransaction.id)?.amount ?? parseFloat(formData.amount || "0"))
+                                : parseFloat(formData.amount || "0");
+                              const alreadyAssigned = existingShared.reduce((sum, se) => sum + se.amount_owed, 0);
+                              const remaining = totalAmount - alreadyAssigned;
+                              const newAmount = parseFloat(newDebtorAmount || "0");
+                              const exceedsLimit = newAmount > remaining;
+                              const isFormValid = newDebtorName.trim() && newDebtorAmount && !exceedsLimit;
+
+                              return (
+                                <div className="space-y-2 pt-2 border-t border-primary/20">
+                                  <div className="flex items-center justify-between text-xs">
+                                    <span className="text-muted-foreground">Disponible para asignar:</span>
+                                    <span className={`font-semibold ${remaining <= 0 ? "text-destructive" : "text-success"}`}>
+                                      ${new Intl.NumberFormat("es-CL").format(remaining)}
+                                    </span>
+                                  </div>
+                                  <div className="flex gap-2 items-center">
+                                    <DebtorNameCombobox
+                                      placeholder="Nombre"
+                                      value={newDebtorName}
+                                      onChange={setNewDebtorName}
+                                      suggestions={uniqueDebtorNames("they_owe_me")}
+                                      className="h-8 text-sm flex-1"
+                                      autoFocus
+                                    />
+                                    <Input
+                                      type="text"
+                                      inputMode="numeric"
+                                      placeholder="Monto"
+                                      value={newDebtorAmount}
+                                      onChange={(e) => setNewDebtorAmount(e.target.value.replace(/\D/g, ""))}
+                                      className={`h-8 text-sm w-28 ${exceedsLimit ? "border-destructive focus-visible:ring-destructive" : ""}`}
+                                    />
+                                    <Button
+                                      type="button"
+                                      size="sm"
+                                      className="h-8 px-3 text-xs"
+                                      disabled={!isFormValid}
+                                      onClick={async () => {
+                                        await addSharedExpenses.mutateAsync([{
+                                          transaction_id: editingTransaction!.id,
+                                          debtor_name: newDebtorName.trim(),
+                                          amount_owed: newAmount,
+                                        }]);
+                                        setNewDebtorName("");
+                                        setNewDebtorAmount("");
+                                        setAddingDebtor(false);
+                                      }}
+                                    >
+                                      Agregar
+                                    </Button>
                                     <Button
                                       type="button"
                                       size="sm"
                                       variant="ghost"
-                                      className="h-7 w-7 p-0"
-                                      onClick={() => deleteSharedExpense.mutate(se.id)}
+                                      className="h-8 w-8 p-0"
+                                      onClick={() => {
+                                        setAddingDebtor(false);
+                                        setNewDebtorName("");
+                                        setNewDebtorAmount("");
+                                      }}
                                     >
-                                      <Trash2 className="h-3 w-3 text-destructive" />
+                                      <X className="h-3.5 w-3.5" />
                                     </Button>
                                   </div>
+                                  {exceedsLimit && (
+                                    <p className="text-xs text-destructive">
+                                      El monto supera el disponible (${new Intl.NumberFormat("es-CL").format(remaining)})
+                                    </p>
+                                  )}
                                 </div>
-
-                                {isEditingThis && (
-                                  <div className="space-y-1.5">
-                                    <div className="flex gap-2 items-center">
-                                      <Input
-                                        type="text"
-                                        inputMode="numeric"
-                                        value={editingDebtorAmount}
-                                        onChange={(e) => setEditingDebtorAmount(e.target.value.replace(/\D/g, ""))}
-                                        className={`h-8 text-sm flex-1 ${editExceeds ? "border-destructive focus-visible:ring-destructive" : ""}`}
-                                        autoFocus
-                                      />
-                                      <Button
-                                        type="button"
-                                        size="sm"
-                                        className="h-8 px-3 text-xs"
-                                        disabled={!editValid}
-                                        onClick={async () => {
-                                          await updateSharedExpenseAmount.mutateAsync({ id: se.id, amount_owed: editAmount });
-                                          setEditingDebtorId(null);
-                                          setEditingDebtorAmount("");
-                                        }}
-                                      >
-                                        Guardar
-                                      </Button>
-                                      <Button
-                                        type="button"
-                                        size="sm"
-                                        variant="ghost"
-                                        className="h-8 w-8 p-0"
-                                        onClick={() => { setEditingDebtorId(null); setEditingDebtorAmount(""); }}
-                                      >
-                                        <X className="h-3.5 w-3.5" />
-                                      </Button>
-                                    </div>
-                                    {editExceeds && (
-                                      <p className="text-xs text-destructive">
-                                        Máximo disponible: ${new Intl.NumberFormat("es-CL").format(editRemaining)}
-                                      </p>
-                                    )}
-                                  </div>
-                                )}
-                              </div>
-                            );
-                          })}
-                        </div>
-
-                        {/* Tu parte */}
-                        {(() => {
-                          const liveTxAmount = editingTransaction
-                            ? (transactions.find(t => t.id === editingTransaction.id)?.amount ?? parseFloat(formData.amount || "0"))
-                            : parseFloat(formData.amount || "0");
-                          const alreadyAssigned = existingShared.filter(se => !se.paid).reduce((sum, se) => sum + se.amount_owed, 0);
-                          const myShare = liveTxAmount - alreadyAssigned;
-                          return myShare >= 0 ? (
-                            <div className="bg-info/10 text-info p-3 rounded-lg">
-                              <div className="flex justify-between items-center text-sm">
-                                <span>Tu parte:</span>
-                                <span className="font-bold">
-                                  ${new Intl.NumberFormat("es-CL").format(myShare)}
-                                </span>
-                              </div>
-                            </div>
-                          ) : null;
-                        })()}
-
-                        {/* Formulario inline para agregar nueva persona */}
-                        {addingDebtor && (() => {
-                          const totalAmount = editingTransaction
-                            ? (transactions.find(t => t.id === editingTransaction.id)?.amount ?? parseFloat(formData.amount || "0"))
-                            : parseFloat(formData.amount || "0");
-                          const alreadyAssigned = existingShared.reduce((sum, se) => sum + se.amount_owed, 0);
-                          const remaining = totalAmount - alreadyAssigned;
-                          const newAmount = parseFloat(newDebtorAmount || "0");
-                          const exceedsLimit = newAmount > remaining;
-                          const isFormValid = newDebtorName.trim() && newDebtorAmount && !exceedsLimit;
-
-                          return (
-                            <div className="space-y-2 pt-2 border-t border-primary/20">
-                              <div className="flex items-center justify-between text-xs">
-                                <span className="text-muted-foreground">Disponible para asignar:</span>
-                                <span className={`font-semibold ${remaining <= 0 ? "text-destructive" : "text-success"}`}>
-                                  ${new Intl.NumberFormat("es-CL").format(remaining)}
-                                </span>
-                              </div>
-                              <div className="flex gap-2 items-center">
-                                <DebtorNameCombobox
-                                  placeholder="Nombre"
-                                  value={newDebtorName}
-                                  onChange={setNewDebtorName}
-                                  suggestions={uniqueDebtorNames("they_owe_me")}
-                                  className="h-8 text-sm flex-1"
-                                  autoFocus
-                                />
-                                <Input
-                                  type="text"
-                                  inputMode="numeric"
-                                  placeholder="Monto"
-                                  value={newDebtorAmount}
-                                  onChange={(e) => setNewDebtorAmount(e.target.value.replace(/\D/g, ""))}
-                                  className={`h-8 text-sm w-28 ${exceedsLimit ? "border-destructive focus-visible:ring-destructive" : ""}`}
-                                />
-                                <Button
-                                  type="button"
-                                  size="sm"
-                                  className="h-8 px-3 text-xs"
-                                  disabled={!isFormValid}
-                                  onClick={async () => {
-                                    await addSharedExpenses.mutateAsync([{
-                                      transaction_id: editingTransaction!.id,
-                                      debtor_name: newDebtorName.trim(),
-                                      amount_owed: newAmount,
-                                    }]);
-                                    setNewDebtorName("");
-                                    setNewDebtorAmount("");
-                                    setAddingDebtor(false);
-                                  }}
-                                >
-                                  Agregar
-                                </Button>
-                                <Button
-                                  type="button"
-                                  size="sm"
-                                  variant="ghost"
-                                  className="h-8 w-8 p-0"
-                                  onClick={() => {
-                                    setAddingDebtor(false);
-                                    setNewDebtorName("");
-                                    setNewDebtorAmount("");
-                                  }}
-                                >
-                                  <X className="h-3.5 w-3.5" />
-                                </Button>
-                              </div>
-                              {exceedsLimit && (
-                                <p className="text-xs text-destructive">
-                                  El monto supera el disponible (${new Intl.NumberFormat("es-CL").format(remaining)})
-                                </p>
-                              )}
-                            </div>
-                          );
-                        })()}
-                      </div>
-                    );
-                  }
-
-                  return (
-                    <div className="flex items-center justify-center gap-2 p-3 rounded-xl border-2 border-dashed border-input hover:border-primary/50 transition-colors">
-                      <Checkbox
-                        id="shared-modal"
-                        checked={isShared}
-                        onCheckedChange={(checked) => setIsShared(checked as boolean)}
-                      />
-                      <label
-                        htmlFor="shared-modal"
-                        className="text-sm font-medium leading-none cursor-pointer flex items-center gap-2"
-                      >
-                        <Users className="h-4 w-4 text-primary" />
-                        Gasto compartido con amigos
-                      </label>
-                    </div>
-                  );
-                })()}
-
-                {/* Saldar deuda(s) que yo debo — solo para Gastos */}
-                {formData.type === "Gasto" && (() => {
-                  const pendingIOwe = sharedExpensesWithTransaction.filter(se => !se.paid && se.direction === "i_owe_them");
-                  if (pendingIOwe.length === 0) return null;
-
-                  const txAmount = parseFloat(formData.amount || "0");
-                  const selectedTotal = debtsIOweToSettle.reduce((sum, d) => sum + d.amount, 0);
-                  const totalMismatch = txAmount > 0 && debtsIOweToSettle.length > 0 && Math.abs(txAmount - selectedTotal) > 1;
-
-                  if (!settleDebtToggle) {
-                    return (
-                      <div className="flex items-center justify-center gap-2 p-3 rounded-xl border-2 border-dashed border-input hover:border-destructive/50 transition-colors">
-                        <Checkbox
-                          id="settle-debt-i-owe"
-                          checked={settleDebtToggle}
-                          onCheckedChange={(checked) => {
-                            setSettleDebtToggle(checked as boolean);
-                            if (!checked) setDebtsIOweToSettle([]);
-                          }}
-                        />
-                        <label
-                          htmlFor="settle-debt-i-owe"
-                          className="text-sm font-medium leading-none cursor-pointer flex items-center gap-2"
-                        >
-                          <Users className="h-4 w-4 text-destructive" />
-                          ¿Este gasto salda una deuda que le debes a alguien?
-                        </label>
-                      </div>
-                    );
-                  }
-
-                  const toggleDebt = (debt: typeof pendingIOwe[number]) => {
-                    setDebtsIOweToSettle(prev => {
-                      const exists = prev.some(d => d.id === debt.id);
-                      if (exists) return prev.filter(d => d.id !== debt.id);
-                      return [...prev, { id: debt.id, debtorName: debt.debtor_name, amount: debt.amount_owed }];
-                    });
-                  };
-
-                  return (
-                    <div className="space-y-3 rounded-xl border-2 border-destructive/20 bg-destructive/5 p-4">
-                      <div className="flex items-center justify-between">
-                        <div className="flex items-center gap-2">
-                          <Users className="h-4 w-4 text-destructive" />
-                          <span className="text-sm font-semibold">Saldar deuda(s) que debes</span>
-                        </div>
-                        <Button
-                          type="button"
-                          variant="ghost"
-                          size="sm"
-                          className="h-7 w-7 p-0"
-                          onClick={() => {
-                            setSettleDebtToggle(false);
-                            setDebtsIOweToSettle([]);
-                          }}
-                        >
-                          <X className="h-3.5 w-3.5" />
-                        </Button>
-                      </div>
-                      <div className="space-y-2">
-                        {pendingIOwe.map((debt) => {
-                          const isSelected = debtsIOweToSettle.some(d => d.id === debt.id);
-                          return (
-                            <div
-                              key={debt.id}
-                              role="checkbox"
-                              aria-checked={isSelected}
-                              tabIndex={0}
-                              onClick={() => toggleDebt(debt)}
-                              onKeyDown={(e) => {
-                                if (e.key === "Enter" || e.key === " ") {
-                                  e.preventDefault();
-                                  toggleDebt(debt);
-                                }
-                              }}
-                              className={`w-full flex items-center gap-3 rounded-lg border bg-background p-3 text-left transition-colors cursor-pointer select-none ${isSelected ? "border-destructive bg-destructive/5" : "border-border"}`}
-                            >
-                              {/* Indicador visual, no un Checkbox de Radix — ver comentario
-                                  en el panel de vincular deudas. */}
-                              <span
-                                aria-hidden
-                                className={cn(
-                                  "flex h-4 w-4 shrink-0 items-center justify-center rounded-sm border transition-colors",
-                                  isSelected ? "border-destructive bg-destructive text-white" : "border-input"
-                                )}
-                              >
-                                {isSelected && <Check className="h-3 w-3" />}
-                              </span>
-                              <div className="flex-1 min-w-0">
-                                <div className="flex items-center gap-1.5">
-                                  <span className="text-sm font-medium truncate">{debt.debtor_name}</span>
-                                  <span className="text-xs text-muted-foreground">·</span>
-                                  <span className="text-sm font-semibold text-destructive">
-                                    ${new Intl.NumberFormat("es-CL").format(debt.amount_owed)}
-                                  </span>
-                                </div>
-                                <p className="text-xs text-muted-foreground truncate mt-0.5">
-                                  {debt.transaction_detail || debt.detail || "Sin detalle"}
-                                </p>
-                              </div>
-                            </div>
-                          );
-                        })}
-                      </div>
-                      {debtsIOweToSettle.length > 0 && (
-                        <div className="space-y-2 pt-2 border-t border-destructive/20">
-                          <div className="flex items-center justify-between text-xs">
-                            <span className="text-muted-foreground">
-                              {debtsIOweToSettle.length} deuda{debtsIOweToSettle.length > 1 ? "s" : ""} seleccionada{debtsIOweToSettle.length > 1 ? "s" : ""}
-                            </span>
-                            <span className={`font-semibold ${totalMismatch ? "text-destructive" : "text-foreground"}`}>
-                              ${new Intl.NumberFormat("es-CL").format(selectedTotal)}
-                            </span>
+                              );
+                            })()}
                           </div>
-                          {editingTransaction && (
+                        );
+                      }
+
+                      return (
+                        <div className="flex items-center justify-center gap-2 p-3 rounded-xl border-2 border-dashed border-input hover:border-primary/50 transition-colors">
+                          <Checkbox
+                            id="shared-modal"
+                            checked={isShared}
+                            onCheckedChange={(checked) => setIsShared(checked as boolean)}
+                          />
+                          <label
+                            htmlFor="shared-modal"
+                            className="text-sm font-medium leading-none cursor-pointer flex items-center gap-2"
+                          >
+                            <Users className="h-4 w-4 text-primary" />
+                            Gasto compartido con amigos
+                          </label>
+                        </div>
+                      );
+                    })()}
+
+                    {/* Saldar deuda(s) que yo debo — solo para Gastos */}
+                    {formData.type === "Gasto" && (() => {
+                      const pendingIOwe = sharedExpensesWithTransaction.filter(se => !se.paid && se.direction === "i_owe_them");
+                      if (pendingIOwe.length === 0) return null;
+
+                      const txAmount = parseFloat(formData.amount || "0");
+                      const selectedTotal = debtsIOweToSettle.reduce((sum, d) => sum + d.amount, 0);
+                      const totalMismatch = txAmount > 0 && debtsIOweToSettle.length > 0 && Math.abs(txAmount - selectedTotal) > 1;
+
+                      if (!settleDebtToggle) {
+                        return (
+                          <div className="flex items-center justify-center gap-2 p-3 rounded-xl border-2 border-dashed border-input hover:border-destructive/50 transition-colors">
+                            <Checkbox
+                              id="settle-debt-i-owe"
+                              checked={settleDebtToggle}
+                              onCheckedChange={(checked) => {
+                                setSettleDebtToggle(checked as boolean);
+                                if (!checked) setDebtsIOweToSettle([]);
+                              }}
+                            />
+                            <label
+                              htmlFor="settle-debt-i-owe"
+                              className="text-sm font-medium leading-none cursor-pointer flex items-center gap-2"
+                            >
+                              <Users className="h-4 w-4 text-destructive" />
+                              ¿Este gasto salda una deuda que le debes a alguien?
+                            </label>
+                          </div>
+                        );
+                      }
+
+                      const toggleDebt = (debt: typeof pendingIOwe[number]) => {
+                        setDebtsIOweToSettle(prev => {
+                          const exists = prev.some(d => d.id === debt.id);
+                          if (exists) return prev.filter(d => d.id !== debt.id);
+                          return [...prev, { id: debt.id, debtorName: debt.debtor_name, amount: debt.amount_owed }];
+                        });
+                      };
+
+                      return (
+                        <div className="space-y-3 rounded-xl border-2 border-destructive/20 bg-destructive/5 p-4">
+                          <div className="flex items-center justify-between">
+                            <div className="flex items-center gap-2">
+                              <Users className="h-4 w-4 text-destructive" />
+                              <span className="text-sm font-semibold">Saldar deuda(s) que debes</span>
+                            </div>
                             <Button
                               type="button"
+                              variant="ghost"
                               size="sm"
-                              variant="destructive"
-                              className="w-full h-8 text-xs"
-                              disabled={settleDebtsIOwe.isPending}
-                              onClick={async () => {
-                                await settleDebtsIOwe.mutateAsync({
-                                  debts: debtsIOweToSettle.map(d => ({ sharedExpenseId: d.id })),
-                                  existingTransactionId: editingTransaction.id,
-                                });
-                                setIsDialogOpen(false);
-                                setEditingTransaction(null);
-                                resetForm();
+                              className="h-7 w-7 p-0"
+                              onClick={() => {
+                                setSettleDebtToggle(false);
+                                setDebtsIOweToSettle([]);
                               }}
                             >
-                              Saldar seleccionadas
+                              <X className="h-3.5 w-3.5" />
                             </Button>
+                          </div>
+                          <div className="space-y-2">
+                            {pendingIOwe.map((debt) => {
+                              const isSelected = debtsIOweToSettle.some(d => d.id === debt.id);
+                              return (
+                                <div
+                                  key={debt.id}
+                                  role="checkbox"
+                                  aria-checked={isSelected}
+                                  tabIndex={0}
+                                  onClick={() => toggleDebt(debt)}
+                                  onKeyDown={(e) => {
+                                    if (e.key === "Enter" || e.key === " ") {
+                                      e.preventDefault();
+                                      toggleDebt(debt);
+                                    }
+                                  }}
+                                  className={`w-full flex items-center gap-3 rounded-lg border bg-background p-3 text-left transition-colors cursor-pointer select-none ${isSelected ? "border-destructive bg-destructive/5" : "border-border"}`}
+                                >
+                                  {/* Indicador visual, no un Checkbox de Radix — ver comentario
+                                      en el panel de vincular deudas. */}
+                                  <span
+                                    aria-hidden
+                                    className={cn(
+                                      "flex h-4 w-4 shrink-0 items-center justify-center rounded-sm border transition-colors",
+                                      isSelected ? "border-destructive bg-destructive text-white" : "border-input"
+                                    )}
+                                  >
+                                    {isSelected && <Check className="h-3 w-3" />}
+                                  </span>
+                                  <div className="flex-1 min-w-0">
+                                    <div className="flex items-center gap-1.5">
+                                      <span className="text-sm font-medium truncate">{debt.debtor_name}</span>
+                                      <span className="text-xs text-muted-foreground">·</span>
+                                      <span className="text-sm font-semibold text-destructive">
+                                        ${new Intl.NumberFormat("es-CL").format(debt.amount_owed)}
+                                      </span>
+                                    </div>
+                                    <p className="text-xs text-muted-foreground truncate mt-0.5">
+                                      {debt.transaction_detail || debt.detail || "Sin detalle"}
+                                    </p>
+                                  </div>
+                                </div>
+                              );
+                            })}
+                          </div>
+                          {debtsIOweToSettle.length > 0 && (
+                            <div className="space-y-2 pt-2 border-t border-destructive/20">
+                              <div className="flex items-center justify-between text-xs">
+                                <span className="text-muted-foreground">
+                                  {debtsIOweToSettle.length} deuda{debtsIOweToSettle.length > 1 ? "s" : ""} seleccionada{debtsIOweToSettle.length > 1 ? "s" : ""}
+                                </span>
+                                <span className={`font-semibold ${totalMismatch ? "text-destructive" : "text-foreground"}`}>
+                                  ${new Intl.NumberFormat("es-CL").format(selectedTotal)}
+                                </span>
+                              </div>
+                              {editingTransaction && (
+                                <Button
+                                  type="button"
+                                  size="sm"
+                                  variant="destructive"
+                                  className="w-full h-8 text-xs"
+                                  disabled={settleDebtsIOwe.isPending}
+                                  onClick={async () => {
+                                    await settleDebtsIOwe.mutateAsync({
+                                      debts: debtsIOweToSettle.map(d => ({ sharedExpenseId: d.id })),
+                                      existingTransactionId: editingTransaction.id,
+                                    });
+                                    setIsDialogOpen(false);
+                                    setEditingTransaction(null);
+                                    resetForm();
+                                  }}
+                                >
+                                  Saldar seleccionadas
+                                </Button>
+                              )}
+                            </div>
                           )}
                         </div>
-                      )}
-                    </div>
-                  );
-                })()}
-              </form>
-            )}
-          </BaseModal>
-        </div>
+                      );
+                    })()}
+                  </form>
+                )}
+              </BaseModal>
+              {/* Los verbos de la página: importar, exportar, sincronizar
+                  y ver cuotas futuras. Antes vivían en la toolbar junto a
+                  los filtros, mezclando lo que hacés con lo que mirás. */}
+              <Dialog open={isImportDialogOpen} onOpenChange={setIsImportDialogOpen}>
+                <DialogTrigger asChild>
+                  <Button variant="outline" size="icon" className="rounded-full h-8 w-8">
+                    <Upload className="h-4 w-4" />
+                  </Button>
+                </DialogTrigger>
+              </Dialog>
 
-        <BankSyncModal
-          open={isBankSyncOpen}
-          onOpenChange={setIsBankSyncOpen}
-          syncStep={bankSync.step}
-          pollStatus={bankSync.pollStatus}
-          result={bankSync.result}
-          onStart={bankSync.startSync}
-          onStartStored={bankSync.startSyncStored}
-          onImportSkipped={bankSync.importSkipped}
-          onDeleteImported={bankSync.deleteImported}
-          onReset={bankSync.reset}
-        />
+              <ImportCSVModal
+                open={isImportDialogOpen}
+                onOpenChange={setIsImportDialogOpen}
+                isImporting={isImporting}
+                onImport={handleImportCSV}
+              />
 
-        {/* Toolbar unificada */}
-        <div className="flex flex-wrap items-center gap-2">
-          {/* Acciones izq */}
-          <Dialog open={isImportDialogOpen} onOpenChange={setIsImportDialogOpen}>
-            <DialogTrigger asChild>
-              <Button variant="outline" size="icon" className="rounded-full h-8 w-8">
-                <Upload className="h-4 w-4" />
+              <Button onClick={handleExportCSV} variant="outline" size="icon" className="rounded-full h-8 w-8">
+                <Download className="h-4 w-4" />
               </Button>
-            </DialogTrigger>
-          </Dialog>
 
-          <ImportCSVModal
-            open={isImportDialogOpen}
-            onOpenChange={setIsImportDialogOpen}
-            isImporting={isImporting}
-            onImport={handleImportCSV}
-          />
-
-          <Button onClick={handleExportCSV} variant="outline" size="icon" className="rounded-full h-8 w-8">
-            <Download className="h-4 w-4" />
-          </Button>
-
-          <Button
-            variant="outline"
-            size="sm"
-            className="rounded-full gap-2"
-            onClick={() => setIsBankSyncOpen(true)}
-          >
-            {bankSync.isRunning ? (
-              <RefreshCw className="h-4 w-4 animate-spin" />
-            ) : (
-              <Building2 className="h-4 w-4" />
-            )}
-            <span className="hidden sm:inline">
-              {bankSync.isRunning ? "Sincronizando..." : "Sync Banco"}
-            </span>
-          </Button>
-
-          {/* Cuotas futuras como botón compacto */}
-          {futureTransactions.length > 0 && (
-            <Button
-              variant={showFuture ? "secondary" : "outline"}
-              size="sm"
-              onClick={() => setShowFuture(!showFuture)}
-              className="rounded-full gap-2 text-xs"
-            >
-              <CalendarClock className="h-4 w-4" />
-              <span>{futureTransactions.length} cuota{futureTransactions.length > 1 ? "s" : ""} futura{futureTransactions.length > 1 ? "s" : ""}</span>
-            </Button>
-          )}
-
-          {/* Separador */}
-          <div className="flex-1" />
-
-          {/* Search */}
-          <div className="relative">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-            <Input
-              ref={searchInputRef}
-              placeholder="Buscar..."
-              value={searchValue}
-              onChange={(e) => setSearchValue(e.target.value)}
-              onKeyDown={(e) => {
-                if (e.key === "Escape") e.currentTarget.blur();
-              }}
-              className="pl-9 w-48 sm:w-64"
-            />
-            {searchValue && (
               <Button
-                variant="ghost"
+                variant="outline"
                 size="sm"
-                className="absolute right-1 top-1/2 -translate-y-1/2 h-7 w-7 p-0"
-                onClick={() => setSearchValue("")}
+                className="rounded-full gap-2"
+                onClick={() => setIsBankSyncOpen(true)}
               >
-                <X className="h-4 w-4" />
+                {bankSync.isRunning ? (
+                  <RefreshCw className="h-4 w-4 animate-spin" />
+                ) : (
+                  <Building2 className="h-4 w-4" />
+                )}
+                <span className="hidden sm:inline">
+                  {bankSync.isRunning ? "Sincronizando..." : "Sync Banco"}
+                </span>
               </Button>
+
+              {/* Cuotas futuras como botón compacto */}
+              {futureTransactions.length > 0 && (
+                <Button
+                  variant={showFuture ? "secondary" : "outline"}
+                  size="sm"
+                  onClick={() => setShowFuture(!showFuture)}
+                  className="rounded-full gap-2 text-xs"
+                >
+                  <CalendarClock className="h-4 w-4" />
+                  <span>{futureTransactions.length} cuota{futureTransactions.length > 1 ? "s" : ""} futura{futureTransactions.length > 1 ? "s" : ""}</span>
+                </Button>
+              )}
+            </div>
+          </Panel>
+
+          {/* ── Fila 2 — los filtros. Franja de chrome, no de contenido:
+              controles compactos, todos en una línea. ─────────────── */}
+          <Panel className="flex flex-wrap items-center gap-2 px-4 py-2.5 md:px-5 lg:shrink-0">
+            {/* Búsqueda */}
+            <div className="relative">
+              <Search className="pointer-events-none absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />
+              <Input
+                ref={searchInputRef}
+                placeholder="Buscar..."
+                value={searchValue}
+                onChange={(e) => setSearchValue(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === "Escape") e.currentTarget.blur();
+                }}
+                className="h-8 w-40 pl-9 sm:w-64"
+              />
+              {searchValue && (
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="absolute right-0.5 top-1/2 h-7 w-7 -translate-y-1/2 p-0"
+                  onClick={() => setSearchValue("")}
+                >
+                  <X className="h-4 w-4" />
+                </Button>
+              )}
+            </div>
+
+            {/* Filtro fecha */}
+            <DateRangeFilter value={dateRange} onChange={setDateRange} />
+
+            {/* Filtro tarjeta */}
+            {(isLoadingCards || creditCards.length > 0) && (
+              <Select value={cardFilter} onValueChange={setCardFilter} disabled={isLoadingCards}>
+                <SelectTrigger className="h-8 w-[150px] sm:w-[180px]">
+                  <SelectValue placeholder="Tarjeta" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">Todas las tarjetas</SelectItem>
+                  <SelectItem value="none">Sin tarjeta</SelectItem>
+                  {creditCards.map(card => (
+                    <SelectItem key={card.id} value={card.id}>
+                      {card.name}{card.last_4_digits ? ` ···${card.last_4_digits}` : ""}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             )}
-          </div>
 
-          {/* Filtro fecha */}
-          <DateRangeFilter value={dateRange} onChange={setDateRange} />
-
-          {/* Filtro tarjeta */}
-          {(isLoadingCards || creditCards.length > 0) && (
-            <Select value={cardFilter} onValueChange={setCardFilter} disabled={isLoadingCards}>
-              <SelectTrigger className="w-[160px] sm:w-[180px]">
-                <SelectValue placeholder="Tarjeta" />
+            {/* Filtro tipo */}
+            <Select value={typeFilter} onValueChange={setTypeFilter}>
+              <SelectTrigger className="h-8 w-[130px] sm:w-[160px]">
+                <SelectValue placeholder="Tipo" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="all">Todas las tarjetas</SelectItem>
-                <SelectItem value="none">Sin tarjeta</SelectItem>
-                {creditCards.map(card => (
-                  <SelectItem key={card.id} value={card.id}>
-                    {card.name}{card.last_4_digits ? ` ···${card.last_4_digits}` : ""}
-                  </SelectItem>
-                ))}
+                <SelectItem value="all">Todos los tipos</SelectItem>
+                <SelectItem value="Ingreso">Ingresos</SelectItem>
+                <SelectItem value="Gasto">Gastos</SelectItem>
+                <SelectItem value="Inversión">Inversiones</SelectItem>
+                <SelectItem value="Reembolso">Reembolsos</SelectItem>
               </SelectContent>
             </Select>
-          )}
 
-          {/* Filtro tipo */}
-          <Select value={typeFilter} onValueChange={setTypeFilter}>
-            <SelectTrigger className="w-[140px] sm:w-[160px]">
-              <SelectValue placeholder="Tipo" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">Todos los tipos</SelectItem>
-              <SelectItem value="Ingreso">Ingresos</SelectItem>
-              <SelectItem value="Gasto">Gastos</SelectItem>
-              <SelectItem value="Inversión">Inversiones</SelectItem>
-              <SelectItem value="Reembolso">Reembolsos</SelectItem>
-            </SelectContent>
-          </Select>
+            {/* Filtro categoría */}
+            <Select value={categoryFilter} onValueChange={setCategoryFilter}>
+              <SelectTrigger className="h-8 w-[150px] sm:w-[180px]">
+                <SelectValue placeholder="Categoría" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">Todas las categorías</SelectItem>
+                {Array.from(new Set(
+                  [...transactions, ...(showFuture ? futureTransactions : [])].map(t => t.category_name)
+                ))
+                  .filter(cat => cat && cat.trim().length > 0)
+                  .map(cat => (
+                    <SelectItem key={cat} value={cat}>
+                      {categories.find(c => c.name === cat)?.icon || getCategoryIcon(cat)} {cat}
+                    </SelectItem>
+                  ))}
+              </SelectContent>
+            </Select>
+          </Panel>
 
-          {/* Filtro categoría */}
-          <Select value={categoryFilter} onValueChange={setCategoryFilter}>
-            <SelectTrigger className="w-[160px] sm:w-[180px]">
-              <SelectValue placeholder="Categoría" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">Todas las categorías</SelectItem>
-              {Array.from(new Set(
-                [...transactions, ...(showFuture ? futureTransactions : [])].map(t => t.category_name)
-              ))
-                .filter(cat => cat && cat.trim().length > 0)
-                .map(cat => (
-                  <SelectItem key={cat} value={cat}>
-                    {categories.find(c => c.name === cat)?.icon || getCategoryIcon(cat)} {cat}
-                  </SelectItem>
-                ))}
-            </SelectContent>
-          </Select>
-        </div>
+          {/* ── Fila 3 — la tabla. Se queda con todo lo que sobre del
+              viewport y scrollea por dentro. ──────────────────────── */}
+          <Panel className="lg:min-h-0 lg:flex-1">
+            <TransactionsTable
+              fill
+              transactions={
+                showFuture
+                  ? [...transactions, ...futureTransactions]
+                  : transactions
+              }
+              categories={categories}
+              onEdit={handleEdit}
+              onDelete={handleDelete}
+              onUpdateSilent={handleUpdateSilent}
+              onDeleteMultiple={handleDeleteMultiple}
+              onUpdateMultiple={handleUpdateMultiple}
+              onDuplicate={handleDuplicate}
+              isUpdating={updateTransactionSilent.isPending}
+              searchValue={searchValue}
+              onSearchChange={setSearchValue}
+              typeFilter={typeFilter}
+              onTypeFilterChange={setTypeFilter}
+              categoryFilter={categoryFilter}
+              onCategoryFilterChange={setCategoryFilter}
+              cardFilter={cardFilter}
+              onCardFilterChange={setCardFilter}
+              dateRange={dateRange}
+              onDateRangeChange={setDateRange}
+              highlightId={highlightId}
+            />
+          </Panel>
+      </Screen>
 
-        <TransactionsTable
-          transactions={showFuture ? [...transactions, ...futureTransactions] : transactions}
-          categories={categories}
-          onEdit={handleEdit}
-          onDelete={handleDelete}
-          onUpdateSilent={handleUpdateSilent}
-          onDeleteMultiple={handleDeleteMultiple}
-          onUpdateMultiple={handleUpdateMultiple}
-          onDuplicate={handleDuplicate}
-          isUpdating={updateTransactionSilent.isPending}
-          searchValue={searchValue}
-          onSearchChange={setSearchValue}
-          typeFilter={typeFilter}
-          onTypeFilterChange={setTypeFilter}
-          categoryFilter={categoryFilter}
-          onCategoryFilterChange={setCategoryFilter}
-          cardFilter={cardFilter}
-          onCardFilterChange={setCardFilter}
-          dateRange={dateRange}
-          onDateRangeChange={setDateRange}
-          highlightId={highlightId}
-        />
-      </div>
+      <BankSyncModal
+        open={isBankSyncOpen}
+        onOpenChange={setIsBankSyncOpen}
+        syncStep={bankSync.step}
+        pollStatus={bankSync.pollStatus}
+        result={bankSync.result}
+        onStart={bankSync.startSync}
+        onStartStored={bankSync.startSyncStored}
+        onImportSkipped={bankSync.importSkipped}
+        onDeleteImported={bankSync.deleteImported}
+        onReset={bankSync.reset}
+      />
 
       <SharedExpenseDrawer
         open={sharedDrawerOpen}

@@ -83,7 +83,7 @@ export function SubtitleTrack({
       <div
         className={cn(
           "flex flex-col items-center justify-center gap-2 rounded-2xl px-4 text-center",
-          "border border-dashed border-border/70 bg-card",
+          "border border-dashed border-border bg-card",
           className
         )}
       >
@@ -120,7 +120,7 @@ export function SubtitleTrack({
   return (
     <div
       className={cn(
-        "relative overflow-hidden rounded-2xl border border-border/60 bg-card",
+        "relative overflow-hidden rounded-2xl border border-border bg-card",
         className
       )}
     >
@@ -162,7 +162,7 @@ export function SubtitleTrack({
               <span
                 aria-hidden
                 className={cn(
-                  "absolute inset-y-1.5 left-0 w-[3px] rounded-full bg-primary transition-opacity duration-300",
+                  "absolute inset-y-1.5 left-0 w-[3px] rounded-sm bg-primary transition-opacity duration-300",
                   isActive ? "opacity-100" : "opacity-0"
                 )}
               />
@@ -207,7 +207,7 @@ export function SubtitleTrack({
           onClick={() => onFollowChange(true)}
           className={cn(
             "absolute bottom-2.5 left-1/2 flex -translate-x-1/2 items-center gap-1.5",
-            "rounded-full border border-border/60 bg-popover/95 px-3 py-1.5 shadow-lg backdrop-blur",
+            "rounded-sm border border-border bg-popover/95 px-3 py-1.5 shadow-lg backdrop-blur",
             "text-[11px] font-medium transition-colors hover:text-primary"
           )}
         >

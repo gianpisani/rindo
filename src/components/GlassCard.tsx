@@ -11,9 +11,11 @@ export function GlassCard({ children, className }: GlassCardProps) {
   return (
     <Card
       className={cn(
-        "border border-border/50 bg-card",
-        "transition-all duration-200",
-        "hover:border-primary/20 hover:shadow-sm",
+        "border border-border bg-card",
+        "transition-colors duration-200",
+        // El hover ya no levanta la tarjeta: le sube el tono a la línea.
+        // Es el único movimiento que Wero le permite a un borde.
+        "hover:border-primary",
         className
       )}
     >

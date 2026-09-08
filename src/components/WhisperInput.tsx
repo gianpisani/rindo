@@ -260,7 +260,7 @@ export function WhisperInput({ open, onOpenChange }: WhisperInputProps) {
                 >
                   {/* Type indicator pill */}
                   <motion.div
-                    className="flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-medium"
+                    className="flex items-center gap-1.5 px-3 py-1 rounded-sm text-xs font-medium"
                     style={{
                       backgroundColor: currentType.colorBg,
                       color: currentType.color,

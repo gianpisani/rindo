@@ -72,13 +72,13 @@ export function CaptureSheet({
       )}
     >
       {/* ── De qué se trata ── */}
-      <div className="flex shrink-0 items-center gap-2 border-b border-border/50 px-4 py-2.5">
+      <div className="flex shrink-0 items-center gap-2 border-b border-border px-4 py-2.5">
         {lookupOnly ? (
           <Search className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
         ) : (
           <Highlighter className="h-3.5 w-3.5 shrink-0 text-primary" />
         )}
-        <h3 className="shrink-0 text-xs font-semibold">
+        <h3 className="shrink-0 section-title text-xs">
           {lookupOnly ? "Consultar" : "Capturar"}
         </h3>
         {capturedAt !== null && (
@@ -161,7 +161,7 @@ export function CaptureSheet({
       </div>
 
       {/* ── Qué se hace con ella ── */}
-      <div className="flex shrink-0 items-center gap-2 border-t border-border/50 px-4 py-2.5">
+      <div className="flex shrink-0 items-center gap-2 border-t border-border px-4 py-2.5">
         {lookupOnly ? (
           <>
             <p className="min-w-0 flex-1 text-[11px] leading-snug text-muted-foreground">

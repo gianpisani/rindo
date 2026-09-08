@@ -1,5 +1,7 @@
 import { cn } from "@/lib/utils";
+import { Row, Panel } from "@/components/HairlineGrid";
 import type { ReactNode } from "react";
+import { Sparkles } from "lucide-react";
 import { format } from "date-fns";
 import { es } from "date-fns/locale";
 import {
@@ -33,6 +35,8 @@ interface LearningOverviewProps {
   continueSlot?: ReactNode;
 }
 
+/** Un dato de la semana. Celda de la franja: el rótulo arriba del número,
+ *  como en Inicio, no debajo. */
 function WeekStat({
   value,
   label,
@@ -43,17 +47,17 @@ function WeekStat({
   muted?: boolean;
 }) {
   return (
-    <div>
+    <Panel className="px-4 py-3 md:px-5">
+      <p className="eyebrow truncate">{label}</p>
       <p
         className={cn(
-          "text-xl font-bold tabular-nums leading-none",
+          "mt-2 font-mono text-lg font-bold leading-none tracking-tight tabular-nums md:text-xl",
           muted && "text-muted-foreground"
         )}
       >
         {value}
       </p>
-      <p className="text-[11px] text-muted-foreground mt-1">{label}</p>
-    </div>
+    </Panel>
   );
 }
 
@@ -71,8 +75,11 @@ export function LearningOverview({
 }: LearningOverviewProps) {
   const recent = sessions.slice(0, 5);
 
+  /* La pestaña es una columna de celdas: el gap de 1px del Row es la
+     única separación. Antes era un space-y-4 entre tarjetas redondeadas
+     flotando sobre el fondo. */
   return (
-    <div className="space-y-4">
+    <Row>
       {/* ── Hoy, sobre lo que estás viendo ───────────────── */}
       <TodayHero
         goal={goal}
@@ -89,96 +96,100 @@ export function LearningOverview({
       {/* ── Para ver después ─────────────────────────────── */}
       {queueSlot}
 
-      {/* ── Esta semana ──────────────────────────────────── */}
-      <div className="rounded-2xl border border-border/60 bg-card p-5">
-        <p className="text-xs text-muted-foreground uppercase tracking-wide font-medium mb-4">
-          Esta semana
-        </p>
+      {/* ── Esta semana. El rótulo del período en su propia banda y
+          los cuatro datos como franja de celdas. ─────────────── */}
+      <Panel className="px-4 py-2 md:px-5">
+        <p className="eyebrow">Esta semana</p>
+      </Panel>
 
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-          <WeekStat
-            value={formatDuration(stats.thisWeek.effectiveSeconds)}
-            label="estudiando"
-          />
-          <WeekStat
-            value={String(stats.thisWeek.sessionCount)}
-            label={stats.thisWeek.sessionCount === 1 ? "sesión" : "sesiones"}
-          />
-          <WeekStat
-            value={String(stats.thisWeek.newItems)}
-            label="expresiones"
-          />
-          <WeekStat
-            value={
-              stats.thisWeek.comprehension !== null
-                ? `${stats.thisWeek.comprehension.toFixed(1)}`
-                : "—"
-            }
-            label={`comprensión /${MAX_COMPREHENSION}`}
-            muted={stats.thisWeek.comprehension === null}
-          />
-        </div>
-      </div>
+      <Row className="grid-cols-2 sm:grid-cols-4">
+        <WeekStat
+          value={formatDuration(stats.thisWeek.effectiveSeconds)}
+          label="estudiando"
+        />
+        <WeekStat
+          value={String(stats.thisWeek.sessionCount)}
+          label={stats.thisWeek.sessionCount === 1 ? "sesión" : "sesiones"}
+        />
+        <WeekStat
+          value={String(stats.thisWeek.newItems)}
+          label="expresiones"
+        />
+        <WeekStat
+          value={
+            stats.thisWeek.comprehension !== null
+              ? `${stats.thisWeek.comprehension.toFixed(1)}`
+              : "—"
+          }
+          label={`comprensión /${MAX_COMPREHENSION}`}
+          muted={stats.thisWeek.comprehension === null}
+        />
+      </Row>
 
-      {/* ── Últimas sesiones ─────────────────────────────── */}
+      {/* ── Últimas sesiones. Lista de filas con línea entre ellas. */}
       {recent.length > 0 && (
-        <div className="rounded-2xl border border-border/60 bg-card p-5">
-          <p className="text-xs text-muted-foreground uppercase tracking-wide font-medium mb-3">
-            Últimas sesiones
-          </p>
-
-          <div className="space-y-1.5">
-            {recent.map((s) => (
-              <button
-                key={s.id}
-                onClick={() => onOpenSession(s)}
-                className={cn(
-                  "w-full flex items-center gap-3 rounded-xl px-2.5 py-2 -mx-1",
-                  "transition-colors hover:bg-muted/50 text-left"
-                )}
-              >
-                {s.content_thumbnail ? (
-                  <img
-                    src={s.content_thumbnail}
-                    alt=""
-                    className="h-10 w-16 rounded-lg object-cover border border-border/50 shrink-0"
-                  />
-                ) : (
-                  <div className="h-10 w-16 rounded-lg bg-muted flex items-center justify-center shrink-0 text-base">
-                    {CONTENT_TYPE_CONFIG[s.content_type]?.emoji ?? "✨"}
-                  </div>
-                )}
-
-                <div className="min-w-0 flex-1">
-                  <p className="text-sm font-medium truncate">
-                    {s.content_title ?? "Sesión"}
-                  </p>
-                  <p className="text-[11px] text-muted-foreground">
-                    {format(new Date(s.started_at), "d MMM", { locale: es })} ·{" "}
-                    {formatDuration(s.effective_seconds)}
-                    {s.new_item_count > 0 && ` · ${s.new_item_count} nuevas`}
-                  </p>
-                </div>
-
-                <span className="text-sm font-bold tabular-nums text-muted-foreground shrink-0">
-                  {comprehensionScore(s) ?? "—"}
-                  <span className="text-[10px] font-normal">/{MAX_COMPREHENSION}</span>
-                </span>
-              </button>
-            ))}
+        <Panel>
+          <div className="flex items-center justify-between gap-2 border-b border-border px-4 py-2 md:px-5">
+            <h3 className="section-title text-xs">Últimas sesiones</h3>
+            <span className="font-mono text-[10px] tabular-nums text-muted-foreground">
+              {recent.length}
+            </span>
           </div>
-        </div>
+
+          {recent.map((s) => (
+            <button
+              key={s.id}
+              onClick={() => onOpenSession(s)}
+              className={cn(
+                "flex w-full items-center gap-3 border-b border-border px-4 py-2 text-left md:px-5",
+                "transition-colors last:border-b-0 hover:bg-muted",
+                "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring"
+              )}
+            >
+              {s.content_thumbnail ? (
+                <img
+                  src={s.content_thumbnail}
+                  alt=""
+                  className="h-10 w-16 shrink-0 border border-border object-cover"
+                />
+              ) : (
+                <div className="flex h-10 w-16 shrink-0 items-center justify-center border border-border bg-muted text-base">
+                  {CONTENT_TYPE_CONFIG[s.content_type]?.emoji ?? "✨"}
+                </div>
+              )}
+
+              <div className="min-w-0 flex-1">
+                <p className="truncate text-sm font-medium">
+                  {s.content_title ?? "Sesión"}
+                </p>
+                <p className="mt-0.5 font-mono text-[10px] tabular-nums text-muted-foreground">
+                  {format(new Date(s.started_at), "d MMM", { locale: es })} ·{" "}
+                  {formatDuration(s.effective_seconds)}
+                  {s.new_item_count > 0 && ` · ${s.new_item_count} nuevas`}
+                </p>
+              </div>
+
+              <span className="shrink-0 font-mono text-sm font-bold tabular-nums text-muted-foreground">
+                {comprehensionScore(s) ?? "—"}
+                <span className="text-[10px] font-normal">/{MAX_COMPREHENSION}</span>
+              </span>
+            </button>
+          ))}
+        </Panel>
       )}
 
       {/* Estado vacío */}
       {sessions.length === 0 && (
-        <div className="rounded-2xl border border-dashed border-border/60 p-8 text-center">
-          <p className="text-sm font-medium">Todavía no hay sesiones</p>
-          <p className="text-xs text-muted-foreground mt-1.5 max-w-sm mx-auto">
+        <Panel className="flex flex-col items-center justify-center gap-2 px-4 py-12 text-center">
+          <div className="flex size-14 items-center justify-center border border-border">
+            <Sparkles className="h-6 w-6 text-muted-foreground/50" />
+          </div>
+          <p className="section-title text-sm">Todavía no hay sesiones</p>
+          <p className="max-w-sm text-xs text-muted-foreground">
             Pega el link de un video en inglés y empieza. El resto lo mide Rindo.
           </p>
-        </div>
+        </Panel>
       )}
-    </div>
+    </Row>
   );
 }

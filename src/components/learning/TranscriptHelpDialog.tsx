@@ -176,7 +176,7 @@ export function TranscriptHelpDialog({
             </Step>
           </div>
 
-          <div className="border-t border-border/50 pt-4 space-y-3">
+          <div className="border-t border-border pt-4 space-y-3">
             <p className="text-[11px] text-muted-foreground leading-relaxed">
               YouTube no deja que Rindo baje los subtítulos por su cuenta, pero
               sí los muestra en su página. El marcador hace lo mismo que harías

@@ -90,7 +90,7 @@ export function CategoryCreateInline({
         {/* Preview */}
         <div className="flex justify-center">
           <div
-            className="inline-flex items-center gap-2 rounded-full px-4 py-2 text-sm font-medium"
+            className="inline-flex items-center gap-2 rounded-sm px-4 py-2 text-sm font-medium"
             style={{ backgroundColor: color + "22", color }}
           >
             <span>{icon}</span>
@@ -104,7 +104,7 @@ export function CategoryCreateInline({
             placeholder="ej. Supermercado"
             value={name}
             onChange={(e) => setName(e.target.value)}
-            className="h-11 rounded-full px-5"
+            className="h-11 rounded-sm px-5"
             required
             autoFocus
           />

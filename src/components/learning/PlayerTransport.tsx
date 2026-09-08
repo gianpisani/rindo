@@ -105,7 +105,7 @@ export function PlayerTransport({
     >
       <div
         className={cn(
-          "relative w-full overflow-hidden rounded-full transition-all duration-200",
+          "relative w-full overflow-hidden rounded-sm transition-all duration-200",
           revealed ? "h-1.5 bg-foreground/25" : "h-[3px] bg-foreground/15"
         )}
       >
@@ -122,7 +122,7 @@ export function PlayerTransport({
             key={`${at}-${index}`}
             title={`Capturaste algo en ${formatClock(at)}`}
             className={cn(
-              "pointer-events-none absolute w-[2px] -translate-x-1/2 rounded-full bg-amber-300",
+              "pointer-events-none absolute w-[2px] -translate-x-1/2 rounded-sm bg-amber-300",
               "transition-all duration-200",
               revealed ? "h-1.5" : "h-[3px]"
             )}

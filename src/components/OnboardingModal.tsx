@@ -90,21 +90,21 @@ function ThemePreviewCard({
         <div className="flex h-full">
           <div className="w-1/4 h-full" style={{ backgroundColor: palette.muted }}>
             <div
-              className="w-2/3 h-1 rounded-full mt-2 mx-auto"
+              className="w-2/3 h-1 rounded-sm mt-2 mx-auto"
               style={{ backgroundColor: palette.primary }}
             />
             <div
-              className="w-1/2 h-0.5 rounded-full mt-1.5 mx-auto opacity-40"
+              className="w-1/2 h-0.5 rounded-sm mt-1.5 mx-auto opacity-40"
               style={{ backgroundColor: palette.foreground }}
             />
             <div
-              className="w-1/2 h-0.5 rounded-full mt-1 mx-auto opacity-30"
+              className="w-1/2 h-0.5 rounded-sm mt-1 mx-auto opacity-30"
               style={{ backgroundColor: palette.foreground }}
             />
           </div>
           <div className="flex-1 p-1.5 space-y-1">
             <div
-              className="w-3/4 h-1 rounded-full"
+              className="w-3/4 h-1 rounded-sm"
               style={{ backgroundColor: palette.foreground, opacity: 0.7 }}
             />
             <div
@@ -115,7 +115,7 @@ function ThemePreviewCard({
               }}
             >
               <div
-                className="w-1/2 h-0.5 rounded-full mt-1 ml-1"
+                className="w-1/2 h-0.5 rounded-sm mt-1 ml-1"
                 style={{ backgroundColor: palette.primary }}
               />
             </div>
@@ -187,7 +187,7 @@ function HueSlider({
     >
       {/* Barra de tonos */}
       <div
-        className="absolute inset-y-[10px] inset-x-0 rounded-full"
+        className="absolute inset-y-[10px] inset-x-0 rounded-sm"
         style={{
           background: `linear-gradient(to right, ${track})`,
           boxShadow: "inset 0 1px 3px rgba(0,0,0,0.15)",
@@ -460,7 +460,7 @@ export function OnboardingModal({
               key={i}
               onClick={() => goToStep(i)}
               className={cn(
-                "flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium transition-all duration-200",
+                "flex items-center gap-1.5 px-3 py-1.5 rounded-sm text-xs font-medium transition-all duration-200",
                 i === step
                   ? "bg-primary/10 text-primary"
                   : i < step
@@ -581,7 +581,7 @@ export function OnboardingModal({
                   "flex items-center gap-2 px-4 py-2.5 rounded-xl border transition-all duration-200 text-sm font-medium",
                   currentMode === "light"
                     ? "border-primary/30 bg-primary/5 text-foreground shadow-sm"
-                    : "border-border/50 text-muted-foreground hover:bg-muted active:scale-[0.97]"
+                    : "border-border text-muted-foreground hover:bg-muted active:scale-[0.97]"
                 )}
               >
                 <Sun className="size-4" />
@@ -593,7 +593,7 @@ export function OnboardingModal({
                   "flex items-center gap-2 px-4 py-2.5 rounded-xl border transition-all duration-200 text-sm font-medium",
                   currentMode === "dark"
                     ? "border-primary/30 bg-primary/5 text-foreground shadow-sm"
-                    : "border-border/50 text-muted-foreground hover:bg-muted active:scale-[0.97]"
+                    : "border-border text-muted-foreground hover:bg-muted active:scale-[0.97]"
                 )}
               >
                 <Moon className="size-4" />
@@ -694,7 +694,7 @@ export function OnboardingModal({
                       "relative flex flex-col items-start px-3 py-2.5 rounded-xl border transition-all duration-200 text-left",
                       selectedFont === font.id
                         ? "border-primary/40 bg-primary/5 shadow-sm"
-                        : "border-border/50 hover:bg-muted/50 hover:border-border active:scale-[0.97]"
+                        : "border-border hover:bg-muted/50 hover:border-border active:scale-[0.97]"
                     )}
                   >
                     {selectedFont === font.id && (

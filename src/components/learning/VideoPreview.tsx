@@ -40,7 +40,7 @@ export function VideoPreview({
         // Con el video puesto el marco sobra: la miniatura ya es una forma.
         videoId
           ? "border-transparent"
-          : "border-dashed border-border/50 bg-muted/10",
+          : "border-dashed border-border bg-muted/10",
         invalid && "border-destructive/40",
         className
       )}

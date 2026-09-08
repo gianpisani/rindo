@@ -95,7 +95,7 @@ export function RailButton({
             ? "bg-foreground/[0.14] text-foreground"
             : "text-muted-foreground hover:bg-foreground/[0.08] hover:text-foreground"),
         tone === "outline" &&
-          "border border-border/70 text-foreground/90 hover:border-border hover:bg-foreground/[0.08]",
+          "border border-border text-foreground/90 hover:border-border hover:bg-foreground/[0.08]",
         tone === "primary" &&
           "bg-primary text-primary-foreground hover:bg-primary/90",
         className
@@ -201,7 +201,7 @@ export function StudioTopRail({
           </span>
         )}
 
-        <span className="flex items-baseline gap-1 border-l border-border/60 pl-2.5">
+        <span className="flex items-baseline gap-1 border-l border-border pl-2.5">
           <span className="text-[13px] font-bold tabular-nums text-foreground/90">
             {formatClock(effectiveSeconds)}
           </span>

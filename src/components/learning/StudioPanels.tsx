@@ -47,8 +47,8 @@ function Panel({
         className
       )}
     >
-      <div className="flex shrink-0 items-center gap-2 border-b border-border/50 px-3.5 py-2.5">
-        <h3 className="text-xs font-semibold">{title}</h3>
+      <div className="flex shrink-0 items-center gap-2 border-b border-border px-3.5 py-2.5">
+        <h3 className="section-title text-xs">{title}</h3>
         {meta}
         <button
           onClick={onClose}
@@ -105,7 +105,7 @@ function PanelAction({
         tone === "muted" &&
           (active
             ? "border-primary/30 text-primary hover:bg-primary/10"
-            : "border-border/60 text-muted-foreground hover:border-border hover:text-foreground"),
+            : "border-border text-muted-foreground hover:border-border hover:text-foreground"),
         danger && "hover:border-destructive/40 hover:text-destructive"
       )}
     >
@@ -268,7 +268,7 @@ export function SubtitlesPanel({
             />
           </div>
 
-          <div className="mt-3 flex flex-wrap items-center gap-x-3 gap-y-1 border-t border-border/40 pt-3 text-[10px] text-muted-foreground">
+          <div className="mt-3 flex flex-wrap items-center gap-x-3 gap-y-1 border-t border-border pt-3 text-[10px] text-muted-foreground">
             <span className="flex items-center gap-1.5">
               <span className="h-0 w-3.5 border-b-2 border-dotted border-[var(--band-4)]" />
               sobre tu nivel
@@ -416,7 +416,7 @@ export function SessionPanel({
           rel="noreferrer"
           title="Abrir en YouTube en el minuto donde vas"
           className={cn(
-            "mt-3 flex items-center gap-1.5 border-t border-border/40 pt-3",
+            "mt-3 flex items-center gap-1.5 border-t border-border pt-3",
             "text-[11px] text-muted-foreground transition-colors hover:text-foreground"
           )}
         >

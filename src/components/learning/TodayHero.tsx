@@ -61,7 +61,9 @@ export function TodayHero({
     : null;
 
   return (
-    <section className="relative overflow-hidden rounded-2xl border border-border/60 bg-card">
+    /* Celda de la grilla, no tarjeta: sin borde propio ni radio. La
+       portada difuminada se queda — eso no ocupa alto, ocupa carácter. */
+    <section className="relative overflow-hidden bg-card">
       {art && (
         <>
           <img
@@ -82,9 +84,7 @@ export function TodayHero({
           <DayRing ratio={ratio} met={goalMet} streak={stats.streakDays} />
 
           <div>
-            <p className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
-              Hoy
-            </p>
+            <p className="eyebrow">Hoy</p>
             <p className="mt-0.5 text-2xl font-bold leading-none tracking-tight tabular-nums sm:text-3xl">
               {Math.round(todayMinutes)}
               <span className="text-base font-semibold text-muted-foreground">
@@ -99,11 +99,12 @@ export function TodayHero({
           <button
             onClick={onResumeFeatured}
             className={cn(
-              "-m-1 flex min-w-0 flex-1 items-center gap-3 rounded-xl p-1 text-left",
-              "transition-colors hover:bg-muted/50"
+              "-m-1 flex min-w-0 flex-1 items-center gap-3 p-1 text-left",
+              "transition-colors hover:bg-muted focus-visible:outline-none",
+              "focus-visible:ring-2 focus-visible:ring-ring"
             )}
           >
-            <span className="relative aspect-video w-[5.5rem] shrink-0 overflow-hidden rounded-lg border border-border/50 bg-muted">
+            <span className="relative aspect-video w-[5.5rem] shrink-0 overflow-hidden rounded-lg border border-border bg-muted">
               {art ? (
                 <img src={art} alt="" className="h-full w-full object-cover" />
               ) : null}
@@ -137,7 +138,7 @@ export function TodayHero({
           /* Sin nada a medias el hueco dice lo único que falta saber */
           <p className="min-w-0 flex-1 truncate text-sm text-muted-foreground">
             {goalMet ? (
-              <span className="flex items-center gap-1.5 font-medium text-emerald-500">
+              <span className="flex items-center gap-1.5 font-medium text-success">
                 <Check className="h-4 w-4" />
                 Meta del día cumplida
               </span>
@@ -154,7 +155,7 @@ export function TodayHero({
             <Button
               onClick={onStart}
               variant="outline"
-              className="h-11 rounded-xl px-3"
+              className="h-11 px-3"
               title="Empezar con otro video"
               aria-label="Empezar con otro video"
             >
@@ -164,7 +165,7 @@ export function TodayHero({
 
           <Button
             onClick={featured ? onResumeFeatured : onStart}
-            className="h-11 flex-1 rounded-xl px-5 font-semibold sm:flex-none"
+            className="h-11 flex-1 px-5 sm:flex-none"
           >
             <Play className="mr-2 h-4 w-4 fill-current" />
             {featuredIsLive
@@ -233,7 +234,7 @@ function DayRing({
             strokeDasharray={`${circumference * clamped} ${circumference}`}
             className={cn(
               "transition-[stroke-dasharray] duration-700 ease-out",
-              met ? "stroke-emerald-500" : "stroke-primary"
+              met ? "stroke-success" : "stroke-primary"
             )}
           />
         )}

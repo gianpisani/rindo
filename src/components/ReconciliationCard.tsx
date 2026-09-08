@@ -225,7 +225,7 @@ export function ReconciliationCard({ onSuccess }: ReconciliationCardProps = {}) 
 
               return (
                 <div className="space-y-3 mt-2 rounded-lg border bg-background p-3 animate-in fade-in slide-in-from-top-2 duration-200">
-                  <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Preview de transacción</p>
+                  <p className="text-xs eyebrow">Preview de transacción</p>
                   <div className="space-y-1.5 text-sm">
                     <div className="flex items-center justify-between">
                       <span className="text-muted-foreground">Tipo</span>

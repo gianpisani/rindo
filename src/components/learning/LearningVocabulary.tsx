@@ -43,6 +43,7 @@ import {
 import { useItemSightings, type LearningItem } from "@/hooks/useLearningItems";
 import { useDictionary, usePronunciation } from "@/hooks/useDictionary";
 import type { Corpus } from "@/hooks/useCorpus";
+import { Row, Panel } from "@/components/HairlineGrid";
 import { BandComposition, BandPill } from "./BandComposition";
 
 interface LearningVocabularyProps {
@@ -181,137 +182,130 @@ export function LearningVocabulary({
 
   if (items.length === 0) {
     return (
-      <div className="rounded-2xl border border-dashed border-border/60 p-10 text-center">
-        <p className="text-sm font-medium">Tu diccionario está vacío</p>
-        <p className="text-xs text-muted-foreground mt-1.5 max-w-sm mx-auto">
+      <Panel className="flex flex-col items-center gap-2 px-4 py-12 text-center">
+        <p className="section-title text-sm">Tu diccionario está vacío</p>
+        <p className="mx-auto max-w-sm text-xs text-muted-foreground">
           Durante una sesión, presiona E cada vez que escuches algo que no
           conoces. Se guarda acá con su contexto, su puesto en el ranking del
           inglés y cuántas veces más te va a aparecer.
         </p>
-      </div>
+      </Panel>
     );
   }
 
   const activeSort = SORTS.find((s) => s.key === sort)!;
 
+  /* La pestaña es una columna de celdas separadas por 1px: portada,
+     una franja de cromo con todos los controles, el índice, y la lista. */
   return (
-    <div className="space-y-3">
+    <Row>
       {/* ── Portada: el tamaño y la forma de tu diccionario ── */}
-      <div className="rounded-2xl border border-border/60 bg-card p-5">
-        <div className="flex items-end justify-between gap-4">
+      <Panel className="px-4 py-4 md:px-5">
+        <div className="flex items-start justify-between gap-4">
           <div>
-            <p className="text-3xl font-bold tabular-nums leading-none">
-              {items.length}
-              <span className="text-sm text-muted-foreground font-semibold">
-                {" "}
-                {items.length === 1 ? "palabra" : "palabras"}
-              </span>
+            <p className="eyebrow">
+              {items.length === 1 ? "Palabra" : "Palabras"}
             </p>
-            <p className="text-[11px] text-muted-foreground mt-1.5">
-              capturadas de {corpus.videoCount || "—"}{" "}
+            <p className="mt-2 font-mono text-3xl font-bold leading-none tracking-tight tabular-nums">
+              {items.length}
+            </p>
+            <p className="mt-1.5 font-mono text-[10px] tabular-nums text-muted-foreground">
+              de {corpus.videoCount || "—"}{" "}
               {corpus.videoCount === 1 ? "video" : "videos"}
             </p>
           </div>
 
           {bandMedian !== null && (
             <div className="text-right">
-              <p className="text-2xl font-bold tabular-nums leading-none text-primary">
+              <p className="eyebrow">Puesto mediano</p>
+              <p className="mt-2 font-mono text-2xl font-bold leading-none tracking-tight tabular-nums text-primary">
                 {formatRank(Math.round(bandMedian))}
-              </p>
-              <p className="text-[11px] text-muted-foreground mt-1.5">
-                puesto mediano
               </p>
             </div>
           )}
         </div>
 
         {corpus.isReady && (
-          <BandComposition bandTokens={bandCounts} legend className="mt-5" />
+          <BandComposition bandTokens={bandCounts} legend className="mt-4" />
         )}
-      </div>
+      </Panel>
 
-      {/* ── Qué guardaste: palabra, expresión o frase ────── */}
-      <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar">
-        <button
-          onClick={() => setKind(null)}
-          className={cn(
-            "px-2.5 py-1.5 rounded-xl text-xs font-medium border transition-all shrink-0",
-            kind === null
-              ? "border-primary bg-primary/10 text-foreground"
-              : "border-border/60 text-muted-foreground hover:border-border hover:text-foreground"
-          )}
-        >
-          Todas
-          <span className="opacity-60 ml-1 tabular-nums">{items.length}</span>
-        </button>
-        {(["word", "phrase", "sentence"] as ItemKind[]).map((option) => {
-          if (kindCounts[option] === 0) return null;
-          return (
+      {/* ── Franja de cromo: buscar, qué guardaste y en qué orden.
+          Eran cuatro bloques apilados con aire entre ellos; es una sola
+          línea de controles compactos, como en Transacciones. ────── */}
+      <Panel className="flex flex-wrap items-center gap-2 px-4 py-2.5 md:px-5">
+        <div className="relative shrink-0">
+          <Search className="pointer-events-none absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />
+          <Input
+            ref={searchRef}
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            placeholder="Buscar…"
+            className="h-8 w-40 pl-9 pr-8 sm:w-64"
+          />
+          {search && (
             <button
-              key={option}
-              onClick={() => setKind(kind === option ? null : option)}
-              className={cn(
-                "px-2.5 py-1.5 rounded-xl text-xs font-medium border transition-all shrink-0",
-                kind === option
-                  ? "border-primary bg-primary/10 text-foreground"
-                  : "border-border/60 text-muted-foreground hover:border-border hover:text-foreground"
-              )}
+              onClick={() => {
+                setSearch("");
+                searchRef.current?.focus();
+              }}
+              className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
             >
-              {ITEM_KIND_CONFIG[option].plural}
-              <span className="opacity-60 ml-1 tabular-nums">
-                {kindCounts[option]}
-              </span>
+              <X className="h-3.5 w-3.5" />
             </button>
-          );
-        })}
-      </div>
+          )}
+        </div>
 
-      {/* ── Buscador ─────────────────────────────────────── */}
-      <div className="relative">
-        <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground pointer-events-none" />
-        <Input
-          ref={searchRef}
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
-          placeholder="Buscar en tu diccionario…"
-          className="pl-9 pr-9 h-11 rounded-xl"
-        />
-        {search && (
+        {/* Qué guardaste: palabra, expresión o frase */}
+        <div className="flex shrink-0 items-center gap-1">
           <button
-            onClick={() => {
-              setSearch("");
-              searchRef.current?.focus();
-            }}
-            className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+            onClick={() => setKind(null)}
+            className={cn(FILTER_CHIP, kind === null ? CHIP_ON : CHIP_OFF)}
           >
-            <X className="h-4 w-4" />
+            Todas
+            <span className="ml-1 font-mono tabular-nums opacity-70">{items.length}</span>
           </button>
-        )}
-      </div>
+          {(["word", "phrase", "sentence"] as ItemKind[]).map((option) => {
+            if (kindCounts[option] === 0) return null;
+            return (
+              <button
+                key={option}
+                onClick={() => setKind(kind === option ? null : option)}
+                className={cn(FILTER_CHIP, kind === option ? CHIP_ON : CHIP_OFF)}
+              >
+                {ITEM_KIND_CONFIG[option].plural}
+                <span className="ml-1 font-mono tabular-nums opacity-70">
+                  {kindCounts[option]}
+                </span>
+              </button>
+            );
+          })}
+        </div>
 
-      {/* ── Orden ────────────────────────────────────────── */}
-      <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar">
-        {SORTS.map((option) => (
-          <button
-            key={option.key}
-            onClick={() => setSort(option.key)}
-            className={cn(
-              "px-2.5 py-1.5 rounded-xl text-xs font-medium border transition-all shrink-0",
-              sort === option.key
-                ? "border-primary bg-primary/10 text-foreground"
-                : "border-border/60 text-muted-foreground hover:border-border hover:text-foreground"
-            )}
-          >
-            {option.label}
-          </button>
-        ))}
-        <span className="text-[11px] text-muted-foreground pl-1 shrink-0">
+        {/* En qué orden */}
+        <div className="ml-auto flex shrink-0 items-center gap-1">
+          {SORTS.map((option) => (
+            <button
+              key={option.key}
+              onClick={() => setSort(option.key)}
+              className={cn(FILTER_CHIP, sort === option.key ? CHIP_ON : CHIP_OFF)}
+            >
+              {option.label}
+            </button>
+          ))}
+        </div>
+        <span className="w-full shrink-0 text-[11px] text-muted-foreground lg:w-auto">
           {activeSort.hint}
         </span>
-      </div>
+      </Panel>
 
       {/* ── Índice alfabético (no aplica a las frases) ───── */}
-      <div className={cn("flex flex-wrap gap-0.5", kind === "sentence" && "hidden")}>
+      <Panel
+        className={cn(
+          "flex flex-wrap gap-0.5 px-4 py-2 md:px-5",
+          kind === "sentence" && "hidden"
+        )}
+      >
         {"ABCDEFGHIJKLMNOPQRSTUVWXYZ".split("").map((char) => {
           const has = letters.has(char);
           const isActive = letter === char;
@@ -331,10 +325,10 @@ export function LearningVocabulary({
             </button>
           );
         })}
-      </div>
+      </Panel>
 
-      {/* ── Las entradas ─────────────────────────────────── */}
-      <div className="space-y-1.5">
+      {/* ── Las entradas: filas con línea, no tarjetas apiladas ── */}
+      <Panel>
         {filtered.map((entry) => (
           <EntryRow
             key={entry.item.id}
@@ -345,11 +339,11 @@ export function LearningVocabulary({
         ))}
 
         {filtered.length === 0 && (
-          <p className="text-sm text-muted-foreground text-center py-8">
+          <p className="py-8 text-center text-sm text-muted-foreground">
             Nada calza con eso.
           </p>
         )}
-      </div>
+      </Panel>
 
       {selected && (
         <EntryDetail
@@ -364,9 +358,17 @@ export function LearningVocabulary({
           }}
         />
       )}
-    </div>
+    </Row>
   );
 }
+
+/* Los chips de filtro de esta pestaña: bloques cuadrados, y el activo es
+   el bloque de acento. Antes eran pastillas con relleno al 10%. */
+const FILTER_CHIP =
+  "shrink-0 rounded-sm border px-2 py-1 text-xs font-medium transition-colors";
+const CHIP_ON = "border-primary bg-primary text-primary-foreground";
+const CHIP_OFF =
+  "border-border text-muted-foreground hover:text-foreground";
 
 // ── Una fila ────────────────────────────────────────────────
 
@@ -389,8 +391,9 @@ function EntryRow({
     <button
       onClick={onOpen}
       className={cn(
-        "w-full flex gap-3 rounded-xl border border-border/60 bg-card px-3.5 py-3",
-        "transition-all hover:border-primary/20 hover:shadow-sm text-left",
+        "flex w-full gap-3 border-b border-border px-4 py-2.5 text-left md:px-5",
+        "transition-colors last:border-b-0 hover:bg-muted",
+        "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring",
         isSentence ? "items-start" : "items-center"
       )}
     >
@@ -455,7 +458,7 @@ function EntryRow({
         {upcoming > 0 && (
           <span
             title={`Aparece ${upcoming} veces en lo que tienes por ver`}
-            className="text-[11px] font-medium tabular-nums text-amber-500"
+            className="font-mono text-[11px] font-medium tabular-nums text-warning"
           >
             +{upcoming}
           </span>
@@ -463,7 +466,8 @@ function EntryRow({
         {item.times_seen > 1 && (
           <span
             title={`Te frenó ${item.times_seen} veces`}
-            className="flex items-center gap-1 text-[11px] text-violet-500 font-medium tabular-nums"
+            className="flex items-center gap-1 font-mono text-[11px] font-medium tabular-nums"
+            style={{ color: "oklch(var(--insight-pattern))" }}
           >
             <Eye className="h-3 w-3" />
             {item.times_seen}
@@ -557,8 +561,12 @@ function EntryDetail({
 
           {/* Aviso de errata: no está en inglés y nunca se dijo en tus videos */}
           {suggestion && occurrences === 0 && (
-            <div className="flex items-start gap-2.5 rounded-xl border border-amber-500/25 bg-amber-500/5 p-3">
-              <AlertTriangle className="h-4 w-4 text-amber-500 shrink-0 mt-0.5" />
+            <div className="flex items-start gap-2.5 border-y border-border py-2.5">
+              <div
+                className="mt-0.5 h-[26px] w-[3px] shrink-0"
+                style={{ backgroundColor: "oklch(var(--insight-alert))" }}
+              />
+              <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-warning" />
               <p className="text-xs leading-relaxed">
                 No encontré <span className="font-semibold">{item.expression}</span>{" "}
                 en el inglés ni en tus videos.{" "}
@@ -571,7 +579,7 @@ function EntryDetail({
                     });
                     toast.success(`Corregida a “${suggestion}”`);
                   }}
-                  className="font-semibold text-amber-600 dark:text-amber-400 underline underline-offset-2"
+                  className="font-semibold text-warning underline underline-offset-2"
                 >
                   ¿Querías decir “{suggestion}”?
                 </button>
@@ -615,11 +623,11 @@ function EntryDetail({
           </div>
 
           {/* Dominio: primero la evidencia, después la etiqueta que pones tú */}
-          <div className="rounded-xl border border-border/60 p-3.5">
+          <div className="rounded-xl border border-border p-3.5">
             <div className="flex items-center gap-2">
               <span className={cn("h-2 w-2 rounded-full", inferred.dot)} />
               <span className="text-sm font-semibold">{inferred.label}</span>
-              <span className="text-[10px] uppercase tracking-wide text-muted-foreground border border-border/60 rounded-md px-1.5 py-0.5">
+              <span className="eyebrow rounded-sm border border-border px-1.5 py-0.5">
                 inferido
               </span>
             </div>
@@ -627,7 +635,7 @@ function EntryDetail({
               {evidence.reason}.
             </p>
 
-            <div className="flex flex-wrap gap-1.5 mt-3 pt-3 border-t border-border/50">
+            <div className="flex flex-wrap gap-1.5 mt-3 pt-3 border-t border-border">
               {MASTERY_ORDER.map((m) => {
                 const config = MASTERY_CONFIG[m];
                 const isActive = item.mastery === m;
@@ -636,11 +644,10 @@ function EntryDetail({
                     key={m}
                     onClick={() => onUpdate({ id: item.id, mastery: m })}
                     className={cn(
-                      "px-2.5 py-1.5 rounded-xl text-xs font-medium border transition-all",
-                      "flex items-center gap-1.5",
+                      "flex items-center gap-1.5 rounded-sm border px-2 py-1 text-xs font-medium transition-colors",
                       isActive
                         ? cn(config.border, config.bg, "text-foreground")
-                        : "border-border/60 text-muted-foreground hover:border-border hover:text-foreground"
+                        : "border-border text-muted-foreground hover:text-foreground"
                     )}
                   >
                     <span className={cn("h-1.5 w-1.5 rounded-full", config.dot)} />
@@ -659,7 +666,7 @@ function EntryDetail({
                 value={meaning}
                 onChange={(e) => setMeaning(e.target.value)}
                 placeholder="Find something unexpectedly"
-                className="h-10 rounded-xl text-sm"
+                className="h-10 rounded-sm text-sm"
               />
             </div>
 
@@ -669,7 +676,7 @@ function EntryDetail({
                 value={translation}
                 onChange={(e) => setTranslation(e.target.value)}
                 placeholder="encontrarse con / toparse con"
-                className="h-10 rounded-xl text-sm"
+                className="h-10 rounded-sm text-sm"
               />
             </div>
 
@@ -680,7 +687,7 @@ function EntryDetail({
                 onChange={(e) => setMySentence(e.target.value)}
                 placeholder="I came across this tool last week."
                 rows={2}
-                className="rounded-xl resize-none text-sm"
+                className="resize-none rounded-sm text-sm"
               />
             </div>
           </div>
@@ -688,10 +695,8 @@ function EntryDetail({
           {/* Ejemplos de verdad, sacados de tus propios videos */}
           {examples.length > 0 && (
             <div className="space-y-2">
-              <p className="text-xs text-muted-foreground uppercase tracking-wide font-medium">
-                Cómo se dice en tus videos
-              </p>
-              <div className="space-y-1.5">
+              <p className="eyebrow">Cómo se dice en tus videos</p>
+              <div className="border border-border">
                 {examples.map((example, index) => (
                   <a
                     key={`${example.externalId}-${example.seconds}-${index}`}
@@ -699,7 +704,7 @@ function EntryDetail({
                     target="_blank"
                     rel="noreferrer"
                     className={cn(
-                      "block rounded-xl border border-border/60 px-3 py-2.5",
+                      "block border-b border-border px-3 py-2.5 last:border-b-0",
                       "hover:border-primary/25 transition-colors group"
                     )}
                   >
@@ -721,11 +726,14 @@ function EntryDetail({
           {sightings.length > 0 && (
             <div className="space-y-2">
               <div className="flex items-baseline justify-between">
-                <p className="text-xs text-muted-foreground uppercase tracking-wide font-medium">
+                <p className="eyebrow">
                   Dónde te frenó
                 </p>
                 {sightings.length > 1 && (
-                  <span className="text-[11px] text-violet-500 font-medium">
+                  <span
+                    className="text-[11px] font-medium"
+                    style={{ color: "oklch(var(--insight-pattern))" }}
+                  >
                     {sightings.length} veces
                   </span>
                 )}
@@ -738,7 +746,7 @@ function EntryDetail({
                       <span
                         className={cn(
                           "h-2 w-2 rounded-full",
-                          index === 0 ? "bg-primary" : "bg-violet-500"
+                          index === 0 ? "bg-primary" : "bg-muted-foreground"
                         )}
                       />
                       {index < sightings.length - 1 && (
@@ -748,7 +756,7 @@ function EntryDetail({
 
                     <div className="min-w-0 flex-1 pb-3">
                       <div className="flex items-baseline gap-2">
-                        <span className="text-[10px] uppercase tracking-wide text-muted-foreground font-medium">
+                        <span className="eyebrow">
                           {index === 0 ? "Primera vez" : "Otra vez"}
                         </span>
                         <span className="text-[10px] text-muted-foreground">
@@ -795,7 +803,7 @@ function EntryDetail({
               variant="ghost"
               size="sm"
               onClick={() => setConfirmDelete(true)}
-              className="rounded-xl text-muted-foreground hover:text-destructive"
+              className="text-muted-foreground hover:text-destructive"
             >
               <Trash2 className="h-3.5 w-3.5 mr-1.5" />
               Eliminar
@@ -830,7 +838,7 @@ function Stat({
   color?: string;
 }) {
   return (
-    <div className="rounded-xl border border-border/60 p-3">
+    <div className="rounded-xl border border-border p-3">
       <p
         className="text-lg font-bold tabular-nums leading-none truncate"
         style={color ? { color } : undefined}

@@ -115,7 +115,37 @@ Based on Indigo, Blue, Cyan palette
 @layer base {
   :root {
     /* Theme Rose - Warm Finance (Light) */
-    --radius: 0.65rem;
+    /* El radio es una sola perilla y toda la escala de Tailwind cuelga de
+       ella (ver borderRadius en tailwind.config.ts). En 0 la app queda
+       recta como Wero; las únicas curvas que sobreviven son los círculos
+       completos (rounded-full), que Wero también usa. */
+    --radius: 0rem;
+
+    /* ── Tipografía display ──────────────────────────────────────────
+       El titular de Wero es GT Walsheim en 800, mayúscula y tracking
+       negativo. GT Walsheim es de Grilli Type, con licencia paga y un
+       corte custom que no existe afuera; Outfit es la geométrica más
+       cercana que ya cargamos. El cuerpo sigue siendo Jakarta: el
+       contraste entre las dos es parte del diseño, no un parche. */
+    --font-display: 'Outfit', 'Plus Jakarta Sans', sans-serif;
+    --display-tracking: -0.03em;
+
+    /* ── Sombras ─────────────────────────────────────────────────────
+       Dos, y cada una dice algo distinto. La dura es la de Wero
+       (0 3px sin blur): un objeto apoyado, no flotando — y su color es
+       la misma línea, engrosada. La flotante queda solo para lo que de
+       verdad está por encima del plano: popovers, modales, drawers. */
+    --shadow-hard: 0 3px 0 var(--border);
+    --shadow-hard-sm: 0 2px 0 var(--border);
+    /* Apretado: la sombra se come a sí misma mientras el botón baja. */
+    --shadow-hard-pressed: 0 1px 0 var(--border);
+    --shadow-float: 0 10px 30px -8px oklch(0 0 0 / 0.22);
+
+    /* El destacador de Wero. Un solo lugar en toda la app: el acento
+       que marca "hoy". Vive acá para que nadie lo escriba a mano. */
+    --highlight: oklch(0.954 0.125 103);
+    --highlight-foreground: oklch(0.145 0.004 286);
+    --ink-on-accent: oklch(0.98 0.015 17);
     --background: oklch(0.965 0.002 286);
     --foreground: oklch(0.13 0.005 285.823);
     --card: oklch(0.995 0 0);
@@ -153,8 +183,11 @@ Based on Indigo, Blue, Cyan palette
     --insight-opportunity: var(--accent-blue);
     --insight-pattern: var(--accent-violet);
 
-    --border: oklch(0.835 0.008 286);
-    --input: oklch(0.835 0.008 286);
+    /* Una línea que se ve. 0.835 sobre un fondo 0.965 es una insinuación:
+       la arquitectura de Wero necesita un trazo. Un paso atrás de su negro
+       puro (L 0.23) para que 500 bordes no vibren en modo claro. */
+    --border: oklch(0.56 0.02 286);
+    --input: oklch(0.56 0.02 286);
     --ring: oklch(0.712 0.194 13.428);
 
     /* Additional functional colors (HSL for compatibility) */
@@ -182,8 +215,8 @@ Based on Indigo, Blue, Cyan palette
     --color-expense: #e11d48;
     --color-investment: #0ea5e9;
     --color-balance: #f59e0b;
-    --color-muted-axis: #64748b;
-    --color-grid: #d1d5db;
+    --color-muted-axis: var(--muted-foreground);
+    --color-grid: oklch(0.87 0.006 286);
 
     /* Charts - OKLCH */
     --chart-1: oklch(0.81 0.117 11.638);
@@ -199,7 +232,7 @@ Based on Indigo, Blue, Cyan palette
     --sidebar-primary-foreground: oklch(0.969 0.015 12.422);
     --sidebar-accent: oklch(0.91 0.004 286);
     --sidebar-accent-foreground: oklch(0.18 0.006 285.885);
-    --sidebar-border: oklch(0.835 0.008 286);
+    --sidebar-border: oklch(0.56 0.02 286);
     --sidebar-ring: oklch(0.712 0.194 13.428);
   }
 
@@ -245,8 +278,18 @@ Based on Indigo, Blue, Cyan palette
     --destructive: var(--accent-rose);
     --destructive-foreground: oklch(0.985 0 0);
 
-    --border: oklch(1 0 0 / 8%);
-    --input: oklch(1 0 0 / 12%);
+    /* Opaca, no translúcida: en una grilla de líneas, dos bordes
+       translúcidos contiguos se apilan y quedan más claros que el resto. */
+    --border: oklch(0.285 0.006 286);
+    --input: oklch(0.25 0.006 286);
+
+    /* Sobre un negro casi tinta una sombra negra no existe: la dura
+       tiene que ser la línea, que sí se ve contra el fondo y contra el
+       rosa del botón. La flotante, en cambio, se hunde más. */
+    --shadow-float: 0 12px 34px -8px oklch(0 0 0 / 0.7);
+
+    /* En oscuro el primary es brillante: la tinta encima se da vuelta. */
+    --ink-on-accent: oklch(0.16 0.02 17);
     /* Focus ring con el acento del sistema — visible de verdad para
        navegación por teclado, referencia al accent (nada duplicado) */
     --ring: oklch(var(--accent-rose) / 0.7);
@@ -274,8 +317,8 @@ Based on Indigo, Blue, Cyan palette
     --color-expense: oklch(var(--accent-rose));
     --color-investment: oklch(var(--accent-blue));
     --color-balance: oklch(var(--accent-amber));
-    --color-muted-axis: #64748b;
-    --color-grid: #374151;
+    --color-muted-axis: var(--muted-foreground);
+    --color-grid: oklch(0.245 0.005 286);
 
     /* Charts - OKLCH */
     --chart-1: oklch(0.81 0.117 11.638);
@@ -291,7 +334,7 @@ Based on Indigo, Blue, Cyan palette
     --sidebar-primary-foreground: oklch(0.969 0.015 12.422);
     --sidebar-accent: oklch(0.21 0.006 285.885);
     --sidebar-accent-foreground: oklch(0.985 0 0);
-    --sidebar-border: oklch(1 0 0 / 8%);
+    --sidebar-border: oklch(0.285 0.006 286);
     --sidebar-ring: oklch(0.41 0.159 10.272);
   }
 }
@@ -442,18 +485,11 @@ Based on Indigo, Blue, Cyan palette
     transition: background-color 0.35s ease, color 0.25s ease, border-color 0.3s ease;
   }
 
-  /* Standardized shadow system */
-  .shadow-sm {
-    box-shadow: 0 1px 2px 0 rgb(0 0 0 / 0.05);
-  }
-
-  .shadow-md {
-    box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
-  }
-
-  .shadow-lg {
-    box-shadow: 0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1);
-  }
+  /* Las sombras ya no se escriben acá. Vivían con rgba a mano, le pisaban
+     las utilidades a Tailwind por orden de cascada y no sabían nada del
+     tema: la misma sombra clara sobre el negro. Ahora salen de
+     --shadow-float / --shadow-hard vía boxShadow en tailwind.config.ts,
+     así que shadow-sm es "ninguna" y shadow-lg cambia con el modo. */
 
   /* Hover lift micro-interaction */
   .hover-lift {
@@ -714,7 +750,7 @@ Based on Indigo, Blue, Cyan palette
     backdrop-filter: blur(24px) saturate(180%);
     -webkit-backdrop-filter: blur(24px) saturate(180%);
     border: 1px solid color-mix(in oklch, var(--border) 25%, transparent);
-    border-radius: 22px;
+    border-radius: calc(var(--radius) * 2);
     margin: 0 12px 8px;
     padding: 0 4px;
     box-shadow: 0 2px 20px color-mix(in oklch, var(--background) 30%, transparent), 0 0 0 0.5px color-mix(in oklch, var(--border) 10%, transparent);
@@ -749,7 +785,7 @@ Based on Indigo, Blue, Cyan palette
     justify-content: center;
     width: 40px;
     height: 30px;
-    border-radius: 14px;
+    border-radius: calc(var(--radius) * 1.5);
     transition: all 0.35s cubic-bezier(0.34, 1.56, 0.64, 1);
   }
 
@@ -843,7 +879,7 @@ Based on Indigo, Blue, Cyan palette
     align-items: center;
     gap: 8px;
     padding: 16px 8px;
-    border-radius: 16px;
+    border-radius: calc(var(--radius) * 1.5);
     transition: all 0.2s ease;
     -webkit-tap-highlight-color: transparent;
     touch-action: manipulation;
@@ -865,7 +901,7 @@ Based on Indigo, Blue, Cyan palette
     justify-content: center;
     width: 48px;
     height: 48px;
-    border-radius: 14px;
+    border-radius: calc(var(--radius) * 1.5);
     transition: all 0.25s ease;
   }
 
@@ -960,7 +996,7 @@ Based on Indigo, Blue, Cyan palette
     justify-content: center;
     width: 32px;
     height: 32px;
-    border-radius: 8px;
+    border-radius: calc(var(--radius) * 0.75);
     color: color-mix(in oklch, var(--muted-foreground) 40%, transparent);
     transition: all 0.15s ease;
     -webkit-tap-highlight-color: transparent;
@@ -1051,7 +1087,7 @@ Based on Indigo, Blue, Cyan palette
     background: var(--primary);
     opacity: 0.15;
     border: 2px dashed var(--primary);
-    border-radius: 0.5rem;
+    border-radius: calc(var(--radius) * 0.75);
     transition: all 0.2s ease;
   }
 
@@ -1087,7 +1123,7 @@ Based on Indigo, Blue, Cyan palette
 
   .dashboard-widget ::-webkit-scrollbar-thumb {
     background: var(--muted);
-    border-radius: 3px;
+    border-radius: calc(var(--radius) * 0.5);
   }
 
   .dashboard-widget ::-webkit-scrollbar-thumb:hover {
@@ -1114,5 +1150,71 @@ Based on Indigo, Blue, Cyan palette
   }
   body {
     @apply bg-background text-foreground;
+  }
+}
+
+/* ─────────────────────────────────────────────────────────────────────
+   Tipografía display — el gesto de Wero
+   ─────────────────────────────────────────────────────────────────────
+   En Wero un título no es texto más grande: es otra voz. Mayúscula,
+   peso 800 y tracking negativo, contra un cuerpo que se queda quieto.
+   Viven en @layer components para que las utilidades de Tailwind
+   (text-2xl, text-muted-foreground) sigan ganando sobre el tamaño y el
+   color: esta clase decide voz, no escala.
+   ───────────────────────────────────────────────────────────────────── */
+@layer components {
+  .page-title {
+    font-family: var(--font-display);
+    font-weight: 800;
+    text-transform: uppercase;
+    letter-spacing: var(--display-tracking);
+    line-height: 1.04;
+  }
+
+  /* Un peldaño más abajo: el título de una sección dentro de una tarjeta.
+     Menos peso y menos tracking, porque compite con menos aire. */
+  .section-title {
+    font-family: var(--font-display);
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: -0.02em;
+    line-height: 1.15;
+  }
+
+  /* La etiqueta chica de Wero: monoespaciada, muy espaciada, siempre
+     encima del dato que nombra. Reemplaza al font-semibold uppercase
+     tracking-wider que la app venía escribiendo a mano. */
+  .eyebrow {
+    font-family: 'JetBrains Mono', ui-monospace, monospace;
+    font-size: 0.625rem;
+    font-weight: 500;
+    text-transform: uppercase;
+    letter-spacing: 0.11em;
+    color: var(--muted-foreground);
+  }
+
+  /* El destacador de Wero, en su único lugar: el mes en curso. Bloque
+     plano de color con tinta oscura, como su hero-label en la esquina. */
+  .chip-month {
+    display: inline-flex;
+    align-items: center;
+    background: var(--highlight);
+    color: var(--highlight-foreground);
+    font-family: 'JetBrains Mono', ui-monospace, monospace;
+    font-size: 0.625rem;
+    font-weight: 700;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    padding: 0.25rem 0.5rem;
+  }
+
+  /* El apoyo duro: el botón se hunde cuando lo apretás en vez de
+     desvanecerse. Es la microinteracción de Wero, no un adorno. */
+  .press {
+    transition: transform 0.12s ease, box-shadow 0.12s ease;
+  }
+  .press:active:not(:disabled) {
+    transform: translateY(2px);
+    box-shadow: var(--shadow-hard-pressed);
   }
 }

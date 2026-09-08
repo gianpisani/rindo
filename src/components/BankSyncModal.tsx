@@ -419,7 +419,7 @@ export function BankSyncModal({
                       "focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-1",
                       isConfigured
                         ? "border-primary/30 hover:border-primary/60 hover:bg-accent/50"
-                        : "border-border/50 hover:border-primary/40 hover:bg-accent/50",
+                        : "border-border hover:border-primary/40 hover:bg-accent/50",
                     )}
                   >
                     <BankLogo bank={b} size="sm" />
@@ -448,7 +448,7 @@ export function BankSyncModal({
                 <button
                   type="button"
                   onClick={() => setBank("")}
-                  className="relative z-10 flex items-center justify-center w-8 h-8 rounded-lg bg-background/80 backdrop-blur-sm hover:bg-background transition-colors shrink-0 cursor-pointer"
+                  className="relative z-10 flex items-center justify-center w-8 h-8 rounded-lg border border-border bg-card hover:bg-muted transition-colors shrink-0 cursor-pointer"
                 >
                   <ChevronLeft className="h-4 w-4 text-muted-foreground" />
                 </button>
@@ -486,7 +486,7 @@ export function BankSyncModal({
               {!storedCred && (
                 <div className="relative">
                   <div className="absolute -inset-[1px] rounded-2xl opacity-40" style={{ background: `linear-gradient(135deg, ${selectedBank.color}50, transparent 50%, ${selectedBank.color}20)` }} />
-                  <div className="relative rounded-2xl bg-background/95 backdrop-blur-xl p-4 space-y-4">
+                  <div className="relative rounded-2xl border border-border bg-card p-4 space-y-4">
                     <div className="flex items-center gap-2.5">
                       <div className="flex items-center justify-center w-7 h-7 rounded-lg" style={{ backgroundColor: `${selectedBank.color}15` }}>
                         <Lock className="h-3.5 w-3.5" style={{ color: selectedBank.color }} />
@@ -507,7 +507,7 @@ export function BankSyncModal({
                         onBlur={() => setRutTouched(true)}
                         required
                         autoComplete="username"
-                        className={cn("rounded-xl h-10 bg-muted/30 border-border/40", showRutError && "border-destructive focus-visible:ring-destructive")}
+                        className={cn("rounded-xl h-10 bg-muted/30 border-border", showRutError && "border-destructive focus-visible:ring-destructive")}
                       />
                       {showRutError && <p className="text-xs text-destructive">RUT inválido</p>}
                     </div>
@@ -523,7 +523,7 @@ export function BankSyncModal({
                           onChange={(e) => setPassword(e.target.value)}
                           required
                           autoComplete="current-password"
-                          className="rounded-xl pr-10 h-10 bg-muted/30 border-border/40"
+                          className="rounded-xl pr-10 h-10 bg-muted/30 border-border"
                         />
                         <Button
                           type="button"
@@ -559,7 +559,7 @@ export function BankSyncModal({
               {!hasCredentialsForBank && (
                 <div className={cn(
                   "rounded-xl border p-3 space-y-3 transition-colors",
-                  saveCredentials ? "border-primary/30 bg-primary/5" : "border-border/50 bg-muted/20",
+                  saveCredentials ? "border-primary/30 bg-primary/5" : "border-border bg-muted/20",
                 )}>
                   <div className="flex items-start gap-3">
                     <Checkbox
@@ -692,22 +692,22 @@ export function BankSyncModal({
                   {/* Stats pills */}
                   <div className="flex gap-2 flex-wrap">
                     {result.imported > 0 && (
-                      <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-green-500/10 text-green-600 dark:text-green-400 text-sm font-medium">
+                      <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-sm bg-green-500/10 text-green-600 dark:text-green-400 text-sm font-medium">
                         <CheckCircle2 className="h-3.5 w-3.5" />{result.imported} importada{result.imported !== 1 ? "s" : ""}
                       </div>
                     )}
                     {result.skipped > 0 && (
-                      <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-muted text-muted-foreground text-sm font-medium">
+                      <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-sm bg-muted text-muted-foreground text-sm font-medium">
                         <SkipForward className="h-3.5 w-3.5" />{result.skipped} omitida{result.skipped !== 1 ? "s" : ""}
                       </div>
                     )}
                     {importedSkippedCount > 0 && (
-                      <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-blue-500/10 text-blue-600 dark:text-blue-400 text-sm font-medium">
+                      <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-sm bg-blue-500/10 text-blue-600 dark:text-blue-400 text-sm font-medium">
                         <Plus className="h-3.5 w-3.5" />{importedSkippedCount} recuperada{importedSkippedCount !== 1 ? "s" : ""}
                       </div>
                     )}
                     {deletedImportedCount > 0 && (
-                      <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-red-500/10 text-red-600 dark:text-red-400 text-sm font-medium">
+                      <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-sm bg-red-500/10 text-red-600 dark:text-red-400 text-sm font-medium">
                         <Trash2 className="h-3.5 w-3.5" />{deletedImportedCount} eliminada{deletedImportedCount !== 1 ? "s" : ""}
                       </div>
                     )}
@@ -740,7 +740,7 @@ export function BankSyncModal({
                           </button>
                         )}
                       </div>
-                      <div className="rounded-xl border border-border/50 divide-y divide-border/30 max-h-[200px] overflow-y-auto">
+                      <div className="rounded-xl border border-border divide-y divide-border max-h-[200px] overflow-y-auto">
                         {result.importedItems.map((item, i) => (
                           <div key={i} className="flex items-center gap-3 px-3 py-2.5 text-sm">
                             {item.id ? (
@@ -788,7 +788,7 @@ export function BankSyncModal({
                           </button>
                         )}
                       </div>
-                      <div className="rounded-xl border border-border/50 divide-y divide-border/30 max-h-[200px] overflow-y-auto">
+                      <div className="rounded-xl border border-border divide-y divide-border max-h-[200px] overflow-y-auto">
                         {result.skippedItems.map((item, i) => {
                           const isZero = item.reason === "zero_amount";
                           return (

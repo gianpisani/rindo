@@ -77,7 +77,7 @@ export function MainIdeaField({
             Editar
           </button>
         </div>
-        <p className="text-sm leading-relaxed rounded-xl bg-muted/30 border border-border/50 p-3">
+        <p className="text-sm leading-relaxed rounded-xl bg-muted/30 border border-border p-3">
           {saved}
         </p>
       </div>
@@ -87,7 +87,7 @@ export function MainIdeaField({
   return (
     <div className={cn("space-y-2", className)}>
       <div>
-        <h3 className="text-sm font-semibold">What was the main idea?</h3>
+        <h3 className="section-title text-sm">What was the main idea?</h3>
         <p className="text-xs text-muted-foreground">
           {explainScore !== null && explainScore !== undefined
             ? explainScore >= MAX_FACE_VALUE - 1

@@ -131,10 +131,10 @@ function SectionCard({
 }) {
   return (
     <GlassCard className={cn("flex flex-col", className)}>
-      <div className="flex flex-col sm:flex-row sm:items-center gap-y-2 px-4 pt-3 pb-1.5 border-b border-border/20">
+      <div className="flex flex-col sm:flex-row sm:items-center gap-y-2 px-4 pt-3 pb-1.5 border-b border-border">
         <div className="flex items-center gap-2">
           {Icon && <Icon className="h-3.5 w-3.5 text-primary/60" />}
-          <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
+          <h3 className="text-xs eyebrow">
             {title}
           </h3>
           {tooltip && (
@@ -164,7 +164,7 @@ function EvolutionTooltip({
 }: TooltipProps<number, string>) {
   if (!active || !payload?.length) return null;
   return (
-    <div className="bg-card border border-border/50 rounded-xl p-3 shadow-lg">
+    <div className="bg-card border border-border rounded-xl p-3 shadow-lg">
       <p className="font-semibold text-sm text-foreground capitalize mb-1">
         {label}
       </p>
@@ -776,7 +776,7 @@ export function CategoryInsightsView() {
         ? row.actual - row.ideal
         : null;
     return (
-      <div className="bg-card border border-border/50 rounded-xl p-3 shadow-lg">
+      <div className="bg-card border border-border rounded-xl p-3 shadow-lg">
         <p className="font-semibold text-sm text-foreground capitalize mb-1">
           {format(setDate(selectedMonth, row.day), "EEEE d 'de' MMMM", {
             locale: es,
@@ -850,7 +850,7 @@ export function CategoryInsightsView() {
     <div className="space-y-4">
       {/* ─── Header ────────────────────────────────────── */}
       <div className="flex flex-wrap items-center justify-between gap-2">
-        <h1 className="text-2xl font-bold tracking-tight">Meta</h1>
+        <h1 className="page-title text-2xl">Meta</h1>
 
         <div className="flex items-center gap-1">
           <Button
@@ -911,7 +911,7 @@ export function CategoryInsightsView() {
             <div className="p-3 rounded-full bg-primary/10 mb-3">
               <PiggyBank className="h-6 w-6 text-primary" />
             </div>
-            <h2 className="text-base font-semibold mb-1">
+            <h2 className="section-title text-base mb-1">
               ¿Cuánto quieres ahorrar al mes?
             </h2>
             <p className="text-xs text-muted-foreground mb-4 max-w-[320px]">
@@ -1013,11 +1013,11 @@ export function CategoryInsightsView() {
             <div className="relative px-4 py-4 sm:px-6 sm:py-5">
               {/* ── Barra de meta ── */}
               {hasGoal && (
-                <div className="mb-4 rounded-xl border border-border/40 bg-muted/20 px-3 py-2.5">
+                <div className="mb-4 rounded-xl border border-border bg-muted/20 px-3 py-2.5">
                   <div className="flex items-center justify-between gap-2 flex-wrap">
                     <div className="flex items-center gap-2 min-w-0">
                       <PiggyBank className="h-3.5 w-3.5 text-primary/70 shrink-0" />
-                      <span className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider whitespace-nowrap">
+                      <span className="text-[10px] eyebrow whitespace-nowrap">
                         Meta del mes
                       </span>
                       {editingGoal ? (
@@ -1094,10 +1094,10 @@ export function CategoryInsightsView() {
                         : "en $0"}
                     </span>
                   </div>
-                  <div className="mt-2 h-2 rounded-full bg-muted/60 overflow-hidden">
+                  <div className="mt-2 h-2 rounded-sm bg-muted/60 overflow-hidden">
                     <div
                       className={cn(
-                        "h-full rounded-full transition-all duration-500",
+                        "h-full rounded-sm transition-all duration-500",
                         toneBg(goalTone)
                       )}
                       style={{
@@ -1114,7 +1114,7 @@ export function CategoryInsightsView() {
                   {hasGoal && !isCurrentMonth ? (
                     // Autopsia de mes cerrado: veredicto de ahorro
                     <>
-                      <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider mb-1">
+                      <p className="text-[10px] eyebrow mb-1">
                         {ahorradoMes >= savingsGoal
                           ? "Ahorraste ese mes"
                           : ahorradoMes > 0
@@ -1159,7 +1159,7 @@ export function CategoryInsightsView() {
                     </>
                   ) : (
                     <>
-                      <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider mb-1 flex items-center gap-1.5">
+                      <p className="text-[10px] eyebrow mb-1 flex items-center gap-1.5">
                         {isCurrentMonth
                           ? remaining >= 0
                             ? "Puedes gastar hoy"
@@ -1248,7 +1248,7 @@ export function CategoryInsightsView() {
                 </div>
 
                 <div className="text-right shrink-0">
-                  <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider mb-1 flex items-center justify-end gap-1">
+                  <p className="text-[10px] eyebrow mb-1 flex items-center justify-end gap-1">
                     {hasGoal ? "Tu límite" : "Presupuesto"}
                     {hasGoal && (
                       <Tooltip>
@@ -1558,7 +1558,7 @@ export function CategoryInsightsView() {
                         : simVerdict?.tone === "amber"
                         ? "border-amber-500/30 bg-amber-500/[0.04]"
                         : "border-emerald-500/30 bg-emerald-500/[0.04]"
-                      : "border-border/40 bg-muted/20"
+                      : "border-border bg-muted/20"
                   )}
                 >
                   <div className="flex items-center gap-2 flex-wrap">
@@ -1632,7 +1632,7 @@ export function CategoryInsightsView() {
 
               {/* ── Strip de veredictos: meses cerrados ── */}
               {hasGoal && monthVerdicts.length > 0 && (
-                <div className="mt-4 pt-3 border-t border-border/30">
+                <div className="mt-4 pt-3 border-t border-border">
                   <div className="flex flex-wrap gap-2">
                     {[...monthVerdicts].reverse().map((v) => (
                       <Tooltip key={v.month.toISOString()}>
@@ -1722,7 +1722,7 @@ export function CategoryInsightsView() {
                     </Button>
                   </PopoverTrigger>
                   <PopoverContent align="end" collisionPadding={8} className="w-64 p-3">
-                    <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2">
+                    <p className="text-xs eyebrow mb-2">
                       Categorías bombazo
                     </p>
                     <div className="max-h-44 overflow-y-auto space-y-0.5 mb-3">
@@ -1754,7 +1754,7 @@ export function CategoryInsightsView() {
                         );
                       })}
                     </div>
-                    <Label className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
+                    <Label className="text-xs eyebrow">
                       Fondo mensual para bombazos
                     </Label>
                     <div className="relative mt-1.5 mb-1">
@@ -1944,7 +1944,7 @@ export function CategoryInsightsView() {
                     "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/60",
                     isSimTarget
                       ? "border-amber-500/40 shadow-sm"
-                      : "border-border/50 hover:border-primary/20 hover:shadow-sm"
+                      : "border-border hover:border-primary/20 hover:shadow-sm"
                   )}
                 >
                   {/* Header */}
@@ -2112,7 +2112,7 @@ export function CategoryInsightsView() {
               <button
                 key={cat.category}
                 onClick={() => handleSetLimit(cat.category)}
-                className="flex items-center gap-2 p-2.5 rounded-lg border border-border/50 bg-card hover:border-primary/20 hover:bg-accent/50 transition-all text-left group native-press focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/60"
+                className="flex items-center gap-2 p-2.5 rounded-lg border border-border bg-card hover:border-primary/20 hover:bg-accent/50 transition-all text-left group native-press focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/60"
               >
                 <span className="text-base leading-none shrink-0">
                   {categoryEmoji(cat.category)}
@@ -2150,7 +2150,7 @@ export function CategoryInsightsView() {
           action={
             <div className="flex items-center gap-1.5">
               {/* Period selector */}
-              <div className="flex items-center gap-0.5 bg-muted/50 rounded-lg p-0.5 border border-border/50">
+              <div className="flex items-center gap-0.5 bg-muted/50 rounded-lg p-0.5 border border-border">
                 {[3, 6, 12].map((m) => (
                   <button
                     key={m}
@@ -2173,7 +2173,7 @@ export function CategoryInsightsView() {
                   "flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-medium transition-colors border",
                   showAverage
                     ? "bg-primary/10 text-primary border-primary/30"
-                    : "bg-muted/50 text-muted-foreground border-border/50 hover:bg-accent"
+                    : "bg-muted/50 text-muted-foreground border-border hover:bg-accent"
                 )}
               >
                 <span className="text-[10px]">∼</span>
@@ -2185,7 +2185,7 @@ export function CategoryInsightsView() {
                     "flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-medium transition-colors border",
                     selectedChartCategories.size > 0
                       ? "bg-primary/10 text-primary border-primary/30"
-                      : "bg-muted/50 text-muted-foreground border-border/50 hover:bg-accent"
+                      : "bg-muted/50 text-muted-foreground border-border hover:bg-accent"
                   )}>
                     <SlidersHorizontal className="h-3 w-3" />
                     {selectedChartCategories.size > 0
@@ -2194,8 +2194,8 @@ export function CategoryInsightsView() {
                   </button>
                 </PopoverTrigger>
                 <PopoverContent align="end" collisionPadding={8} className="w-52 p-2">
-                  <div className="flex items-center justify-between px-2 pb-2 mb-1 border-b border-border/40">
-                    <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Categorías</span>
+                  <div className="flex items-center justify-between px-2 pb-2 mb-1 border-b border-border">
+                    <span className="text-xs eyebrow">Categorías</span>
                     {selectedChartCategories.size > 0 && (
                       <button
                         onClick={() => setSelectedChartCategories(new Set())}
@@ -2369,7 +2369,7 @@ export function CategoryInsightsView() {
                           "px-2.5 py-1 rounded-lg text-xs font-medium transition-colors border",
                           Number(limitFormData.limit) === amount
                             ? "bg-primary text-primary-foreground border-primary"
-                            : "bg-muted/50 text-muted-foreground border-border/50 hover:bg-accent hover:text-foreground"
+                            : "bg-muted/50 text-muted-foreground border-border hover:bg-accent hover:text-foreground"
                         )}
                       >
                         {pct}%
@@ -2382,7 +2382,7 @@ export function CategoryInsightsView() {
 
             {/* Budget allocation context */}
             {spendingCeiling > 0 && (
-              <div className="rounded-lg border border-border/50 bg-muted/30 p-3 space-y-2">
+              <div className="rounded-lg border border-border bg-muted/30 p-3 space-y-2">
                 {(() => {
                   const currentLimit = Number(limitFormData.limit) || 0;
                   const existingLimitForCategory = limits.find(
@@ -2428,10 +2428,10 @@ export function CategoryInsightsView() {
                         </span>
                       </div>
                       {/* Mini progress bar */}
-                      <div className="h-1.5 rounded-full bg-muted/60 overflow-hidden">
+                      <div className="h-1.5 rounded-sm bg-muted/60 overflow-hidden">
                         <div
                           className={cn(
-                            "h-full rounded-full transition-all duration-300",
+                            "h-full rounded-sm transition-all duration-300",
                             newUnallocated < 0 ? "bg-rose-500" : "bg-primary"
                           )}
                           style={{ width: `${Math.min((newTotalAllocated / spendingCeiling) * 100, 100)}%` }}

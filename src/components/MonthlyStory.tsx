@@ -261,9 +261,9 @@ export function MonthlyStory({
                         </span>
                       </div>
                     </div>
-                    <div className="h-1.5 rounded-full bg-white/5 overflow-hidden">
+                    <div className="h-1.5 rounded-sm bg-white/5 overflow-hidden">
                       <motion.div
-                        className="h-full rounded-full"
+                        className="h-full rounded-sm"
                         style={{ backgroundColor: cat.color }}
                         initial={{ width: 0 }}
                         animate={{
@@ -335,11 +335,11 @@ export function MonthlyStory({
                 stiffness: 200,
               }}
             >
-              <h2 className="text-4xl md:text-5xl font-bold text-white mb-3">
+              <h2 className="page-title text-4xl md:text-5xl text-white mb-3">
                 {topCategory.category}
               </h2>
               <div
-                className="w-16 h-1 rounded-full mx-auto mb-4"
+                className="w-16 h-1 rounded-sm mx-auto mb-4"
                 style={{ backgroundColor: topCategory.color }}
               />
             </motion.div>
@@ -560,7 +560,7 @@ export function MonthlyStory({
               </motion.h1>
 
               <motion.div
-                className="h-1 rounded-full"
+                className="h-1 rounded-sm"
                 style={{ backgroundColor: closing.accent }}
                 initial={{ width: 0, opacity: 0 }}
                 animate={{ width: 64, opacity: 0.7 }}
@@ -709,7 +709,7 @@ export function MonthlyStory({
                   <span className="text-white/30 text-[10px] md:text-[11px] uppercase tracking-wider">
                     Distribuci&oacute;n del ingreso
                   </span>
-                  <div className="h-4 md:h-5 rounded-full bg-white/[0.04] overflow-hidden flex">
+                  <div className="h-4 md:h-5 rounded-sm bg-white/[0.04] overflow-hidden flex">
                     {segments.map((seg, i) => (
                       <motion.div
                         key={seg.label}
@@ -857,10 +857,10 @@ export function MonthlyStory({
             {slides.map((_, i) => (
               <div
                 key={i}
-                className="flex-1 h-0.5 rounded-full bg-white/10 overflow-hidden"
+                className="flex-1 h-0.5 rounded-sm bg-white/10 overflow-hidden"
               >
                 <motion.div
-                  className="h-full bg-white/40 rounded-full"
+                  className="h-full bg-white/40 rounded-sm"
                   initial={false}
                   animate={{ width: i <= currentSlide ? "100%" : "0%" }}
                   transition={{ duration: 0.3 }}
@@ -910,7 +910,7 @@ export function MonthlyStory({
                   setDirection(i > currentSlide ? 1 : -1);
                   setCurrentSlide(i);
                 }}
-                className={`h-1.5 rounded-full transition-all duration-300 ${
+                className={`h-1.5 rounded-sm transition-all duration-300 ${
                   i === currentSlide
                     ? "bg-white/60 w-4"
                     : "bg-white/15 hover:bg-white/25 w-1.5"

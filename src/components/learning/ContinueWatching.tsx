@@ -58,7 +58,7 @@ export function ContinueWatching({
     >
       <div
         className={cn(
-          "-mx-5 flex snap-x snap-mandatory gap-3 overflow-x-auto px-5 pb-1",
+          "-mx-4 flex snap-x snap-mandatory gap-3 overflow-x-auto px-4 pb-1 md:-mx-5 md:px-5",
           "no-scrollbar scroll-smooth"
         )}
       >
@@ -91,8 +91,8 @@ function ContinueCard({
   return (
     <article
       className={cn(
-        "group relative shrink-0 snap-start overflow-hidden rounded-xl",
-        "border border-border/60 bg-background/40 transition-colors hover:border-border",
+        "group relative shrink-0 snap-start overflow-hidden",
+        "border border-border bg-card",
         // Mide igual que una tarjeta de la parrilla de tres: la fila corre,
         // pero las dos estanterías siguen alineadas.
         "w-[46%] sm:w-[calc((100%-1.5rem)/3)]"
@@ -114,8 +114,8 @@ function ContinueCard({
         aria-label="No seguir con este"
         title="Marcar como terminado"
         className={cn(
-          "absolute right-1.5 top-1.5 flex size-7 items-center justify-center rounded-lg",
-          "bg-background/80 text-muted-foreground backdrop-blur-sm",
+          "absolute right-1.5 top-1.5 flex size-7 items-center justify-center",
+          "border border-border bg-card text-muted-foreground",
           "opacity-0 transition-opacity hover:text-destructive",
           "group-hover:opacity-100 focus-visible:opacity-100"
         )}

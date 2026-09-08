@@ -43,7 +43,7 @@ export default function RecentTransactions() {
   };
 
   return (
-    <Card className="rounded-2xl border-border/50">
+    <Card className="rounded-2xl border-border">
       <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-4">
         <CardTitle className="text-xl font-semibold">Últimas Transacciones</CardTitle>
         <Link to="/transactions">
@@ -68,7 +68,7 @@ export default function RecentTransactions() {
               return (
                 <div
                   key={`${transaction.id}-${transaction.category_name}`}
-                  className="flex items-center justify-between p-4 rounded-full border border-border/50 hover:shadow-sm hover:border-border transition-all duration-200"
+                  className="flex items-center justify-between p-4 rounded-sm border border-border hover:shadow-sm hover:border-border transition-all duration-200"
                 >
                   <div className="flex items-center gap-4 min-w-0 flex-1">
                     <div className={`p-3 rounded-full ${bgClass} flex-shrink-0`}>

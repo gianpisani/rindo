@@ -144,7 +144,7 @@ export function GoalSetupDialog({
                     "px-3 py-2 rounded-xl text-sm font-medium border transition-all tabular-nums",
                     dailyMinutes === m
                       ? "border-primary bg-primary/10 text-foreground"
-                      : "border-border/60 text-muted-foreground hover:border-border hover:text-foreground"
+                      : "border-border text-muted-foreground hover:border-border hover:text-foreground"
                   )}
                 >
                   {m}
@@ -166,7 +166,7 @@ export function GoalSetupDialog({
                     "px-3 py-2 rounded-xl text-sm font-medium border transition-all tabular-nums",
                     weeklyDays === d
                       ? "border-primary bg-primary/10 text-foreground"
-                      : "border-border/60 text-muted-foreground hover:border-border hover:text-foreground"
+                      : "border-border text-muted-foreground hover:border-border hover:text-foreground"
                   )}
                 >
                   {d}
@@ -192,7 +192,7 @@ export function GoalSetupDialog({
           </button>
 
           {showDetails && (
-            <div className="space-y-4 mt-3 pt-3 border-t border-border/50">
+            <div className="space-y-4 mt-3 pt-3 border-t border-border">
               <div className="space-y-1.5">
                 <Label className="text-xs text-muted-foreground">
                   ¿Para qué lo quieres?
@@ -218,7 +218,7 @@ export function GoalSetupDialog({
                           "px-2 py-1 rounded-lg text-[11px] border transition-all",
                           levelCurrent === l
                             ? "border-primary bg-primary/10 text-foreground"
-                            : "border-border/60 text-muted-foreground hover:border-border"
+                            : "border-border text-muted-foreground hover:border-border"
                         )}
                       >
                         {l}
@@ -238,7 +238,7 @@ export function GoalSetupDialog({
                           "px-2 py-1 rounded-lg text-[11px] border transition-all",
                           levelTarget === l
                             ? "border-primary bg-primary/10 text-foreground"
-                            : "border-border/60 text-muted-foreground hover:border-border"
+                            : "border-border text-muted-foreground hover:border-border"
                         )}
                       >
                         {l}

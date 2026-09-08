@@ -169,7 +169,7 @@ function EntryDetail({ entry }: { entry: SyncLogEntry }) {
               </button>
             )}
           </div>
-          <div className="rounded-xl border border-border/50 divide-y divide-border/30 max-h-[180px] overflow-y-auto">
+          <div className="rounded-xl border border-border divide-y divide-border max-h-[180px] overflow-y-auto">
             {importedItems.map((item, i) => (
               <div key={i} className="flex items-center gap-2.5 px-3 py-2 text-sm">
                 {item.id ? (
@@ -233,7 +233,7 @@ function EntryDetail({ entry }: { entry: SyncLogEntry }) {
               </button>
             )}
           </div>
-          <div className="rounded-xl border border-border/50 divide-y divide-border/30 max-h-[180px] overflow-y-auto">
+          <div className="rounded-xl border border-border divide-y divide-border max-h-[180px] overflow-y-auto">
             {skippedItems.map((item, i) => {
               const isZero = item.reason === "zero_amount";
               return (
@@ -314,7 +314,7 @@ function LogEntryRow({ entry }: { entry: SyncLogEntry }) {
   const timeLabel = syncDate.toLocaleTimeString("es-CL", { hour: "2-digit", minute: "2-digit" });
 
   return (
-    <div className="rounded-xl border border-border/50 bg-card overflow-hidden">
+    <div className="rounded-xl border border-border bg-card overflow-hidden">
       <button
         type="button"
         onClick={() => hasDetail && setExpanded((v) => !v)}
@@ -355,7 +355,7 @@ function LogEntryRow({ entry }: { entry: SyncLogEntry }) {
       </button>
 
       {expanded && hasDetail && (
-        <div className="px-3 pb-3 border-t border-border/40">
+        <div className="px-3 pb-3 border-t border-border">
           <EntryDetail entry={entry} />
         </div>
       )}
