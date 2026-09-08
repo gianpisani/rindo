@@ -25,7 +25,6 @@ import {
   Play,
   Lightbulb,
   ChevronRight,
-  Wallet,
 } from "lucide-react";
 import { BankSyncModal } from "@/components/BankSyncModal";
 import { useBankSyncContext } from "@/contexts/BankSyncContext";
@@ -216,14 +215,16 @@ const Index = () => {
     <Card className="border-border/50 flex flex-col overflow-hidden">
       <div className="px-4 py-3 md:px-5 md:py-4 flex flex-col">
         <div className="flex items-center justify-between">
-          <span className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider">Patrimonio</span>
+          <span className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider">Líquido</span>
           <span className="text-[10px] text-muted-foreground font-mono tabular-nums capitalize">
             {format(now, "MMMM yyyy", { locale: es })}
           </span>
         </div>
+        {/* El número grande es el que se usa para decidir si se puede gastar:
+            lo líquido. El patrimonio es contexto, no la decisión del día. */}
         <div className={cn("mt-1.5 md:mt-2 text-[28px] md:text-4xl font-bold font-mono tabular-nums tracking-tight leading-none", isPrivacyMode && "privacy-blur")}>
           $<NumberFlow
-            value={patrimonio}
+            value={liquido}
             format={{
               style: "decimal",
               minimumFractionDigits: 0,
@@ -233,41 +234,27 @@ const Index = () => {
           />
         </div>
 
-        {/* Los dos baldes: la barra muestra la mezcla, los números el detalle.
-            El lado invertido es la puerta a los movimientos que lo tocan. */}
-        <div className="mt-2.5 md:mt-3">
-          <div className="flex h-1 gap-[2px] overflow-hidden rounded-full bg-muted">
-            <div
-              className="rounded-full bg-success transition-[flex-grow] duration-700"
-              style={{ flexGrow: Math.max(liquido, 0) }}
-            />
-            <div
-              className="rounded-full bg-blue transition-[flex-grow] duration-700"
-              style={{ flexGrow: Math.max(invertido, 0) }}
-            />
-          </div>
-          {/* Con montos largos en pantalla angosta, el balde invertido baja a
-              una segunda línea en vez de desbordar la tarjeta. */}
-          <div className="mt-2 flex flex-wrap items-center justify-between gap-x-3 gap-y-1">
-            <span className="flex items-baseline gap-1.5 whitespace-nowrap">
-              <Wallet className="h-3 w-3 text-success shrink-0 translate-y-0.5" />
-              <span className="text-[10px] text-muted-foreground uppercase tracking-wider">Líquido</span>
-              <span className={cn("text-xs md:text-sm font-semibold font-mono tabular-nums", isPrivacyMode && "privacy-blur")}>
-                {formatCurrency(liquido)}
-              </span>
+        {/* El otro balde y el total. Invertido es la puerta a los movimientos
+            que lo tocan; con montos largos baja a una segunda línea en vez de
+            desbordar la tarjeta. */}
+        <div className="mt-2 flex flex-wrap items-center justify-between gap-x-3 gap-y-1">
+          <button
+            onClick={() => setInvestmentMoveOpen(true)}
+            className="flex items-baseline gap-1.5 whitespace-nowrap rounded-md px-1 -mx-1 py-0.5 hover:bg-blue/10 transition-colors group"
+          >
+            <PiggyBank className="h-3 w-3 text-blue shrink-0 translate-y-0.5" />
+            <span className="text-[10px] text-muted-foreground uppercase tracking-wider">Invertido</span>
+            <span className={cn("text-xs md:text-sm font-semibold font-mono tabular-nums", isPrivacyMode && "privacy-blur")}>
+              {formatCurrency(invertido)}
             </span>
-            <button
-              onClick={() => setInvestmentMoveOpen(true)}
-              className="flex items-baseline gap-1.5 whitespace-nowrap rounded-md px-1 -mx-1 py-0.5 hover:bg-blue/10 transition-colors group"
-            >
-              <PiggyBank className="h-3 w-3 text-blue shrink-0 translate-y-0.5" />
-              <span className="text-[10px] text-muted-foreground uppercase tracking-wider">Invertido</span>
-              <span className={cn("text-xs md:text-sm font-semibold font-mono tabular-nums", isPrivacyMode && "privacy-blur")}>
-                {formatCurrency(invertido)}
-              </span>
-              <ChevronRight className="h-3 w-3 text-muted-foreground/50 shrink-0 translate-y-0.5 group-hover:text-blue transition-colors" />
-            </button>
-          </div>
+            <ChevronRight className="h-3 w-3 text-muted-foreground/50 shrink-0 translate-y-0.5 group-hover:text-blue transition-colors" />
+          </button>
+          <span className="flex items-baseline gap-1.5 whitespace-nowrap">
+            <span className="text-[10px] text-muted-foreground uppercase tracking-wider">Patrimonio</span>
+            <span className={cn("text-xs md:text-sm font-semibold font-mono tabular-nums text-muted-foreground", isPrivacyMode && "privacy-blur")}>
+              {formatCurrency(patrimonio)}
+            </span>
+          </span>
         </div>
 
         <div className="mt-2.5 pt-2.5 md:mt-3 md:pt-3 border-t border-border/50">
