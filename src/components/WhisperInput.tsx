@@ -33,9 +33,26 @@ const TRANSACTION_TYPES = [
     colorBg: "rgba(96, 165, 250, 0.1)",
     placeholder: "200000 fintual",
   },
+  {
+    key: "Rescate" as const,
+    label: "Rescate",
+    color: "rgb(34, 211, 238)",
+    colorMuted: "rgba(34, 211, 238, 0.4)",
+    colorBg: "rgba(34, 211, 238, 0.1)",
+    placeholder: "200000 saqué del fondo",
+  },
 ] as const;
 
 type TransactionType = (typeof TRANSACTION_TYPES)[number]["key"];
+
+/**
+ * El rescate no pasa por el categorizador: su categoría es el movimiento
+ * mismo, y adivinarla por el detalle ("saqué del fondo") solo la ensucia.
+ * Mismo criterio que en QuickTransactionForm.
+ */
+const FIXED_CATEGORY: Partial<Record<TransactionType, string>> = {
+  Rescate: "Rescate",
+};
 
 interface WhisperInputProps {
   open: boolean;
@@ -131,12 +148,16 @@ export function WhisperInput({ open, onOpenChange }: WhisperInputProps) {
       const { data: userData } = await supabase.auth.getUser();
       if (!userData.user) return;
 
-      const willAnalyze = parsed.detail && parsed.detail.length >= 3;
+      const fixedCategory = FIXED_CATEGORY[currentType.key];
+      const willAnalyze =
+        !fixedCategory && parsed.detail && parsed.detail.length >= 3;
 
       const transaction = await addTransaction.mutateAsync({
         amount: parsed.amount,
         type: currentType.key,
-        category_name: willAnalyze ? "\u26A1 Analizando..." : "Sin categoría",
+        category_name:
+          fixedCategory ??
+          (willAnalyze ? "\u26A1 Analizando..." : "Sin categoría"),
         detail: parsed.detail,
         date: new Date().toISOString(),
         card_id: null,
