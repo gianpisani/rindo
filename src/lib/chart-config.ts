@@ -15,6 +15,8 @@ export const CHART_COLORS = {
   get expense() { return getCSSVar("--color-expense") || "#e11d48"; },
   get investment() { return getCSSVar("--color-investment") || "#0ea5e9"; },
   get balance() { return getCSSVar("--color-balance") || "#f59e0b"; },
+  get rescue() { return getCSSVar("--color-rescue") || "#06b6d4"; },
+  get yield() { return getCSSVar("--color-yield") || "#8b5cf6"; },
   get mutedAxis() { return getCSSVar("--color-muted-axis") || "#94a3b8"; },
   get grid() { return getCSSVar("--color-grid") || "#e2e8f0"; },
 };
@@ -24,6 +26,8 @@ export const TYPE_COLORS = {
   get Ingresos() { return CHART_COLORS.income; },
   get Gastos() { return CHART_COLORS.expense; },
   get Inversiones() { return CHART_COLORS.investment; },
+  get Rescates() { return CHART_COLORS.rescue; },
+  get Rendimientos() { return CHART_COLORS.yield; },
   get Balance() { return CHART_COLORS.balance; },
 };
 

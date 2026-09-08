@@ -47,6 +47,7 @@ import {
   Flame,
 } from "lucide-react";
 import { MonthlyStory } from "@/components/MonthlyStory";
+import { computeLedger } from "@/hooks/useRealFlows";
 import { MonthlyEvolutionChart } from "@/components/MonthlyEvolutionChart";
 import ProjectionCard from "@/components/ProjectionCard";
 import {
@@ -510,13 +511,21 @@ export default function Overview() {
       const investments = monthTxns
         .filter((t) => t.type === "Inversión")
         .reduce((sum, t) => sum + Number(t.amount), 0);
-      cumulativePatrimonio += income - expenses;
+      const rescued = monthTxns
+        .filter((t) => t.type === "Rescate")
+        .reduce((sum, t) => sum + Number(t.amount), 0);
+      const yields = monthTxns
+        .filter((t) => t.type === "Rendimiento")
+        .reduce((sum, t) => sum + Number(t.amount), 0);
+      // El patrimonio crece con lo que ganaron las inversiones, no solo con
+      // lo que entró y salió; el balance líquido recupera lo rescatado.
+      cumulativePatrimonio += income - expenses + yields;
       return {
         month: format(month, "MMM yy", { locale: es }),
         Ingresos: income,
         Gastos: expenses,
         Inversiones: investments,
-        Balance: income - expenses - investments,
+        Balance: income - expenses - investments + rescued,
         Patrimonio: cumulativePatrimonio,
       };
     });
@@ -524,15 +533,20 @@ export default function Overview() {
 
   // Historical aggregate stats (independent of selectedMonth)
   const historicalStats = useMemo(() => {
-    const monthMap = new Map<string, { income: number; expenses: number; investments: number }>();
+    const monthMap = new Map<
+      string,
+      { income: number; expenses: number; investments: number; rescued: number }
+    >();
     for (const t of transactions) {
       const key = format(new Date(t.date), "yyyy-MM");
-      if (!monthMap.has(key)) monthMap.set(key, { income: 0, expenses: 0, investments: 0 });
+      if (!monthMap.has(key))
+        monthMap.set(key, { income: 0, expenses: 0, investments: 0, rescued: 0 });
       const entry = monthMap.get(key)!;
       const amount = Number(t.amount);
       if (t.type === "Ingreso") entry.income += amount;
       else if (t.type === "Gasto") entry.expenses += amount;
       else if (t.type === "Inversión") entry.investments += amount;
+      else if (t.type === "Rescate") entry.rescued += amount;
     }
 
     const months = Array.from(monthMap.entries());
@@ -542,23 +556,24 @@ export default function Overview() {
         income: acc.income + v.income,
         expenses: acc.expenses + v.expenses,
         investments: acc.investments + v.investments,
+        rescued: acc.rescued + v.rescued,
       }),
-      { income: 0, expenses: 0, investments: 0 }
+      { income: 0, expenses: 0, investments: 0, rescued: 0 }
     );
 
     let bestMonth: { name: string; balance: number } | null = null;
     let worstMonth: { name: string; balance: number } | null = null;
     for (const [key, v] of months) {
-      const balance = v.income - v.expenses - v.investments;
+      const balance = v.income - v.expenses - v.investments + v.rescued;
       const date = new Date(key + "-15");
       const name = format(date, "MMMM yyyy", { locale: es });
       if (!bestMonth || balance > bestMonth.balance) bestMonth = { name, balance };
       if (!worstMonth || balance < worstMonth.balance) worstMonth = { name, balance };
     }
 
-    const totalLiquid = totals.income - totals.expenses - totals.investments;
-    const totalInvested = totals.investments;
-    const patrimonio = totals.income - totals.expenses;
+    // Los baldes salen del ledger: acá solo se promedian los flujos.
+    const { liquido: totalLiquid, invertido: totalInvested, patrimonio } =
+      computeLedger(transactions);
     const savingsRate = totals.income > 0
       ? ((totals.income - totals.expenses) / totals.income) * 100
       : 0;
@@ -568,7 +583,8 @@ export default function Overview() {
       avgIncome: totals.income / n,
       avgExpenses: totals.expenses / n,
       avgInvestments: totals.investments / n,
-      avgBalance: (totals.income - totals.expenses - totals.investments) / n,
+      avgBalance:
+        (totals.income - totals.expenses - totals.investments + totals.rescued) / n,
       patrimonio,
       totalLiquid,
       totalInvested,

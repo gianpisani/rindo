@@ -2,13 +2,14 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { useCallback, useRef } from "react";
+import type { TransactionType } from "@/lib/ledger";
 
 export interface Transaction {
   id: string;
   date: string; // Now TIMESTAMPTZ in Chile timezone
   detail: string | null;
   category_name: string;
-  type: "Ingreso" | "Gasto" | "Inversión" | "Reembolso";
+  type: TransactionType;
   amount: number;
   user_id: string;
   created_at: string;
@@ -17,6 +18,28 @@ export interface Transaction {
   reimbursement_for_category: string | null;
   bank_description: string | null;
 }
+
+/**
+ * Lo que hace falta para crear una transacción: las columnas que el usuario
+ * siempre elige, más las opcionales (tarjeta, cuota, tag de reembolso) que
+ * cada formulario llena solo si aplican.
+ */
+export type NewTransaction = Omit<
+  Transaction,
+  | "id"
+  | "user_id"
+  | "created_at"
+  | "card_id"
+  | "installment_id"
+  | "reimbursement_for_category"
+  | "bank_description"
+> &
+  Partial<
+    Pick<
+      Transaction,
+      "card_id" | "installment_id" | "reimbursement_for_category" | "bank_description"
+    >
+  >;
 
 export function useTransactions() {
   const queryClient = useQueryClient();
@@ -48,7 +71,7 @@ export function useTransactions() {
   const futureTransactions = allTransactions.filter(t => new Date(t.date) > today);
 
   const addTransaction = useMutation({
-    mutationFn: async (transaction: Omit<Transaction, "id" | "user_id" | "created_at">) => {
+    mutationFn: async (transaction: NewTransaction) => {
       const { data: userData } = await supabase.auth.getUser();
       if (!userData.user) throw new Error("No user found");
 

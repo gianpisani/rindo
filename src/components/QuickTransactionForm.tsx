@@ -20,16 +20,38 @@ import { Checkbox } from "./ui/checkbox";
 import SharedExpenseDrawer from "./SharedExpenseDrawer";
 import { usePrivacyMode } from "@/hooks/usePrivacyMode";
 import { cn } from "@/lib/utils";
+import type { TransactionType } from "@/lib/ledger";
 
 interface QuickTransactionFormProps {
   onSuccess?: () => void;
-  defaultType?: "Ingreso" | "Gasto" | "Inversión" | "Reembolso";
+  defaultType?: TransactionType;
 }
 
-const typeTexts = {
+const typeTexts: Record<TransactionType, { placeholder: string }> = {
   "Ingreso": { placeholder: "¿De dónde salió esta plata?" },
   "Gasto": { placeholder: "¿En qué te lo gastaste?" },
   "Inversión": { placeholder: "¿Dónde pusiste la plata?" },
+  "Rescate": { placeholder: "¿De dónde la sacaste?" },
+  "Rendimiento": { placeholder: "¿Qué instrumento se movió?" },
+  "Reembolso": { placeholder: "¿Quién te devolvió?" },
+};
+
+/**
+ * Los movimientos entre baldes no pasan por el categorizador: su categoría
+ * es el movimiento mismo, y adivinarla por el detalle solo la ensucia.
+ */
+const FIXED_CATEGORY: Partial<Record<TransactionType, string>> = {
+  Rescate: "Rescate",
+  Rendimiento: "Rendimiento",
+};
+
+const typeAccents: Record<TransactionType, { text: string; button: string }> = {
+  Ingreso: { text: "text-success", button: "bg-success hover:bg-success/90" },
+  Gasto: { text: "text-destructive", button: "bg-destructive hover:bg-destructive/90" },
+  Inversión: { text: "text-blue-400", button: "bg-blue-500 hover:bg-blue-500/90" },
+  Rescate: { text: "text-cyan-400", button: "bg-cyan-500 hover:bg-cyan-500/90" },
+  Rendimiento: { text: "text-violet-400", button: "bg-violet-500 hover:bg-violet-500/90" },
+  Reembolso: { text: "text-amber-400", button: "bg-amber-500 hover:bg-amber-500/90" },
 };
 
 export default function QuickTransactionForm({ onSuccess, defaultType = "Gasto" }: QuickTransactionFormProps) {
@@ -41,6 +63,8 @@ export default function QuickTransactionForm({ onSuccess, defaultType = "Gasto" 
   const [pendingTransaction, setPendingTransaction] = useState<{ id: string; amount: number } | null>(null);
   const [amountError, setAmountError] = useState("");
   const [reimbursementCategory, setReimbursementCategory] = useState<string | null>(null);
+  // Un rendimiento puede ser negativo: un mes malo es un dato.
+  const [isLoss, setIsLoss] = useState(false);
 
   const { categories } = useCategories();
   const queryClient = useQueryClient();
@@ -122,11 +146,14 @@ export default function QuickTransactionForm({ onSuccess, defaultType = "Gasto" 
       const { data: userData } = await supabase.auth.getUser();
       if (!userData.user) return;
 
-      const willAnalyze = detail && detail.trim().length >= 3;
+      const fixedCategory = FIXED_CATEGORY[defaultType];
+      const willAnalyze = !fixedCategory && detail && detail.trim().length >= 3;
+      const signedAmount =
+        defaultType === "Rendimiento" && isLoss ? -parsedAmount : parsedAmount;
       const transaction = await addTransaction.mutateAsync({
-        amount: parsedAmount,
+        amount: signedAmount,
         type: defaultType,
-        category_name: willAnalyze ? "⚡ Analizando..." : "Sin categoría",
+        category_name: fixedCategory ?? (willAnalyze ? "⚡ Analizando..." : "Sin categoría"),
         detail: detail || null,
         date: new Date().toISOString(),
         reimbursement_for_category:
@@ -212,15 +239,8 @@ export default function QuickTransactionForm({ onSuccess, defaultType = "Gasto" 
     return `$${formatted}`;
   };
 
-  const accentColor =
-    defaultType === "Ingreso" ? "text-success" :
-    defaultType === "Inversión" ? "text-blue-400" :
-    "text-destructive";
-
-  const buttonColor =
-    defaultType === "Ingreso" ? "bg-success hover:bg-success/90" :
-    defaultType === "Inversión" ? "bg-blue-500 hover:bg-blue-500/90" :
-    "bg-destructive hover:bg-destructive/90";
+  const accentColor = typeAccents[defaultType].text;
+  const buttonColor = typeAccents[defaultType].button;
 
   return (
     <>
@@ -276,10 +296,18 @@ export default function QuickTransactionForm({ onSuccess, defaultType = "Gasto" 
               "transition-all duration-200",
             )}
           />
-          <p className="text-center text-[10px] text-muted-foreground tracking-wide">
-            <Sparkles className="inline h-2.5 w-2.5 mr-1 -translate-y-px" />
-            categorización automática
-          </p>
+          {FIXED_CATEGORY[defaultType] ? (
+            <p className="text-center text-[10px] text-muted-foreground tracking-wide">
+              {defaultType === "Rescate"
+                ? "vuelve a tu liquidez · el patrimonio no cambia"
+                : "sube tu patrimonio · la liquidez no cambia"}
+            </p>
+          ) : (
+            <p className="text-center text-[10px] text-muted-foreground tracking-wide">
+              <Sparkles className="inline h-2.5 w-2.5 mr-1 -translate-y-px" />
+              categorización automática
+            </p>
+          )}
         </div>
 
         {/* Reimbursement suggestion — conservative chip, never automatic */}
@@ -332,6 +360,30 @@ export default function QuickTransactionForm({ onSuccess, defaultType = "Gasto" 
               )}
             </div>
           )}
+
+        {/* Rendimiento — ganancia o pérdida */}
+        {defaultType === "Rendimiento" && (
+          <div className="flex items-center justify-center gap-1.5 py-1">
+            {[
+              { loss: false, label: "Ganancia", active: "border-violet-500/40 bg-violet-500/10 text-violet-500" },
+              { loss: true, label: "Pérdida", active: "border-rose-500/40 bg-rose-500/10 text-rose-500" },
+            ].map((opt) => (
+              <button
+                key={opt.label}
+                type="button"
+                onClick={() => { setIsLoss(opt.loss); playTap(); }}
+                className={cn(
+                  "rounded-full border px-3.5 py-1 text-xs font-medium transition-colors",
+                  isLoss === opt.loss
+                    ? opt.active
+                    : "border-border text-muted-foreground hover:text-foreground"
+                )}
+              >
+                {opt.label}
+              </button>
+            ))}
+          </div>
+        )}
 
         {/* Shared expense — subtle toggle */}
         {defaultType === "Gasto" && (

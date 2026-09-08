@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from "react";
+import type { TransactionType } from "@/lib/ledger";
 import { ArrowLeft } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -14,7 +15,7 @@ const DEFAULT_COLORS = [
   "#f59e0b", "#64748b", "#78716c", "#3b82f6",
 ];
 
-type CategoryType = "Ingreso" | "Gasto" | "Inversión" | "Reembolso";
+type CategoryType = TransactionType;
 
 interface CategoryCreateInlineProps {
   /** Nombre inicial, típicamente lo que el usuario escribió al buscar. */

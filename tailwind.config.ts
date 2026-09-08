@@ -51,8 +51,14 @@ export default {
 				...defaultColors.amber,
 				500: 'oklch(var(--accent-amber) / <alpha-value>)'
 			},
-			cyan: 'hsl(188 86% 43%)',
-			violet: 'hsl(258 90% 66%)',
+			cyan: {
+				...defaultColors.cyan,
+				500: 'oklch(var(--accent-cyan) / <alpha-value>)'
+			},
+			violet: {
+				...defaultColors.violet,
+				500: 'oklch(var(--accent-violet) / <alpha-value>)'
+			},
 			fuchsia: 'hsl(292 76% 63%)',
 			border: 'var(--border)',
 			input: 'var(--input)',

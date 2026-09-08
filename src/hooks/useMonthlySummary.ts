@@ -107,11 +107,16 @@ export function useMonthlySummary(
       const investments = txns
         .filter((t) => t.type === "Inversión")
         .reduce((s, t) => s + Number(t.amount), 0);
+      // Lo rescatado vuelve a la liquidez del mes: no es ingreso, pero el
+      // balance del mes lo recupera.
+      const rescued = txns
+        .filter((t) => t.type === "Rescate")
+        .reduce((s, t) => s + Number(t.amount), 0);
       return {
         income,
         expenses,
         investments,
-        balance: income - expenses - investments,
+        balance: income - expenses - investments + rescued,
         savingsRate: income > 0 ? ((income - expenses) / income) * 100 : 0,
       };
     };

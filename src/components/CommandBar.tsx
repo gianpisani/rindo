@@ -18,6 +18,8 @@ import {
   TrendingUp,
   UserPen,
   ArrowLeftRight,
+  ArrowDownToLine,
+  LineChart,
 } from "lucide-react";
 import { useTransactions } from "@/hooks/useTransactions";
 import { useCategories } from "@/hooks/useCategories";
@@ -29,6 +31,7 @@ import { Kbd } from "@/components/ui/kbd";
 import { useNavPreferences } from "@/hooks/useNavPreferences";
 import { getCategoryIcon } from "@/components/TransactionsTable";
 import { cn } from "@/lib/utils";
+import { signPrefix } from "@/lib/ledger";
 
 interface CommandBarProps {
   open: boolean;
@@ -42,6 +45,8 @@ const typeIcons = {
   Ingreso: TrendingUp,
   Gasto: TrendingDown,
   Inversión: PiggyBank,
+  Rescate: ArrowDownToLine,
+  Rendimiento: LineChart,
   Reembolso: ArrowLeftRight,
 };
 
@@ -49,6 +54,8 @@ const typeAmountColors: Record<string, string> = {
   Ingreso: "text-emerald-500",
   Gasto: "text-red-400",
   Inversión: "text-blue-400",
+  Rescate: "text-cyan-500",
+  Rendimiento: "text-violet-500",
   Reembolso: "text-amber-400",
 };
 
@@ -138,8 +145,8 @@ export function CommandBar({ open, onOpenChange, onAddTransaction, onConciliate,
 
                     {/* Amount */}
                     <span className={cn("text-sm font-semibold tabular-nums font-mono shrink-0", amountColor)}>
-                      {t.type === "Ingreso" ? "+" : t.type === "Gasto" ? "−" : ""}
-                      {formatCurrency(t.amount)}
+                      {signPrefix(t.type, t.amount)}
+                      {formatCurrency(Math.abs(t.amount))}
                     </span>
                   </CommandItem>
                 );

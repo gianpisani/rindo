@@ -32,7 +32,12 @@ export function calculateProjectionImpact(
       .filter((t) => t.type === "Gasto")
       .reduce((sum, t) => sum + Number(t.amount), 0);
 
-    const patrimonio = income - expenses;
+    // Lo que ganaron (o perdieron) las inversiones también es patrimonio.
+    const yields = transactionsUntilMonth
+      .filter((t) => t.type === "Rendimiento")
+      .reduce((sum, t) => sum + Number(t.amount), 0);
+
+    const patrimonio = income - expenses + yields;
 
     const monthTransactions = allTransactions.filter((t) => {
       const date = new Date(t.date);

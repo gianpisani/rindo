@@ -26,14 +26,26 @@ const SAMPLE_ROWS = [
   ["02/05/2026", "Supermercado Lider", "Alimentación", "Gasto", "45.000"],
   ["03/05/2026", "Netflix", "Entretenimiento", "Gasto", "8.500"],
   ["05/05/2026", "Aporte APV", "APV", "Inversión", "100.000"],
+  ["20/05/2026", "Saqué del fondo", "Rescate", "Rescate", "200.000"],
+  ["31/05/2026", "Cierre de mayo", "Rendimiento", "Rendimiento", "38.400"],
 ];
+
+/** El color del tipo en la vista previa de la plantilla. */
+const TYPE_CELL_COLORS: Record<string, string> = {
+  Ingreso: "text-emerald-600 dark:text-emerald-400",
+  Gasto: "text-red-500 dark:text-red-400",
+  Inversión: "text-blue-500 dark:text-blue-400",
+  Rescate: "text-cyan-500",
+  Rendimiento: "text-violet-500",
+  Reembolso: "text-amber-500",
+};
 
 const COLUMN_META: Record<string, { required: boolean; hint: string }> = {
   Fecha: { required: true, hint: "DD/MM/YYYY" },
   Detalle: { required: false, hint: "Texto libre" },
   Categoría: { required: true, hint: "Se crea si no existe" },
-  Tipo: { required: true, hint: "Ingreso · Gasto · Inversión" },
-  Monto: { required: true, hint: "Número positivo" },
+  Tipo: { required: true, hint: "Ingreso · Gasto · Inversión · Rescate · Rendimiento" },
+  Monto: { required: true, hint: "Número positivo (negativo solo en Rendimiento)" },
 };
 
 function generateTemplateCSV(): string {
@@ -191,12 +203,7 @@ export function ImportCSVModal({
                           key={j}
                           className={cn(
                             "px-3 py-1.5 border-r border-border/30 last:border-r-0 font-mono",
-                            j === 3 &&
-                              (cell === "Ingreso"
-                                ? "text-emerald-600 dark:text-emerald-400"
-                                : cell === "Gasto"
-                                ? "text-red-500 dark:text-red-400"
-                                : "text-blue-500 dark:text-blue-400"),
+                            j === 3 && TYPE_CELL_COLORS[cell as string],
                             j === 4 && "text-right tabular-nums"
                           )}
                         >

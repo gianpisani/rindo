@@ -1,17 +1,20 @@
 import { Dialog, DialogContent, DialogTitle, DialogDescription } from "./ui/dialog";
 import QuickTransactionForm from "./QuickTransactionForm";
 import { cn } from "@/lib/utils";
+import type { TransactionType } from "@/lib/ledger";
 
 interface QuickAddDrawerProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  defaultType?: "Ingreso" | "Gasto" | "Inversión" | "Reembolso";
+  defaultType?: TransactionType;
 }
 
 const typeConfig = {
   Ingreso: { label: "ingreso", prefix: "Nuevo", dot: "bg-success", accent: "text-success" },
   Gasto: { label: "gasto", prefix: "Nuevo", dot: "bg-destructive", accent: "text-destructive" },
   Inversión: { label: "inversión", prefix: "Nueva", dot: "bg-blue-500", accent: "text-blue-500" },
+  Rescate: { label: "rescate", prefix: "Nuevo", dot: "bg-cyan-500", accent: "text-cyan-500" },
+  Rendimiento: { label: "rendimiento", prefix: "Nuevo", dot: "bg-violet-500", accent: "text-violet-500" },
 } as const;
 
 export function QuickAddDrawer({ open, onOpenChange, defaultType = "Gasto" }: QuickAddDrawerProps) {

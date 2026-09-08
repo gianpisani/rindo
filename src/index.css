@@ -144,6 +144,7 @@ Based on Indigo, Blue, Cyan palette
     --accent-blue: 0.623 0.188 259.8;    /* = #3b82f6 (blue-500) */
     --accent-amber: 0.769 0.165 70.1;    /* = #f59e0b (amber-500) */
     --accent-violet: 0.606 0.25 292.7;   /* = #8b5cf6 (violet-500) */
+    --accent-cyan: 0.715 0.143 215.2;    /* = #06b6d4 (cyan-500) */
 
     /* Insights — un tono por tipo. Tripletes crudos: cada fila los compone
        con alpha (spine sólido, relleno translúcido) sin duplicar el color. */
@@ -182,6 +183,10 @@ Based on Indigo, Blue, Cyan palette
     --color-expense: #e11d48;
     --color-investment: #0ea5e9;
     --color-balance: #f59e0b;
+    /* Los dos movimientos entre baldes: el rescate devuelve, el rendimiento
+       crece solo. Referencian el accent, no un hex suelto. */
+    --color-rescue: oklch(var(--accent-cyan));
+    --color-yield: oklch(var(--accent-violet));
     --color-muted-axis: #64748b;
     --color-grid: #d1d5db;
 
@@ -232,6 +237,7 @@ Based on Indigo, Blue, Cyan palette
     --accent-blue: 0.66 var(--accent-chroma) 259;
     --accent-amber: 0.83 var(--accent-chroma) 78;
     --accent-violet: 0.66 var(--accent-chroma) 295;
+    --accent-cyan: 0.78 var(--accent-chroma) 210;
 
     /* Insights — mismos tripletes crudos que en claro, ya en su versión
        oscura: el tipo de insight elige el tono, la fila elige el alpha. */
@@ -274,6 +280,8 @@ Based on Indigo, Blue, Cyan palette
     --color-expense: oklch(var(--accent-rose));
     --color-investment: oklch(var(--accent-blue));
     --color-balance: oklch(var(--accent-amber));
+    --color-rescue: oklch(var(--accent-cyan));
+    --color-yield: oklch(var(--accent-violet));
     --color-muted-axis: #64748b;
     --color-grid: #374151;
 

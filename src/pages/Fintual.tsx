@@ -14,10 +14,12 @@ import {
   Calendar,
   DollarSign,
   PiggyBank,
-  AlertCircle
+  AlertCircle,
+  LineChart
 } from 'lucide-react'
 import { FintualConnectionModal } from '@/components/FintualConnectionModal'
 import { FintualHistoryChart } from '@/components/FintualHistoryChart'
+import { InvestmentMoveDrawer } from '@/components/InvestmentMoveDrawer'
 import { cn } from '@/lib/utils'
 import { Badge } from '@/components/ui/badge'
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
@@ -39,6 +41,7 @@ export default function Fintual() {
   } = useFintual()
 
   const [showConnectionModal, setShowConnectionModal] = useState(false)
+  const [showMoveDrawer, setShowMoveDrawer] = useState(false)
   const { isPrivacyMode } = usePrivacyMode()
 
   const formatCurrency = (amount: number) => {
@@ -213,6 +216,14 @@ export default function Fintual() {
             </div>
           </div>
           <div className="flex gap-2">
+            <Button
+              variant="outline"
+              onClick={() => setShowMoveDrawer(true)}
+              className="text-violet-500 hover:text-violet-500"
+            >
+              <LineChart className="h-4 w-4 mr-2" />
+              Actualizar patrimonio
+            </Button>
             <Button
               variant="outline"
               onClick={sync}
@@ -402,6 +413,12 @@ export default function Fintual() {
         onOpenChange={setShowConnectionModal}
         onConnect={connect}
         isLoading={isLoading}
+      />
+
+      <InvestmentMoveDrawer
+        open={showMoveDrawer}
+        onOpenChange={setShowMoveDrawer}
+        defaultMove="valor"
       />
     </Layout>
   )

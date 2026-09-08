@@ -5,12 +5,13 @@
 
 import { supabase } from "@/integrations/supabase/client";
 import { EXTENDED_CATEGORY_KEYWORDS } from "./keywords-dictionary";
+import type { TransactionType } from "./ledger";
 
 // Usar el diccionario épico importado
 const CATEGORY_KEYWORDS = EXTENDED_CATEGORY_KEYWORDS;
 
 // Mapeo de categorías a tipos
-const CATEGORY_TYPES: Record<string, "Ingreso" | "Gasto" | "Inversión" | "Reembolso"> = {
+const CATEGORY_TYPES: Record<string, TransactionType> = {
   "Comida": "Gasto",
   "Transporte": "Gasto",
   "Viajes y hospedaje": "Gasto",
@@ -30,11 +31,14 @@ const CATEGORY_TYPES: Record<string, "Ingreso" | "Gasto" | "Inversión" | "Reemb
   "Fintual Risk": "Inversión",
   "Fintual Moderado": "Inversión",
   "Inversiones": "Inversión",
+
+  "Rescate": "Rescate",
+  "Rendimiento": "Rendimiento",
 };
 
 interface CategorizationResult {
   category: string | null;
-  type: "Ingreso" | "Gasto" | "Inversión" | "Reembolso" | null;
+  type: TransactionType | null;
   confidence: number; // 0-100
   reasons: string[];
 }

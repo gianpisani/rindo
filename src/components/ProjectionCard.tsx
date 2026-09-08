@@ -17,6 +17,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from ".
 import { Badge } from "./ui/badge";
 import { Collapsible, CollapsibleContent } from "./ui/collapsible";
 import { CHART_COLORS } from "@/lib/chart-config";
+import { computeLedger } from "@/hooks/useRealFlows";
 
 // --- Types & Constants ---
 
@@ -171,8 +172,10 @@ export default function ProjectionCard() {
     return weights;
   }, [transactions]);
 
-  const totalInvested = useMemo(() =>
-    transactions.filter(t => t.type === "Inversión").reduce((sum, t) => sum + Number(t.amount), 0),
+  // El balde invertido de verdad: aportes − rescates + rendimientos. Es la
+  // base sobre la que compone el interés, así que no puede ser solo aportes.
+  const totalInvested = useMemo(
+    () => computeLedger(transactions).invertido,
     [transactions]
   );
 
@@ -201,9 +204,11 @@ export default function ProjectionCard() {
       });
       const income = txUntil.filter(t => t.type === "Ingreso").reduce((s, t) => s + Number(t.amount), 0);
       const expenses = txUntil.filter(t => t.type === "Gasto").reduce((s, t) => s + Number(t.amount), 0);
+      // Lo que ganaron las inversiones también es patrimonio.
+      const yields = txUntil.filter(t => t.type === "Rendimiento").reduce((s, t) => s + Number(t.amount), 0);
       const monthTx = transactions.filter(t => { const d = new Date(t.date); return d >= monthStart && d <= monthEnd; });
       const hasIncome = monthTx.some(t => t.type === "Ingreso");
-      return { fullDate: month, patrimonio: income - expenses, hasIncome };
+      return { fullDate: month, patrimonio: income - expenses + yields, hasIncome };
     });
   }, [transactions]);
 
@@ -245,9 +250,15 @@ export default function ProjectionCard() {
     if (months.length === 0) return 0;
     return months.reduce((sum, m) => {
       const ms = startOfMonth(new Date(m.fullDate)), me = endOfMonth(new Date(m.fullDate));
+      // Aporte neto: lo que puso menos lo que sacó. Proyectar solo los
+      // aportes ignorando los rescates sería optimismo de oficina.
       return sum + transactions
-        .filter(t => { const d = new Date(t.date); return t.type === "Inversión" && d >= ms && d <= me; })
-        .reduce((s, t) => s + Number(t.amount), 0);
+        .filter(t => { const d = new Date(t.date); return d >= ms && d <= me; })
+        .reduce((s, t) => {
+          if (t.type === "Inversión") return s + Number(t.amount);
+          if (t.type === "Rescate") return s - Number(t.amount);
+          return s;
+        }, 0);
     }, 0) / months.length;
   }, [transactions, recentCompleteMonths, completeMonths, calculationMode]);
 

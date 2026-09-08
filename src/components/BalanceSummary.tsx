@@ -5,6 +5,7 @@ import { GlassCard } from "./GlassCard";
 import NumberFlow from "@number-flow/react";
 import { usePrivacyMode } from "@/hooks/usePrivacyMode";
 import { cn } from "@/lib/utils";
+import { computeBuckets } from "@/lib/ledger";
 
 export default function BalanceSummary() {
   const { transactions } = useTransactions();
@@ -24,8 +25,9 @@ export default function BalanceSummary() {
     { income: 0, expenses: 0, investments: 0 }
   );
 
-  const disponible = totals.income - totals.expenses - totals.investments;
-  const patrimonio = totals.income - totals.expenses;
+  // Los baldes salen del ledger, no de restar tipos a mano: los rescates y
+  // los rendimientos también los mueven.
+  const { liquido: disponible, invertido, patrimonio } = computeBuckets(transactions);
 
   const formatCurrency = (amount: number) => {
     return new Intl.NumberFormat("es-CL", {
@@ -51,7 +53,7 @@ export default function BalanceSummary() {
     },
     {
       title: "Inversiones",
-      amount: totals.investments,
+      amount: invertido,
       icon: PiggyBank,
       color: "text-blue",
       bg: "bg-blue/5",

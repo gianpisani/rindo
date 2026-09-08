@@ -20,7 +20,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { Plus, Download, TrendingUp, TrendingDown, PiggyBank, Upload, X, Sparkles, Trash2, Search, CalendarClock, Users, CheckCircle2, Check, Clock, Pencil, ArrowLeftRight, Building2, RefreshCw } from "lucide-react";
+import { Plus, Download, TrendingUp, TrendingDown, PiggyBank, Upload, X, Sparkles, Trash2, Search, CalendarClock, Users, CheckCircle2, Check, Clock, Pencil, ArrowLeftRight, ArrowDownToLine, LineChart, Building2, RefreshCw } from "lucide-react";
 import { useTransactions, Transaction } from "@/hooks/useTransactions";
 import { useSearchFocusShortcut } from "@/hooks/useSearchFocusShortcut";
 import { useCategories } from "@/hooks/useCategories";
@@ -41,9 +41,9 @@ import { CategorySelect, CategoryPickerInline } from "@/components/CategorySelec
 import { CategoryCreateInline, CATEGORY_FORM_ID } from "@/components/CategoryCreateInline";
 import { DateTimePicker } from "@/components/ui/date-time-picker";
 import { DateRangeFilter, DateRangeValue } from "@/components/DateRangeFilter";
+import { TransactionType, TRANSACTION_TYPES, allowsNegativeAmount } from "@/lib/ledger";
 
 // ── Add/Edit modal: type segmented control + hero amount ───────────
-type TransactionType = "Ingreso" | "Gasto" | "Inversión" | "Reembolso";
 
 const TYPE_OPTIONS: {
   value: TransactionType;
@@ -72,6 +72,20 @@ const TYPE_OPTIONS: {
     icon: PiggyBank,
     active: "border-blue-500/40 bg-blue-500/10 text-blue-500",
     amount: "text-blue-500",
+  },
+  {
+    value: "Rescate",
+    label: "Rescate",
+    icon: ArrowDownToLine,
+    active: "border-cyan-500/40 bg-cyan-500/10 text-cyan-500",
+    amount: "text-cyan-500",
+  },
+  {
+    value: "Rendimiento",
+    label: "Rendimiento",
+    icon: LineChart,
+    active: "border-violet-500/40 bg-violet-500/10 text-violet-500",
+    amount: "text-violet-500",
   },
   {
     value: "Reembolso",
@@ -168,7 +182,7 @@ export default function Transactions() {
   });
   const [suggestion, setSuggestion] = useState<{
     category: string;
-    type: "Ingreso" | "Gasto" | "Inversión" | "Reembolso";
+    type: TransactionType;
     confidence: number;
     reasons: string[];
   } | null>(null);
@@ -178,9 +192,11 @@ export default function Transactions() {
     date: new Date(),
     detail: "",
     category_name: "",
-    type: "Gasto" as "Ingreso" | "Gasto" | "Inversión" | "Reembolso",
+    type: "Gasto" as TransactionType,
     amount: "",
     card_id: null as string | null,
+    // Solo aplica al rendimiento, el único tipo que puede ser negativo.
+    isLoss: false,
   });
 
 
@@ -271,12 +287,17 @@ export default function Transactions() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
-    const parsedAmount = parseFloat(formData.amount.replace(/\D/g, ""));
+    const { isLoss, ...fields } = formData;
+    const magnitude = parseFloat(formData.amount.replace(/\D/g, ""));
+    // Un rendimiento negativo es un mes malo, no un error: el resto de los
+    // tipos siempre va en positivo.
+    const parsedAmount =
+      allowsNegativeAmount(formData.type) && isLoss ? -magnitude : magnitude;
 
     if (editingTransaction) {
       await updateTransaction.mutateAsync({
         id: editingTransaction.id,
-        ...formData,
+        ...fields,
         date: formData.date.toISOString(),
         amount: parsedAmount,
       });
@@ -290,7 +311,7 @@ export default function Transactions() {
       }
     } else {
       const transaction = await addTransaction.mutateAsync({
-        ...formData,
+        ...fields,
         date: formData.date.toISOString(),
         amount: parsedAmount,
       });
@@ -370,6 +391,7 @@ export default function Transactions() {
       type: "Gasto",
       amount: "",
       card_id: null,
+      isLoss: false,
     });
     setSuggestion(null);
     setIsAnalyzing(false);
@@ -406,8 +428,9 @@ export default function Transactions() {
       detail: transaction.detail || "",
       category_name: transaction.category_name,
       type: transaction.type,
-      amount: transaction.amount.toString(),
+      amount: Math.abs(transaction.amount).toString(),
       card_id: transaction.card_id,
+      isLoss: transaction.amount < 0,
     });
 
     const existingShared = getSharedExpensesByTransaction(transaction.id);
@@ -509,7 +532,7 @@ export default function Transactions() {
 
           for (const row of rows) {
             try {
-              if (!["Ingreso", "Gasto", "Inversión"].includes(row.Tipo)) {
+              if (!TRANSACTION_TYPES.includes(row.Tipo as TransactionType)) {
                 console.error(`Tipo inválido en fila: ${row.Tipo}`);
                 errorCount++;
                 continue;
@@ -524,23 +547,32 @@ export default function Transactions() {
               const parsedDate = parse(row.Fecha, "dd/MM/yyyy", new Date());
               
               const amountStr = row.Monto.toString().replace(/[$.\s]/g, "").replace(",", ".");
-              const amount = parseFloat(amountStr);
-              
+              const amount = Math.abs(parseFloat(amountStr));
+
               if (isNaN(amount) || amount <= 0) {
                 console.error(`Monto inválido: ${row.Monto}`);
                 errorCount++;
                 continue;
               }
 
+              // Un rendimiento importado en negativo es una pérdida, y se
+              // guarda con signo: el resto de los tipos va siempre positivo.
+              const isNegative = /^\s*-/.test(row.Monto.toString());
+              const signedAmount =
+                row.Tipo === "Rendimiento" && isNegative ? -amount : amount;
+
               const categoryExists = categories.find(
                 cat => cat.name === row.Categoría && cat.type === row.Tipo
               );
 
               if (!categoryExists) {
-                const colors = {
+                const colors: Record<string, string> = {
                   Ingreso: "#10b981",
                   Gasto: "#ef4444",
-                  Inversión: "#3b82f6"
+                  Inversión: "#3b82f6",
+                  Rescate: "#06b6d4",
+                  Rendimiento: "#8b5cf6",
+                  Reembolso: "#f59e0b",
                 };
 
                 const { error: catError } = await supabase
@@ -548,7 +580,7 @@ export default function Transactions() {
                   .insert({
                     name: row.Categoría,
                     type: row.Tipo,
-                    color: colors[row.Tipo as keyof typeof colors],
+                    color: colors[row.Tipo],
                     user_id: userData.user.id,
                   });
 
@@ -566,7 +598,7 @@ export default function Transactions() {
                   detail: row.Detalle || null,
                   category_name: row.Categoría,
                   type: row.Tipo,
-                  amount: amount,
+                  amount: signedAmount,
                   user_id: userData.user.id,
                 });
 
@@ -737,6 +769,30 @@ export default function Transactions() {
                   })}
                 </div>
 
+                {/* Rendimiento: ganancia o pérdida */}
+                {formData.type === "Rendimiento" && (
+                  <div className="flex items-center justify-center gap-1.5">
+                    {[
+                      { loss: false, label: "Ganancia", active: "border-violet-500/40 bg-violet-500/10 text-violet-500" },
+                      { loss: true, label: "Pérdida", active: "border-rose-500/40 bg-rose-500/10 text-rose-500" },
+                    ].map((opt) => (
+                      <button
+                        key={opt.label}
+                        type="button"
+                        onClick={() => setFormData({ ...formData, isLoss: opt.loss })}
+                        className={cn(
+                          "rounded-full border px-3.5 py-1 text-xs font-medium transition-colors",
+                          formData.isLoss === opt.loss
+                            ? opt.active
+                            : "border-border text-muted-foreground hover:text-foreground"
+                        )}
+                      >
+                        {opt.label}
+                      </button>
+                    ))}
+                  </div>
+                )}
+
                 {/* Monto — protagonista */}
                 <div className="py-1">
                   <Label htmlFor="amount" className="sr-only">Monto</Label>
@@ -756,7 +812,9 @@ export default function Transactions() {
                       "w-full bg-transparent text-center font-mono text-4xl font-bold tabular-nums tracking-tight",
                       "border-0 outline-none placeholder:text-muted-foreground/25",
                       "transition-colors duration-200",
-                      TYPE_OPTIONS.find((o) => o.value === formData.type)?.amount
+                      formData.type === "Rendimiento" && formData.isLoss
+                        ? "text-rose-500"
+                        : TYPE_OPTIONS.find((o) => o.value === formData.type)?.amount
                     )}
                   />
                 </div>
@@ -1542,6 +1600,8 @@ export default function Transactions() {
               <SelectItem value="Ingreso">Ingresos</SelectItem>
               <SelectItem value="Gasto">Gastos</SelectItem>
               <SelectItem value="Inversión">Inversiones</SelectItem>
+              <SelectItem value="Rescate">Rescates</SelectItem>
+              <SelectItem value="Rendimiento">Rendimientos</SelectItem>
               <SelectItem value="Reembolso">Reembolsos</SelectItem>
             </SelectContent>
           </Select>
@@ -1617,7 +1677,10 @@ export default function Transactions() {
             <div className="rounded-lg border bg-muted/50 p-3 space-y-1 text-sm">
               <div className="flex items-center justify-between">
                 <span className="font-medium">{tx.detail || "Sin detalle"}</span>
-                <span className={`font-bold font-mono tabular-nums ${tx.type === "Ingreso" ? "text-emerald-500" : tx.type === "Inversión" ? "text-blue-500" : tx.type === "Reembolso" ? "text-amber-500" : "text-rose-500"}`}>
+                <span className={cn(
+                  "font-bold font-mono tabular-nums",
+                  TYPE_OPTIONS.find((o) => o.value === tx.type)?.amount ?? "text-rose-500"
+                )}>
                   {formatCurrency(tx.amount)}
                 </span>
               </div>

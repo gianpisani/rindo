@@ -7,15 +7,21 @@ import { Input } from "@/components/ui/input";
 import { Dialog, DialogTrigger } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Plus, Pencil, Trash2, TrendingUp, TrendingDown, PiggyBank, ArrowLeftRight } from "lucide-react";
+import { Plus, Pencil, Trash2, TrendingUp, TrendingDown, PiggyBank, ArrowLeftRight, ArrowDownToLine, LineChart } from "lucide-react";
 import { useCategories } from "@/hooks/useCategories";
 import { cn } from "@/lib/utils";
 import { EmojiPicker } from "@/components/EmojiPicker";
+import { TRANSACTION_TYPES, type TransactionType } from "@/lib/ledger";
 
-const typeConfig = {
+const typeConfig: Record<
+  TransactionType,
+  { icon: typeof TrendingUp; label: string; color: string; bg: string }
+> = {
   Ingreso: { icon: TrendingUp, label: "Ingresos", color: "text-success", bg: "bg-success/10" },
   Gasto: { icon: TrendingDown, label: "Gastos", color: "text-destructive", bg: "bg-destructive/10" },
   Inversión: { icon: PiggyBank, label: "Inversiones", color: "text-info", bg: "bg-info/10" },
+  Rescate: { icon: ArrowDownToLine, label: "Rescates", color: "text-cyan-500", bg: "bg-cyan-500/10" },
+  Rendimiento: { icon: LineChart, label: "Rendimientos", color: "text-violet-500", bg: "bg-violet-500/10" },
   Reembolso: { icon: ArrowLeftRight, label: "Reembolsos", color: "text-amber-500", bg: "bg-amber-500/10" },
 };
 
@@ -30,7 +36,7 @@ const defaultColors = [
 interface Category {
   id: string;
   name: string;
-  type: "Ingreso" | "Gasto" | "Inversión" | "Reembolso";
+  type: TransactionType;
   color?: string | null;
   icon?: string | null;
 }
@@ -42,7 +48,7 @@ export default function Categories() {
   const [editingCategory, setEditingCategory] = useState<any>(null);
   const [formData, setFormData] = useState({
     name: "",
-    type: "Gasto" as "Ingreso" | "Gasto" | "Inversión" | "Reembolso",
+    type: "Gasto" as TransactionType,
     color: "#ef4444",
     icon: "🏷️",
   });
@@ -51,12 +57,13 @@ export default function Categories() {
     id: null,
   });
 
-  const grouped = {
-    Ingreso: categories.filter((c) => c.type === "Ingreso"),
-    Gasto: categories.filter((c) => c.type === "Gasto"),
-    Inversión: categories.filter((c) => c.type === "Inversión"),
-    Reembolso: categories.filter((c) => c.type === "Reembolso"),
-  };
+  const grouped = TRANSACTION_TYPES.reduce(
+    (acc, type) => {
+      acc[type] = categories.filter((c) => c.type === type);
+      return acc;
+    },
+    {} as Record<TransactionType, Category[]>
+  );
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -172,6 +179,8 @@ export default function Categories() {
                     <SelectItem value="Ingreso">Ingreso</SelectItem>
                     <SelectItem value="Gasto">Gasto</SelectItem>
                     <SelectItem value="Inversión">Inversión</SelectItem>
+                    <SelectItem value="Rescate">Rescate</SelectItem>
+                    <SelectItem value="Rendimiento">Rendimiento</SelectItem>
                     <SelectItem value="Reembolso">Reembolso</SelectItem>
                   </SelectContent>
                 </Select>

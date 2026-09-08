@@ -12,7 +12,7 @@ import { useMonthlyBudget } from "@/hooks/useMonthlyBudget";
 import {
   useRealFlows,
   computeRealFlows,
-  computeRealBalance,
+  computeLedger,
   SWEEP_ALERT_THRESHOLD,
   type RealFlowsConfig,
 } from "@/hooks/useRealFlows";
@@ -25,6 +25,7 @@ import {
   Play,
   Lightbulb,
   ChevronRight,
+  Wallet,
 } from "lucide-react";
 import { BankSyncModal } from "@/components/BankSyncModal";
 import { useBankSyncContext } from "@/contexts/BankSyncContext";
@@ -40,6 +41,8 @@ import { LearningNudge } from "@/components/learning/LearningNudge";
 import { useUserProfile } from "@/hooks/useUserProfile";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import { getCategoryIcon } from "@/components/TransactionsTable";
+import { InvestmentMoveDrawer } from "@/components/InvestmentMoveDrawer";
+import type { TransactionType } from "@/lib/ledger";
 const Index = () => {
   const { transactions, isLoading } = useTransactions();
   const { categories } = useCategories();
@@ -49,6 +52,7 @@ const Index = () => {
   const { isPrivacyMode } = usePrivacyMode();
   const [storyOpen, setStoryOpen] = useState(false);
   const [isBankSyncOpen, setIsBankSyncOpen] = useState(false);
+  const [investmentMoveOpen, setInvestmentMoveOpen] = useState(false);
   const bankSync = useBankSyncContext();
   const { profile: userProfile, avatarUrl } = useUserProfile();
 
@@ -62,7 +66,7 @@ const Index = () => {
   const displayName = userProfile?.nickname || userProfile?.full_name || null;
   const greetingInitials = (displayName || "").slice(0, 2).toUpperCase();
 
-  const handleQuickAdd = (type: "Ingreso" | "Gasto" | "Inversión" | "Reembolso") => {
+  const handleQuickAdd = (type: TransactionType) => {
     openQuickAdd(type);
   };
 
@@ -96,8 +100,12 @@ const Index = () => {
   const lastMonthExpenses = lastMonthFlows.consumoNeto;
   const lastMonthIncome = lastMonthFlows.ingresoReal;
 
-  // Balance total real: excluye tránsito y su devolución tagueada
-  const totalBalance = useMemo(() => computeRealBalance(transactions), [transactions]);
+  // Los dos baldes del patrimonio: líquido (lo que puedo gastar hoy) e
+  // invertido (lo que está trabajando). Excluye tránsito y su devolución.
+  const { liquido, invertido, patrimonio } = useMemo(
+    () => computeLedger(transactions),
+    [transactions]
+  );
 
   // Detector de sweep: mes cerrado con ahorro sin invertir, visible los
   // primeros días del mes (solo si el usuario ya opera con meta de ahorro)
@@ -208,14 +216,14 @@ const Index = () => {
     <Card className="border-border/50 flex flex-col overflow-hidden">
       <div className="px-4 py-3 md:px-5 md:py-4 flex flex-col">
         <div className="flex items-center justify-between">
-          <span className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider">Balance Total</span>
+          <span className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider">Patrimonio</span>
           <span className="text-[10px] text-muted-foreground font-mono tabular-nums capitalize">
             {format(now, "MMMM yyyy", { locale: es })}
           </span>
         </div>
         <div className={cn("mt-1.5 md:mt-2 text-[28px] md:text-4xl font-bold font-mono tabular-nums tracking-tight leading-none", isPrivacyMode && "privacy-blur")}>
           $<NumberFlow
-            value={totalBalance}
+            value={patrimonio}
             format={{
               style: "decimal",
               minimumFractionDigits: 0,
@@ -224,6 +232,44 @@ const Index = () => {
             locales="es-CL"
           />
         </div>
+
+        {/* Los dos baldes: la barra muestra la mezcla, los números el detalle.
+            El lado invertido es la puerta a los movimientos que lo tocan. */}
+        <div className="mt-2.5 md:mt-3">
+          <div className="flex h-1 gap-[2px] overflow-hidden rounded-full bg-muted">
+            <div
+              className="rounded-full bg-success transition-[flex-grow] duration-700"
+              style={{ flexGrow: Math.max(liquido, 0) }}
+            />
+            <div
+              className="rounded-full bg-blue transition-[flex-grow] duration-700"
+              style={{ flexGrow: Math.max(invertido, 0) }}
+            />
+          </div>
+          {/* Con montos largos en pantalla angosta, el balde invertido baja a
+              una segunda línea en vez de desbordar la tarjeta. */}
+          <div className="mt-2 flex flex-wrap items-center justify-between gap-x-3 gap-y-1">
+            <span className="flex items-baseline gap-1.5 whitespace-nowrap">
+              <Wallet className="h-3 w-3 text-success shrink-0 translate-y-0.5" />
+              <span className="text-[10px] text-muted-foreground uppercase tracking-wider">Líquido</span>
+              <span className={cn("text-xs md:text-sm font-semibold font-mono tabular-nums", isPrivacyMode && "privacy-blur")}>
+                {formatCurrency(liquido)}
+              </span>
+            </span>
+            <button
+              onClick={() => setInvestmentMoveOpen(true)}
+              className="flex items-baseline gap-1.5 whitespace-nowrap rounded-md px-1 -mx-1 py-0.5 hover:bg-blue/10 transition-colors group"
+            >
+              <PiggyBank className="h-3 w-3 text-blue shrink-0 translate-y-0.5" />
+              <span className="text-[10px] text-muted-foreground uppercase tracking-wider">Invertido</span>
+              <span className={cn("text-xs md:text-sm font-semibold font-mono tabular-nums", isPrivacyMode && "privacy-blur")}>
+                {formatCurrency(invertido)}
+              </span>
+              <ChevronRight className="h-3 w-3 text-muted-foreground/50 shrink-0 translate-y-0.5 group-hover:text-blue transition-colors" />
+            </button>
+          </div>
+        </div>
+
         <div className="mt-2.5 pt-2.5 md:mt-3 md:pt-3 border-t border-border/50">
           <div className="flex items-center gap-3 md:gap-6 flex-wrap">
             <div className="flex items-center gap-1">
@@ -843,6 +889,11 @@ const Index = () => {
         transactionCount={lastMonthSummary.transactionCount}
         salary={lastMonthSalary}
         insights={lastMonthInsights}
+      />
+
+      <InvestmentMoveDrawer
+        open={investmentMoveOpen}
+        onOpenChange={setInvestmentMoveOpen}
       />
     </Layout>
   );

@@ -53,8 +53,18 @@ import {
   SearchX,
   Inbox,
   Plus,
+  ArrowDownToLine,
+  LineChart,
 } from "lucide-react";
 import { Transaction } from "@/hooks/useTransactions";
+import {
+  TRANSACTION_TYPES,
+  INVESTMENT_TYPES,
+  allowsNegativeAmount,
+  displaySign,
+  signPrefix,
+  type TransactionType,
+} from "@/lib/ledger";
 import NumberFlow, { type Format } from "@number-flow/react";
 import { useFuzzySearch } from "@/hooks/useFuzzySearch";
 import { useCreditCards } from "@/hooks/useCreditCards";
@@ -204,23 +214,26 @@ function formatGroupDate(dayKey: string): string {
 
 // ── Type config ────────────────────────────────────────────────────────────
 
-const typeIcons = {
+const typeIcons: Record<TransactionType, typeof TrendingUp> = {
   Ingreso: TrendingUp,
   Gasto: TrendingDown,
   Inversión: PiggyBank,
+  Rescate: ArrowDownToLine,
+  Rendimiento: LineChart,
   Reembolso: ArrowLeftRight,
 };
 
-const typeAmountColors = {
+const typeAmountColors: Record<TransactionType, string> = {
   Ingreso: "text-emerald-500",
   Gasto: "text-rose-500",
   Inversión: "text-blue-500",
+  Rescate: "text-cyan-500",
+  Rendimiento: "text-violet-500",
   Reembolso: "text-amber-500",
 };
 
-// Signo contable de cada tipo (mismo criterio que balance = ingresos − gastos − inversiones)
-const typeSign = (type: Transaction["type"]) =>
-  type === "Gasto" || type === "Inversión" ? -1 : 1;
+// Signo contable de cada tipo: lo que sale de la liquidez se ve en negativo.
+const typeSign = displaySign;
 
 // Formato para NumberFlow en las stats del resumen (dígitos animados)
 const SIGNED_CLP: Format = {
@@ -289,7 +302,18 @@ function EditableTextCell({ value, onSave, className, placeholder }: EditableCel
   );
 }
 
-function EditableAmountCell({ value, onSave, className }: { value: number; onSave: (value: number) => void; className?: string }) {
+function EditableAmountCell({
+  value,
+  onSave,
+  className,
+  allowNegative = false,
+}: {
+  value: number;
+  onSave: (value: number) => void;
+  className?: string;
+  /** El rendimiento puede ser negativo: editarlo no debe comerse el signo. */
+  allowNegative?: boolean;
+}) {
   const [isEditing, setIsEditing] = useState(false);
   const [editValue, setEditValue] = useState(value.toString());
 
@@ -300,13 +324,20 @@ function EditableAmountCell({ value, onSave, className }: { value: number; onSav
   const formatCurrency = (amount: number) =>
     new Intl.NumberFormat("es-CL", { style: "currency", currency: "CLP", minimumFractionDigits: 0 }).format(amount);
 
+  // El signo sobrevive al tipeo solo donde tiene sentido; el resto son dígitos.
+  const sanitize = (raw: string) => {
+    const isNegative = allowNegative && /^\s*[-−]/.test(raw);
+    return (isNegative ? "-" : "") + raw.replace(/\D/g, "");
+  };
+
   const formatEditValue = (val: string) => {
-    const num = parseInt(val.replace(/\D/g, ""), 10);
-    return isNaN(num) ? "" : num.toLocaleString("es-CL");
+    const num = parseInt(val, 10);
+    if (isNaN(num)) return val === "-" ? "-" : "";
+    return num.toLocaleString("es-CL");
   };
 
   const handleSave = () => {
-    const numValue = parseInt(editValue.replace(/\D/g, ""), 10);
+    const numValue = parseInt(editValue, 10);
     if (!isNaN(numValue) && numValue !== value) onSave(numValue);
     setIsEditing(false);
   };
@@ -322,7 +353,7 @@ function EditableAmountCell({ value, onSave, className }: { value: number; onSav
         <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground text-sm">$</span>
         <Input
           value={formatEditValue(editValue)}
-          onChange={(e) => setEditValue(e.target.value.replace(/\D/g, ""))}
+          onChange={(e) => setEditValue(sanitize(e.target.value))}
           onBlur={handleSave}
           onKeyDown={handleKeyDown}
           className={cn("h-8 text-sm text-right w-36 pl-7", className)}
@@ -672,7 +703,7 @@ export function TransactionsTable({
   // con qué tipo nace y el nombre tecleado en la búsqueda.
   const [categoryDraft, setCategoryDraft] = useState<{
     transactionId: string;
-    type: "Ingreso" | "Gasto" | "Inversión" | "Reembolso";
+    type: TransactionType;
     name: string;
   } | null>(null);
 
@@ -744,12 +775,11 @@ export function TransactionsTable({
   }, [onUpdateSilent]);
 
   const columns = useMemo<ColumnDef<Transaction>[]>(() => {
-    const typeOptions = [
-      { value: "Ingreso" as const, label: "Ingreso", icon: TrendingUp },
-      { value: "Gasto" as const, label: "Gasto", icon: TrendingDown },
-      { value: "Inversión" as const, label: "Inversión", icon: PiggyBank },
-      { value: "Reembolso" as const, label: "Reembolso", icon: ArrowLeftRight },
-    ];
+    const typeOptions = TRANSACTION_TYPES.map((value) => ({
+      value,
+      label: value,
+      icon: typeIcons[value],
+    }));
 
     return [
       // ── Select ──────────────────────────────────────────────────────────
@@ -965,7 +995,7 @@ export function TransactionsTable({
         cell: ({ row }: { row: { original: Transaction } }) => {
           const type = row.original.type;
           const cardId = row.original.card_id;
-          if (type === "Inversión") return <span className="text-xs text-muted-foreground/50">—</span>;
+          if (INVESTMENT_TYPES.includes(type)) return <span className="text-xs text-muted-foreground/50">—</span>;
 
           const selectedCard = creditCards.find(c => c.id === cardId);
           const cardOptions = [
@@ -1048,6 +1078,7 @@ export function TransactionsTable({
               {/* Monto coloreado */}
               <EditableAmountCell
                 value={amount}
+                allowNegative={allowsNegativeAmount(type)}
                 onSave={(newAmount) => handleInlineUpdate(row.original.id, "amount", newAmount)}
                 className={cn("text-sm font-semibold", amountColor)}
               />
@@ -1216,8 +1247,8 @@ export function TransactionsTable({
     // Montos con signo: Gasto/Inversión restan, Ingreso/Reembolso suman
     const amounts = rows.map(r => typeSign(r.type) * r.amount);
     const sum = amounts.reduce((a, b) => a + b, 0);
-    const income = rows.reduce((a, r) => a + (typeSign(r.type) > 0 ? r.amount : 0), 0);
-    const expense = rows.reduce((a, r) => a + (typeSign(r.type) < 0 ? r.amount : 0), 0);
+    const income = rows.reduce((a, r) => a + Math.max(0, typeSign(r.type) * r.amount), 0);
+    const expense = rows.reduce((a, r) => a + Math.max(0, -typeSign(r.type) * r.amount), 0);
     return {
       count: rows.length,
       sum,
@@ -1339,6 +1370,8 @@ export function TransactionsTable({
               <SelectItem value="Ingreso">Ingresos</SelectItem>
               <SelectItem value="Gasto">Gastos</SelectItem>
               <SelectItem value="Inversión">Inversiones</SelectItem>
+              <SelectItem value="Rescate">Rescates</SelectItem>
+              <SelectItem value="Rendimiento">Rendimientos</SelectItem>
               <SelectItem value="Reembolso">Reembolsos</SelectItem>
             </SelectContent>
           </Select>
@@ -1493,6 +1526,12 @@ export function TransactionsTable({
                     </DropdownMenuItem>
                     <DropdownMenuItem onClick={() => handleBatchTypeChange("Inversión")}>
                       <PiggyBank className="h-4 w-4 mr-2 text-blue-500" /> Inversión
+                    </DropdownMenuItem>
+                    <DropdownMenuItem onClick={() => handleBatchTypeChange("Rescate")}>
+                      <ArrowDownToLine className="h-4 w-4 mr-2 text-cyan-500" /> Rescate
+                    </DropdownMenuItem>
+                    <DropdownMenuItem onClick={() => handleBatchTypeChange("Rendimiento")}>
+                      <LineChart className="h-4 w-4 mr-2 text-violet-500" /> Rendimiento
                     </DropdownMenuItem>
                   </DropdownMenuContent>
                 </DropdownMenu>
@@ -1654,8 +1693,8 @@ export function TransactionsTable({
                               amountColor,
                               isPrivacyMode && "privacy-blur"
                             )}>
-                              {t.type === "Ingreso" ? "+" : t.type === "Gasto" ? "−" : ""}
-                              {formatCurrency(t.amount)}
+                              {signPrefix(t.type, t.amount)}
+                              {formatCurrency(Math.abs(t.amount))}
                             </span>
                           </div>
                           <div className="flex items-center justify-between gap-2 mt-0.5">
@@ -1782,8 +1821,8 @@ export function TransactionsTable({
                           amountColor,
                           isPrivacyMode && "privacy-blur"
                         )}>
-                          {t.type === "Ingreso" ? "+" : t.type === "Gasto" ? "−" : ""}
-                          {formatCurrency(t.amount)}
+                          {signPrefix(t.type, t.amount)}
+                          {formatCurrency(Math.abs(t.amount))}
                         </span>
                       </div>
                       <div className="flex items-center justify-between gap-2 mt-0.5">

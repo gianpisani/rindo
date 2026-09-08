@@ -1,30 +1,40 @@
 import { Card, CardContent, CardHeader, CardTitle } from "./ui/card";
 import { Button } from "./ui/button";
 import { Link } from "react-router-dom";
-import { ArrowRight, TrendingUp, TrendingDown, PiggyBank } from "lucide-react";
+import { ArrowRight, TrendingUp, TrendingDown, PiggyBank, ArrowDownToLine, LineChart, ArrowLeftRight } from "lucide-react";
 import { useTransactions } from "@/hooks/useTransactions";
 import { format } from "date-fns";
 import { es } from "date-fns/locale";
 import { usePrivacyMode } from "@/hooks/usePrivacyMode";
 import { AnalyzingBadge } from "./AnalyzingBadge";
 import { cn } from "@/lib/utils";
+import type { TransactionType } from "@/lib/ledger";
 
-const typeIcons = {
+const typeIcons: Record<TransactionType, typeof TrendingUp> = {
   Ingreso: TrendingUp,
   Gasto: TrendingDown,
   Inversión: PiggyBank,
+  Rescate: ArrowDownToLine,
+  Rendimiento: LineChart,
+  Reembolso: ArrowLeftRight,
 };
 
-const typeColors = {
+const typeColors: Record<TransactionType, string> = {
   Ingreso: "text-success",
   Gasto: "text-destructive",
   Inversión: "text-blue",
+  Rescate: "text-cyan-500",
+  Rendimiento: "text-violet-500",
+  Reembolso: "text-amber-500",
 };
 
-const typeBg = {
+const typeBg: Record<TransactionType, string> = {
   Ingreso: "bg-success/5",
   Gasto: "bg-destructive/5",
   Inversión: "bg-blue/5",
+  Rescate: "bg-cyan-500/5",
+  Rendimiento: "bg-violet-500/5",
+  Reembolso: "bg-amber-500/5",
 };
 
 export default function RecentTransactions() {

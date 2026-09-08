@@ -1,6 +1,14 @@
 import { useMemo } from "react";
 import { addMonths, getDate, getDaysInMonth, isSameMonth } from "date-fns";
 import type { Transaction } from "./useTransactions";
+import {
+  computeBuckets,
+  DEFAULT_PASS_THROUGH_CATEGORIES,
+  type Buckets,
+} from "@/lib/ledger";
+
+export { DEFAULT_PASS_THROUGH_CATEGORIES };
+export type { Buckets };
 
 // ─── Configuración (defaults, todo parametrizable) ───────
 // Ninguna de estas reglas es obligatoria: cada una se puede
@@ -58,8 +66,12 @@ export interface RealFlows {
   vida: number;
   /** Consumo bruto en categorías bombazo. */
   bombazos: number;
-  /** Inversiones del mes. */
+  /** Aportes a inversiones del mes. */
   invertido: number;
+  /** Plata rescatada de las inversiones en el mes (volvió a la liquidez). */
+  rescatado: number;
+  /** Lo que las inversiones ganaron (o perdieron) en el mes. */
+  rendimiento: number;
   /** Gasto neto por día (índice 1..daysInMonth; 0 sin uso). Para burn-down. */
   dailyNet: number[];
 }
@@ -105,6 +117,8 @@ export function computeRealFlows(
   let vida = 0;
   let bombazos = 0;
   let invertido = 0;
+  let rescatado = 0;
+  let rendimiento = 0;
   const dailyNet = new Array(daysInMonth + 1).fill(0);
 
   for (const t of transactions) {
@@ -134,6 +148,10 @@ export function computeRealFlows(
       if (day >= 1 && day <= daysInMonth) dailyNet[day] += amount;
     } else if (t.type === "Inversión") {
       invertido += amount;
+    } else if (t.type === "Rescate") {
+      rescatado += amount;
+    } else if (t.type === "Rendimiento") {
+      rendimiento += amount;
     }
   }
 
@@ -162,45 +180,34 @@ export function computeRealFlows(
     vida,
     bombazos,
     invertido,
+    rescatado,
+    rendimiento,
     dailyNet,
   };
 }
 
 /**
- * Categorías de gasto que son plata puesta por otros y que VUELVE
- * (tagueada como reembolso). Se excluyen del balance en ambas direcciones.
+ * Los dos baldes del patrimonio (líquido / invertido) de todo el historial.
+ * La matemática vive en `@/lib/ledger`: acá solo se ata a las transacciones.
  */
-export const DEFAULT_PASS_THROUGH_CATEGORIES = ["Reembolsos"];
+export function computeLedger(
+  transactions: Transaction[],
+  passThroughCategories: string[] = DEFAULT_PASS_THROUGH_CATEGORIES
+): Buckets {
+  return computeBuckets(transactions, passThroughCategories);
+}
 
 /**
- * Balance histórico real: ingresos − gastos − inversiones, excluyendo el
- * tránsito puro en ambas direcciones (el gasto puesto por otros y su
- * devolución tagueada). Las categorías de ajuste (p.ej. Conciliación)
- * SÍ cuentan: existen para corregir el balance.
+ * Balance líquido histórico: lo que puedo gastar hoy. Ingresos − gastos −
+ * aportes + rescates, excluyendo el tránsito puro en ambas direcciones (el
+ * gasto puesto por otros y su devolución tagueada). Las categorías de ajuste
+ * (p.ej. Conciliación) SÍ cuentan: existen para corregir el balance.
  */
 export function computeRealBalance(
   transactions: Transaction[],
   passThroughCategories: string[] = DEFAULT_PASS_THROUGH_CATEGORIES
 ): number {
-  const passThrough = new Set(passThroughCategories);
-  return transactions.reduce((acc, t) => {
-    const amount = Number(t.amount);
-    if (t.type === "Ingreso") {
-      if (
-        t.reimbursement_for_category &&
-        passThrough.has(t.reimbursement_for_category)
-      ) {
-        return acc; // devolución de plata en tránsito
-      }
-      return acc + amount;
-    }
-    if (t.type === "Gasto") {
-      if (passThrough.has(t.category_name)) return acc; // tránsito puro
-      return acc - amount;
-    }
-    if (t.type === "Inversión") return acc - amount;
-    return acc;
-  }, 0);
+  return computeBuckets(transactions, passThroughCategories).liquido;
 }
 
 /**

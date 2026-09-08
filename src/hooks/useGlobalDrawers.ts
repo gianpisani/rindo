@@ -1,11 +1,12 @@
 import { create } from "zustand";
+import type { TransactionType } from "@/lib/ledger";
 
 interface GlobalDrawersState {
   quickAddOpen: boolean;
   reconciliationOpen: boolean;
   profileEditOpen: boolean;
-  quickAddDefaultType?: "Ingreso" | "Gasto" | "Inversión" | "Reembolso";
-  openQuickAdd: (type?: "Ingreso" | "Gasto" | "Inversión" | "Reembolso") => void;
+  quickAddDefaultType?: TransactionType;
+  openQuickAdd: (type?: TransactionType) => void;
   closeQuickAdd: () => void;
   setQuickAddOpen: (open: boolean) => void;
   openReconciliation: () => void;
