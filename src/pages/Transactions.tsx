@@ -1,10 +1,11 @@
-import { useState, useCallback, useEffect, useRef } from "react";
+import { useState, useCallback, useEffect, useMemo, useRef } from "react";
 import { useSearchParams } from "react-router-dom";
 import Layout from "@/components/Layout";
 import ConfirmDialog from "@/components/ConfirmDialog";
 import { BaseModal } from "@/components/BaseModal";
 import { ImportCSVModal } from "@/components/ImportCSVModal";
 import { TransactionsTable, getCategoryIcon } from "@/components/TransactionsTable";
+import { TransactionsToolbar } from "@/components/TransactionsToolbar";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Dialog, DialogTrigger } from "@/components/ui/dialog";
@@ -20,7 +21,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { Plus, Download, TrendingUp, TrendingDown, PiggyBank, Upload, X, Sparkles, Trash2, Search, CalendarClock, Users, CheckCircle2, Check, Clock, Pencil, ArrowLeftRight, ArrowDownToLine, LineChart, Building2, RefreshCw } from "lucide-react";
+import { Plus, TrendingUp, TrendingDown, PiggyBank, X, Sparkles, Trash2, Users, CheckCircle2, Check, Clock, Pencil, ArrowLeftRight, ArrowDownToLine, LineChart } from "lucide-react";
 import { useTransactions, Transaction } from "@/hooks/useTransactions";
 import { useSearchFocusShortcut } from "@/hooks/useSearchFocusShortcut";
 import { useCategories } from "@/hooks/useCategories";
@@ -40,7 +41,7 @@ import { cn } from "@/lib/utils";
 import { CategorySelect, CategoryPickerInline } from "@/components/CategorySelect";
 import { CategoryCreateInline, CATEGORY_FORM_ID } from "@/components/CategoryCreateInline";
 import { DateTimePicker } from "@/components/ui/date-time-picker";
-import { DateRangeFilter, DateRangeValue } from "@/components/DateRangeFilter";
+import type { DateRangeValue } from "@/components/DateRangeFilter";
 import { TransactionType, TRANSACTION_TYPES, allowsNegativeAmount } from "@/lib/ledger";
 
 // ── Add/Edit modal: type segmented control + hero amount ───────────
@@ -199,6 +200,27 @@ export default function Transactions() {
     isLoss: false,
   });
 
+
+  // Las categorías que ofrece el filtro: las que aparecen en lo que se está
+  // viendo, con su emoji ya resuelto.
+  const toolbarCategories = useMemo(
+    () =>
+      Array.from(
+        new Set(
+          [...transactions, ...(showFuture ? futureTransactions : [])]
+            .map((t) => t.category_name)
+            .filter((name) => name && name.trim().length > 0)
+        )
+      )
+        .sort((a, b) => a.localeCompare(b))
+        .map((name) => ({
+          name,
+          emoji:
+            categories.find((c) => c.name === name)?.icon ||
+            getCategoryIcon(name),
+        })),
+    [transactions, futureTransactions, showFuture, categories]
+  );
 
   const filteredCategories = categories.filter((cat) => cat.type === formData.type);
   const categoryOptions = filteredCategories
@@ -1490,141 +1512,40 @@ export default function Transactions() {
           onReset={bankSync.reset}
         />
 
-        {/* Toolbar unificada */}
-        <div className="flex flex-wrap items-center gap-2">
-          {/* Acciones izq */}
-          <Dialog open={isImportDialogOpen} onOpenChange={setIsImportDialogOpen}>
-            <DialogTrigger asChild>
-              <Button variant="outline" size="icon" className="rounded-full h-8 w-8">
-                <Upload className="h-4 w-4" />
-              </Button>
-            </DialogTrigger>
-          </Dialog>
+        {/* Toolbar: una línea, ver TransactionsToolbar para el criterio */}
+        <TransactionsToolbar
+          searchValue={searchValue}
+          onSearchChange={setSearchValue}
+          searchRef={searchInputRef}
+          dateRange={dateRange}
+          onDateRangeChange={setDateRange}
+          typeFilter={typeFilter}
+          onTypeFilterChange={setTypeFilter}
+          cardFilter={cardFilter}
+          onCardFilterChange={setCardFilter}
+          cards={creditCards.map((card) => ({
+            id: card.id,
+            label: `${card.name}${card.last_4_digits ? ` ···${card.last_4_digits}` : ""}`,
+          }))}
+          cardsLoading={isLoadingCards}
+          categoryFilter={categoryFilter}
+          onCategoryFilterChange={setCategoryFilter}
+          categories={toolbarCategories}
+          futureCount={futureTransactions.length}
+          showFuture={showFuture}
+          onToggleFuture={() => setShowFuture(!showFuture)}
+          isSyncing={bankSync.isRunning}
+          onSync={() => setIsBankSyncOpen(true)}
+          onImport={() => setIsImportDialogOpen(true)}
+          onExport={handleExportCSV}
+        />
 
-          <ImportCSVModal
-            open={isImportDialogOpen}
-            onOpenChange={setIsImportDialogOpen}
-            isImporting={isImporting}
-            onImport={handleImportCSV}
-          />
-
-          <Button onClick={handleExportCSV} variant="outline" size="icon" className="rounded-full h-8 w-8">
-            <Download className="h-4 w-4" />
-          </Button>
-
-          <Button
-            variant="outline"
-            size="sm"
-            className="rounded-full gap-2"
-            onClick={() => setIsBankSyncOpen(true)}
-          >
-            {bankSync.isRunning ? (
-              <RefreshCw className="h-4 w-4 animate-spin" />
-            ) : (
-              <Building2 className="h-4 w-4" />
-            )}
-            <span className="hidden sm:inline">
-              {bankSync.isRunning ? "Sincronizando..." : "Sync Banco"}
-            </span>
-          </Button>
-
-          {/* Cuotas futuras como botón compacto */}
-          {futureTransactions.length > 0 && (
-            <Button
-              variant={showFuture ? "secondary" : "outline"}
-              size="sm"
-              onClick={() => setShowFuture(!showFuture)}
-              className="rounded-full gap-2 text-xs"
-            >
-              <CalendarClock className="h-4 w-4" />
-              <span>{futureTransactions.length} cuota{futureTransactions.length > 1 ? "s" : ""} futura{futureTransactions.length > 1 ? "s" : ""}</span>
-            </Button>
-          )}
-
-          {/* Separador */}
-          <div className="flex-1" />
-
-          {/* Search */}
-          <div className="relative">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-            <Input
-              ref={searchInputRef}
-              placeholder="Buscar..."
-              value={searchValue}
-              onChange={(e) => setSearchValue(e.target.value)}
-              onKeyDown={(e) => {
-                if (e.key === "Escape") e.currentTarget.blur();
-              }}
-              className="pl-9 w-48 sm:w-64"
-            />
-            {searchValue && (
-              <Button
-                variant="ghost"
-                size="sm"
-                className="absolute right-1 top-1/2 -translate-y-1/2 h-7 w-7 p-0"
-                onClick={() => setSearchValue("")}
-              >
-                <X className="h-4 w-4" />
-              </Button>
-            )}
-          </div>
-
-          {/* Filtro fecha */}
-          <DateRangeFilter value={dateRange} onChange={setDateRange} />
-
-          {/* Filtro tarjeta */}
-          {(isLoadingCards || creditCards.length > 0) && (
-            <Select value={cardFilter} onValueChange={setCardFilter} disabled={isLoadingCards}>
-              <SelectTrigger className="w-[160px] sm:w-[180px]">
-                <SelectValue placeholder="Tarjeta" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">Todas las tarjetas</SelectItem>
-                <SelectItem value="none">Sin tarjeta</SelectItem>
-                {creditCards.map(card => (
-                  <SelectItem key={card.id} value={card.id}>
-                    {card.name}{card.last_4_digits ? ` ···${card.last_4_digits}` : ""}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          )}
-
-          {/* Filtro tipo */}
-          <Select value={typeFilter} onValueChange={setTypeFilter}>
-            <SelectTrigger className="w-[140px] sm:w-[160px]">
-              <SelectValue placeholder="Tipo" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">Todos los tipos</SelectItem>
-              <SelectItem value="Ingreso">Ingresos</SelectItem>
-              <SelectItem value="Gasto">Gastos</SelectItem>
-              <SelectItem value="Inversión">Inversiones</SelectItem>
-              <SelectItem value="Rescate">Rescates</SelectItem>
-              <SelectItem value="Rendimiento">Rendimientos</SelectItem>
-              <SelectItem value="Reembolso">Reembolsos</SelectItem>
-            </SelectContent>
-          </Select>
-
-          {/* Filtro categoría */}
-          <Select value={categoryFilter} onValueChange={setCategoryFilter}>
-            <SelectTrigger className="w-[160px] sm:w-[180px]">
-              <SelectValue placeholder="Categoría" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">Todas las categorías</SelectItem>
-              {Array.from(new Set(
-                [...transactions, ...(showFuture ? futureTransactions : [])].map(t => t.category_name)
-              ))
-                .filter(cat => cat && cat.trim().length > 0)
-                .map(cat => (
-                  <SelectItem key={cat} value={cat}>
-                    {categories.find(c => c.name === cat)?.icon || getCategoryIcon(cat)} {cat}
-                  </SelectItem>
-                ))}
-            </SelectContent>
-          </Select>
-        </div>
+        <ImportCSVModal
+          open={isImportDialogOpen}
+          onOpenChange={setIsImportDialogOpen}
+          isImporting={isImporting}
+          onImport={handleImportCSV}
+        />
 
         <TransactionsTable
           transactions={showFuture ? [...transactions, ...futureTransactions] : transactions}
