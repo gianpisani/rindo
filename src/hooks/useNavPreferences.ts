@@ -35,7 +35,7 @@ interface NavPreferencesState extends NavPreferences {
 
 // ─── Defaults ────────────────────────────────────────────────
 const DEFAULT_SIDEBAR_ORDER = APP_ROUTES.map((r) => r.url);
-const DEFAULT_MOBILE_TABS = ["/", "/transactions", "/overview"];
+const DEFAULT_MOBILE_TABS = ["/", "/transactions", "/graficos"];
 
 function getDefaults(): NavPreferences {
   return {
@@ -147,7 +147,12 @@ export const useNavPreferences = create<NavPreferencesState>()(
     }),
     {
       name: "nav-preferences-storage",
-      version: 1,
+      version: 2,
+      migrate: (state) => {
+        const old = state as NavPreferences;
+        const map = (items: string[] = []) => items.map(p => p === '/overview' ? '/graficos' : p);
+        return { ...old, sidebarOrder: map(old.sidebarOrder), hiddenRoutes: map(old.hiddenRoutes), mobileTabs: map(old.mobileTabs) };
+      },
     }
   )
 );

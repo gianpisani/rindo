@@ -86,7 +86,7 @@ export function CustomizeNavDrawer({ open, onOpenChange }: CustomizeNavDrawerPro
 
   const handleReset = useCallback(() => {
     resetToDefaults();
-    setLocalTabs(["/", "/transactions", "/overview"]);
+    setLocalTabs(["/", "/transactions", "/graficos"]);
     playSelect();
     toast.success("Todo restaurado");
   }, [resetToDefaults, playSelect]);

@@ -41,8 +41,8 @@ export const APP_ROUTES: RouteConfig[] = [
     group: "main",
   },
   {
-    title: "Finanzas",
-    url: "/overview",
+    title: "Gráficos",
+    url: "/graficos",
     icon: ChartNoAxesCombined,
     shortcut: "3",
     group: "main",

@@ -30,7 +30,9 @@ export function useNavPreferencesSync() {
     if (!profile || hasHydratedRef.current) return;
     hasHydratedRef.current = true;
 
-    const remote = profile.nav_preferences;
+    const prefs = profile.nav_preferences;
+    const map = (items?: string[]) => items?.map(p => p === '/overview' ? '/graficos' : p);
+    const remote = prefs ? { sidebarOrder: map(prefs.sidebarOrder), mobileTabs: map(prefs.mobileTabs), hiddenRoutes: map(prefs.hiddenRoutes) } : null;
     if (!remote) return;
 
     // Check if local storage has been customized (not first visit)

@@ -1,0 +1,43 @@
+.graficos-workspace .react-grid-item {
+  transition:
+    transform 180ms ease,
+    width 180ms ease,
+    height 180ms ease;
+}
+.graficos-workspace .react-grid-item.react-draggable-dragging,
+.graficos-workspace .react-grid-item.resizing {
+  transition: none;
+  z-index: 20;
+}
+.graficos-workspace .react-grid-placeholder {
+  background: var(--primary);
+  opacity: 0.1;
+  border: 1px dashed var(--primary);
+  border-radius: 0.75rem;
+}
+.graficos-workspace .react-resizable-handle {
+  width: 24px;
+  height: 24px;
+}
+.graficos-workspace .react-resizable-handle::after {
+  border-color: var(--muted-foreground);
+}
+.graficos-grid-editing {
+  background-image: radial-gradient(var(--border) 1px, transparent 1px);
+  background-size: 20px 20px;
+}
+.chart-drag-handle {
+  touch-action: none;
+}
+@media (prefers-reduced-motion: reduce) {
+  .graficos-workspace .react-grid-item {
+    transition: none;
+  }
+}
+
+.graficos-workspace section {
+  container-type: inline-size;
+}
+.chart-big-number {
+  font-size: clamp(1.25rem, 8.5cqw, 2.5rem);
+}

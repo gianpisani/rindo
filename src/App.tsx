@@ -3,11 +3,11 @@ import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { BrowserRouter, Routes, Route } from "react-router-dom";
+import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Session } from "@supabase/supabase-js";
 import Index from "./pages/Index";
-import Overview from "./pages/Overview";
+import Graficos from "./pages/Graficos";
 import Transactions from "./pages/Transactions";
 import Categories from "./pages/Categories";
 import Fintual from "./pages/Fintual";
@@ -172,7 +172,8 @@ function AuthenticatedApp() {
       <BrowserRouter>
         <Routes>
           <Route path="/" element={<Index />} />
-          <Route path="/overview" element={<Overview />} />
+          <Route path="/graficos" element={<Graficos />} />
+          <Route path="/overview" element={<Navigate to="/graficos" replace />} />
           <Route path="/transactions" element={<Transactions />} />
           <Route path="/categories" element={<Categories />} />
           <Route path="/fintual" element={<Fintual />} />
