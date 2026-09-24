@@ -1,3 +1,4 @@
+import { categorizeBatchForUser } from '../_shared/jev-poc.ts'
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.39.3'
 import { corsHeaders } from '../_shared/cors.ts'
 import { sendBatchNotificationEmail } from '../_shared/email-notification.ts'
@@ -41,9 +42,9 @@ Deno.serve(async (req) => {
       { global: { headers: { Authorization: authHeader } } },
     )
 
-    const jwt = authHeader.replace('Bearer ', '')
-    const payload = JSON.parse(atob(jwt.split('.')[1]))
-    const userId: string = payload.sub
+    const { data: { user }, error: authError } = await supabaseClient.auth.getUser(authHeader.replace(/^Bearer\s+/i, ''))
+    if (authError || !user) return new Response(JSON.stringify({ error: 'No autenticado' }), { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } })
+    const userId = user.id
 
     const apiKey = Deno.env.get('OPEN_BANKING_API_KEY')
     if (!apiKey) {
@@ -258,22 +259,9 @@ Deno.serve(async (req) => {
       }
 
       if (toAutoCategorize.length > 0) {
-        const supabaseUrl = Deno.env.get('SUPABASE_URL')!
-        const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? Deno.env.get('SUPABASE_ANON_KEY')!
-        const { data: userCategories } = await supabaseClient
-          .from('categories')
-          .select('name')
-          .eq('user_id', userId)
-        const existingCategories = (userCategories ?? []).map((c: { name: string }) => c.name)
-        await fetch(`${Deno.env.get('SUPABASE_URL')!}/functions/v1/auto-categorize`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${supabaseKey}` },
-          body: JSON.stringify({
-            transactions: toAutoCategorize.map(({ id, detail }) => ({ id, detail: `🤖 ${detail}` })),
-            userId,
-            existingCategories,
-          }),
-        }).catch((e) => console.error('Batch auto-categorize error:', e))
+        await categorizeBatchForUser(supabaseClient, toAutoCategorize.map(tx => tx.id), userId,
+          { apiKey: Deno.env.get('AI_GATEWAY_API_KEY') ?? '' })
+          .catch(() => console.error('No se pudo categorizar la importación'))
       }
 
       if (created > 0) {

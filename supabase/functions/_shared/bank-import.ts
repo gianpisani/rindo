@@ -1,3 +1,4 @@
+import { categorizeBatchForUser } from './jev-poc.ts'
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.39.3'
 import { sendBatchNotificationEmail } from './email-notification.ts'
 
@@ -278,24 +279,9 @@ export async function importBankMovements(params: {
 
   // Auto-categorize via batch call
   if (toAutoCategorize.length > 0) {
-    const supabaseUrl = Deno.env.get('SUPABASE_URL')!
-    const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? Deno.env.get('SUPABASE_ANON_KEY')!
-
-    const { data: userCategories } = await supabaseClient
-      .from('categories')
-      .select('name')
-      .eq('user_id', userId)
-    const existingCategories = (userCategories ?? []).map((c: { name: string }) => c.name)
-
-    await fetch(`${supabaseUrl}/functions/v1/auto-categorize`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${supabaseKey}` },
-      body: JSON.stringify({
-        transactions: toAutoCategorize.map(({ id, detail }) => ({ id, detail: `🤖 ${detail}` })),
-        userId,
-        existingCategories,
-      }),
-    }).catch((e) => console.error('Batch auto-categorize error:', e))
+    await categorizeBatchForUser(supabaseClient, toAutoCategorize.map(tx => tx.id), userId,
+      { apiKey: Deno.env.get('AI_GATEWAY_API_KEY') ?? '' })
+      .catch(() => console.error('No se pudo categorizar la importación'))
   }
 
   // Email notification
