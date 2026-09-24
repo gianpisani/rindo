@@ -43,6 +43,8 @@ import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import { getCategoryIcon } from "@/components/TransactionsTable";
 import { InvestmentMoveDrawer } from "@/components/InvestmentMoveDrawer";
 import { signPrefix, type TransactionType } from "@/lib/ledger";
+import { AnalyzingBadge } from "@/components/AnalyzingBadge";
+import { ANALYZING_CATEGORY } from "@/lib/auto-category-policy";
 /**
  * El lomo y el monto de cada movimiento en Recientes. Un mapa por tipo en
  * vez de una cadena de ternarios: así un tipo nuevo no se cuela sin color
@@ -724,9 +726,13 @@ const Index = () => {
                       RECENT_TONES[t.type]?.spine
                     )} />
                     <div className="min-w-0 flex-1">
-                      <p className={cn("text-sm font-medium truncate leading-snug", isPrivacyMode && "privacy-blur")}>
-                        {t.category_name}
-                      </p>
+                      {t.isPending || t.category_name === ANALYZING_CATEGORY ? (
+                        <AnalyzingBadge saving={t.isPending} />
+                      ) : (
+                        <p className={cn("text-sm font-medium truncate leading-snug", isPrivacyMode && "privacy-blur")}>
+                          {t.category_name}
+                        </p>
+                      )}
                       {t.detail && (
                         <p className={cn("text-xs text-muted-foreground truncate leading-snug", isPrivacyMode && "privacy-blur")}>
                           {t.detail}
