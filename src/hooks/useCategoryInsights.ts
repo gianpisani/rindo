@@ -1,4 +1,5 @@
 import { useMemo } from "react";
+import { summarizeCategoryPeriod } from "@/lib/category-spending";
 import { Transaction } from "./useTransactions";
 import { CategoryLimit } from "./useCategoryLimits";
 import { startOfMonth, endOfMonth, subMonths, format, eachMonthOfInterval } from "date-fns";
@@ -52,20 +53,8 @@ export function useCategoryInsights(
   const prevMonthStart = startOfMonth(previousMonth);
   const prevMonthEnd = endOfMonth(previousMonth);
 
-  // Filter transactions by month and type (only Gastos)
-  const currentMonthTransactions = useMemo(() => {
-    return transactions.filter((t) => {
-      const date = new Date(t.date);
-      return t.type === "Gasto" && date >= monthStart && date <= monthEnd;
-    });
-  }, [transactions, monthStart, monthEnd]);
-
-  const previousMonthTransactions = useMemo(() => {
-    return transactions.filter((t) => {
-      const date = new Date(t.date);
-      return t.type === "Gasto" && date >= prevMonthStart && date <= prevMonthEnd;
-    });
-  }, [transactions, prevMonthStart, prevMonthEnd]);
+  const currentSpending = useMemo(() => summarizeCategoryPeriod(transactions, monthStart, monthEnd), [transactions, monthStart, monthEnd]);
+  const previousSpending = useMemo(() => summarizeCategoryPeriod(transactions, prevMonthStart, prevMonthEnd), [transactions, prevMonthStart, prevMonthEnd]);
 
   // Get all unique categories from all transactions (Gastos only)
   const allCategories = useMemo(() => {
@@ -80,30 +69,10 @@ export function useCategoryInsights(
     return Array.from(categorySet);
   }, [transactions, limits]);
 
-  // Build reimbursement map from current month income transactions
-  const reimbursementMap = useMemo(() => {
-    const map = new Map<string, number>();
-    transactions
-      .filter((t) => {
-        const date = new Date(t.date);
-        return (
-          t.type === "Ingreso" &&
-          t.reimbursement_for_category &&
-          date >= monthStart &&
-          date <= monthEnd
-        );
-      })
-      .forEach((t) => {
-        const cat = t.reimbursement_for_category!;
-        map.set(cat, (map.get(cat) || 0) + Number(t.amount));
-      });
-    return map;
-  }, [transactions, monthStart, monthEnd]);
-
   // Calculate spending by category for current month
   const categorySpending = useMemo((): CategorySpending[] => {
     const spendingMap = new Map<string, CategorySpending>();
-    let totalSpending = 0;
+    const totalSpending = [...currentSpending.values()].reduce((sum, row) => sum + row.effectiveAmount, 0);
 
     // Initialize ALL categories (even those with no spending this month)
     allCategories.forEach((category) => {
@@ -125,34 +94,15 @@ export function useCategoryInsights(
       });
     });
 
-    // Calculate current month spending
-    currentMonthTransactions.forEach((t) => {
-      const category = t.category_name;
-      const amount = Number(t.amount);
-      totalSpending += amount;
-
-      const spending = spendingMap.get(category)!;
-      spending.amount += amount;
-      spending.count += 1;
-      spending.transactions.push(t);
-    });
-
-    // Calculate previous month spending for trend
-    const prevSpendingMap = new Map<string, number>();
-    previousMonthTransactions.forEach((t) => {
-      const category = t.category_name;
-      const amount = Number(t.amount);
-      prevSpendingMap.set(category, (prevSpendingMap.get(category) || 0) + amount);
+    currentSpending.forEach((row, category) => {
+      const spending = spendingMap.get(category);
+      if (spending) Object.assign(spending, row);
     });
 
     // Calculate percentages, limits, and trends
     const result: CategorySpending[] = [];
     spendingMap.forEach((spending) => {
-      // Apply reimbursements
-      spending.reimbursedAmount = reimbursementMap.get(spending.category) || 0;
-      spending.effectiveAmount = Math.max(0, spending.amount - spending.reimbursedAmount);
-
-      spending.percentage = totalSpending > 0 ? (spending.amount / totalSpending) * 100 : 0;
+      spending.percentage = totalSpending > 0 ? (spending.effectiveAmount / totalSpending) * 100 : 0;
 
       // Check limits using effective amount
       if (spending.limit) {
@@ -162,7 +112,7 @@ export function useCategoryInsights(
       }
 
       // Calculate trend using effective amounts
-      const prevAmount = prevSpendingMap.get(spending.category) || 0;
+      const prevAmount = previousSpending.get(spending.category)?.effectiveAmount || 0;
       if (prevAmount > 0 && spending.effectiveAmount > 0) {
         const change = ((spending.effectiveAmount - prevAmount) / prevAmount) * 100;
         spending.trendPercentage = Math.abs(change);
@@ -188,10 +138,10 @@ export function useCategoryInsights(
     return result.sort((a, b) => {
       if (a.amount > 0 && b.amount === 0) return -1;
       if (a.amount === 0 && b.amount > 0) return 1;
-      if (a.amount > 0 && b.amount > 0) return b.amount - a.amount;
+      if (a.amount > 0 && b.amount > 0) return b.effectiveAmount - a.effectiveAmount;
       return a.category.localeCompare(b.category);
     });
-  }, [currentMonthTransactions, previousMonthTransactions, limits, allCategories, reimbursementMap]);
+  }, [currentSpending, previousSpending, limits, allCategories]);
 
   // Get last N months comparison
   const monthlyComparison = useMemo((): MonthlyComparison[] => {
@@ -204,15 +154,10 @@ export function useCategoryInsights(
       const monthStart = startOfMonth(month);
       const monthEnd = endOfMonth(month);
 
-      const monthTransactions = transactions.filter((t) => {
-        const date = new Date(t.date);
-        return t.type === "Gasto" && date >= monthStart && date <= monthEnd;
-      });
-
-      const categories: { [key: string]: number } = {};
-      monthTransactions.forEach((t) => {
-        categories[t.category_name] = (categories[t.category_name] || 0) + Number(t.amount);
-      });
+      const categories = Object.fromEntries(
+        [...summarizeCategoryPeriod(transactions, monthStart, monthEnd)]
+          .map(([category, row]) => [category, row.effectiveAmount])
+      );
 
       return {
         month: format(month, "MMM", { locale: es }),
@@ -271,7 +216,7 @@ export function useCategoryInsights(
         insights.push({
           type: "pattern",
           title: `Aumento en ${spending.category}`,
-          description: `Gastaste ${spending.trendPercentage.toFixed(0)}% más que el mes pasado (+$${(spending.amount - (monthlyComparison[monthlyComparison.length - 2]?.categories[spending.category] || 0)).toLocaleString("es-CL")})`,
+          description: `Gastaste ${spending.trendPercentage.toFixed(0)}% más que el mes pasado (+$${(spending.effectiveAmount - (monthlyComparison[monthlyComparison.length - 2]?.categories[spending.category] || 0)).toLocaleString("es-CL")})`,
           category: spending.category,
         });
       }
@@ -280,7 +225,7 @@ export function useCategoryInsights(
     // Trends - decreasing spending (achievement)
     categorySpending.forEach((spending) => {
       if (spending.trend === "down" && spending.trendPercentage > 15) {
-        const saved = (monthlyComparison[monthlyComparison.length - 2]?.categories[spending.category] || 0) - spending.amount;
+        const saved = (monthlyComparison[monthlyComparison.length - 2]?.categories[spending.category] || 0) - spending.effectiveAmount;
         insights.push({
           type: "achievement",
           title: `Ahorro en ${spending.category}`,
@@ -293,11 +238,11 @@ export function useCategoryInsights(
 
     // Opportunity - high frequency small transactions
     categorySpending.forEach((spending) => {
-      if (spending.count >= 10 && spending.amount / spending.count < 20000) {
+      if (spending.count >= 10 && spending.effectiveAmount / spending.count < 20000) {
         insights.push({
           type: "opportunity",
           title: `Muchas transacciones pequeñas en ${spending.category}`,
-          description: `${spending.count} transacciones con promedio de $${(spending.amount / spending.count).toLocaleString("es-CL")}`,
+          description: `${spending.count} transacciones con promedio de $${(spending.effectiveAmount / spending.count).toLocaleString("es-CL")}`,
           category: spending.category,
         });
       }

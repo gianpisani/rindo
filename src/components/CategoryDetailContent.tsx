@@ -112,7 +112,7 @@ export function CategoryDetailContent({ category, monthName }: CategoryDetailCon
     .map(([time, amount]) => ({ time, amount }))
     .sort((a, b) => b.amount - a.amount);
 
-  const averagePerTransaction = hasTransactions ? category.amount / category.count : 0;
+  const averagePerTransaction = hasTransactions ? category.effectiveAmount / category.count : 0;
 
   if (!hasTransactions) {
     return (
@@ -153,10 +153,10 @@ export function CategoryDetailContent({ category, monthName }: CategoryDetailCon
         <div className="space-y-1">
           <div className="flex items-center gap-2 text-sm text-muted-foreground">
             <DollarSign className="h-4 w-4" />
-            Total
+            Gasto neto
           </div>
           <div className="text-2xl font-bold font-mono tabular-nums">
-            {formatCurrency(category.amount)}
+            {formatCurrency(category.effectiveAmount)}
           </div>
         </div>
 
@@ -190,6 +190,10 @@ export function CategoryDetailContent({ category, monthName }: CategoryDetailCon
         </div>
       </div>
 
+      {category.reimbursedAmount > 0 && <p className="text-xs text-muted-foreground">
+        Gastos: {formatCurrency(category.amount)}. Reembolsos recibidos este mes: {formatCurrency(category.reimbursedAmount)}.
+      </p>}
+
       {/* Limit Alert */}
       {category.limit && (
         <Alert
@@ -209,16 +213,16 @@ export function CategoryDetailContent({ category, monthName }: CategoryDetailCon
                   className={`font-semibold font-mono tabular-nums ${category.isOverLimit ? "text-destructive" : category.isNearLimit ? "text-warning" : "text-success"}`}
                 >
                   {category.isOverLimit
-                    ? `Límite superado: ${formatCurrency(category.amount)} / ${formatCurrency(category.limit)}`
+                    ? `Límite superado: ${formatCurrency(category.effectiveAmount)} / ${formatCurrency(category.limit)}`
                     : category.isNearLimit
-                      ? `Cerca del límite: ${formatCurrency(category.amount)} / ${formatCurrency(category.limit)}`
-                      : `Dentro del presupuesto: ${formatCurrency(category.amount)} / ${formatCurrency(category.limit)}`}
+                      ? `Cerca del límite: ${formatCurrency(category.effectiveAmount)} / ${formatCurrency(category.limit)}`
+                      : `Dentro del presupuesto: ${formatCurrency(category.effectiveAmount)} / ${formatCurrency(category.limit)}`}
                 </span>
               </div>
               <span
                 className={`text-sm font-mono tabular-nums ${category.isOverLimit ? "text-destructive" : category.isNearLimit ? "text-warning" : "text-success"}`}
               >
-                {((category.amount / category.limit) * 100).toFixed(0)}%
+                {((category.effectiveAmount / category.limit) * 100).toFixed(0)}%
               </span>
             </div>
           </AlertDescription>

@@ -1,27 +1,21 @@
-import { Badge } from "./ui/badge";
-import { Cpu, Sparkles } from "lucide-react";
+import { LoaderCircle } from "lucide-react";
 import {
   Tooltip,
   TooltipContent,
   TooltipProvider,
   TooltipTrigger,
 } from "./ui/tooltip";
-import { FingerPrintIcon } from "@heroicons/react/24/outline";
 
-export function AnalyzingBadge() {
+export function AnalyzingBadge({ saving = false }: { saving?: boolean }) {
   return (
     <TooltipProvider delayDuration={0}>
       <Tooltip>
         <TooltipTrigger asChild>
           <div className="inline-flex">
-            <Badge 
-              variant="outline" 
-            >
-              <div className="z-10 flex items-center gap-1.5 animate-pulse">
-                <Cpu className="h-4 w-4 text-primary" />
-                <span className="text-xs font-semibold tracking-wide">Analizando...</span>
+              <div role="status" className="flex items-center gap-2 py-1 text-muted-foreground">
+                <LoaderCircle aria-hidden="true" className="h-3 w-3 animate-spin motion-reduce:animate-none" />
+                <span className="text-xs">{saving ? 'Guardando…' : 'Categorizando…'}</span>
               </div>
-            </Badge>
           </div>
         </TooltipTrigger>
         <TooltipContent 
@@ -33,7 +27,7 @@ export function AnalyzingBadge() {
               Categorización automática
             </p>
             <p className="text-xs text-muted-foreground leading-relaxed">
-              Estamos analizando tu transacción. Si encontramos una categoría que coincida, la aplicaremos automáticamente.
+              {saving ? 'Guardando tu movimiento. Puedes seguir usando Rindo.' : 'Eligiendo una categoría con tu historial como referencia.'}
             </p>
           </div>
         </TooltipContent>
@@ -41,4 +35,3 @@ export function AnalyzingBadge() {
     </TooltipProvider>
   );
 }
-

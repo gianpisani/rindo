@@ -166,7 +166,7 @@ const Index = () => {
   // muestra las que caben y el header dice cuántas quedaron fuera.
   const topCategories = currentMonthSummary.categoryBreakdown.slice(0, 5);
   const monthExpenses = currentMonthSummary.categoryBreakdown.reduce(
-    (s, c) => s + c.amount,
+    (s, c) => s + c.effectiveAmount,
     0
   );
   const hiddenCategories = currentMonthSummary.categoryBreakdown.length - topCategories.length;
@@ -452,7 +452,7 @@ const Index = () => {
                   isPrivacyMode && "privacy-blur"
                 )}
               >
-                {formatCurrency(cat.amount)}
+                {formatCurrency(cat.effectiveAmount)}
               </span>
               <span className="relative w-7 shrink-0 text-right font-mono text-[10px] tabular-nums text-muted-foreground">
                 {Math.round(cat.percentage)}%

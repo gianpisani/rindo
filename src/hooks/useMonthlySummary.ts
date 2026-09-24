@@ -1,3 +1,4 @@
+import { summarizeCategoryPeriod } from "@/lib/category-spending";
 import { useMemo } from "react";
 import { Transaction } from "./useTransactions";
 import { Category } from "./useCategories";
@@ -159,45 +160,16 @@ export function useMonthlySummary(
     };
   }, [currentTransactions, prevTransactions, excludedCategories]);
 
-  // Build reimbursement map: category -> total reimbursed amount
-  const reimbursementMap = useMemo(() => {
-    const map = new Map<string, number>();
-    currentTransactions
-      .filter((t) => t.type === "Ingreso" && t.reimbursement_for_category)
-      .forEach((t) => {
-        const cat = t.reimbursement_for_category!;
-        map.set(cat, (map.get(cat) || 0) + Number(t.amount));
-      });
-    return map;
-  }, [currentTransactions]);
-
   const categoryBreakdown = useMemo((): CategoryBreakdown[] => {
-    const curExpenses = currentTransactions.filter((t) => t.type === "Gasto");
-    const prevExpenses = prevTransactions.filter((t) => t.type === "Gasto");
-    const totalExp = curExpenses.reduce((s, t) => s + Number(t.amount), 0);
-
-    const curMap = new Map<string, { amount: number; count: number }>();
-    curExpenses.forEach((t) => {
-      const e = curMap.get(t.category_name) || { amount: 0, count: 0 };
-      e.amount += Number(t.amount);
-      e.count += 1;
-      curMap.set(t.category_name, e);
-    });
-
-    const prevMap = new Map<string, number>();
-    prevExpenses.forEach((t) => {
-      prevMap.set(
-        t.category_name,
-        (prevMap.get(t.category_name) || 0) + Number(t.amount)
-      );
-    });
+    const curMap = summarizeCategoryPeriod(currentTransactions, monthStart, monthEnd);
+    const prevMap = summarizeCategoryPeriod(prevTransactions, prevMonthStart, prevMonthEnd);
+    const totalExp = [...curMap.values()].reduce((sum, row) => sum + row.effectiveAmount, 0);
 
     const result: CategoryBreakdown[] = [];
-    curMap.forEach(({ amount, count }, category) => {
+    curMap.forEach(({ amount, count, reimbursedAmount, effectiveAmount }, category) => {
+      if (!count) return;
       const cat = categories.find((c) => c.name === category);
-      const prevAmount = prevMap.get(category) || 0;
-      const reimbursedAmount = reimbursementMap.get(category) || 0;
-      const effectiveAmount = Math.max(0, amount - reimbursedAmount);
+      const prevAmount = prevMap.get(category)?.effectiveAmount || 0;
       const change =
         prevAmount > 0
           ? ((effectiveAmount - prevAmount) / prevAmount) * 100
@@ -213,7 +185,7 @@ export function useMonthlySummary(
         effectiveAmount,
         reimbursedAmount,
         count,
-        percentage: totalExp > 0 ? (amount / totalExp) * 100 : 0,
+        percentage: totalExp > 0 ? (effectiveAmount / totalExp) * 100 : 0,
         color: cat?.color || "#6b7280",
         prevAmount,
         trend: change > 5 ? "up" : change < -5 ? "down" : "stable",
@@ -227,8 +199,8 @@ export function useMonthlySummary(
       });
     });
 
-    return result.sort((a, b) => b.amount - a.amount);
-  }, [currentTransactions, prevTransactions, categories, limits, reimbursementMap]);
+    return result.sort((a, b) => b.effectiveAmount - a.effectiveAmount);
+  }, [currentTransactions, prevTransactions, categories, limits, monthStart, monthEnd, prevMonthStart, prevMonthEnd]);
 
   const dailySpending = useMemo((): DailySpending[] => {
     const now = new Date();

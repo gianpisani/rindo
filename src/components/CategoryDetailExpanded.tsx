@@ -112,7 +112,7 @@ export function CategoryDetailExpanded({
                   className="text-lg font-bold font-mono tabular-nums text-muted-foreground"
                   transition={springTransition}
                 >
-                  {formatCurrencyFull(category.amount)}
+                  {formatCurrencyFull(category.effectiveAmount)}
                 </motion.span>
                 {category.count > 0 && (
                   <>

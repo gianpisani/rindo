@@ -1,6 +1,5 @@
 import { ReactNode, useCallback, useEffect, useState } from "react";
 import { CommandBar } from "./CommandBar";
-import { QuickAddDrawer } from "./QuickAddDrawer";
 import { ReconciliationDrawer } from "./ReconciliationDrawer";
 import { WhisperInput } from "./WhisperInput";
 import { OnboardingModal } from "./OnboardingModal";
@@ -51,6 +50,8 @@ export default function Layout({ children, fit = false }: LayoutProps) {
     quickAddOpen,
     setQuickAddOpen,
     quickAddDefaultType,
+    quickAddDraft,
+    quickAddRevision,
     reconciliationOpen,
     setReconciliationOpen,
     openQuickAdd,
@@ -64,7 +65,6 @@ export default function Layout({ children, fit = false }: LayoutProps) {
   useNavPreferencesSync();
   const [commandBarOpen, setCommandBarOpen] = useState(false);
   const [showShortcutsPopover, setShowShortcutsPopover] = useState(false);
-  const [whisperOpen, setWhisperOpen] = useState(false);
   // Initialize sound system once
   useEffect(() => {
     initSounds().catch(() => {});
@@ -79,8 +79,9 @@ export default function Layout({ children, fit = false }: LayoutProps) {
   }, []);
 
   const toggleWhisper = useCallback(() => {
-    setWhisperOpen((prev) => !prev);
-  }, []);
+    if (quickAddOpen) setQuickAddOpen(false);
+    else openQuickAdd("Gasto");
+  }, [quickAddOpen, setQuickAddOpen, openQuickAdd]);
 
   // Register all keyboard shortcuts
   useKeyboardShortcuts({
@@ -153,9 +154,11 @@ export default function Layout({ children, fit = false }: LayoutProps) {
           onEditProfile={() => setProfileEditOpen(true)}
         />
 
-        {/* Quick Add Drawer - Global */}
-        <QuickAddDrawer
+        {/* One composer for W, dashboard, mobile and the command palette. */}
+        <WhisperInput
+          key={quickAddRevision}
           open={quickAddOpen}
+          initialDraft={quickAddDraft}
           onOpenChange={(open) => {
             if (open) playToggleOn(); else playToggleOff();
             setQuickAddOpen(open);
@@ -177,15 +180,6 @@ export default function Layout({ children, fit = false }: LayoutProps) {
           open={profileEditOpen}
           onOpenChange={setProfileEditOpen}
           mode="edit"
-        />
-
-        {/* Whisper Mode - Ultra-minimal transaction input */}
-        <WhisperInput
-          open={whisperOpen}
-          onOpenChange={(open) => {
-            if (open) playToggleOn(); else playToggleOff();
-            setWhisperOpen(open);
-          }}
         />
 
         {/* Desktop Sidebar */}

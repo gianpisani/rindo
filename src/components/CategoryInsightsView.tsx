@@ -2066,6 +2066,10 @@ export function CategoryInsightsView() {
                     )}
                   </div>
 
+                  <p className={cn("mt-1 text-[10px] text-muted-foreground", isPrivacyMode && "privacy-blur")}>
+                    {cat.count} {cat.count === 1 ? "gasto" : "gastos"}
+                  </p>
+
                   {/* Reimbursement */}
                   {cat.reimbursedAmount > 0 && (
                     <div className={cn("mt-2 text-[11px] text-emerald-600 dark:text-emerald-500 bg-emerald-500/10 px-2 py-1 rounded-lg", isPrivacyMode && "privacy-blur")}>
@@ -2127,7 +2131,7 @@ export function CategoryInsightsView() {
                       isPrivacyMode && "privacy-blur"
                     )}
                   >
-                    {formatCompact(cat.effectiveAmount)}
+                    {formatCompact(cat.effectiveAmount)} · {cat.count} {cat.count === 1 ? "gasto" : "gastos"}
                   </span>
                 </div>
                 <Plus className="h-3 w-3 text-muted-foreground/40 group-hover:text-primary transition-colors shrink-0" />

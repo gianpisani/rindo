@@ -33,6 +33,8 @@ export function useKeyboardShortcuts({
       const isInputField =
         target.tagName === "INPUT" ||
         target.tagName === "TEXTAREA" ||
+        target.tagName === "SELECT" ||
+        !!target.closest('[role="dialog"], [role="alertdialog"]') ||
         target.isContentEditable;
 
       // Cmd+K → Command palette (modifier shortcut, always active)

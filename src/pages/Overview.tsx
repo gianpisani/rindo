@@ -430,10 +430,11 @@ export default function Overview() {
   // Filtered breakdown (excludes toggled-off categories, recalculates percentages)
   const filteredCategoryBreakdown = useMemo(() => {
     const included = categoryBreakdown.filter((c) => !excludedCategories.has(c.category));
-    const total = included.reduce((s, c) => s + c.amount, 0);
+    const total = included.reduce((s, c) => s + c.effectiveAmount, 0);
     return included.map((c) => ({
       ...c,
-      percentage: total > 0 ? (c.amount / total) * 100 : 0,
+      amount: c.effectiveAmount,
+      percentage: total > 0 ? (c.effectiveAmount / total) * 100 : 0,
     }));
   }, [categoryBreakdown, excludedCategories]);
 

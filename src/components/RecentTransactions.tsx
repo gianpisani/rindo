@@ -42,8 +42,6 @@ export default function RecentTransactions() {
   const recentTransactions = transactions.slice(0, 5);
   const { isPrivacyMode } = usePrivacyMode();
   
-  // Force re-render key based on transactions
-  const transactionsKey = transactions.map(t => `${t.id}-${t.category_name}`).join(',');
 
   const formatCurrency = (amount: number) => {
     return new Intl.NumberFormat("es-CL", {
@@ -69,7 +67,7 @@ export default function RecentTransactions() {
             No hay transacciones aún. ¡Agrega tu primera transacción!
           </p>
         ) : (
-          <div className="space-y-3" key={transactionsKey}>
+          <div className="space-y-3">
             {recentTransactions.map((transaction) => {
               const Icon = typeIcons[transaction.type];
               const colorClass = typeColors[transaction.type];
@@ -77,7 +75,7 @@ export default function RecentTransactions() {
 
               return (
                 <div
-                  key={`${transaction.id}-${transaction.category_name}`}
+                  key={transaction.id}
                   className="flex items-center justify-between p-4 rounded-full border border-border/50 hover:shadow-sm hover:border-border transition-all duration-200"
                 >
                   <div className="flex items-center gap-4 min-w-0 flex-1">
@@ -85,8 +83,8 @@ export default function RecentTransactions() {
                       <Icon className={`h-5 w-5 ${colorClass}`} />
                     </div>
                     <div className="min-w-0 flex-1">
-                      {transaction.category_name === "⚡ Analizando..." ? (
-                        <AnalyzingBadge />
+                      {transaction.isPending || transaction.category_name === "⚡ Analizando..." ? (
+                        <AnalyzingBadge saving={transaction.isPending} />
                       ) : (
                         <p className={cn("font-semibold text-sm truncate", isPrivacyMode && "privacy-blur")}>{transaction.category_name}</p>
                       )}

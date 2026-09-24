@@ -7,6 +7,8 @@ export interface Category {
   id: string;
   name: string;
   type: TransactionType;
+  description?: string;
+  is_active?: boolean;
   color: string | null;
   icon: string | null;
   user_id: string;
@@ -87,6 +89,8 @@ export function useCategories() {
 
   return {
     categories,
+    activeCategories: categories.filter(category => category.is_active !== false),
+    hasCategoryContext: categories.some(category => category.is_active !== undefined),
     isLoading,
     addCategory,
     updateCategory,

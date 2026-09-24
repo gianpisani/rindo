@@ -3,6 +3,7 @@ import Layout from "@/components/Layout";
 import ConfirmDialog from "@/components/ConfirmDialog";
 import { BaseModal } from "@/components/BaseModal";
 import { Button } from "@/components/ui/button";
+import { Textarea } from "@/components/ui/textarea";
 import { Input } from "@/components/ui/input";
 import { Dialog, DialogTrigger } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
@@ -39,18 +40,22 @@ interface Category {
   type: TransactionType;
   color?: string | null;
   icon?: string | null;
+  description?: string;
+  is_active?: boolean;
 }
 
 export default function Categories() {
-  const { categories, addCategory, updateCategory, deleteCategory } = useCategories();
+  const { categories, hasCategoryContext, addCategory, updateCategory, deleteCategory } = useCategories();
 
   const [isDialogOpen, setIsDialogOpen] = useState(false);
-  const [editingCategory, setEditingCategory] = useState<any>(null);
+  const [editingCategory, setEditingCategory] = useState<Category | null>(null);
   const [formData, setFormData] = useState({
     name: "",
     type: "Gasto" as TransactionType,
     color: "#ef4444",
     icon: "🏷️",
+    description: "",
+    is_active: true,
   });
   const [confirmDelete, setConfirmDelete] = useState<{ open: boolean; id: string | null }>({
     open: false,
@@ -67,10 +72,12 @@ export default function Categories() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    const { description, is_active, ...base } = formData;
+    const values = hasCategoryContext ? { ...base, description, is_active } : base;
     if (editingCategory) {
-      await updateCategory.mutateAsync({ id: editingCategory.id, ...formData });
+      await updateCategory.mutateAsync({ id: editingCategory.id, ...values });
     } else {
-      await addCategory.mutateAsync(formData);
+      await addCategory.mutateAsync(values);
     }
     setIsDialogOpen(false);
     setEditingCategory(null);
@@ -78,15 +85,17 @@ export default function Categories() {
   };
 
   const resetForm = () =>
-    setFormData({ name: "", type: "Gasto", color: "#ef4444", icon: "🏷️" });
+    setFormData({ name: "", type: "Gasto", color: "#ef4444", icon: "🏷️", description: "", is_active: true });
 
-  const handleEdit = (category: any) => {
+  const handleEdit = (category: Category) => {
     setEditingCategory(category);
     setFormData({
       name: category.name,
       type: category.type,
       color: category.color || "#ef4444",
       icon: category.icon || "🏷️",
+      description: category.description || "",
+      is_active: category.is_active !== false,
     });
     setIsDialogOpen(true);
   };
@@ -170,7 +179,7 @@ export default function Categories() {
                 <Label className="text-sm font-medium">Tipo</Label>
                 <Select
                   value={formData.type}
-                  onValueChange={(v: any) => setFormData({ ...formData, type: v })}
+                  onValueChange={(v: TransactionType) => setFormData({ ...formData, type: v })}
                 >
                   <SelectTrigger className="h-11 rounded-full px-5">
                     <SelectValue />
@@ -185,6 +194,20 @@ export default function Categories() {
                   </SelectContent>
                 </Select>
               </div>
+
+              {hasCategoryContext && <>
+                <div className="space-y-1.5">
+                  <Label htmlFor="category-description">Qué incluye</Label>
+                  <Textarea id="category-description" value={formData.description} maxLength={600}
+                    placeholder="Qué gastos van aquí y cuáles no. Ayuda a categorizar mejor."
+                    onChange={event => setFormData({ ...formData, description: event.target.value })} />
+                </div>
+                <label className="flex items-center gap-2 text-sm">
+                  <input type="checkbox" checked={formData.is_active}
+                    onChange={event => setFormData({ ...formData, is_active: event.target.checked })} />
+                  Disponible para nuevos movimientos
+                </label>
+              </>}
 
               {/* Emoji picker */}
               <div className="space-y-2">
@@ -253,10 +276,12 @@ export default function Categories() {
                     >
                       <span className="text-base leading-none">{cat.icon || "🏷️"}</span>
                       <span>{cat.name}</span>
+                      {cat.is_active === false && <span className="text-[10px] opacity-60">Histórica</span>}
                       {/* Hover actions */}
                       <div className="absolute inset-0 rounded-full flex items-center justify-end pr-1.5 gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity bg-background/80 backdrop-blur-sm">
                         <button
                           className="h-6 w-6 rounded-full flex items-center justify-center hover:bg-muted transition-colors"
+                          aria-label={`Editar ${cat.name}`}
                           onClick={() => handleEdit(cat)}
                         >
                           <Pencil className="h-3 w-3 text-muted-foreground" />

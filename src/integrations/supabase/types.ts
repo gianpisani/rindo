@@ -204,6 +204,8 @@ export type Database = {
       }
       categories: {
         Row: {
+          description: string
+          is_active: boolean
           color: string | null
           created_at: string
           icon: string | null
@@ -213,6 +215,8 @@ export type Database = {
           user_id: string
         }
         Insert: {
+          description?: string
+          is_active?: boolean
           color?: string | null
           created_at?: string
           icon?: string | null
@@ -222,6 +226,8 @@ export type Database = {
           user_id: string
         }
         Update: {
+          description?: string
+          is_active?: boolean
           color?: string | null
           created_at?: string
           icon?: string | null
@@ -1315,6 +1321,7 @@ export type Database = {
           bank_description: string | null
           bank_settlement_date: string | null
           card_id: string | null
+          category_source: string | null
           category_name: string
           created_at: string
           date: string
@@ -1331,6 +1338,7 @@ export type Database = {
           bank_description?: string | null
           bank_settlement_date?: string | null
           card_id?: string | null
+          category_source?: string | null
           category_name: string
           created_at?: string
           date?: string
@@ -1347,6 +1355,7 @@ export type Database = {
           bank_description?: string | null
           bank_settlement_date?: string | null
           card_id?: string | null
+          category_source?: string | null
           category_name?: string
           created_at?: string
           date?: string
@@ -1554,6 +1563,10 @@ export type Database = {
       }
     }
     Functions: {
+      configure_food_categories: {
+        Args: { p_user_id?: string }
+        Returns: undefined
+      }
       calculate_distance_km: {
         Args: { lat1: number; lat2: number; lon1: number; lon2: number }
         Returns: number

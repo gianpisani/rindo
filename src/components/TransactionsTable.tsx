@@ -717,7 +717,7 @@ export function TransactionsTable({
   };
   const guardedEdit = (t: Transaction) => {
     if (Date.now() - lastMenuCloseRef.current < 400) return;
-    onEdit(t);
+    if (!t.isPending) onEdit(t);
   };
 
   const isControlled = externalSearch !== undefined;
@@ -771,6 +771,7 @@ export function TransactionsTable({
     amount > 0 ? "text-emerald-500" : amount < 0 ? "text-rose-500" : "";
 
   const handleInlineUpdate = useCallback(async (id: string, field: keyof Transaction, value: unknown) => {
+    if (id.startsWith("pending-")) return;
     await onUpdateSilent(id, { [field]: value });
   }, [onUpdateSilent]);
 
@@ -914,10 +915,9 @@ export function TransactionsTable({
           const isReimbursement = type === "Ingreso" && categoryName.toLowerCase().includes("reembolso");
           const linkedCategory = row.original.reimbursement_for_category;
 
-          if (categoryName === "⚡ Analizando...") return <AnalyzingBadge />;
+          if (row.original.isPending || categoryName === "⚡ Analizando...") return <AnalyzingBadge saving={row.original.isPending} />;
 
           const catData = categories.find(c => c.name === categoryName);
-          const emoji = catData?.icon || getCategoryIcon(categoryName);
           const dotColor = catData?.color || null;
           const filteredCats = categories.filter(c => c.type === type);
           const expenseCategories = categories.filter(c => c.type === "Gasto");
@@ -948,7 +948,6 @@ export function TransactionsTable({
                 }
                 renderValue={(val) => (
                   <div className="flex items-center gap-1.5 min-w-0">
-                    <span className="text-base leading-none flex-shrink-0">{emoji}</span>
                     {dotColor && (
                       <div
                         className="w-1.5 h-1.5 rounded-full flex-shrink-0"
@@ -1164,7 +1163,7 @@ export function TransactionsTable({
     onRowSelectionChange: setRowSelection,
     state: { sorting, rowSelection },
     initialState: { pagination: { pageSize: 100 } },
-    enableRowSelection: true,
+    enableRowSelection: row => !row.original.isPending,
     autoResetPageIndex: false,
     getRowId: (row) => row.id,
   });
@@ -1633,7 +1632,6 @@ export function TransactionsTable({
                     const avatarColor = getAvatarColor(clean || "default");
                     const isBot = (t.detail || "").startsWith("🤖");
                     const catData = categories.find(c => c.name === t.category_name);
-                    const emoji = catData?.icon || getCategoryIcon(t.category_name);
                     const amountColor = typeAmountColors[t.type];
                     const time = format(new Date(t.date), "HH:mm");
                     const isMissing = t.category_name === "Sin categoría";
@@ -1644,6 +1642,7 @@ export function TransactionsTable({
                         key={row.id}
                         className={cn(
                           "mobile-tx-card",
+                      t.isPending && "pointer-events-none opacity-60",
                           isSelected && "mobile-tx-card-selected",
                           isMissing && "mobile-tx-card-missing"
                         )}
@@ -1699,11 +1698,11 @@ export function TransactionsTable({
                           </div>
                           <div className="flex items-center justify-between gap-2 mt-0.5">
                             <div className="flex items-center gap-1.5 min-w-0">
-                              {t.category_name === "⚡ Analizando..." ? (
-                                <AnalyzingBadge />
+                              {t.isPending || t.category_name === "⚡ Analizando..." ? (
+                                <AnalyzingBadge saving={t.isPending} />
                               ) : (
                                 <>
-                                  <span className="text-xs leading-none">{emoji}</span>
+                                  <span className="h-1.5 w-1.5 rounded-full shrink-0" style={{ backgroundColor: catData?.color || "currentColor" }} aria-hidden="true" />
                                   <span className={cn(
                                     "text-xs truncate",
                                     isMissing ? "text-amber-500" : "text-muted-foreground"
@@ -1764,7 +1763,6 @@ export function TransactionsTable({
                 const avatarColor = getAvatarColor(clean || "default");
                 const isBot = (t.detail || "").startsWith("🤖");
                 const catData = categories.find(c => c.name === t.category_name);
-                const emoji = catData?.icon || getCategoryIcon(t.category_name);
                 const amountColor = typeAmountColors[t.type];
                 const dateStr = format(new Date(t.date), "d MMM HH:mm", { locale: es });
                 const isMissing = t.category_name === "Sin categoría";
@@ -1775,6 +1773,7 @@ export function TransactionsTable({
                     key={row.id}
                     className={cn(
                       "mobile-tx-card",
+                      t.isPending && "pointer-events-none opacity-60",
                       isSelected && "mobile-tx-card-selected",
                       isMissing && "mobile-tx-card-missing"
                     )}
@@ -1827,13 +1826,15 @@ export function TransactionsTable({
                       </div>
                       <div className="flex items-center justify-between gap-2 mt-0.5">
                         <div className="flex items-center gap-1.5 min-w-0">
-                          <span className="text-xs leading-none">{emoji}</span>
+                          <span className="h-1.5 w-1.5 rounded-full shrink-0" style={{ backgroundColor: catData?.color || "currentColor" }} aria-hidden="true" />
+                          {t.isPending || t.category_name === "⚡ Analizando..." ? <AnalyzingBadge saving={t.isPending} /> : (
                           <span className={cn(
                             "text-xs truncate",
                             isMissing ? "text-amber-500" : "text-muted-foreground"
                           )}>
                             {t.category_name}
                           </span>
+                          )}
                         </div>
                         <span className="text-[11px] text-muted-foreground/50 tabular-nums flex-shrink-0">
                           {dateStr}
@@ -1970,6 +1971,7 @@ export function TransactionsTable({
                                 data-state={row.getIsSelected() && "selected"}
                                 className={cn(
                                   "hover:bg-muted/40 transition-colors",
+                                  row.original.isPending && "pointer-events-none opacity-60",
                                   row.getIsSelected() && "bg-primary/5 hover:bg-primary/10",
                                   isMissing && "border-l-2 border-l-amber-400/70",
                                   isHighlighted && "tx-highlight-pulse"
@@ -1999,6 +2001,7 @@ export function TransactionsTable({
                           data-state={row.getIsSelected() && "selected"}
                           className={cn(
                             "hover:bg-muted/40 transition-colors",
+                                  row.original.isPending && "pointer-events-none opacity-60",
                             row.getIsSelected() && "bg-primary/5 hover:bg-primary/10",
                             isMissing && "border-l-2 border-l-amber-400/70",
                             isHighlighted && "tx-highlight-pulse"

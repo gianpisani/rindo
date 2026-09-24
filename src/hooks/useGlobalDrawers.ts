@@ -1,12 +1,17 @@
 import { create } from "zustand";
 import type { TransactionType } from "@/lib/ledger";
+import type { WhisperDraft } from "@/lib/whisper";
 
 interface GlobalDrawersState {
   quickAddOpen: boolean;
   reconciliationOpen: boolean;
   profileEditOpen: boolean;
   quickAddDefaultType?: TransactionType;
-  openQuickAdd: (type?: TransactionType) => void;
+  quickAddDraft?: WhisperDraft;
+  quickAddRevision: number;
+  pendingShared: { id: string; amount: number } | null;
+  setPendingShared: (transaction: { id: string; amount: number } | null) => void;
+  openQuickAdd: (type?: TransactionType, draft?: WhisperDraft) => void;
   closeQuickAdd: () => void;
   setQuickAddOpen: (open: boolean) => void;
   openReconciliation: () => void;
@@ -21,8 +26,11 @@ export const useGlobalDrawers = create<GlobalDrawersState>((set) => ({
   reconciliationOpen: false,
   profileEditOpen: false,
   quickAddDefaultType: undefined,
-  openQuickAdd: (type) =>
-    set({ quickAddOpen: true, quickAddDefaultType: type }),
+  quickAddRevision: 0,
+  pendingShared: null,
+  setPendingShared: (pendingShared) => set({ pendingShared }),
+  openQuickAdd: (type, draft) =>
+    set(state => ({ quickAddOpen: true, quickAddDefaultType: type, quickAddDraft: draft, quickAddRevision: state.quickAddRevision + 1 })),
   closeQuickAdd: () =>
     set({ quickAddOpen: false, quickAddDefaultType: undefined }),
   setQuickAddOpen: (open) =>

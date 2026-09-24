@@ -1,366 +1,216 @@
-import { useState, useRef, useEffect, useCallback } from "react";
-import { motion, AnimatePresence } from "framer-motion";
-import { useTransactions } from "@/hooks/useTransactions";
-import { useCategories } from "@/hooks/useCategories";
-import { useSoundFX } from "@/hooks/useSoundFX";
-import { supabase } from "@/integrations/supabase/client";
-import { useQueryClient } from "@tanstack/react-query";
-import { toast } from "sonner";
-import { Check } from "lucide-react";
+import { useMemo, useRef, useState } from 'react';
+import * as Dialog from '@radix-ui/react-dialog';
+import { AnimatePresence, motion, useReducedMotion } from 'framer-motion';
+import { ArrowUp, Check, ChevronDown, X } from 'lucide-react';
+import { toast } from 'sonner';
+import { useTransactions } from '@/hooks/useTransactions';
+import { useCategories } from '@/hooks/useCategories';
+import { useCreditCards } from '@/hooks/useCreditCards';
+import { useSharedExpenses } from '@/hooks/useSharedExpenses';
+import { useGlobalDrawers } from '@/hooks/useGlobalDrawers';
+import { useSoundFX } from '@/hooks/useSoundFX';
+import { usePrivacyMode } from '@/hooks/usePrivacyMode';
+import { categoryFrequency, parseWhisper, type WhisperDraft } from '@/lib/whisper';
+import type { TransactionType } from '@/lib/ledger';
+import { cn } from '@/lib/utils';
+import SharedExpenseDrawer from './SharedExpenseDrawer';
+import './whisper.css';
 
-const TRANSACTION_TYPES = [
-  {
-    key: "Gasto" as const,
-    label: "Gasto",
-    color: "rgb(248, 113, 113)",
-    colorMuted: "rgba(248, 113, 113, 0.4)",
-    colorBg: "rgba(248, 113, 113, 0.1)",
-    placeholder: "45000 sushi",
-  },
-  {
-    key: "Ingreso" as const,
-    label: "Ingreso",
-    color: "rgb(74, 222, 128)",
-    colorMuted: "rgba(74, 222, 128, 0.4)",
-    colorBg: "rgba(74, 222, 128, 0.1)",
-    placeholder: "1500000 sueldo",
-  },
-  {
-    key: "Inversión" as const,
-    label: "Inversión",
-    color: "rgb(96, 165, 250)",
-    colorMuted: "rgba(96, 165, 250, 0.4)",
-    colorBg: "rgba(96, 165, 250, 0.1)",
-    placeholder: "200000 fintual",
-  },
-  {
-    key: "Rescate" as const,
-    label: "Rescate",
-    color: "rgb(34, 211, 238)",
-    colorMuted: "rgba(34, 211, 238, 0.4)",
-    colorBg: "rgba(34, 211, 238, 0.1)",
-    placeholder: "200000 saqué del fondo",
-  },
-] as const;
-
-type TransactionType = (typeof TRANSACTION_TYPES)[number]["key"];
-
-/**
- * El rescate no pasa por el categorizador: su categoría es el movimiento
- * mismo, y adivinarla por el detalle ("saqué del fondo") solo la ensucia.
- * Mismo criterio que en QuickTransactionForm.
- */
-const FIXED_CATEGORY: Partial<Record<TransactionType, string>> = {
-  Rescate: "Rescate",
+const types: { type: TransactionType; color: string; placeholder: string }[] = [
+  { type: 'Gasto', color: '#f87171', placeholder: '15000 almuerzo' },
+  { type: 'Ingreso', color: '#4ade80', placeholder: '1500000 sueldo' },
+  { type: 'Inversión', color: '#60a5fa', placeholder: '200000 fintual' },
+  { type: 'Rescate', color: '#22d3ee', placeholder: '200000 retiro del fondo' },
+  { type: 'Rendimiento', color: '#a78bfa', placeholder: '25000 rendimiento del mes' },
+  { type: 'Reembolso', color: '#fbbf24', placeholder: '12000 devolución almuerzo' },
+];
+const foodCategoryOrder = ['Supermercado', 'Café y snacks', 'Comida diaria', 'Comidas y panoramas'];
+const fixedCategories: Partial<Record<TransactionType, string>> = { Rescate: 'Rescate', Rendimiento: 'Rendimiento', Reembolso: 'Reembolsos' };
+const localDate = () => {
+  const now = new Date();
+  return new Date(now.getTime() - now.getTimezoneOffset() * 60000).toISOString().slice(0, 16);
 };
 
 interface WhisperInputProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
+  defaultType?: TransactionType;
+  initialDraft?: WhisperDraft;
 }
 
-export function WhisperInput({ open, onOpenChange }: WhisperInputProps) {
-  const [value, setValue] = useState("");
-  const [typeIndex, setTypeIndex] = useState(0);
-  const [status, setStatus] = useState<"idle" | "saving" | "success">("idle");
+export function WhisperInput({ open, onOpenChange, defaultType = 'Gasto', initialDraft }: WhisperInputProps) {
+  const [draft, setDraft] = useState<WhisperDraft>(() => initialDraft ?? {
+    value: '', type: defaultType, category: '', date: localDate(), cardId: '', shared: false, reimbursementCategory: '', isLoss: false,
+  });
+  const [expanded, setExpanded] = useState(false);
+  const [allCategories, setAllCategories] = useState(false);
+  const [error, setError] = useState('');
+  const pendingShared = useGlobalDrawers(state => state.pendingShared);
+  const setPendingShared = useGlobalDrawers(state => state.setPendingShared);
+  const saving = useRef(false);
   const inputRef = useRef<HTMLInputElement>(null);
-  const { addTransaction } = useTransactions();
+  const categoryGroupRef = useRef<HTMLDivElement>(null);
+  const optionsToggleRef = useRef<HTMLButtonElement>(null);
+  const reducedMotion = useReducedMotion();
   const { categories } = useCategories();
-  const { playCelebration } = useSoundFX();
-  const queryClient = useQueryClient();
-
-  const currentType = TRANSACTION_TYPES[typeIndex];
-
-  useEffect(() => {
-    if (open) {
-      setValue("");
-      setTypeIndex(0);
-      setStatus("idle");
-      setTimeout(() => inputRef.current?.focus(), 100);
-    }
-  }, [open]);
-
-  const cycleType = useCallback(() => {
-    setTypeIndex((prev) => (prev + 1) % TRANSACTION_TYPES.length);
-  }, []);
-
-  const parseInput = (input: string) => {
-    const cleaned = input.trim();
-    const match = cleaned.match(/^\$?\s*([\d.,]+)\s*(.*)/);
-    if (!match) return null;
-
-    const amountStr = match[1].replace(/[.,]/g, "");
-    const amount = parseInt(amountStr, 10);
-    if (isNaN(amount) || amount <= 0) return null;
-
-    const detail = match[2]?.trim() || null;
-    return { amount, detail };
-  };
-
-  const autoCategorizeInBackground = async (
-    transactionId: string,
-    detail: string,
-    userId: string
-  ) => {
-    try {
-      const categoryNames = categories.map((c) => c.name);
-      const {
-        data: { session },
-      } = await supabase.auth.getSession();
-      if (!session) return;
-
-      const response = await fetch(
-        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/auto-categorize`,
-        {
-          method: "POST",
-          headers: {
-            Authorization: `Bearer ${session.access_token}`,
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({
-            transactionId,
-            detail,
-            userId,
-            existingCategories: categoryNames,
-          }),
-        }
-      );
-
-      const result = await response.json();
-      if (result.success && result.category) {
-        queryClient.invalidateQueries({ queryKey: ["transactions"] });
-        if (result.category !== "Sin categoría") {
-          toast.success(`Categorizado: ${result.category}`, { duration: 2000 });
-        }
-      }
-    } catch (error) {
-      console.error("Whisper auto-categorize error:", error);
-    }
-  };
-
-  const handleSubmit = async () => {
-    const parsed = parseInput(value);
-    if (!parsed) return;
-
-    setStatus("saving");
-
-    try {
-      const { data: userData } = await supabase.auth.getUser();
-      if (!userData.user) return;
-
-      const fixedCategory = FIXED_CATEGORY[currentType.key];
-      const willAnalyze =
-        !fixedCategory && parsed.detail && parsed.detail.length >= 3;
-
-      const transaction = await addTransaction.mutateAsync({
-        amount: parsed.amount,
-        type: currentType.key,
-        category_name:
-          fixedCategory ??
-          (willAnalyze ? "\u26A1 Analizando..." : "Sin categoría"),
-        detail: parsed.detail,
-        date: new Date().toISOString(),
-        card_id: null,
-        installment_id: null,
+  const { allTransactions, addTransaction } = useTransactions();
+  const { creditCards } = useCreditCards();
+  const { addSharedExpenses, uniqueDebtorNames } = useSharedExpenses();
+  const { isPrivacyMode } = usePrivacyMode();
+  const { playTap } = useSoundFX();
+  const current = types.find(t => t.type === draft.type)!;
+  const parsed = parseWhisper(draft.value);
+  const fixedCategory = fixedCategories[draft.type];
+  const availableCategories = useMemo(() => {
+    const frequency = categoryFrequency(allTransactions, draft.type);
+    return categories.filter(c => c.is_active !== false && c.type === draft.type && !['Sin categoría', '⚡ Analizando...'].includes(c.name))
+      .sort((a, b) => {
+        const foodRank = (name: string) => draft.type === 'Gasto' && foodCategoryOrder.includes(name) ? foodCategoryOrder.indexOf(name) : foodCategoryOrder.length;
+        return foodRank(a.name) - foodRank(b.name) || (frequency.get(b.name) ?? 0) - (frequency.get(a.name) ?? 0) || a.name.localeCompare(b.name);
       });
-
-      if (willAnalyze && transaction?.id) {
-        autoCategorizeInBackground(
-          transaction.id,
-          parsed.detail!,
-          userData.user.id
-        );
-      }
-
-      setStatus("success");
-      playCelebration();
-
-      setTimeout(() => {
-        onOpenChange(false);
-        setStatus("idle");
-        setValue("");
-      }, 1000);
-    } catch (error) {
-      console.error("Whisper save error:", error);
-      toast.error("Error al guardar");
-      setStatus("idle");
-    }
+  }, [categories, allTransactions, draft.type]);
+  const visibleCategories = allCategories ? availableCategories : availableCategories.slice(0, 5);
+  const update = (values: Partial<WhisperDraft>) => { setDraft(previous => ({ ...previous, ...values })); setError(''); };
+  const changeType = (type: TransactionType) => {
+    update({ type, category: '', shared: false, reimbursementCategory: '', isLoss: false });
+    setAllCategories(false);
+  };
+  const cycleType = (backwards: boolean) => {
+    changeType(types[(types.indexOf(current) + (backwards ? types.length - 1 : 1)) % types.length].type);
   };
 
-  const handleKeyDown = (e: React.KeyboardEvent) => {
-    if (e.key === "Tab") {
-      e.preventDefault();
-      cycleType();
-      return;
-    }
-    if (e.key === "Enter" && value.trim()) {
-      e.preventDefault();
-      handleSubmit();
-    }
-    if (e.key === "Escape") {
-      e.preventDefault();
-      onOpenChange(false);
-    }
+  const submit = async (event: React.FormEvent) => {
+    event.preventDefault();
+    if (saving.current) return;
+    if (!parsed) { setError('Escribe un monto en pesos, seguido del detalle.'); inputRef.current?.focus(); return; }
+    if (!draft.date || !Number.isFinite(new Date(draft.date).getTime())) { setExpanded(true); setError('Elige una fecha válida.'); return; }
+    saving.current = true;
+    const submittedDraft = { ...draft };
+    // The composer closes immediately; the shared mutation owns saving and categorizing.
+    onOpenChange(false);
+    try {
+      const transaction = await addTransaction.mutateAsync({
+        amount: draft.type === 'Rendimiento' && draft.isLoss ? -parsed.amount : parsed.amount,
+        type: draft.type, detail: parsed.detail, category_name: fixedCategory ?? draft.category,
+        date: new Date(draft.date).toISOString(), card_id: draft.cardId || null,
+        reimbursement_for_category: ['Ingreso', 'Reembolso'].includes(draft.type) ? draft.reimbursementCategory || null : null,
+      });
+      if (draft.shared && draft.type === 'Gasto') setPendingShared({ id: transaction.id, amount: parsed.amount });
+    } catch {
+      const recover = () => useGlobalDrawers.getState().openQuickAdd(submittedDraft.type, submittedDraft);
+      if (!useGlobalDrawers.getState().quickAddOpen) recover();
+      toast.error('No se guardó el movimiento. Tu texto está disponible.', {
+        id: 'transaction-save-error', action: { label: 'Recuperar', onClick: recover },
+      });
+    } finally { saving.current = false; }
   };
 
-  const formatPreview = (input: string) => {
-    const parsed = parseInput(input);
-    if (!parsed) return null;
-    const formatted = new Intl.NumberFormat("es-CL", {
-      style: "currency",
-      currency: "CLP",
-      minimumFractionDigits: 0,
-    }).format(parsed.amount);
-    return { amount: formatted, detail: parsed.detail };
+  const confirmShared = async (debtors: { name: string; amount: number }[]) => {
+    if (!pendingShared) return;
+    await addSharedExpenses.mutateAsync(debtors.map(d => ({
+      transaction_id: pendingShared.id, debtor_name: d.name, amount_owed: d.amount, detail: null,
+    })));
+    setPendingShared(null);
   };
 
-  const preview = value ? formatPreview(value) : null;
-
-  return (
-    <AnimatePresence>
-      {open && (
-        <motion.div
-          className="fixed inset-0 z-[100] flex items-center justify-center"
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          exit={{ opacity: 0 }}
-          transition={{ duration: 0.2 }}
-        >
-          {/* Backdrop */}
-          <motion.div
-            className="absolute inset-0 backdrop-blur-sm"
-            style={{ backgroundColor: "rgba(0, 0, 0, 0.5)" }}
-            onClick={() => status === "idle" && onOpenChange(false)}
-          />
-
-          {/* Content */}
-          <div className="relative z-10 w-full max-w-lg mx-4">
-            <AnimatePresence mode="wait">
-              {status === "success" ? (
-                <motion.div
-                  key="success"
-                  className="flex flex-col items-center gap-3"
-                  initial={{ opacity: 0, scale: 0.8 }}
-                  animate={{ opacity: 1, scale: 1 }}
-                  exit={{ opacity: 0, scale: 0.8 }}
-                  transition={{ duration: 0.3, ease: "easeOut" }}
-                >
-                  <motion.div
-                    className="w-12 h-12 rounded-full flex items-center justify-center"
-                    style={{ backgroundColor: currentType.colorBg }}
-                    initial={{ scale: 0 }}
-                    animate={{ scale: 1 }}
-                    transition={{
-                      delay: 0.1,
-                      type: "spring",
-                      stiffness: 300,
-                      damping: 20,
-                    }}
-                  >
-                    <Check className="h-6 w-6" style={{ color: currentType.color }} />
-                  </motion.div>
-                  {preview && (
-                    <motion.p
-                      className="text-white/60 text-sm font-medium"
-                      initial={{ opacity: 0, y: 5 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      transition={{ delay: 0.2 }}
-                    >
-                      {preview.amount} guardado
-                    </motion.p>
-                  )}
-                </motion.div>
-              ) : (
-                <motion.div
-                  key="input"
-                  className="flex flex-col items-center gap-4"
-                  initial={{ opacity: 0, y: 10 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  exit={{ opacity: 0, y: -20 }}
-                  transition={{ duration: 0.3, ease: "easeOut" }}
-                >
-                  {/* Type indicator pill */}
-                  <motion.div
-                    className="flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-medium"
-                    style={{
-                      backgroundColor: currentType.colorBg,
-                      color: currentType.color,
-                    }}
-                    layout
-                    transition={{ duration: 0.3, ease: [0.4, 0, 0.2, 1] }}
-                  >
-                    <motion.div
-                      className="w-1.5 h-1.5 rounded-full"
-                      style={{ backgroundColor: currentType.color }}
-                      layoutId="type-dot"
-                      transition={{ duration: 0.3 }}
-                    />
-                    <AnimatePresence mode="wait">
-                      <motion.span
-                        key={currentType.key}
-                        initial={{ opacity: 0, y: 6 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        exit={{ opacity: 0, y: -6 }}
-                        transition={{ duration: 0.15 }}
-                      >
-                        {currentType.label}
-                      </motion.span>
-                    </AnimatePresence>
-                  </motion.div>
-
-                  <input
-                    ref={inputRef}
-                    type="text"
-                    inputMode="text"
-                    autoComplete="off"
-                    autoCorrect="off"
-                    spellCheck={false}
-                    value={value}
-                    onChange={(e) => setValue(e.target.value)}
-                    onKeyDown={handleKeyDown}
-                    placeholder={currentType.placeholder}
-                    className="w-full text-center text-3xl md:text-4xl font-light bg-transparent border-none outline-none placeholder:text-white/15 font-sans transition-colors duration-300"
-                    style={{
-                      color: value ? currentType.color : "rgba(255,255,255,0.9)",
-                      caretColor: currentType.color,
-                    }}
-                  />
-
-                  {/* Live preview */}
-                  {preview && (
-                    <motion.div
-                      className="flex items-center gap-2 text-sm transition-colors duration-300"
-                      style={{ color: currentType.colorMuted }}
-                      initial={{ opacity: 0 }}
-                      animate={{ opacity: 1 }}
-                      transition={{ duration: 0.2 }}
-                    >
-                      <span className="font-mono">{preview.amount}</span>
-                      {preview.detail && (
-                        <>
-                          <span style={{ opacity: 0.5 }}>&middot;</span>
-                          <span>{preview.detail}</span>
-                        </>
-                      )}
-                    </motion.div>
-                  )}
-
-                  {/* Hints */}
-                  <motion.p
-                    className="text-white/20 text-xs tracking-wide"
-                    initial={{ opacity: 0 }}
-                    animate={{ opacity: 1 }}
-                    transition={{ delay: 0.3 }}
-                  >
-                    monto + detalle &middot; Tab tipo &middot; Enter guardar
-                    &middot; Esc cerrar
-                  </motion.p>
-                </motion.div>
-              )}
+  return <>
+    <Dialog.Root open={open} onOpenChange={onOpenChange}>
+      <Dialog.Portal>
+        <Dialog.Overlay className="whisper-backdrop" />
+        <Dialog.Content data-scrollable className="whisper-composer" style={{ '--whisper-accent': current.color } as React.CSSProperties}
+          onOpenAutoFocus={event => { event.preventDefault(); inputRef.current?.focus(); }}>
+          <Dialog.Title className="sr-only">Nuevo movimiento</Dialog.Title>
+          <Dialog.Description className="sr-only">Escribe monto y detalle en una línea. Tab cambia el tipo; Shift y Tab vuelve al anterior. Flecha abajo lleva a las categorías y opciones, donde Tab recorre los controles. Puedes elegir una categoría o dejar que se asigne al guardar.</Dialog.Description>
+          <Dialog.Close className="whisper-close" aria-label="Cerrar"><X size={16} /></Dialog.Close>
+          <form onSubmit={submit} className="whisper-form">
+            <div className="whisper-type">
+              <span className="whisper-dot" aria-hidden="true" />
+              <motion.span key={draft.type} aria-hidden="true" initial={reducedMotion ? false : { opacity: 0, y: 4 }}
+                animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.16 }}>{draft.type}</motion.span>
+              <select aria-label="Tipo de movimiento" value={draft.type} onChange={event => {
+                changeType(event.target.value as TransactionType); inputRef.current?.focus();
+              }}>
+                {types.map(t => <option key={t.type}>{t.type}</option>)}
+              </select>
+              <ChevronDown size={12} aria-hidden="true" />
+            </div>
+            <div className="whisper-entry">
+            <input ref={inputRef} aria-label="Monto y detalle" aria-describedby={error ? 'whisper-error whisper-shortcuts' : 'whisper-shortcuts'}
+              aria-invalid={!!error} autoComplete="off" autoCorrect="off" spellCheck={false} maxLength={1000}
+              value={draft.value} onChange={event => update({ value: event.target.value })}
+              placeholder={current.placeholder} className={cn('whisper-input', isPrivacyMode && draft.value && 'privacy-blur')}
+              onKeyDown={event => {
+                if (event.nativeEvent.isComposing) {
+                  if (event.key === 'Enter') event.preventDefault();
+                  return;
+                }
+                // Keep Whisper's original Tab gesture; Down opens the normal focus order.
+                if (event.key === 'Tab' && !event.altKey && !event.ctrlKey && !event.metaKey) {
+                  event.preventDefault(); cycleType(event.shiftKey); return;
+                }
+                if (event.key === 'ArrowDown' && !event.altKey && !event.ctrlKey && !event.metaKey && !event.shiftKey) {
+                  event.preventDefault();
+                  const selected = categoryGroupRef.current?.querySelector<HTMLButtonElement>('button[aria-pressed="true"]');
+                  const first = categoryGroupRef.current?.querySelector<HTMLButtonElement>('button');
+                  (selected ?? first ?? optionsToggleRef.current)?.focus();
+                  return;
+                }
+                if (event.altKey && ['ArrowRight', 'ArrowLeft'].includes(event.key)) {
+                  event.preventDefault(); cycleType(event.key === 'ArrowLeft');
+                }
+              }} />
+              <div className={cn('whisper-preview', isPrivacyMode && parsed && 'privacy-blur')} aria-hidden="true">
+                {parsed && <span>{new Intl.NumberFormat('es-CL', { style: 'currency', currency: 'CLP', maximumFractionDigits: 0 }).format(parsed.amount)}</span>}
+              </div>
+            </div>
+            <div className="whisper-category-space">
+              {!fixedCategory && <div ref={categoryGroupRef} className="whisper-categories" role="group" aria-label="Categorías disponibles">
+                {visibleCategories.map(category => <button key={category.id} type="button" className="whisper-category"
+                  aria-pressed={draft.category === category.name} onClick={() => {
+                    update({ category: draft.category === category.name ? '' : category.name }); playTap(); inputRef.current?.focus();
+                  }}>
+                  <span className="whisper-category-dot" aria-hidden="true" />
+                  {category.name}{draft.category === category.name && <Check size={12} aria-hidden="true" />}
+                </button>)}
+                {availableCategories.length > 5 && <button type="button" className="whisper-more-categories" aria-expanded={allCategories}
+                  onClick={() => setAllCategories(!allCategories)}>{allCategories ? 'Menos' : `+${availableCategories.length - 5}`}</button>}
+              </div>}
+              <p className="whisper-caption" aria-live="polite">
+                {fixedCategory ? (draft.type === 'Rescate' ? 'Vuelve a tu liquidez' : draft.type === 'Rendimiento' ? 'Actualiza tu patrimonio' : 'Plata que vuelve')
+                  : draft.category ? `Se guardará en ${draft.category}` : 'O deja que se categorice al guardar'}
+              </p>
+            </div>
+            <AnimatePresence initial={false}>
+              {expanded && <motion.div className="whisper-options" initial={{ height: 0, opacity: 0 }} animate={{ height: 'auto', opacity: 1 }}
+                exit={{ height: 0, opacity: 0 }} transition={{ duration: reducedMotion ? 0 : 0.18 }}>
+                <label>Fecha<input aria-label="Fecha del movimiento" type="datetime-local" value={draft.date} onChange={event => update({ date: event.target.value })} /></label>
+                <label>Cuenta<select aria-label="Cuenta o tarjeta" value={draft.cardId} onChange={event => update({ cardId: event.target.value })}>
+                  <option value="">Cuenta</option>{creditCards.filter(card => card.is_active).map(card => <option key={card.id} value={card.id}>{card.name}</option>)}
+                </select></label>
+                {draft.type === 'Gasto' && <label className="whisper-check"><input type="checkbox" checked={draft.shared} onChange={event => update({ shared: event.target.checked })} />Gasto compartido</label>}
+                {draft.type === 'Rendimiento' && <label className="whisper-check"><input type="checkbox" checked={draft.isLoss} onChange={event => update({ isLoss: event.target.checked })} />Fue una pérdida</label>}
+                {['Ingreso', 'Reembolso'].includes(draft.type) && <label>Reembolso de<select aria-label="Categoría del reembolso" value={draft.reimbursementCategory} onChange={event => update({ reimbursementCategory: event.target.value })}>
+                  <option value="">Sin vincular</option>{categories.filter(c => c.type === 'Gasto').map(c => <option key={c.id}>{c.name}</option>)}
+                </select></label>}
+              </motion.div>}
             </AnimatePresence>
-          </div>
-        </motion.div>
-      )}
-    </AnimatePresence>
-  );
+            {error && <p id="whisper-error" role="alert" className="whisper-error">{error}</p>}
+            <div className="whisper-actions">
+              <button ref={optionsToggleRef} type="button" className="whisper-options-toggle" aria-expanded={expanded} onClick={() => setExpanded(!expanded)}>
+                {expanded ? 'Menos opciones' : 'Más opciones'}<ChevronDown size={12} className={cn(expanded && 'rotate-180')} />
+              </button>
+              <button type="submit" className="whisper-submit" disabled={!parsed} aria-label="Guardar movimiento">
+                Guardar<span className="hidden sm:inline" aria-hidden="true">↵</span><ArrowUp size={14} className="sm:hidden" aria-hidden="true" />
+              </button>
+            </div>
+            <p id="whisper-shortcuts" className="whisper-shortcuts">
+              <span><kbd>Tab</kbd> tipo</span><span><kbd>↓</kbd> {fixedCategory ? 'opciones' : 'categorías'}</span><span><kbd>Esc</kbd> cerrar</span>
+            </p>
+          </form>
+        </Dialog.Content>
+      </Dialog.Portal>
+    </Dialog.Root>
+    <SharedExpenseDrawer open={!!pendingShared} onOpenChange={isOpen => { if (!isOpen) setPendingShared(null); }}
+      totalAmount={pendingShared?.amount ?? 0} onConfirm={confirmShared} suggestions={uniqueDebtorNames('they_owe_me')} />
+  </>;
 }

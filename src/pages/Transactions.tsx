@@ -8,7 +8,7 @@ import { TransactionsTable, getCategoryIcon } from "@/components/TransactionsTab
 import { TransactionsToolbar } from "@/components/TransactionsToolbar";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Dialog, DialogTrigger } from "@/components/ui/dialog";
+import { useGlobalDrawers } from "@/hooks/useGlobalDrawers";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import {
@@ -21,7 +21,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { Plus, TrendingUp, TrendingDown, PiggyBank, X, Sparkles, Trash2, Users, CheckCircle2, Check, Clock, Pencil, ArrowLeftRight, ArrowDownToLine, LineChart } from "lucide-react";
+import { Plus, TrendingUp, TrendingDown, PiggyBank, X, Trash2, Users, CheckCircle2, Check, Clock, Pencil, ArrowLeftRight, ArrowDownToLine, LineChart } from "lucide-react";
 import { useTransactions, Transaction } from "@/hooks/useTransactions";
 import { useSearchFocusShortcut } from "@/hooks/useSearchFocusShortcut";
 import { useCategories } from "@/hooks/useCategories";
@@ -36,7 +36,6 @@ import { format, parse } from "date-fns";
 import Papa from "papaparse";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
-import { categorizeTransaction, debounce } from "@/lib/categorizer";
 import { cn } from "@/lib/utils";
 import { CategorySelect, CategoryPickerInline } from "@/components/CategorySelect";
 import { CategoryCreateInline, CATEGORY_FORM_ID } from "@/components/CategoryCreateInline";
@@ -181,14 +180,6 @@ export default function Transactions() {
     open: false,
     ids: [],
   });
-  const [suggestion, setSuggestion] = useState<{
-    category: string;
-    type: TransactionType;
-    confidence: number;
-    reasons: string[];
-  } | null>(null);
-  const [isAnalyzing, setIsAnalyzing] = useState(false);
-
   const [formData, setFormData] = useState({
     date: new Date(),
     detail: "",
@@ -230,81 +221,6 @@ export default function Transactions() {
       label: cat.name,
       emoji: cat.icon || getCategoryIcon(cat.name),
     }));
-
-  // Función para categorizar con debounce
-  const debouncedCategorize = useCallback(
-    debounce(async (text: string) => {
-      if (!text || text.trim().length < 3) {
-        setSuggestion(null);
-        setIsAnalyzing(false);
-        return;
-      }
-
-      setIsAnalyzing(true);
-      
-      try {
-        const { data: userData } = await supabase.auth.getUser();
-        if (!userData.user) {
-          setIsAnalyzing(false);
-          return;
-        }
-
-        // Pasar las categorías existentes para priorizar matches
-        const categoryNames = categories.map(c => c.name);
-        const result = await categorizeTransaction(text, userData.user.id, categoryNames);
-        
-        if (result.category && result.confidence > 30) {
-          setSuggestion({
-            category: result.category,
-            type: result.type!,
-            confidence: result.confidence,
-            reasons: result.reasons,
-          });
-        } else {
-          setSuggestion(null);
-        }
-      } catch (error) {
-        console.error("Error categorizando:", error);
-      } finally {
-        setIsAnalyzing(false);
-      }
-    }, 1300),
-    [categories]
-  );
-
-  // Efecto para categorizar cuando cambia el detalle
-  useEffect(() => {
-    if (formData.detail && !formData.category_name && !editingTransaction) {
-      debouncedCategorize(formData.detail);
-    }
-  }, [formData.detail, formData.category_name, editingTransaction, debouncedCategorize]);
-
-  // Aplicar sugerencia
-  const applySuggestion = () => {
-    if (suggestion) {
-      // Si hay una transacción en edición, NO cambiar el tipo
-      // Si es una nueva transacción y no hay tipo seleccionado, usar el sugerido
-      const newType = editingTransaction ? formData.type : 
-                      (formData.type ? formData.type : suggestion.type);
-      
-      // Buscar la categoría exacta en las existentes (case-insensitive)
-      const matchingCategory = categories.find(
-        c => c.name.toLowerCase() === suggestion.category.toLowerCase()
-      );
-      
-      setFormData({ 
-        ...formData, 
-        type: newType,
-        category_name: matchingCategory?.name || suggestion.category 
-      });
-      setSuggestion(null);
-    }
-  };
-
-  // Rechazar sugerencia
-  const dismissSuggestion = () => {
-    setSuggestion(null);
-  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -415,8 +331,6 @@ export default function Transactions() {
       card_id: null,
       isLoss: false,
     });
-    setSuggestion(null);
-    setIsAnalyzing(false);
     setIsShared(false);
     setPendingTransaction(null);
     setAddingDebtor(false);
@@ -664,20 +578,10 @@ export default function Transactions() {
               Gestiona todas tus transacciones
             </p>
           </div>
-          <Dialog open={isDialogOpen} onOpenChange={(open) => {
-            setIsDialogOpen(open);
-            if (!open) {
-              setEditingTransaction(null);
-              resetForm();
-            }
-          }}>
-            <DialogTrigger asChild>
-              <Button className="rounded-full h-12 w-12 p-0 md:w-auto md:px-6">
-                <Plus className="h-5 w-5 md:mr-2" />
-                <span className="hidden md:inline">Agregar</span>
-              </Button>
-            </DialogTrigger>
-          </Dialog>
+          <Button className="rounded-full h-12 w-12 p-0 md:w-auto md:px-6" onClick={() => useGlobalDrawers.getState().openQuickAdd("Gasto")} aria-label="Agregar movimiento">
+            <Plus className="h-5 w-5 md:mr-2" />
+            <span className="hidden md:inline">Agregar</span>
+          </Button>
 
           <BaseModal
             open={isDialogOpen}
@@ -686,8 +590,7 @@ export default function Transactions() {
               if (!open) {
                 setEditingTransaction(null);
                 resetForm();
-                setSuggestion(null);
-                setIsCategoryPickerOpen(false);
+                            setIsCategoryPickerOpen(false);
                 setNewCategoryName(null);
               }
             }}
@@ -854,42 +757,6 @@ export default function Transactions() {
                     className="h-10 rounded-xl px-4"
                   />
 
-                  {isAnalyzing && (
-                    <div className="flex items-center gap-2 px-1 text-xs text-muted-foreground">
-                      <Sparkles className="h-3.5 w-3.5 animate-pulse text-primary" />
-                      <span className="animate-pulse">Buscando categoría…</span>
-                    </div>
-                  )}
-
-                  {suggestion && !isAnalyzing && (
-                    <div className="flex items-center gap-2 rounded-xl border border-primary/25 bg-primary/5 py-1.5 pl-3 pr-1.5 animate-in fade-in slide-in-from-top-1 duration-200">
-                      <Sparkles className="h-3.5 w-3.5 shrink-0 text-primary" />
-                      <span className="min-w-0 flex-1 truncate text-xs">
-                        <span className="font-semibold">
-                          {categories.find((c) => c.name === suggestion.category)?.icon || getCategoryIcon(suggestion.category)}{" "}
-                          {suggestion.category}
-                        </span>
-                        <span className="text-muted-foreground"> · {suggestion.confidence}% seguro</span>
-                      </span>
-                      <Button
-                        type="button"
-                        size="sm"
-                        onClick={applySuggestion}
-                        className="h-7 rounded-lg px-2.5 text-xs"
-                      >
-                        Aplicar
-                      </Button>
-                      <Button
-                        type="button"
-                        variant="ghost"
-                        size="sm"
-                        onClick={dismissSuggestion}
-                        className="h-7 w-7 shrink-0 rounded-lg p-0 text-muted-foreground"
-                      >
-                        <X className="h-3.5 w-3.5" />
-                      </Button>
-                    </div>
-                  )}
                 </div>
 
                 {/* Categoría + Tarjeta */}
@@ -900,12 +767,18 @@ export default function Transactions() {
                   )}>
                     <Label htmlFor="category" className="text-xs font-medium text-muted-foreground">Categoría</Label>
                     <CategorySelect
+                      placeholder={["Gasto", "Ingreso", "Inversión"].includes(formData.type) && !editingTransaction ? "Elegir automáticamente" : "Seleccionar"}
                       value={formData.category_name}
                       onChange={(value) => setFormData({ ...formData, category_name: value })}
                       options={categoryOptions}
                       onOpenMobile={() => setIsCategoryPickerOpen(true)}
                       onCreate={(name) => setNewCategoryName(name)}
                     />
+                    {!editingTransaction && !formData.category_name && ["Gasto", "Ingreso", "Inversión"].includes(formData.type) && (
+                      <p className="flex items-center gap-1.5 text-[11px] leading-relaxed text-muted-foreground">
+                        Se asigna al guardar.
+                      </p>
+                    )}
                   </div>
                   {formData.type !== "Inversión" && creditCards.length > 0 && (
                     <div className="space-y-2">

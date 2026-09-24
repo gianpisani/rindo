@@ -1,0 +1,142 @@
+{
+  "categories": [
+    {
+      "id": "supermercado",
+      "name": "Supermercado",
+      "type": "Gasto",
+      "description": "Compras de alimentos e insumos de la casa en supermercados o almacenes."
+    },
+    {
+      "id": "restaurantes",
+      "name": "Restaurantes",
+      "type": "Gasto",
+      "description": "Comida preparada, restaurantes, cafés y delivery."
+    },
+    {
+      "id": "transporte",
+      "name": "Transporte",
+      "type": "Gasto",
+      "description": "Viajes, transporte público, taxis y aplicaciones de transporte de personas."
+    },
+    {
+      "id": "salud",
+      "name": "Salud",
+      "type": "Gasto",
+      "description": "Medicamentos y atención médica."
+    },
+    {
+      "id": "sueldo",
+      "name": "Sueldo",
+      "type": "Ingreso",
+      "description": "Remuneración del trabajo."
+    },
+    {
+      "id": "fintual",
+      "name": "Fintual",
+      "type": "Inversión",
+      "description": "Aportes a inversiones en Fintual."
+    },
+    {
+      "id": "regalos",
+      "name": "Regalos",
+      "type": "Gasto",
+      "description": "Compras destinadas a regalar a otra persona."
+    },
+    {
+      "id": "ropa",
+      "name": "Ropa",
+      "type": "Gasto",
+      "description": "Vestuario y accesorios para uso propio."
+    }
+  ],
+  "cases": [
+    {
+      "detail": "Compra semanal en el Lider",
+      "type": "Gasto",
+      "expectedCategory": "Supermercado"
+    },
+    {
+      "detail": "Sushi a domicilio para la cena",
+      "type": "Gasto",
+      "expectedCategory": "Restaurantes"
+    },
+    {
+      "detail": "Uber viaje a la oficina",
+      "type": "Gasto",
+      "expectedCategory": "Transporte"
+    },
+    {
+      "detail": "Uber Eats almuerzo",
+      "type": "Gasto",
+      "expectedCategory": "Restaurantes"
+    },
+    {
+      "detail": "Medicamentos Cruz Verde",
+      "type": "Gasto",
+      "expectedCategory": "Salud"
+    },
+    {
+      "detail": "Pago remuneración septiembre",
+      "type": "Ingreso",
+      "expectedCategory": "Sueldo"
+    },
+    {
+      "detail": "Aporte al fondo de Fintual",
+      "type": "Inversión",
+      "expectedCategory": "Fintual"
+    },
+    {
+      "detail": "Rapalon",
+      "type": "Gasto",
+      "expectedCategory": "Restaurantes",
+      "history": [
+        {
+          "detail": "Rapalon",
+          "category": "Restaurantes",
+          "occurrences": 6
+        }
+      ]
+    },
+    {
+      "detail": "Paris Parque Arauco regalo cumpleaños",
+      "type": "Gasto",
+      "expectedCategory": "Regalos",
+      "history": [
+        {
+          "detail": "Paris Parque Arauco",
+          "category": "Ropa",
+          "occurrences": 5
+        }
+      ]
+    },
+    {
+      "detail": "Paris Parque Arauco",
+      "type": "Gasto",
+      "expectedCategory": "Regalos",
+      "history": [
+        {
+          "detail": "Paris Parque Arauco",
+          "category": "Regalos",
+          "occurrences": 3
+        }
+      ]
+    },
+    {
+      "detail": "Uber Eats",
+      "type": "Gasto",
+      "expectedCategory": "Restaurantes",
+      "history": [
+        {
+          "detail": "Uber Trip",
+          "category": "Transporte",
+          "occurrences": 20
+        },
+        {
+          "detail": "Uber Eats almuerzo",
+          "category": "Restaurantes",
+          "occurrences": 2
+        }
+      ]
+    }
+  ]
+}

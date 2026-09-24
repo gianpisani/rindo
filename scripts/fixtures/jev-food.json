@@ -1,0 +1,122 @@
+{
+  "note": "Casos ilustrativos basados en los criterios conversados; no son movimientos extraídos de la base de datos.",
+  "categories": [
+    {
+      "id": "0",
+      "name": "Supermercado",
+      "type": "Gasto",
+      "description": "Compras para abastecer la casa: supermercado, feria y despensa. Si solo se conoce un supermercado como Jumbo, elegir esta categoría. Si el detalle identifica explícitamente un café, barrita, bebida, helado o snack individual para consumir, elegir Café y snacks.",
+      "is_active": true
+    },
+    {
+      "id": "1",
+      "name": "Café y snacks",
+      "type": "Gasto",
+      "description": "Cafés, barritas, bebidas, helados y picoteos individuales. Siempre aquí aunque se consuman con pareja o amigos, en la pega o durante un panorama. Una comida completa no es snack. No inferir el producto solo por un monto pequeño.",
+      "is_active": true
+    },
+    {
+      "id": "2",
+      "name": "Comida diaria",
+      "type": "Gasto",
+      "description": "Comidas completas para resolver el día: almuerzo de trabajo, sándwich de almuerzo o delivery cotidiano. Excluye cafés y picoteos, compras para la casa y comidas descritas como una ocasión social o especial. Delivery por sí solo no significa panorama.",
+      "is_active": true
+    },
+    {
+      "id": "3",
+      "name": "Comidas y panoramas",
+      "type": "Gasto",
+      "description": "Comidas completas para disfrutar una ocasión: cena con pareja, almuerzo familiar o con amigos, salir a comer o pedir sushi con la pareja en casa. Importa la ocasión, no el monto ni que sea delivery. Excluye cafés, bebidas, helados y snacks aunque sean acompañados. No inventar acompañantes.",
+      "is_active": true
+    },
+    {
+      "id": "legacy-food",
+      "name": "Comida",
+      "type": "Gasto",
+      "is_active": false
+    },
+    {
+      "id": "legacy-coffee",
+      "name": "Café",
+      "type": "Gasto",
+      "is_active": false
+    },
+    {
+      "id": "transport",
+      "name": "Transporte",
+      "type": "Gasto"
+    },
+    {
+      "id": "gifts",
+      "name": "Regalos",
+      "type": "Gasto"
+    }
+  ],
+  "cases": [
+    {
+      "detail": "Café con mi pareja",
+      "type": "Gasto",
+      "expectedCategory": "Café y snacks"
+    },
+    {
+      "detail": "Barrita en la pega",
+      "type": "Gasto",
+      "expectedCategory": "Café y snacks"
+    },
+    {
+      "detail": "Helado con amigos",
+      "type": "Gasto",
+      "expectedCategory": "Café y snacks"
+    },
+    {
+      "detail": "Jumbo",
+      "type": "Gasto",
+      "expectedCategory": "Supermercado"
+    },
+    {
+      "detail": "Compra semanal de despensa en Jumbo",
+      "type": "Gasto",
+      "expectedCategory": "Supermercado"
+    },
+    {
+      "detail": "Barrita individual en Jumbo para comer ahora",
+      "type": "Gasto",
+      "expectedCategory": "Café y snacks"
+    },
+    {
+      "detail": "Almuerzo solo en la pega",
+      "type": "Gasto",
+      "expectedCategory": "Comida diaria"
+    },
+    {
+      "detail": "Delivery para resolver el almuerzo del trabajo",
+      "type": "Gasto",
+      "expectedCategory": "Comida diaria"
+    },
+    {
+      "detail": "Sushi con mi pareja en casa",
+      "type": "Gasto",
+      "expectedCategory": "Comidas y panoramas"
+    },
+    {
+      "detail": "Cena con amigos",
+      "type": "Gasto",
+      "expectedCategory": "Comidas y panoramas"
+    },
+    {
+      "detail": "Almuerzo familiar en restaurante",
+      "type": "Gasto",
+      "expectedCategory": "Comidas y panoramas"
+    },
+    {
+      "detail": "Regalo en Paris Parque Arauco",
+      "type": "Gasto",
+      "expectedCategory": "Regalos"
+    },
+    {
+      "detail": "Uber Trip",
+      "type": "Gasto",
+      "expectedCategory": "Transporte"
+    }
+  ]
+}

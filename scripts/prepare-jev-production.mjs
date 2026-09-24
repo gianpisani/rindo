@@ -1,5 +1,6 @@
 // Explicit release operation, never run from the application or a pull request.
 import { readFile } from 'node:fs/promises'
+import { classifyWithJev } from '../supabase/functions/_shared/jev-categorizer.ts'
 
 const { SUPABASE_ACCESS_TOKEN: token, SUPABASE_PROJECT_REF: ref,
   AI_GATEWAY_API_KEY: key, RINDO_CATEGORY_OWNER_EMAIL: email } = process.env
@@ -50,3 +51,10 @@ const categories = await query(`SELECT count(*)::int AS count FROM public.catego
   AND length(description) > 0`, [owner])
 if (categories[0]?.count !== 4) throw new Error('Food category verification failed')
 console.log('Verified four active food categories for the selected owner; historical transactions untouched')
+const options = await query(`SELECT id, name, type, description, is_active FROM public.categories
+  WHERE user_id = $1::uuid AND is_active AND type = 'Gasto'`, [owner])
+const smoke = await classifyWithJev({ detail: 'café y barrita en el trabajo', type: 'Gasto' }, options, { apiKey: key })
+if (smoke.status !== 'accepted' || smoke.category !== 'Café y snacks') {
+  throw new Error('Jev synthetic smoke test failed; no transaction was created')
+}
+console.log('Live Jev smoke test passed using production category definitions; no transaction created')
