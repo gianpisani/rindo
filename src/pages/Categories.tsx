@@ -7,6 +7,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Input } from "@/components/ui/input";
 import { Dialog, DialogTrigger } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
+import { Switch } from "@/components/ui/switch";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Plus, Pencil, Trash2, TrendingUp, TrendingDown, PiggyBank, ArrowLeftRight, ArrowDownToLine, LineChart } from "lucide-react";
 import { useCategories } from "@/hooks/useCategories";
@@ -202,11 +203,18 @@ export default function Categories() {
                     placeholder="Qué gastos van aquí y cuáles no. Ayuda a categorizar mejor."
                     onChange={event => setFormData({ ...formData, description: event.target.value })} />
                 </div>
-                <label className="flex items-center gap-2 text-sm">
-                  <input type="checkbox" checked={formData.is_active}
-                    onChange={event => setFormData({ ...formData, is_active: event.target.checked })} />
-                  Disponible para nuevos movimientos
-                </label>
+                <div className="flex items-start justify-between gap-4">
+                  <div className="space-y-0.5">
+                    <Label htmlFor="category-active">En uso</Label>
+                    <p className="text-xs text-muted-foreground leading-relaxed">
+                      {formData.is_active
+                        ? "Aparece al anotar y Jev puede elegirla."
+                        : "Archivada: no aparece al anotar ni la elige Jev. Sus movimientos anteriores se mantienen."}
+                    </p>
+                  </div>
+                  <Switch id="category-active" checked={formData.is_active}
+                    onCheckedChange={checked => setFormData({ ...formData, is_active: checked })} />
+                </div>
               </>}
 
               {/* Emoji picker */}
@@ -276,7 +284,7 @@ export default function Categories() {
                     >
                       <span className="text-base leading-none">{cat.icon || "🏷️"}</span>
                       <span>{cat.name}</span>
-                      {cat.is_active === false && <span className="text-[10px] opacity-60">Histórica</span>}
+                      {cat.is_active === false && <span className="text-[10px] opacity-60">Archivada</span>}
                       {/* Hover actions */}
                       <div className="absolute inset-0 rounded-full flex items-center justify-end pr-1.5 gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity bg-background/80 backdrop-blur-sm">
                         <button
