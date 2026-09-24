@@ -3,7 +3,8 @@ import { readFile } from 'node:fs/promises'
 
 const { SUPABASE_ACCESS_TOKEN: token, SUPABASE_PROJECT_REF: ref,
   AI_GATEWAY_API_KEY: key, RINDO_CATEGORY_OWNER_EMAIL: email } = process.env
-if (ref !== 'rnjhquvvimpygkjpbign' || !token || !key || !email) {
+// Verified against the Supabase origin in the live rindo.cl application.
+if (ref?.trim() !== 'fxlztcwqmlmhqwzbrebo' || !token || !key || !email) {
   throw new Error('Expected Rindo project and release secrets are required')
 }
 async function api(path, body) {
