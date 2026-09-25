@@ -730,6 +730,7 @@ const Index = () => {
                         <AnalyzingBadge saving={t.isPending} />
                       ) : (
                         <p className={cn("text-sm font-medium truncate leading-snug", isPrivacyMode && "privacy-blur")}>
+                          <span className="mr-1.5" aria-hidden="true">{getCatEmoji(t.category_name)}</span>
                           {t.category_name}
                         </p>
                       )}

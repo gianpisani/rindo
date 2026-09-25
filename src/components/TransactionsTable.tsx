@@ -181,17 +181,16 @@ export function getCategoryIcon(name: string): string {
 
 // ── Avatar helpers ─────────────────────────────────────────────────────────
 
-const AVATAR_PALETTE = [
-  "#6366f1", "#8b5cf6", "#ec4899", "#f59e0b",
-  "#10b981", "#3b82f6", "#f97316", "#14b8a6",
-];
-
-function getAvatarColor(str: string): string {
-  let hash = 0;
-  for (let i = 0; i < str.length; i++) {
-    hash = str.charCodeAt(i) + ((hash << 5) - hash);
-  }
-  return AVATAR_PALETTE[Math.abs(hash) % AVATAR_PALETTE.length];
+// The avatar shows what the movement *is*: its category icon on a wash of the
+// category color. Uncolored categories fall back to the neutral muted tone.
+function categoryAvatar(name: string, categories: { name: string; icon?: string | null; color?: string | null }[]) {
+  const category = categories.find(c => c.name === name);
+  const tone = category?.color || "var(--muted-foreground)";
+  const analyzing = name === "⚡ Analizando...";
+  return {
+    emoji: analyzing ? "⚡" : category?.icon || getCategoryIcon(name),
+    style: { backgroundColor: `color-mix(in oklch, ${tone} 22%, transparent)` },
+  };
 }
 
 function getCleanDetail(detail: string | null): string {
@@ -846,18 +845,17 @@ export function TransactionsTable({
           const raw = row.original.detail || "";
           const clean = getCleanDetail(raw);
           const isBot = raw.startsWith("🤖");
-          const initial = clean.charAt(0).toUpperCase() || "?";
-          const avatarColor = getAvatarColor(clean || "default");
+          const avatar = categoryAvatar(row.original.category_name, categories);
 
           return (
             <div className={cn("flex items-center gap-2.5 max-w-[300px]", isPrivacyMode && "privacy-blur")}>
               {/* Avatar */}
               <div className="relative flex-shrink-0">
                 <div
-                  className="w-7 h-7 rounded-full flex items-center justify-center text-white text-xs font-bold select-none"
-                  style={{ backgroundColor: avatarColor }}
+                  className="w-7 h-7 rounded-full flex items-center justify-center text-sm leading-none select-none"
+                  style={avatar.style}
                 >
-                  {initial}
+                  {avatar.emoji}
                 </div>
                 {isBot && (
                   <div
@@ -1628,8 +1626,7 @@ export function TransactionsTable({
                   {group.rows.map((row) => {
                     const t = row.original;
                     const clean = getCleanDetail(t.detail);
-                    const initial = clean.charAt(0).toUpperCase() || "?";
-                    const avatarColor = getAvatarColor(clean || "default");
+                    const avatar = categoryAvatar(t.category_name, categories);
                     const isBot = (t.detail || "").startsWith("🤖");
                     const catData = categories.find(c => c.name === t.category_name);
                     const amountColor = typeAmountColors[t.type];
@@ -1666,10 +1663,10 @@ export function TransactionsTable({
                         {/* Avatar */}
                         <div className="relative flex-shrink-0">
                           <div
-                            className="w-10 h-10 rounded-full flex items-center justify-center text-white text-sm font-bold select-none"
-                            style={{ backgroundColor: avatarColor }}
+                            className="w-10 h-10 rounded-full flex items-center justify-center text-lg leading-none select-none"
+                            style={avatar.style}
                           >
-                            {initial}
+                            {avatar.emoji}
                           </div>
                           {isBot && (
                             <div className="absolute -bottom-0.5 -right-0.5 w-4 h-4 rounded-full bg-background flex items-center justify-center">
@@ -1759,8 +1756,7 @@ export function TransactionsTable({
               table.getRowModel().rows.map((row) => {
                 const t = row.original;
                 const clean = getCleanDetail(t.detail);
-                const initial = clean.charAt(0).toUpperCase() || "?";
-                const avatarColor = getAvatarColor(clean || "default");
+                const avatar = categoryAvatar(t.category_name, categories);
                 const isBot = (t.detail || "").startsWith("🤖");
                 const catData = categories.find(c => c.name === t.category_name);
                 const amountColor = typeAmountColors[t.type];
@@ -1795,10 +1791,10 @@ export function TransactionsTable({
 
                     <div className="relative flex-shrink-0">
                       <div
-                        className="w-10 h-10 rounded-full flex items-center justify-center text-white text-sm font-bold select-none"
-                        style={{ backgroundColor: avatarColor }}
+                        className="w-10 h-10 rounded-full flex items-center justify-center text-lg leading-none select-none"
+                        style={avatar.style}
                       >
-                        {initial}
+                        {avatar.emoji}
                       </div>
                       {isBot && (
                         <div className="absolute -bottom-0.5 -right-0.5 w-4 h-4 rounded-full bg-background flex items-center justify-center">
