@@ -125,3 +125,20 @@ test('uses category definitions and excludes historical categories from new deci
   assert.deepEqual(request.payload.questions.category.criteria, { c0: 'Café y snacks: Café incluso con pareja.' });
   assert.ok(!JSON.stringify(request.payload).includes('Comida'));
 });
+
+test('adds Chilean merchant context only when the detail names a known merchant', async () => {
+  const { chileanMerchantContext } = await import('../supabase/functions/_shared/chilean-merchants.ts')
+  const context = (detail: string) => prepareJevRequest({ detail, type: 'Gasto' }, categories).payload.state.merchant_context
+  assert.match(context('COMPRA JUMBO LA REINA')![0], /supermercado/)
+  assert.match(context('LIDER EXPRESS PROVIDENCIA')![0], /Lider/)
+  assert.match(context('Tottus Kennedy')![0], /Tottus/)
+  assert.match(context('SANTA ISABEL 123')![0], /Santa Isabel/)
+  assert.equal(context('Sushi para la cena')?.length ?? 0, 1)
+  assert.equal(context('Regalo para mamá'), undefined)
+  assert.deepEqual(chileanMerchantContext('UBER EATS PENDING'), ['Uber Eats: delivery de comida (no es viaje de Uber).'])
+  assert.match(chileanMerchantContext('UBER *TRIP')[0], /viaje en auto/)
+  // Weak, ambiguous words defer to a recognized merchant in the same detail.
+  assert.deepEqual(chileanMerchantContext('MERPAGO*TOTTUS').map(d => d.split(':')[0]), ['Mercado Pago', 'Tottus'])
+  assert.equal(chileanMerchantContext('COMERCIAL EASY SPA PARIS').length, 2)
+  assert.deepEqual(chileanMerchantContext('JUMBO PARIS COSTANERA').length, 1)
+})
