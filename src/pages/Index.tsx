@@ -22,7 +22,6 @@ import {
   PiggyBank,
   Receipt,
   Eye,
-  Play,
   Lightbulb,
   ChevronRight,
 } from "lucide-react";
@@ -30,12 +29,13 @@ import { BankSyncModal } from "@/components/BankSyncModal";
 import { useBankSyncContext } from "@/contexts/BankSyncContext";
 import { useNavigate } from "react-router-dom";
 import { Skeleton } from "@/components/ui/skeleton";
-import { format, startOfMonth, endOfMonth, subMonths, isToday, isYesterday } from "date-fns";
+import { format, subMonths, isToday, isYesterday } from "date-fns";
 import { es } from "date-fns/locale";
 import { cn } from "@/lib/utils";
 import NumberFlow from "@number-flow/react";
 import { usePrivacyMode } from "@/hooks/usePrivacyMode";
-import { MonthlyStory } from "@/components/MonthlyStory";
+import { MonthPulse, MonthPulseCard } from "@/components/MonthPulse";
+import { computeMonthPace } from "@/lib/month-pace";
 import { HomeNotices, type HomeNotice } from "@/components/HomeNotices";
 import { useLearningNotice } from "@/hooks/useLearningNotice";
 import { useUserProfile } from "@/hooks/useUserProfile";
@@ -90,13 +90,6 @@ const Index = () => {
   // consumo neto de reembolsos, sin tránsito)
   const now = new Date();
   const lastMonth = subMonths(now, 1);
-  const lastMonthStart = startOfMonth(lastMonth);
-  const lastMonthEnd = endOfMonth(lastMonth);
-
-  const lastMonthTransactions = transactions.filter((t) => {
-    const date = new Date(t.date);
-    return date >= lastMonthStart && date <= lastMonthEnd;
-  });
 
   const { budget } = useMonthlyBudget();
   const flowConfig = useMemo<Partial<RealFlowsConfig>>(
@@ -152,17 +145,13 @@ const Index = () => {
     now
   );
 
-  // Last month data for Monthly Story
-  const lastMonthSummary = useMonthlySummary(transactions, categories, limits, lastMonth);
-  const hasLastMonthData = lastMonthSummary.transactionCount > 0;
-  const { insights: lastMonthInsights } = useCategoryInsights(transactions, limits, lastMonth);
-
-  // Salary for last month (Sueldo category in income)
-  const lastMonthSalary = useMemo(() => {
-    return lastMonthTransactions
-      .filter((t) => t.type === "Ingreso" && t.category_name.toLowerCase() === "sueldo")
-      .reduce((s, t) => s + Number(t.amount), 0);
-  }, [lastMonthTransactions]);
+  // El pulso del mes: tu gasto de hoy contra tu mes típico al mismo día
+  const monthPace = useMemo(
+    () => computeMonthPace(transactions, now),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [transactions, now.getFullYear(), now.getMonth(), now.getDate()]
+  );
+  const hasPace = monthPace.typical !== null || monthPace.spentSoFar > 0;
 
   // Los gastos del mes, de mayor a menor. Sin agrupar en "Otros": la lista
   // muestra las que caben y el header dice cuántas quedaron fuera.
@@ -795,30 +784,9 @@ const Index = () => {
           <div className="flex-1 min-h-0">
             {transactionsCard}
           </div>
-          {/* Monthly Story — always visible at bottom */}
-          {hasLastMonthData && (
-            <button
-              onClick={() => setStoryOpen(true)}
-              className="shrink-0 w-full group relative overflow-hidden rounded-xl border border-border/50 px-4 py-3 text-left transition-all hover:border-primary/30 hover:shadow-lg hover:shadow-primary/5"
-            >
-              <div className="absolute inset-0 bg-gradient-to-r from-primary/5 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
-              <div className="relative flex items-center justify-between">
-                <div className="flex items-center gap-3">
-                  <div className="flex items-center justify-center w-8 h-8 rounded-full bg-primary/10 text-primary shrink-0">
-                    <Play className="h-3.5 w-3.5 ml-0.5" />
-                  </div>
-                  <div>
-                    <p className="text-sm font-bold capitalize leading-tight">
-                      Resumen de {format(lastMonth, "MMMM", { locale: es })}
-                    </p>
-                    <p className="text-[11px] text-muted-foreground">
-                      {lastMonthSummary.transactionCount} transacciones
-                    </p>
-                  </div>
-                </div>
-                <ChevronRight className="h-4 w-4 text-muted-foreground" />
-              </div>
-            </button>
+          {/* Pulso del mes — siempre visible abajo */}
+          {hasPace && (
+            <MonthPulseCard pace={monthPace} onOpen={() => setStoryOpen(true)} className="shrink-0" />
           )}
         </div>
 
@@ -836,29 +804,8 @@ const Index = () => {
             <div className="col-span-8 min-h-0">{transactionsCard}</div>
             <div className="col-span-4 min-h-0 flex flex-col gap-3">
               <div className="flex-1 min-h-0">{insightsPanel}</div>
-              {hasLastMonthData && (
-                <button
-                  onClick={() => setStoryOpen(true)}
-                  className="shrink-0 group relative overflow-hidden rounded-xl border border-border/50 text-left transition-all hover:border-primary/30 hover:shadow-lg hover:shadow-primary/5"
-                >
-                  {/* Subtle animated gradient background */}
-                  <div className="absolute inset-0 bg-gradient-to-br from-primary/8 via-primary/3 to-transparent" />
-                  <div className="absolute inset-0 bg-gradient-to-r from-primary/5 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
-                  <div className="relative px-4 py-3 flex items-center gap-3">
-                    <div className="flex items-center justify-center size-9 rounded-full bg-primary/10 text-primary group-hover:bg-primary/20 group-hover:scale-105 transition-all duration-300">
-                      <Play className="h-3.5 w-3.5 ml-0.5" />
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <p className="text-[11px] font-medium text-muted-foreground uppercase tracking-wider leading-none">
-                        Resumen
-                      </p>
-                      <p className="text-sm font-bold capitalize leading-tight mt-0.5">
-                        {format(lastMonth, "MMMM yyyy", { locale: es })}
-                      </p>
-                    </div>
-                    <ChevronRight className="h-4 w-4 text-muted-foreground group-hover:text-primary group-hover:translate-x-0.5 transition-all" />
-                  </div>
-                </button>
+              {hasPace && (
+                <MonthPulseCard pace={monthPace} onOpen={() => setStoryOpen(true)} className="shrink-0" />
               )}
             </div>
           </div>
@@ -879,16 +826,13 @@ const Index = () => {
 
       </div>
 
-      <MonthlyStory
+      <MonthPulse
         open={storyOpen}
         onClose={() => setStoryOpen(false)}
-        month={lastMonth}
-        kpis={lastMonthSummary.kpis}
-        categoryBreakdown={lastMonthSummary.categoryBreakdown}
-        dailyStats={lastMonthSummary.dailyStats}
-        transactionCount={lastMonthSummary.transactionCount}
-        salary={lastMonthSalary}
-        insights={lastMonthInsights}
+        initialMonth={now}
+        transactions={transactions}
+        categories={categories}
+        flowConfig={flowConfig}
       />
 
       <InvestmentMoveDrawer
