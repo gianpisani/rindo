@@ -42,6 +42,8 @@ export function WhisperInput({ open, onOpenChange, defaultType = 'Gasto', initia
   const [draft, setDraft] = useState<WhisperDraft>(() => initialDraft ?? {
     value: '', type: defaultType, category: '', date: localDate(), cardId: '', shared: false, reimbursementCategory: '', isLoss: false,
   });
+  // The picker only has minute precision; untouched, the save takes the exact moment.
+  const [dateTouched, setDateTouched] = useState(false);
   const [expanded, setExpanded] = useState(false);
   const [allCategories, setAllCategories] = useState(false);
   const [error, setError] = useState('');
@@ -92,7 +94,7 @@ export function WhisperInput({ open, onOpenChange, defaultType = 'Gasto', initia
       const transaction = await addTransaction.mutateAsync({
         amount: draft.type === 'Rendimiento' && draft.isLoss ? -parsed.amount : parsed.amount,
         type: draft.type, detail: parsed.detail, category_name: fixedCategory ?? draft.category,
-        date: new Date(draft.date).toISOString(), card_id: draft.cardId || null,
+        date: (dateTouched ? new Date(draft.date) : new Date()).toISOString(), card_id: draft.cardId || null,
         reimbursement_for_category: ['Ingreso', 'Reembolso'].includes(draft.type) ? draft.reimbursementCategory || null : null,
       });
       if (draft.shared && draft.type === 'Gasto') setPendingShared({ id: transaction.id, amount: parsed.amount });
@@ -183,7 +185,7 @@ export function WhisperInput({ open, onOpenChange, defaultType = 'Gasto', initia
             <AnimatePresence initial={false}>
               {expanded && <motion.div className="whisper-options" initial={{ height: 0, opacity: 0 }} animate={{ height: 'auto', opacity: 1 }}
                 exit={{ height: 0, opacity: 0 }} transition={{ duration: reducedMotion ? 0 : 0.18 }}>
-                <label>Fecha<input aria-label="Fecha del movimiento" type="datetime-local" value={draft.date} onChange={event => update({ date: event.target.value })} /></label>
+                <label>Fecha<input aria-label="Fecha del movimiento" type="datetime-local" value={draft.date} onChange={event => { setDateTouched(true); update({ date: event.target.value }); }} /></label>
                 <label>Cuenta<select aria-label="Cuenta o tarjeta" value={draft.cardId} onChange={event => update({ cardId: event.target.value })}>
                   <option value="">Cuenta</option>{creditCards.filter(card => card.is_active).map(card => <option key={card.id} value={card.id}>{card.name}</option>)}
                 </select></label>

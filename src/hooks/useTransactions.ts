@@ -49,6 +49,11 @@ export type NewTransaction = Omit<
     >
   >;
 
+// Same minute is common (bank syncs, quick entries): creation order breaks the tie.
+export const byNewest = (a: Pick<Transaction, "date" | "created_at">, b: Pick<Transaction, "date" | "created_at">) =>
+  new Date(b.date).getTime() - new Date(a.date).getTime() ||
+  new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
+
 export function useTransactions() {
   const queryClient = useQueryClient();
   const { hasCategoryContext } = useCategories();
@@ -62,7 +67,8 @@ export function useTransactions() {
       const { data, error } = await supabase
         .from("transactions")
         .select("*")
-        .order("date", { ascending: false });
+        .order("date", { ascending: false })
+        .order("created_at", { ascending: false });
 
       if (error) throw error;
       console.log("📦 Transactions fetched:", data?.length || 0);
@@ -87,7 +93,7 @@ export function useTransactions() {
     },
   });
   const allTransactions = useMemo(() => [...pendingTransactions, ...savedTransactions]
-    .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()), [savedTransactions, pendingTransactions]);
+    .sort(byNewest), [savedTransactions, pendingTransactions]);
 
   // Split into past/present and future transactions
   const today = new Date();

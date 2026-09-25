@@ -2,7 +2,7 @@ import { useState, useMemo } from "react";
 import Layout from "@/components/Layout";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { useTransactions } from "@/hooks/useTransactions";
+import { byNewest, useTransactions } from "@/hooks/useTransactions";
 import { useCategories } from "@/hooks/useCategories";
 import { useCategoryLimits } from "@/hooks/useCategoryLimits";
 import { useMonthlySummary } from "@/hooks/useMonthlySummary";
@@ -208,7 +208,7 @@ const Index = () => {
 
   // Últimas 40 transacciones agrupadas por fecha
   const recentTransactions = [...transactions]
-    .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
+    .sort(byNewest)
     .slice(0, 40);
 
   const groupedTransactions = recentTransactions.reduce((acc, t) => {
