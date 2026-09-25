@@ -1,7 +1,5 @@
 import { useState, useMemo } from "react";
 import Layout from "@/components/Layout";
-import { Card } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
 import { byNewest, useTransactions } from "@/hooks/useTransactions";
 import { useCategories } from "@/hooks/useCategories";
 import { useCategoryLimits } from "@/hooks/useCategoryLimits";
@@ -21,9 +19,6 @@ import {
   TrendingDown,
   PiggyBank,
   Receipt,
-  Eye,
-  Lightbulb,
-  ChevronRight,
 } from "lucide-react";
 import { BankSyncModal } from "@/components/BankSyncModal";
 import { useBankSyncContext } from "@/contexts/BankSyncContext";
@@ -46,18 +41,25 @@ import { signPrefix, type TransactionType } from "@/lib/ledger";
 import { AnalyzingBadge } from "@/components/AnalyzingBadge";
 import { ANALYZING_CATEGORY } from "@/lib/auto-category-policy";
 /**
- * El lomo y el monto de cada movimiento en Recientes. Un mapa por tipo en
- * vez de una cadena de ternarios: así un tipo nuevo no se cuela sin color
- * ni, peor, con el signo al revés.
+ * El color del monto de cada movimiento en Recientes. Un mapa por tipo en
+ * vez de una cadena de ternarios: así un tipo nuevo no se cuela con el color
+ * equivocado. El gasto no lleva color: es lo normal, no una alerta.
  */
-const RECENT_TONES: Record<TransactionType, { spine: string; text: string }> = {
-  Ingreso: { spine: "bg-success", text: "text-success" },
-  Gasto: { spine: "bg-destructive", text: "text-destructive" },
-  Inversión: { spine: "bg-blue", text: "text-blue" },
-  Rescate: { spine: "bg-cyan-500", text: "text-cyan-500" },
-  Rendimiento: { spine: "bg-violet-500", text: "text-violet-500" },
-  Reembolso: { spine: "bg-amber-500", text: "text-amber-500" },
+const AMOUNT_TONE: Record<TransactionType, string | undefined> = {
+  Ingreso: "var(--inicio-emerald)",
+  Gasto: undefined,
+  Inversión: "var(--inicio-blue)",
+  Rescate: "var(--inicio-cyan)",
+  Rendimiento: "var(--inicio-violet)",
+  Reembolso: "var(--inicio-emerald)",
 };
+
+const BANK_LOGOS = ["/banks/bchile.png", "/banks/santander.png", "/banks/bci.png", "/banks/bestado.png", "/banks/itau.png"];
+
+/** El ícono de una categoría sobre un tono de su color. */
+const tint = (color?: string | null) => ({
+  background: `color-mix(in oklch, ${color || "var(--muted-foreground)"} 22%, transparent)`,
+});
 
 const Index = () => {
   const { transactions, isLoading } = useTransactions();
@@ -69,6 +71,8 @@ const Index = () => {
   const [storyOpen, setStoryOpen] = useState(false);
   const [isBankSyncOpen, setIsBankSyncOpen] = useState(false);
   const [investmentMoveOpen, setInvestmentMoveOpen] = useState(false);
+  // En celular Recientes y Límites comparten la tarjeta.
+  const [mobileTab, setMobileTab] = useState<"feed" | "limits">("feed");
   const bankSync = useBankSyncContext();
   const { profile: userProfile, avatarUrl } = useUserProfile();
 
@@ -139,7 +143,7 @@ const Index = () => {
   const currentMonthSummary = useMonthlySummary(transactions, categories, limits, now);
 
   // Category insights
-  const { insights: currentInsights, categorySpending } = useCategoryInsights(
+  const { categorySpending } = useCategoryInsights(
     transactions,
     limits,
     now
@@ -226,589 +230,317 @@ const Index = () => {
     }).format(value);
   };
 
-  // Insights — el tipo elige el tono, la fila elige con cuánta fuerza se
-  // muestra. Guardamos el token crudo (triplete OKLCH) en vez de un color
-  // cerrado: así la misma constante sirve para el lomo a fuerza completa,
-  // el relleno translúcido y el borde, sin repetir el color en ningún lado.
-  const insightTone: Record<string, string> = {
-    alert: "var(--insight-alert)",
-    achievement: "var(--insight-achievement)",
-    opportunity: "var(--insight-opportunity)",
-    pattern: "var(--insight-pattern)",
-  };
+  const colorOf = (categoryName: string) =>
+    categories.find((c) => c.name === categoryName)?.color ?? null;
 
-  // ─── Balance Card (shared between mobile/desktop) ─────
-  const balanceCard = (
-    <Card className="border-border/50 flex flex-col overflow-hidden">
-      <div className="px-4 py-3 md:px-5 md:py-4 flex flex-col">
-        <div className="flex items-center justify-between">
-          <span className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider">Líquido</span>
-          <span className="text-[10px] text-muted-foreground font-mono tabular-nums capitalize">
-            {format(now, "MMMM yyyy", { locale: es })}
-          </span>
-        </div>
-        {/* El número grande es el que se usa para decidir si se puede gastar:
-            lo líquido. El patrimonio es contexto, no la decisión del día. */}
-        <div className={cn("mt-1.5 md:mt-2 text-[28px] md:text-4xl font-bold font-mono tabular-nums tracking-tight leading-none", isPrivacyMode && "privacy-blur")}>
-          $<NumberFlow
-            value={liquido}
-            format={{
-              style: "decimal",
-              minimumFractionDigits: 0,
-              maximumFractionDigits: 0
-            }}
-            locales="es-CL"
-          />
-        </div>
-
-        {/* El otro balde y el total. Invertido es la puerta a los movimientos
-            que lo tocan; con montos largos baja a una segunda línea en vez de
-            desbordar la tarjeta. */}
-        <div className="mt-2 flex flex-wrap items-center justify-between gap-x-3 gap-y-1">
-          <button
-            onClick={() => setInvestmentMoveOpen(true)}
-            className="flex items-baseline gap-1.5 whitespace-nowrap rounded-md px-1 -mx-1 py-0.5 hover:bg-blue/10 transition-colors group"
-          >
-            <PiggyBank className="h-3 w-3 text-blue shrink-0 translate-y-0.5" />
-            <span className="text-[10px] text-muted-foreground uppercase tracking-wider">Invertido</span>
-            <span className={cn("text-xs md:text-sm font-semibold font-mono tabular-nums", isPrivacyMode && "privacy-blur")}>
-              {formatCurrency(invertido)}
-            </span>
-            <ChevronRight className="h-3 w-3 text-muted-foreground/50 shrink-0 translate-y-0.5 group-hover:text-blue transition-colors" />
-          </button>
-          <span className="flex items-baseline gap-1.5 whitespace-nowrap">
-            <span className="text-[10px] text-muted-foreground uppercase tracking-wider">Patrimonio</span>
-            <span className={cn("text-xs md:text-sm font-semibold font-mono tabular-nums text-muted-foreground", isPrivacyMode && "privacy-blur")}>
-              {formatCurrency(patrimonio)}
-            </span>
-          </span>
-        </div>
-
-        <div className="mt-2.5 pt-2.5 md:mt-3 md:pt-3 border-t border-border/50">
-          <div className="flex items-center gap-3 md:gap-6 flex-wrap">
-            <div className="flex items-center gap-1">
-              <TrendingUp className="h-3 w-3 text-success shrink-0" />
-              <span className={cn("text-xs md:text-sm font-semibold font-mono tabular-nums", isPrivacyMode && "privacy-blur")}>
-                ${new Intl.NumberFormat("es-CL").format(currentIncome)}
-              </span>
-              {incomeChange !== 0 && (
-                <span className={cn(
-                  "text-[9px] md:text-[10px]",
-                  incomeChange > 0 ? "text-success" : "text-destructive",
-                  isPrivacyMode && "privacy-blur"
-                )}>
-                  {incomeChange > 0 ? "+" : ""}{Math.round(incomeChange)}%
-                </span>
-              )}
-            </div>
-            <div className="flex items-center gap-1">
-              <TrendingDown className="h-3 w-3 text-destructive shrink-0" />
-              <span className={cn("text-xs md:text-sm font-semibold font-mono tabular-nums", isPrivacyMode && "privacy-blur")}>
-                ${new Intl.NumberFormat("es-CL").format(currentExpenses)}
-              </span>
-              {expenseChange !== 0 && (
-                <span className={cn(
-                  "text-[9px] md:text-[10px]",
-                  expenseChange > 0 ? "text-destructive" : "text-success",
-                  isPrivacyMode && "privacy-blur"
-                )}>
-                  {expenseChange > 0 ? "+" : ""}{Math.round(expenseChange)}%
-                </span>
-              )}
-            </div>
-            {currentInvestments > 0 && (
-              <div className="flex items-center gap-1">
-                <PiggyBank className="h-3 w-3 text-blue shrink-0" />
-                <span className={cn("text-xs md:text-sm font-semibold font-mono tabular-nums", isPrivacyMode && "privacy-blur")}>
-                  ${new Intl.NumberFormat("es-CL").format(currentInvestments)}
-                </span>
-              </div>
-            )}
-          </div>
-          {(lastMonthIncome > 0 || lastMonthExpenses > 0) && (
-            <p className={cn(
-              "text-[10px] text-muted-foreground font-mono tabular-nums mt-1.5 md:mt-2",
-              isPrivacyMode && "privacy-blur"
-            )}>
-              <span className="capitalize">{format(lastMonth, "MMM", { locale: es })}</span>
-              <span className="mx-1 text-muted-foreground/40">&middot;</span>
-              <span className="text-success/80">+{formatCurrency(lastMonthIncome)}</span>
-              <span className="mx-1 text-muted-foreground/40">&middot;</span>
-              <span className="text-destructive/80">&minus;{formatCurrency(lastMonthExpenses)}</span>
-            </p>
-          )}
-        </div>
-      </div>
-    </Card>
-  );
-
-  // ─── Quick Actions (shared) ───────────────────────────
-  const quickActions = (
-    <div className="grid grid-cols-4 lg:grid-cols-2 gap-1.5 md:gap-2">
-      <Button
-        onClick={() => handleQuickAdd("Ingreso")}
-        className="h-auto py-2.5 md:py-5 flex-col gap-0.5 md:gap-1.5 border border-success/30 dark:border-success/20 text-success hover:bg-success/10 hover:border-success/40 hover:shadow-sm bg-transparent transition-all"
-      >
-        <TrendingUp className="h-4 w-4 md:h-5 md:w-5" />
-        <span className="text-[10px] md:text-xs font-semibold">Ingreso</span>
-      </Button>
-      <Button
-        onClick={() => handleQuickAdd("Gasto")}
-        className="h-auto py-2.5 md:py-5 flex-col gap-0.5 md:gap-1.5 border border-destructive/30 dark:border-destructive/20 text-destructive hover:bg-destructive/10 hover:border-destructive/40 hover:shadow-sm bg-transparent transition-all"
-      >
-        <TrendingDown className="h-4 w-4 md:h-5 md:w-5" />
-        <span className="text-[10px] md:text-xs font-semibold">Gasto</span>
-      </Button>
-      <Button
-        onClick={() => handleQuickAdd("Inversión")}
-        className="h-auto py-2.5 md:py-5 flex-col gap-0.5 md:gap-1.5 border border-blue/30 dark:border-blue/20 text-blue hover:bg-blue/10 hover:border-blue/40 hover:shadow-sm bg-transparent transition-all"
-      >
-        <PiggyBank className="h-4 w-4 md:h-5 md:w-5" />
-        <span className="text-[10px] md:text-xs font-semibold">Inversión</span>
-      </Button>
-      <Button
-        onClick={() => setIsBankSyncOpen(true)}
-        className="h-auto py-2.5 md:py-5 flex-col gap-0.5 md:gap-1.5 border border-primary/30 dark:border-primary/20 text-primary hover:bg-primary/10 hover:border-primary/40 hover:shadow-sm bg-transparent transition-all group overflow-hidden"
-      >
-        <div className="flex items-center justify-center h-4 md:h-5">
-          <div className="flex -space-x-1.5 md:-space-x-[6px]">
-            {["/banks/bchile.png", "/banks/santander.png", "/banks/bci.png", "/banks/bestado.png", "/banks/itau.png"].map((logo, i) => (
-              <img
-                key={logo}
-                src={logo}
-                alt=""
-                className="size-4 md:size-5 rounded-full ring-[1.5px] ring-card object-contain bg-card"
-                style={{ zIndex: 5 - i }}
-              />
-            ))}
-          </div>
-        </div>
-        <span className="text-[10px] md:text-xs font-semibold">Sincronizar</span>
-      </Button>
-    </div>
-  );
-
-  // ─── Gastos del mes (desktop top row) ──────────────────
-  // El donut no mostraba un solo número y dejaba media tarjeta vacía. Acá
-  // cada categoría es una fila cuyo fondo mide lo que pesa, y las filas se
-  // reparten el alto disponible: con dos categorías o con cinco, la tarjeta
-  // se ve igual de llena.
-  const expensesCard = (
-    <Card className="border-border/50 flex h-full flex-col overflow-hidden">
-      <div className="flex items-baseline justify-between gap-2 px-4 pt-3 pb-2">
-        <span className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
-          Gastos del mes
-        </span>
-        <span
-          className={cn(
-            "font-mono text-[11px] font-semibold tabular-nums",
-            isPrivacyMode && "privacy-blur"
-          )}
-        >
-          {formatCurrency(monthExpenses)}
-        </span>
-      </div>
-
-      {topCategories.length === 0 ? (
-        <div className="flex flex-1 items-center justify-center pb-3">
-          <p className="text-xs text-muted-foreground">Sin gastos este mes</p>
-        </div>
-      ) : (
-        <div className="flex min-h-0 flex-1 flex-col gap-1 px-3 pb-3">
-          {topCategories.map((cat) => (
-            <button
-              key={cat.category}
-              onClick={() => navigate("/budget")}
-              className="group relative flex min-h-[24px] flex-1 items-center gap-2 overflow-hidden rounded-md px-2 text-left"
-            >
-              {/* El peso de la categoría es el fondo de su fila */}
-              <div
-                className="absolute inset-y-0 left-0 rounded-l-md transition-[width] duration-700 ease-out group-hover:opacity-90"
-                style={{
-                  width: `${Math.max(cat.percentage, 1.5)}%`,
-                  backgroundColor: cat.color,
-                  opacity: 0.17,
-                }}
-              />
-              <div
-                className="absolute inset-y-0 left-0 w-[2px]"
-                style={{ backgroundColor: cat.color }}
-              />
-              <span className="relative min-w-0 flex-1 truncate text-[11px]">
-                {getCatEmoji(cat.category)} {cat.category}
-              </span>
-              <span
-                className={cn(
-                  "relative shrink-0 font-mono text-[11px] font-medium tabular-nums",
-                  isPrivacyMode && "privacy-blur"
-                )}
-              >
-                {formatCurrency(cat.effectiveAmount)}
-              </span>
-              <span className="relative w-7 shrink-0 text-right font-mono text-[10px] tabular-nums text-muted-foreground">
-                {Math.round(cat.percentage)}%
-              </span>
-            </button>
-          ))}
-          {hiddenCategories > 0 && (
-            <p className="shrink-0 pl-2 pt-0.5 text-[10px] text-muted-foreground/70">
-              +{hiddenCategories} categoría{hiddenCategories === 1 ? "" : "s"} más
-            </p>
-          )}
-        </div>
-      )}
-    </Card>
-  );
-
-  // ─── Insights: el tablero de límites ──────────────────
-  // Seis frases que decían lo mismo ("Bien hecho en X, te quedan $Y") eran
-  // seis veces la misma información. Una categoría es una fila, no un
-  // párrafo: el nombre, cuánto va de cuánto, y el avance. Diecisiete
-  // insights caben en la altura donde antes entraban seis.
+  // ─── Límites ──────────────────────────────────────────
+  // Una categoría es una fila: cuánto va de cuánto y el avance. Arriba, en
+  // vez de una alerta roja, el conteo por estado.
   const budgetRows = categorySpending
     .filter((c) => c.limit && c.limit > 0)
-    .map((c) => ({
-      ...c,
-      usage: (c.effectiveAmount / (c.limit as number)) * 100,
-    }))
+    .map((c) => {
+      const usage = (c.effectiveAmount / (c.limit as number)) * 100;
+      const state: "over" | "near" | "ok" =
+        usage > 100 ? "over" : usage >= (c.alertPercentage || 80) ? "near" : "ok";
+      return { ...c, usage, state };
+    })
     .sort((a, b) => b.usage - a.usage);
 
   const budgetSpent = budgetRows.reduce((s, c) => s + c.effectiveAmount, 0);
   const budgetTotal = budgetRows.reduce((s, c) => s + (c.limit as number), 0);
+  const budgetCounts = budgetRows.reduce(
+    (acc, c) => ({ ...acc, [c.state]: acc[c.state] + 1 }),
+    { over: 0, near: 0, ok: 0 }
+  );
 
-  // Arriba del tablero, la única frase que sigue mereciendo ser frase: lo
-  // que pasa a llevar un límite o cambió de golpe. Las felicitaciones no.
-  const headlineRank: Record<string, number> = {
-    alert: 0,
-    pattern: 1,
-    opportunity: 2,
-    achievement: 9,
-  };
-  const rankOf = (i: (typeof currentInsights)[number]) =>
-    (i.percentage ?? 0) > 100 ? -1 : headlineRank[i.type] ?? 5;
-  const headline = [...currentInsights]
-    .filter((i) => i.type !== "achievement")
-    .sort((a, b) => rankOf(a) - rankOf(b))[0];
+  const limitsSummary = budgetRows.length > 0 && (
+    <div className="inicio-limits-summary">
+      {budgetCounts.over > 0 && <span className="inicio-pill" data-state="over">{budgetCounts.over} pasado{budgetCounts.over === 1 ? "" : "s"}</span>}
+      {budgetCounts.near > 0 && <span className="inicio-pill" data-state="near">{budgetCounts.near} cerca</span>}
+      {budgetCounts.ok > 0 && <span className="inicio-pill" data-state="ok">{budgetCounts.ok} bien</span>}
+    </div>
+  );
 
-  const usageTone = (usage: number, alertAt?: number) => {
-    if (usage > 100) return "var(--insight-danger)";
-    if (usage >= (alertAt ?? 80)) return "var(--insight-alert)";
-    if (usage > 0) return "var(--insight-achievement)";
-    return null;
-  };
-
-  const insightsPanel = (
-    <Card className="border-border/50 overflow-hidden flex flex-col h-full">
-      <div className="flex items-baseline justify-between gap-2 px-4 pt-3 pb-2 shrink-0">
-        <div className="flex items-baseline gap-2">
-          <h2 className="text-sm font-semibold">Límites</h2>
-          {budgetRows.length > 0 && (
-            <span className="font-mono text-[10px] tabular-nums text-muted-foreground">
-              {budgetRows.length}
+  const limitsList =
+    budgetRows.length === 0 ? (
+      <button onClick={() => navigate("/budget")} className="inicio-empty w-full">
+        <span>
+          <span className="block font-medium text-foreground">Aún no pones límites</span>
+          Ponle un techo a una categoría y aparece acá
+        </span>
+      </button>
+    ) : (
+      budgetRows.map((cat) => {
+        const limit = cat.limit as number;
+        const color = cat.state === "over" ? "var(--inicio-rose)" : cat.state === "near" ? "var(--inicio-amber)" : colorOf(cat.category) || "var(--muted-foreground)";
+        return (
+          <button key={cat.category} onClick={() => navigate("/budget")} className="inicio-lim" data-state={cat.state}>
+            <span className="inicio-ico" style={tint(colorOf(cat.category))}>{getCatEmoji(cat.category)}</span>
+            <span className="n">{cat.category}</span>
+            <span className="pct">{Math.round(cat.usage)}%</span>
+            <span className="inicio-track">
+              {/* Un 1% tiene que dejar marca: si no, la fila miente. */}
+              <i style={{ width: cat.usage > 0 ? `max(3px, ${Math.min(cat.usage, 100)}%)` : "0%", background: color }} />
             </span>
-          )}
+            <span className={cn("of", isPrivacyMode && "privacy-blur")}>
+              <span>{formatCurrency(cat.effectiveAmount)} de {formatCurrency(limit)}</span>
+              {cat.state === "over" ? (
+                <span className="extra">+{formatCurrency(cat.effectiveAmount - limit)}</span>
+              ) : (
+                <span>quedan {formatCurrency(limit - cat.effectiveAmount)}</span>
+              )}
+            </span>
+          </button>
+        );
+      })
+    );
+
+  // ─── Recientes ────────────────────────────────────────
+  const feedList = isLoading ? (
+    <div className="space-y-3 px-[18px] py-3">
+      {Array.from({ length: 6 }).map((_, i) => (
+        <div key={i} className="flex items-center gap-3">
+          <Skeleton className="size-[30px] rounded-full" />
+          <div className="flex-1 space-y-1.5">
+            <Skeleton className="h-3.5 w-32" />
+            <Skeleton className="h-3 w-20" />
+          </div>
+          <Skeleton className="h-4 w-16" />
         </div>
-        {budgetTotal > 0 && (
-          <span
-            className={cn(
-              "font-mono text-[10px] tabular-nums text-muted-foreground",
-              isPrivacyMode && "privacy-blur"
-            )}
-          >
-            <span className="font-semibold text-foreground">
-              {formatCurrency(budgetSpent)}
-            </span>{" "}
-            de {formatCurrency(budgetTotal)}
-          </span>
-        )}
-      </div>
-
-      {/* La frase que sí es un insight */}
-      {headline && (
-        <div className="shrink-0 px-4 pb-2">
-          <div
-            className="flex items-start gap-2 rounded-lg border px-2.5 py-2"
-            style={{
-              borderColor: `oklch(${
-                (headline.percentage ?? 0) > 100
-                  ? "var(--insight-danger)"
-                  : insightTone[headline.type] ?? insightTone.pattern
-              } / 0.3)`,
-              backgroundColor: `oklch(${
-                (headline.percentage ?? 0) > 100
-                  ? "var(--insight-danger)"
-                  : insightTone[headline.type] ?? insightTone.pattern
-              } / 0.07)`,
-            }}
-          >
-            <span className="shrink-0 text-[13px] leading-tight">
-              {headline.category ? getCatEmoji(headline.category) : "💡"}
-            </span>
-            <p className="min-w-0 text-[11px] leading-snug">
-              <span className="font-semibold">{headline.title}</span>
-              <span
-                className={cn(
-                  "text-muted-foreground",
-                  isPrivacyMode && "privacy-blur"
-                )}
-              >
-                {" · "}
-                {headline.description}
+      ))}
+    </div>
+  ) : recentTransactions.length === 0 ? (
+    <div className="inicio-empty h-full">
+      <span>
+        <Receipt className="mx-auto mb-3 size-7 text-muted-foreground" />
+        <span className="block font-medium text-foreground">No hay movimientos aún</span>
+        Aprieta W o Gasto para anotar el primero
+      </span>
+    </div>
+  ) : (
+    sortedDateKeys.map((dateKey) => (
+      <div key={dateKey}>
+        <div className="inicio-day">
+          {getDateLabel(dateKey)}
+          <span>{groupedTransactions[dateKey].length}</span>
+        </div>
+        {groupedTransactions[dateKey].map((t) => {
+          const analyzing = t.isPending || t.category_name === ANALYZING_CATEGORY;
+          const isBot = (t.detail || "").startsWith("🤖");
+          const detail = (t.detail || "").replace(/^🤖\s*/, "").trim();
+          const tone = AMOUNT_TONE[t.type];
+          const meta = t.reimbursement_for_category
+            ? `Reembolso de ${t.reimbursement_for_category}`
+            : `${t.category_name} · ${format(new Date(t.date), "HH:mm")}`;
+          return (
+            <div key={t.id} className="inicio-tx">
+              <span className="inicio-ico" style={tint(analyzing ? null : colorOf(t.category_name))}>
+                {analyzing ? "⚡" : getCatEmoji(t.category_name)}
+                {isBot && <span className="inicio-bot">🤖</span>}
               </span>
-            </p>
-          </div>
-        </div>
-      )}
-
-      {budgetRows.length === 0 ? (
-        <button
-          onClick={() => navigate("/budget")}
-          className="flex flex-1 flex-col items-center justify-center gap-1 px-4 pb-4 text-center transition-colors hover:bg-muted/30"
-        >
-          <p className="text-xs font-medium">Aún no pones límites</p>
-          <p className="text-[11px] text-muted-foreground">
-            Ponle un techo a una categoría y aparece acá
-          </p>
-        </button>
-      ) : (
-        <div className="flex min-h-0 flex-1 flex-col gap-1.5 overflow-y-auto px-3 pb-3">
-          {budgetRows.map((cat) => {
-            const usage = cat.usage;
-            const tone = usageTone(usage, cat.alertPercentage);
-            const filled = Math.min(usage, 100);
-
-            return (
-              <button
-                key={cat.category}
-                onClick={() => navigate("/budget")}
-                className="group relative flex min-h-[44px] flex-1 flex-col justify-center gap-1 rounded-t-md px-2 pb-2.5 pt-1.5 text-left transition-colors hover:bg-muted/40"
-              >
-                <div className="flex items-center gap-2">
-                  <span className="w-4 shrink-0 text-center text-[13px] leading-none">
-                    {getCatEmoji(cat.category)}
-                  </span>
-                  <span className="min-w-0 flex-1 truncate text-xs font-medium">
-                    {cat.category}
-                  </span>
-                  <span
-                    className="shrink-0 font-mono text-xs font-semibold tabular-nums"
-                    style={{ color: tone ? `oklch(${tone})` : undefined }}
-                  >
-                    {Math.round(usage)}%
-                  </span>
-                </div>
-                <p
-                  className={cn(
-                    "pl-6 font-mono text-[10px] tabular-nums text-muted-foreground",
-                    isPrivacyMode && "privacy-blur"
-                  )}
-                >
-                  {formatCurrency(cat.effectiveAmount)} de{" "}
-                  {formatCurrency(cat.limit as number)}
-                  {/* La barra se queda en 100%: el exceso lo dice el texto,
-                      que es donde un 101% y un 180% se distinguen. */}
-                  {usage > 100 && (
-                    <span
-                      className="ml-1 font-semibold"
-                      style={{ color: "oklch(var(--insight-danger))" }}
-                    >
-                      +{formatCurrency(cat.effectiveAmount - (cat.limit as number))}
-                    </span>
-                  )}
-                </p>
-                {/* El separador de la fila ES la barra: siempre visible,
-                    siempre en el borde, y no gasta una línea extra. */}
-                <div
-                  className="absolute inset-x-0 bottom-0 h-[3px] overflow-hidden rounded-full"
-                  style={{
-                    backgroundColor:
-                      "color-mix(in oklch, var(--muted-foreground) 22%, transparent)",
-                  }}
-                >
-                  <div
-                    className="h-full rounded-full transition-[width] duration-700 ease-out"
-                    style={{
-                      // Un 1% tiene que dejar marca: si no, la fila miente.
-                      width: usage > 0 ? `max(3px, ${filled}%)` : "0%",
-                      backgroundColor: tone
-                        ? `oklch(${tone})`
-                        : "var(--muted-foreground)",
-                      boxShadow: tone ? `0 0 8px oklch(${tone} / 0.55)` : undefined,
-                    }}
-                  />
-                </div>
-              </button>
-            );
-          })}
-        </div>
-      )}
-    </Card>
-  );
-
-  // ─── Transactions Card (shared) ───────────────────────
-  const transactionsCard = (
-    <Card className="overflow-hidden flex flex-col h-full">
-      <div className="flex items-center justify-between px-4 pt-3 pb-2 shrink-0">
-        <div className="flex items-center gap-2">
-          <h2 className="text-sm font-semibold">Recientes</h2>
-          {recentTransactions.length > 0 && (
-            <span className="text-[10px] font-medium text-muted-foreground tabular-nums">
-              {recentTransactions.length}
-            </span>
-          )}
-        </div>
-        <Button
-          onClick={() => navigate("/transactions")}
-          variant="ghost"
-          size="sm"
-          className="gap-1 text-[11px] h-6 px-2 -mr-1"
-        >
-          Ver todo
-          <Eye className="h-3 w-3" />
-        </Button>
+              <div className={cn("body", isPrivacyMode && "privacy-blur")}>
+                <div className="d">{detail || (analyzing ? "Movimiento" : t.category_name)}</div>
+                {analyzing ? <AnalyzingBadge saving={t.isPending} /> : <div className="c">{meta}</div>}
+              </div>
+              <span className={cn("m", isPrivacyMode && "privacy-blur")} style={{ color: tone }}>
+                {signPrefix(t.type, Number(t.amount))}
+                {formatCurrency(Math.abs(Number(t.amount)))}
+              </span>
+            </div>
+          );
+        })}
       </div>
-
-      {isLoading ? (
-        <div className="px-5 pb-4 space-y-3">
-          {Array.from({ length: 6 }).map((_, i) => (
-            <div key={i} className="flex items-center justify-between py-1.5">
-              <div className="flex items-center gap-3 flex-1">
-                <Skeleton className="w-[3px] h-[28px] rounded-full" />
-                <div className="space-y-1.5 flex-1">
-                  <Skeleton className="h-3.5 w-24" />
-                  <Skeleton className="h-3 w-36" />
-                </div>
-              </div>
-              <Skeleton className="h-4 w-20" />
-            </div>
-          ))}
-        </div>
-      ) : recentTransactions.length === 0 ? (
-        <div className="py-14 text-center px-5 pb-5">
-          <div className="inline-flex items-center justify-center size-16 rounded-2xl bg-muted/50 mb-4">
-            <Receipt className="h-7 w-7 text-muted-foreground/40" />
-          </div>
-          <p className="text-sm font-medium text-muted-foreground">No hay transacciones aún</p>
-          <p className="text-xs text-muted-foreground mt-1">Agrega tu primera transacción arriba</p>
-        </div>
-      ) : (
-        <div className="overflow-y-auto flex-1 pb-2">
-          {sortedDateKeys.map((dateKey) => (
-            <div key={dateKey}>
-              <div className="flex items-center gap-3 px-5 py-1.5 sticky top-0 bg-card z-10 shadow-[0_1px_3px_-1px_rgba(0,0,0,0.1)]">
-                <span className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground whitespace-nowrap">
-                  {getDateLabel(dateKey)}
-                </span>
-                <div className="h-px bg-border/40 flex-1" />
-                <span className="text-[10px] text-muted-foreground/50 tabular-nums">
-                  {groupedTransactions[dateKey].length}
-                </span>
-              </div>
-              {groupedTransactions[dateKey].map((t) => (
-                <div
-                  key={t.id}
-                  className="flex items-center justify-between py-1.5 pl-5 pr-4 hover:bg-muted/40 transition-colors"
-                >
-                  <div className="flex items-center gap-3 min-w-0 flex-1">
-                    <div className={cn(
-                      "w-[3px] h-[28px] rounded-full flex-shrink-0",
-                      RECENT_TONES[t.type]?.spine
-                    )} />
-                    <div className="min-w-0 flex-1">
-                      {t.isPending || t.category_name === ANALYZING_CATEGORY ? (
-                        <AnalyzingBadge saving={t.isPending} />
-                      ) : (
-                        <p className={cn("text-sm font-medium truncate leading-snug", isPrivacyMode && "privacy-blur")}>
-                          <span className="mr-1.5" aria-hidden="true">{getCatEmoji(t.category_name)}</span>
-                          {t.category_name}
-                        </p>
-                      )}
-                      {t.detail && (
-                        <p className={cn("text-xs text-muted-foreground truncate leading-snug", isPrivacyMode && "privacy-blur")}>
-                          {t.detail}
-                        </p>
-                      )}
-                    </div>
-                  </div>
-                  <span className={cn(
-                    "text-sm font-semibold font-mono tabular-nums ml-4 flex-shrink-0",
-                    RECENT_TONES[t.type]?.text,
-                    isPrivacyMode && "privacy-blur"
-                  )}>
-                    {signPrefix(t.type, Number(t.amount))}
-                    {formatCurrency(Math.abs(Number(t.amount)))}
-                  </span>
-                </div>
-              ))}
-            </div>
-          ))}
-        </div>
-      )}
-    </Card>
+    ))
   );
+
+  // ─── Acciones ─────────────────────────────────────────
+  const actions = (
+    <>
+      <button className="inicio-act" data-tone="income" onClick={() => handleQuickAdd("Ingreso")}>
+        <TrendingUp />Ingreso
+      </button>
+      <button className="inicio-act" data-tone="expense" onClick={() => handleQuickAdd("Gasto")}>
+        <TrendingDown />Gasto <kbd className="inicio-kbd">W</kbd>
+      </button>
+      <button className="inicio-act" data-tone="investment" onClick={() => handleQuickAdd("Inversión")}>
+        <PiggyBank />Inversión
+      </button>
+      <button className="inicio-act" onClick={() => setIsBankSyncOpen(true)} aria-label="Sincronizar bancos">
+        <span className="inicio-banks">
+          {BANK_LOGOS.map((logo, i) => <img key={logo} src={logo} alt="" style={{ zIndex: 5 - i }} />)}
+        </span>
+        <span className="long">Sincronizar</span>
+      </button>
+    </>
+  );
+
+  const stackRest = monthExpenses - topCategories.reduce((s, c) => s + c.effectiveAmount, 0);
 
   return (
     // `fit`: el inicio es una pantalla exacta. Le da altura definida al shell,
     // que es lo que permite medir el resto sin restar nada a mano.
     <Layout fit>
-      <div className="flex flex-1 flex-col gap-4 min-h-0">
-        {/* Greeting — compact. A la derecha, los avisos: es la única fila que
-            puede crecer sin empujar las cards fuera del fold. */}
-        <div className="flex items-center gap-2.5 shrink-0">
-          {displayName && (
-            <button onClick={() => openProfileEdit()} className="focus:outline-none group">
-              <div className="rounded-full p-[2px] accent-gradient-bg transition-all duration-300 group-hover:scale-105 group-hover:shadow-[0_0_16px_var(--primary)]">
-                <Avatar className="size-8">
+      <div className="inicio">
+        <div className="inicio-grid" data-tab={mobileTab}>
+          {/* Saludo. A la derecha, avisos y acciones: la fila ya existe, así
+              que nada de eso empuja las cards fuera del fold. */}
+          <header className="inicio-head">
+            {displayName && (
+              <button onClick={() => openProfileEdit()} className="inicio-avatar" aria-label="Editar perfil">
+                <Avatar className="size-full">
                   {avatarUrl && <AvatarImage src={avatarUrl} className="object-cover" />}
-                  <AvatarFallback className="bg-background text-primary text-xs font-semibold">
+                  <AvatarFallback className="text-xs font-semibold text-primary" style={{ background: "color-mix(in oklch, var(--primary) 12%, var(--card))" }}>
                     {greetingInitials}
                   </AvatarFallback>
                 </Avatar>
-              </div>
-            </button>
-          )}
-          <h1 className="min-w-0 truncate text-xl font-bold tracking-tight">
-            {getGreeting()}{displayName ? <>, <span className="animated-gradient-text">{displayName}</span></> : ""}
-          </h1>
-          <HomeNotices notices={notices} className="ml-auto shrink-0" />
-        </div>
-
-        {/* ─── MOBILE LAYOUT (< lg) ─── */}
-        <div className="lg:hidden flex flex-1 min-h-0 flex-col gap-3">
-          {/* Balance + Quick Actions */}
-          <div className="grid grid-cols-1 md:grid-cols-[3fr,2fr] gap-3 shrink-0">
-            {balanceCard}
-            {quickActions}
-          </div>
-          {/* Transactions — scrolls internally */}
-          <div className="flex-1 min-h-0">
-            {transactionsCard}
-          </div>
-          {/* Pulso del mes — siempre visible abajo */}
-          {hasPace && (
-            <MonthPulseCard pace={monthPace} onOpen={() => setStoryOpen(true)} className="shrink-0" />
-          )}
-        </div>
-
-        {/* ─── DESKTOP LAYOUT (lg+) ─── */}
-        <div className="hidden lg:flex flex-1 min-h-0 flex-col gap-3">
-          {/* Top row: Balance | Donut | Quick Actions */}
-          <div className="grid shrink-0 grid-cols-12 gap-3 items-stretch">
-            <div className="col-span-5">{balanceCard}</div>
-            <div className="col-span-3 min-h-0">{expensesCard}</div>
-            <div className="col-span-4">{quickActions}</div>
-          </div>
-
-          {/* Bottom row: Transactions | Insights + Wrapped — fills remaining viewport */}
-          <div className="grid flex-1 min-h-0 grid-cols-12 gap-3 items-stretch" style={{ minHeight: 260 }}>
-            <div className="col-span-8 min-h-0">{transactionsCard}</div>
-            <div className="col-span-4 min-h-0 flex flex-col gap-3">
-              <div className="flex-1 min-h-0">{insightsPanel}</div>
+              </button>
+            )}
+            <h1 className="inicio-hello">
+              {getGreeting()}{displayName ? <>, <em>{displayName}</em></> : ""}
+            </h1>
+            <div className="inicio-head-end">
+              <HomeNotices notices={notices} className="shrink-0" />
+              <div className="inicio-actions">{actions}</div>
               {hasPace && (
-                <MonthPulseCard pace={monthPace} onOpen={() => setStoryOpen(true)} className="shrink-0" />
+                <button className="inicio-pulse-pill" onClick={() => setStoryOpen(true)}>
+                  <span>▶</span>Tu mes
+                </button>
               )}
             </div>
-          </div>
+          </header>
+
+          {/* Líquido: el número con el que se decide si se puede gastar. El
+              patrimonio es contexto, no la decisión del día. */}
+          <section className="inicio-card inicio-money">
+            <div className="inicio-money-top">
+              <span className="inicio-title">Líquido</span>
+              <span className="inicio-month">{format(now, "MMMM yyyy", { locale: es })}</span>
+            </div>
+            <div className={cn("inicio-big", isPrivacyMode && "privacy-blur")}>
+              $<NumberFlow
+                value={liquido}
+                format={{ style: "decimal", minimumFractionDigits: 0, maximumFractionDigits: 0 }}
+                locales="es-CL"
+              />
+            </div>
+            <div className="inicio-wealth">
+              <button onClick={() => setInvestmentMoveOpen(true)} className="inicio-invested">
+                Invertido<b className={cn(isPrivacyMode && "privacy-blur")}>{formatCurrency(invertido)}</b>
+              </button>
+              <span>Patrimonio<b className={cn(isPrivacyMode && "privacy-blur")}>{formatCurrency(patrimonio)}</b></span>
+            </div>
+            <div className={cn("inicio-flows", isPrivacyMode && "privacy-blur")}>
+              <span className="inicio-flow" style={{ color: "var(--inicio-emerald)" }}>
+                +{formatCurrency(currentIncome)}
+                {incomeChange !== 0 && <small>{incomeChange > 0 ? "+" : ""}{Math.round(incomeChange)}%</small>}
+              </span>
+              <span className="inicio-flow">
+                −{formatCurrency(currentExpenses)}
+                {expenseChange !== 0 && (
+                  <small style={{ color: expenseChange > 0 ? "var(--inicio-rose)" : "var(--inicio-emerald)" }}>
+                    {expenseChange > 0 ? "+" : ""}{Math.round(expenseChange)}%
+                  </small>
+                )}
+              </span>
+              {currentInvestments > 0 && (
+                <span className="inicio-flow" style={{ color: "var(--inicio-blue)" }}>
+                  {formatCurrency(currentInvestments)} <small className="inv-lbl">invertido</small>
+                </span>
+              )}
+            </div>
+            {(lastMonthIncome > 0 || lastMonthExpenses > 0) && (
+              <p className={cn("inicio-prev", isPrivacyMode && "privacy-blur")}>
+                <span className="capitalize">{format(lastMonth, "MMM", { locale: es })}</span>
+                {" · "}+{formatCurrency(lastMonthIncome)}{" · "}−{formatCurrency(lastMonthExpenses)}
+              </p>
+            )}
+          </section>
+
+          {/* En celular las acciones van bajo Líquido: abajo ya está la navbar */}
+          <nav className="inicio-actions-row" aria-label="Agregar movimiento">{actions}</nav>
+
+          {/* Gastos del mes: una barra fina en el color de cada categoría.
+              En celular, una sola barra apilada con su leyenda. */}
+          <section className="inicio-card inicio-spend">
+            <div className="inicio-spend-head">
+              <span className="inicio-title">Gastos del mes</span>
+              <span className={cn("inicio-num", isPrivacyMode && "privacy-blur")}>{formatCurrency(monthExpenses)}</span>
+            </div>
+            {topCategories.length === 0 ? (
+              <div className="inicio-empty">Sin gastos este mes</div>
+            ) : (
+              <>
+                {topCategories.map((cat) => (
+                  <button key={cat.category} onClick={() => navigate("/budget")} className="inicio-cat">
+                    <span className="n">{getCatEmoji(cat.category)} {cat.category}</span>
+                    <span className={cn("v", isPrivacyMode && "privacy-blur")}>{formatCurrency(cat.effectiveAmount)}</span>
+                    <span className="p">{Math.round(cat.percentage)}%</span>
+                    <span className="inicio-track">
+                      <i style={{ width: `${Math.max((cat.effectiveAmount / topCategories[0].effectiveAmount) * 100, 1.5)}%`, background: cat.color }} />
+                    </span>
+                  </button>
+                ))}
+                {hiddenCategories > 0 && (
+                  <button onClick={() => navigate("/budget")} className="inicio-more">
+                    +{hiddenCategories} categoría{hiddenCategories === 1 ? "" : "s"} más →
+                  </button>
+                )}
+                <div className="inicio-stack">
+                  {topCategories.map((cat) => <i key={cat.category} style={{ flex: cat.effectiveAmount, background: cat.color }} />)}
+                  {stackRest > 0 && <i style={{ flex: stackRest, background: "var(--border)" }} />}
+                </div>
+                <div className="inicio-legend">
+                  {topCategories.slice(0, 4).map((cat) => (
+                    <span key={cat.category}>{getCatEmoji(cat.category)} {cat.category} <b>{Math.round(cat.percentage)}%</b></span>
+                  ))}
+                  {currentMonthSummary.categoryBreakdown.length > 4 && <span>+{currentMonthSummary.categoryBreakdown.length - 4}</span>}
+                </div>
+              </>
+            )}
+          </section>
+
+          {/* Recientes. En celular comparte la tarjeta con Límites. */}
+          <section className="inicio-card inicio-feed">
+            <div className="inicio-tabs" role="tablist">
+              <button className="inicio-tab" role="tab" aria-selected={mobileTab === "feed"} onClick={() => setMobileTab("feed")}>
+                Recientes{recentTransactions.length > 0 && <span className="inicio-count">{recentTransactions.length}</span>}
+              </button>
+              <button className="inicio-tab" role="tab" aria-selected={mobileTab === "limits"} onClick={() => setMobileTab("limits")}>
+                Límites{budgetCounts.over > 0 && <span className="inicio-pill" data-state="over">{budgetCounts.over}</span>}
+              </button>
+            </div>
+            <div className="inicio-panel-head">
+              <span className="inicio-title">
+                Recientes{recentTransactions.length > 0 && <span className="inicio-count">{recentTransactions.length}</span>}
+              </span>
+              <button onClick={() => navigate("/transactions")}>Ver todo →</button>
+            </div>
+            <div className="inicio-scroll inicio-list-feed">{feedList}</div>
+            <div className="inicio-scroll inicio-list-limits">{limitsSummary}{limitsList}</div>
+          </section>
+
+          {/* Límites a toda la altura, con el pulso del mes al pie */}
+          <aside className="inicio-card inicio-limits">
+            <div className="inicio-panel-head">
+              <span className="inicio-title">
+                Límites{budgetRows.length > 0 && <span className="inicio-count">{budgetRows.length}</span>}
+              </span>
+              {budgetTotal > 0 && (
+                <span className={cn("inicio-num text-[11px] text-muted-foreground", isPrivacyMode && "privacy-blur")}>
+                  {formatCurrency(budgetSpent)} de {formatCurrency(budgetTotal)}
+                </span>
+              )}
+            </div>
+            {limitsSummary}
+            <div className="inicio-scroll">{limitsList}</div>
+            {hasPace && (
+              <MonthPulseCard
+                pace={monthPace}
+                onOpen={() => setStoryOpen(true)}
+                className="shrink-0 rounded-none border-0 border-t px-[18px]"
+              />
+            )}
+          </aside>
         </div>
 
         <BankSyncModal
@@ -823,7 +555,6 @@ const Index = () => {
           onDeleteImported={bankSync.deleteImported}
           onReset={bankSync.reset}
         />
-
       </div>
 
       <MonthPulse

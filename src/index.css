@@ -1124,3 +1124,200 @@ Based on Indigo, Blue, Cyan palette
     @apply bg-background text-foreground;
   }
 }
+
+/* ══ Inicio ════════════════════════════════════════════════════════════
+   Una pantalla exacta en web y celular. La grilla responde al ancho que le
+   queda al contenido (con o sin sidebar), por eso container queries y no
+   breakpoints del viewport. Rojo solo para alertas: los gastos van en
+   blanco y el color queda para lo que entra, la inversión y los límites
+   pasados. */
+.inicio {
+  container: inicio / inline-size;
+  display: flex;
+  flex: 1;
+  min-height: 0;
+  flex-direction: column;
+  --inicio-hover: color-mix(in oklch, var(--foreground) 4%, transparent);
+  --inicio-faint: color-mix(in oklch, var(--muted-foreground) 60%, transparent);
+  --inicio-emerald: oklch(var(--accent-emerald));
+  --inicio-rose: oklch(var(--accent-rose));
+  --inicio-blue: oklch(var(--accent-blue));
+  --inicio-amber: oklch(var(--accent-amber));
+  --inicio-cyan: oklch(var(--accent-cyan));
+  --inicio-violet: oklch(var(--accent-violet));
+}
+.inicio-grid {
+  flex: 1;
+  min-height: 0;
+  display: grid;
+  gap: 12px;
+  grid-template-columns: minmax(0, 1.3fr) minmax(0, 1fr) minmax(0, 0.95fr);
+  grid-template-rows: auto auto minmax(0, 1fr);
+  grid-template-areas:
+    "head  head  head"
+    "money spend limits"
+    "feed  feed  limits";
+}
+.inicio-head { grid-area: head; display: flex; align-items: center; gap: 12px; min-width: 0; }
+.inicio-money { grid-area: money; }
+.inicio-spend { grid-area: spend; }
+.inicio-feed { grid-area: feed; }
+.inicio-limits { grid-area: limits; }
+.inicio-actions-row { grid-area: actions; display: none; }
+
+.inicio-card {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 18px;
+  min-height: 0;
+  min-width: 0;
+}
+.inicio-title { font-size: 13px; font-weight: 600; color: var(--muted-foreground); }
+.inicio-count { font-family: "JetBrains Mono", monospace; font-size: 11px; font-weight: 400; color: var(--inicio-faint); margin-left: 6px; }
+.inicio-num { font-family: "JetBrains Mono", monospace; font-variant-numeric: tabular-nums; }
+
+/* Encabezado */
+.inicio-avatar { width: 34px; height: 34px; border-radius: 999px; flex: none; overflow: hidden;
+  box-shadow: 0 0 0 1px color-mix(in oklch, var(--foreground) 14%, transparent); transition: box-shadow .2s; }
+.inicio-avatar:hover { box-shadow: 0 0 0 1px color-mix(in oklch, var(--foreground) 32%, transparent); }
+.inicio-hello { font-size: 22px; font-weight: 700; letter-spacing: -0.02em; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0; }
+.inicio-hello em { font-style: normal; color: var(--primary); }
+.inicio-head-end { margin-left: auto; display: flex; align-items: center; gap: 8px; flex: none; }
+.inicio-pulse-pill { display: none; align-items: center; gap: 6px; font-size: 12px; color: var(--muted-foreground); padding: 6px 11px;
+  border-radius: 999px; background: var(--card); border: 1px solid var(--border); }
+.inicio-pulse-pill span { color: var(--primary); font-size: 9px; }
+
+/* Acciones: pastillas del color de su tipo, todas iguales */
+.inicio-actions { display: flex; gap: 8px; }
+.inicio-act { --tone: var(--muted-foreground); display: flex; align-items: center; gap: 7px; height: 36px; padding: 0 14px; border-radius: 999px;
+  font-size: 12.5px; font-weight: 600; color: var(--tone); white-space: nowrap; cursor: pointer;
+  background: color-mix(in oklch, var(--tone) 10%, transparent); border: 1px solid color-mix(in oklch, var(--tone) 22%, transparent);
+  transition: background .15s, border-color .15s; }
+.inicio-act:hover { background: color-mix(in oklch, var(--tone) 18%, transparent); border-color: color-mix(in oklch, var(--tone) 32%, transparent); }
+.inicio-act svg { width: 15px; height: 15px; flex: none; }
+.inicio-act[data-tone="income"] { --tone: var(--inicio-emerald); }
+.inicio-act[data-tone="expense"] { --tone: var(--inicio-rose); }
+.inicio-act[data-tone="investment"] { --tone: var(--inicio-blue); }
+.inicio-kbd { font-family: "JetBrains Mono", monospace; font-size: 10px; font-weight: 500; padding: 1px 5px; border-radius: 5px;
+  border: 1px solid color-mix(in oklch, var(--tone) 30%, transparent); opacity: .8; }
+.inicio-banks { display: flex; }
+.inicio-banks img { width: 16px; height: 16px; border-radius: 999px; object-fit: contain; background: var(--card); box-shadow: 0 0 0 1.5px var(--card); margin-left: -5px; }
+.inicio-banks img:first-child { margin-left: 0; }
+
+/* Líquido */
+.inicio-money { padding: 18px 20px; display: flex; flex-direction: column; }
+.inicio-money-top { display: flex; justify-content: space-between; align-items: baseline; }
+.inicio-month { font-family: "JetBrains Mono", monospace; font-size: 11px; font-weight: 500; color: var(--muted-foreground); text-transform: capitalize; }
+.inicio-big { font-family: "JetBrains Mono", monospace; font-variant-numeric: tabular-nums; font-size: 40px; line-height: 1; font-weight: 700; letter-spacing: -0.03em; margin: 10px 0 12px; }
+.inicio-wealth { display: flex; flex-wrap: wrap; gap: 4px 18px; font-size: 11px; color: var(--muted-foreground); }
+.inicio-wealth > * { display: flex; align-items: baseline; gap: 6px; white-space: nowrap; }
+.inicio-wealth b { font-family: "JetBrains Mono", monospace; font-variant-numeric: tabular-nums; font-size: 13px; font-weight: 600; color: var(--foreground); }
+.inicio-invested { border-radius: 6px; margin: -2px -4px; padding: 2px 4px; transition: background .15s; }
+.inicio-invested:hover { background: color-mix(in oklch, var(--inicio-blue) 12%, transparent); }
+.inicio-flows { display: flex; gap: 18px; margin-top: auto; padding-top: 12px; border-top: 1px solid var(--border); flex-wrap: wrap; }
+.inicio-flow { display: flex; align-items: baseline; gap: 6px; font-family: "JetBrains Mono", monospace; font-variant-numeric: tabular-nums; font-size: 14px; font-weight: 600; white-space: nowrap; }
+.inicio-flow small { font-size: 10px; font-weight: 500; }
+.inicio-prev { font-family: "JetBrains Mono", monospace; font-size: 10.5px; color: var(--inicio-faint); margin-top: 6px; }
+
+/* Gastos del mes */
+.inicio-spend { padding: 16px 18px; display: flex; flex-direction: column; gap: 9px; }
+.inicio-spend-head { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; }
+.inicio-spend-head .inicio-num { font-size: 13px; font-weight: 600; }
+.inicio-cat { display: grid; grid-template-columns: minmax(0, 1fr) auto 34px; gap: 4px 10px; align-items: center; font-size: 12.5px; text-align: left; border-radius: 6px; }
+.inicio-cat .n { min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.inicio-cat .v { font-family: "JetBrains Mono", monospace; font-variant-numeric: tabular-nums; font-size: 12px; font-weight: 600; }
+.inicio-cat .p { font-family: "JetBrains Mono", monospace; font-size: 10.5px; color: var(--inicio-faint); text-align: right; }
+.inicio-track { grid-column: 1 / -1; height: 3px; border-radius: 3px; background: var(--inicio-hover); overflow: hidden; }
+.inicio-track i { display: block; height: 100%; border-radius: 3px; transition: width .7s ease-out; }
+.inicio-cat:hover .n { color: var(--foreground); }
+.inicio-more { font-size: 11px; color: var(--muted-foreground); margin-top: auto; text-align: left; }
+.inicio-more:hover { color: var(--foreground); }
+.inicio-stack, .inicio-legend { display: none; }
+.inicio-empty { flex: 1; display: grid; place-items: center; text-align: center; font-size: 12px; color: var(--muted-foreground); padding: 12px; }
+
+/* Paneles con lista */
+.inicio-feed, .inicio-limits { display: flex; flex-direction: column; overflow: hidden; }
+.inicio-panel-head { display: flex; justify-content: space-between; align-items: center; gap: 8px; padding: 14px 18px 6px; }
+.inicio-panel-head a, .inicio-panel-head button { font-size: 11.5px; color: var(--muted-foreground); }
+.inicio-panel-head a:hover, .inicio-panel-head button:hover { color: var(--foreground); }
+.inicio-scroll { flex: 1; min-height: 0; overflow-y: auto; padding-bottom: 8px; scrollbar-width: thin; scrollbar-color: var(--border) transparent; }
+.inicio-day { position: sticky; top: 0; z-index: 1; display: flex; align-items: center; gap: 10px; padding: 8px 18px 4px; background: var(--card);
+  font-size: 11.5px; font-weight: 600; color: var(--muted-foreground); }
+.inicio-day::after { content: ""; flex: 1; height: 1px; background: var(--border); }
+.inicio-day span { order: 2; font-family: "JetBrains Mono", monospace; font-size: 10px; font-weight: 400; color: var(--inicio-faint); }
+.inicio-tx { display: flex; align-items: center; gap: 12px; padding: 6px 18px; }
+.inicio-tx:hover { background: var(--inicio-hover); }
+.inicio-ico { flex: none; width: 30px; height: 30px; border-radius: 999px; display: grid; place-items: center; font-size: 14px; line-height: 1; position: relative; }
+.inicio-bot { position: absolute; right: -3px; bottom: -3px; width: 13px; height: 13px; border-radius: 999px; background: var(--card); font-size: 7.5px; display: grid; place-items: center; }
+.inicio-tx .body { flex: 1; min-width: 0; }
+.inicio-tx .d { font-size: 13px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.inicio-tx .c { font-size: 11px; color: var(--muted-foreground); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.inicio-tx .m { font-family: "JetBrains Mono", monospace; font-variant-numeric: tabular-nums; font-size: 13px; font-weight: 600; flex: none; }
+
+/* Límites */
+.inicio-limits-summary { display: flex; flex-wrap: wrap; gap: 8px; padding: 2px 18px 10px; }
+.inicio-pill { font-family: "JetBrains Mono", monospace; font-size: 11px; font-weight: 600; padding: 2px 8px; border-radius: 999px; white-space: nowrap; }
+.inicio-pill[data-state="over"] { color: var(--inicio-rose); background: color-mix(in oklch, var(--inicio-rose) 12%, transparent); }
+.inicio-pill[data-state="near"] { color: var(--inicio-amber); background: color-mix(in oklch, var(--inicio-amber) 12%, transparent); }
+.inicio-pill[data-state="ok"] { color: var(--inicio-emerald); background: color-mix(in oklch, var(--inicio-emerald) 12%, transparent); }
+.inicio-lim { width: 100%; padding: 8px 18px; display: grid; grid-template-columns: auto minmax(0, 1fr) auto; gap: 3px 10px; align-items: center; text-align: left; }
+.inicio-lim:hover { background: var(--inicio-hover); }
+.inicio-lim .inicio-ico { width: 26px; height: 26px; font-size: 12px; grid-row: span 3; }
+.inicio-lim .n { font-size: 12.5px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.inicio-lim .pct { font-family: "JetBrains Mono", monospace; font-size: 12px; font-weight: 600; }
+.inicio-lim .of { grid-column: 2 / -1; font-family: "JetBrains Mono", monospace; font-variant-numeric: tabular-nums; font-size: 10.5px; color: var(--inicio-faint); display: flex; justify-content: space-between; gap: 8px; }
+.inicio-lim .inicio-track { grid-column: 2 / -1; height: 4px; margin-top: 2px; }
+.inicio-lim[data-state="over"] .pct, .inicio-lim[data-state="over"] .extra { color: var(--inicio-rose); }
+.inicio-lim[data-state="near"] .pct { color: var(--inicio-amber); }
+.inicio-lim[data-state="ok"] .pct { color: var(--muted-foreground); }
+.inicio-tabs { display: none; }
+.inicio-list-limits { display: none; }
+
+/* La navbar flotante del celular (MobileBottomBar, visible bajo 768px) mide
+   60px + 8 de margen sobre el safe-area, que <main> ya reserva con pb-safe.
+   El inicio es una pantalla fija: sin esto su última tarjeta queda debajo. */
+@media (max-width: 767px) {
+  .inicio { padding-bottom: 78px; }
+}
+
+/* ══ Tablet ══ */
+@container inicio (max-width: 900px) {
+  .inicio-grid { grid-template-columns: minmax(0, 1.15fr) minmax(0, 1fr); grid-template-areas: "head head" "money spend" "feed limits"; }
+  .inicio-act .long { display: none; }
+}
+
+/* ══ Celular: una pantalla, sin scroll de página ══ */
+@container inicio (max-width: 600px) {
+  .inicio-grid { gap: 10px; grid-template-columns: minmax(0, 1fr);
+    grid-template-rows: auto auto auto auto minmax(0, 1fr);
+    grid-template-areas: "head" "money" "actions" "spend" "feed"; }
+  .inicio-hello { font-size: 18px; }
+  .inicio-head .inicio-actions { display: none; }
+  .inicio-pulse-pill { display: flex; }
+  .inicio-money { padding: 14px 16px; }
+  .inicio-big { font-size: 32px; margin: 6px 0 10px; }
+  .inicio-wealth { gap: 4px 12px; }
+  .inicio-flows { gap: 12px; padding-top: 10px; flex-wrap: nowrap; justify-content: space-between; }
+  .inicio-flow { font-size: 12.5px; }
+  .inicio-flow .inv-lbl, .inicio-prev { display: none; }
+  .inicio-actions-row { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 6px; }
+  .inicio-actions-row .inicio-act { justify-content: center; gap: 5px; height: 38px; padding: 0 6px; font-size: 11.5px; }
+  .inicio-actions-row .inicio-act svg { width: 14px; height: 14px; }
+  .inicio-actions-row .inicio-kbd, .inicio-actions-row .long { display: none; }
+  .inicio-spend { padding: 12px 16px; gap: 8px; }
+  .inicio-spend .inicio-cat, .inicio-spend .inicio-more { display: none; }
+  .inicio-stack { display: flex; height: 8px; border-radius: 8px; overflow: hidden; gap: 2px; }
+  .inicio-stack i { height: 100%; }
+  .inicio-legend { display: flex; flex-wrap: wrap; gap: 4px 12px; font-size: 11px; color: var(--muted-foreground); }
+  .inicio-legend span { display: flex; align-items: center; gap: 5px; white-space: nowrap; }
+  .inicio-legend b { font-family: "JetBrains Mono", monospace; font-size: 11px; font-weight: 600; color: var(--foreground); }
+  .inicio-limits { display: none; }
+  .inicio-feed .inicio-panel-head { display: none; }
+  .inicio-tabs { display: flex; gap: 4px; padding: 8px 8px 4px; }
+  .inicio-tab { flex: 1; font-size: 12px; font-weight: 600; color: var(--muted-foreground); border-radius: 10px; padding: 8px; }
+  .inicio-tab[aria-selected="true"] { color: var(--foreground); background: var(--inicio-hover); }
+  .inicio-tab .inicio-pill { margin-left: 4px; }
+  .inicio-grid[data-tab="limits"] .inicio-list-feed { display: none; }
+  .inicio-grid[data-tab="limits"] .inicio-list-limits { display: block; }
+  .inicio-list-limits .inicio-limits-summary { padding-top: 8px; }
+}

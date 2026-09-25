@@ -520,8 +520,8 @@ export function MonthPulseCard({ pace, onOpen, className }: { pace: MonthPace; o
         <circle cx={px(pace.asOfDay)} cy={py(pace.me[pace.asOfDay])} r={3} fill={tone} />
       </svg>
       <div className="min-w-0 flex-1">
-        <p className="text-[11px] uppercase tracking-wider text-muted-foreground leading-none">Tu mes</p>
-        <p className={cn("mt-1 truncate text-sm font-bold", isPrivacyMode && "privacy-blur")} style={{ color: verdict === "even" ? undefined : tone }}>
+        <p className="text-[13px] font-semibold text-muted-foreground leading-none">Tu mes</p>
+        <p className={cn("mt-1 text-sm font-bold leading-tight", isPrivacyMode && "privacy-blur")} style={{ color: verdict === "even" ? undefined : tone }}>
           {label}
         </p>
       </div>
