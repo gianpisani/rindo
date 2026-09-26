@@ -5,7 +5,7 @@
   "type": "module",
   "scripts": {
     "poc:jev": "node --env-file-if-exists=.env.jev.local scripts/jev-poc.ts",
-    "test:jev": "node --test scripts/jev-categorizer.test.ts scripts/jev-poc.test.ts scripts/jev-local.test.ts scripts/whisper-history.test.ts scripts/category-spending.test.ts scripts/month-pace.test.ts scripts/savings-goal.test.ts",
+    "test:jev": "node --test scripts/jev-categorizer.test.ts scripts/jev-poc.test.ts scripts/jev-local.test.ts scripts/whisper-history.test.ts scripts/category-spending.test.ts scripts/month-pace.test.ts scripts/finance-history.test.ts scripts/savings-goal.test.ts",
     "dev": "vite",
     "build": "vite build",
     "build:dev": "vite build --mode development",

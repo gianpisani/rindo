@@ -1635,3 +1635,178 @@ Based on Indigo, Blue, Cyan palette
   .meta-bar { max-width: 22px; }
   .meta-mon { font-size: 10px; }
 }
+
+/* ══ Finanzas ══════════════════════════════════════════════════════════
+   Dos preguntas, una por vista: ¿qué pasó con mi plata este mes? (Mes) y
+   ¿cómo va en el tiempo? (Histórico). Mismo sistema que el inicio: tarjetas
+   .inicio-card, una pantalla exacta, gráficos dibujados a mano para que
+   calcen con el resto. Vive dentro de .inicio para heredar sus colores. */
+.fin-grid { flex: 1; min-height: 0; display: grid; gap: 12px;
+  grid-template-columns: minmax(0, 1.2fr) minmax(0, 1fr);
+  grid-template-rows: auto minmax(0, 1.15fr) minmax(0, 1fr);
+  grid-template-areas: "head head" "flow cats" "daily cats"; }
+.fin-grid[data-view="hist"] {
+  grid-template-columns: minmax(0, 1.3fr) minmax(0, 1fr);
+  grid-template-rows: auto minmax(0, 1fr) minmax(0, 1.1fr);
+  grid-template-areas: "head head" "worth worth" "months trends"; }
+.fin-head { grid-area: head; display: flex; align-items: center; gap: 12px; flex-wrap: wrap; min-width: 0; }
+.fin-flow { grid-area: flow; } .fin-daily { grid-area: daily; } .fin-cats { grid-area: cats; }
+.fin-worth { grid-area: worth; } .fin-months { grid-area: months; } .fin-trends { grid-area: trends; }
+.fin-hist-tabs { display: none; }
+
+.fin-title { font-size: 22px; font-weight: 700; letter-spacing: -0.02em; }
+.fin-seg { display: flex; padding: 3px; border-radius: 999px; background: var(--card); border: 1px solid var(--border); }
+.fin-seg button { padding: 5px 14px; border-radius: 999px; font-size: 12.5px; font-weight: 600; color: var(--muted-foreground); transition: background .15s, color .15s; }
+.fin-seg button[aria-pressed="true"] { color: var(--foreground); background: var(--inicio-hover); box-shadow: inset 0 0 0 1px var(--border); }
+.fin-head-end { margin-left: auto; display: flex; align-items: center; gap: 8px; }
+.fin-stepper { display: flex; align-items: center; gap: 2px; }
+.fin-stepper button { width: 30px; height: 30px; display: grid; place-items: center; border-radius: 999px; color: var(--muted-foreground); transition: background .15s, color .15s; }
+.fin-stepper button:hover:not(:disabled) { background: var(--inicio-hover); color: var(--foreground); }
+.fin-stepper button:disabled { opacity: .3; }
+.fin-stepper button svg { width: 16px; height: 16px; }
+.fin-stepper .label { min-width: 132px; text-align: center; font-size: 14px; font-weight: 600; text-transform: capitalize; }
+.fin-pulse { display: flex; align-items: center; gap: 6px; font-size: 12px; color: var(--muted-foreground); padding: 6px 11px; border-radius: 999px;
+  background: var(--card); border: 1px solid var(--border); transition: color .15s; }
+.fin-pulse:hover { color: var(--foreground); }
+.fin-pulse span { color: var(--primary); font-size: 9px; }
+
+.fin-card { display: flex; flex-direction: column; overflow: hidden; }
+.fin-card-head { display: flex; justify-content: space-between; align-items: baseline; gap: 10px; padding: 14px 18px 4px; min-height: 36px; }
+.fin-card-head .inicio-num { font-size: 12px; color: var(--muted-foreground); white-space: nowrap; }
+.fin-card-head .inicio-num b { color: var(--foreground); font-weight: 600; }
+.fin-plot { position: relative; flex: 1; min-height: 0; margin: 4px 18px 0; }
+.fin-empty { flex: 1; display: grid; place-items: center; font-size: 12px; color: var(--muted-foreground); padding: 16px; text-align: center; }
+
+/* Cascada: entró → gastos → invertido → quedó */
+.fin-steps { position: absolute; inset: 0; display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); }
+.fin-step { position: relative; display: flex; flex-direction: column; min-width: 0; }
+.fin-step .bar-zone { position: relative; flex: 1; min-height: 0; }
+.fin-step .bar { position: absolute; left: 22%; right: 22%; border-radius: 6px; min-height: 3px;
+  transform-origin: bottom; animation: fin-rise .65s cubic-bezier(.2, .8, .2, 1) both; animation-delay: calc(var(--i, 0) * 90ms); }
+.fin-step .bar[data-dir="down"] { transform-origin: top; }
+@keyframes fin-rise { from { transform: scaleY(0); } }
+.fin-step .link { position: absolute; left: 78%; width: 44%; border-top: 1px dashed color-mix(in oklch, var(--foreground) 22%, transparent); }
+.fin-step .amt { position: absolute; left: 0; right: 0; text-align: center; font-family: "JetBrains Mono", monospace; font-variant-numeric: tabular-nums;
+  font-size: 12.5px; font-weight: 600; white-space: nowrap; transform: translateY(-100%); padding-bottom: 5px; }
+.fin-step .foot { padding: 8px 2px 14px; text-align: center; }
+.fin-step .amt .short { display: none; }
+.fin-step .foot .n { font-size: 12px; color: var(--muted-foreground); }
+.fin-step .foot .d { font-family: "JetBrains Mono", monospace; font-size: 10.5px; color: var(--inicio-faint); margin-top: 1px; white-space: nowrap; }
+
+/* Barras de cada día */
+.fin-days { position: absolute; inset: 0 0 18px; display: flex; align-items: flex-end; gap: 2px; }
+.fin-day { flex: 1; height: 100%; display: flex; align-items: flex-end; border-radius: 3px; cursor: pointer; }
+.fin-day i { display: block; width: 100%; border-radius: 3px 3px 1px 1px; background: color-mix(in oklch, var(--inicio-rose) 62%, var(--muted-foreground));
+  transform-origin: bottom; animation: fin-rise .5s cubic-bezier(.2, .8, .2, 1) both; animation-delay: calc(var(--i, 0) * 12ms); transition: background .15s, opacity .15s; }
+.fin-day[data-weekend="true"] { background: color-mix(in oklch, var(--foreground) 3%, transparent); }
+.fin-day[data-future="true"] { cursor: default; }
+.fin-day[data-future="true"] i { background: var(--border); }
+.fin-days:hover .fin-day i { opacity: .45; }
+.fin-days .fin-day:hover i, .fin-day[data-active="true"] i { opacity: 1; background: var(--inicio-rose); }
+/* Barra por sobre el techo de la escala: un corte diagonal arriba dice "sigue" */
+.fin-day i.is-capped { position: relative; }
+.fin-day i.is-capped::after { content: ""; position: absolute; left: -1px; right: -1px; top: 9px; height: 3px;
+  background: var(--card); transform: skewY(-20deg); }
+.fin-day[data-today="true"] i { box-shadow: 0 0 0 1.5px var(--card), 0 0 0 3px color-mix(in oklch, var(--foreground) 40%, transparent); }
+.fin-axis { position: absolute; left: 0; right: 0; bottom: 0; height: 14px; display: flex; justify-content: space-between;
+  font-family: "JetBrains Mono", monospace; font-size: 9.5px; color: var(--inicio-faint); }
+.fin-avg { position: absolute; left: 0; right: 0; border-top: 1px dashed color-mix(in oklch, var(--foreground) 30%, transparent); pointer-events: none; }
+
+/* Categorías del mes */
+.fin-cat { width: 100%; display: grid; grid-template-columns: auto minmax(0, 1fr) auto; gap: 3px 10px; align-items: center; padding: 8px 18px; text-align: left; transition: background .15s; }
+.fin-cat:hover { background: var(--inicio-hover); }
+.fin-cat .inicio-ico { width: 28px; height: 28px; font-size: 13px; grid-row: span 2; }
+.fin-cat .n { font-size: 13px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.fin-cat .v { font-family: "JetBrains Mono", monospace; font-variant-numeric: tabular-nums; font-size: 12.5px; font-weight: 600; text-align: right; }
+.fin-cat .row2 { grid-column: 2 / -1; display: flex; align-items: center; gap: 10px; }
+.fin-cat .row2 .inicio-track { flex: 1; height: 3px; }
+.fin-cat .delta { font-family: "JetBrains Mono", monospace; font-size: 10.5px; white-space: nowrap; min-width: 72px; text-align: right; color: var(--inicio-faint); }
+.fin-cat .delta[data-dir="up"] { color: var(--inicio-rose); }
+.fin-cat .delta[data-dir="down"] { color: var(--inicio-emerald); }
+
+/* Patrimonio en el tiempo */
+.fin-worth svg { position: absolute; inset: 0; width: 100%; height: 100%; overflow: visible; }
+.fin-worth .area { animation: fin-fade .8s ease-out both; }
+@keyframes fin-fade { from { opacity: 0; } }
+.fin-scrub { position: absolute; top: 0; bottom: 18px; width: 1px; background: color-mix(in oklch, var(--foreground) 35%, transparent); pointer-events: none; }
+.fin-legend { display: flex; gap: 14px; flex-wrap: wrap; padding: 0 18px 12px; font-size: 11.5px; color: var(--muted-foreground); }
+.fin-legend span { display: flex; align-items: center; gap: 6px; white-space: nowrap; }
+.fin-legend i { width: 8px; height: 8px; border-radius: 2px; }
+.fin-legend b { font-family: "JetBrains Mono", monospace; font-weight: 600; color: var(--foreground); }
+.fin-stats { display: flex; gap: 22px; flex-wrap: wrap; padding: 10px 18px 14px; border-top: 1px solid var(--border); font-size: 11.5px; color: var(--muted-foreground); }
+.fin-stats span { display: flex; align-items: baseline; gap: 6px; white-space: nowrap; }
+.fin-stats b { font-family: "JetBrains Mono", monospace; font-size: 13px; font-weight: 600; color: var(--foreground); }
+
+/* Mes a mes */
+.fin-bars { position: absolute; inset: 0 0 18px; display: flex; align-items: flex-end; gap: 4px; }
+.fin-mon { flex: 1; height: 100%; display: flex; align-items: flex-end; justify-content: center; gap: 2px; border-radius: 5px; cursor: pointer; padding: 0 1px; transition: background .15s; }
+.fin-mon:hover, .fin-mon[data-active="true"] { background: var(--inicio-hover); }
+.fin-mon i { flex: 1; max-width: 14px; border-radius: 3px 3px 1px 1px; transform-origin: bottom; animation: fin-rise .55s cubic-bezier(.2, .8, .2, 1) both; animation-delay: calc(var(--i, 0) * 25ms); }
+.fin-mon i.in { background: color-mix(in oklch, var(--inicio-emerald) 75%, transparent); }
+.fin-mon i.out { background: color-mix(in oklch, var(--inicio-rose) 62%, var(--muted-foreground)); }
+.fin-mon[data-current="true"] i { opacity: .55; }
+.fin-axis-abs { position: absolute; left: 0; right: 0; bottom: 0; height: 14px; }
+.fin-axis-abs span { position: absolute; top: 0; font-family: "JetBrains Mono", monospace; font-size: 9.5px; color: var(--inicio-faint);
+  text-transform: lowercase; white-space: nowrap; }
+
+/* Tendencia por categoría */
+.fin-trend { width: 100%; display: grid; grid-template-columns: auto minmax(0, 1fr) auto auto; gap: 10px; align-items: center; padding: 7px 18px; text-align: left; transition: background .15s; }
+.fin-trend:hover { background: var(--inicio-hover); }
+.fin-trend .inicio-ico { width: 26px; height: 26px; font-size: 12px; }
+.fin-trend .n { font-size: 12.5px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.fin-spark { display: flex; align-items: flex-end; gap: 1.5px; width: 84px; height: 22px; }
+.fin-spark i { flex: 1; min-height: 1px; border-radius: 1.5px; transform-origin: bottom; animation: fin-rise .5s cubic-bezier(.2, .8, .2, 1) both; }
+.fin-spark i:last-child { opacity: .5; }
+.fin-trend .v { font-family: "JetBrains Mono", monospace; font-variant-numeric: tabular-nums; font-size: 12px; font-weight: 600; text-align: right; white-space: nowrap; min-width: 76px; }
+.fin-trend .v small { display: block; font-size: 9.5px; font-weight: 400; color: var(--inicio-faint); }
+
+/* Panel con los movimientos de una categoría, un día o un mes */
+.fin-sheet { display: flex; flex-direction: column; padding: 0; gap: 0; }
+.fin-sheet-head { display: flex; align-items: center; gap: 12px; padding: 20px 48px 12px 20px; border-bottom: 1px solid var(--border); }
+.fin-sheet-head .inicio-ico { width: 36px; height: 36px; font-size: 17px; }
+.fin-sheet-head h2 { font-size: 16px; font-weight: 600; }
+.fin-sheet-head p { font-family: "JetBrains Mono", monospace; font-size: 12px; color: var(--muted-foreground); margin-top: 2px; }
+.fin-sheet .inicio-scroll { padding-top: 4px; }
+
+/* ══ Tablet ══ */
+@container inicio (max-width: 900px) {
+  .fin-grid { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); }
+  .fin-stepper .label { min-width: 110px; }
+}
+
+/* ══ Celular: una pantalla; lo largo scrollea adentro ══ */
+@container inicio (max-width: 600px) {
+  .fin-grid { gap: 10px; grid-template-columns: minmax(0, 1fr);
+    grid-template-rows: auto auto auto minmax(0, 1fr);
+    grid-template-areas: "head" "flow" "daily" "cats"; }
+  .fin-grid[data-view="hist"] { grid-template-columns: minmax(0, 1fr);
+    grid-template-rows: auto auto minmax(0, 1fr);
+    grid-template-areas: "head" "worth" "months"; }
+  .fin-title { font-size: 18px; }
+  .fin-head-end { width: 100%; margin-left: 0; justify-content: space-between; }
+  .fin-stepper .label { min-width: 0; flex: 1; }
+  .fin-flow { height: 200px; } .fin-daily { height: 118px; }
+  .fin-worth { height: 230px; }
+  .fin-step .foot { padding-bottom: 10px; }
+  .fin-step .amt .full { display: none; }
+  .fin-step .amt .short { display: inline; }
+  .fin-step .foot .n { white-space: nowrap; font-size: 11px; }
+  .fin-cat .delta { min-width: 0; }
+  /* Mes a mes y categorías comparten la tarjeta */
+  .fin-trends { display: none; }
+  .fin-hist-tabs { display: flex; gap: 4px; padding: 8px 8px 0; }
+  .fin-hist-tabs button { flex: 1; font-size: 12px; font-weight: 600; color: var(--muted-foreground); border-radius: 10px; padding: 8px; }
+  .fin-hist-tabs button[aria-selected="true"] { color: var(--foreground); background: var(--inicio-hover); }
+  .fin-months .fin-card-head { display: none; }
+  .fin-months[data-tab="trends"] .fin-months-body { display: none; }
+  .fin-months[data-tab="months"] .fin-trends-body { display: none; }
+}
+.fin-trends-body { display: none; }
+@container inicio (max-width: 600px) { .fin-months[data-tab="trends"] .fin-trends-body { display: block; } }
+
+/* Con "reducir movimiento" la regla global acorta las animaciones, pero no
+   sus retardos: sin esto, las barras escalonadas quedarían invisibles un
+   momento antes de aparecer de golpe. */
+@media (prefers-reduced-motion: reduce) {
+  .inicio *, .inicio *::before, .inicio *::after { animation-delay: 0s !important; }
+}
