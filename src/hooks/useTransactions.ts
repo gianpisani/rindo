@@ -345,12 +345,19 @@ export function useTransactions() {
       const { data: userData } = await supabase.auth.getUser();
       if (!userData.user) throw new Error("No user found");
 
+      // Todo lo que el usuario ve del movimiento, no solo lo básico: si no,
+      // deshacer devolvía un reembolso sin su vínculo o una compra sin tarjeta.
       const toRestore = lastDeletedRef.current.map(t => ({
         date: t.date,
         detail: t.detail,
         category_name: t.category_name,
         type: t.type,
         amount: t.amount,
+        card_id: t.card_id,
+        installment_id: t.installment_id,
+        reimbursement_for_category: t.reimbursement_for_category,
+        bank_description: t.bank_description,
+        ...(hasCategoryContext && t.category_source ? { category_source: t.category_source } : {}),
         user_id: userData.user!.id,
       }));
 
@@ -371,7 +378,7 @@ export function useTransactions() {
         toast.error("Error al restaurar transacciones: error desconocido");
       }
     }
-  }, [queryClient]);
+  }, [queryClient, hasCategoryContext]);
 
   return {
     transactions,        // Only past/present (for balance, tables by default)

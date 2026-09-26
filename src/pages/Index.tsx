@@ -1,7 +1,11 @@
 import { useState, useMemo, useRef, useEffect, type CSSProperties, type PointerEvent, type TouchEvent } from "react";
 import Layout from "@/components/Layout";
 import { byNewest, useTransactions, type Transaction } from "@/hooks/useTransactions";
+import { toast } from "sonner";
 import { useLiveRows } from "@/hooks/useLiveRows";
+import { useQueryClient } from "@tanstack/react-query";
+import { InicioTxRow, type InicioCategoryOption } from "@/components/InicioTxRow";
+import { categoryFrequency } from "@/lib/whisper";
 import { useBankSyncCredentials } from "@/hooks/useBankSyncCredentials";
 import { useCategories } from "@/hooks/useCategories";
 import { useCategoryLimits } from "@/hooks/useCategoryLimits";
@@ -74,7 +78,8 @@ const tint = (color?: string | null) => ({
 });
 
 const Index = () => {
-  const { transactions, isLoading } = useTransactions();
+  const { transactions, isLoading, updateTransactionSilent, deleteTransaction } = useTransactions();
+  const queryClient = useQueryClient();
   const { categories } = useCategories();
   const { limits } = useCategoryLimits();
   const navigate = useNavigate();
@@ -88,6 +93,9 @@ const Index = () => {
   // La categoría que se está mirando: se destaca en las tres tarjetas a la vez.
   const [focus, setFocus] = useState<{ category: string; from: "spend" | "feed" | "limits"; pinned?: boolean } | null>(null);
   const swipe = useRef<{ x: number; y: number } | null>(null);
+  // Filas recién editadas (el ícono rebota) y las que se están yendo.
+  const [changed, setChanged] = useState<ReadonlySet<string>>(new Set());
+  const [leaving, setLeaving] = useState<ReadonlySet<string>>(new Set());
   const { data: bankCredentials } = useBankSyncCredentials();
   const lastSync = (bankCredentials ?? [])
     .filter((c) => c.is_active && c.last_sync_status === "success" && c.last_sync_at)
@@ -364,6 +372,53 @@ const Index = () => {
       })
     );
 
+  // ─── Editar en la fila ────────────────────────────────
+  // Optimista: el cambio se ve al soltar el campo y la red va detrás. Si
+  // falla, la fila vuelve a como estaba (el hook avisa el error).
+  const saveInline = (t: Transaction, changes: Partial<Pick<Transaction, "detail" | "amount" | "category_name">>) => {
+    const previous = queryClient.getQueryData<Transaction[]>(["transactions"]);
+    queryClient.setQueryData<Transaction[]>(["transactions"], (list) =>
+      list?.map((row) => (row.id === t.id ? { ...row, ...changes } : row)));
+    if (changes.category_name) {
+      setChanged((prev) => new Set(prev).add(t.id));
+      window.setTimeout(() => setChanged((prev) => new Set([...prev].filter((id) => id !== t.id))), 1000);
+    }
+    updateTransactionSilent.mutate({ id: t.id, ...changes }, {
+      onError: () => queryClient.setQueryData(["transactions"], previous),
+    });
+  };
+
+  // La fila se pliega primero y después se borra: el toast trae "Deshacer".
+  const removeInline = (t: Transaction) => {
+    setLeaving((prev) => new Set(prev).add(t.id));
+    window.setTimeout(() => {
+      const previous = queryClient.getQueryData<Transaction[]>(["transactions"]);
+      deleteTransaction.mutate(t.id, {
+        onError: (error) => {
+          queryClient.setQueryData(["transactions"], previous);
+          setLeaving((prev) => new Set([...prev].filter((id) => id !== t.id)));
+          toast.error(error instanceof Error ? error.message : "No se pudo borrar");
+        },
+      });
+      // Después de mutate: el hook ya tomó la fila para poder deshacer.
+      queryClient.setQueryData<Transaction[]>(["transactions"], (list) => list?.filter((row) => row.id !== t.id));
+    }, 260);
+  };
+
+  // Las categorías del mismo tipo, las más usadas primero (una vez por tipo).
+  const optionsByType = new Map<TransactionType, InicioCategoryOption[]>();
+  const categoryOptions = (type: TransactionType): InicioCategoryOption[] => {
+    const cached = optionsByType.get(type);
+    if (cached) return cached;
+    const frequency = categoryFrequency(transactions, type);
+    const options = categories
+      .filter((c) => c.type === type && c.is_active !== false && !["Sin categoría", ANALYZING_CATEGORY].includes(c.name))
+      .sort((a, b) => (frequency.get(b.name) ?? 0) - (frequency.get(a.name) ?? 0) || a.name.localeCompare(b.name))
+      .map((c) => ({ name: c.name, icon: c.icon || getCategoryIcon(c.name), color: c.color }));
+    optionsByType.set(type, options);
+    return options;
+  };
+
   // ─── Recientes ────────────────────────────────────────
   const feedList = isLoading ? (
     <div className="space-y-3 px-[18px] py-3">
@@ -402,46 +457,59 @@ const Index = () => {
           const isBot = (t.detail || "").startsWith("🤖");
           const detail = (t.detail || "").replace(/^🤖\s*/, "").trim();
           const tone = AMOUNT_TONE[t.type];
-          const meta = t.reimbursement_for_category
-            ? `Reembolso de ${t.reimbursement_for_category}`
-            : `${t.category_name} · ${format(new Date(t.date), "HH:mm")}`;
+          const time = format(new Date(t.date), "HH:mm");
+          // El reembolso muestra a qué gasto devuelve: esa relación no se edita acá.
+          const categoryEditable = !analyzing && !t.reimbursement_for_category;
           return (
-            <div
+            <InicioTxRow
               key={key}
               className={cn(
-                "inicio-tx",
                 live.entered.has(key) && "is-new",
-                live.resolved.has(key) && "is-resolved",
+                (live.resolved.has(key) || changed.has(t.id)) && "is-resolved",
+                leaving.has(t.id) && "is-leaving",
                 !analyzing && dimmed(t.category_name, "feed") && "is-dim"
               )}
               data-category={analyzing ? undefined : t.category_name}
               {...(analyzing ? {} : focusable(t.category_name, "feed"))}
-            >
-              <span
-                className={cn("inicio-ico", analyzing && "is-thinking")}
-                style={tint(analyzing ? "var(--inicio-violet)" : colorOf(t.category_name))}
-              >
-                {/* La key cambia con el estado: así el ícono nuevo entra con su propio rebote */}
-                <span key={analyzing ? "thinking" : t.category_name} className="glyph">
-                  {analyzing ? "⚡" : getCatEmoji(t.category_name)}
+              icon={
+                <span
+                  className={cn("inicio-ico", analyzing && "is-thinking")}
+                  style={tint(analyzing ? "var(--inicio-violet)" : colorOf(t.category_name))}
+                >
+                  {/* La key cambia con el estado: así el ícono nuevo entra con su propio rebote */}
+                  <span key={analyzing ? "thinking" : t.category_name} className="glyph">
+                    {analyzing ? "⚡" : getCatEmoji(t.category_name)}
+                  </span>
+                  {isBot && <span className="inicio-bot">🤖</span>}
                 </span>
-                {isBot && <span className="inicio-bot">🤖</span>}
-              </span>
-              <div className={cn("body", isPrivacyMode && "privacy-blur")}>
-                <div className="d">{detail || (analyzing ? "Movimiento" : t.category_name)}</div>
-                {analyzing ? (
-                  <div className="c inicio-thinking" role="status">
+              }
+              detail={detail}
+              amount={Math.abs(Number(t.amount))}
+              sign={signPrefix(t.type, Number(t.amount))}
+              amountColor={tone}
+              category={categoryEditable ? t.category_name : undefined}
+              categoryOptions={categoryOptions(t.type)}
+              meta={
+                analyzing ? (
+                  <span className="inicio-thinking" role="status">
                     {t.isPending ? "Guardando…" : "Jev está categorizando…"}
-                  </div>
+                  </span>
+                ) : t.reimbursement_for_category ? (
+                  `Reembolso de ${t.reimbursement_for_category}`
                 ) : (
-                  <div className="c">{meta}</div>
-                )}
-              </div>
-              <span className={cn("m", isPrivacyMode && "privacy-blur")} style={{ color: tone }}>
-                {signPrefix(t.type, Number(t.amount))}
-                {formatCurrency(Math.abs(Number(t.amount)))}
-              </span>
-            </div>
+                  ` · ${time}`
+                )
+              }
+              editable={!analyzing && !t.isPending}
+              privacy={isPrivacyMode}
+              formatAmount={formatCurrency}
+              onSave={(changes) => saveInline(t, {
+                ...changes,
+                ...(changes.detail !== undefined && { detail: changes.detail ? (isBot ? `🤖 ${changes.detail}` : changes.detail) : null }),
+                ...(changes.amount !== undefined && { amount: Number(t.amount) < 0 ? -changes.amount : changes.amount }),
+              })}
+              onDelete={() => removeInline(t)}
+            />
           );
         })}
       </div>

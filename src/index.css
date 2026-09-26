@@ -1251,7 +1251,9 @@ Based on Indigo, Blue, Cyan palette
 .inicio-bot { position: absolute; right: -3px; bottom: -3px; width: 13px; height: 13px; border-radius: 999px; background: var(--card); font-size: 7.5px; display: grid; place-items: center; }
 .inicio-tx .body { flex: 1; min-width: 0; }
 .inicio-tx .d { font-size: 13px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.inicio-tx .c { font-size: 11px; color: var(--muted-foreground); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.inicio-tx .c { font-size: 11px; color: var(--muted-foreground); white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  /* aire para el fondo de la categoría editable, sin mover el texto */
+  margin: -1px -5px; padding: 1px 5px; }
 .inicio-tx .m { font-family: "JetBrains Mono", monospace; font-variant-numeric: tabular-nums; font-size: 13px; font-weight: 600; flex: none; }
 
 /* Límites */
@@ -1346,6 +1348,58 @@ Based on Indigo, Blue, Cyan palette
 .inicio-legend button { display: flex; align-items: center; gap: 5px; white-space: nowrap; padding: 2px 6px; margin: -2px 0; border-radius: 999px; }
 .inicio-legend button[aria-pressed="true"] { background: var(--inicio-hover); color: var(--foreground); box-shadow: inset 0 0 0 1px var(--border); }
 
+/* ── Editar en la fila ─────────────────────────────────────────────────
+   Lo editable se ve igual que siempre; al pasar por encima aparece un
+   fondo tenue y el cursor de texto. El campo ocupa exactamente el lugar
+   del texto, así nada salta al abrirlo. */
+.inicio-tx { position: relative; }
+.inicio-editable { display: inline-block; max-width: 100%; margin: -1px -5px; padding: 1px 5px; border-radius: 6px; text-align: left;
+  color: inherit; font: inherit; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; vertical-align: bottom; transition: background .15s; }
+.inicio-editable:disabled { cursor: default; }
+.inicio-editable:focus { outline: none; }
+.inicio-editable:focus-visible { background: color-mix(in oklch, var(--foreground) 8%, transparent); box-shadow: inset 0 0 0 1px color-mix(in oklch, var(--foreground) 22%, transparent); }
+.is-editable .inicio-editable:not(:disabled) { cursor: text; }
+.is-editable .inicio-editable:not(:disabled):hover, .is-editable .inicio-editable[data-state="open"] { background: color-mix(in oklch, var(--foreground) 8%, transparent); }
+.inicio-tx .body > .d.inicio-editable { display: block; width: fit-content; }
+.inicio-placeholder { color: var(--inicio-faint); font-style: italic; }
+.inicio-edit { display: block; margin: -1px -5px; padding: 1px 5px; border: 0; border-radius: 6px; outline: none; color: var(--foreground);
+  background: color-mix(in oklch, var(--foreground) 8%, transparent); box-shadow: inset 0 0 0 1px color-mix(in oklch, var(--foreground) 22%, transparent); }
+.inicio-edit.d { width: calc(100% + 10px); font: inherit; font-size: 13px; }
+.inicio-edit.m { text-align: right; font-family: "JetBrains Mono", monospace; font-variant-numeric: tabular-nums; font-size: 13px; font-weight: 600; min-width: 0; }
+.inicio-edit::placeholder { color: var(--inicio-faint); }
+
+/* Borrar: aparece al pasar por la fila y el monto le hace espacio */
+.inicio-tx .m { transition: transform .18s cubic-bezier(.2, .8, .2, 1); }
+.inicio-delete { position: absolute; right: 12px; top: 50%; width: 28px; height: 28px; margin-top: -14px; border-radius: 999px;
+  display: grid; place-items: center; color: var(--muted-foreground); opacity: 0; transform: scale(.85); pointer-events: none;
+  transition: opacity .16s, transform .16s, color .15s, background .15s; }
+.inicio-delete svg { width: 14px; height: 14px; }
+.inicio-delete:hover, .inicio-delete:focus-visible { color: var(--inicio-rose); background: color-mix(in oklch, var(--inicio-rose) 14%, transparent); }
+@media (hover: hover) {
+  .inicio-tx.is-editable:hover .inicio-delete { opacity: 1; transform: none; pointer-events: auto; }
+  .inicio-tx.is-editable:hover > .m { transform: translateX(-32px); }
+}
+.inicio-tx.is-editing .inicio-delete, .inicio-delete:focus-visible { opacity: 1; transform: none; pointer-events: auto; }
+/* Editando, la fila le reserva el lugar al basurero: el campo nunca pasa
+   por debajo del monto. */
+.inicio-tx.is-editing { padding-right: 50px; }
+.inicio-tx.is-editing > .m { transform: none !important; }
+
+/* La fila borrada se pliega antes de irse */
+@keyframes inicio-row-out {
+  from { max-height: 64px; }
+  to { max-height: 0; padding-top: 0; padding-bottom: 0; opacity: 0; transform: translateX(12px); }
+}
+.inicio-tx.is-leaving { overflow: hidden; pointer-events: none; animation: inicio-row-out .26s cubic-bezier(.4, 0, .2, 1) forwards; }
+
+/* Selector de categoría (vive en un portal, fuera de .inicio) */
+.inicio-picker { --inicio-hover: color-mix(in oklch, var(--foreground) 6%, transparent);
+  width: 232px; max-height: 300px; overflow-y: auto; padding: 6px; border-radius: 14px; display: grid; gap: 1px; }
+.inicio-picker button { display: flex; align-items: center; gap: 10px; width: 100%; padding: 6px 8px; border-radius: 9px; font-size: 13px; text-align: left; color: var(--foreground); }
+.inicio-picker button:hover, .inicio-picker button:focus-visible { background: var(--inicio-hover); outline: none; }
+.inicio-picker button[aria-pressed="true"] { background: var(--inicio-hover); font-weight: 600; }
+.inicio-picker .inicio-ico { width: 24px; height: 24px; font-size: 12px; }
+
 /* La navbar flotante del celular (MobileBottomBar, visible bajo 768px) mide
    60px + 8 de margen sobre el safe-area, que <main> ya reserva con pb-safe.
    El inicio es una pantalla fija: sin esto su última tarjeta queda debajo. */
@@ -1393,4 +1447,138 @@ Based on Indigo, Blue, Cyan palette
   .inicio-grid[data-tab="limits"] .inicio-list-feed { display: none; }
   .inicio-grid[data-tab="limits"] .inicio-list-limits { display: block; }
   .inicio-list-limits .inicio-limits-summary { padding-top: 8px; }
+}
+
+/* ══ Meta ═══════════════════════════════════════════════════════════════
+   Ahorrar $X al mes, ¿lo cumpliste? Una pantalla exacta en web y celular,
+   como el Inicio: container queries sobre el ancho que le queda al
+   contenido. Verde cuando el mes llegó a la meta, rojo solo cuando quedó
+   en cero; lo parcial va en el color del texto, no es una alarma. */
+.meta {
+  container: meta / inline-size;
+  display: flex;
+  flex: 1;
+  min-height: 0;
+  flex-direction: column;
+  gap: 14px;
+  --meta-hover: color-mix(in oklch, var(--foreground) 4%, transparent);
+  --meta-faint: color-mix(in oklch, var(--muted-foreground) 60%, transparent);
+  --meta-emerald: oklch(var(--accent-emerald));
+  --meta-rose: oklch(var(--accent-rose));
+  --meta-mono: "JetBrains Mono", monospace;
+  /* Alto reservado sobre y bajo cada barra: la línea de la meta se ubica con esto */
+  --meta-amt: 16px;
+  --meta-mon: 18px;
+}
+.meta-head { display: flex; align-items: center; gap: 14px; min-width: 0; flex-wrap: wrap; }
+.meta-title { font-size: 22px; font-weight: 700; letter-spacing: -0.02em; }
+.meta-goal { display: flex; align-items: center; gap: 6px; font-size: 13px; color: var(--muted-foreground); padding: 6px 12px; margin: -6px 0;
+  border-radius: 999px; border: 1px solid transparent; white-space: nowrap; transition: background .15s, border-color .15s, color .15s; }
+.meta-goal b { font-family: var(--meta-mono); font-variant-numeric: tabular-nums; font-weight: 600; color: var(--foreground); }
+.meta-goal svg { width: 12px; height: 12px; opacity: .45; transition: opacity .15s; }
+.meta-goal:hover { background: var(--meta-hover); border-color: var(--border); color: var(--foreground); }
+.meta-goal:hover svg { opacity: 1; }
+
+/* Editar la meta, en línea */
+.meta-edit { display: flex; align-items: center; gap: 4px; }
+.meta-edit-field { display: flex; align-items: center; height: 32px; padding: 0 10px; gap: 4px; border-radius: 10px; background: var(--card); border: 1px solid var(--border);
+  font-family: var(--meta-mono); font-size: 13px; color: var(--muted-foreground); transition: border-color .15s, box-shadow .15s; }
+.meta-edit-field:focus-within { border-color: var(--primary); box-shadow: 0 0 0 3px color-mix(in oklch, var(--primary) 18%, transparent); }
+.meta-edit-field input { width: 108px; background: transparent; outline: none; font: inherit; font-weight: 600; color: var(--foreground); font-variant-numeric: tabular-nums; }
+.meta-edit-field input::placeholder { color: var(--meta-faint); font-weight: 400; }
+.meta-edit-btn { display: grid; place-items: center; width: 32px; height: 32px; border-radius: 10px; color: var(--muted-foreground); transition: background .15s, color .15s; }
+.meta-edit-btn svg { width: 15px; height: 15px; }
+.meta-edit-btn:hover:not(:disabled) { background: var(--meta-hover); color: var(--foreground); }
+.meta-edit-btn:disabled { opacity: .35; cursor: default; }
+
+.meta-grid {
+  flex: 1;
+  min-height: 0;
+  max-height: 400px;
+  display: grid;
+  gap: 12px;
+  grid-template-columns: minmax(260px, 0.8fr) minmax(0, 1.7fr);
+}
+.meta-card { background: var(--card); border: 1px solid var(--border); border-radius: 18px; min-height: 0; min-width: 0; }
+.meta-label { font-size: 13px; font-weight: 600; color: var(--muted-foreground); }
+
+/* Primera vez: pedir la meta */
+.meta-setup { max-width: 420px; padding: 26px 24px; display: flex; flex-direction: column; gap: 8px; }
+.meta-setup h2 { font-size: 16px; font-weight: 600; }
+.meta-setup p { font-size: 12.5px; color: var(--muted-foreground); margin-bottom: 8px; }
+
+/* El mes en curso */
+.meta-now { padding: 18px 20px; display: flex; flex-direction: column; align-self: start; }
+.meta-now-top { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; }
+.meta-month { font-family: var(--meta-mono); font-size: 11px; font-weight: 500; color: var(--muted-foreground); text-transform: capitalize; }
+.meta-pct { font-family: var(--meta-mono); font-size: 12px; font-weight: 600; color: var(--muted-foreground); }
+.meta-big { font-family: var(--meta-mono); font-variant-numeric: tabular-nums; font-size: 40px; line-height: 1; font-weight: 700; letter-spacing: -0.03em; margin: 12px 0 4px; }
+.meta-of { font-family: var(--meta-mono); font-variant-numeric: tabular-nums; font-size: 12px; color: var(--muted-foreground); }
+.meta-track { height: 6px; border-radius: 6px; background: var(--meta-hover); overflow: hidden; margin: 14px 0 10px; }
+.meta-track i { display: block; height: 100%; border-radius: 6px; background: var(--foreground); transform-origin: left center; animation: meta-grow .8s cubic-bezier(.2, .8, .2, 1) both; transition: width .5s ease-out; }
+.meta-now[data-tone="met"] .meta-track i { background: var(--meta-emerald); }
+.meta-now[data-tone="met"] .meta-pct { color: var(--meta-emerald); }
+.meta-note { font-size: 12px; color: var(--muted-foreground); }
+.meta-note[data-tone="met"] { color: var(--meta-emerald); }
+.meta-note[data-tone="none"] { color: var(--meta-rose); }
+
+/* Los últimos doce meses */
+.meta-hist { padding: 16px 18px 14px; display: flex; flex-direction: column; gap: 10px; }
+.meta-hist-head { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; }
+.meta-count { font-family: var(--meta-mono); font-variant-numeric: tabular-nums; font-size: 11.5px; color: var(--muted-foreground); }
+.meta-count b { font-weight: 600; color: var(--foreground); }
+.meta-chart { position: relative; flex: 1; min-height: 150px; display: grid; grid-template-columns: repeat(12, minmax(0, 1fr)); gap: 4px; }
+.meta-goal-line { position: absolute; left: 0; right: 0; border-top: 1px dashed color-mix(in oklch, var(--foreground) 30%, transparent); pointer-events: none; z-index: 1; }
+.meta-col { display: flex; flex-direction: column; align-items: center; min-width: 0; border-radius: 8px; text-align: center; transition: background .15s; }
+.meta-col:hover { background: var(--meta-hover); }
+.meta-col[aria-selected="true"] { background: var(--meta-hover); box-shadow: inset 0 0 0 1px var(--border); }
+.meta-amt { height: var(--meta-amt); display: flex; align-items: center; justify-content: center; gap: 2px; font-family: var(--meta-mono); font-variant-numeric: tabular-nums; font-size: 10.5px; font-weight: 500; color: var(--meta-faint); white-space: nowrap; }
+.meta-check { display: none; font-size: 10px; }
+.meta-bar { position: relative; flex: 1; width: 100%; max-width: 30px; min-height: 0; margin: 2px 0; }
+.meta-bar i { position: absolute; left: 0; right: 0; bottom: 0; min-height: 3px; border-radius: 5px 5px 3px 3px; background: color-mix(in oklch, var(--foreground) 45%, transparent);
+  transform-origin: bottom center; animation: meta-rise .7s cubic-bezier(.2, .8, .2, 1) both; animation-delay: calc(var(--i, 0) * 35ms + 60ms); transition: height .5s ease-out; }
+.meta-col[data-tone="met"] .meta-bar i { background: var(--meta-emerald); }
+.meta-col[data-tone="met"] .meta-amt { color: var(--meta-emerald); font-weight: 600; }
+.meta-col[data-tone="none"] .meta-bar i { background: var(--meta-rose); height: 3px; }
+.meta-col[data-tone="wait"] .meta-bar i { background: var(--meta-faint); height: 3px; }
+.meta-col[aria-selected="true"] .meta-amt { color: var(--foreground); }
+.meta-col[aria-selected="true"][data-tone="met"] .meta-amt { color: var(--meta-emerald); }
+.meta-mon { height: var(--meta-mon); display: flex; align-items: flex-end; font-size: 10.5px; color: var(--muted-foreground); text-transform: lowercase; }
+.meta-col[aria-selected="true"] .meta-mon { color: var(--foreground); font-weight: 600; }
+
+/* El mes elegido: dos líneas de alto fijo, así el gráfico no salta */
+.meta-detail { display: flex; flex-direction: column; gap: 2px; padding-top: 10px; border-top: 1px solid var(--border); }
+.meta-detail-top { font-family: var(--meta-mono); font-variant-numeric: tabular-nums; font-size: 12.5px; font-weight: 600; text-transform: capitalize; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.meta-detail[data-tone="met"] .meta-detail-top { color: var(--meta-emerald); }
+.meta-detail[data-tone="none"] .meta-detail-top { color: var(--meta-rose); }
+.meta-detail-sub { font-size: 11.5px; color: var(--muted-foreground); min-height: 2.6em; line-height: 1.3; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+
+@keyframes meta-grow { from { transform: scaleX(0); } }
+@keyframes meta-rise { from { transform: scaleY(0); } }
+@media (prefers-reduced-motion: reduce) {
+  .meta-track i, .meta-bar i { animation: none; transition: none; }
+}
+
+/* La navbar flotante del celular: ver el mismo ajuste en .inicio */
+@media (max-width: 767px) {
+  .meta { padding-bottom: 78px; }
+}
+
+/* ══ Celular: una pantalla, sin scroll de página ══ */
+@container meta (max-width: 600px) {
+  .meta { gap: 10px; }
+  .meta-title { font-size: 18px; }
+  .meta-goal { font-size: 12.5px; padding: 5px 10px; margin-left: auto; }
+  .meta-grid { max-height: none; gap: 10px; grid-template-columns: minmax(0, 1fr); grid-template-rows: auto minmax(0, 1fr); }
+  .meta-now { padding: 14px 16px; }
+  .meta-big { font-size: 32px; margin: 8px 0 2px; }
+  .meta-track { margin: 10px 0 8px; }
+  .meta-hist { padding: 12px 14px 12px; gap: 8px; }
+  .meta-chart { gap: 3px; min-height: 120px; }
+  /* Doce montos no caben en 360px: queda el ✓ del mes cumplido y el detalle de abajo */
+  .meta-amt-num { display: none; }
+  .meta-check { display: inline; }
+  .meta-bar { max-width: 22px; }
+  .meta-mon { font-size: 10px; }
+  .meta-detail-sub { min-height: 0; }
 }
