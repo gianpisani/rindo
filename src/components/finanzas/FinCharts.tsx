@@ -7,8 +7,8 @@ const clp = (value: number) =>
 
 
 // ─── Cascada del mes ─────────────────────────────────────────────────────
-// Cuatro columnas: lo que entró sube, lo que se gastó e invirtió baja desde
-// ahí, y lo que quedó es la última barra. Se lee sin leyenda.
+// La liquidez del mes: lo que entró sube, lo que se gastó e invirtió baja,
+// lo rescatado vuelve a subir, y lo que quedó es la última barra.
 
 export interface FlowStep {
   label: string;
@@ -16,7 +16,8 @@ export interface FlowStep {
   value: number;
   color: string;
   /** "−16% vs ago" y su tono. */
-  delta?: { text: string; tone?: string };
+  /** "+11%" y " vs ago" (el sufijo se esconde en pantallas angostas). */
+  delta?: { text: string; suffix?: string; tone?: string };
 }
 
 export function FlowWaterfall({ steps, result, privacy }: {
@@ -38,7 +39,7 @@ export function FlowWaterfall({ steps, result, privacy }: {
   const y = (v: number) => ((top - v) / span) * 100; // % desde arriba
 
   return (
-    <div className="fin-steps">
+    <div className="fin-steps" style={{ gridTemplateColumns: `repeat(${all.length}, minmax(0, 1fr))` }}>
       {all.map((bar, i) => {
         const hi = Math.max(bar.from, bar.to);
         const lo = Math.min(bar.from, bar.to);
@@ -47,8 +48,9 @@ export function FlowWaterfall({ steps, result, privacy }: {
           <div key={bar.label} className="fin-step">
             <div className="bar-zone">
               <span className={cn("amt", privacy && "privacy-blur")} style={{ top: `${y(hi)}%`, color: bar.color }}>
-                <span className="full">{bar.value < 0 ? "−" : i === 0 ? "+" : ""}{clp(Math.abs(bar.value))}</span>
-                <span className="short">{bar.value < 0 ? "−" : i === 0 ? "+" : ""}{clpShort(Math.abs(bar.value)).replace("−", "")}</span>
+                {/* Cada paso con su signo; el resultado, sin signo si es positivo */}
+                <span className="full">{bar.value < 0 ? "−" : i < all.length - 1 ? "+" : ""}{clp(Math.abs(bar.value))}</span>
+                <span className="short">{bar.value < 0 ? "−" : i < all.length - 1 ? "+" : ""}{clpShort(Math.abs(bar.value)).replace("−", "")}</span>
               </span>
               <span
                 className="bar"
@@ -60,7 +62,11 @@ export function FlowWaterfall({ steps, result, privacy }: {
             </div>
             <div className="foot">
               <div className="n">{bar.label}</div>
-              {bar.delta && <div className="d" style={{ color: bar.delta.tone }}>{bar.delta.text}</div>}
+              {bar.delta && (
+                <div className="d" style={{ color: bar.delta.tone }}>
+                  {bar.delta.text}<span className="suffix">{bar.delta.suffix}</span>
+                </div>
+              )}
             </div>
           </div>
         );

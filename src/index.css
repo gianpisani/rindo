@@ -1696,7 +1696,7 @@ Based on Indigo, Blue, Cyan palette
 .fin-empty { flex: 1; display: grid; place-items: center; font-size: 12px; color: var(--muted-foreground); padding: 16px; text-align: center; }
 
 /* Cascada: entró → gastos → invertido → quedó */
-.fin-steps { position: absolute; inset: 0; display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); }
+.fin-steps { position: absolute; inset: 0; display: grid; }
 .fin-step { position: relative; display: flex; flex-direction: column; min-width: 0; }
 .fin-step .bar-zone { position: relative; flex: 1; min-height: 0; }
 .fin-step .bar { position: absolute; left: 22%; right: 22%; border-radius: 6px; min-height: 3px;
@@ -1710,6 +1710,13 @@ Based on Indigo, Blue, Cyan palette
 .fin-step .amt .short { display: none; }
 .fin-step .foot .n { font-size: 12px; color: var(--muted-foreground); }
 .fin-step .foot .d { font-family: "JetBrains Mono", monospace; font-size: 10.5px; color: var(--inicio-faint); margin-top: 1px; white-space: nowrap; }
+
+/* El otro balde: lo que pasó con las inversiones y el patrimonio */
+.fin-invest { display: flex; gap: 18px; flex-wrap: wrap; align-items: baseline; padding: 10px 18px 12px; border-top: 1px solid var(--border);
+  font-size: 11.5px; color: var(--muted-foreground); }
+.fin-invest > span { display: flex; align-items: baseline; gap: 6px; white-space: nowrap; }
+.fin-invest b { font-family: "JetBrains Mono", monospace; font-variant-numeric: tabular-nums; font-size: 12.5px; font-weight: 600; color: var(--foreground); }
+.fin-invest small { font-family: "JetBrains Mono", monospace; font-size: 10.5px; color: var(--inicio-faint); }
 
 /* Barras de cada día */
 .fin-days { position: absolute; inset: 0 0 18px; display: flex; align-items: flex-end; gap: 2px; }
@@ -1803,7 +1810,10 @@ Based on Indigo, Blue, Cyan palette
   .fin-title { font-size: 18px; }
   .fin-head-end { width: 100%; margin-left: 0; justify-content: space-between; }
   .fin-stepper .label { min-width: 0; flex: 1; }
-  .fin-flow { height: 200px; } .fin-daily { height: 118px; }
+  .fin-flow { height: 250px; } .fin-daily { height: 118px; }
+  .fin-step .foot .d .suffix { display: none; }
+  .fin-invest { gap: 4px 14px; padding: 9px 16px 11px; font-size: 11px; }
+  .fin-invest .ml-auto { margin-left: 0; }
   .fin-worth { height: 230px; }
   .fin-step .foot { padding-bottom: 10px; }
   .fin-step .amt .full { display: none; }

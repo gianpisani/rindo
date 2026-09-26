@@ -67,7 +67,7 @@ const deltaOf = (current: number, previous: number, prevMonth: Date, goodWhenUp:
   if (!Number.isFinite(pct) || Math.abs(pct) > 500) return undefined;
   const up = pct > 0;
   const tone = pct === 0 || goodWhenUp === null ? undefined : up === goodWhenUp ? "var(--inicio-emerald)" : "var(--inicio-rose)";
-  return { text: `${up ? "+" : ""}${pct}% vs ${format(prevMonth, "MMM", { locale: es })}`, tone };
+  return { text: `${up ? "+" : ""}${pct}%`, suffix: ` vs ${format(prevMonth, "MMM", { locale: es })}`, tone };
 };
 
 export default function Overview() {
@@ -138,9 +138,12 @@ export default function Overview() {
   const prevFlows = useMemo(() => computeRealFlows(transactions, prevMonth, flowConfig),
     // eslint-disable-next-line react-hooks/exhaustive-deps
     [transactions, month, flowConfig]);
-  const invNet = flows.invertido - flows.rescatado;
-  const prevInvNet = prevFlows.invertido - prevFlows.rescatado;
-  const quedo = flows.ingresoReal - flows.consumoNeto - invNet;
+  // La cascada es la liquidez del mes (lo mismo que mueve el balde líquido):
+  // + entró − gastos − aportes + rescates. El rendimiento no toca la
+  // liquidez: va al balde invertido, y por eso se muestra aparte, abajo.
+  const quedo = flows.ingresoReal - flows.consumoNeto - flows.invertido + flows.rescatado;
+  const investChange = flows.invertido - flows.rescatado + flows.rendimiento;
+  const hasInvestActivity = flows.invertido !== 0 || flows.rescatado !== 0 || flows.rendimiento !== 0;
   const monthTx = useMemo(
     () => transactions.filter((t) => {
       const d = new Date(t.date);
@@ -153,9 +156,9 @@ export default function Overview() {
   const steps: FlowStep[] = [
     { label: "Entró", value: flows.ingresoReal, color: "var(--inicio-emerald)", delta: deltaOf(flows.ingresoReal, prevFlows.ingresoReal, prevMonth, true) },
     { label: "Gastos", value: -flows.consumoNeto, color: SOFT_ROSE, delta: deltaOf(flows.consumoNeto, prevFlows.consumoNeto, prevMonth, false) },
-    invNet >= 0
-      ? { label: "Invertido", value: -invNet, color: "var(--inicio-blue)", delta: deltaOf(invNet, prevInvNet, prevMonth, null) }
-      : { label: "Rescatado", value: -invNet, color: "var(--inicio-cyan)" },
+    // Aportes y rescates por separado: netearlos escondía lo que pasó.
+    ...(flows.invertido > 0 ? [{ label: "Invertido", value: -flows.invertido, color: "var(--inicio-blue)" }] : []),
+    ...(flows.rescatado > 0 ? [{ label: "Rescatado", value: flows.rescatado, color: "var(--inicio-cyan)" }] : []),
   ];
   const result: FlowStep = {
     label: isCurrent ? "Va quedando" : "Quedó",
@@ -298,9 +301,32 @@ export default function Overview() {
                 {loading ? cardSkeleton : !hasMonthData ? (
                   <div className="fin-empty">Sin movimientos en {format(month, "MMMM", { locale: es })}</div>
                 ) : (
-                  <div className="fin-plot" style={{ marginTop: 26 }}>
-                    <FlowWaterfall key={month.toISOString()} steps={steps} result={result} privacy={isPrivacyMode} />
-                  </div>
+                  <>
+                    <div className="fin-plot" style={{ marginTop: 26 }}>
+                      <FlowWaterfall key={month.toISOString()} steps={steps} result={result} privacy={isPrivacyMode} />
+                    </div>
+                    {/* El otro balde: aportes − rescates + rendimiento */}
+                    {hasInvestActivity && (
+                      <div className={cn("fin-invest", isPrivacyMode && "privacy-blur")}>
+                        <span>
+                          Inversiones
+                          {/* Rescatar no es malo: si bajan, en gris, no en rojo */}
+                          <b style={{ color: investChange >= 0 ? "var(--inicio-blue)" : "var(--muted-foreground)" }}>
+                            {investChange >= 0 ? "+" : "−"}{clp(Math.abs(investChange))}
+                          </b>
+                          {flows.rendimiento !== 0 && (
+                            <small>{flows.rendimiento > 0 ? "+" : "−"}{clp(Math.abs(flows.rendimiento))} de rendimiento</small>
+                          )}
+                        </span>
+                        <span className="ml-auto">
+                          Patrimonio
+                          <b style={{ color: quedo + investChange >= 0 ? "var(--inicio-emerald)" : "var(--inicio-rose)" }}>
+                            {quedo + investChange >= 0 ? "+" : "−"}{clp(Math.abs(quedo + investChange))}
+                          </b>
+                        </span>
+                      </div>
+                    )}
+                  </>
                 )}
               </section>
 
