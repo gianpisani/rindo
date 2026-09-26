@@ -11,7 +11,7 @@ import Overview from "./pages/Overview";
 import Transactions from "./pages/Transactions";
 import Categories from "./pages/Categories";
 import Fintual from "./pages/Fintual";
-import CategoryInsights from "./pages/CategoryInsights";
+import Meta from "./pages/Meta";
 import PendingDebts from "./pages/PendingDebts";
 import CreditCards from "./pages/CreditCards";
 import TutoringClasses from "./pages/TutoringClasses";
@@ -176,7 +176,7 @@ function AuthenticatedApp() {
           <Route path="/transactions" element={<Transactions />} />
           <Route path="/categories" element={<Categories />} />
           <Route path="/fintual" element={<Fintual />} />
-          <Route path="/budget" element={<CategoryInsights />} />
+          <Route path="/budget" element={<Meta />} />
           <Route path="/pending-debts" element={<PendingDebts />} />
           <Route path="/credit-cards" element={<CreditCards />} />
           <Route path="/tutoring" element={<TutoringClasses />} />

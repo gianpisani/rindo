@@ -1,3 +1,8 @@
+> **Superseded (2026-09-26).** `/budget` volvió a rediseñarse como una sola pregunta:
+> "¿cumpliste la meta este mes?" con lo que de verdad se movió a inversión, mes a mes
+> (`src/pages/Meta.tsx`, `src/lib/savings-goal.ts`). El burn-down, el simulador, los sobres
+> y vida/bombazos ya no existen. Este documento queda como historia del Copiloto v2.
+
 # Plan: Copiloto v2 — "Meta" (pay yourself first)
 
 > Documento de handoff. Contiene TODO el contexto necesario: hallazgos sobre datos reales,

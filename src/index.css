@@ -1531,7 +1531,6 @@ Based on Indigo, Blue, Cyan palette
 .meta-goal-line { position: absolute; left: 0; right: 0; border-top: 1px dashed color-mix(in oklch, var(--foreground) 30%, transparent); pointer-events: none; z-index: 1; }
 .meta-col { display: flex; flex-direction: column; align-items: center; min-width: 0; border-radius: 8px; text-align: center; transition: background .15s; }
 .meta-col:hover { background: var(--meta-hover); }
-.meta-col[aria-selected="true"] { background: var(--meta-hover); box-shadow: inset 0 0 0 1px var(--border); }
 .meta-amt { height: var(--meta-amt); display: flex; align-items: center; justify-content: center; gap: 2px; font-family: var(--meta-mono); font-variant-numeric: tabular-nums; font-size: 10.5px; font-weight: 500; color: var(--meta-faint); white-space: nowrap; }
 .meta-check { display: none; font-size: 10px; }
 .meta-bar { position: relative; flex: 1; width: 100%; max-width: 30px; min-height: 0; margin: 2px 0; }
@@ -1544,7 +1543,8 @@ Based on Indigo, Blue, Cyan palette
 .meta-col[aria-selected="true"] .meta-amt { color: var(--foreground); }
 .meta-col[aria-selected="true"][data-tone="met"] .meta-amt { color: var(--meta-emerald); }
 .meta-mon { height: var(--meta-mon); display: flex; align-items: flex-end; font-size: 10.5px; color: var(--muted-foreground); text-transform: lowercase; }
-.meta-col[aria-selected="true"] .meta-mon { color: var(--foreground); font-weight: 600; }
+.meta-mon span { padding: 1px 5px; margin: 0 -5px; border-radius: 6px; transition: background .15s, color .15s; }
+.meta-col[aria-selected="true"] .meta-mon span { color: var(--foreground); font-weight: 600; background: color-mix(in oklch, var(--foreground) 9%, transparent); }
 
 /* El mes elegido: dos líneas de alto fijo, así el gráfico no salta */
 .meta-detail { display: flex; flex-direction: column; gap: 2px; padding-top: 10px; border-top: 1px solid var(--border); }
@@ -1580,5 +1580,4 @@ Based on Indigo, Blue, Cyan palette
   .meta-check { display: inline; }
   .meta-bar { max-width: 22px; }
   .meta-mon { font-size: 10px; }
-  .meta-detail-sub { min-height: 0; }
 }
