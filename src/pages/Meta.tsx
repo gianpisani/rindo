@@ -462,8 +462,6 @@ export default function Meta() {
                     </div>
                   );
                 })}
-              </div>
-              <div className="meta-lim-foot">
                 {adding ? (
                   <div className="meta-lim-add">
                     <CategorySelect
