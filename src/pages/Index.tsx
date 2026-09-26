@@ -320,11 +320,29 @@ const Index = () => {
     { over: 0, near: 0, ok: 0 }
   );
 
+  // La marca de "hoy" solo aparece donde explica algo: en los límites que
+  // van más rápido que el mes. Repetida en todas las filas parecía un dato
+  // de cada categoría (un 0% con una raya en 85% no se entiende).
+  const isAhead = (c: (typeof budgetRows)[number]) => c.state !== "over" && c.usage > monthProgress;
+  const anyAhead = budgetRows.some(isAhead);
+
   const limitsSummary = budgetRows.length > 0 && (
     <div className="inicio-limits-summary">
       {budgetCounts.over > 0 && <span className="inicio-pill" data-state="over">{budgetCounts.over} pasado{budgetCounts.over === 1 ? "" : "s"}</span>}
       {budgetCounts.near > 0 && <span className="inicio-pill" data-state="near">{budgetCounts.near} cerca</span>}
       {budgetCounts.ok > 0 && <span className="inicio-pill" data-state="ok">{budgetCounts.ok} bien</span>}
+      {anyAhead && (
+        <span
+          className="ml-auto flex items-center gap-1.5 whitespace-nowrap text-[10.5px] text-muted-foreground"
+          title="La marca en la barra es dónde deberías ir a esta altura del mes"
+        >
+          <i
+            className="inline-block h-2.5 w-[2px] rounded-full"
+            style={{ background: "color-mix(in oklch, var(--foreground) 55%, transparent)" }}
+          />
+          hoy, día {now.getDate()} de {daysInMonth}
+        </span>
+      )}
     </div>
   );
 
@@ -352,16 +370,16 @@ const Index = () => {
             <span className="inicio-ico" style={tint(colorOf(cat.category))}>{getCatEmoji(cat.category)}</span>
             <span className="n">{cat.category}</span>
             <span className="pct">{Math.round(cat.usage)}%</span>
-            <span className="inicio-track" title={`A esta altura del mes deberías ir en ${Math.round(monthProgress)}%`}>
+            <span className="inicio-track" title={isAhead(cat) ? `A esta altura del mes deberías ir en ${Math.round(monthProgress)}%` : undefined}>
               {/* Un 1% tiene que dejar marca: si no, la fila miente. */}
               <i style={{ width: cat.usage > 0 ? `max(3px, ${Math.min(cat.usage, 100)}%)` : "0%", background: color, "--i": index } as CSSProperties} />
-              {cat.state !== "over" && <b className="inicio-pace" style={{ left: `${monthProgress}%` }} />}
+              {isAhead(cat) && <b className="inicio-pace" style={{ left: `${monthProgress}%` }} />}
             </span>
             <span className={cn("of", isPrivacyMode && "privacy-blur")}>
               <span>{formatCurrency(cat.effectiveAmount)} de {formatCurrency(limit)}</span>
               {cat.state === "over" ? (
                 <span className="extra">+{formatCurrency(cat.effectiveAmount - limit)}</span>
-              ) : cat.usage > monthProgress ? (
+              ) : isAhead(cat) ? (
                 <span className="ahead" title="Vas más rápido que el mes: a este ritmo te pasas">vas rápido</span>
               ) : (
                 <span>quedan {formatCurrency(limit - cat.effectiveAmount)}</span>
