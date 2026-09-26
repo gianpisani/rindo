@@ -1240,7 +1240,7 @@ Based on Indigo, Blue, Cyan palette
 .inicio-panel-head { display: flex; justify-content: space-between; align-items: center; gap: 8px; padding: 14px 18px 6px; }
 .inicio-panel-head a, .inicio-panel-head button { font-size: 11.5px; color: var(--muted-foreground); }
 .inicio-panel-head a:hover, .inicio-panel-head button:hover { color: var(--foreground); }
-.inicio-scroll { flex: 1; min-height: 0; overflow-y: auto; padding-bottom: 8px; scrollbar-width: thin; scrollbar-color: var(--border) transparent; }
+.inicio-scroll { position: relative; flex: 1; min-height: 0; overflow-y: auto; padding-bottom: 8px; scrollbar-width: thin; scrollbar-color: var(--border) transparent; }
 .inicio-day { position: sticky; top: 0; z-index: 1; display: flex; align-items: center; gap: 10px; padding: 8px 18px 4px; background: var(--card);
   font-size: 11.5px; font-weight: 600; color: var(--muted-foreground); }
 .inicio-day::after { content: ""; flex: 1; height: 1px; background: var(--border); }
@@ -1265,6 +1265,7 @@ Based on Indigo, Blue, Cyan palette
 .inicio-lim .inicio-ico { width: 26px; height: 26px; font-size: 12px; grid-row: span 3; }
 .inicio-lim .n { font-size: 12.5px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .inicio-lim .pct { font-family: "JetBrains Mono", monospace; font-size: 12px; font-weight: 600; }
+.inicio-lim .of span { white-space: nowrap; }
 .inicio-lim .of { grid-column: 2 / -1; font-family: "JetBrains Mono", monospace; font-variant-numeric: tabular-nums; font-size: 10.5px; color: var(--inicio-faint); display: flex; justify-content: space-between; gap: 8px; }
 .inicio-lim .inicio-track { grid-column: 2 / -1; height: 4px; margin-top: 2px; }
 .inicio-lim[data-state="over"] .pct, .inicio-lim[data-state="over"] .extra { color: var(--inicio-rose); }
@@ -1272,6 +1273,78 @@ Based on Indigo, Blue, Cyan palette
 .inicio-lim[data-state="ok"] .pct { color: var(--muted-foreground); }
 .inicio-tabs { display: none; }
 .inicio-list-limits { display: none; }
+
+/* ── Movimiento ──────────────────────────────────────────────────────────
+   Todo breve y con propósito: una fila que llega, Jev pensando y el ícono
+   que cae en su lugar. El bloque de prefers-reduced-motion al inicio del
+   archivo apaga estas animaciones. */
+
+/* Una categoría a la vez: el resto se atenúa */
+.inicio-cat, .inicio-lim, .inicio-tx, .inicio-stack i, .inicio-legend button { transition: opacity .18s ease; }
+.inicio .is-dim { opacity: .28; }
+
+/* Las barras crecen al cargar, escalonadas */
+@keyframes inicio-grow { from { transform: scaleX(0); } }
+.inicio-track i { transform-origin: left center; animation: inicio-grow .7s cubic-bezier(.2, .8, .2, 1) both; animation-delay: calc(var(--i, 0) * 45ms + 60ms); }
+.inicio-stack i { transform-origin: left center; animation: inicio-grow .8s cubic-bezier(.2, .8, .2, 1) both; }
+
+/* Dónde deberías ir hoy: una marca fina sobre la barra del límite */
+.inicio-lim .inicio-track { position: relative; overflow: visible; }
+.inicio-pace { position: absolute; top: -3px; bottom: -3px; width: 2px; margin-left: -1px; border-radius: 2px;
+  background: color-mix(in oklch, var(--foreground) 55%, transparent); box-shadow: 0 0 0 2px var(--card); }
+.inicio-lim .ahead { color: var(--inicio-amber); }
+
+/* Una fila que llega: se abre su espacio, entra y brilla un momento */
+@keyframes inicio-row-in {
+  from { max-height: 0; padding-top: 0; padding-bottom: 0; opacity: 0; transform: translateY(-6px); }
+  60% { opacity: 1; transform: none; }
+  to { max-height: 64px; }
+}
+@keyframes inicio-glow {
+  0%, 35% { background: color-mix(in oklch, var(--foreground) 7%, transparent); }
+  100% { background: transparent; }
+}
+.inicio-tx.is-new { overflow: hidden; animation: inicio-row-in .42s cubic-bezier(.2, .8, .2, 1) both, inicio-glow 1.8s ease-out both; }
+
+/* Jev pensando: el círculo respira y la frase brilla */
+@keyframes inicio-breathe {
+  0%, 100% { box-shadow: 0 0 0 0 color-mix(in oklch, var(--inicio-violet) 0%, transparent); }
+  50% { box-shadow: 0 0 0 4px color-mix(in oklch, var(--inicio-violet) 22%, transparent); }
+}
+.inicio-ico.is-thinking { animation: inicio-breathe 1.4s ease-in-out infinite; }
+.inicio-ico .glyph { display: grid; place-items: center; }
+.inicio-ico.is-thinking .glyph { animation: inicio-flicker 1.4s ease-in-out infinite; }
+@keyframes inicio-flicker { 50% { opacity: .55; transform: scale(.9); } }
+@keyframes inicio-shimmer { to { background-position: -200% 0; } }
+.inicio-thinking {
+  background: linear-gradient(90deg, var(--muted-foreground) 30%, var(--inicio-violet) 50%, var(--muted-foreground) 70%) 0 0 / 200% 100%;
+  -webkit-background-clip: text; background-clip: text; color: transparent; animation: inicio-shimmer 1.6s linear infinite;
+}
+
+/* Jev respondió: el ícono cae en su lugar y la categoría aparece */
+@keyframes inicio-pop {
+  0% { transform: scale(.4) rotate(-14deg); opacity: 0; }
+  55% { transform: scale(1.18) rotate(4deg); opacity: 1; }
+  100% { transform: none; }
+}
+@keyframes inicio-ring {
+  0% { box-shadow: 0 0 0 0 color-mix(in oklch, var(--foreground) 22%, transparent); }
+  100% { box-shadow: 0 0 0 10px color-mix(in oklch, var(--foreground) 0%, transparent); }
+}
+@keyframes inicio-fade-in { from { opacity: 0; transform: translateY(3px); } }
+.inicio-tx.is-resolved .inicio-ico { animation: inicio-ring .7s ease-out; }
+.inicio-tx.is-resolved .glyph { animation: inicio-pop .55s cubic-bezier(.3, 1.4, .5, 1) both; }
+.inicio-tx.is-resolved .c { animation: inicio-fade-in .35s ease-out .12s both; }
+
+/* Cambio de pestaña en celular */
+.inicio-list-feed, .inicio-list-limits { animation: inicio-fade-in .22s ease-out; }
+
+/* Hace cuánto se sincronizó */
+.inicio-since { font-size: 10.5px; font-weight: 500; opacity: .6; margin-left: 6px; }
+
+/* La leyenda del celular es un selector */
+.inicio-legend button { display: flex; align-items: center; gap: 5px; white-space: nowrap; padding: 2px 6px; margin: -2px 0; border-radius: 999px; }
+.inicio-legend button[aria-pressed="true"] { background: var(--inicio-hover); color: var(--foreground); box-shadow: inset 0 0 0 1px var(--border); }
 
 /* La navbar flotante del celular (MobileBottomBar, visible bajo 768px) mide
    60px + 8 de margen sobre el safe-area, que <main> ya reserva con pb-safe.
@@ -1308,7 +1381,7 @@ Based on Indigo, Blue, Cyan palette
   .inicio-spend .inicio-cat, .inicio-spend .inicio-more { display: none; }
   .inicio-stack { display: flex; height: 8px; border-radius: 8px; overflow: hidden; gap: 2px; }
   .inicio-stack i { height: 100%; }
-  .inicio-legend { display: flex; flex-wrap: wrap; gap: 4px 12px; font-size: 11px; color: var(--muted-foreground); }
+  .inicio-legend { display: flex; flex-wrap: wrap; gap: 4px 2px; margin-left: -6px; font-size: 11px; color: var(--muted-foreground); }
   .inicio-legend span { display: flex; align-items: center; gap: 5px; white-space: nowrap; }
   .inicio-legend b { font-family: "JetBrains Mono", monospace; font-size: 11px; font-weight: 600; color: var(--foreground); }
   .inicio-limits { display: none; }

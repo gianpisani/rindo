@@ -1,6 +1,8 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useRef, useEffect, type CSSProperties, type PointerEvent, type TouchEvent } from "react";
 import Layout from "@/components/Layout";
-import { byNewest, useTransactions } from "@/hooks/useTransactions";
+import { byNewest, useTransactions, type Transaction } from "@/hooks/useTransactions";
+import { useLiveRows } from "@/hooks/useLiveRows";
+import { useBankSyncCredentials } from "@/hooks/useBankSyncCredentials";
 import { useCategories } from "@/hooks/useCategories";
 import { useCategoryLimits } from "@/hooks/useCategoryLimits";
 import { useMonthlySummary } from "@/hooks/useMonthlySummary";
@@ -38,7 +40,6 @@ import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import { getCategoryIcon } from "@/components/TransactionsTable";
 import { InvestmentMoveDrawer } from "@/components/InvestmentMoveDrawer";
 import { signPrefix, type TransactionType } from "@/lib/ledger";
-import { AnalyzingBadge } from "@/components/AnalyzingBadge";
 import { ANALYZING_CATEGORY } from "@/lib/auto-category-policy";
 /**
  * El color del monto de cada movimiento en Recientes. Un mapa por tipo en
@@ -55,6 +56,17 @@ const AMOUNT_TONE: Record<TransactionType, string | undefined> = {
 };
 
 const BANK_LOGOS = ["/banks/bchile.png", "/banks/santander.png", "/banks/bci.png", "/banks/bestado.png", "/banks/itau.png"];
+
+/** "hace 5 min", "hace 2 h", "hace 3 d": lo justo para saber si está al día. */
+const sinceLabel = (iso: string) => {
+  const minutes = Math.max(0, Math.round((Date.now() - new Date(iso).getTime()) / 60000));
+  if (minutes < 1) return "recién";
+  if (minutes < 60) return `hace ${minutes} min`;
+  if (minutes < 60 * 24) return `hace ${Math.round(minutes / 60)} h`;
+  return `hace ${Math.round(minutes / 1440)} d`;
+};
+
+const isAnalyzing = (t: Transaction) => Boolean(t.isPending) || t.category_name === ANALYZING_CATEGORY;
 
 /** El ícono de una categoría sobre un tono de su color. */
 const tint = (color?: string | null) => ({
@@ -73,6 +85,15 @@ const Index = () => {
   const [investmentMoveOpen, setInvestmentMoveOpen] = useState(false);
   // En celular Recientes y Límites comparten la tarjeta.
   const [mobileTab, setMobileTab] = useState<"feed" | "limits">("feed");
+  // La categoría que se está mirando: se destaca en las tres tarjetas a la vez.
+  const [focus, setFocus] = useState<{ category: string; from: "spend" | "feed" | "limits"; pinned?: boolean } | null>(null);
+  const swipe = useRef<{ x: number; y: number } | null>(null);
+  const { data: bankCredentials } = useBankSyncCredentials();
+  const lastSync = (bankCredentials ?? [])
+    .filter((c) => c.is_active && c.last_sync_status === "success" && c.last_sync_at)
+    .map((c) => c.last_sync_at as string)
+    .sort()
+    .at(-1);
   const bankSync = useBankSyncContext();
   const { profile: userProfile, avatarUrl } = useUserProfile();
 
@@ -159,12 +180,15 @@ const Index = () => {
 
   // Los gastos del mes, de mayor a menor. Sin agrupar en "Otros": la lista
   // muestra las que caben y el header dice cuántas quedaron fuera.
-  const topCategories = currentMonthSummary.categoryBreakdown.slice(0, 5);
+  // Lo que Jev aún está categorizando ya cuenta en el total, pero no tiene
+  // fila propia: su barra crece recién cuando sabe a qué categoría va.
+  const spendBreakdown = currentMonthSummary.categoryBreakdown.filter((c) => c.category !== ANALYZING_CATEGORY);
+  const topCategories = spendBreakdown.slice(0, 5);
   const monthExpenses = currentMonthSummary.categoryBreakdown.reduce(
     (s, c) => s + c.effectiveAmount,
     0
   );
-  const hiddenCategories = currentMonthSummary.categoryBreakdown.length - topCategories.length;
+  const hiddenCategories = spendBreakdown.length - topCategories.length;
 
   const formatCompact = (value: number) =>
     new Intl.NumberFormat("es-CL", {
@@ -204,12 +228,17 @@ const Index = () => {
     .sort(byNewest)
     .slice(0, 40);
 
-  const groupedTransactions = recentTransactions.reduce((acc, t) => {
+  const live = useLiveRows(recentTransactions, !isLoading, isAnalyzing);
+
+  const groupedTransactions = live.visible.reduce((acc, t) => {
     const key = format(new Date(t.date), "yyyy-MM-dd");
     if (!acc[key]) acc[key] = [];
     acc[key].push(t);
     return acc;
-  }, {} as Record<string, typeof recentTransactions>);
+  }, {} as Record<string, Transaction[]>);
+
+  const dayExpenses = (dateKey: string) =>
+    groupedTransactions[dateKey].reduce((sum, t) => sum + (t.type === "Gasto" ? Number(t.amount) : 0), 0);
 
   const sortedDateKeys = Object.keys(groupedTransactions).sort(
     (a, b) => new Date(b).getTime() - new Date(a).getTime()
@@ -232,6 +261,36 @@ const Index = () => {
 
   const colorOf = (categoryName: string) =>
     categories.find((c) => c.name === categoryName)?.color ?? null;
+
+  // ─── Una categoría a la vez ───────────────────────────
+  // Con mouse, pasar sobre una categoría la destaca en las otras tarjetas.
+  // Solo con mouse: en el celular un toque no tiene "salida" y dejaría todo
+  // atenuado. Ahí se elige tocando la leyenda de Gastos del mes.
+  const focusable = (category: string, from: "spend" | "feed" | "limits") => ({
+    onPointerEnter: (e: PointerEvent) => { if (e.pointerType === "mouse") setFocus({ category, from }); },
+    onPointerLeave: (e: PointerEvent) => {
+      if (e.pointerType === "mouse") setFocus((f) => (f?.category === category && f.from === from ? null : f));
+    },
+  });
+  const dimmed = (category: string, list: "spend" | "feed" | "limits") =>
+    focus !== null && focus.from !== list && focus.category !== category;
+
+  // Al elegirla desde la leyenda (celular), las listas bajan hasta su primer
+  // movimiento: si no, lo único visible sería lo atenuado.
+  useEffect(() => {
+    if (!focus?.pinned) return;
+    document.querySelectorAll<HTMLElement>(".inicio-scroll").forEach((list) => {
+      const match = list.querySelector<HTMLElement>(`[data-category="${CSS.escape(focus.category)}"]`);
+      if (match) list.scrollTo({ top: Math.max(0, match.offsetTop - 36), behavior: "smooth" });
+    });
+  }, [focus]);
+
+  // Cuánto del mes ya pasó: la marca de "dónde deberías ir hoy" en cada límite.
+  const daysInMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0).getDate();
+  const monthProgress = Math.min(
+    100,
+    ((now.getDate() - 1 + (now.getHours() * 60 + now.getMinutes()) / 1440) / daysInMonth) * 100
+  );
 
   // ─── Límites ──────────────────────────────────────────
   // Una categoría es una fila: cuánto va de cuánto y el avance. Arriba, en
@@ -270,22 +329,32 @@ const Index = () => {
         </span>
       </button>
     ) : (
-      budgetRows.map((cat) => {
+      budgetRows.map((cat, index) => {
         const limit = cat.limit as number;
         const color = cat.state === "over" ? "var(--inicio-rose)" : cat.state === "near" ? "var(--inicio-amber)" : colorOf(cat.category) || "var(--muted-foreground)";
         return (
-          <button key={cat.category} onClick={() => navigate("/budget")} className="inicio-lim" data-state={cat.state}>
+          <button
+            key={cat.category}
+            onClick={() => navigate("/budget")}
+            className={cn("inicio-lim", dimmed(cat.category, "limits") && "is-dim")}
+            data-state={cat.state}
+            data-category={cat.category}
+            {...focusable(cat.category, "limits")}
+          >
             <span className="inicio-ico" style={tint(colorOf(cat.category))}>{getCatEmoji(cat.category)}</span>
             <span className="n">{cat.category}</span>
             <span className="pct">{Math.round(cat.usage)}%</span>
-            <span className="inicio-track">
+            <span className="inicio-track" title={`A esta altura del mes deberías ir en ${Math.round(monthProgress)}%`}>
               {/* Un 1% tiene que dejar marca: si no, la fila miente. */}
-              <i style={{ width: cat.usage > 0 ? `max(3px, ${Math.min(cat.usage, 100)}%)` : "0%", background: color }} />
+              <i style={{ width: cat.usage > 0 ? `max(3px, ${Math.min(cat.usage, 100)}%)` : "0%", background: color, "--i": index } as CSSProperties} />
+              {cat.state !== "over" && <b className="inicio-pace" style={{ left: `${monthProgress}%` }} />}
             </span>
             <span className={cn("of", isPrivacyMode && "privacy-blur")}>
               <span>{formatCurrency(cat.effectiveAmount)} de {formatCurrency(limit)}</span>
               {cat.state === "over" ? (
                 <span className="extra">+{formatCurrency(cat.effectiveAmount - limit)}</span>
+              ) : cat.usage > monthProgress ? (
+                <span className="ahead" title="Vas más rápido que el mes: a este ritmo te pasas">vas rápido</span>
               ) : (
                 <span>quedan {formatCurrency(limit - cat.effectiveAmount)}</span>
               )}
@@ -322,10 +391,14 @@ const Index = () => {
       <div key={dateKey}>
         <div className="inicio-day">
           {getDateLabel(dateKey)}
-          <span>{groupedTransactions[dateKey].length}</span>
+          {/* Cuánto se fue ese día dice más que cuántos movimientos hubo */}
+          {dayExpenses(dateKey) > 0 && (
+            <span className={cn(isPrivacyMode && "privacy-blur")}>−{formatCurrency(dayExpenses(dateKey))}</span>
+          )}
         </div>
         {groupedTransactions[dateKey].map((t) => {
-          const analyzing = t.isPending || t.category_name === ANALYZING_CATEGORY;
+          const analyzing = isAnalyzing(t);
+          const key = live.keyOf(t);
           const isBot = (t.detail || "").startsWith("🤖");
           const detail = (t.detail || "").replace(/^🤖\s*/, "").trim();
           const tone = AMOUNT_TONE[t.type];
@@ -333,14 +406,36 @@ const Index = () => {
             ? `Reembolso de ${t.reimbursement_for_category}`
             : `${t.category_name} · ${format(new Date(t.date), "HH:mm")}`;
           return (
-            <div key={t.id} className="inicio-tx">
-              <span className="inicio-ico" style={tint(analyzing ? null : colorOf(t.category_name))}>
-                {analyzing ? "⚡" : getCatEmoji(t.category_name)}
+            <div
+              key={key}
+              className={cn(
+                "inicio-tx",
+                live.entered.has(key) && "is-new",
+                live.resolved.has(key) && "is-resolved",
+                !analyzing && dimmed(t.category_name, "feed") && "is-dim"
+              )}
+              data-category={analyzing ? undefined : t.category_name}
+              {...(analyzing ? {} : focusable(t.category_name, "feed"))}
+            >
+              <span
+                className={cn("inicio-ico", analyzing && "is-thinking")}
+                style={tint(analyzing ? "var(--inicio-violet)" : colorOf(t.category_name))}
+              >
+                {/* La key cambia con el estado: así el ícono nuevo entra con su propio rebote */}
+                <span key={analyzing ? "thinking" : t.category_name} className="glyph">
+                  {analyzing ? "⚡" : getCatEmoji(t.category_name)}
+                </span>
                 {isBot && <span className="inicio-bot">🤖</span>}
               </span>
               <div className={cn("body", isPrivacyMode && "privacy-blur")}>
                 <div className="d">{detail || (analyzing ? "Movimiento" : t.category_name)}</div>
-                {analyzing ? <AnalyzingBadge saving={t.isPending} /> : <div className="c">{meta}</div>}
+                {analyzing ? (
+                  <div className="c inicio-thinking" role="status">
+                    {t.isPending ? "Guardando…" : "Jev está categorizando…"}
+                  </div>
+                ) : (
+                  <div className="c">{meta}</div>
+                )}
               </div>
               <span className={cn("m", isPrivacyMode && "privacy-blur")} style={{ color: tone }}>
                 {signPrefix(t.type, Number(t.amount))}
@@ -365,11 +460,17 @@ const Index = () => {
       <button className="inicio-act" data-tone="investment" onClick={() => handleQuickAdd("Inversión")}>
         <PiggyBank />Inversión
       </button>
-      <button className="inicio-act" onClick={() => setIsBankSyncOpen(true)} aria-label="Sincronizar bancos">
+      <button
+        className="inicio-act"
+        onClick={() => setIsBankSyncOpen(true)}
+        aria-label={lastSync ? `Sincronizar bancos, última vez ${sinceLabel(lastSync)}` : "Sincronizar bancos"}
+      >
         <span className="inicio-banks">
           {BANK_LOGOS.map((logo, i) => <img key={logo} src={logo} alt="" style={{ zIndex: 5 - i }} />)}
         </span>
-        <span className="long">Sincronizar</span>
+        <span className="long">
+          Sincronizar{lastSync && <small className="inicio-since">{sinceLabel(lastSync)}</small>}
+        </span>
       </button>
     </>
   );
@@ -431,11 +532,11 @@ const Index = () => {
             </div>
             <div className={cn("inicio-flows", isPrivacyMode && "privacy-blur")}>
               <span className="inicio-flow" style={{ color: "var(--inicio-emerald)" }}>
-                +{formatCurrency(currentIncome)}
+                <NumberFlow value={currentIncome} prefix="+" format={{ style: "currency", currency: "CLP", maximumFractionDigits: 0 }} locales="es-CL" />
                 {incomeChange !== 0 && <small>{incomeChange > 0 ? "+" : ""}{Math.round(incomeChange)}%</small>}
               </span>
               <span className="inicio-flow">
-                −{formatCurrency(currentExpenses)}
+                <NumberFlow value={currentExpenses} prefix="−" format={{ style: "currency", currency: "CLP", maximumFractionDigits: 0 }} locales="es-CL" />
                 {expenseChange !== 0 && (
                   <small style={{ color: expenseChange > 0 ? "var(--inicio-rose)" : "var(--inicio-emerald)" }}>
                     {expenseChange > 0 ? "+" : ""}{Math.round(expenseChange)}%
@@ -444,7 +545,7 @@ const Index = () => {
               </span>
               {currentInvestments > 0 && (
                 <span className="inicio-flow" style={{ color: "var(--inicio-blue)" }}>
-                  {formatCurrency(currentInvestments)} <small className="inv-lbl">invertido</small>
+                  <NumberFlow value={currentInvestments} format={{ style: "currency", currency: "CLP", maximumFractionDigits: 0 }} locales="es-CL" /> <small className="inv-lbl">invertido</small>
                 </span>
               )}
             </div>
@@ -464,19 +565,26 @@ const Index = () => {
           <section className="inicio-card inicio-spend">
             <div className="inicio-spend-head">
               <span className="inicio-title">Gastos del mes</span>
-              <span className={cn("inicio-num", isPrivacyMode && "privacy-blur")}>{formatCurrency(monthExpenses)}</span>
+              <span className={cn("inicio-num", isPrivacyMode && "privacy-blur")}>
+                <NumberFlow value={monthExpenses} format={{ style: "currency", currency: "CLP", maximumFractionDigits: 0 }} locales="es-CL" />
+              </span>
             </div>
             {topCategories.length === 0 ? (
               <div className="inicio-empty">Sin gastos este mes</div>
             ) : (
               <>
-                {topCategories.map((cat) => (
-                  <button key={cat.category} onClick={() => navigate("/budget")} className="inicio-cat">
+                {topCategories.map((cat, index) => (
+                  <button
+                    key={cat.category}
+                    onClick={() => navigate("/budget")}
+                    className={cn("inicio-cat", dimmed(cat.category, "spend") && "is-dim")}
+                    {...focusable(cat.category, "spend")}
+                  >
                     <span className="n">{getCatEmoji(cat.category)} {cat.category}</span>
                     <span className={cn("v", isPrivacyMode && "privacy-blur")}>{formatCurrency(cat.effectiveAmount)}</span>
                     <span className="p">{Math.round(cat.percentage)}%</span>
                     <span className="inicio-track">
-                      <i style={{ width: `${Math.max((cat.effectiveAmount / topCategories[0].effectiveAmount) * 100, 1.5)}%`, background: cat.color }} />
+                      <i style={{ width: `${Math.max((cat.effectiveAmount / topCategories[0].effectiveAmount) * 100, 1.5)}%`, background: cat.color, "--i": index } as CSSProperties} />
                     </span>
                   </button>
                 ))}
@@ -486,21 +594,49 @@ const Index = () => {
                   </button>
                 )}
                 <div className="inicio-stack">
-                  {topCategories.map((cat) => <i key={cat.category} style={{ flex: cat.effectiveAmount, background: cat.color }} />)}
-                  {stackRest > 0 && <i style={{ flex: stackRest, background: "var(--border)" }} />}
+                  {topCategories.map((cat) => (
+                    <i
+                      key={cat.category}
+                      className={cn(focus && focus.category !== cat.category && "is-dim")}
+                      style={{ flex: cat.effectiveAmount, background: cat.color }}
+                    />
+                  ))}
+                  {stackRest > 0 && <i className={cn(focus && "is-dim")} style={{ flex: stackRest, background: "var(--border)" }} />}
                 </div>
+                {/* En celular la leyenda elige la categoría que se destaca abajo */}
                 <div className="inicio-legend">
                   {topCategories.slice(0, 4).map((cat) => (
-                    <span key={cat.category}>{getCatEmoji(cat.category)} {cat.category} <b>{Math.round(cat.percentage)}%</b></span>
+                    <button
+                      key={cat.category}
+                      aria-pressed={focus?.category === cat.category}
+                      onClick={() => setFocus((f) => (f?.category === cat.category ? null : { category: cat.category, from: "spend", pinned: true }))}
+                    >
+                      {getCatEmoji(cat.category)} {cat.category} <b>{Math.round(cat.percentage)}%</b>
+                    </button>
                   ))}
-                  {currentMonthSummary.categoryBreakdown.length > 4 && <span>+{currentMonthSummary.categoryBreakdown.length - 4}</span>}
+                  {spendBreakdown.length > 4 && (
+                    <button onClick={() => navigate("/budget")}>+{spendBreakdown.length - 4}</button>
+                  )}
                 </div>
               </>
             )}
           </section>
 
           {/* Recientes. En celular comparte la tarjeta con Límites. */}
-          <section className="inicio-card inicio-feed">
+          <section
+            className="inicio-card inicio-feed"
+            onTouchStart={(e: TouchEvent) => { swipe.current = { x: e.touches[0].clientX, y: e.touches[0].clientY }; }}
+            onTouchEnd={(e: TouchEvent) => {
+              const start = swipe.current;
+              swipe.current = null;
+              if (!start) return;
+              const dx = e.changedTouches[0].clientX - start.x;
+              const dy = e.changedTouches[0].clientY - start.y;
+              // Solo un gesto claramente horizontal: el vertical es scroll.
+              if (Math.abs(dx) < 56 || Math.abs(dx) < Math.abs(dy) * 1.6) return;
+              setMobileTab(dx < 0 ? "limits" : "feed");
+            }}
+          >
             <div className="inicio-tabs" role="tablist">
               <button className="inicio-tab" role="tab" aria-selected={mobileTab === "feed"} onClick={() => setMobileTab("feed")}>
                 Recientes{recentTransactions.length > 0 && <span className="inicio-count">{recentTransactions.length}</span>}
