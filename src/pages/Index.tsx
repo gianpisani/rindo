@@ -293,13 +293,6 @@ const Index = () => {
     });
   }, [focus]);
 
-  // Cuánto del mes ya pasó: la marca de "dónde deberías ir hoy" en cada límite.
-  const daysInMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0).getDate();
-  const monthProgress = Math.min(
-    100,
-    ((now.getDate() - 1 + (now.getHours() * 60 + now.getMinutes()) / 1440) / daysInMonth) * 100
-  );
-
   // ─── Límites ──────────────────────────────────────────
   // Una categoría es una fila: cuánto va de cuánto y el avance. Arriba, en
   // vez de una alerta roja, el conteo por estado.
@@ -320,29 +313,37 @@ const Index = () => {
     { over: 0, near: 0, ok: 0 }
   );
 
-  // La marca de "hoy" solo aparece donde explica algo: en los límites que
-  // van más rápido que el mes. Repetida en todas las filas parecía un dato
-  // de cada categoría (un 0% con una raya en 85% no se entiende).
-  const isAhead = (c: (typeof budgetRows)[number]) => c.state !== "over" && c.usage > monthProgress;
-  const anyAhead = budgetRows.some(isAhead);
+  // Cómo voy: dónde cierro el mes si lo que queda se parece a los mismos
+  // días de los últimos 3 meses. No extrapola un ritmo: un cargo fijo que ya
+  // pasó (arriendo, suscripciones) no suma nada, y lo que suele caer a fin
+  // de mes sí.
+  const remainingTypical = useMemo(() => {
+    const today = now.getDate();
+    const sums = new Map<string, number>();
+    for (const t of transactions) {
+      if (t.type !== "Gasto" && !t.reimbursement_for_category) continue;
+      const d = new Date(t.date);
+      const monthsAgo = (now.getFullYear() - d.getFullYear()) * 12 + now.getMonth() - d.getMonth();
+      if (monthsAgo < 1 || monthsAgo > 3 || d.getDate() <= today) continue;
+      const category = t.type === "Gasto" ? t.category_name : (t.reimbursement_for_category as string);
+      const signed = t.type === "Gasto" ? Number(t.amount) : -Number(t.amount);
+      sums.set(category, (sums.get(category) ?? 0) + signed);
+    }
+    return new Map([...sums].map(([category, sum]) => [category, Math.max(0, sum / 3)]));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [transactions, now.getFullYear(), now.getMonth(), now.getDate()]);
+
+  const projectionOf = (c: (typeof budgetRows)[number]) => {
+    const rest = remainingTypical.get(c.category) ?? 0;
+    if (c.state === "over" || rest <= 0) return null;
+    return ((c.effectiveAmount + rest) / (c.limit as number)) * 100;
+  };
 
   const limitsSummary = budgetRows.length > 0 && (
     <div className="inicio-limits-summary">
       {budgetCounts.over > 0 && <span className="inicio-pill" data-state="over">{budgetCounts.over} pasado{budgetCounts.over === 1 ? "" : "s"}</span>}
       {budgetCounts.near > 0 && <span className="inicio-pill" data-state="near">{budgetCounts.near} cerca</span>}
       {budgetCounts.ok > 0 && <span className="inicio-pill" data-state="ok">{budgetCounts.ok} bien</span>}
-      {anyAhead && (
-        <span
-          className="ml-auto flex items-center gap-1.5 whitespace-nowrap text-[10.5px] text-muted-foreground"
-          title="La marca en la barra es dónde deberías ir a esta altura del mes"
-        >
-          <i
-            className="inline-block h-2.5 w-[2px] rounded-full"
-            style={{ background: "color-mix(in oklch, var(--foreground) 55%, transparent)" }}
-          />
-          hoy, día {now.getDate()} de {daysInMonth}
-        </span>
-      )}
     </div>
   );
 
@@ -357,6 +358,8 @@ const Index = () => {
     ) : (
       budgetRows.map((cat, index) => {
         const limit = cat.limit as number;
+        const projection = projectionOf(cat);
+        const willPass = projection !== null && projection > 100;
         const color = cat.state === "over" ? "var(--inicio-rose)" : cat.state === "near" ? "var(--inicio-amber)" : colorOf(cat.category) || "var(--muted-foreground)";
         return (
           <button
@@ -369,18 +372,31 @@ const Index = () => {
           >
             <span className="inicio-ico" style={tint(colorOf(cat.category))}>{getCatEmoji(cat.category)}</span>
             <span className="n">{cat.category}</span>
-            <span className="pct">{Math.round(cat.usage)}%</span>
-            <span className="inicio-track" title={isAhead(cat) ? `A esta altura del mes deberías ir en ${Math.round(monthProgress)}%` : undefined}>
+            <span className="pct">
+              {/* Cómo voy: si a este ritmo me paso, adónde llego */}
+              {willPass && <small className="proj">→ {Math.round(projection as number)}%</small>}
+              {Math.round(cat.usage)}%
+            </span>
+            <span className="inicio-track" title={projection !== null ? `A este ritmo cierras el mes en ${Math.round(projection)}%` : undefined}>
               {/* Un 1% tiene que dejar marca: si no, la fila miente. */}
               <i style={{ width: cat.usage > 0 ? `max(3px, ${Math.min(cat.usage, 100)}%)` : "0%", background: color, "--i": index } as CSSProperties} />
-              {isAhead(cat) && <b className="inicio-pace" style={{ left: `${monthProgress}%` }} />}
+              {/* La estela: desde donde vas hasta donde cierras a este ritmo */}
+              {projection !== null && projection > cat.usage && (
+                <i
+                  className="inicio-ghost"
+                  style={{
+                    left: `${cat.usage}%`,
+                    width: `${Math.min(projection, 100) - Math.min(cat.usage, 100)}%`,
+                    background: willPass ? "var(--inicio-amber)" : color,
+                    "--i": index,
+                  } as CSSProperties}
+                />
+              )}
             </span>
             <span className={cn("of", isPrivacyMode && "privacy-blur")}>
               <span>{formatCurrency(cat.effectiveAmount)} de {formatCurrency(limit)}</span>
               {cat.state === "over" ? (
                 <span className="extra">+{formatCurrency(cat.effectiveAmount - limit)}</span>
-              ) : isAhead(cat) ? (
-                <span className="ahead" title="Vas más rápido que el mes: a este ritmo te pasas">vas rápido</span>
               ) : (
                 <span>quedan {formatCurrency(limit - cat.effectiveAmount)}</span>
               )}

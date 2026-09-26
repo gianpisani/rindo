@@ -1268,7 +1268,10 @@ Based on Indigo, Blue, Cyan palette
 .inicio-lim .n { font-size: 12.5px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .inicio-lim .pct { font-family: "JetBrains Mono", monospace; font-size: 12px; font-weight: 600; }
 .inicio-lim .of span { white-space: nowrap; }
-.inicio-lim .of { grid-column: 2 / -1; font-family: "JetBrains Mono", monospace; font-variant-numeric: tabular-nums; font-size: 10.5px; color: var(--inicio-faint); display: flex; justify-content: space-between; gap: 8px; }
+/* Si la columna es angosta, cede el "de" (con …) antes que salirse */
+.inicio-lim .of span:first-child { min-width: 0; overflow: hidden; text-overflow: ellipsis; }
+.inicio-lim .of span:last-child { flex: none; }
+.inicio-lim .of { grid-column: 2 / -1; min-width: 0; font-family: "JetBrains Mono", monospace; font-variant-numeric: tabular-nums; font-size: 10px; color: var(--inicio-faint); display: flex; justify-content: space-between; gap: 6px; }
 .inicio-lim .inicio-track { grid-column: 2 / -1; height: 4px; margin-top: 2px; }
 .inicio-lim[data-state="over"] .pct, .inicio-lim[data-state="over"] .extra { color: var(--inicio-rose); }
 .inicio-lim[data-state="near"] .pct { color: var(--inicio-amber); }
@@ -1290,11 +1293,14 @@ Based on Indigo, Blue, Cyan palette
 .inicio-track i { transform-origin: left center; animation: inicio-grow .7s cubic-bezier(.2, .8, .2, 1) both; animation-delay: calc(var(--i, 0) * 45ms + 60ms); }
 .inicio-stack i { transform-origin: left center; animation: inicio-grow .8s cubic-bezier(.2, .8, .2, 1) both; }
 
-/* Dónde deberías ir hoy: una marca fina sobre la barra del límite */
-.inicio-lim .inicio-track { position: relative; overflow: visible; }
-.inicio-pace { position: absolute; top: -3px; bottom: -3px; width: 2px; margin-left: -1px; border-radius: 2px;
-  background: color-mix(in oklch, var(--foreground) 55%, transparent); box-shadow: 0 0 0 2px var(--card); }
-.inicio-lim .ahead { color: var(--inicio-amber); }
+/* Cómo voy: detrás de la barra, una estela tenue hasta donde cierro el mes
+   si lo que queda se parece a los meses anteriores. Crece después de la
+   barra, como si la siguiera. */
+.inicio-lim .inicio-track { position: relative; }
+.inicio-lim .inicio-track i:first-child { position: relative; z-index: 1; }
+.inicio-track i.inicio-ghost { position: absolute; top: 0; height: 100%; border-radius: 0 4px 4px 0; opacity: .32;
+  animation-delay: calc(var(--i, 0) * 45ms + 520ms); }
+.inicio-lim .proj { font-size: 10.5px; font-weight: 500; color: var(--inicio-amber); margin-right: 6px; }
 
 /* Una fila que llega: se abre su espacio, entra y brilla un momento */
 @keyframes inicio-row-in {
@@ -1365,7 +1371,12 @@ Based on Indigo, Blue, Cyan palette
 .inicio-edit { display: block; margin: -1px -5px; padding: 1px 5px; border: 0; border-radius: 6px; outline: none; color: var(--foreground);
   background: color-mix(in oklch, var(--foreground) 8%, transparent); box-shadow: inset 0 0 0 1px color-mix(in oklch, var(--foreground) 22%, transparent); }
 .inicio-edit.d { width: calc(100% + 10px); font: inherit; font-size: 13px; }
-.inicio-edit.m { text-align: right; font-family: "JetBrains Mono", monospace; font-variant-numeric: tabular-nums; font-size: 13px; font-weight: 600; min-width: 0; }
+.inicio-amount-edit { display: flex; align-items: center; }
+.inicio-autosize { display: inline-grid; margin: -1px -5px -1px 1px; }
+.inicio-autosize::after, .inicio-edit.amount { grid-area: 1 / 1; margin: 0; padding: 1px 5px; font-family: "JetBrains Mono", monospace;
+  font-variant-numeric: tabular-nums; font-size: 13px; font-weight: 600; }
+.inicio-autosize::after { content: attr(data-value) " "; visibility: hidden; white-space: pre; }
+.inicio-edit.amount { width: 100%; min-width: 0; text-align: right; color: var(--foreground); }
 .inicio-edit::placeholder { color: var(--inicio-faint); }
 
 /* Borrar: aparece al pasar por la fila y el monto le hace espacio */

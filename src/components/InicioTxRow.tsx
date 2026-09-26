@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, type HTMLAttributes, type KeyboardEvent, type ReactNode } from "react";
+import { useEffect, useLayoutEffect, useRef, useState, type ChangeEvent, type HTMLAttributes, type KeyboardEvent, type ReactNode } from "react";
 import { Trash2 } from "lucide-react";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { cn } from "@/lib/utils";
@@ -35,6 +35,9 @@ interface Props extends HTMLAttributes<HTMLDivElement> {
 
 type Field = "detail" | "amount" | null;
 
+/** 1500000 → "1.500.000": el monto se lee mientras se escribe. */
+const groupDigits = (digits: string) => (digits ? Number(digits).toLocaleString("es-CL") : "");
+
 export function InicioTxRow({
   detail, amount, sign, amountColor, icon, meta, category, categoryOptions, editable, privacy,
   formatAmount, onSave, onDelete, className, ...rest
@@ -45,6 +48,28 @@ export function InicioTxRow({
   const inputRef = useRef<HTMLInputElement>(null);
   // Esc cancela; el blur que sigue no debe guardar lo descartado.
   const cancelled = useRef(false);
+  // Cuántos dígitos quedan a la izquierda del cursor: al agregar puntos el
+  // texto cambia de largo, pero el cursor sigue detrás del mismo dígito.
+  const caretDigits = useRef<number | null>(null);
+
+  useLayoutEffect(() => {
+    const input = inputRef.current;
+    if (field !== "amount" || !input || caretDigits.current === null) return;
+    let seen = 0;
+    let position = 0;
+    while (position < input.value.length && seen < caretDigits.current) {
+      if (/\d/.test(input.value[position])) seen++;
+      position++;
+    }
+    input.setSelectionRange(position, position);
+    caretDigits.current = null;
+  }, [draft, field]);
+
+  const onAmountChange = (e: ChangeEvent<HTMLInputElement>) => {
+    const { value, selectionStart } = e.target;
+    caretDigits.current = value.slice(0, selectionStart ?? value.length).replace(/\D/g, "").length;
+    setDraft(value.replace(/\D/g, "").replace(/^0+(?=\d)/, "").slice(0, 12));
+  };
 
   useEffect(() => {
     if (field) inputRef.current?.select();
@@ -63,7 +88,7 @@ export function InicioTxRow({
       const value = draft.trim();
       if (value !== detail) onSave({ detail: value });
     } else {
-      const value = Number(draft.replace(/[^\d]/g, ""));
+      const value = Number(draft);
       if (Number.isSafeInteger(value) && value > 0 && value !== amount) onSave({ amount: value });
     }
     setField(null);
@@ -135,17 +160,23 @@ export function InicioTxRow({
         </div>
       </div>
       {field === "amount" ? (
-        <input
-          ref={inputRef}
-          className="inicio-edit m"
-          value={draft}
-          inputMode="numeric"
-          aria-label="Monto del movimiento"
-          style={{ width: `${Math.max(draft.length, 4) + 2}ch` }}
-          onChange={(e) => setDraft(e.target.value.replace(/[^\d.]/g, ""))}
-          onKeyDown={onKey}
-          onBlur={commit}
-        />
+        <span className="m inicio-amount-edit" style={{ color: amountColor }}>
+          <span aria-hidden="true">{sign}$</span>
+          {/* El campo mide lo que su texto: una copia invisible le da el ancho */}
+          <span className="inicio-autosize" data-value={groupDigits(draft) || "0"}>
+            <input
+              ref={inputRef}
+              className="inicio-edit amount"
+              size={1}
+              value={groupDigits(draft)}
+              inputMode="numeric"
+              aria-label="Monto del movimiento"
+              onChange={onAmountChange}
+              onKeyDown={onKey}
+              onBlur={commit}
+            />
+          </span>
+        </span>
       ) : (
         <button
           className={cn("m inicio-editable", privacy && "privacy-blur")}
