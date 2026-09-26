@@ -1,12 +1,17 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState, type CSSProperties } from "react";
 import { format } from "date-fns";
 import { es } from "date-fns/locale";
 import NumberFlow from "@number-flow/react";
-import { Check, Pencil, X } from "lucide-react";
+import { Check, Pencil, Plus, Trash2, X } from "lucide-react";
 import Layout from "@/components/Layout";
 import { Skeleton } from "@/components/ui/skeleton";
+import { CategorySelect } from "@/components/CategorySelect";
+import { getCategoryIcon } from "@/components/TransactionsTable";
 import { useTransactions } from "@/hooks/useTransactions";
 import { useMonthlyBudget } from "@/hooks/useMonthlyBudget";
+import { useCategories } from "@/hooks/useCategories";
+import { useCategoryLimits } from "@/hooks/useCategoryLimits";
+import { useCategoryInsights } from "@/hooks/useCategoryInsights";
 import { usePrivacyMode } from "@/hooks/usePrivacyMode";
 import { cn } from "@/lib/utils";
 import {
@@ -19,12 +24,14 @@ import {
 /**
  * Meta: ahorrar $X al mes. La página responde una sola pregunta, ¿la estás
  * cumpliendo?, con un número por mes: lo que de verdad se movió a inversión.
+ * Al lado, los límites por categoría: el único lugar donde se ven y editan.
  * Nada derivado. Una pantalla exacta en web y celular.
  */
 
 const MONTHS = 12;
 /** Hasta este día del mes, un $0 todavía no es una alarma: el barrido puede venir. */
 const GRACE_DAY = 5;
+const DEFAULT_ALERT_AT = 80;
 
 const formatCurrency = (v: number) =>
   new Intl.NumberFormat("es-CL", { style: "currency", currency: "CLP", maximumFractionDigits: 0 }).format(v);
@@ -49,6 +56,11 @@ const listDays = (sweeps: Sweep[]) => {
 const parseAmount = (raw: string) => parseInt(raw.replace(/\D/g, ""), 10) || 0;
 const formatInput = (raw: string) => (raw ? parseAmount(raw).toLocaleString("es-CL") : "");
 
+/** El ícono de una categoría sobre un tono de su color. */
+const tint = (color?: string | null) => ({
+  background: `color-mix(in oklch, ${color || "var(--muted-foreground)"} 22%, transparent)`,
+});
+
 type Tone = "met" | "part" | "none" | "wait";
 
 const toneOf = (m: SavingsMonth, isCurrent: boolean, today: Date): Tone => {
@@ -57,9 +69,48 @@ const toneOf = (m: SavingsMonth, isCurrent: boolean, today: Date): Tone => {
   return isCurrent && today.getDate() <= GRACE_DAY ? "wait" : "none";
 };
 
+/** Un campo de monto en línea: Enter guarda, Esc cancela. */
+function AmountField({
+  value,
+  onChange,
+  onSave,
+  onCancel,
+  autoFocus,
+  placeholder = "1.500.000",
+  label,
+}: {
+  value: string;
+  onChange: (raw: string) => void;
+  onSave: () => void;
+  onCancel: () => void;
+  autoFocus?: boolean;
+  placeholder?: string;
+  label: string;
+}) {
+  return (
+    <span className="meta-edit-field">
+      <span>$</span>
+      <input
+        value={formatInput(value)}
+        inputMode="numeric"
+        placeholder={placeholder}
+        autoFocus={autoFocus}
+        aria-label={label}
+        onChange={(e) => onChange(e.target.value.replace(/\D/g, ""))}
+        onKeyDown={(e) => {
+          if (e.key === "Enter") onSave();
+          if (e.key === "Escape") onCancel();
+        }}
+      />
+    </span>
+  );
+}
+
 export default function Meta() {
   const { transactions, isLoading } = useTransactions();
   const { budget, isLoading: budgetLoading, upsertBudget } = useMonthlyBudget();
+  const { categories } = useCategories();
+  const { limits, upsertLimit, deleteLimit } = useCategoryLimits();
   const { isPrivacyMode } = usePrivacyMode();
 
   const today = new Date();
@@ -102,21 +153,14 @@ export default function Meta() {
 
   const goalInput = (autoFocus: boolean) => (
     <span className="meta-edit">
-      <span className="meta-edit-field">
-        <span>$</span>
-        <input
-          value={formatInput(draft)}
-          inputMode="numeric"
-          placeholder="1.500.000"
-          autoFocus={autoFocus}
-          aria-label="Meta de ahorro mensual"
-          onChange={(e) => setDraft(e.target.value.replace(/\D/g, ""))}
-          onKeyDown={(e) => {
-            if (e.key === "Enter") saveGoal();
-            if (e.key === "Escape") setEditing(false);
-          }}
-        />
-      </span>
+      <AmountField
+        value={draft}
+        onChange={setDraft}
+        onSave={saveGoal}
+        onCancel={() => setEditing(false)}
+        autoFocus={autoFocus}
+        label="Meta de ahorro mensual"
+      />
       <button onClick={saveGoal} disabled={parseAmount(draft) <= 0} aria-label="Guardar meta" className="meta-edit-btn">
         <Check />
       </button>
@@ -160,6 +204,77 @@ export default function Meta() {
     return parts.join(" · ");
   })();
 
+  // ── Límites por categoría: las mismas filas que el Inicio, y acá se editan ──
+  const { categorySpending } = useCategoryInsights(transactions, limits, today);
+  const limitRows = useMemo(
+    () =>
+      categorySpending
+        .filter((c) => c.limit && c.limit > 0)
+        .map((c) => {
+          const limit = c.limit as number;
+          const usage = (c.effectiveAmount / limit) * 100;
+          const state: "over" | "near" | "ok" =
+            usage > 100 ? "over" : usage >= (c.alertPercentage || DEFAULT_ALERT_AT) ? "near" : "ok";
+          return { category: c.category, spent: c.effectiveAmount, limit, usage, state };
+        })
+        .sort((a, b) => b.usage - a.usage),
+    [categorySpending]
+  );
+  const limitsTotal = limitRows.reduce((s, r) => s + r.limit, 0);
+
+  const catOf = (name: string) => categories.find((c) => c.name === name);
+  const emojiOf = (name: string) => catOf(name)?.icon || getCategoryIcon(name);
+  const colorOf = (name: string) => catOf(name)?.color ?? null;
+
+  // Categorías de gasto que todavía no tienen límite: las que se pueden agregar.
+  const limited = new Set(limits.map((l) => l.category_name));
+  const addable = categories
+    .filter((c) => c.type === "Gasto" && c.is_active !== false && !limited.has(c.name))
+    .map((c) => ({ value: c.name, label: c.name, emoji: c.icon || getCategoryIcon(c.name) }));
+
+  const [editingCat, setEditingCat] = useState<string | null>(null);
+  const [limitDraft, setLimitDraft] = useState("");
+  const [adding, setAdding] = useState(false);
+  const [addCat, setAddCat] = useState("");
+  const [addDraft, setAddDraft] = useState("");
+
+  const startEditLimit = (category: string, limit: number) => {
+    setAdding(false);
+    setEditingCat(category);
+    setLimitDraft(String(limit));
+  };
+  const saveLimit = () => {
+    const value = parseAmount(limitDraft);
+    const existing = limits.find((l) => l.category_name === editingCat);
+    if (!editingCat || value <= 0) return;
+    upsertLimit.mutate({
+      category_name: editingCat,
+      monthly_limit: value,
+      alert_at_percentage: existing?.alert_at_percentage ?? DEFAULT_ALERT_AT,
+    });
+    setEditingCat(null);
+  };
+  const removeLimit = (category: string) => {
+    const existing = limits.find((l) => l.category_name === category);
+    if (existing) deleteLimit.mutate(existing.id);
+    setEditingCat(null);
+  };
+  const startAdd = () => {
+    setEditingCat(null);
+    setAdding(true);
+    setAddCat("");
+    setAddDraft("");
+  };
+  const saveAdd = () => {
+    const value = parseAmount(addDraft);
+    if (!addCat || value <= 0) return;
+    upsertLimit.mutate({ category_name: addCat, monthly_limit: value, alert_at_percentage: DEFAULT_ALERT_AT });
+    setAdding(false);
+  };
+
+  // En celular, los meses y los límites comparten la tarjeta.
+  const [mobileTab, setMobileTab] = useState<"months" | "limits">("months");
+
   const loading = isLoading || budgetLoading;
 
   return (
@@ -183,6 +298,7 @@ export default function Meta() {
           <div className="meta-grid">
             <Skeleton className="meta-card h-[150px]" />
             <Skeleton className="meta-card h-[150px]" />
+            <Skeleton className="meta-card h-[150px]" />
           </div>
         ) : !hasGoal ? (
           <section className="meta-card meta-setup">
@@ -191,7 +307,7 @@ export default function Meta() {
             {goalInput(false)}
           </section>
         ) : (
-          <div className="meta-grid">
+          <div className="meta-grid" data-tab={mobileTab}>
             {/* El mes en curso */}
             <section className="meta-card meta-now" data-tone={currentTone}>
               <div className="meta-now-top">
@@ -214,9 +330,20 @@ export default function Meta() {
               </p>
             </section>
 
+            {/* Solo en celular: qué tarjeta se ve */}
+            <div className="meta-tabs" role="tablist">
+              <button className="meta-tab" role="tab" aria-selected={mobileTab === "months"} onClick={() => setMobileTab("months")}>
+                {MONTHS} meses
+              </button>
+              <button className="meta-tab" role="tab" aria-selected={mobileTab === "limits"} onClick={() => setMobileTab("limits")}>
+                Límites
+                {limitRows.some((r) => r.state === "over") && <i className="meta-dot" aria-hidden />}
+              </button>
+            </div>
+
             {/* Los últimos doce meses */}
             <section className="meta-card meta-hist">
-              <div className="meta-hist-head">
+              <div className="meta-card-head">
                 <span className="meta-label">Últimos {MONTHS} meses</span>
                 <span className="meta-count">
                   <b>{metCount}</b> de {MONTHS} cumplidos
@@ -240,7 +367,7 @@ export default function Meta() {
                       className="meta-col"
                       data-tone={tone}
                       onClick={() => setSelectedKey(m.key)}
-                      style={{ "--i": i } as React.CSSProperties}
+                      style={{ "--i": i } as CSSProperties}
                     >
                       <span className={cn("meta-amt", isPrivacyMode && "privacy-blur")}>
                         {m.met && <span className="meta-check">✓</span>}
@@ -257,6 +384,116 @@ export default function Meta() {
               <div className="meta-detail" data-tone={toneOf(selected, selected.key === current.key, today)}>
                 <p className={cn("meta-detail-top", isPrivacyMode && "privacy-blur")}>{detailTop}</p>
                 <p className={cn("meta-detail-sub", isPrivacyMode && "privacy-blur")}>{detailBottom}</p>
+              </div>
+            </section>
+
+            {/* Límites por categoría: ver, tocar para editar, agregar abajo */}
+            <section className="meta-card meta-limits">
+              <div className="meta-card-head">
+                <span className="meta-label">Límites</span>
+                {limitRows.length > 0 && (
+                  <span className={cn("meta-count", isPrivacyMode && "privacy-blur")}>
+                    <b>{formatCurrency(limitsTotal)}</b> al mes
+                  </span>
+                )}
+              </div>
+              <div className="meta-lim-list" data-scrollable>
+                {limitRows.length === 0 && !adding && (
+                  <p className="meta-lim-empty">Ponle un techo a una categoría y acá ves cómo vas.</p>
+                )}
+                {limitRows.map((row, index) => {
+                  const isEditing = editingCat === row.category;
+                  const color =
+                    row.state === "over" ? "var(--meta-rose)" : row.state === "near" ? "var(--meta-amber)" : colorOf(row.category) || "var(--muted-foreground)";
+                  return (
+                    <div
+                      key={row.category}
+                      className="meta-lim"
+                      data-state={row.state}
+                      data-editing={isEditing || undefined}
+                      role={isEditing ? undefined : "button"}
+                      tabIndex={isEditing ? undefined : 0}
+                      onClick={isEditing ? undefined : () => startEditLimit(row.category, row.limit)}
+                      onKeyDown={isEditing ? undefined : (e) => {
+                        if (e.key === "Enter" || e.key === " ") {
+                          e.preventDefault();
+                          startEditLimit(row.category, row.limit);
+                        }
+                      }}
+                    >
+                      <span className="meta-ico" style={tint(colorOf(row.category))}>{emojiOf(row.category)}</span>
+                      <span className="n">{row.category}</span>
+                      <span className="pct">{Math.round(row.usage)}%</span>
+                      <span className="meta-lim-track">
+                        {/* Un 1% tiene que dejar marca: si no, la fila miente. */}
+                        <i style={{ width: row.usage > 0 ? `max(3px, ${Math.min(row.usage, 100)}%)` : "0%", background: color, "--i": index } as CSSProperties} />
+                      </span>
+                      {isEditing ? (
+                        <span className="meta-lim-edit" onClick={(e) => e.stopPropagation()}>
+                          <AmountField
+                            value={limitDraft}
+                            onChange={setLimitDraft}
+                            onSave={saveLimit}
+                            onCancel={() => setEditingCat(null)}
+                            autoFocus
+                            placeholder="100.000"
+                            label={`Límite mensual de ${row.category}`}
+                          />
+                          <button onClick={saveLimit} disabled={parseAmount(limitDraft) <= 0} aria-label="Guardar límite" className="meta-edit-btn">
+                            <Check />
+                          </button>
+                          <button onClick={() => setEditingCat(null)} aria-label="Cancelar" className="meta-edit-btn">
+                            <X />
+                          </button>
+                          <button onClick={() => removeLimit(row.category)} aria-label="Quitar límite" className="meta-edit-btn meta-edit-danger">
+                            <Trash2 />
+                          </button>
+                        </span>
+                      ) : (
+                        <span className={cn("of", isPrivacyMode && "privacy-blur")}>
+                          <span>{formatCurrency(row.spent)} de {formatCurrency(row.limit)}</span>
+                          {row.state === "over" ? (
+                            <span className="extra">+{formatCurrency(row.spent - row.limit)}</span>
+                          ) : (
+                            <span>quedan {formatCurrency(row.limit - row.spent)}</span>
+                          )}
+                        </span>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+              <div className="meta-lim-foot">
+                {adding ? (
+                  <div className="meta-lim-add">
+                    <CategorySelect
+                      value={addCat}
+                      options={addable}
+                      onChange={setAddCat}
+                      placeholder="Categoría"
+                      searchPlaceholder="Buscar categoría…"
+                      className="meta-lim-select"
+                    />
+                    <AmountField
+                      value={addDraft}
+                      onChange={setAddDraft}
+                      onSave={saveAdd}
+                      onCancel={() => setAdding(false)}
+                      placeholder="100.000"
+                      label="Límite mensual"
+                    />
+                    <button onClick={saveAdd} disabled={!addCat || parseAmount(addDraft) <= 0} aria-label="Guardar límite" className="meta-edit-btn">
+                      <Check />
+                    </button>
+                    <button onClick={() => setAdding(false)} aria-label="Cancelar" className="meta-edit-btn">
+                      <X />
+                    </button>
+                  </div>
+                ) : (
+                  <button className="meta-lim-new" onClick={startAdd} disabled={addable.length === 0}>
+                    <Plus /> Límite
+                  </button>
+                )}
               </div>
             </section>
           </div>
