@@ -1041,7 +1041,7 @@ export default function TutoringClasses() {
                                   >
                                     <div className="flex items-center gap-1.5 mb-1.5">
                                       <StickyNote className="h-3 w-3 text-amber-500/70" />
-                                      <span className="text-[10px] font-semibold text-amber-500/70 uppercase tracking-wider">Notas</span>
+                                      <span className="text-[10px] font-semibold text-amber-500/70">Notas</span>
                                     </div>
                                     <textarea
                                       className="w-full bg-transparent text-xs font-mono leading-relaxed resize-none placeholder:text-muted-foreground/30 focus:outline-none min-h-[48px] text-foreground/80"
@@ -1204,7 +1204,7 @@ export default function TutoringClasses() {
                       {headerGroup.headers.map((header) => (
                         <th
                           key={header.id}
-                          className="px-4 py-3 text-left text-xs font-semibold text-foreground uppercase tracking-wide"
+                          className="px-4 py-3 text-left text-xs font-semibold text-foreground"
                           style={{
                             width: header.column.columnDef.size,
                             minWidth: header.column.columnDef.minSize,
@@ -1356,7 +1356,7 @@ export default function TutoringClasses() {
       <BaseModal
         open={isQuickAddOpen}
         onOpenChange={setIsQuickAddOpen}
-        title="Agregar Clase"
+        title="Agregar clase"
         description="Registra una clase rápidamente"
         maxWidth="md"
         footer={
@@ -1367,7 +1367,7 @@ export default function TutoringClasses() {
             className="bg-emerald-500 hover:bg-emerald-600"
             disabled={!quickForm.student_id || !quickForm.price_per_hour || addClass.isPending}
           >
-            {addClass.isPending ? "Guardando..." : "Agregar Clase"}
+            {addClass.isPending ? "Guardando..." : "Agregar clase"}
           </Button>
         }
       >
@@ -1500,7 +1500,7 @@ export default function TutoringClasses() {
             resetForm();
           }
         }}
-        title={editingClass ? "Editar Clase" : "Agregar Clase"}
+        title={editingClass ? "Editar clase" : "Agregar clase"}
         maxWidth="lg"
         footer={
           <Button
@@ -1509,7 +1509,7 @@ export default function TutoringClasses() {
             size="cta"
             disabled={addClass.isPending || updateClass.isPending}
           >
-            {editingClass ? "Guardar Cambios" : "Agregar"}
+            {editingClass ? "Guardar cambios" : "Agregar"}
           </Button>
         }
       >
@@ -1630,7 +1630,7 @@ export default function TutoringClasses() {
       <BaseModal
         open={isStudentDialogOpen}
         onOpenChange={setIsStudentDialogOpen}
-        title="Nuevo Alumno"
+        title="Nuevo alumno"
         maxWidth="sm"
         footer={
           <Button
@@ -1639,7 +1639,7 @@ export default function TutoringClasses() {
             size="cta"
             disabled={!newStudentName.trim() || addStudent.isPending}
           >
-            {addStudent.isPending ? "Guardando..." : "Agregar Alumno"}
+            {addStudent.isPending ? "Guardando..." : "Agregar alumno"}
           </Button>
         }
       >

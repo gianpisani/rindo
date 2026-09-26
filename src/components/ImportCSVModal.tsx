@@ -111,7 +111,7 @@ export function ImportCSVModal({
     <BaseModal
       open={open}
       onOpenChange={resetState}
-      title="Importar Transacciones"
+      title="Importar transacciones"
       description="Sube un archivo CSV con tus transacciones"
       maxWidth="xl"
       footer={

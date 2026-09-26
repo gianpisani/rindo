@@ -271,19 +271,19 @@ export function MonthlyEvolutionChart({ data }: MonthlyEvolutionChartProps) {
       {stats && (
         <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-2">
           <div className="bg-success/10 rounded-xl p-3 text-center">
-            <p className="text-[10px] text-success font-semibold uppercase tracking-wider mb-1">Total Ingresos</p>
+            <p className="text-[10px] text-success font-semibold mb-1">Total ingresos</p>
             <p className="text-sm font-bold font-mono tabular-nums text-success">{formatCurrencyFull(stats.totalIngresos)}</p>
           </div>
           <div className="bg-destructive/10 rounded-xl p-3 text-center">
-            <p className="text-[10px] text-destructive font-semibold uppercase tracking-wider mb-1">Total Gastos</p>
+            <p className="text-[10px] text-destructive font-semibold mb-1">Total gastos</p>
             <p className="text-sm font-bold font-mono tabular-nums text-destructive">{formatCurrencyFull(stats.totalGastos)}</p>
           </div>
           <div className="bg-sky-500/10 rounded-xl p-3 text-center">
-            <p className="text-[10px] text-sky-500 font-semibold uppercase tracking-wider mb-1">Total Inversión</p>
+            <p className="text-[10px] text-sky-500 font-semibold mb-1">Total inversión</p>
             <p className="text-sm font-bold font-mono tabular-nums text-sky-500">{formatCurrencyFull(stats.totalInversiones)}</p>
           </div>
           <div className="bg-violet-500/10 rounded-xl p-3 text-center">
-            <p className="text-[10px] text-violet-500 font-semibold uppercase tracking-wider mb-1">Patrimonio</p>
+            <p className="text-[10px] text-violet-500 font-semibold mb-1">Patrimonio</p>
             <p className={cn(
               "text-sm font-bold font-mono tabular-nums",
               stats.patrimonio >= 0 ? "text-violet-500" : "text-destructive"
@@ -293,9 +293,9 @@ export function MonthlyEvolutionChart({ data }: MonthlyEvolutionChartProps) {
           </div>
           <div className="col-span-2 sm:col-span-1 bg-amber-500/10 rounded-xl p-3 text-center">
             <p className={cn(
-              "text-[10px] font-semibold uppercase tracking-wider mb-1",
+              "text-[10px] font-semibold mb-1",
               stats.tasaAhorro >= 35 ? "text-success" : stats.tasaAhorro >= 10 ? "text-amber-500" : "text-destructive"
-            )}>Tasa Ahorro</p>
+            )}>Tasa de ahorro</p>
             <p className={cn(
               "text-sm font-bold font-mono tabular-nums",
               stats.tasaAhorro >= 35 ? "text-success" : stats.tasaAhorro >= 10 ? "text-amber-500" : "text-destructive"

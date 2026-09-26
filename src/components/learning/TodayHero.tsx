@@ -82,7 +82,7 @@ export function TodayHero({
           <DayRing ratio={ratio} met={goalMet} streak={stats.streakDays} />
 
           <div>
-            <p className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
+            <p className="text-[11px] font-medium text-muted-foreground">
               Hoy
             </p>
             <p className="mt-0.5 text-2xl font-bold leading-none tracking-tight tabular-nums sm:text-3xl">

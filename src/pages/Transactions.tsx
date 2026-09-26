@@ -312,7 +312,7 @@ export default function Transactions() {
       amount: confirmPaid.amount,
       transactionDetail: confirmPaid.detail,
     });
-    // Actualizar formData para que "Guardar Cambios" no sobreescriba el monto reducido
+    // Actualizar formData para que "Guardar cambios" no sobreescriba el monto reducido
     const currentAmount = parseFloat(formData.amount || "0");
     const newAmount = currentAmount - confirmPaid.amount;
     if (newAmount >= 0) {

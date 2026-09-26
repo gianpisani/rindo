@@ -43,7 +43,7 @@ export function PushNotificationToggle() {
       <CardHeader>
         <CardTitle className="flex items-center gap-2">
           <Bell className="h-5 w-5" />
-          Notificaciones Push
+          Notificaciones push
         </CardTitle>
         <CardDescription>
           Recibe alertas de transacciones, límites de categorías y sincronizaciones

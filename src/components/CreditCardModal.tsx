@@ -91,7 +91,7 @@ export function CreditCardModal({ open, onOpenChange, card, onSave }: CreditCard
     <BaseModal
       open={open}
       onOpenChange={onOpenChange}
-      title={isEditing ? "Editar Tarjeta" : "Nueva Tarjeta"}
+      title={isEditing ? "Editar tarjeta" : "Nueva tarjeta"}
       description="Configura los datos de tu tarjeta de crédito"
       maxWidth="md"
       footer={
@@ -101,7 +101,7 @@ export function CreditCardModal({ open, onOpenChange, card, onSave }: CreditCard
           size="cta"
           disabled={!name || !creditLimit || isSubmitting}
         >
-          {isSubmitting ? "Guardando..." : isEditing ? "Guardar Cambios" : "Agregar Tarjeta"}
+          {isSubmitting ? "Guardando..." : isEditing ? "Guardar cambios" : "Agregar tarjeta"}
         </Button>
       }
     >

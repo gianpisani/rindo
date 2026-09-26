@@ -157,7 +157,7 @@ export function InvestmentMoveDrawer({
       <div className="space-y-5">
         {/* Cuánto tiene registrado Rindo en el balde invertido */}
         <div className="flex items-baseline justify-between rounded-xl border border-border/60 bg-muted/30 px-3.5 py-2.5">
-          <span className="text-[11px] font-medium uppercase tracking-wider text-muted-foreground">
+          <span className="text-[11px] font-medium text-muted-foreground">
             Invertido según Rindo
           </span>
           <span
@@ -293,7 +293,7 @@ export function InvestmentMoveDrawer({
                   </p>
                 ) : (
                   <>
-                    <p className="text-[11px] font-medium uppercase tracking-wider text-muted-foreground">
+                    <p className="text-[11px] font-medium text-muted-foreground">
                       {delta > 0 ? "Ganaron" : "Perdieron"}
                     </p>
                     <p

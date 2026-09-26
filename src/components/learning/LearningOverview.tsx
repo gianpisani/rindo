@@ -91,7 +91,7 @@ export function LearningOverview({
 
       {/* ── Esta semana ──────────────────────────────────── */}
       <div className="rounded-2xl border border-border/60 bg-card p-5">
-        <p className="text-xs text-muted-foreground uppercase tracking-wide font-medium mb-4">
+        <p className="text-xs text-muted-foreground font-medium mb-4">
           Esta semana
         </p>
 
@@ -123,7 +123,7 @@ export function LearningOverview({
       {/* ── Últimas sesiones ─────────────────────────────── */}
       {recent.length > 0 && (
         <div className="rounded-2xl border border-border/60 bg-card p-5">
-          <p className="text-xs text-muted-foreground uppercase tracking-wide font-medium mb-3">
+          <p className="text-xs text-muted-foreground font-medium mb-3">
             Últimas sesiones
           </p>
 

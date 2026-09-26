@@ -66,7 +66,7 @@ export function MainIdeaField({
     return (
       <div className={cn("space-y-1.5", className)}>
         <div className="flex items-baseline justify-between gap-2">
-          <p className="text-xs text-muted-foreground uppercase tracking-wide font-medium">
+          <p className="text-xs text-muted-foreground font-medium">
             La idea principal, según tú
           </p>
           <button

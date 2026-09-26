@@ -729,7 +729,7 @@ export function BankSyncModal({
                   {result.importedItems.length > 0 && deletedImportedCount === 0 && (
                     <div className="space-y-2">
                       <div className="flex items-center justify-between">
-                        <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Importadas</p>
+                        <p className="text-xs font-medium text-muted-foreground">Importadas</p>
                         {result.importedItems.some((item) => item.id) && (
                           <button
                             type="button"
@@ -774,7 +774,7 @@ export function BankSyncModal({
                   {result.skippedItems.length > 0 && importedSkippedCount === 0 && (
                     <div className="space-y-2">
                       <div className="flex items-center justify-between">
-                        <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Omitidas</p>
+                        <p className="text-xs font-medium text-muted-foreground">Omitidas</p>
                         {result.skippedItems.some((s) => s.reason !== "zero_amount") && (
                           <button
                             type="button"

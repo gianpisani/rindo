@@ -187,7 +187,7 @@ export function StudioTopRail({
           </span>
           <span
             className={cn(
-              "text-[10px] font-bold uppercase tracking-wider",
+              "text-[10px] font-bold",
               config.text
             )}
           >

@@ -52,7 +52,7 @@ export function TestPushNotification() {
       <CardHeader>
         <CardTitle className="flex items-center gap-2">
           <Bell className="h-5 w-5" />
-          Probar Notificaciones
+          Probar notificaciones
         </CardTitle>
         <CardDescription>
           Envía notificaciones de prueba para verificar que todo funciona

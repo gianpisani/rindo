@@ -33,7 +33,7 @@ export function ReconciliationCard({ onSuccess }: ReconciliationCardProps = {}) 
   const cuentaCorrienteNum = parseFloat(cuentaCorriente) || 0;
   const tarjetaCreditoNum = parseFloat(tarjetaCredito) || 0;
 
-  // Balance Real = Cuenta Corriente - Tarjeta de Crédito
+  // Balance Real = Cuenta corriente - Tarjeta de Crédito
   const balanceReal = cuentaCorrienteNum - tarjetaCreditoNum;
 
   // Diferencia a Conciliar = Balance Real - Balance App
@@ -133,7 +133,7 @@ export function ReconciliationCard({ onSuccess }: ReconciliationCardProps = {}) 
         <div className="space-y-2">
           <Label htmlFor="cuenta-corriente" className="flex items-center gap-2 text-sm font-medium">
             <Wallet className="h-4 w-4 text-success" />
-            Cuenta Corriente
+            Cuenta corriente
           </Label>
           <div className="relative">
             <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm text-muted-foreground">$</span>
@@ -197,7 +197,7 @@ export function ReconciliationCard({ onSuccess }: ReconciliationCardProps = {}) 
                   <AlertTriangle className="h-5 w-5 text-destructive" />
                 )}
                 <span className="text-sm font-medium">
-                  {!needsReconciliation ? "Balances Conciliados ✓" : "Diferencia Detectada"}
+                  {!needsReconciliation ? "Balances conciliados ✓" : "Diferencia detectada"}
                 </span>
               </div>
               <span className={`text-xl font-bold font-mono tabular-nums ${diferenciaColor}`}>
@@ -225,7 +225,7 @@ export function ReconciliationCard({ onSuccess }: ReconciliationCardProps = {}) 
 
               return (
                 <div className="space-y-3 mt-2 rounded-lg border bg-background p-3 animate-in fade-in slide-in-from-top-2 duration-200">
-                  <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Preview de transacción</p>
+                  <p className="text-xs font-semibold text-muted-foreground">Preview de transacción</p>
                   <div className="space-y-1.5 text-sm">
                     <div className="flex items-center justify-between">
                       <span className="text-muted-foreground">Tipo</span>

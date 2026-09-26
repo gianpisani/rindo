@@ -1557,25 +1557,25 @@ export function TransactionsTable({
                 <div className="px-3 py-2 border-t border-border/40 bg-muted/20">
                   <div className="grid grid-cols-2 gap-x-4 gap-y-1">
                     <div className="flex items-center justify-between">
-                      <span className="text-[10px] text-muted-foreground/60 uppercase tracking-wide">Suma</span>
+                      <span className="text-[10px] text-muted-foreground/60">Suma</span>
                       <span className={cn("text-[11px] font-mono font-bold tabular-nums", signColor(summaryStats.sum), isPrivacyMode && "privacy-blur")}>
                         <NumberFlow value={summaryStats.sum} locales="es-CL" format={SIGNED_CLP} />
                       </span>
                     </div>
                     <div className="flex items-center justify-between">
-                      <span className="text-[10px] text-muted-foreground/60 uppercase tracking-wide">Prom</span>
+                      <span className="text-[10px] text-muted-foreground/60">Prom</span>
                       <span className={cn("text-[11px] font-mono font-semibold tabular-nums", signColor(summaryStats.avg), isPrivacyMode && "privacy-blur")}>
                         <NumberFlow value={summaryStats.avg} locales="es-CL" format={SIGNED_CLP} />
                       </span>
                     </div>
                     <div className="flex items-center justify-between">
-                      <span className="text-[10px] text-muted-foreground/60 uppercase tracking-wide">Min</span>
+                      <span className="text-[10px] text-muted-foreground/60">Min</span>
                       <span className={cn("text-[11px] font-mono tabular-nums", signColor(summaryStats.min), isPrivacyMode && "privacy-blur")}>
                         <NumberFlow value={summaryStats.min} locales="es-CL" format={SIGNED_CLP} />
                       </span>
                     </div>
                     <div className="flex items-center justify-between">
-                      <span className="text-[10px] text-muted-foreground/60 uppercase tracking-wide">Max</span>
+                      <span className="text-[10px] text-muted-foreground/60">Max</span>
                       <span className={cn("text-[11px] font-mono tabular-nums", signColor(summaryStats.max), isPrivacyMode && "privacy-blur")}>
                         <NumberFlow value={summaryStats.max} locales="es-CL" format={SIGNED_CLP} />
                       </span>
@@ -1916,7 +1916,7 @@ export function TransactionsTable({
                       {headerGroup.headers.map((header) => (
                         <th
                           key={header.id}
-                          className="px-3 py-1.5 text-left text-xs font-semibold text-foreground uppercase tracking-wide"
+                          className="px-3 py-1.5 text-left text-xs font-semibold text-foreground"
                           style={{
                             width: header.column.columnDef.size,
                             minWidth: header.column.columnDef.minSize,
@@ -1951,7 +1951,7 @@ export function TransactionsTable({
                               colSpan={columns.length}
                               className="px-4 py-1 bg-muted/30 border-t border-border/30 first:border-t-0"
                             >
-                              <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
+                              <span className="text-xs font-semibold text-muted-foreground">
                                 {formatGroupDate(group.dayKey)}
                               </span>
                             </td>
@@ -2028,13 +2028,13 @@ export function TransactionsTable({
                 {summaryStats.mixed && (
                   <>
                     <div className="flex items-center gap-1">
-                      <span className="text-[11px] text-muted-foreground/60 uppercase tracking-wide">Ingresos</span>
+                      <span className="text-[11px] text-muted-foreground/60">Ingresos</span>
                       <span className={cn("text-xs font-mono font-semibold tabular-nums text-emerald-500", isPrivacyMode && "privacy-blur")}>
                         +{formatCurrency(summaryStats.income)}
                       </span>
                     </div>
                     <div className="flex items-center gap-1">
-                      <span className="text-[11px] text-muted-foreground/60 uppercase tracking-wide">Gastos</span>
+                      <span className="text-[11px] text-muted-foreground/60">Gastos</span>
                       <span className={cn("text-xs font-mono font-semibold tabular-nums text-rose-500", isPrivacyMode && "privacy-blur")}>
                         −{formatCurrency(summaryStats.expense)}
                       </span>
@@ -2042,25 +2042,25 @@ export function TransactionsTable({
                   </>
                 )}
                 <div className="flex items-center gap-1">
-                  <span className="text-[11px] text-muted-foreground/60 uppercase tracking-wide">Min</span>
+                  <span className="text-[11px] text-muted-foreground/60">Min</span>
                   <span className={cn("text-xs font-mono font-semibold tabular-nums", signColor(summaryStats.min), isPrivacyMode && "privacy-blur")}>
                     <NumberFlow value={summaryStats.min} locales="es-CL" format={SIGNED_CLP} />
                   </span>
                 </div>
                 <div className="flex items-center gap-1">
-                  <span className="text-[11px] text-muted-foreground/60 uppercase tracking-wide">Max</span>
+                  <span className="text-[11px] text-muted-foreground/60">Max</span>
                   <span className={cn("text-xs font-mono font-semibold tabular-nums", signColor(summaryStats.max), isPrivacyMode && "privacy-blur")}>
                     <NumberFlow value={summaryStats.max} locales="es-CL" format={SIGNED_CLP} />
                   </span>
                 </div>
                 <div className="flex items-center gap-1">
-                  <span className="text-[11px] text-muted-foreground/60 uppercase tracking-wide">Prom</span>
+                  <span className="text-[11px] text-muted-foreground/60">Prom</span>
                   <span className={cn("text-xs font-mono font-semibold tabular-nums", signColor(summaryStats.avg), isPrivacyMode && "privacy-blur")}>
                     <NumberFlow value={summaryStats.avg} locales="es-CL" format={SIGNED_CLP} />
                   </span>
                 </div>
                 <div className="flex items-center gap-1">
-                  <span className="text-[11px] text-muted-foreground/60 uppercase tracking-wide">Suma</span>
+                  <span className="text-[11px] text-muted-foreground/60">Suma</span>
                   <span className={cn("text-xs font-mono font-bold tabular-nums", signColor(summaryStats.sum), isPrivacyMode && "privacy-blur")}>
                     <NumberFlow value={summaryStats.sum} locales="es-CL" format={SIGNED_CLP} />
                   </span>

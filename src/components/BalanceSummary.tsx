@@ -79,7 +79,7 @@ export default function BalanceSummary() {
       {cards.map((card) => (
         <GlassCard key={card.title}>
           <CardHeader className="flex flex-row items-center justify-between pb-2 space-y-0">
-            <CardTitle className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
+            <CardTitle className="text-xs font-medium text-muted-foreground">
               {card.title}
             </CardTitle>
             <div className={`p-2 rounded-md ${card.bg}`}>

@@ -47,7 +47,7 @@ export function ShelfSection({
           )}
         >
           {icon}
-          <span className="truncate text-xs font-medium uppercase tracking-wide text-muted-foreground">
+          <span className="truncate text-xs font-medium text-muted-foreground">
             {title}
           </span>
 

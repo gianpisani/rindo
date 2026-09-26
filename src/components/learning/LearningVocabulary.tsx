@@ -619,8 +619,8 @@ function EntryDetail({
             <div className="flex items-center gap-2">
               <span className={cn("h-2 w-2 rounded-full", inferred.dot)} />
               <span className="text-sm font-semibold">{inferred.label}</span>
-              <span className="text-[10px] uppercase tracking-wide text-muted-foreground border border-border/60 rounded-md px-1.5 py-0.5">
-                inferido
+              <span className="text-[10px] text-muted-foreground border border-border/60 rounded-md px-1.5 py-0.5">
+                Inferido
               </span>
             </div>
             <p className="text-xs text-muted-foreground mt-1.5 leading-relaxed">
@@ -688,7 +688,7 @@ function EntryDetail({
           {/* Ejemplos de verdad, sacados de tus propios videos */}
           {examples.length > 0 && (
             <div className="space-y-2">
-              <p className="text-xs text-muted-foreground uppercase tracking-wide font-medium">
+              <p className="text-xs text-muted-foreground font-medium">
                 Cómo se dice en tus videos
               </p>
               <div className="space-y-1.5">
@@ -721,7 +721,7 @@ function EntryDetail({
           {sightings.length > 0 && (
             <div className="space-y-2">
               <div className="flex items-baseline justify-between">
-                <p className="text-xs text-muted-foreground uppercase tracking-wide font-medium">
+                <p className="text-xs text-muted-foreground font-medium">
                   Dónde te frenó
                 </p>
                 {sightings.length > 1 && (
@@ -748,7 +748,7 @@ function EntryDetail({
 
                     <div className="min-w-0 flex-1 pb-3">
                       <div className="flex items-baseline gap-2">
-                        <span className="text-[10px] uppercase tracking-wide text-muted-foreground font-medium">
+                        <span className="text-[10px] text-muted-foreground font-medium">
                           {index === 0 ? "Primera vez" : "Otra vez"}
                         </span>
                         <span className="text-[10px] text-muted-foreground">

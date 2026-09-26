@@ -98,7 +98,7 @@ export function CaptureSheet({
               }
               className={cn(
                 "flex items-center gap-1 rounded-lg px-1.5 py-1 transition-colors",
-                "text-[10px] font-bold uppercase tracking-wide",
+                "text-[10px] font-bold",
                 autoEnabled
                   ? "bg-primary/15 text-primary"
                   : "text-muted-foreground hover:text-foreground"

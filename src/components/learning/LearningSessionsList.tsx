@@ -279,7 +279,7 @@ function SessionDetailModal({
         {/* Expresiones */}
         {captured.length > 0 && (
           <div className="space-y-2">
-            <p className="text-xs text-muted-foreground uppercase tracking-wide font-medium">
+            <p className="text-xs text-muted-foreground font-medium">
               Lo que capturaste
             </p>
             <div className="space-y-1.5">

@@ -207,7 +207,7 @@ function Drivers({ pace, colors, privacy }: { pace: MonthPace; colors: Map<strin
 
   return (
     <div className="space-y-3">
-      <p className="text-[11px] uppercase tracking-wider text-muted-foreground">Lo que explica la diferencia</p>
+      <p className="text-[11px] text-muted-foreground">Lo que explica la diferencia</p>
       {rows.map((r, i) => {
         const over = r.delta > 0;
         const w = (Math.abs(r.delta) / max) * 50;
@@ -430,7 +430,7 @@ export function MonthPulse({ open, onClose, initialMonth, transactions, categori
               {pace.typical && (
                 <div className="grid grid-cols-2 gap-3 lg:col-start-1 lg:row-start-2">
                   <div className="rounded-2xl bg-muted p-4">
-                    <p className="text-[11px] uppercase tracking-wider text-muted-foreground">
+                    <p className="text-[11px] text-muted-foreground">
                       {pace.isLive ? "Cierras en" : "Gastaste"}
                     </p>
                     <p className={cn("mt-1 text-xl font-bold tabular-nums", isPrivacyMode && "privacy-blur")}>
@@ -443,7 +443,7 @@ export function MonthPulse({ open, onClose, initialMonth, transactions, categori
                   </div>
                   {income.amount > 0 && (
                     <div className="rounded-2xl bg-muted p-4">
-                      <p className="text-[11px] uppercase tracking-wider text-muted-foreground">
+                      <p className="text-[11px] text-muted-foreground">
                         {leftover >= 0 ? (pace.isLive ? "Te sobran" : "Te sobró") : pace.isLive ? "Te faltan" : "Te faltó"}
                       </p>
                       <p

@@ -219,7 +219,7 @@ function SectionLabel({
   return (
     <div className="flex items-center gap-2 mb-2">
       <Icon className="size-3.5 text-muted-foreground/70" />
-      <span className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
+      <span className="text-xs font-medium text-muted-foreground">
         {children}
       </span>
     </div>
@@ -724,7 +724,7 @@ export function OnboardingModal({
               <div className="flex items-center justify-between mb-2">
                 <div className="flex items-center gap-2">
                   <Circle className="size-3.5 text-muted-foreground/70" />
-                  <span className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
+                  <span className="text-xs font-medium text-muted-foreground">
                     Redondez
                   </span>
                 </div>

@@ -198,7 +198,7 @@ function FormCard({ stats, goal }: { stats: LearningStats; goal: LearningGoal })
     <div className="rounded-2xl border border-border/60 bg-card p-5">
       <div className="flex items-start justify-between gap-4">
         <div>
-          <p className="text-xs text-muted-foreground uppercase tracking-wide font-medium">
+          <p className="text-xs text-muted-foreground font-medium">
             Forma
           </p>
           <div className="flex items-end gap-2.5 mt-2">
@@ -387,7 +387,7 @@ function LearningCurve({ points }: { points: SessionPoint[] }) {
   return (
     <div className="rounded-2xl border border-border/60 bg-card p-5">
       <div className="flex items-baseline justify-between gap-3">
-        <p className="text-xs text-muted-foreground uppercase tracking-wide font-medium">
+        <p className="text-xs text-muted-foreground font-medium">
           Tu curva
         </p>
         <span className="flex items-center gap-1 text-[10px] text-muted-foreground">
@@ -535,7 +535,7 @@ function BandTile({
 
   return (
     <div className="rounded-2xl border border-border/60 bg-card p-5">
-      <p className="text-xs text-muted-foreground uppercase tracking-wide font-medium">
+      <p className="text-xs text-muted-foreground font-medium">
         Tu banda
       </p>
 
@@ -611,7 +611,7 @@ function StopRateTile({ points }: { points: SessionPoint[] }) {
 
   return (
     <div className="rounded-2xl border border-border/60 bg-card p-5">
-      <p className="text-xs text-muted-foreground uppercase tracking-wide font-medium">
+      <p className="text-xs text-muted-foreground font-medium">
         Frenos por 10 min
       </p>
 
@@ -674,7 +674,7 @@ function SessionLedger({
 
   return (
     <div className="rounded-2xl border border-border/60 bg-card p-5">
-      <p className="text-xs text-muted-foreground uppercase tracking-wide font-medium">
+      <p className="text-xs text-muted-foreground font-medium">
         Video por video
       </p>
 

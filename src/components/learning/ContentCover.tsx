@@ -28,7 +28,7 @@ function youTubeCover(videoId: string): string {
  */
 export function LiveBadge({ children }: { children: ReactNode }) {
   return (
-    <span className="flex items-center gap-1.5 rounded-md bg-black/65 px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-white backdrop-blur-sm">
+    <span className="flex items-center gap-1.5 rounded-md bg-black/65 px-1.5 py-0.5 text-[10px] font-semibold text-white backdrop-blur-sm">
       <span className="size-1.5 rounded-full bg-primary animate-breathe" />
       {children}
     </span>

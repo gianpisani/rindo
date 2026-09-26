@@ -156,7 +156,7 @@ function EntryDetail({ entry }: { entry: SyncLogEntry }) {
       {importedItems.length > 0 && deletedCount === 0 && (
         <div className="space-y-1.5">
           <div className="flex items-center justify-between">
-            <p className="text-[11px] font-medium text-muted-foreground uppercase tracking-wider">
+            <p className="text-[11px] font-medium text-muted-foreground">
               Importadas ({importedItems.length})
             </p>
             {importedItems.some((item) => item.id) && (
@@ -220,7 +220,7 @@ function EntryDetail({ entry }: { entry: SyncLogEntry }) {
       {skippedItems.length > 0 && importedCount === 0 && (
         <div className="space-y-1.5">
           <div className="flex items-center justify-between">
-            <p className="text-[11px] font-medium text-muted-foreground uppercase tracking-wider">
+            <p className="text-[11px] font-medium text-muted-foreground">
               Ignoradas ({skippedItems.length})
             </p>
             {creatableIndexes.length > 0 && (

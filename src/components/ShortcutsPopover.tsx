@@ -27,7 +27,7 @@ const useShortcuts = () => {
 
   return useMemo(() => [
     {
-      category: "Acciones Rápidas",
+      category: "Acciones rápidas",
       color: "text-primary",
       items: [
         {
@@ -69,7 +69,7 @@ const useShortcuts = () => {
       ]
     },
     {
-      category: "Ir a Sección",
+      category: "Ir a sección",
       icon: Home,
       color: "text-primary",
       items: visibleRoutes.slice(0, 9).map((route, index) => ({
@@ -106,7 +106,7 @@ export function ShortcutsPopover({ isVisible, onClose }: ShortcutsPopoverProps) 
           return (
             <div key={idx} className="space-y-2">
               <div className="flex items-center gap-2">
-                <h4 className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">
+                <h4 className="text-xs font-semibold text-muted-foreground">
                   {section.category}
                 </h4>
               </div>

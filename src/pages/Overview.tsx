@@ -132,7 +132,7 @@ function SectionCard({
     <GlassCard className={cn("flex flex-col", className)}>
       <div className="flex items-center gap-2 px-4 pt-3 pb-1.5 border-b border-border/20">
         {Icon && <Icon className="h-3 w-3 text-primary/60" />}
-        <h3 className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider">
+        <h3 className="text-[10px] font-semibold text-muted-foreground">
           {title}
         </h3>
         {tooltip && (
@@ -201,7 +201,7 @@ function KPICard({
                 <div className={cn("p-1 rounded-md", iconBg)}>
                   <Icon className={cn("h-3 w-3", iconColor)} />
                 </div>
-                <span className="text-[10px] font-medium text-muted-foreground uppercase tracking-wider">
+                <span className="text-[10px] font-medium text-muted-foreground">
                   {label}
                 </span>
               </div>
@@ -673,7 +673,7 @@ export default function Overview() {
                     >
                       {showYear && (
                         <span className={cn(
-                          "text-[9px] uppercase tracking-widest font-medium leading-none",
+                          "text-[9px] font-medium leading-none",
                           isActive ? "text-primary-foreground/60" : "text-muted-foreground/40"
                         )}>
                           {format(month, "yyyy")}
@@ -784,8 +784,8 @@ export default function Overview() {
                             </div>
                           </div>
                           <div className="min-w-0">
-                            <p className="text-[10px] text-muted-foreground uppercase tracking-wider font-medium">
-                              {isProjected ? "Ahorro (proy.)" : "Tasa de Ahorro"}
+                            <p className="text-[10px] text-muted-foreground font-medium">
+                              {isProjected ? "Ahorro (proy.)" : "Tasa de ahorro"}
                             </p>
                             <div className={cn(
                               "text-lg font-bold font-mono tabular-nums",
@@ -808,8 +808,8 @@ export default function Overview() {
                   {/* Daily Spending Stats */}
                   {dailySpending.length > 0 ? (
                     <GlassCard className="p-4">
-                      <p className="text-[10px] text-muted-foreground uppercase tracking-wider font-medium mb-1.5">
-                        Gasto Diario
+                      <p className="text-[10px] text-muted-foreground font-medium mb-1.5">
+                        Gasto diario
                       </p>
                       <div className={cn("text-lg font-bold font-mono tabular-nums", isPrivacyMode && "privacy-blur")}>
                         {formatCompact(dailyStats.avgDaily)}
@@ -835,7 +835,7 @@ export default function Overview() {
                   {monthlyCardSpending.length > 0 ? (
                     <GlassCard className="p-4">
                       <div className="flex items-center justify-between mb-1.5">
-                        <p className="text-[10px] text-muted-foreground uppercase tracking-wider font-medium">
+                        <p className="text-[10px] text-muted-foreground font-medium">
                           Tarjetas
                         </p>
                         <Link to="/credit-cards" className="text-[10px] text-primary hover:underline">
@@ -877,7 +877,7 @@ export default function Overview() {
                 <div className="grid grid-cols-1 lg:grid-cols-12 gap-4">
                   <div className="lg:col-span-7">
                     <SectionCard
-                      title="Gastos por Categoría"
+                      title="Gastos por categoría"
                       tooltip="Distribución de gastos del mes por categoría"
                     >
                       {categoryBreakdown.length === 0 ? (
@@ -914,7 +914,7 @@ export default function Overview() {
                             </ResponsiveContainer>
                             <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
                               <div className="text-center">
-                                <p className="text-[9px] text-muted-foreground uppercase tracking-wider">
+                                <p className="text-[9px] text-muted-foreground">
                                   Total
                                 </p>
                                 <p
@@ -951,7 +951,7 @@ export default function Overview() {
 
                   <div className="lg:col-span-5">
                     <SectionCard
-                      title="vs Mes Anterior"
+                      title="vs mes anterior"
                       icon={ArrowRight}
                       tooltip={`Comparación con ${prevMonthLabel}`}
                     >
@@ -1044,8 +1044,8 @@ export default function Overview() {
                 {/* Gastos + Presupuesto side by side */}
                 {categoryBreakdown.length > 0 && (
                   <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-                    {/* Gastos por Categoría */}
-                    <SectionCard title="Gastos por Categoría">
+                    {/* Gastos por categoría */}
+                    <SectionCard title="Gastos por categoría">
                       <div className="space-y-0.5">
                         {/* Select all header */}
                         <div className="flex items-center gap-2 pb-1 mb-0.5 border-b border-border/40">
@@ -1117,8 +1117,8 @@ export default function Overview() {
                       </div>
                     </SectionCard>
 
-                    {/* Presupuesto por Categoría */}
-                    <SectionCard title="Presupuesto por Categoría">
+                    {/* Presupuesto por categoría */}
+                    <SectionCard title="Presupuesto por categoría">
                       {!hasBudget ? (
                         <div className="flex flex-col items-center justify-center py-6 text-center">
                           <p className="text-sm text-muted-foreground mb-3">
@@ -1200,9 +1200,9 @@ export default function Overview() {
                 <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
                   {[
                     { label: "Patrimonio", icon: Wallet, value: historicalStats.patrimonio, iconColor: "text-emerald-500", iconBg: "bg-emerald-500/10", gradient: "from-emerald-500/[0.03]" },
-                    { label: "Prom. Ingresos", icon: TrendingUp, value: historicalStats.avgIncome, iconColor: "text-emerald-500", iconBg: "bg-emerald-500/10", gradient: "from-emerald-500/[0.03]" },
-                    { label: "Prom. Gastos", icon: TrendingDown, value: historicalStats.avgExpenses, iconColor: "text-rose-500", iconBg: "bg-rose-500/10", gradient: "from-rose-500/[0.03]" },
-                    { label: "Prom. Balance", icon: CalendarDays, value: historicalStats.avgBalance, iconColor: historicalStats.avgBalance >= 0 ? "text-emerald-500" : "text-rose-500", iconBg: historicalStats.avgBalance >= 0 ? "bg-emerald-500/10" : "bg-rose-500/10", gradient: historicalStats.avgBalance >= 0 ? "from-emerald-500/[0.03]" : "from-rose-500/[0.03]" },
+                    { label: "Prom. ingresos", icon: TrendingUp, value: historicalStats.avgIncome, iconColor: "text-emerald-500", iconBg: "bg-emerald-500/10", gradient: "from-emerald-500/[0.03]" },
+                    { label: "Prom. gastos", icon: TrendingDown, value: historicalStats.avgExpenses, iconColor: "text-rose-500", iconBg: "bg-rose-500/10", gradient: "from-rose-500/[0.03]" },
+                    { label: "Prom. balance", icon: CalendarDays, value: historicalStats.avgBalance, iconColor: historicalStats.avgBalance >= 0 ? "text-emerald-500" : "text-rose-500", iconBg: historicalStats.avgBalance >= 0 ? "bg-emerald-500/10" : "bg-rose-500/10", gradient: historicalStats.avgBalance >= 0 ? "from-emerald-500/[0.03]" : "from-rose-500/[0.03]" },
                   ].map((card) => {
                     const Icon = card.icon;
                     return (
@@ -1213,7 +1213,7 @@ export default function Overview() {
                             <div className={cn("p-1 rounded-md", card.iconBg)}>
                               <Icon className={cn("h-3 w-3", card.iconColor)} />
                             </div>
-                            <span className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider">{card.label}</span>
+                            <span className="text-[10px] font-semibold text-muted-foreground">{card.label}</span>
                           </div>
                           <div className={cn("text-lg font-bold font-mono tabular-nums", isPrivacyMode && "privacy-blur")}>
                             <NumberFlow value={card.value} format={{ style: "currency", currency: "CLP", minimumFractionDigits: 0, maximumFractionDigits: 0 }} locales="es-CL" />
@@ -1228,7 +1228,7 @@ export default function Overview() {
                 <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                   {/* Composition: Disponible / Invertido / Ahorro */}
                   <GlassCard className="p-4">
-                    <p className="text-[10px] text-muted-foreground uppercase tracking-wider font-medium mb-2.5">
+                    <p className="text-[10px] text-muted-foreground font-medium mb-2.5">
                       Composición
                     </p>
                     <div className="space-y-2">
@@ -1260,7 +1260,7 @@ export default function Overview() {
 
                   {/* Best & Worst months */}
                   <GlassCard className="p-4">
-                    <p className="text-[10px] text-muted-foreground uppercase tracking-wider font-medium mb-2.5">
+                    <p className="text-[10px] text-muted-foreground font-medium mb-2.5">
                       Hitos
                     </p>
                     {historicalStats.bestMonth && historicalStats.worstMonth ? (
@@ -1297,7 +1297,7 @@ export default function Overview() {
                   {/* Credit Cards Mini */}
                   <GlassCard className="p-4">
                     <div className="flex items-center justify-between mb-2">
-                      <p className="text-[10px] text-muted-foreground uppercase tracking-wider font-medium">
+                      <p className="text-[10px] text-muted-foreground font-medium">
                         Tarjetas
                       </p>
                       <Link to="/credit-cards" className="text-[10px] text-primary hover:underline">
@@ -1342,7 +1342,7 @@ export default function Overview() {
 
                 {/* Monthly Evolution */}
                 <SectionCard
-                  title="Evolución Mensual"
+                  title="Evolución mensual"
                   tooltip="Tendencia de ingresos, gastos e inversiones a lo largo de todo tu historial"
                 >
                   <MonthlyEvolutionChart data={monthlyData} />
@@ -1352,7 +1352,7 @@ export default function Overview() {
                 <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
                   {/* Expenses by Category — historical accumulation */}
                   {expensesByCategory.length > 0 && (
-                    <SectionCard title="Gasto Acumulado por Categoría" tooltip="Top categorías con mayor gasto en todo tu historial">
+                    <SectionCard title="Gasto acumulado por categoría" tooltip="Top categorías con mayor gasto en todo tu historial">
                       <div className="space-y-0.5">
                         {expensesByCategory.map((cat) => {
                           const maxVal = expensesByCategory[0]?.value || 1;
@@ -1385,7 +1385,7 @@ export default function Overview() {
                   )}
 
                   {/* Projection */}
-                  <SectionCard title="Proyección Financiera" tooltip="Proyección de patrimonio basada en tu historial">
+                  <SectionCard title="Proyección financiera" tooltip="Proyección de patrimonio basada en tu historial">
                     <ProjectionCard />
                   </SectionCard>
                 </div>

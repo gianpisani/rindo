@@ -136,7 +136,7 @@ export function InstallmentModal({
     <BaseModal
       open={open}
       onOpenChange={onOpenChange}
-      title={isEditing ? "Editar Compra" : "Nueva Compra en Cuotas"}
+      title={isEditing ? "Editar compra" : "Nueva compra en cuotas"}
       description="Registra una compra para llevar el control de tus cuotas"
       maxWidth="lg"
       variant="expense"
@@ -149,7 +149,7 @@ export function InstallmentModal({
           disabled={!description || !totalAmount || !cardId || isSubmitting}
         >
           <Receipt className="mr-2 h-4 w-4" />
-          {isSubmitting ? "Guardando..." : isEditing ? "Guardar Cambios" : "Agregar Compra"}
+          {isSubmitting ? "Guardando..." : isEditing ? "Guardar cambios" : "Agregar compra"}
         </Button>
       }
     >

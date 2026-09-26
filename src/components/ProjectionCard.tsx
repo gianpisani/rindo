@@ -37,7 +37,7 @@ const RISK_LABELS: Record<RiskProfile, string> = {
   aggressive: "Agresivo (10%)",
   moderate: "Moderado (7%)",
   conservative: "Conservador (5%)",
-  none: "Sin Rentabilidad",
+  none: "Sin rentabilidad",
 };
 
 // --- Helpers ---
@@ -410,7 +410,7 @@ export default function ProjectionCard() {
         <CollapsibleContent className="space-y-2.5 pt-1">
           {/* Calculation method */}
           <div className="p-2.5 rounded-xl bg-muted/20 border border-border/50 space-y-2">
-            <Label className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">Método de cálculo</Label>
+            <Label className="text-[10px] font-semibold text-muted-foreground">Método de cálculo</Label>
             <ToggleGroup type="single" value={calculationMode}
               onValueChange={v => v && setCalculationMode(v as typeof calculationMode)}
               className="flex gap-1.5">
@@ -438,7 +438,7 @@ export default function ProjectionCard() {
 
           {/* Inflation */}
           <div className="p-2.5 rounded-xl bg-muted/20 border border-border/50 space-y-1.5">
-            <Label className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">Inflación anual</Label>
+            <Label className="text-[10px] font-semibold text-muted-foreground">Inflación anual</Label>
             <div className="flex items-center gap-2">
               <Input type="number" value={inflationRate} onChange={e => setInflationRate(Number(e.target.value))}
                 className="h-7 text-xs w-16" min="0" max="30" step="0.5" />
@@ -448,7 +448,7 @@ export default function ProjectionCard() {
 
           {/* Risk config */}
           <div className="p-2.5 rounded-xl bg-muted/20 border border-border/50 space-y-1.5">
-            <Label className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">Riesgo por inversión</Label>
+            <Label className="text-[10px] font-semibold text-muted-foreground">Riesgo por inversión</Label>
             <p className="text-[10px] text-muted-foreground leading-relaxed">
               Más riesgo = más retorno a largo plazo, pero más volatilidad a corto plazo. La banda en el gráfico refleja esta incertidumbre.
             </p>

@@ -98,12 +98,12 @@ const ACTIVITY_ITEMS: ActivityItem[] = [
   { icon: "⚠️", text: "Presupuesto excedido", detail: "Transporte +$15k", color: "text-red-400", side: "right" },
   { icon: "📱", text: "Categorizado con IA", detail: "Spotify → Suscripciones", color: "text-purple-400", side: "left" },
   { icon: "🔔", text: "Cuota 3/12 detectada", detail: "Bicicleta · −$133.250", color: "text-orange-400", side: "right" },
-  { icon: "📊", text: "Presupuesto Comida", detail: "78% usado · quedan 11 días", color: "text-amber-400", side: "left" },
+  { icon: "📊", text: "Presupuesto comida", detail: "78% usado · quedan 11 días", color: "text-amber-400", side: "left" },
   // ── Control con shortcuts ──
   { icon: "🍔", text: "Pago Uber Eats", detail: "−$12.500 · Comida", color: "text-red-400", side: "right", shortcut: "N" },
-  { icon: "💰", text: "Ingreso Sueldo", detail: "+$1.850.000", color: "text-emerald-400", side: "left", shortcut: "N" },
+  { icon: "💰", text: "Ingreso sueldo", detail: "+$1.850.000", color: "text-emerald-400", side: "left", shortcut: "N" },
   { icon: "🔍", text: "Buscar transacción", detail: '"arriendo mayo"', color: "text-white/60", side: "right", shortcut: "⌘K" },
-  { icon: "🏠", text: "Pago Arriendo", detail: "−$450.000 · Hogar", color: "text-red-400", side: "left", shortcut: "N" },
+  { icon: "🏠", text: "Pago arriendo", detail: "−$450.000 · Hogar", color: "text-red-400", side: "left", shortcut: "N" },
   { icon: "📋", text: "Conciliación rápida", detail: "3 pendientes", color: "text-blue-400", side: "right", shortcut: "R" },
 ];
 
@@ -272,7 +272,7 @@ function BankStrip() {
       transition={{ delay: 1.5, duration: 1 }}
       className="flex flex-col items-center gap-3"
     >
-      <p className="text-[10px] text-white/15 uppercase tracking-[0.2em] font-medium">
+      <p className="text-[10px] text-white/15 font-medium">
         Sincroniza con tu banco
       </p>
       <div className="flex items-center gap-1 justify-center">
@@ -430,7 +430,7 @@ export default function Auth() {
             >
               {/* Email */}
               <div className="space-y-2">
-                <Label htmlFor="email" className="text-[10px] font-medium text-white/25 uppercase tracking-widest">
+                <Label htmlFor="email" className="text-[10px] font-medium text-white/25">
                   Correo
                 </Label>
                 <div className="relative group">
@@ -475,7 +475,7 @@ export default function Auth() {
 
               {/* Password */}
               <div className="space-y-2">
-                <Label htmlFor="password" className="text-[10px] font-medium text-white/25 uppercase tracking-widest">
+                <Label htmlFor="password" className="text-[10px] font-medium text-white/25">
                   Contraseña
                 </Label>
                 <Input
@@ -504,8 +504,8 @@ export default function Auth() {
                   {loading
                     ? "Cargando..."
                     : isLogin
-                      ? "Iniciar Sesión"
-                      : "Crear Cuenta"}
+                      ? "Iniciar sesión"
+                      : "Crear cuenta"}
                 </Button>
               </div>
             </motion.form>

@@ -224,7 +224,7 @@ export default function CreditCards() {
               }}
             >
               <CreditCardIcon className="h-4 w-4 mr-2" />
-              Nueva Tarjeta
+              Nueva tarjeta
             </Button>
             <Button
               size="sm"
@@ -235,7 +235,7 @@ export default function CreditCards() {
               disabled={creditCards.length === 0}
             >
               <Plus className="h-4 w-4 mr-2" />
-              Nueva Compra
+              Nueva compra
             </Button>
           </div>
         </div>
@@ -250,7 +250,7 @@ export default function CreditCards() {
               </p>
               <Button onClick={() => setCardModalOpen(true)}>
                 <Plus className="h-4 w-4 mr-2" />
-                Agregar Tarjeta
+                Agregar tarjeta
               </Button>
             </CardContent>
           </Card>
@@ -307,8 +307,8 @@ export default function CreditCards() {
 
             {/* ── Cards Grid ── */}
             <div>
-              <h2 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-3">
-                Mis Tarjetas
+              <h2 className="text-xs font-semibold text-muted-foreground mb-3">
+                Mis tarjetas
               </h2>
               <div className="grid gap-3 md:grid-cols-2">
                 {cardSummaries.map((card) => (
@@ -335,7 +335,7 @@ export default function CreditCards() {
             {installments.length > 0 && (
               <div>
                 <div className="flex items-center justify-between mb-3">
-                  <h2 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
+                  <h2 className="text-xs font-semibold text-muted-foreground">
                     Cuotas activas
                   </h2>
                   <Badge variant="secondary" className="text-xs font-mono">
@@ -370,7 +370,7 @@ export default function CreditCards() {
             <Collapsible open={billingOpen} onOpenChange={setBillingOpen}>
               <CollapsibleTrigger asChild>
                 <button className="flex items-center gap-2 mb-3 group w-full text-left">
-                  <h2 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
+                  <h2 className="text-xs font-semibold text-muted-foreground">
                     Estado de cuenta
                   </h2>
                   <ChevronDown className={cn(
