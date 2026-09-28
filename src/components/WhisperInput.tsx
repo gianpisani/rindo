@@ -10,20 +10,13 @@ import { useSharedExpenses } from '@/hooks/useSharedExpenses';
 import { useGlobalDrawers } from '@/hooks/useGlobalDrawers';
 import { useSoundFX } from '@/hooks/useSoundFX';
 import { usePrivacyMode } from '@/hooks/usePrivacyMode';
-import { categoryFrequency, parseWhisper, type WhisperDraft } from '@/lib/whisper';
+import { categoryFrequency, parseWhisper, WHISPER_TYPES, type WhisperDraft } from '@/lib/whisper';
 import type { TransactionType } from '@/lib/ledger';
 import { cn } from '@/lib/utils';
 import SharedExpenseDrawer from './SharedExpenseDrawer';
 import './whisper.css';
 
-const types: { type: TransactionType; color: string; placeholder: string }[] = [
-  { type: 'Gasto', color: '#f87171', placeholder: '15000 almuerzo' },
-  { type: 'Ingreso', color: '#4ade80', placeholder: '1500000 sueldo' },
-  { type: 'Inversión', color: '#60a5fa', placeholder: '200000 fintual' },
-  { type: 'Rescate', color: '#22d3ee', placeholder: '200000 retiro del fondo' },
-  { type: 'Rendimiento', color: '#a78bfa', placeholder: '25000 rendimiento del mes' },
-  { type: 'Reembolso', color: '#fbbf24', placeholder: '12000 devolución almuerzo' },
-];
+const types = WHISPER_TYPES;
 const foodCategoryOrder = ['Supermercado', 'Café y snacks', 'Comida diaria', 'Comidas y panoramas'];
 const fixedCategories: Partial<Record<TransactionType, string>> = { Rescate: 'Rescate', Rendimiento: 'Rendimiento', Reembolso: 'Reembolsos' };
 const localDate = () => {

@@ -25,3 +25,13 @@ export function categoryFrequency(history: { category_name: string; type: string
   for (const tx of history) if (tx.type === type) counts.set(tx.category_name, (counts.get(tx.category_name) ?? 0) + 1);
   return counts;
 }
+
+/** Los seis tipos con su color y el ejemplo del placeholder, en el orden del Whisper. */
+export const WHISPER_TYPES: { type: TransactionType; color: string; placeholder: string }[] = [
+  { type: 'Gasto', color: '#f87171', placeholder: '15000 almuerzo' },
+  { type: 'Ingreso', color: '#4ade80', placeholder: '1500000 sueldo' },
+  { type: 'Inversión', color: '#60a5fa', placeholder: '200000 fintual' },
+  { type: 'Rescate', color: '#22d3ee', placeholder: '200000 retiro del fondo' },
+  { type: 'Rendimiento', color: '#a78bfa', placeholder: '25000 rendimiento del mes' },
+  { type: 'Reembolso', color: '#fbbf24', placeholder: '12000 devolución almuerzo' },
+];
