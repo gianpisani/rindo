@@ -121,3 +121,163 @@
 @media (max-width: 600px) {
   .whisper-swatch { width: 26px; height: 26px; }
 }
+
+/* Gasto compartido: el total es solo lectura, las personas van en filas */
+.whisper-shared-total { height: auto; min-height: 56px; display: flex; align-items: center; justify-content: center; font-variant-numeric: tabular-nums; }
+.whisper-shared-suggestions { margin-top: 8px; }
+.whisper-shared-rows { display: flex; flex-direction: column; gap: 6px; width: min(100%, 390px); }
+.whisper-shared-row { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 6px; align-items: center; }
+.whisper-shared-row[data-manual] { grid-template-columns: minmax(0, 1fr) 112px auto; }
+.whisper-shared-row .whisper-shared-name, .whisper-shared-amount {
+  width: 100%; min-width: 0; height: 38px; padding: 8px 10px; border-radius: 8px;
+  background: rgb(255 255 255 / .06); border: 1px solid rgb(255 255 255 / .1);
+  color: #e5e5e5; font-size: 12px; box-shadow: none;
+}
+.whisper-shared-row .whisper-shared-name::placeholder, .whisper-shared-amount::placeholder { color: rgb(255 255 255 / .32); }
+.whisper-shared-row .whisper-shared-name:focus-visible, .whisper-shared-amount:focus-visible { outline: 2px solid var(--whisper-accent); outline-offset: 2px; border-color: transparent; }
+.whisper-shared-amount { text-align: right; font-variant-numeric: tabular-nums; }
+.whisper-shared-fixed { display: flex; align-items: center; justify-content: flex-end; width: 112px; background: transparent; border-color: transparent; color: rgb(255 255 255 / .5); }
+.whisper-shared-remove { display: grid; place-items: center; width: 30px; height: 38px; border-radius: 8px; color: rgb(255 255 255 / .4); transition: color .2s, background .2s; }
+.whisper-shared-remove:hover:enabled { color: #fafafa; background: rgb(255 255 255 / .06); }
+.whisper-shared-remove:disabled { opacity: .25; cursor: default; }
+.whisper-shared-add { display: inline-flex; align-items: center; gap: 5px; align-self: flex-start; padding: 8px 2px; color: rgb(255 255 255 / .54); font-size: 11px; transition: color .2s; }
+.whisper-shared-add:hover { color: #fafafa; }
+@media (max-width: 600px) {
+  .whisper-shared-row[data-manual] { grid-template-columns: minmax(0, 1fr) 100px auto; }
+}
+
+/* Deudas: nueva deuda y saldar deuda. Un detalle opcional a lo ancho, y la
+   lista de gastos con los que se puede saldar. */
+.whisper-debt-options { grid-template-columns: minmax(0, 1fr); }
+.whisper-debt-search { font-size: clamp(22px, 4vw, 28px); }
+.whisper-debt-list { display: flex; flex-direction: column; gap: 4px; width: min(100%, 440px); max-height: 46dvh; overflow-y: auto; padding: 2px; scrollbar-width: thin; scrollbar-color: rgb(255 255 255 / .15) transparent; }
+.whisper-debt-row {
+  display: grid; grid-template-columns: auto minmax(0, 1fr) auto; align-items: center; gap: 10px; width: 100%;
+  padding: 9px 12px; border-radius: 12px; text-align: left;
+  border: 1px solid rgb(255 255 255 / .07); background: rgb(255 255 255 / .025); color: rgb(255 255 255 / .82);
+  transition: border-color .2s, background .2s, color .2s;
+}
+.whisper-debt-row > svg { color: rgb(255 255 255 / .4); }
+.whisper-debt-row:hover:enabled, .whisper-debt-row:focus-visible { background: color-mix(in srgb, var(--whisper-accent) 9%, transparent); border-color: color-mix(in srgb, var(--whisper-accent) 30%, transparent); color: #fafafa; }
+.whisper-debt-row:disabled { opacity: .5; cursor: default; }
+.whisper-debt-row-main { display: flex; flex-direction: column; gap: 1px; min-width: 0; }
+.whisper-debt-row-detail { font-size: 13px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.whisper-debt-row-meta { font-size: 11px; color: rgb(255 255 255 / .46); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.whisper-debt-row-amount { font-family: "JetBrains Mono", monospace; font-variant-numeric: tabular-nums; font-size: 12.5px; font-weight: 600; white-space: nowrap; }
+@media (max-width: 600px) { .whisper-debt-row { min-height: 48px; } }
+
+/* Composer de categoría: la vista previa es la categoría tal como se verá y
+   abre el emoji; la última bolita es "otro color" con el input nativo. */
+.whisper-cat-preview {
+  display: inline-flex; align-items: center; gap: 7px; min-height: 30px; padding: 5px 12px 5px 9px; border-radius: 99px;
+  background: color-mix(in srgb, var(--whisper-accent) 12%, transparent); color: var(--whisper-accent);
+  border: 1px solid color-mix(in srgb, var(--whisper-accent) 22%, transparent); font-size: 13px; font-weight: 500;
+  transition: background .2s, color .25s, border-color .25s;
+}
+.whisper-cat-preview:hover { background: color-mix(in srgb, var(--whisper-accent) 20%, transparent); }
+.whisper-cat-preview-emoji { font-size: 16px; line-height: 1; }
+.whisper-cat-preview-type { opacity: .6; font-weight: 400; }
+.whisper-cat-preview svg { opacity: .55; transition: transform .2s; }
+.whisper-cat-emoji { width: min(100%, 390px); overflow: hidden; }
+.whisper-cat-emoji > div { padding: 2px; }
+.whisper-cat-swatches { margin-top: 12px; max-width: 330px; margin-left: auto; margin-right: auto; }
+.whisper-cat-custom { position: relative; overflow: hidden; background: conic-gradient(#f87171, #fbbf24, #4ade80, #22d3ee, #60a5fa, #a78bfa, #f87171); }
+.whisper-cat-custom[aria-checked=true] { background: var(--swatch); }
+.whisper-cat-custom input { position: absolute; inset: -8px; width: calc(100% + 16px); height: calc(100% + 16px); opacity: 0; cursor: pointer; }
+.whisper-cat-options { grid-template-columns: minmax(0, 1fr); }
+.whisper-options .whisper-cat-textarea {
+  width: 100%; min-width: 0; padding: 8px; border-radius: 8px; resize: vertical; font: inherit; font-size: 12px; line-height: 1.45;
+  background: rgb(255 255 255 / .06); border: 1px solid rgb(255 255 255 / .1); color: #e5e5e5; color-scheme: dark;
+}
+.whisper-options .whisper-cat-textarea:focus-visible { outline: 2px solid var(--whisper-accent); outline-offset: 4px; }
+
+/* Composer de video (Aprendizaje): el link es largo, así que la línea grande
+   baja de tamaño; el VideoPreview de siempre vive adentro con los tonos
+   oscuros del composer, aunque la app esté en claro. */
+.whisper-video-input { font-size: clamp(17px, 3vw, 22px); font-weight: 400; letter-spacing: -.01em; }
+.whisper-video-preview {
+  width: min(100%, 420px); margin: 0 auto;
+  --border: rgb(255 255 255 / .1); --muted: rgb(255 255 255 / .08); --muted-foreground: #a3a3a3;
+  --foreground: #fafafa; --destructive: 0.68 0.21 18;
+}
+.whisper-video-cta-icon:empty { display: none; }
+.whisper-video-cta-icon { display: inline-flex; }
+.whisper-video-cta-icon svg { margin: 0; }
+
+/* Composer de inversiones: el isotipo de Fintual en la pastilla y los montos
+   dentro de los textos chicos. */
+.whisper-inv-fintual { width: 12px; height: 12px; flex-shrink: 0; }
+.whisper-inv-amount { font-variant-numeric: tabular-nums; color: #e5e5e5; }
+
+/* Composers de Clases: el alumno existente es una pastilla con su × */
+.whisper-class-student {
+  display: inline-flex; align-items: center; gap: 7px; min-height: 32px; padding: 5px 5px 5px 11px;
+  border: 1px solid rgb(255 255 255 / .07); border-radius: 99px; background: rgb(255 255 255 / .025);
+  color: rgb(255 255 255 / .72); font-size: 11px; line-height: 1.2;
+}
+.whisper-class-avatar { width: 6px; height: 6px; border-radius: 50%; flex-shrink: 0; }
+.whisper-class-student button { display: grid; place-items: center; width: 20px; height: 20px; border-radius: 50%; color: rgb(255 255 255 / .4); transition: color .2s, background .2s; }
+.whisper-class-student button:hover { color: #fca5a5; background: rgb(255 255 255 / .08); }
+.whisper-options label.whisper-class-wide { grid-column: 1 / -1; }
+.whisper-options .whisper-cat-textarea { box-sizing: border-box; }
+
+/* Editor de movimientos (Transactions): los paneles de deudas y gasto
+   compartido viven dentro del composer, en el color del tipo. */
+.whisper-tx-sign { margin-bottom: 10px; }
+.whisper-tx-panel { width: 100%; display: flex; flex-direction: column; gap: 6px; padding: 12px 14px; border-radius: 14px;
+  border: 1px solid color-mix(in srgb, var(--whisper-accent) 22%, transparent); background: color-mix(in srgb, var(--whisper-accent) 5%, transparent);
+  font-size: 12px; color: rgb(255 255 255 / .72); }
+.whisper-tx-panel-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-bottom: 2px; font-weight: 500; color: #fafafa; }
+.whisper-tx-panel-head > span { display: inline-flex; align-items: center; gap: 7px; }
+.whisper-tx-panel-head svg { width: 14px; height: 14px; color: var(--whisper-accent); }
+.whisper-tx-row { display: flex; align-items: center; gap: 10px; width: 100%; padding: 8px 10px; border-radius: 10px; text-align: left;
+  background: rgb(255 255 255 / .035); border: 1px solid rgb(255 255 255 / .07); transition: border-color .2s, background .2s; }
+.whisper-tx-row[role=checkbox] { cursor: pointer; user-select: none; }
+.whisper-tx-row[role=checkbox]:hover { background: rgb(255 255 255 / .06); }
+.whisper-tx-row[aria-checked=true] { border-color: color-mix(in srgb, var(--whisper-accent) 40%, transparent); background: color-mix(in srgb, var(--whisper-accent) 10%, transparent); }
+.whisper-tx-row[data-paid] { opacity: .6; }
+.whisper-tx-check { display: grid; place-items: center; width: 15px; height: 15px; flex-shrink: 0; border-radius: 4px; border: 1px solid rgb(255 255 255 / .25); color: #0a0a0a; transition: background .2s, border-color .2s; }
+.whisper-tx-row[aria-checked=true] .whisper-tx-check { background: var(--whisper-accent); border-color: var(--whisper-accent); }
+.whisper-tx-status { flex-shrink: 0; color: rgb(255 255 255 / .45); }
+.whisper-tx-status.paid { color: #4ade80; }
+.whisper-tx-row .name { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 1px; color: #fafafa; }
+.whisper-tx-row .name > span, .whisper-tx-row .name small { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.whisper-tx-row .name small { font-size: 10.5px; color: rgb(255 255 255 / .45); }
+.whisper-tx-row .name small.warn, .whisper-tx-foot b.warn, .whisper-tx-note.warn { color: #fcd34d; }
+.whisper-tx-row .amt { font-variant-numeric: tabular-nums; font-weight: 600; color: var(--whisper-accent); white-space: nowrap; }
+.whisper-tx-row-actions { display: flex; align-items: center; gap: 2px; flex-shrink: 0; }
+.whisper-tx-icon-btn { display: grid; place-items: center; width: 26px; height: 26px; flex-shrink: 0; border-radius: 8px; color: rgb(255 255 255 / .5); transition: color .2s, background .2s; }
+.whisper-tx-icon-btn:hover:enabled { color: #fafafa; background: rgb(255 255 255 / .08); }
+.whisper-tx-icon-btn.danger:hover:enabled { color: #fca5a5; }
+.whisper-tx-icon-btn:disabled { opacity: .3; cursor: default; }
+.whisper-tx-mini { display: inline-flex; align-items: center; gap: 5px; min-height: 26px; padding: 4px 10px; border-radius: 99px; font-size: 11px; font-weight: 500; white-space: nowrap;
+  border: 1px solid rgb(255 255 255 / .1); color: rgb(255 255 255 / .7); background: rgb(255 255 255 / .03); transition: color .2s, background .2s, border-color .2s; }
+.whisper-tx-mini:hover:enabled { color: #fafafa; background: rgb(255 255 255 / .08); }
+.whisper-tx-mini.primary { color: var(--whisper-accent); border-color: color-mix(in srgb, var(--whisper-accent) 30%, transparent); background: color-mix(in srgb, var(--whisper-accent) 10%, transparent); }
+.whisper-tx-mini.primary:hover:enabled { background: color-mix(in srgb, var(--whisper-accent) 18%, transparent); color: var(--whisper-accent); }
+.whisper-tx-mini:disabled { opacity: .35; cursor: default; }
+.whisper-tx-panel > .whisper-tx-mini { align-self: flex-start; }
+.whisper-tx-foot { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; padding: 4px 2px 0; font-size: 11.5px; color: rgb(255 255 255 / .55); }
+.whisper-tx-foot b { font-variant-numeric: tabular-nums; font-weight: 600; color: #fafafa; }
+.whisper-tx-note { font-size: 11px; line-height: 1.5; color: rgb(255 255 255 / .55); }
+.whisper-tx-add { display: flex; flex-direction: column; gap: 6px; padding-top: 6px; border-top: 1px solid rgb(255 255 255 / .08); }
+.whisper-tx-inline { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+.whisper-tx-inline input { min-width: 0; min-height: 32px; padding: 6px 10px; border-radius: 8px; font-size: 12px; color: #e5e5e5; color-scheme: dark;
+  background: rgb(255 255 255 / .06); border: 1px solid rgb(255 255 255 / .1); }
+.whisper-tx-inline input::placeholder { color: rgb(255 255 255 / .35); }
+.whisper-tx-inline input.grow { flex: 1 1 140px; }
+.whisper-tx-inline input.amt { width: 104px; font-variant-numeric: tabular-nums; }
+.whisper-tx-inline input.invalid { border-color: #f87171; }
+.whisper-tx-inline input:focus-visible { outline: 2px solid var(--whisper-accent); outline-offset: 2px; }
+/* Categoría nueva sin salir del composer */
+.whisper-tx-newcat { width: min(100%, 390px); margin: 0 auto; display: flex; flex-direction: column; align-items: center; gap: 10px; }
+.whisper-tx-newcat .whisper-tx-inline { width: 100%; flex-wrap: nowrap; }
+.whisper-tx-newcat .whisper-tx-inline:last-child { justify-content: center; }
+.whisper-tx-newcat .whisper-swatches { gap: 7px; }
+.whisper-tx-newcat .whisper-swatch { width: 18px; height: 18px; }
+.whisper-tx-emoji { width: 46px; flex-shrink: 0; text-align: center; font-size: 16px; padding: 4px !important; }
+@media (max-width: 600px) {
+  .whisper-tx-row { flex-wrap: wrap; }
+  .whisper-tx-row-actions { width: 100%; justify-content: flex-end; }
+  .whisper-tx-mini { min-height: 32px; }
+}
