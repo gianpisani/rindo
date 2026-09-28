@@ -1,15 +1,15 @@
-import { useEffect, useMemo, useState } from "react";
-import { ArrowDownToLine, LineChart, Check, Loader2 } from "lucide-react";
-import { BaseModal } from "./BaseModal";
-import { Button } from "./ui/button";
-import { Input } from "./ui/input";
+import { useEffect, useMemo, useRef, useState } from "react";
+import * as Dialog from "@radix-ui/react-dialog";
+import { ArrowUp, ChevronDown, Loader2, X } from "lucide-react";
+import { toast } from "sonner";
 import { useTransactions } from "@/hooks/useTransactions";
 import { useFintual } from "@/hooks/useFintual";
 import { useSoundFX } from "@/hooks/useSoundFX";
 import { usePrivacyMode } from "@/hooks/usePrivacyMode";
 import { computeLedger } from "@/hooks/useRealFlows";
+import { parseWhisper } from "@/lib/whisper";
 import { cn } from "@/lib/utils";
-import { toast } from "sonner";
+import "./whisper.css";
 
 /**
  * Los dos movimientos que tocan el balde invertido y que no son un aporte:
@@ -20,11 +20,21 @@ import { toast } from "sonner";
  * El rendimiento se pregunta al revés de como se guarda: uno sabe cuánto
  * valen HOY, no cuánto ganaron. La diferencia contra lo que Rindo tiene
  * registrado es el rendimiento, y puede ser negativa.
+ *
+ * Va en el formato del Whisper: la pastilla de arriba elige el movimiento
+ * (Tab lo cambia), la línea grande es el monto, y la vista previa dice qué
+ * va a pasar antes de guardar.
  */
 
 type Move = "rescate" | "valor";
 
 const MIN_DELTA = 1_000;
+
+const MOVES: { key: Move; label: string; color: string; placeholder: string }[] = [
+  { key: "rescate", label: "Rescate", color: "#22d3ee", placeholder: "200000 retiro del fondo" },
+  { key: "valor", label: "Rendimiento", color: "#a78bfa", placeholder: "12500000" },
+];
+const LOSS_COLOR = "#f87171";
 
 function formatCurrency(value: number) {
   return new Intl.NumberFormat("es-CL", {
@@ -37,11 +47,6 @@ function formatCurrency(value: number) {
 function parseAmount(value: string): number {
   const digits = value.replace(/\D/g, "");
   return digits ? parseInt(digits, 10) : 0;
-}
-
-function formatInput(value: string): string {
-  const amount = parseAmount(value);
-  return amount ? new Intl.NumberFormat("es-CL").format(amount) : "";
 }
 
 interface InvestmentMoveDrawerProps {
@@ -62,10 +67,10 @@ export function InvestmentMoveDrawer({
   const { isPrivacyMode } = usePrivacyMode();
 
   const [move, setMove] = useState<Move>(defaultMove);
-  const [rescateAmount, setRescateAmount] = useState("");
-  const [rescateDetail, setRescateDetail] = useState("");
+  const [rescateValue, setRescateValue] = useState("");
   const [valorHoy, setValorHoy] = useState("");
   const [isSaving, setIsSaving] = useState(false);
+  const inputRef = useRef<HTMLInputElement>(null);
 
   // Abre siempre en el movimiento con el que lo llamaron.
   useEffect(() => {
@@ -77,15 +82,24 @@ export function InvestmentMoveDrawer({
     [transactions]
   );
 
-  const rescate = parseAmount(rescateAmount);
+  const current = MOVES.find((m) => m.key === move)!;
+  const rescateParsed = parseWhisper(rescateValue);
+  const rescate = rescateParsed?.amount ?? 0;
   const valor = parseAmount(valorHoy);
   const delta = valor - invertido;
   const hasValor = valorHoy.trim().length > 0;
   const alDia = hasValor && Math.abs(delta) < MIN_DELTA;
+  const ready = move === "rescate" ? rescate > 0 : hasValor && !alDia;
+
+  const changeMove = (next: Move) => {
+    setMove(next);
+    playTap();
+    inputRef.current?.focus();
+  };
+  const cycleMove = () => changeMove(move === "rescate" ? "valor" : "rescate");
 
   const close = () => {
-    setRescateAmount("");
-    setRescateDetail("");
+    setRescateValue("");
     setValorHoy("");
     onOpenChange(false);
   };
@@ -96,7 +110,7 @@ export function InvestmentMoveDrawer({
     try {
       await addTransaction.mutateAsync({
         date: new Date().toISOString(),
-        detail: rescateDetail.trim() || null,
+        detail: rescateParsed?.detail ?? null,
         category_name: "Rescate",
         type: "Rescate",
         amount: rescate,
@@ -131,205 +145,191 @@ export function InvestmentMoveDrawer({
     }
   };
 
-  const moves: { key: Move; label: string; icon: typeof ArrowDownToLine; active: string }[] = [
-    {
-      key: "rescate",
-      label: "Saqué plata",
-      icon: ArrowDownToLine,
-      active: "border-cyan-500/40 bg-cyan-500/10 text-cyan-500",
-    },
-    {
-      key: "valor",
-      label: "Actualizar valor",
-      icon: LineChart,
-      active: "border-violet-500/40 bg-violet-500/10 text-violet-500",
-    },
-  ];
+  const submit = (event: React.FormEvent) => {
+    event.preventDefault();
+    if (isSaving) return;
+    if (move === "rescate") void handleRescate();
+    else void handleRendimiento();
+  };
+
+  // La vista previa: lo que se va a guardar, en el color del movimiento.
+  // Una pérdida va en rojo aunque el movimiento sea violeta.
+  const previewTone = move === "valor" && hasValor && !alDia && delta < 0 ? LOSS_COLOR : undefined;
 
   return (
-    <BaseModal
-      open={open}
-      onOpenChange={(next) => (next ? onOpenChange(true) : close())}
-      title="Inversiones"
-      description="Lo que sale de las inversiones y lo que crece solo"
-      maxWidth="sm"
-    >
-      <div className="space-y-5">
-        {/* Cuánto tiene registrado Rindo en el balde invertido */}
-        <div className="flex items-baseline justify-between rounded-xl border border-border/60 bg-muted/30 px-3.5 py-2.5">
-          <span className="text-[11px] font-medium text-muted-foreground">
-            Invertido según Rindo
-          </span>
-          <span
-            className={cn(
-              "font-mono text-sm font-semibold tabular-nums",
-              isPrivacyMode && "privacy-blur"
-            )}
-          >
-            {formatCurrency(invertido)}
-          </span>
-        </div>
+    <Dialog.Root open={open} onOpenChange={(next) => (next ? onOpenChange(true) : close())}>
+      <Dialog.Portal>
+        <Dialog.Overlay className="whisper-backdrop" />
+        <Dialog.Content
+          data-scrollable
+          className="whisper-composer"
+          style={{ "--whisper-accent": current.color } as React.CSSProperties}
+          onOpenAutoFocus={(event) => {
+            event.preventDefault();
+            inputRef.current?.focus();
+          }}
+        >
+          <Dialog.Title className="sr-only">Inversiones</Dialog.Title>
+          <Dialog.Description className="sr-only">
+            Lo que sale de las inversiones y lo que crece solo. Tab cambia entre rescate y rendimiento. Para el rescate escribe el monto y, si quieres, de dónde salió. Para el rendimiento escribe cuánto valen hoy tus inversiones en total.
+          </Dialog.Description>
+          <Dialog.Close className="whisper-close" aria-label="Cerrar">
+            <X size={16} />
+          </Dialog.Close>
 
-        {/* Qué movimiento */}
-        <div className="grid grid-cols-2 gap-2">
-          {moves.map((m) => (
-            <button
-              key={m.key}
-              type="button"
-              onClick={() => {
-                setMove(m.key);
-                playTap();
-              }}
-              className={cn(
-                "flex items-center justify-center gap-1.5 rounded-xl border px-3 py-2.5 text-xs font-semibold transition-colors",
-                move === m.key
-                  ? m.active
-                  : "border-border text-muted-foreground hover:text-foreground"
-              )}
-            >
-              <m.icon className="h-3.5 w-3.5" />
-              {m.label}
-            </button>
-          ))}
-        </div>
-
-        {move === "rescate" ? (
-          <div className="space-y-3">
-            <div className="relative">
-              <span className="absolute left-4 top-1/2 -translate-y-1/2 font-mono text-lg text-muted-foreground">
-                $
-              </span>
-              <Input
-                autoFocus
-                inputMode="numeric"
-                placeholder="0"
-                value={formatInput(rescateAmount)}
-                onChange={(e) => setRescateAmount(e.target.value)}
-                className={cn(
-                  "h-16 pl-9 text-center font-mono text-3xl font-bold text-cyan-500",
-                  "border-border/60 focus-visible:ring-0",
-                  isPrivacyMode && rescateAmount && "privacy-blur"
-                )}
-              />
+          <form onSubmit={submit} className="whisper-form">
+            <div className="whisper-type">
+              <span className="whisper-dot" aria-hidden="true" />
+              <span aria-hidden="true">{current.label}</span>
+              <select
+                aria-label="Movimiento"
+                value={move}
+                onChange={(event) => changeMove(event.target.value as Move)}
+              >
+                {MOVES.map((m) => (
+                  <option key={m.key} value={m.key}>
+                    {m.label}
+                  </option>
+                ))}
+              </select>
+              <ChevronDown size={12} aria-hidden="true" />
             </div>
-            <Input
-              placeholder="¿De dónde la sacaste? (opcional)"
-              value={rescateDetail}
-              onChange={(e) => setRescateDetail(e.target.value)}
-              className="h-11 rounded-xl text-center text-sm"
-            />
-            <p className="text-center text-[11px] text-muted-foreground">
-              Vuelve a tu liquidez. Tu patrimonio no cambia: cambia de balde.
-            </p>
-            <Button
-              onClick={handleRescate}
-              disabled={rescate <= 0 || isSaving}
-              className="h-12 w-full rounded-xl bg-cyan-500 text-sm font-medium hover:bg-cyan-500/90"
-            >
-              {isSaving ? (
-                <Loader2 className="h-4 w-4 animate-spin" />
+
+            <div className="whisper-entry">
+              {move === "rescate" ? (
+                <input
+                  key="rescate"
+                  ref={inputRef}
+                  aria-label="Monto del rescate y de dónde salió"
+                  autoComplete="off"
+                  autoCorrect="off"
+                  spellCheck={false}
+                  maxLength={200}
+                  value={rescateValue}
+                  onChange={(event) => setRescateValue(event.target.value)}
+                  placeholder={current.placeholder}
+                  className={cn("whisper-input", isPrivacyMode && rescateValue && "privacy-blur")}
+                  onKeyDown={(event) => {
+                    if (event.key === "Tab" && !event.altKey && !event.ctrlKey && !event.metaKey) {
+                      event.preventDefault();
+                      cycleMove();
+                    }
+                  }}
+                />
               ) : (
-                <>Rescatar {rescate > 0 ? formatCurrency(rescate) : ""}</>
+                <input
+                  key="valor"
+                  ref={inputRef}
+                  aria-label="Cuánto valen hoy tus inversiones"
+                  autoComplete="off"
+                  inputMode="numeric"
+                  maxLength={20}
+                  value={valorHoy}
+                  onChange={(event) => setValorHoy(event.target.value.replace(/\D/g, ""))}
+                  placeholder={current.placeholder}
+                  className={cn("whisper-input", isPrivacyMode && valorHoy && "privacy-blur")}
+                  onKeyDown={(event) => {
+                    if (event.key === "Tab" && !event.altKey && !event.ctrlKey && !event.metaKey) {
+                      event.preventDefault();
+                      cycleMove();
+                    }
+                  }}
+                />
               )}
-            </Button>
-          </div>
-        ) : (
-          <div className="space-y-3">
-            <div className="relative">
-              <span className="absolute left-4 top-1/2 -translate-y-1/2 font-mono text-lg text-muted-foreground">
-                $
-              </span>
-              <Input
-                autoFocus
-                inputMode="numeric"
-                placeholder="0"
-                value={formatInput(valorHoy)}
-                onChange={(e) => setValorHoy(e.target.value)}
-                className={cn(
-                  "h-16 pl-9 text-center font-mono text-3xl font-bold text-violet-500",
-                  "border-border/60 focus-visible:ring-0",
-                  isPrivacyMode && valorHoy && "privacy-blur"
-                )}
-              />
-            </div>
-            <p className="text-center text-[11px] text-muted-foreground">
-              ¿Cuánto valen hoy tus inversiones, en total?
-            </p>
-
-            {isConnected && totals.totalNav > 0 && (
-              <button
-                type="button"
-                onClick={() => setValorHoy(String(Math.round(totals.totalNav)))}
-                className="flex w-full items-center justify-center gap-2 rounded-xl border border-border/60 py-2 text-xs text-muted-foreground transition-colors hover:text-foreground"
-              >
-                <img src="/isotipo-fintual.png" alt="" className="h-3.5 w-3.5" />
-                Usar el valor de Fintual
-                <span
-                  className={cn(
-                    "font-mono font-semibold tabular-nums",
-                    isPrivacyMode && "privacy-blur"
-                  )}
-                >
-                  {formatCurrency(totals.totalNav)}
-                </span>
-              </button>
-            )}
-
-            {hasValor && (
               <div
-                className={cn(
-                  "rounded-xl border px-3.5 py-3 text-center animate-in fade-in slide-in-from-top-1 duration-200",
-                  alDia
-                    ? "border-border/60 bg-muted/30"
-                    : delta > 0
-                      ? "border-violet-500/30 bg-violet-500/5"
-                      : "border-rose-500/30 bg-rose-500/5"
-                )}
+                className={cn("whisper-preview", isPrivacyMode && "privacy-blur")}
+                style={previewTone ? { color: previewTone } : undefined}
+                aria-hidden="true"
               >
-                {alDia ? (
-                  <p className="flex items-center justify-center gap-1.5 text-xs text-muted-foreground">
-                    <Check className="h-3.5 w-3.5" />
-                    Ya está al día, no hay nada que registrar
-                  </p>
+                {move === "rescate" ? (
+                  rescate > 0 && <span>rescatas {formatCurrency(rescate)}</span>
+                ) : hasValor ? (
+                  alDia ? (
+                    <span>ya está al día, no hay nada que registrar</span>
+                  ) : (
+                    <span>
+                      {delta > 0 ? "ganaron +" : "perdieron −"}
+                      {formatCurrency(Math.abs(delta))}
+                    </span>
+                  )
+                ) : null}
+              </div>
+            </div>
+
+            <div className="whisper-category-space">
+              {move === "valor" && isConnected && totals.totalNav > 0 && (
+                <div className="whisper-categories" role="group" aria-label="Sugerencias">
+                  <button
+                    type="button"
+                    className="whisper-category"
+                    aria-pressed={valor > 0 && valor === Math.round(totals.totalNav)}
+                    onClick={() => {
+                      setValorHoy(String(Math.round(totals.totalNav)));
+                      playTap();
+                      inputRef.current?.focus();
+                    }}
+                  >
+                    <img src="/isotipo-fintual.png" alt="" className="whisper-inv-fintual" />
+                    Usar el valor de Fintual
+                    <span className={cn("whisper-inv-amount", isPrivacyMode && "privacy-blur")}>
+                      {formatCurrency(totals.totalNav)}
+                    </span>
+                  </button>
+                </div>
+              )}
+              <p className="whisper-caption" aria-live="polite">
+                {move === "rescate" ? (
+                  "Vuelve a tu liquidez. Tu patrimonio no cambia: cambia de balde."
+                ) : hasValor && !alDia ? (
+                  <>Tu patrimonio {delta > 0 ? "sube" : "baja"} eso. Tu liquidez no cambia.</>
+                ) : (
+                  "¿Cuánto valen hoy tus inversiones, en total?"
+                )}
+                <br />
+                Invertido según Rindo:{" "}
+                <span className={cn("whisper-inv-amount", isPrivacyMode && "privacy-blur")}>{formatCurrency(invertido)}</span>
+              </p>
+            </div>
+
+            <div className="whisper-actions">
+              <button
+                type="submit"
+                className="whisper-submit"
+                disabled={!ready || isSaving}
+                aria-label={move === "rescate" ? "Rescatar" : "Registrar rendimiento"}
+              >
+                {isSaving ? (
+                  <Loader2 size={14} className="animate-spin" aria-hidden="true" />
                 ) : (
                   <>
-                    <p className="text-[11px] font-medium text-muted-foreground">
-                      {delta > 0 ? "Ganaron" : "Perdieron"}
-                    </p>
-                    <p
-                      className={cn(
-                        "mt-0.5 font-mono text-2xl font-bold tabular-nums",
-                        delta > 0 ? "text-violet-500" : "text-rose-500",
-                        isPrivacyMode && "privacy-blur"
-                      )}
-                    >
-                      {delta > 0 ? "+" : "−"}
-                      {formatCurrency(Math.abs(delta))}
-                    </p>
-                    <p className="mt-1 text-[11px] text-muted-foreground">
-                      Tu patrimonio {delta > 0 ? "sube" : "baja"} eso. Tu liquidez
-                      no cambia.
-                    </p>
+                    {move === "rescate" ? (
+                      <span className={cn(isPrivacyMode && rescate > 0 && "privacy-blur")}>
+                        Rescatar{rescate > 0 ? ` ${formatCurrency(rescate)}` : ""}
+                      </span>
+                    ) : (
+                      "Registrar rendimiento"
+                    )}
+                    <span className="hidden sm:inline" aria-hidden="true">↵</span>
+                    <ArrowUp size={14} className="sm:hidden" aria-hidden="true" />
                   </>
                 )}
-              </div>
-            )}
-
-            <Button
-              onClick={handleRendimiento}
-              disabled={!hasValor || alDia || isSaving}
-              className="h-12 w-full rounded-xl bg-violet-500 text-sm font-medium hover:bg-violet-500/90"
-            >
-              {isSaving ? (
-                <Loader2 className="h-4 w-4 animate-spin" />
-              ) : (
-                "Registrar rendimiento"
-              )}
-            </Button>
-          </div>
-        )}
-      </div>
-    </BaseModal>
+              </button>
+            </div>
+            <p className="whisper-shortcuts">
+              <span>
+                <kbd>Tab</kbd> movimiento
+              </span>
+              <span>
+                <kbd>↵</kbd> guardar
+              </span>
+              <span>
+                <kbd>Esc</kbd> cerrar
+              </span>
+            </p>
+          </form>
+        </Dialog.Content>
+      </Dialog.Portal>
+    </Dialog.Root>
   );
 }
 
