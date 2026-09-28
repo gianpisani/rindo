@@ -1,10 +1,8 @@
 import React, { useState, useCallback, useMemo, useEffect, useRef } from "react";
 import Layout from "@/components/Layout";
 import ConfirmDialog from "@/components/ConfirmDialog";
-import { BaseModal } from "@/components/BaseModal";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Card, CardContent } from "@/components/ui/card";
@@ -58,13 +56,15 @@ import {
   ChevronLeft,
   ChevronRight,
   StickyNote,
+  ArrowUp,
 } from "lucide-react";
 import {
   useTutoringClasses,
   TutoringClass,
+  TutoringStudent,
 } from "@/hooks/useTutoringClasses";
 import { format, subDays, addDays, startOfMonth, endOfMonth, addMonths, subMonths, isWithinInterval } from "date-fns";
-import { DateTimePicker, InlineDateTimePicker } from "@/components/ui/date-time-picker";
+import { InlineDateTimePicker } from "@/components/ui/date-time-picker";
 import { es } from "date-fns/locale";
 import { cn } from "@/lib/utils";
 import { usePrivacyMode } from "@/hooks/usePrivacyMode";
@@ -72,11 +72,12 @@ import { useSearchFocusShortcut } from "@/hooks/useSearchFocusShortcut";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { useSoundFX } from "@/hooks/useSoundFX";
 import { ChevronDoubleLeftIcon, ChevronDoubleRightIcon } from "@heroicons/react/24/outline";
+import * as Dialog from "@radix-ui/react-dialog";
+import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
+import { parseWhisper } from "@/lib/whisper";
+import "@/components/whisper.css";
 
 // ── Status config ──────────────────────────────────────────
-
-const QUICK_ADD_FORM_ID = "tutoring-quick-add-form";
-const STUDENT_FORM_ID = "tutoring-student-form";
 
 const statusConfig = {
   scheduled: { label: "Agendada", icon: Clock, color: "text-blue-500", bg: "bg-blue-500/10", border: "border-blue-500/20" },
@@ -113,6 +114,422 @@ function formatGroupDate(dayKey: string): string {
 
 const formatCurrency = (amount: number) =>
   new Intl.NumberFormat("es-CL", { style: "currency", currency: "CLP", minimumFractionDigits: 0 }).format(amount);
+
+// ── Composers al estilo Whisper ─────────────────────────────
+// La clase se anota en una línea: el precio por hora (y, si quieres, el
+// nombre del alumno: "25000 Juan" lo elige solo). El resto va en pastillas.
+
+type ClassForm = {
+  student_id: string;
+  date: Date;
+  duration_hours: string;
+  price_per_hour: string;
+  status: TutoringClass["status"];
+  is_paid: boolean;
+  notes: string;
+  cancellation_reason: string;
+};
+
+const DURATIONS = [
+  { value: "0.5", label: "30 min" },
+  { value: "1", label: "1 hora" },
+  { value: "1.5", label: "1,5 horas" },
+  { value: "2", label: "2 horas" },
+  { value: "2.5", label: "2,5 horas" },
+  { value: "3", label: "3 horas" },
+];
+
+const STATUS_ACCENT: Record<TutoringClass["status"], string> = {
+  scheduled: "#60a5fa",
+  completed: "#4ade80",
+  cancelled: "#f87171",
+};
+
+const localDateTime = (d: Date) => format(d, "yyyy-MM-dd'T'HH:mm");
+
+function ClassComposer({
+  open,
+  onOpenChange,
+  form,
+  onChange,
+  students,
+  mode,
+  editing,
+  pending,
+  onSubmit,
+  onNewStudent,
+  isPrivacyMode,
+}: {
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  form: ClassForm;
+  onChange: (values: Partial<ClassForm>) => void;
+  students: TutoringStudent[];
+  /** quick: anotar una clase de hoy; edit: todos los estados */
+  mode: "quick" | "edit";
+  editing: boolean;
+  pending: boolean;
+  onSubmit: (event: React.FormEvent) => void;
+  onNewStudent?: () => void;
+  isPrivacyMode: boolean;
+}) {
+  const inputRef = useRef<HTMLInputElement>(null);
+  const [text, setText] = useState("");
+  const [expanded, setExpanded] = useState(false);
+  const [error, setError] = useState("");
+  const reducedMotion = useReducedMotion();
+  const { playTap } = useSoundFX();
+
+  const price = parseInt(form.price_per_hour, 10) || 0;
+  const hours = parseFloat(form.duration_hours) || 0;
+  const total = price * hours;
+  const student = students.find((s) => s.id === form.student_id);
+  const statuses = (mode === "quick" ? ["scheduled", "completed"] : ["scheduled", "completed", "cancelled"]) as TutoringClass["status"][];
+  const ready = price > 0 && !!form.student_id && !pending;
+  const durationLabel = DURATIONS.find((d) => d.value === form.duration_hours)?.label ?? `${form.duration_hours} h`;
+
+  useEffect(() => {
+    if (!open) return;
+    setText(form.price_per_hour ? String(parseInt(form.price_per_hour, 10) || "") : "");
+    setExpanded(false);
+    setError("");
+    // Solo al abrir: el texto vive acá mientras se escribe.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open]);
+
+  // "25000" o "25000 Juan": el monto va al precio y el nombre elige al alumno.
+  const handleText = (value: string) => {
+    setText(value);
+    setError("");
+    const parsed = parseWhisper(value);
+    const values: Partial<ClassForm> = { price_per_hour: parsed ? String(parsed.amount) : "" };
+    if (parsed?.detail) {
+      const needle = parsed.detail.toLowerCase();
+      const match = students.find((s) => s.name.toLowerCase().startsWith(needle)) ?? students.find((s) => s.name.toLowerCase().includes(needle));
+      if (match) values.student_id = match.id;
+    }
+    onChange(values);
+  };
+
+  const submit = (event: React.FormEvent) => {
+    event.preventDefault();
+    if (!price) {
+      setError("Escribe el precio por hora en pesos.");
+      inputRef.current?.focus();
+      return;
+    }
+    if (!form.student_id) {
+      setError("Elige al alumno.");
+      return;
+    }
+    onSubmit(event);
+  };
+
+  const caption = [
+    student ? student.name : "elige al alumno",
+    format(form.date, "EEE d MMM · HH:mm", { locale: es }).replace(".", ""),
+    statusConfig[form.status].label.toLowerCase(),
+    form.is_paid ? "pagada" : null,
+  ].filter(Boolean).join(" · ");
+
+  return (
+    <Dialog.Root open={open} onOpenChange={onOpenChange}>
+      <Dialog.Portal>
+        <Dialog.Overlay className="whisper-backdrop" />
+        <Dialog.Content
+          data-scrollable
+          className="whisper-composer"
+          style={{ "--whisper-accent": STATUS_ACCENT[form.status] } as React.CSSProperties}
+          onOpenAutoFocus={(event) => {
+            event.preventDefault();
+            inputRef.current?.focus();
+          }}
+        >
+          <Dialog.Title className="sr-only">{editing ? "Editar clase" : "Agregar clase"}</Dialog.Title>
+          <Dialog.Description className="sr-only">
+            Escribe el precio por hora y, si quieres, el nombre del alumno. Abajo eliges alumno, duración, estado y si está pagada. En más opciones están la fecha y las notas.
+          </Dialog.Description>
+          <Dialog.Close className="whisper-close" aria-label="Cerrar">
+            <X size={16} />
+          </Dialog.Close>
+
+          <form onSubmit={submit} className="whisper-form">
+            <div className="whisper-type" data-static>
+              <span className="whisper-dot" aria-hidden="true" />
+              <span>{editing ? "Editar clase" : "Clase"}</span>
+            </div>
+
+            <div className="whisper-entry">
+              <input
+                ref={inputRef}
+                aria-label="Precio por hora y alumno"
+                aria-describedby={error ? "class-error class-shortcuts" : "class-shortcuts"}
+                aria-invalid={!!error}
+                autoComplete="off"
+                autoCorrect="off"
+                spellCheck={false}
+                maxLength={80}
+                value={text}
+                onChange={(event) => handleText(event.target.value)}
+                placeholder={students[0] ? `25000 ${students[0].name}` : "25000"}
+                className={cn("whisper-input", isPrivacyMode && text && "privacy-blur")}
+              />
+              <div className={cn("whisper-preview", isPrivacyMode && price > 0 && "privacy-blur")} aria-hidden="true">
+                {price > 0 && (
+                  <span>
+                    {durationLabel} × {formatCurrency(price)} = {formatCurrency(total)}
+                  </span>
+                )}
+              </div>
+            </div>
+
+            <div className="whisper-category-space">
+              <div className="whisper-categories" role="group" aria-label="Alumno">
+                {students.map((s) => (
+                  <button
+                    key={s.id}
+                    type="button"
+                    className="whisper-category"
+                    aria-pressed={form.student_id === s.id}
+                    style={{ "--whisper-accent": getAvatarColor(s.name) } as React.CSSProperties}
+                    onClick={() => {
+                      onChange({ student_id: s.id });
+                      playTap();
+                      inputRef.current?.focus();
+                    }}
+                  >
+                    <span className="whisper-category-dot" aria-hidden="true" />
+                    {s.name}
+                    {form.student_id === s.id && <Check size={12} aria-hidden="true" />}
+                  </button>
+                ))}
+                {onNewStudent && (
+                  <button type="button" className="whisper-more-categories" onClick={onNewStudent}>
+                    <UserPlus size={12} aria-hidden="true" /> Alumno
+                  </button>
+                )}
+              </div>
+
+              <div className="whisper-categories whisper-counts" role="group" aria-label="Duración">
+                {DURATIONS.map((d) => (
+                  <button
+                    key={d.value}
+                    type="button"
+                    className="whisper-category"
+                    aria-pressed={form.duration_hours === d.value}
+                    onClick={() => {
+                      onChange({ duration_hours: d.value });
+                      playTap();
+                      inputRef.current?.focus();
+                    }}
+                  >
+                    {d.label}
+                  </button>
+                ))}
+              </div>
+
+              <div className="whisper-categories whisper-counts" role="group" aria-label="Estado y pago">
+                {statuses.map((s) => {
+                  const Icon = statusConfig[s].icon;
+                  return (
+                    <button
+                      key={s}
+                      type="button"
+                      className="whisper-category"
+                      aria-pressed={form.status === s}
+                      style={{ "--whisper-accent": STATUS_ACCENT[s] } as React.CSSProperties}
+                      onClick={() => {
+                        onChange({ status: s });
+                        if (s === "cancelled") setExpanded(true);
+                        playTap();
+                      }}
+                    >
+                      <Icon size={12} aria-hidden="true" />
+                      {statusConfig[s].label}
+                    </button>
+                  );
+                })}
+                <button
+                  type="button"
+                  className="whisper-category"
+                  aria-pressed={form.is_paid}
+                  style={{ "--whisper-accent": STATUS_ACCENT.completed } as React.CSSProperties}
+                  onClick={() => {
+                    onChange({ is_paid: !form.is_paid });
+                    playTap();
+                  }}
+                >
+                  <DollarSign size={12} aria-hidden="true" />
+                  Pagada
+                </button>
+              </div>
+
+              <p className="whisper-caption" aria-live="polite">{caption}</p>
+            </div>
+
+            <AnimatePresence initial={false}>
+              {expanded && (
+                <motion.div
+                  className="whisper-options"
+                  initial={{ height: 0, opacity: 0 }}
+                  animate={{ height: "auto", opacity: 1 }}
+                  exit={{ height: 0, opacity: 0 }}
+                  transition={{ duration: reducedMotion ? 0 : 0.18 }}
+                >
+                  <label>
+                    Fecha y hora
+                    <input
+                      type="datetime-local"
+                      value={localDateTime(form.date)}
+                      onChange={(event) => {
+                        const next = new Date(event.target.value);
+                        if (Number.isFinite(next.getTime())) onChange({ date: next });
+                      }}
+                      aria-label="Fecha y hora de la clase"
+                    />
+                  </label>
+                  <label>
+                    Notas
+                    <input value={form.notes} onChange={(event) => onChange({ notes: event.target.value })} placeholder="Opcional" aria-label="Notas" />
+                  </label>
+                  {form.status === "cancelled" && (
+                    <label className="whisper-class-wide">
+                      Razón de cancelación
+                      <input
+                        value={form.cancellation_reason}
+                        onChange={(event) => onChange({ cancellation_reason: event.target.value })}
+                        placeholder="¿Por qué se canceló?"
+                        aria-label="Razón de cancelación"
+                      />
+                    </label>
+                  )}
+                </motion.div>
+              )}
+            </AnimatePresence>
+
+            {error && (
+              <p id="class-error" role="alert" className="whisper-error">
+                {error}
+              </p>
+            )}
+
+            <div className="whisper-actions">
+              <button type="button" className="whisper-options-toggle" aria-expanded={expanded} onClick={() => setExpanded(!expanded)}>
+                {expanded ? "Menos opciones" : "Más opciones"}
+                <ChevronDown size={12} className={cn(expanded && "rotate-180")} />
+              </button>
+              <button type="submit" className="whisper-submit" disabled={!ready} aria-label="Guardar clase">
+                {pending ? "Guardando…" : editing ? "Guardar cambios" : "Agregar clase"}
+                <span className="hidden sm:inline" aria-hidden="true">↵</span>
+                <ArrowUp size={14} className="sm:hidden" aria-hidden="true" />
+              </button>
+            </div>
+            <p id="class-shortcuts" className="whisper-shortcuts">
+              <span><kbd>↵</kbd> guardar</span>
+              <span><kbd>Esc</kbd> cerrar</span>
+            </p>
+          </form>
+        </Dialog.Content>
+      </Dialog.Portal>
+    </Dialog.Root>
+  );
+}
+
+function StudentComposer({
+  open,
+  onOpenChange,
+  name,
+  onName,
+  students,
+  pending,
+  onSubmit,
+  onDelete,
+}: {
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  name: string;
+  onName: (name: string) => void;
+  students: TutoringStudent[];
+  pending: boolean;
+  onSubmit: (event: React.FormEvent) => void;
+  onDelete: (id: string) => void;
+}) {
+  const inputRef = useRef<HTMLInputElement>(null);
+  const ready = name.trim().length > 0 && !pending;
+
+  return (
+    <Dialog.Root open={open} onOpenChange={onOpenChange}>
+      <Dialog.Portal>
+        <Dialog.Overlay className="whisper-backdrop" />
+        <Dialog.Content
+          data-scrollable
+          className="whisper-composer"
+          style={{ "--whisper-accent": name.trim() ? getAvatarColor(name.trim()) : "#a3a3a3" } as React.CSSProperties}
+          onOpenAutoFocus={(event) => {
+            event.preventDefault();
+            inputRef.current?.focus();
+          }}
+        >
+          <Dialog.Title className="sr-only">Nuevo alumno</Dialog.Title>
+          <Dialog.Description className="sr-only">Escribe el nombre del alumno. Abajo están los que ya tienes; cada uno se puede eliminar.</Dialog.Description>
+          <Dialog.Close className="whisper-close" aria-label="Cerrar">
+            <X size={16} />
+          </Dialog.Close>
+
+          <form onSubmit={onSubmit} className="whisper-form">
+            <div className="whisper-type" data-static>
+              <span className="whisper-dot" aria-hidden="true" />
+              <span>Alumno</span>
+            </div>
+            <div className="whisper-entry">
+              <input
+                ref={inputRef}
+                aria-label="Nombre del alumno"
+                autoComplete="off"
+                spellCheck={false}
+                maxLength={80}
+                value={name}
+                onChange={(event) => onName(event.target.value)}
+                placeholder="Nombre del alumno"
+                className="whisper-input"
+              />
+              <div className="whisper-preview" aria-hidden="true">
+                {name.trim() && <span>se agrega a tus alumnos</span>}
+              </div>
+            </div>
+            {students.length > 0 && (
+              <div className="whisper-category-space">
+                <div className="whisper-categories" role="list" aria-label="Alumnos existentes">
+                  {students.map((s) => (
+                    <span key={s.id} role="listitem" className="whisper-class-student">
+                      <i className="whisper-class-avatar" style={{ background: getAvatarColor(s.name) }} aria-hidden="true" />
+                      {s.name}
+                      <button type="button" aria-label={`Eliminar a ${s.name}`} onClick={() => onDelete(s.id)}>
+                        <X size={11} aria-hidden="true" />
+                      </button>
+                    </span>
+                  ))}
+                </div>
+                <p className="whisper-caption">Tus alumnos · la × los elimina</p>
+              </div>
+            )}
+            <div className="whisper-actions">
+              <button type="submit" className="whisper-submit" disabled={!ready} aria-label="Agregar alumno">
+                {pending ? "Guardando…" : "Agregar alumno"}
+                <span className="hidden sm:inline" aria-hidden="true">↵</span>
+                <ArrowUp size={14} className="sm:hidden" aria-hidden="true" />
+              </button>
+            </div>
+            <p className="whisper-shortcuts">
+              <span><kbd>↵</kbd> guardar</span>
+              <span><kbd>Esc</kbd> cerrar</span>
+            </p>
+          </form>
+        </Dialog.Content>
+      </Dialog.Portal>
+    </Dialog.Root>
+  );
+}
 
 // ── Component ───────────────────────────────────────────────
 
@@ -186,6 +603,7 @@ export default function TutoringClasses() {
     status: "completed" as TutoringClass["status"],
     is_paid: false,
     notes: "",
+    cancellation_reason: "",
   });
 
   // ── Full form (for edit modal) ────────────────────────────
@@ -223,6 +641,7 @@ export default function TutoringClasses() {
       status: "completed",
       is_paid: false,
       notes: "",
+      cancellation_reason: "",
     });
   };
 
@@ -1352,146 +1771,23 @@ export default function TutoringClasses() {
         </div>
       </div>
 
-      {/* ── Quick Add Modal ──────────────────────────────── */}
-      <BaseModal
+      {/* ── Agregar clase (rápido) ───────────────────────── */}
+      <ClassComposer
         open={isQuickAddOpen}
         onOpenChange={setIsQuickAddOpen}
-        title="Agregar clase"
-        description="Registra una clase rápidamente"
-        maxWidth="md"
-        footer={
-          <Button
-            type="submit"
-            form={QUICK_ADD_FORM_ID}
-            size="cta"
-            className="bg-emerald-500 hover:bg-emerald-600"
-            disabled={!quickForm.student_id || !quickForm.price_per_hour || addClass.isPending}
-          >
-            {addClass.isPending ? "Guardando..." : "Agregar clase"}
-          </Button>
-        }
-      >
-        <form id={QUICK_ADD_FORM_ID} onSubmit={handleQuickSubmit} className="space-y-4">
-          {/* Student select */}
-          <div className="space-y-2">
-            <Label className="text-sm font-medium">Alumno</Label>
-            <div className="flex gap-2">
-              <Select value={quickForm.student_id} onValueChange={(v) => setQuickForm({ ...quickForm, student_id: v })}>
-                <SelectTrigger className="h-10 rounded-xl flex-1">
-                  <SelectValue placeholder="Selecciona alumno" />
-                </SelectTrigger>
-                <SelectContent>
-                  {students.map((s) => (
-                    <SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-              <Button
-                type="button"
-                variant="outline"
-                size="icon"
-                className="h-10 w-10 rounded-xl flex-shrink-0"
-                onClick={() => setIsStudentDialogOpen(true)}
-              >
-                <UserPlus className="h-4 w-4" />
-              </Button>
-            </div>
-          </div>
+        form={quickForm}
+        onChange={(values) => setQuickForm((previous) => ({ ...previous, ...values }))}
+        students={students}
+        mode="quick"
+        editing={false}
+        pending={addClass.isPending}
+        onSubmit={handleQuickSubmit}
+        onNewStudent={() => setIsStudentDialogOpen(true)}
+        isPrivacyMode={isPrivacyMode}
+      />
 
-          {/* Date + Duration row */}
-          <div className="grid grid-cols-2 gap-3">
-            <div className="space-y-2">
-              <Label className="text-sm font-medium">Fecha y Hora</Label>
-              <DateTimePicker
-                value={quickForm.date}
-                onChange={(date) => date && setQuickForm({ ...quickForm, date })}
-                showTime={true}
-                className="w-full h-10 rounded-xl"
-              />
-            </div>
-            <div className="space-y-2">
-              <Label className="text-sm font-medium">Duración</Label>
-              <Select value={quickForm.duration_hours} onValueChange={(v) => setQuickForm({ ...quickForm, duration_hours: v })}>
-                <SelectTrigger className="h-10 rounded-xl">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="0.5">30 min</SelectItem>
-                  <SelectItem value="1">1 hora</SelectItem>
-                  <SelectItem value="1.5">1.5 horas</SelectItem>
-                  <SelectItem value="2">2 horas</SelectItem>
-                  <SelectItem value="2.5">2.5 horas</SelectItem>
-                  <SelectItem value="3">3 horas</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-          </div>
-
-          {/* Price per hour */}
-          <div className="space-y-2">
-            <Label className="text-sm font-medium">Precio por hora</Label>
-            <div className="relative">
-              <span className="absolute left-4 top-1/2 -translate-y-1/2 text-muted-foreground">$</span>
-              <Input
-                type="text"
-                inputMode="numeric"
-                autoComplete="off"
-                placeholder="0"
-                value={quickForm.price_per_hour ? parseInt(quickForm.price_per_hour).toLocaleString("es-CL") : ""}
-                onChange={(e) => {
-                  const number = e.target.value.replace(/\D/g, "");
-                  setQuickForm({ ...quickForm, price_per_hour: number });
-                }}
-                className="h-10 rounded-xl pl-8"
-              />
-            </div>
-            {quickForm.price_per_hour && quickForm.duration_hours && (
-              <p className="text-xs text-muted-foreground">
-                Total: {formatCurrency(parseInt(quickForm.price_per_hour.replace(/\D/g, ""), 10) * parseFloat(quickForm.duration_hours))}
-              </p>
-            )}
-          </div>
-
-          {/* Status + Paid row */}
-          <div className="flex items-center gap-4">
-            <div className="flex items-center gap-3 p-3 rounded-xl border-2 border-dashed border-input hover:border-primary/50 transition-colors flex-1">
-              <Checkbox
-                id="quick-completed"
-                checked={quickForm.status === "completed"}
-                onCheckedChange={(checked) =>
-                  setQuickForm({ ...quickForm, status: checked ? "completed" : "scheduled" })
-                }
-              />
-              <label htmlFor="quick-completed" className="text-sm font-medium cursor-pointer flex items-center gap-2">
-                <CircleCheckBig className="h-4 w-4 text-emerald-500" />
-                Ya realizada
-              </label>
-            </div>
-            <div className="flex items-center gap-3 p-3 rounded-xl border-2 border-dashed border-input hover:border-primary/50 transition-colors flex-1">
-              <Checkbox
-                id="quick-paid"
-                checked={quickForm.is_paid}
-                onCheckedChange={(checked) => setQuickForm({ ...quickForm, is_paid: !!checked })}
-              />
-              <label htmlFor="quick-paid" className="text-sm font-medium cursor-pointer flex items-center gap-2">
-                <DollarSign className="h-4 w-4 text-emerald-500" />
-                Ya pagada
-              </label>
-            </div>
-          </div>
-
-          {/* Notes */}
-          <Input
-            placeholder="Notas (opcional)"
-            value={quickForm.notes}
-            onChange={(e) => setQuickForm({ ...quickForm, notes: e.target.value })}
-            className="h-10 rounded-xl"
-          />
-        </form>
-      </BaseModal>
-
-      {/* ── Edit Modal ───────────────────────────────────── */}
-      <BaseModal
+      {/* ── Editar clase ─────────────────────────────────── */}
+      <ClassComposer
         open={isAddOpen}
         onOpenChange={(open) => {
           setIsAddOpen(open);
@@ -1500,187 +1796,27 @@ export default function TutoringClasses() {
             resetForm();
           }
         }}
-        title={editingClass ? "Editar clase" : "Agregar clase"}
-        maxWidth="lg"
-        footer={
-          <Button
-            type="submit"
-            form="class-form"
-            size="cta"
-            disabled={addClass.isPending || updateClass.isPending}
-          >
-            {editingClass ? "Guardar cambios" : "Agregar"}
-          </Button>
-        }
-      >
-        <form id="class-form" onSubmit={handleSubmit} className="space-y-4">
-          <div className="space-y-2">
-            <Label className="text-sm font-medium">Alumno</Label>
-            <Select value={formData.student_id} onValueChange={(v) => setFormData({ ...formData, student_id: v })}>
-              <SelectTrigger className="h-10 rounded-xl">
-                <SelectValue placeholder="Selecciona alumno" />
-              </SelectTrigger>
-              <SelectContent>
-                {students.map((s) => (
-                  <SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
+        form={formData}
+        onChange={(values) => setFormData((previous) => ({ ...previous, ...values }))}
+        students={students}
+        mode="edit"
+        editing={!!editingClass}
+        pending={addClass.isPending || updateClass.isPending}
+        onSubmit={handleSubmit}
+        isPrivacyMode={isPrivacyMode}
+      />
 
-          <div className="grid grid-cols-2 gap-3">
-            <div className="space-y-2">
-              <Label className="text-sm font-medium">Fecha y Hora</Label>
-              <DateTimePicker
-                value={formData.date}
-                onChange={(date) => date && setFormData({ ...formData, date })}
-                showTime={true}
-                className="w-full h-10 rounded-xl"
-              />
-            </div>
-            <div className="space-y-2">
-              <Label className="text-sm font-medium">Duración</Label>
-              <Select value={formData.duration_hours} onValueChange={(v) => setFormData({ ...formData, duration_hours: v })}>
-                <SelectTrigger className="h-10 rounded-xl">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="0.5">30 min</SelectItem>
-                  <SelectItem value="1">1 hora</SelectItem>
-                  <SelectItem value="1.5">1.5 horas</SelectItem>
-                  <SelectItem value="2">2 horas</SelectItem>
-                  <SelectItem value="2.5">2.5 horas</SelectItem>
-                  <SelectItem value="3">3 horas</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-          </div>
-
-          <div className="space-y-2">
-            <Label className="text-sm font-medium">Precio por hora</Label>
-            <div className="relative">
-              <span className="absolute left-4 top-1/2 -translate-y-1/2 text-muted-foreground">$</span>
-              <Input
-                type="text"
-                inputMode="numeric"
-                autoComplete="off"
-                placeholder="0"
-                value={formData.price_per_hour ? parseInt(formData.price_per_hour).toLocaleString("es-CL") : ""}
-                onChange={(e) => {
-                  const number = e.target.value.replace(/\D/g, "");
-                  setFormData({ ...formData, price_per_hour: number });
-                }}
-                className="h-10 rounded-xl pl-8"
-                required
-              />
-            </div>
-          </div>
-
-          <div className="space-y-2">
-            <Label className="text-sm font-medium">Estado</Label>
-            <Select value={formData.status} onValueChange={(v: TutoringClass["status"]) => setFormData({ ...formData, status: v })}>
-              <SelectTrigger className="h-10 rounded-xl">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="scheduled">Agendada</SelectItem>
-                <SelectItem value="completed">Realizada</SelectItem>
-                <SelectItem value="cancelled">Cancelada</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
-
-          {formData.status === "cancelled" && (
-            <div className="space-y-2">
-              <Label className="text-sm font-medium">Razón de cancelación</Label>
-              <Input
-                placeholder="¿Por qué se canceló?"
-                value={formData.cancellation_reason}
-                onChange={(e) => setFormData({ ...formData, cancellation_reason: e.target.value })}
-                className="h-10 rounded-xl"
-              />
-            </div>
-          )}
-
-          <div className="flex items-center gap-3 p-3 rounded-xl border-2 border-dashed border-input hover:border-primary/50 transition-colors">
-            <Checkbox
-              id="form-paid"
-              checked={formData.is_paid}
-              onCheckedChange={(checked) => setFormData({ ...formData, is_paid: !!checked })}
-            />
-            <label htmlFor="form-paid" className="text-sm font-medium cursor-pointer flex items-center gap-2">
-              <DollarSign className="h-4 w-4 text-emerald-500" />
-              Pagada
-            </label>
-          </div>
-
-          <div className="space-y-2">
-            <Label className="text-sm font-medium">Notas</Label>
-            <Input
-              placeholder="Notas opcionales..."
-              value={formData.notes}
-              onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
-              className="h-10 rounded-xl"
-            />
-          </div>
-        </form>
-      </BaseModal>
-
-      {/* ── Add Student Modal ────────────────────────────── */}
-      <BaseModal
+      {/* ── Nuevo alumno ─────────────────────────────────── */}
+      <StudentComposer
         open={isStudentDialogOpen}
         onOpenChange={setIsStudentDialogOpen}
-        title="Nuevo alumno"
-        maxWidth="sm"
-        footer={
-          <Button
-            type="submit"
-            form={STUDENT_FORM_ID}
-            size="cta"
-            disabled={!newStudentName.trim() || addStudent.isPending}
-          >
-            {addStudent.isPending ? "Guardando..." : "Agregar alumno"}
-          </Button>
-        }
-      >
-        <form id={STUDENT_FORM_ID} onSubmit={handleAddStudent} className="space-y-4">
-          <Input
-            placeholder="Nombre del alumno"
-            value={newStudentName}
-            onChange={(e) => setNewStudentName(e.target.value)}
-            className="h-10 rounded-xl"
-            autoFocus
-          />
-          {/* Existing students list */}
-          {students.length > 0 && (
-            <div className="space-y-2 pt-2 border-t">
-              <p className="text-xs text-muted-foreground font-medium">Alumnos existentes</p>
-              {students.map((s) => (
-                <div key={s.id} className="flex items-center justify-between py-1.5">
-                  <div className="flex items-center gap-2">
-                    <div
-                      className="w-6 h-6 rounded-full flex items-center justify-center text-white text-[10px] font-bold"
-                      style={{ backgroundColor: getAvatarColor(s.name) }}
-                    >
-                      {s.name.charAt(0).toUpperCase()}
-                    </div>
-                    <span className="text-sm">{s.name}</span>
-                  </div>
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    size="sm"
-                    className="h-7 w-7 p-0 text-muted-foreground hover:text-destructive"
-                    onClick={() => deleteStudent.mutate(s.id)}
-                  >
-                    <Trash2 className="h-3.5 w-3.5" />
-                  </Button>
-                </div>
-              ))}
-            </div>
-          )}
-        </form>
-      </BaseModal>
+        name={newStudentName}
+        onName={setNewStudentName}
+        students={students}
+        pending={addStudent.isPending}
+        onSubmit={handleAddStudent}
+        onDelete={(id) => deleteStudent.mutate(id)}
+      />
 
       {/* ── Confirm Delete ───────────────────────────────── */}
       <ConfirmDialog
