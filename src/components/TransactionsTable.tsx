@@ -78,8 +78,7 @@ import { AnalyzingBadge } from "./AnalyzingBadge";
 import { InlineDateTimePicker } from "./ui/date-time-picker";
 import { ChevronDoubleLeftIcon, ChevronDoubleRightIcon } from "@heroicons/react/24/outline";
 import { useCategories } from "@/hooks/useCategories";
-import { BaseModal } from "./BaseModal";
-import { CategoryCreateInline, CATEGORY_FORM_ID } from "./CategoryCreateInline";
+import { CategoryComposer } from "./CategoryComposer";
 import { Popover, PopoverContent, PopoverTrigger } from "./ui/popover";
 import { Command, CommandInput, CommandList, CommandEmpty, CommandGroup, CommandItem } from "./ui/command";
 import { DateRangeFilter, DateRangeValue } from "./DateRangeFilter";
@@ -2155,45 +2154,24 @@ export function TransactionsTable({
       )}
 
       {/* Crear categoría desde una celda y asignarla a esa transacción */}
-      <BaseModal
+      <CategoryComposer
         open={categoryDraft !== null}
         onOpenChange={(open) => !open && setCategoryDraft(null)}
-        title="Nueva categoría"
-        maxWidth="sm"
-        footer={
-          <Button
-            type="submit"
-            form={CATEGORY_FORM_ID}
-            size="cta"
-            disabled={addCategory.isPending}
-          >
-            Crear categoría
-          </Button>
-        }
-      >
-        {categoryDraft && (
-          <CategoryCreateInline
-            initialName={categoryDraft.name}
-            type={categoryDraft.type}
-            backLabel="Cancelar"
-            onBack={() => setCategoryDraft(null)}
-            onSubmit={async (category) => {
-              try {
-                await addCategory.mutateAsync(category);
-              } catch {
-                // addCategory ya notifica el error; quedarse en el formulario.
-                return;
-              }
-              await handleInlineUpdate(
-                categoryDraft.transactionId,
-                "category_name",
-                category.name
-              );
-              setCategoryDraft(null);
-            }}
-          />
-        )}
-      </BaseModal>
+        initialName={categoryDraft?.name}
+        fixedType={categoryDraft?.type}
+        pending={addCategory.isPending}
+        onSave={async (category) => {
+          if (!categoryDraft) return;
+          // addCategory ya notifica el error; si lanza, el composer se queda abierto.
+          await addCategory.mutateAsync({
+            name: category.name,
+            type: category.type,
+            color: category.color,
+            icon: category.icon,
+          });
+          await handleInlineUpdate(categoryDraft.transactionId, "category_name", category.name);
+        }}
+      />
     </div>
   );
 }

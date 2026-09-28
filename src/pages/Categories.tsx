@@ -1,18 +1,11 @@
 import React, { useState } from "react";
 import Layout from "@/components/Layout";
 import ConfirmDialog from "@/components/ConfirmDialog";
-import { BaseModal } from "@/components/BaseModal";
+import { CategoryComposer, type CategoryValues } from "@/components/CategoryComposer";
 import { Button } from "@/components/ui/button";
-import { Textarea } from "@/components/ui/textarea";
-import { Input } from "@/components/ui/input";
-import { Dialog, DialogTrigger } from "@/components/ui/dialog";
-import { Label } from "@/components/ui/label";
-import { Switch } from "@/components/ui/switch";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Plus, Pencil, Trash2, TrendingUp, TrendingDown, PiggyBank, ArrowLeftRight, ArrowDownToLine, LineChart } from "lucide-react";
 import { useCategories } from "@/hooks/useCategories";
 import { cn } from "@/lib/utils";
-import { EmojiPicker } from "@/components/EmojiPicker";
 import { TRANSACTION_TYPES, type TransactionType } from "@/lib/ledger";
 
 const typeConfig: Record<
@@ -26,14 +19,6 @@ const typeConfig: Record<
   Rendimiento: { icon: LineChart, label: "Rendimientos", color: "text-violet-500", bg: "bg-violet-500/10" },
   Reembolso: { icon: ArrowLeftRight, label: "Reembolsos", color: "text-amber-500", bg: "bg-amber-500/10" },
 };
-
-const defaultColors = [
-  "#10b981", "#059669", "#34d399", "#6ee7b7",
-  "#f97316", "#0ea5e9", "#a855f7", "#ec4899",
-  "#8b5cf6", "#6366f1", "#14b8a6", "#ef4444",
-  "#f59e0b", "#64748b", "#78716c", "#3b82f6",
-];
-
 
 interface Category {
   id: string;
@@ -50,14 +35,6 @@ export default function Categories() {
 
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingCategory, setEditingCategory] = useState<Category | null>(null);
-  const [formData, setFormData] = useState({
-    name: "",
-    type: "Gasto" as TransactionType,
-    color: "#ef4444",
-    icon: "🏷️",
-    description: "",
-    is_active: true,
-  });
   const [confirmDelete, setConfirmDelete] = useState<{ open: boolean; id: string | null }>({
     open: false,
     id: null,
@@ -71,33 +48,20 @@ export default function Categories() {
     {} as Record<TransactionType, Category[]>
   );
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    const { description, is_active, ...base } = formData;
-    const values = hasCategoryContext ? { ...base, description, is_active } : base;
+  // Sin contexto de categorías en el perfil, descripción y "en uso" no se mandan.
+  const handleSave = async (values: CategoryValues) => {
+    const { description, is_active, ...base } = values;
+    const payload = hasCategoryContext ? { ...base, description, is_active } : base;
     if (editingCategory) {
-      await updateCategory.mutateAsync({ id: editingCategory.id, ...values });
+      await updateCategory.mutateAsync({ id: editingCategory.id, ...payload });
     } else {
-      await addCategory.mutateAsync(values);
+      await addCategory.mutateAsync(payload);
     }
-    setIsDialogOpen(false);
     setEditingCategory(null);
-    resetForm();
   };
-
-  const resetForm = () =>
-    setFormData({ name: "", type: "Gasto", color: "#ef4444", icon: "🏷️", description: "", is_active: true });
 
   const handleEdit = (category: Category) => {
     setEditingCategory(category);
-    setFormData({
-      name: category.name,
-      type: category.type,
-      color: category.color || "#ef4444",
-      icon: category.icon || "🏷️",
-      description: category.description || "",
-      is_active: category.is_active !== false,
-    });
     setIsDialogOpen(true);
   };
 
@@ -118,142 +82,28 @@ export default function Categories() {
               Gestiona tus categorías de transacciones
             </p>
           </div>
-          <Dialog
+          <Button
+            className="rounded-full h-10 w-10 p-0 md:w-auto md:px-5 md:h-10"
+            onClick={() => {
+              setEditingCategory(null);
+              setIsDialogOpen(true);
+            }}
+          >
+            <Plus className="h-4 w-4 md:mr-2" />
+            <span className="hidden md:inline text-sm">Agregar</span>
+          </Button>
+
+          <CategoryComposer
             open={isDialogOpen}
             onOpenChange={(open) => {
               setIsDialogOpen(open);
-              if (!open) { setEditingCategory(null); resetForm(); }
+              if (!open) setEditingCategory(null);
             }}
-          >
-            <DialogTrigger asChild>
-              <Button className="rounded-full h-10 w-10 p-0 md:w-auto md:px-5 md:h-10">
-                <Plus className="h-4 w-4 md:mr-2" />
-                <span className="hidden md:inline text-sm">Agregar</span>
-              </Button>
-            </DialogTrigger>
-          </Dialog>
-
-          <BaseModal
-            open={isDialogOpen}
-            onOpenChange={(open) => {
-              setIsDialogOpen(open);
-              if (!open) { setEditingCategory(null); resetForm(); }
-            }}
-            title={editingCategory ? "Editar categoría" : "Nueva categoría"}
-            maxWidth="sm"
-            footer={
-              <Button
-                type="submit"
-                form="category-form"
-                size="cta"
-                disabled={addCategory.isPending || updateCategory.isPending}
-              >
-                {editingCategory ? "Guardar" : "Crear"}
-              </Button>
-            }
-          >
-            <form id="category-form" onSubmit={handleSubmit} className="space-y-5">
-              {/* Preview */}
-              <div className="flex justify-center">
-                <div
-                  className="inline-flex items-center gap-2 px-4 py-2 rounded-full text-sm font-medium"
-                  style={{ backgroundColor: formData.color + "22", color: formData.color }}
-                >
-                  <span>{formData.icon}</span>
-                  <span>{formData.name || "Nombre"}</span>
-                </div>
-              </div>
-
-              <div className="space-y-1.5">
-                <Label className="text-sm font-medium">Nombre</Label>
-                <Input
-                  placeholder="ej. Supermercado"
-                  value={formData.name}
-                  onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                  className="h-11 rounded-full px-5"
-                  required
-                  autoFocus
-                />
-              </div>
-
-              <div className="space-y-1.5">
-                <Label className="text-sm font-medium">Tipo</Label>
-                <Select
-                  value={formData.type}
-                  onValueChange={(v: TransactionType) => setFormData({ ...formData, type: v })}
-                >
-                  <SelectTrigger className="h-11 rounded-full px-5">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="Ingreso">Ingreso</SelectItem>
-                    <SelectItem value="Gasto">Gasto</SelectItem>
-                    <SelectItem value="Inversión">Inversión</SelectItem>
-                    <SelectItem value="Rescate">Rescate</SelectItem>
-                    <SelectItem value="Rendimiento">Rendimiento</SelectItem>
-                    <SelectItem value="Reembolso">Reembolso</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-
-              {hasCategoryContext && <>
-                <div className="space-y-1.5">
-                  <Label htmlFor="category-description">Qué incluye</Label>
-                  <Textarea id="category-description" value={formData.description} maxLength={600}
-                    placeholder="Qué gastos van aquí y cuáles no. Ayuda a categorizar mejor."
-                    onChange={event => setFormData({ ...formData, description: event.target.value })} />
-                </div>
-                <div className="flex items-start justify-between gap-4">
-                  <div className="space-y-0.5">
-                    <Label htmlFor="category-active">En uso</Label>
-                    <p className="text-xs text-muted-foreground leading-relaxed">
-                      {formData.is_active
-                        ? "Aparece al anotar y Jev puede elegirla."
-                        : "Archivada: no aparece al anotar ni la elige Jev. Sus movimientos anteriores se mantienen."}
-                    </p>
-                  </div>
-                  <Switch id="category-active" checked={formData.is_active}
-                    onCheckedChange={checked => setFormData({ ...formData, is_active: checked })} />
-                </div>
-              </>}
-
-              {/* Emoji picker */}
-              <div className="space-y-2">
-                <Label className="text-sm font-medium">Emoji</Label>
-                <EmojiPicker
-                  value={formData.icon ?? ""}
-                  onSelect={(emoji) => setFormData({ ...formData, icon: emoji })}
-                />
-              </div>
-
-              {/* Color picker */}
-              <div className="space-y-2">
-                <Label className="text-sm font-medium">Color</Label>
-                <div className="grid grid-cols-8 gap-2">
-                  {defaultColors.map((color) => (
-                    <button
-                      key={color}
-                      type="button"
-                      className={cn(
-                        "h-8 w-8 rounded-full border-2 transition-all duration-150",
-                        formData.color === color
-                          ? "border-foreground scale-110 shadow-md"
-                          : "border-transparent hover:scale-105"
-                      )}
-                      style={{ backgroundColor: color }}
-                      onClick={() => setFormData({ ...formData, color })}
-                    />
-                  ))}
-                </div>
-                <input
-                  type="color"
-                  value={formData.color}
-                  onChange={(e) => setFormData({ ...formData, color: e.target.value })}
-                  className="h-9 w-full rounded-lg cursor-pointer border border-border bg-transparent px-1"
-                />
-              </div>
-            </form>
-          </BaseModal>
+            category={editingCategory}
+            withContext={hasCategoryContext}
+            pending={addCategory.isPending || updateCategory.isPending}
+            onSave={handleSave}
+          />
         </div>
 
         {/* Sections */}
