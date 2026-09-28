@@ -1,10 +1,17 @@
-import { useState, useEffect } from "react";
-import { BaseModal } from "./BaseModal";
-import { Button } from "./ui/button";
-import { Input } from "./ui/input";
-import { Label } from "./ui/label";
-import { CreditCard as CreditCardIcon, Palette } from "lucide-react";
-import { CreditCard } from "@/hooks/useCreditCards";
+import { useEffect, useRef, useState } from "react";
+import * as Dialog from "@radix-ui/react-dialog";
+import { ArrowUp, X } from "lucide-react";
+import { parseWhisper } from "@/lib/whisper";
+import type { CreditCard } from "@/hooks/useCreditCards";
+import { cn } from "@/lib/utils";
+import "./whisper.css";
+
+/**
+ * Nueva tarjeta al estilo Whisper: una línea con el cupo y el nombre
+ * ("3000000 Banco de Chile"), el color en bolitas y tres campos chicos para
+ * el cierre, el pago y los últimos dígitos. El composer toma el color de la
+ * tarjeta a medida que lo eliges.
+ */
 
 interface CreditCardModalProps {
   open: boolean;
@@ -12,8 +19,6 @@ interface CreditCardModalProps {
   card?: CreditCard | null;
   onSave: (card: Omit<CreditCard, "id" | "user_id" | "created_at" | "updated_at">) => Promise<void>;
 }
-
-const FORM_ID = "credit-card-form";
 
 const CARD_COLORS = [
   "#6366f1", // indigo
@@ -30,200 +35,199 @@ const CARD_COLORS = [
   "#000000", // black
 ];
 
+const formatCurrency = (v: number) =>
+  new Intl.NumberFormat("es-CL", { style: "currency", currency: "CLP", maximumFractionDigits: 0 }).format(v);
+
+const dayOf = (raw: string, fallback: number) => {
+  const n = parseInt(raw, 10);
+  return Number.isFinite(n) ? Math.min(31, Math.max(1, n)) : fallback;
+};
+
 export function CreditCardModal({ open, onOpenChange, card, onSave }: CreditCardModalProps) {
-  const [name, setName] = useState("");
-  const [creditLimit, setCreditLimit] = useState("");
-  const [billingDay, setBillingDay] = useState("15");
+  const [value, setValue] = useState("");
+  const [billingDay, setBillingDay] = useState("25");
   const [paymentDay, setPaymentDay] = useState("5");
   const [color, setColor] = useState(CARD_COLORS[0]);
-  const [lastFourDigits, setLastFourDigits] = useState("");
-  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [lastFour, setLastFour] = useState("");
+  const [error, setError] = useState("");
+  const saving = useRef(false);
+  const inputRef = useRef<HTMLInputElement>(null);
 
   const isEditing = !!card;
+  const parsed = parseWhisper(value);
+  const name = parsed?.detail ?? "";
+  const ready = !!parsed && name.length > 0;
 
   useEffect(() => {
+    if (!open) return;
     if (card) {
-      setName(card.name);
-      setCreditLimit(card.credit_limit.toString());
-      setBillingDay(card.billing_day.toString());
-      setPaymentDay(card.payment_day.toString());
+      setValue(`${card.credit_limit} ${card.name}`);
+      setBillingDay(String(card.billing_day));
+      setPaymentDay(String(card.payment_day));
       setColor(card.color || CARD_COLORS[0]);
-      setLastFourDigits(card.last_4_digits || "");
+      setLastFour(card.last_4_digits || "");
     } else {
-      setName("");
-      setCreditLimit("");
-      setBillingDay("15");
+      setValue("");
+      setBillingDay("25");
       setPaymentDay("5");
       setColor(CARD_COLORS[0]);
-      setLastFourDigits("");
+      setLastFour("");
     }
+    setError("");
   }, [card, open]);
 
-  const formatCurrency = (value: string) => {
-    const number = value.replace(/\D/g, "");
-    if (!number) return "";
-    const formatted = new Intl.NumberFormat("es-CL").format(parseInt(number));
-    return `$${formatted}`;
-  };
-
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!name || !creditLimit || !billingDay || !paymentDay) return;
-
-    setIsSubmitting(true);
+  const submit = async (event: React.FormEvent) => {
+    event.preventDefault();
+    if (saving.current) return;
+    if (!parsed) {
+      setError("Escribe el cupo en pesos, seguido del nombre de la tarjeta.");
+      inputRef.current?.focus();
+      return;
+    }
+    if (!name) {
+      setError("Ponle un nombre a la tarjeta después del cupo.");
+      inputRef.current?.focus();
+      return;
+    }
+    saving.current = true;
     try {
       await onSave({
         name,
-        credit_limit: parseInt(creditLimit.replace(/\D/g, "")),
-        billing_day: parseInt(billingDay),
-        payment_day: parseInt(paymentDay),
+        credit_limit: parsed.amount,
+        billing_day: dayOf(billingDay, 25),
+        payment_day: dayOf(paymentDay, 5),
         color,
-        last_4_digits: lastFourDigits || null,
+        last_4_digits: lastFour || null,
         is_active: true,
       });
       onOpenChange(false);
+    } catch {
+      setError("No se guardó la tarjeta. Intenta de nuevo.");
     } finally {
-      setIsSubmitting(false);
+      saving.current = false;
     }
   };
 
+  // El accent es el color de la tarjeta; el negro no se ve sobre negro.
+  const accent = color === "#000000" ? "#fafafa" : color;
+
   return (
-    <BaseModal
-      open={open}
-      onOpenChange={onOpenChange}
-      title={isEditing ? "Editar tarjeta" : "Nueva tarjeta"}
-      description="Configura los datos de tu tarjeta de crédito"
-      maxWidth="md"
-      footer={
-        <Button
-          type="submit"
-          form={FORM_ID}
-          size="cta"
-          disabled={!name || !creditLimit || isSubmitting}
+    <Dialog.Root open={open} onOpenChange={onOpenChange}>
+      <Dialog.Portal>
+        <Dialog.Overlay className="whisper-backdrop" />
+        <Dialog.Content
+          data-scrollable
+          className="whisper-composer"
+          style={{ "--whisper-accent": accent } as React.CSSProperties}
+          onOpenAutoFocus={(event) => {
+            event.preventDefault();
+            inputRef.current?.focus();
+          }}
         >
-          {isSubmitting ? "Guardando..." : isEditing ? "Guardar cambios" : "Agregar tarjeta"}
-        </Button>
-      }
-    >
-      <form id={FORM_ID} onSubmit={handleSubmit} className="space-y-6">
-        {/* Card Preview */}
-        <div
-          className="relative h-60 rounded-2xl p-5 text-white shadow-lg overflow-hidden"
-          style={{ background: `linear-gradient(135deg, ${color} 0%, ${color}dd 100%)` }}
-        >
-          <div className="relative z-10 h-full flex flex-col justify-between">
-            <div className="flex items-start justify-between">
-              <CreditCardIcon className="h-8 w-8 opacity-80" />
-              <span className="text-xs opacity-70">Crédito</span>
+          <Dialog.Title className="sr-only">{isEditing ? "Editar tarjeta" : "Nueva tarjeta"}</Dialog.Title>
+          <Dialog.Description className="sr-only">
+            Escribe el cupo y el nombre en una línea. Abajo eliges el color, el día de cierre, el día de pago y los últimos dígitos.
+          </Dialog.Description>
+          <Dialog.Close className="whisper-close" aria-label="Cerrar">
+            <X size={16} />
+          </Dialog.Close>
+
+          <form onSubmit={submit} className="whisper-form">
+            <div className="whisper-type" data-static>
+              <span className="whisper-dot" aria-hidden="true" />
+              <span>{isEditing ? "Editar tarjeta" : "Tarjeta"}</span>
             </div>
 
-            <p className="font-mono text-base tracking-[0.25em] opacity-60">
-              •••• •••• •••• {lastFourDigits || "••••"}
-            </p>
-
-            <div>
-              <p className="text-lg font-bold truncate">{name || "Nombre de tarjeta"}</p>
-              <p className="text-2xl font-bold mt-1">
-                {creditLimit ? formatCurrency(creditLimit) : "$0"}
-              </p>
-              <div className="flex gap-4 mt-2 text-xs opacity-80">
-                <span>Cierre: día {billingDay}</span>
-                <span>Pago: día {paymentDay}</span>
+            <div className="whisper-entry">
+              <input
+                ref={inputRef}
+                aria-label="Cupo y nombre de la tarjeta"
+                aria-describedby={error ? "card-error card-shortcuts" : "card-shortcuts"}
+                aria-invalid={!!error}
+                autoComplete="off"
+                autoCorrect="off"
+                spellCheck={false}
+                maxLength={120}
+                value={value}
+                onChange={(event) => {
+                  setValue(event.target.value);
+                  setError("");
+                }}
+                placeholder="3000000 Banco de Chile"
+                className="whisper-input"
+              />
+              <div className="whisper-preview" aria-hidden="true">
+                {parsed && <span>cupo {formatCurrency(parsed.amount)}</span>}
               </div>
             </div>
-          </div>
-        </div>
 
-        {/* Name */}
-        <div className="space-y-2">
-          <Label htmlFor="name">Nombre de la tarjeta</Label>
-          <Input
-            id="name"
-            placeholder="Ej: Visa Santander"
-            value={name}
-            onChange={(e) => setName(e.target.value)}
-            className="h-12"
-          />
-        </div>
+            <div className="whisper-category-space">
+              <div className="whisper-swatches" role="radiogroup" aria-label="Color de la tarjeta">
+                {CARD_COLORS.map((c) => (
+                  <button
+                    key={c}
+                    type="button"
+                    role="radio"
+                    aria-checked={color === c}
+                    aria-label={`Color ${c}`}
+                    className="whisper-swatch"
+                    style={{ "--swatch": c } as React.CSSProperties}
+                    onClick={() => setColor(c)}
+                  />
+                ))}
+              </div>
+              <p className="whisper-caption" aria-live="polite">
+                {name ? `${name}${lastFour ? ` ···· ${lastFour}` : ""}` : "El nombre va después del cupo"} · cierra el {dayOf(billingDay, 25)} · se paga el{" "}
+                {dayOf(paymentDay, 5)}
+              </p>
+            </div>
 
-        {/* Last 4 Digits */}
-        <div className="space-y-2">
-          <Label htmlFor="last4">Últimos 4 dígitos</Label>
-          <Input
-            id="last4"
-            placeholder="Ej: 1939"
-            value={lastFourDigits}
-            onChange={(e) => setLastFourDigits(e.target.value.replace(/\D/g, "").slice(0, 4))}
-            className="h-12 font-mono tracking-widest"
-            maxLength={4}
-            inputMode="numeric"
-          />
-          <p className="text-xs text-muted-foreground">Para asociar automáticamente compras desde emails bancarios</p>
-        </div>
+            <div className="whisper-options whisper-options-3">
+              <label>
+                Cierre (día)
+                <input type="number" inputMode="numeric" min={1} max={31} value={billingDay} onChange={(e) => setBillingDay(e.target.value)} aria-label="Día de cierre" />
+              </label>
+              <label>
+                Pago (día)
+                <input type="number" inputMode="numeric" min={1} max={31} value={paymentDay} onChange={(e) => setPaymentDay(e.target.value)} aria-label="Día de pago" />
+              </label>
+              <label>
+                Últimos 4
+                <input
+                  inputMode="numeric"
+                  maxLength={4}
+                  placeholder="····"
+                  value={lastFour}
+                  onChange={(e) => setLastFour(e.target.value.replace(/\D/g, "").slice(0, 4))}
+                  aria-label="Últimos cuatro dígitos"
+                />
+              </label>
+            </div>
 
-        {/* Credit Limit */}
-        <div className="space-y-2">
-          <Label htmlFor="limit">Límite de crédito</Label>
-          <Input
-            id="limit"
-            placeholder="$0"
-            value={creditLimit ? formatCurrency(creditLimit) : ""}
-            onChange={(e) => setCreditLimit(e.target.value.replace(/\D/g, ""))}
-            className="h-12 text-lg font-semibold"
-          />
-        </div>
+            {error && (
+              <p id="card-error" role="alert" className="whisper-error">
+                {error}
+              </p>
+            )}
 
-        {/* Billing & Payment Days */}
-        <div className="grid grid-cols-2 gap-4">
-          <div className="space-y-2">
-            <Label htmlFor="billing">Día de cierre</Label>
-            <Input
-              id="billing"
-              type="number"
-              min={1}
-              max={31}
-              value={billingDay}
-              onChange={(e) => setBillingDay(e.target.value)}
-              className="h-12"
-            />
-            <p className="text-xs text-muted-foreground">Cuando cierra el estado de cuenta</p>
-          </div>
-          <div className="space-y-2">
-            <Label htmlFor="payment">Día de pago</Label>
-            <Input
-              id="payment"
-              type="number"
-              min={1}
-              max={31}
-              value={paymentDay}
-              onChange={(e) => setPaymentDay(e.target.value)}
-              className="h-12"
-            />
-            <p className="text-xs text-muted-foreground">Vencimiento del pago</p>
-          </div>
-        </div>
-
-        {/* Color */}
-        <div className="space-y-2">
-          <Label className="flex items-center gap-2">
-            <Palette className="h-4 w-4" />
-            Color
-          </Label>
-          <div className="flex flex-wrap gap-2">
-            {CARD_COLORS.map((c) => (
-              <button
-                key={c}
-                type="button"
-                onClick={() => setColor(c)}
-                className={`w-8 h-8 rounded-full transition-all ${
-                  color === c ? "ring-2 ring-offset-2 ring-primary scale-110" : "hover:scale-105"
-                }`}
-                style={{ backgroundColor: c }}
-              />
-            ))}
-          </div>
-        </div>
-      </form>
-    </BaseModal>
+            <div className="whisper-actions">
+              <button type="submit" className="whisper-submit" disabled={!ready} aria-label="Guardar tarjeta">
+                {isEditing ? "Guardar cambios" : "Agregar tarjeta"}
+                <span className="hidden sm:inline" aria-hidden="true">↵</span>
+                <ArrowUp size={14} className={cn("sm:hidden")} aria-hidden="true" />
+              </button>
+            </div>
+            <p id="card-shortcuts" className="whisper-shortcuts">
+              <span>
+                <kbd>↵</kbd> guardar
+              </span>
+              <span>
+                <kbd>Esc</kbd> cerrar
+              </span>
+            </p>
+          </form>
+        </Dialog.Content>
+      </Dialog.Portal>
+    </Dialog.Root>
   );
 }

@@ -102,3 +102,22 @@
   .whisper-composer, .whisper-backdrop { animation: none !important; }
   .whisper-composer * { transition: none !important; }
 }
+
+/* Composers de Tarjetas (tarjeta y compra en cuotas): comparten todo lo de
+   arriba. Lo único nuevo son las bolitas de color y una grilla de tres. */
+.whisper-type[data-static] { cursor: default; }
+.whisper-swatches { display: flex; justify-content: center; flex-wrap: wrap; gap: 9px; }
+.whisper-swatch {
+  width: 22px; height: 22px; border-radius: 50%; background: var(--swatch);
+  box-shadow: inset 0 0 0 1px rgb(255 255 255 / .14);
+  transition: transform .15s, box-shadow .15s;
+}
+.whisper-swatch:hover { transform: scale(1.12); }
+.whisper-swatch[aria-checked=true] { transform: scale(1.12); box-shadow: 0 0 0 2px #0a0a0a, 0 0 0 4px var(--swatch), inset 0 0 0 1px rgb(255 255 255 / .14); }
+.whisper-counts { margin-top: 8px; }
+.whisper-options-3 { grid-template-columns: repeat(3, minmax(0, 1fr)); width: min(100%, 360px); }
+.whisper-options input[type=number] { -moz-appearance: textfield; appearance: textfield; }
+.whisper-options input[type=number]::-webkit-inner-spin-button, .whisper-options input[type=number]::-webkit-outer-spin-button { -webkit-appearance: none; margin: 0; }
+@media (max-width: 600px) {
+  .whisper-swatch { width: 26px; height: 26px; }
+}
