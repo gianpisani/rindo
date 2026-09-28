@@ -113,7 +113,6 @@ export function ShortcutsPopover({ isVisible, onClose }: ShortcutsPopoverProps) 
               <div className="space-y-1">
                 {section.items.map((item, itemIdx) => {
                   const ItemIcon = item.icon;
-                  const isCustomIcon = typeof ItemIcon === 'string';
                   return (
                     <div
                       key={itemIdx}
@@ -121,11 +120,7 @@ export function ShortcutsPopover({ isVisible, onClose }: ShortcutsPopoverProps) 
                     >
                       <div className="flex items-center gap-2 flex-1 min-w-0">
                         <div className="p-1 rounded bg-muted/50 group-hover:bg-muted transition-colors shrink-0">
-                          {isCustomIcon ? (
-                            <img src={ItemIcon} alt="" className="h-3 w-3" />
-                          ) : (
-                            <ItemIcon className="h-3 w-3 text-muted-foreground" />
-                          )}
+                          <ItemIcon className="h-3 w-3 text-muted-foreground" />
                         </div>
                         <span className="text-xs font-medium truncate">{item.description}</span>
                       </div>

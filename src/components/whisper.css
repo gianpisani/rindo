@@ -204,9 +204,7 @@
 .whisper-video-cta-icon { display: inline-flex; }
 .whisper-video-cta-icon svg { margin: 0; }
 
-/* Composer de inversiones: el isotipo de Fintual en la pastilla y los montos
-   dentro de los textos chicos. */
-.whisper-inv-fintual { width: 12px; height: 12px; flex-shrink: 0; }
+/* Composer de inversiones: los montos dentro de los textos chicos. */
 .whisper-inv-amount { font-variant-numeric: tabular-nums; color: #e5e5e5; }
 
 /* Composers de Clases: el alumno existente es una pastilla con su × */

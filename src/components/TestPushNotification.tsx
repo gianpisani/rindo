@@ -21,13 +21,6 @@ export function TestPushNotification() {
       )
     },
     {
-      label: 'Sync Fintual',
-      icon: Bell,
-      action: () => sendPushNotification(
-        NotificationTemplates.fintualSyncComplete(1500000)
-      )
-    },
-    {
       label: 'Resumen semanal',
       icon: Calendar,
       action: () => sendPushNotification(

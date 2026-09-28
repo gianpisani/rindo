@@ -3,7 +3,6 @@ import * as Dialog from "@radix-ui/react-dialog";
 import { ArrowUp, ChevronDown, Loader2, X } from "lucide-react";
 import { toast } from "sonner";
 import { useTransactions } from "@/hooks/useTransactions";
-import { useFintual } from "@/hooks/useFintual";
 import { useSoundFX } from "@/hooks/useSoundFX";
 import { usePrivacyMode } from "@/hooks/usePrivacyMode";
 import { computeLedger } from "@/hooks/useRealFlows";
@@ -62,7 +61,6 @@ export function InvestmentMoveDrawer({
   defaultMove = "rescate",
 }: InvestmentMoveDrawerProps) {
   const { transactions, addTransaction } = useTransactions();
-  const { isConnected, totals } = useFintual();
   const { playCelebration, playTap } = useSoundFX();
   const { isPrivacyMode } = usePrivacyMode();
 
@@ -257,26 +255,6 @@ export function InvestmentMoveDrawer({
             </div>
 
             <div className="whisper-category-space">
-              {move === "valor" && isConnected && totals.totalNav > 0 && (
-                <div className="whisper-categories" role="group" aria-label="Sugerencias">
-                  <button
-                    type="button"
-                    className="whisper-category"
-                    aria-pressed={valor > 0 && valor === Math.round(totals.totalNav)}
-                    onClick={() => {
-                      setValorHoy(String(Math.round(totals.totalNav)));
-                      playTap();
-                      inputRef.current?.focus();
-                    }}
-                  >
-                    <img src="/isotipo-fintual.png" alt="" className="whisper-inv-fintual" />
-                    Usar el valor de Fintual
-                    <span className={cn("whisper-inv-amount", isPrivacyMode && "privacy-blur")}>
-                      {formatCurrency(totals.totalNav)}
-                    </span>
-                  </button>
-                </div>
-              )}
               <p className="whisper-caption" aria-live="polite">
                 {move === "rescate" ? (
                   "Vuelve a tu liquidez. Tu patrimonio no cambia: cambia de balde."

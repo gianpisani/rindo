@@ -202,11 +202,7 @@ export function CommandBar({ open, onOpenChange, onAddTransaction, onConciliate,
             const shortcut = index < 9 ? String(index + 1) : undefined;
             return (
               <CommandItem key={route.url} onSelect={() => runCommand(() => navigate(route.url))} className="cursor-pointer">
-                {route.customIcon ? (
-                  <img src={Icon as string} alt={route.title} className="mr-2 h-4 w-4 opacity-60" />
-                ) : (
-                  <Icon className="mr-2 h-4 w-4 text-muted-foreground" />
-                )}
+                <Icon className="mr-2 h-4 w-4 text-muted-foreground" />
                 <div className="flex items-center justify-between flex-1">
                   <span>{route.title}</span>
                   {shortcut && <Kbd>{shortcut}</Kbd>}

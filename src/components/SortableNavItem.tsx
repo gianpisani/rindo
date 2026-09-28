@@ -3,8 +3,6 @@ import { CSS } from "@dnd-kit/utilities";
 import { GripVertical, Eye, EyeOff } from "lucide-react";
 import { type RouteConfig } from "@/lib/routes-config";
 import { cn } from "@/lib/utils";
-import { ComponentType } from "react";
-import { LucideIcon } from "lucide-react";
 import { useSidebar } from "@/components/ui/sidebar";
 import {
   Tooltip,
@@ -176,18 +174,8 @@ function NavItemIcon({
   isEditMode: boolean;
 }) {
   const Icon = route.icon;
-  if (route.customIcon) {
-    return (
-      <img
-        src={Icon as string}
-        alt={route.title}
-        className={cn("size-4", isHidden && isEditMode && "grayscale")}
-      />
-    );
-  }
-  const IconComp = Icon as LucideIcon | ComponentType<{ className?: string }>;
   return (
-    <IconComp
+    <Icon
       className={cn("size-4", isHidden && isEditMode && "text-muted-foreground/50")}
     />
   );

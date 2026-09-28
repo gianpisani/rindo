@@ -60,12 +60,6 @@ export const NotificationTemplates = {
     requireInteraction: true,
   }),
 
-  fintualSyncComplete: (totalAmount: number) => ({
-    title: 'Sincronización completada',
-    body: `Fintual sincronizado: $${totalAmount.toLocaleString('es-CL')}`,
-    tag: 'fintual-sync',
-  }),
-
   reconciliationNeeded: (count: number) => ({
     title: 'Reconciliación pendiente',
     body: `Tienes ${count} transacciones por reconciliar`,

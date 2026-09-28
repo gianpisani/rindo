@@ -10,7 +10,6 @@ import Index from "./pages/Index";
 import Overview from "./pages/Overview";
 import Transactions from "./pages/Transactions";
 import Categories from "./pages/Categories";
-import Fintual from "./pages/Fintual";
 import Meta from "./pages/Meta";
 import PendingDebts from "./pages/PendingDebts";
 import CreditCards from "./pages/CreditCards";
@@ -175,7 +174,6 @@ function AuthenticatedApp() {
           <Route path="/overview" element={<Overview />} />
           <Route path="/transactions" element={<Transactions />} />
           <Route path="/categories" element={<Categories />} />
-          <Route path="/fintual" element={<Fintual />} />
           <Route path="/budget" element={<Meta />} />
           <Route path="/pending-debts" element={<PendingDebts />} />
           <Route path="/credit-cards" element={<CreditCards />} />

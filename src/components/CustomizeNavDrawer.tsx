@@ -1,7 +1,6 @@
-import { useState, useCallback, useRef, useEffect, ComponentType } from "react";
+import { useState, useCallback, useRef, useEffect } from "react";
 import { Reorder } from "framer-motion";
 import { Plus, X, RotateCcw, Eye, EyeOff, GripVertical, PanelBottom, ListOrdered } from "lucide-react";
-import { LucideIcon } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useNavPreferences } from "@/hooks/useNavPreferences";
 import { APP_ROUTES, type RouteConfig } from "@/lib/routes-config";
@@ -14,10 +13,7 @@ import {
 } from "@/components/ui/drawer";
 
 function RouteIcon({ route, className }: { route: RouteConfig; className?: string }) {
-  if (route.customIcon) {
-    return <img src={route.icon as string} alt={route.title} className={className} />;
-  }
-  const Icon = route.icon as LucideIcon | ComponentType<{ className?: string }>;
+  const Icon = route.icon;
   return <Icon className={className} />;
 }
 

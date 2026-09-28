@@ -16,10 +16,9 @@ import { ComponentType } from "react";
 export interface RouteConfig {
   title: string;
   url: string;
-  icon: LucideIcon | ComponentType<{ className?: string }> | string;
+  icon: LucideIcon | ComponentType<{ className?: string }>;
   shortcut?: string; // El número del shortcut (1-6)
   group: "main" | "tools";
-  customIcon?: boolean; // Flag para indicar que es un icono custom (imagen)
 }
 
 // Configuración central de todas las rutas
@@ -76,14 +75,6 @@ export const APP_ROUTES: RouteConfig[] = [
     icon: Target,
     shortcut: "7",
     group: "tools",
-  },
-  {
-    title: "Fintual",
-    url: "/fintual",
-    icon: "/isotipo-fintual.png",
-    shortcut: "8",
-    group: "tools",
-    customIcon: true,
   },
   {
     title: "Clases",

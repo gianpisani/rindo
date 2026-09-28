@@ -1,4 +1,4 @@
-import { useCallback, useState, ComponentType } from "react";
+import { useCallback, useState } from "react";
 import { Link, useLocation } from "react-router-dom";
 import { Plus, ChevronUp, UserPen, SlidersHorizontal, LogOut } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -16,14 +16,10 @@ import {
   DrawerTitle,
 } from "@/components/ui/drawer";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
-import { LucideIcon } from "lucide-react";
 import { CustomizeNavDrawer } from "./CustomizeNavDrawer";
 
 function RouteIcon({ route, className }: { route: RouteConfig; className?: string }) {
-  if (route.customIcon) {
-    return <img src={route.icon as string} alt={route.title} className={className} />;
-  }
-  const Icon = route.icon as LucideIcon | ComponentType<{ className?: string }>;
+  const Icon = route.icon;
   return <Icon className={className} />;
 }
 
