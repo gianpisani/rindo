@@ -1,12 +1,16 @@
-import { useState } from "react";
-import { Button } from "./ui/button";
-import { Input } from "./ui/input";
-import { Label } from "./ui/label";
-import { BaseModal } from "./BaseModal";
-import { Plus, Trash2, Users } from "lucide-react";
-import { RadioGroup, RadioGroupItem } from "./ui/radio-group";
-import { Checkbox } from "./ui/checkbox";
+import { useEffect, useRef, useState } from "react";
+import * as Dialog from "@radix-ui/react-dialog";
+import { ArrowUp, Check, Plus, X } from "lucide-react";
 import { DebtorNameCombobox } from "./DebtorNameCombobox";
+import "./whisper.css";
+
+/**
+ * Gasto compartido al estilo Whisper: el total como línea grande, "partes
+ * iguales" / "a mano" y "yo también" en pastillas, y las personas como filas
+ * compactas (nombre con sugerencias, y el monto cuando se reparte a mano).
+ * La vista previa dice cuánto queda por repartir o si cuadra. Se abre justo
+ * después de guardar un gasto compartido, así que sigue la misma estética.
+ */
 
 interface Debtor {
   name: string;
@@ -21,6 +25,13 @@ interface SharedExpenseDrawerProps {
   suggestions?: string[];
 }
 
+const ACCENT = "#f87171";
+
+const formatCurrency = (v: number) =>
+  new Intl.NumberFormat("es-CL", { style: "currency", currency: "CLP", maximumFractionDigits: 0 }).format(v);
+const parseAmount = (raw: string) => parseInt(raw.replace(/\D/g, ""), 10) || 0;
+const formatInput = (amount: number) => (amount ? new Intl.NumberFormat("es-CL").format(amount) : "");
+
 export default function SharedExpenseDrawer({
   open,
   onOpenChange,
@@ -30,240 +41,193 @@ export default function SharedExpenseDrawer({
 }: SharedExpenseDrawerProps) {
   const [splitMode, setSplitMode] = useState<"equal" | "manual">("equal");
   const [includeMe, setIncludeMe] = useState(true);
-  const [debtors, setDebtors] = useState<Debtor[]>([
-    { name: "", amount: 0 },
-  ]);
+  const [debtors, setDebtors] = useState<Debtor[]>([{ name: "", amount: 0 }]);
+  const firstNameRef = useRef<HTMLDivElement>(null);
 
-  const handleAddDebtor = () => {
-    setDebtors([...debtors, { name: "", amount: 0 }]);
-  };
-
-  const handleRemoveDebtor = (index: number) => {
-    if (debtors.length > 1) {
-      setDebtors(debtors.filter((_, i) => i !== index));
-    }
-  };
-
-  const handleDebtorNameChange = (index: number, name: string) => {
-    const updated = [...debtors];
-    updated[index].name = name;
-    setDebtors(updated);
-  };
-
-  const handleDebtorAmountChange = (index: number, amount: number) => {
-    const updated = [...debtors];
-    updated[index].amount = amount;
-    setDebtors(updated);
-  };
-
-  const calculateEqualSplit = () => {
-    const validDebtors = debtors.filter(d => d.name.trim() !== "").length;
-    const totalPeople = includeMe ? validDebtors + 1 : validDebtors;
-    if (totalPeople === 0) return 0;
-    return Math.round(totalAmount / totalPeople);
-  };
-
-  const handleConfirm = () => {
-    let finalDebtors: Debtor[];
-
-    if (splitMode === "equal") {
-      const amountPerPerson = calculateEqualSplit();
-      finalDebtors = debtors
-        .filter(d => d.name.trim() !== "")
-        .map(d => ({ ...d, amount: amountPerPerson }));
-    } else {
-      finalDebtors = debtors.filter(d => d.name.trim() !== "" && d.amount > 0);
-    }
-
-    if (finalDebtors.length === 0) return;
-
-    onConfirm(finalDebtors);
-    onOpenChange(false);
-    
-    // Reset
+  useEffect(() => {
+    if (!open) return;
     setDebtors([{ name: "", amount: 0 }]);
     setSplitMode("equal");
     setIncludeMe(true);
+  }, [open]);
+
+  const updateDebtor = (index: number, patch: Partial<Debtor>) =>
+    setDebtors((previous) => previous.map((d, i) => (i === index ? { ...d, ...patch } : d)));
+  const addDebtor = (name = "") => setDebtors((previous) => [...previous, { name, amount: 0 }]);
+  const removeDebtor = (index: number) =>
+    setDebtors((previous) => (previous.length > 1 ? previous.filter((_, i) => i !== index) : previous));
+
+  // Un nombre sugerido llena la primera fila vacía o agrega una nueva.
+  const pickSuggestion = (name: string) => {
+    const empty = debtors.findIndex((d) => d.name.trim() === "");
+    if (empty >= 0) updateDebtor(empty, { name });
+    else addDebtor(name);
   };
 
-  const validDebtorsCount = debtors.filter(d => d.name.trim() !== "").length;
-  const totalSplit = splitMode === "equal" 
-    ? calculateEqualSplit() * validDebtorsCount
-    : debtors.reduce((sum, d) => sum + d.amount, 0);
+  const named = debtors.filter((d) => d.name.trim() !== "");
+  const people = includeMe ? named.length + 1 : named.length;
+  const equalShare = people > 0 ? Math.round(totalAmount / people) : 0;
 
-  const myShare = includeMe ? (splitMode === "equal" ? calculateEqualSplit() : totalAmount - totalSplit) : 0;
+  const othersTotal = splitMode === "equal" ? equalShare * named.length : debtors.reduce((sum, d) => sum + d.amount, 0);
+  const myShare = includeMe ? (splitMode === "equal" ? equalShare : totalAmount - othersTotal) : 0;
+  const assigned = splitMode === "equal" ? othersTotal + myShare : othersTotal + (includeMe ? myShare : 0);
+  const missing = totalAmount - assigned;
+  const squares = splitMode === "equal" || Math.abs(missing) < 1;
+  const isValid = named.length > 0 && squares && (splitMode === "equal" || !includeMe || myShare >= 0);
 
-  const isValid = 
-    debtors.some(d => d.name.trim() !== "") &&
-    (splitMode === "equal" || (includeMe ? Math.abs(totalSplit + myShare - totalAmount) < 1 : Math.abs(totalSplit - totalAmount) < 1));
+  const usedNames = new Set(debtors.map((d) => d.name.trim().toLowerCase()));
+  const freeSuggestions = suggestions.filter((s) => !usedNames.has(s.trim().toLowerCase())).slice(0, 6);
+
+  const confirm = (event: React.FormEvent) => {
+    event.preventDefault();
+    if (!isValid) return;
+    const finalDebtors =
+      splitMode === "equal"
+        ? named.map((d) => ({ ...d, amount: equalShare }))
+        : debtors.filter((d) => d.name.trim() !== "" && d.amount > 0);
+    if (finalDebtors.length === 0) return;
+    onConfirm(finalDebtors);
+    onOpenChange(false);
+  };
+
+  // La frase de abajo: qué le toca a cada uno, o cuánto falta por repartir.
+  let preview = "";
+  if (named.length === 0) preview = "¿Con quién lo compartiste?";
+  else if (splitMode === "equal") preview = `${formatCurrency(equalShare)} cada uno${includeMe ? ", tú incluido" : ""}`;
+  else if (includeMe && myShare < 0) preview = `se pasan por ${formatCurrency(-myShare)}`;
+  else if (includeMe) preview = `tu parte queda en ${formatCurrency(myShare)}`;
+  else if (Math.abs(missing) < 1) preview = "cuadra ✓";
+  else if (missing > 0) preview = `faltan ${formatCurrency(missing)} por repartir`;
+  else preview = `se pasan por ${formatCurrency(-missing)}`;
 
   return (
-    <BaseModal
-      open={open}
-      onOpenChange={onOpenChange}
-      title="Gasto Compartido"
-      maxWidth="md"
-      footer={
-        <div className="flex gap-3">
-          <Button
-            variant="outline"
-            size="cta"
-            className="flex-1"
-            onClick={() => onOpenChange(false)}
-          >
-            Cancelar
-          </Button>
-          <Button
-            onClick={handleConfirm}
-            disabled={!isValid}
-            size="cta"
-            className="flex-1"
-          >
-            Confirmar
-          </Button>
-        </div>
-      }
-    >
-      <div className="space-y-6">
-          {/* Total */}
-          <div className="bg-primary/10 rounded-lg p-4 text-center">
-            <p className="text-sm text-muted-foreground">Total del gasto</p>
-            <p className="text-3xl font-bold text-primary">
-              ${new Intl.NumberFormat("es-CL").format(totalAmount)}
-            </p>
-          </div>
+    <Dialog.Root open={open} onOpenChange={onOpenChange}>
+      <Dialog.Portal>
+        <Dialog.Overlay className="whisper-backdrop" />
+        <Dialog.Content
+          data-scrollable
+          className="whisper-composer"
+          style={{ "--whisper-accent": ACCENT } as React.CSSProperties}
+          onOpenAutoFocus={(event) => {
+            event.preventDefault();
+            firstNameRef.current?.querySelector("input")?.focus();
+          }}
+        >
+          <Dialog.Title className="sr-only">Gasto compartido</Dialog.Title>
+          <Dialog.Description className="sr-only">
+            Reparte el gasto entre las personas que deben. Elige partes iguales o montos a mano, y si tú también participas.
+          </Dialog.Description>
+          <Dialog.Close className="whisper-close" aria-label="Cerrar">
+            <X size={16} />
+          </Dialog.Close>
 
-          {/* Include Me */}
-          <div className="flex items-center justify-between p-4 rounded-lg border-2 border-primary/20 bg-primary/5">
-            <div className="flex items-center gap-3">
-              <div className="h-10 w-10 rounded-full bg-primary/10 flex items-center justify-center">
-                <Users className="h-5 w-5 text-primary" />
-              </div>
-              <div>
-                <Label htmlFor="includeMe" className="font-semibold cursor-pointer">
-                  Yo también participo
-                </Label>
-                <p className="text-xs text-muted-foreground">
-                  {includeMe ? "Te incluiremos en la división" : "Solo dividir entre otros"}
-                </p>
+          <form onSubmit={confirm} className="whisper-form">
+            <div className="whisper-type" data-static>
+              <span className="whisper-dot" aria-hidden="true" />
+              <span>Gasto compartido</span>
+            </div>
+
+            <div className="whisper-entry">
+              <p className="whisper-input whisper-shared-total" aria-label="Total del gasto">
+                {formatCurrency(totalAmount)}
+              </p>
+              <div className="whisper-preview" aria-live="polite">
+                <span>{preview}</span>
               </div>
             </div>
-            <Checkbox 
-              id="includeMe" 
-              checked={includeMe}
-              onCheckedChange={(checked) => setIncludeMe(checked as boolean)}
-            />
-          </div>
 
-          {/* Split Mode */}
-          <div className="space-y-3">
-            <Label>¿Cómo dividir?</Label>
-            <RadioGroup value={splitMode} onValueChange={(v) => setSplitMode(v as "equal" | "manual")}>
-              <div className="flex items-center space-x-2">
-                <RadioGroupItem value="equal" id="equal" />
-                <Label htmlFor="equal" className="font-normal cursor-pointer">
+            <div className="whisper-category-space">
+              <div className="whisper-categories" role="group" aria-label="Cómo dividir">
+                <button type="button" className="whisper-category" aria-pressed={splitMode === "equal"} onClick={() => setSplitMode("equal")}>
+                  <span className="whisper-category-dot" aria-hidden="true" />
                   Partes iguales
-                </Label>
+                  {splitMode === "equal" && <Check size={12} aria-hidden="true" />}
+                </button>
+                <button type="button" className="whisper-category" aria-pressed={splitMode === "manual"} onClick={() => setSplitMode("manual")}>
+                  <span className="whisper-category-dot" aria-hidden="true" />
+                  A mano
+                  {splitMode === "manual" && <Check size={12} aria-hidden="true" />}
+                </button>
+                <button type="button" className="whisper-category" aria-pressed={includeMe} onClick={() => setIncludeMe(!includeMe)}>
+                  <span className="whisper-category-dot" aria-hidden="true" />
+                  Yo también
+                  {includeMe && <Check size={12} aria-hidden="true" />}
+                </button>
               </div>
-              <div className="flex items-center space-x-2">
-                <RadioGroupItem value="manual" id="manual" />
-                <Label htmlFor="manual" className="font-normal cursor-pointer">
-                  Montos personalizados
-                </Label>
-              </div>
-            </RadioGroup>
-          </div>
-
-          {/* Debtors List */}
-          <div className="space-y-3">
-            <div className="flex items-center justify-between">
-              <Label>Personas que deben</Label>
-              <Button 
-                type="button" 
-                variant="outline" 
-                size="sm"
-                onClick={handleAddDebtor}
-              >
-                <Plus className="h-4 w-4 mr-1" />
-                Agregar
-              </Button>
+              {freeSuggestions.length > 0 && (
+                <div className="whisper-categories whisper-shared-suggestions" role="group" aria-label="Personas frecuentes">
+                  {freeSuggestions.map((name) => (
+                    <button key={name} type="button" className="whisper-category" onClick={() => pickSuggestion(name)}>
+                      <Plus size={11} aria-hidden="true" />
+                      {name}
+                    </button>
+                  ))}
+                </div>
+              )}
+              <p className="whisper-caption" aria-hidden="true">
+                {splitMode === "equal" ? "Se divide entre quienes nombres" : "Escribe cuánto le toca a cada uno"}
+                {includeMe ? " y tú" : ""}
+              </p>
             </div>
 
-            {debtors.map((debtor, index) => (
-              <div key={index} className="flex gap-2 items-start">
-                <div className="flex-1 space-y-1">
+            <div className="whisper-shared-rows" role="group" aria-label="Personas que deben">
+              {debtors.map((debtor, index) => (
+                <div key={index} className="whisper-shared-row" data-manual={splitMode === "manual" || undefined} ref={index === 0 ? firstNameRef : undefined}>
                   <DebtorNameCombobox
                     placeholder="Nombre"
                     value={debtor.name}
-                    onChange={(name) => handleDebtorNameChange(index, name)}
+                    onChange={(name) => updateDebtor(index, { name })}
                     suggestions={suggestions}
+                    className="whisper-shared-name"
                   />
-                </div>
-
-                {splitMode === "manual" && (
-                  <div className="w-32 space-y-1">
-                    <Input
-                      type="number"
+                  {splitMode === "manual" ? (
+                    <input
+                      inputMode="numeric"
                       placeholder="Monto"
-                      value={debtor.amount || ""}
-                      onChange={(e) => handleDebtorAmountChange(index, parseFloat(e.target.value) || 0)}
+                      aria-label={`Monto de ${debtor.name || "esta persona"}`}
+                      value={formatInput(debtor.amount)}
+                      onChange={(e) => updateDebtor(index, { amount: parseAmount(e.target.value) })}
+                      className="whisper-shared-amount"
                     />
-                  </div>
-                )}
-
-                {splitMode === "equal" && debtor.name.trim() && (
-                  <div className="w-32 flex items-center justify-center h-10 text-sm text-muted-foreground bg-muted rounded-md">
-                    ${new Intl.NumberFormat("es-CL").format(calculateEqualSplit())}
-                  </div>
-                )}
-
-                <Button
-                  type="button"
-                  variant="ghost"
-                  size="icon"
-                  onClick={() => handleRemoveDebtor(index)}
-                  disabled={debtors.length === 1}
-                >
-                  <Trash2 className="h-4 w-4 text-destructive" />
-                </Button>
-              </div>
-            ))}
-          </div>
-
-          {/* My Share Display */}
-          {includeMe && (
-            <div className="bg-info/10 text-info p-3 rounded-lg">
-              <div className="flex justify-between items-center text-sm">
-                <span>Tu parte:</span>
-                <span className="font-bold">
-                  ${new Intl.NumberFormat("es-CL").format(myShare)}
-                </span>
-              </div>
+                  ) : (
+                    <span className="whisper-shared-amount whisper-shared-fixed" aria-hidden="true">
+                      {debtor.name.trim() ? formatCurrency(equalShare) : ""}
+                    </span>
+                  )}
+                  <button
+                    type="button"
+                    className="whisper-shared-remove"
+                    onClick={() => removeDebtor(index)}
+                    disabled={debtors.length === 1}
+                    aria-label="Quitar persona"
+                  >
+                    <X size={13} />
+                  </button>
+                </div>
+              ))}
+              <button type="button" className="whisper-shared-add" onClick={() => addDebtor()}>
+                <Plus size={12} aria-hidden="true" /> Otra persona
+              </button>
             </div>
-          )}
 
-          {/* Validation */}
-          {splitMode === "manual" && (
-            <div className={`text-sm p-3 rounded-lg ${
-              (includeMe ? Math.abs(totalSplit + myShare - totalAmount) < 1 : Math.abs(totalSplit - totalAmount) < 1)
-                ? "bg-success/10 text-success" 
-                : "bg-destructive/10 text-destructive"
-            }`}>
-              <div className="flex justify-between items-center">
-                <span>Total repartido:</span>
-                <span className="font-bold">
-                  ${new Intl.NumberFormat("es-CL").format(includeMe ? totalSplit + myShare : totalSplit)}
-                </span>
-              </div>
-              {(includeMe ? Math.abs(totalSplit + myShare - totalAmount) >= 1 : Math.abs(totalSplit - totalAmount) >= 1) && (
-                <p className="mt-1 text-xs">
-                  Falta ${new Intl.NumberFormat("es-CL").format(includeMe ? totalAmount - totalSplit - myShare : totalAmount - totalSplit)}
-                </p>
-              )}
+            <div className="whisper-actions">
+              <button type="submit" className="whisper-submit" disabled={!isValid} aria-label="Confirmar reparto">
+                Confirmar
+                <span className="hidden sm:inline" aria-hidden="true">↵</span>
+                <ArrowUp size={14} className="sm:hidden" aria-hidden="true" />
+              </button>
             </div>
-          )}
-      </div>
-    </BaseModal>
+            <p className="whisper-shortcuts">
+              <span>
+                <kbd>↵</kbd> confirmar
+              </span>
+              <span>
+                <kbd>Esc</kbd> cerrar
+              </span>
+            </p>
+          </form>
+        </Dialog.Content>
+      </Dialog.Portal>
+    </Dialog.Root>
   );
 }
-
