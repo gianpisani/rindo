@@ -1,83 +1,67 @@
-import { useState, useMemo } from "react";
-import Layout from "@/components/Layout";
-import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
-import { Progress } from "@/components/ui/progress";
-import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
-import { Card, CardContent } from "@/components/ui/card";
+import { useMemo, useState, type CSSProperties } from "react";
+import { addMonths, format } from "date-fns";
+import { es } from "date-fns/locale";
 import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
+  ChevronLeft,
+  ChevronRight,
+  MoreHorizontal,
+  Pencil,
+  Plus,
+  Trash2,
+} from "lucide-react";
+import Layout from "@/components/Layout";
+import { Skeleton } from "@/components/ui/skeleton";
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
-  DropdownMenuTrigger,
   DropdownMenuSeparator,
+  DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import {
-  CreditCard as CreditCardIcon,
-  Plus,
-  MoreHorizontal,
-  Pencil,
-  Trash2,
-  Receipt,
-  CheckCircle2,
-  Clock,
-  AlertTriangle,
-  ChevronRight,
-  ChevronLeft,
-  ChevronDown,
-  FileText,
-  Wallet,
-  Calendar,
-} from "lucide-react";
-import { useCreditCards, CreditCardSummary, CreditCard } from "@/hooks/useCreditCards";
-import { useInstallments, InstallmentPurchase } from "@/hooks/useInstallments";
+import { useCreditCards, type CreditCard, type CreditCardSummary } from "@/hooks/useCreditCards";
+import { useInstallments, type InstallmentPurchase } from "@/hooks/useInstallments";
 import { useTransactions } from "@/hooks/useTransactions";
 import { CreditCardModal } from "@/components/CreditCardModal";
 import { InstallmentModal } from "@/components/InstallmentModal";
 import ConfirmDialog from "@/components/ConfirmDialog";
-import { cn } from "@/lib/utils";
-import { format, addMonths } from "date-fns";
-import { es } from "date-fns/locale";
 import { usePrivacyMode } from "@/hooks/usePrivacyMode";
+import { cn } from "@/lib/utils";
 
-// Banco de Chile billing cutoff: cycles run from 14:00 to 14:00
+/**
+ * Tarjetas: ¿cuánto cupo llevo usado y qué me toca pagar? Una pantalla
+ * exacta, como Meta y Finanzas. Arriba las tarjetas dibujadas como
+ * plásticos, cada una con su cupo. Abajo dos paneles: las compras en cuotas
+ * y el estado de cuenta de la tarjeta elegida, ciclo por ciclo. Lo largo
+ * scrollea adentro de su panel, nunca la página.
+ */
+
+// Banco de Chile: el ciclo corre de 14:00 a 14:00 del día de cierre.
 const BILLING_CUTOFF_HOUR = 14;
+const HOT_USAGE = 80;
 
-// Helper: Get billing cycle dates for a card
+const formatCurrency = (v: number) =>
+  new Intl.NumberFormat("es-CL", { style: "currency", currency: "CLP", maximumFractionDigits: 0 }).format(v);
+
+const day = (d: Date) => format(d, "d MMM", { locale: es }).replace(".", "");
+
 function getBillingCycle(billingDay: number, cycleOffset: number = 0) {
   const now = new Date();
-  const currentMonth = now.getMonth();
-  const currentYear = now.getFullYear();
+  const billingDateThisMonth = new Date(now.getFullYear(), now.getMonth(), billingDay, BILLING_CUTOFF_HOUR, 0, 0);
 
-  // Billing cutoff is at 14:00 on the billing day
-  const billingDateThisMonth = new Date(currentYear, currentMonth, billingDay, BILLING_CUTOFF_HOUR, 0, 0);
-
-  let cycleEndDate: Date;
-  if (now < billingDateThisMonth) {
-    cycleEndDate = billingDateThisMonth;
-  } else {
-    cycleEndDate = addMonths(billingDateThisMonth, 1);
-  }
-
+  let cycleEndDate = now < billingDateThisMonth ? billingDateThisMonth : addMonths(billingDateThisMonth, 1);
   cycleEndDate = addMonths(cycleEndDate, cycleOffset);
   const cycleStartDate = addMonths(cycleEndDate, -1);
-
-  const isClosed = cycleEndDate <= now;
 
   return {
     start: cycleStartDate,
     end: cycleEndDate,
-    isClosed,
+    isClosed: cycleEndDate <= now,
     label: format(cycleEndDate, "MMMM yyyy", { locale: es }),
   };
 }
+
+const usageOf = (card: CreditCardSummary) =>
+  card.credit_limit > 0 ? Math.min(100, (card.total_used_credit / card.credit_limit) * 100) : 0;
 
 export default function CreditCards() {
   const { isPrivacyMode } = usePrivacyMode();
@@ -90,7 +74,6 @@ export default function CreditCards() {
     updateCreditCard,
     deleteCreditCard,
   } = useCreditCards();
-
   const {
     installments,
     isLoading: isLoadingInstallments,
@@ -101,427 +84,282 @@ export default function CreditCards() {
     getInstallmentSchedule,
     isInstallmentActive,
   } = useInstallments();
-
   const { transactions } = useTransactions();
 
-  // Modal states
+  const loading = isLoadingCards || isLoadingInstallments;
+  const hasCards = cardSummaries.length > 0;
+
+  // ── Modales ──
   const [cardModalOpen, setCardModalOpen] = useState(false);
   const [installmentModalOpen, setInstallmentModalOpen] = useState(false);
   const [editingCard, setEditingCard] = useState<CreditCard | null>(null);
   const [editingInstallment, setEditingInstallment] = useState<InstallmentPurchase | null>(null);
   const [deleteCardId, setDeleteCardId] = useState<string | null>(null);
   const [deleteInstallmentId, setDeleteInstallmentId] = useState<string | null>(null);
-  const [expandedInstallment, setExpandedInstallment] = useState<string | null>(null);
+  const [openInstallment, setOpenInstallment] = useState<string | null>(null);
 
-  // Billing state
-  const [billingCardId, setBillingCardId] = useState<string | null>(null);
+  // ── La tarjeta elegida manda el estado de cuenta ──
+  const [selectedId, setSelectedId] = useState<string | null>(null);
   const [cycleOffset, setCycleOffset] = useState(0);
-  const [billingOpen, setBillingOpen] = useState(true);
+  const selected = cardSummaries.find((c) => c.id === selectedId) ?? cardSummaries[0];
 
-  const isLoading = isLoadingCards || isLoadingInstallments;
+  const cycle = useMemo(
+    () => (selected ? getBillingCycle(selected.billing_day, cycleOffset) : null),
+    [selected, cycleOffset]
+  );
 
-  const selectedBillingCard = useMemo(() => {
-    if (billingCardId) {
-      return creditCards.find(c => c.id === billingCardId) || creditCards[0];
-    }
-    return creditCards[0];
-  }, [billingCardId, creditCards]);
-
-  const billingCycle = useMemo(() => {
-    if (!selectedBillingCard) return null;
-    return getBillingCycle(selectedBillingCard.billing_day, cycleOffset);
-  }, [selectedBillingCard, cycleOffset]);
-
-  const billingTransactions = useMemo(() => {
-    if (!selectedBillingCard || !billingCycle) return [];
-
+  const cycleTx = useMemo(() => {
+    if (!selected || !cycle) return [];
     return transactions
-      .filter(t => {
-        if (t.card_id !== selectedBillingCard.id) return false;
-        const txTime = new Date(t.date).getTime();
-        return txTime >= billingCycle.start.getTime() && txTime < billingCycle.end.getTime();
+      .filter((t) => {
+        if (t.card_id !== selected.id) return false;
+        const at = new Date(t.date).getTime();
+        return at >= cycle.start.getTime() && at < cycle.end.getTime();
       })
-      .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
-  }, [transactions, selectedBillingCard, billingCycle]);
+      .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+  }, [transactions, selected, cycle]);
 
-  const billingTotals = useMemo(() => {
-    return billingTransactions.reduce(
-      (acc, t) => {
-        if (t.type === "Gasto") acc.gastos += Number(t.amount);
-        else if (t.type === "Ingreso") acc.abonos += Number(t.amount);
-        return acc;
-      },
-      { gastos: 0, abonos: 0 }
-    );
-  }, [billingTransactions]);
+  const cycleTotals = useMemo(
+    () =>
+      cycleTx.reduce(
+        (acc, t) => {
+          if (t.type === "Gasto") acc.gastos += Number(t.amount);
+          else if (t.type === "Ingreso") acc.abonos += Number(t.amount);
+          return acc;
+        },
+        { gastos: 0, abonos: 0 }
+      ),
+    [cycleTx]
+  );
 
-  const formatCurrency = (amount: number) => {
-    return new Intl.NumberFormat("es-CL", {
-      style: "currency",
-      currency: "CLP",
-      minimumFractionDigits: 0,
-    }).format(amount);
+  // Cuotas: primero las que siguen corriendo, después las terminadas.
+  const sortedInstallments = useMemo(() => {
+    const active = installments.filter(isInstallmentActive);
+    const done = installments.filter((i) => !isInstallmentActive(i));
+    return [...active, ...done];
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [installments]);
+  const activeCount = installments.filter(isInstallmentActive).length;
+
+  const totalUsage = cardTotals.totalLimit > 0 ? (cardTotals.totalUsed / cardTotals.totalLimit) * 100 : 0;
+
+  // En celular, cuotas y estado de cuenta comparten el panel.
+  const [mobileTab, setMobileTab] = useState<"cuotas" | "cuenta">("cuotas");
+
+  const openNewCard = () => {
+    setEditingCard(null);
+    setCardModalOpen(true);
+  };
+  const openEditCard = (id: string) => {
+    const full = creditCards.find((c) => c.id === id);
+    if (!full) return;
+    setEditingCard(full);
+    setCardModalOpen(true);
+  };
+  const openNewInstallment = () => {
+    setEditingInstallment(null);
+    setInstallmentModalOpen(true);
   };
 
   const handleSaveCard = async (card: Omit<CreditCard, "id" | "user_id" | "created_at" | "updated_at">) => {
-    if (editingCard) {
-      await updateCreditCard.mutateAsync({ id: editingCard.id, ...card });
-    } else {
-      await addCreditCard.mutateAsync(card);
-    }
+    if (editingCard) await updateCreditCard.mutateAsync({ id: editingCard.id, ...card });
+    else await addCreditCard.mutateAsync(card);
     setEditingCard(null);
   };
 
   const handleSaveInstallment = async (
     purchase: Omit<InstallmentPurchase, "id" | "user_id" | "created_at" | "updated_at" | "card_name" | "card_color">
   ) => {
-    if (editingInstallment) {
-      await updateInstallment.mutateAsync({ id: editingInstallment.id, ...purchase });
-    } else {
-      await addInstallment.mutateAsync(purchase);
-    }
+    if (editingInstallment) await updateInstallment.mutateAsync({ id: editingInstallment.id, ...purchase });
+    else await addInstallment.mutateAsync(purchase);
     setEditingInstallment(null);
   };
 
   const handleDeleteCard = async () => {
-    if (deleteCardId) {
-      await deleteCreditCard.mutateAsync(deleteCardId);
-      setDeleteCardId(null);
-    }
+    if (!deleteCardId) return;
+    await deleteCreditCard.mutateAsync(deleteCardId);
+    if (selectedId === deleteCardId) setSelectedId(null);
+    setDeleteCardId(null);
   };
 
   const handleDeleteInstallment = async () => {
-    if (deleteInstallmentId) {
-      await deleteInstallment.mutateAsync(deleteInstallmentId);
-      setDeleteInstallmentId(null);
-    }
+    if (!deleteInstallmentId) return;
+    await deleteInstallment.mutateAsync(deleteInstallmentId);
+    setDeleteInstallmentId(null);
   };
 
-  const totalUsedPercent = cardTotals.totalLimit > 0
-    ? Math.min(100, (cardTotals.totalUsed / cardTotals.totalLimit) * 100)
-    : 0;
-
-  const activeInstallments = installments.filter(isInstallmentActive);
-
   return (
-    <Layout>
-      <div className="space-y-6">
-        {/* Header */}
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-          <div>
-            <h1 className="text-2xl font-bold tracking-tight mb-1">Tarjetas de Crédito</h1>
-            <p className="text-sm text-muted-foreground">
-              Gestiona tus tarjetas y compras en cuotas
+    <Layout fit>
+      <div className="tj">
+        <header className="tj-head">
+          <h1 className="tj-title">Tarjetas</h1>
+          {loading ? (
+            <Skeleton className="h-5 w-64" />
+          ) : hasCards ? (
+            <p className={cn("tj-totals", isPrivacyMode && "privacy-blur")}>
+              <span>
+                usado <b data-hot={totalUsage > HOT_USAGE || undefined}>{formatCurrency(cardTotals.totalUsed)}</b> de{" "}
+                {formatCurrency(cardTotals.totalLimit)}
+              </span>
+              <span className="tj-sep" aria-hidden>·</span>
+              <span>
+                cuotas <b>{formatCurrency(installmentTotals.monthlyPayment)}</b> al mes
+              </span>
             </p>
-          </div>
-          <div className="flex gap-2">
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => {
-                setEditingCard(null);
-                setCardModalOpen(true);
-              }}
-            >
-              <CreditCardIcon className="h-4 w-4 mr-2" />
-              Nueva tarjeta
-            </Button>
-            <Button
-              size="sm"
-              onClick={() => {
-                setEditingInstallment(null);
-                setInstallmentModalOpen(true);
-              }}
-              disabled={creditCards.length === 0}
-            >
-              <Plus className="h-4 w-4 mr-2" />
-              Nueva compra
-            </Button>
-          </div>
-        </div>
+          ) : null}
+        </header>
 
-        {creditCards.length === 0 ? (
-          <Card className="border-dashed">
-            <CardContent className="py-16 text-center">
-              <CreditCardIcon className="h-12 w-12 mx-auto text-muted-foreground/50 mb-4" />
-              <h3 className="font-semibold mb-2">No tienes tarjetas</h3>
-              <p className="text-sm text-muted-foreground mb-4">
-                Agrega tu primera tarjeta de crédito para comenzar
-              </p>
-              <Button onClick={() => setCardModalOpen(true)}>
-                <Plus className="h-4 w-4 mr-2" />
-                Agregar tarjeta
-              </Button>
-            </CardContent>
-          </Card>
+        {loading ? (
+          <div className="tj-grid">
+            <div className="tj-wallet">
+              <Skeleton className="tj-plastic" />
+              <Skeleton className="tj-plastic" />
+            </div>
+            <Skeleton className="tj-card tj-cuotas" />
+            <Skeleton className="tj-card tj-cuenta" />
+          </div>
+        ) : !hasCards ? (
+          <section className="tj-card tj-setup">
+            <h2>Tu primera tarjeta</h2>
+            <p>Con la tarjeta acá ves el cupo que llevas usado, las compras en cuotas y el estado de cuenta de cada ciclo.</p>
+            <button className="tj-btn tj-btn-primary" onClick={openNewCard}>
+              <Plus /> Agregar tarjeta
+            </button>
+          </section>
         ) : (
-          <>
-            {/* ── Overview Strip ── */}
-            <Card className="overflow-hidden">
-              <CardContent className="px-4 py-3">
-                <div className="flex flex-col sm:flex-row sm:items-center gap-3">
-                  {/* Progress section */}
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-2 mb-1">
-                      <span className="text-xs text-muted-foreground">Cupo</span>
-                      <span className={cn(
-                        "text-xs font-semibold font-mono tabular-nums",
-                        totalUsedPercent > 80 && "text-destructive",
-                        isPrivacyMode && "privacy-blur"
-                      )}>
-                        {Math.round(totalUsedPercent)}%
-                      </span>
-                      <span className={cn("text-[10px] text-muted-foreground font-mono tabular-nums ml-auto", isPrivacyMode && "privacy-blur")}>
-                        {formatCurrency(cardTotals.totalUsed)} / {formatCurrency(cardTotals.totalLimit)}
-                      </span>
-                    </div>
-                    <Progress
-                      value={totalUsedPercent}
-                      className={cn("h-2", totalUsedPercent > 80 && "[&>div]:bg-destructive")}
-                    />
-                  </div>
-                  {/* Stats inline */}
-                  <div className="flex items-center gap-4 sm:gap-5 shrink-0 sm:border-l sm:border-border/40 sm:pl-4">
-                    <div className="flex items-center gap-1.5">
-                      <Wallet className="h-3.5 w-3.5 text-success" />
-                      <div>
-                        <p className="text-[10px] text-muted-foreground leading-none">Disponible</p>
-                        <p className={cn("text-sm font-bold font-mono tabular-nums text-success", isPrivacyMode && "privacy-blur")}>
-                          {formatCurrency(cardTotals.totalAvailable)}
-                        </p>
-                      </div>
-                    </div>
-                    <div className="flex items-center gap-1.5">
-                      <Calendar className="h-3.5 w-3.5 text-orange-500" />
-                      <div>
-                        <p className="text-[10px] text-muted-foreground leading-none">Pago</p>
-                        <p className={cn("text-sm font-bold font-mono tabular-nums text-orange-500", isPrivacyMode && "privacy-blur")}>
-                          {formatCurrency(installmentTotals.monthlyPayment)}
-                        </p>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
+          <div className="tj-grid" data-tab={mobileTab}>
+            {/* Los plásticos */}
+            <section className="tj-wallet" aria-label="Mis tarjetas">
+              {cardSummaries.map((card) => (
+                <Plastic
+                  key={card.id}
+                  card={card}
+                  selected={cardSummaries.length > 1 && card.id === selected?.id}
+                  isPrivacyMode={isPrivacyMode}
+                  onSelect={() => {
+                    setSelectedId(card.id);
+                    setCycleOffset(0);
+                  }}
+                  onEdit={() => openEditCard(card.id)}
+                  onDelete={() => setDeleteCardId(card.id)}
+                  onNewInstallment={openNewInstallment}
+                />
+              ))}
+              <button className="tj-plastic tj-plastic-new" onClick={openNewCard}>
+                <Plus /> Tarjeta
+              </button>
+            </section>
 
-            {/* ── Cards Grid ── */}
-            <div>
-              <h2 className="text-xs font-semibold text-muted-foreground mb-3">
-                Mis tarjetas
-              </h2>
-              <div className="grid gap-3 md:grid-cols-2">
-                {cardSummaries.map((card) => (
-                  <CreditCardItem
-                    key={card.id}
-                    card={card}
-                    isPrivacyMode={isPrivacyMode}
-                    formatCurrency={formatCurrency}
-                    onEdit={() => {
-                      const fullCard = creditCards.find((c) => c.id === card.id);
-                      if (fullCard) {
-                        setEditingCard(fullCard);
-                        setCardModalOpen(true);
-                      }
-                    }}
-                    onDelete={() => setDeleteCardId(card.id)}
-                    onAddInstallment={() => setInstallmentModalOpen(true)}
-                  />
-                ))}
-              </div>
+            {/* Solo en celular: qué panel se ve */}
+            <div className="tj-tabs" role="tablist">
+              <button className="tj-tab" role="tab" aria-selected={mobileTab === "cuotas"} onClick={() => setMobileTab("cuotas")}>
+                Cuotas
+              </button>
+              <button className="tj-tab" role="tab" aria-selected={mobileTab === "cuenta"} onClick={() => setMobileTab("cuenta")}>
+                Estado de cuenta
+              </button>
             </div>
 
-            {/* ── Active Installments ── */}
-            {installments.length > 0 && (
-              <div>
-                <div className="flex items-center justify-between mb-3">
-                  <h2 className="text-xs font-semibold text-muted-foreground">
-                    Cuotas activas
-                  </h2>
-                  <Badge variant="secondary" className="text-xs font-mono">
-                    {activeInstallments.length} activa{activeInstallments.length !== 1 ? "s" : ""}
-                  </Badge>
-                </div>
-                <div className="space-y-2">
-                  {installments.map((inst) => (
+            {/* Compras en cuotas */}
+            <section className="tj-card tj-cuotas">
+              <div className="tj-card-head">
+                <span className="tj-label">
+                  Cuotas
+                  {activeCount > 0 && (
+                    <small>
+                      {" "}· {activeCount} activa{activeCount !== 1 ? "s" : ""}
+                    </small>
+                  )}
+                </span>
+                <button className="tj-btn" onClick={openNewInstallment}>
+                  <Plus /> Compra
+                </button>
+              </div>
+              <div className="tj-list" data-scrollable>
+                {sortedInstallments.length === 0 ? (
+                  <p className="tj-empty">Ninguna compra en cuotas. Cuando compres algo en cuotas, anótala acá y las verás mes a mes.</p>
+                ) : (
+                  sortedInstallments.map((inst, index) => (
                     <InstallmentRow
                       key={inst.id}
                       installment={inst}
-                      isExpanded={expandedInstallment === inst.id}
+                      index={index}
+                      open={openInstallment === inst.id}
+                      done={!isInstallmentActive(inst)}
                       isPrivacyMode={isPrivacyMode}
-                      isActive={isInstallmentActive(inst)}
-                      formatCurrency={formatCurrency}
-                      getInstallmentSchedule={getInstallmentSchedule}
-                      onToggleExpand={() =>
-                        setExpandedInstallment(expandedInstallment === inst.id ? null : inst.id)
-                      }
+                      schedule={getInstallmentSchedule(inst)}
+                      onToggle={() => setOpenInstallment(openInstallment === inst.id ? null : inst.id)}
                       onEdit={() => {
                         setEditingInstallment(inst);
                         setInstallmentModalOpen(true);
                       }}
                       onDelete={() => setDeleteInstallmentId(inst.id)}
                     />
-                  ))}
-                </div>
+                  ))
+                )}
               </div>
-            )}
+            </section>
 
-            {/* ── Billing / Estado de cuenta ── */}
-            <Collapsible open={billingOpen} onOpenChange={setBillingOpen}>
-              <CollapsibleTrigger asChild>
-                <button className="flex items-center gap-2 mb-3 group w-full text-left">
-                  <h2 className="text-xs font-semibold text-muted-foreground">
-                    Estado de cuenta
-                  </h2>
-                  <ChevronDown className={cn(
-                    "h-3.5 w-3.5 text-muted-foreground/60 transition-transform",
-                    !billingOpen && "-rotate-90"
-                  )} />
-                </button>
-              </CollapsibleTrigger>
-              <CollapsibleContent>
-              <Card>
-                <CardContent className="p-4 space-y-4">
-                  {/* Card selector + Cycle navigation */}
-                  <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
-                    <Select
-                      value={selectedBillingCard?.id || ""}
-                      onValueChange={(v) => {
-                        setBillingCardId(v);
-                        setCycleOffset(0);
-                      }}
-                    >
-                      <SelectTrigger className="w-[200px] h-9">
-                        <SelectValue placeholder="Selecciona tarjeta" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {creditCards.map(card => (
-                          <SelectItem key={card.id} value={card.id}>
-                            <div className="flex items-center gap-2">
-                              <div
-                                className="w-2.5 h-2.5 rounded-full"
-                                style={{ backgroundColor: card.color || "#6366f1" }}
-                              />
-                              {card.name}
-                            </div>
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-
-                    <div className="flex items-center gap-1.5">
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        className="h-8 w-8"
-                        onClick={() => setCycleOffset(cycleOffset - 1)}
-                      >
-                        <ChevronLeft className="h-4 w-4" />
-                      </Button>
-                      <span className="min-w-[140px] text-center text-sm font-medium capitalize">
-                        {billingCycle?.label || "---"}
+            {/* Estado de cuenta de la tarjeta elegida */}
+            <section className="tj-card tj-cuenta">
+              <div className="tj-card-head">
+                <span className="tj-label">
+                  Estado de cuenta
+                  {selected && cardSummaries.length > 1 && <small> · {selected.name}</small>}
+                </span>
+                <span className="tj-stepper">
+                  <button onClick={() => setCycleOffset(cycleOffset - 1)} aria-label="Ciclo anterior">
+                    <ChevronLeft />
+                  </button>
+                  <span className="label">{cycle?.label ?? "—"}</span>
+                  <button onClick={() => setCycleOffset(cycleOffset + 1)} disabled={cycleOffset >= 0} aria-label="Ciclo siguiente">
+                    <ChevronRight />
+                  </button>
+                </span>
+              </div>
+              {cycle && selected && (
+                <div className="tj-cycle">
+                  <span>
+                    {day(cycle.start)} → {day(cycle.end)}
+                  </span>
+                  <span className="tj-pill" data-open={!cycle.isClosed || undefined}>
+                    {cycle.isClosed ? "facturado" : "por facturar"}
+                  </span>
+                  <span className="tj-cycle-pay">pago día {selected.payment_day}</span>
+                  <b className={cn(isPrivacyMode && "privacy-blur")}>{formatCurrency(cycleTotals.gastos - cycleTotals.abonos)}</b>
+                </div>
+              )}
+              <div className="tj-list" data-scrollable>
+                {cycleTx.length === 0 ? (
+                  <p className="tj-empty">Sin movimientos en este ciclo.</p>
+                ) : (
+                  cycleTx.map((tx) => (
+                    <div key={tx.id} className="tj-tx" data-in={tx.type === "Ingreso" || undefined}>
+                      <span className="d">{format(new Date(tx.date), "dd/MM")}</span>
+                      <span className={cn("n", isPrivacyMode && "privacy-blur")}>{tx.detail || tx.category_name}</span>
+                      <span className={cn("v", isPrivacyMode && "privacy-blur")}>
+                        {tx.type === "Ingreso" ? "+" : ""}
+                        {formatCurrency(Number(tx.amount))}
                       </span>
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        className="h-8 w-8"
-                        onClick={() => setCycleOffset(cycleOffset + 1)}
-                        disabled={cycleOffset >= 0}
-                      >
-                        <ChevronRight className="h-4 w-4" />
-                      </Button>
                     </div>
-                  </div>
-
-                  {/* Cycle metadata */}
-                  {billingCycle && selectedBillingCard && (
-                    <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-muted-foreground">
-                      <span>Cierre día {selectedBillingCard.billing_day}</span>
-                      <span className="text-border">·</span>
-                      <span>Pago día {selectedBillingCard.payment_day}</span>
-                      <span className="text-border">·</span>
-                      <span>
-                        {format(billingCycle.start, "dd MMM", { locale: es })} → {format(billingCycle.end, "dd MMM yyyy", { locale: es })}
-                      </span>
-                      <Badge variant={billingCycle.isClosed ? "secondary" : "default"} className="ml-auto text-[10px]">
-                        {billingCycle.isClosed ? "Facturado" : "Por facturar"}
-                      </Badge>
-                    </div>
-                  )}
-
-                  {/* Transactions table */}
-                  {billingTransactions.length === 0 ? (
-                    <div className="text-center py-6 text-muted-foreground">
-                      <FileText className="h-7 w-7 mx-auto mb-2 opacity-40" />
-                      <p className="text-sm">Sin movimientos en este período</p>
-                    </div>
-                  ) : (
-                    <>
-                      <div className="border rounded-lg overflow-hidden">
-                        <table className="w-full text-sm">
-                          <thead className="bg-muted/50">
-                            <tr className="border-b">
-                              <th className="text-left px-3 py-2 font-medium text-xs w-20">Fecha</th>
-                              <th className="text-left px-3 py-2 font-medium text-xs">Descripción</th>
-                              <th className="text-right px-3 py-2 font-medium text-xs w-28">Monto</th>
-                            </tr>
-                          </thead>
-                          <tbody className="divide-y">
-                            {billingTransactions.map(tx => (
-                              <tr key={tx.id} className="hover:bg-muted/30">
-                                <td className="px-3 py-2 text-muted-foreground whitespace-nowrap text-xs">
-                                  {format(new Date(tx.date), "dd/MM")}
-                                </td>
-                                <td className={cn("px-3 py-2 text-xs", isPrivacyMode && "privacy-blur")}>
-                                  {tx.detail || tx.category_name}
-                                </td>
-                                <td className={cn(
-                                  "px-3 py-2 text-right font-medium font-mono tabular-nums whitespace-nowrap text-xs",
-                                  tx.type === "Ingreso" ? "text-success" : "",
-                                  isPrivacyMode && "privacy-blur"
-                                )}>
-                                  {tx.type === "Ingreso" && "+"}{formatCurrency(tx.amount)}
-                                </td>
-                              </tr>
-                            ))}
-                          </tbody>
-                        </table>
-                      </div>
-
-                      {/* Billing totals */}
-                      <div className="flex items-center justify-end gap-4 text-sm pt-1">
-                        <div className="text-muted-foreground">
-                          Cargos{" "}
-                          <span className={cn("font-mono tabular-nums font-medium text-foreground", isPrivacyMode && "privacy-blur")}>
-                            {formatCurrency(billingTotals.gastos)}
-                          </span>
-                        </div>
-                        {billingTotals.abonos > 0 && (
-                          <div className="text-muted-foreground">
-                            Abonos{" "}
-                            <span className={cn("font-mono tabular-nums font-medium text-success", isPrivacyMode && "privacy-blur")}>
-                              {formatCurrency(billingTotals.abonos)}
-                            </span>
-                          </div>
-                        )}
-                        <div className="font-semibold">
-                          Total{" "}
-                          <span className={cn("font-mono tabular-nums", isPrivacyMode && "privacy-blur")}>
-                            {formatCurrency(billingTotals.gastos - billingTotals.abonos)}
-                          </span>
-                        </div>
-                      </div>
-                    </>
-                  )}
-                </CardContent>
-              </Card>
-              </CollapsibleContent>
-            </Collapsible>
-          </>
+                  ))
+                )}
+              </div>
+              {cycleTotals.abonos > 0 && (
+                <div className={cn("tj-foot", isPrivacyMode && "privacy-blur")}>
+                  <span>
+                    cargos <b>{formatCurrency(cycleTotals.gastos)}</b>
+                  </span>
+                  <span>
+                    abonos <b className="in">{formatCurrency(cycleTotals.abonos)}</b>
+                  </span>
+                </div>
+              )}
+            </section>
+          </div>
         )}
       </div>
 
-      {/* Modals */}
       <CreditCardModal
         open={cardModalOpen}
         onOpenChange={(open) => {
@@ -566,273 +404,167 @@ export default function CreditCards() {
   );
 }
 
-// ─── Credit Card Item ─────────────────────────────────
-function CreditCardItem({
+// ─── El plástico ─────────────────────────────────────────────────────────
+function Plastic({
   card,
+  selected,
   isPrivacyMode,
-  formatCurrency,
+  onSelect,
   onEdit,
   onDelete,
-  onAddInstallment,
+  onNewInstallment,
 }: {
   card: CreditCardSummary;
+  selected: boolean;
   isPrivacyMode: boolean;
-  formatCurrency: (n: number) => string;
+  onSelect: () => void;
   onEdit: () => void;
   onDelete: () => void;
-  onAddInstallment: () => void;
+  onNewInstallment: () => void;
 }) {
-  const usedPercent = card.credit_limit > 0
-    ? Math.min(100, (card.total_used_credit / card.credit_limit) * 100)
-    : 0;
-
-  const isHighUsage = usedPercent > 80;
-
+  const usage = usageOf(card);
   return (
-    <Card className="overflow-hidden">
-      <div className="flex">
-        {/* Color accent bar */}
-        <div
-          className="w-1.5 flex-shrink-0"
-          style={{ backgroundColor: card.color || "#6366f1" }}
-        />
-
-        <CardContent className="flex-1 p-4 space-y-3">
-          {/* Header: name + menu */}
-          <div className="flex items-start justify-between">
-            <div>
-              <div className="flex items-center gap-2">
-                <h3 className="font-semibold text-sm">{card.name}</h3>
-                {card.last_4_digits && (
-                  <span className="text-[11px] font-mono text-muted-foreground/60 tracking-wider">
-                    ····{card.last_4_digits}
-                  </span>
-                )}
-              </div>
-              <p className="text-[11px] text-muted-foreground">
-                Cierre: {card.billing_day} · Pago: {card.payment_day}
-              </p>
-            </div>
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button variant="ghost" size="sm" className="h-7 w-7 p-0">
-                  <MoreHorizontal className="h-4 w-4" />
-                </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="end">
-                <DropdownMenuItem onClick={onEdit}>
-                  <Pencil className="mr-2 h-4 w-4" />
-                  Editar
-                </DropdownMenuItem>
-                <DropdownMenuItem onClick={onAddInstallment}>
-                  <Plus className="mr-2 h-4 w-4" />
-                  Nueva compra
-                </DropdownMenuItem>
-                <DropdownMenuSeparator />
-                <DropdownMenuItem onClick={onDelete} className="text-destructive">
-                  <Trash2 className="mr-2 h-4 w-4" />
-                  Eliminar
-                </DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenu>
-          </div>
-
-          {/* Usage bar */}
-          <div>
-            <div className="flex justify-between items-baseline mb-1.5">
-              <span className={cn(
-                "text-xs font-mono tabular-nums",
-                isHighUsage ? "text-destructive font-medium" : "text-muted-foreground",
-                isPrivacyMode && "privacy-blur"
-              )}>
-                {formatCurrency(card.total_used_credit)} / {formatCurrency(card.credit_limit)}
-              </span>
-              <span className={cn(
-                "text-xs font-mono tabular-nums",
-                isHighUsage && "text-destructive font-medium"
-              )}>
-                {Math.round(usedPercent)}%
-              </span>
-            </div>
-            <Progress
-              value={usedPercent}
-              className={cn("h-1.5", isHighUsage && "[&>div]:bg-destructive")}
-            />
-            {isHighUsage && (
-              <p className="text-[11px] text-destructive mt-1 flex items-center gap-1">
-                <AlertTriangle className="h-3 w-3" />
-                Cupo casi agotado
-              </p>
-            )}
-          </div>
-
-          {/* Stats row */}
-          <div className="flex items-center justify-between text-xs">
-            <div>
-              <span className="text-muted-foreground">Disponible </span>
-              <span className={cn("font-semibold font-mono tabular-nums text-success", isPrivacyMode && "privacy-blur")}>
-                {formatCurrency(card.available_credit)}
-              </span>
-            </div>
-            <div>
-              <span className="text-muted-foreground">Pago </span>
-              <span className={cn("font-semibold font-mono tabular-nums text-orange-500", isPrivacyMode && "privacy-blur")}>
-                {formatCurrency(card.next_payment_installments)}
-              </span>
-            </div>
-          </div>
-
-          {/* Installments badge */}
-          {card.active_installment_count > 0 && (
-            <div className="flex items-center gap-1 text-[11px] text-muted-foreground pt-0.5">
-              <Receipt className="h-3 w-3" />
-              {card.active_installment_count} compra{card.active_installment_count > 1 ? "s" : ""} en cuotas
-            </div>
-          )}
-        </CardContent>
+    <div
+      role="button"
+      tabIndex={0}
+      className="tj-plastic"
+      data-selected={selected || undefined}
+      data-hot={usage > HOT_USAGE || undefined}
+      style={{ "--tj-c": card.color || "var(--tj-fallback)" } as CSSProperties}
+      onClick={onSelect}
+      onKeyDown={(e) => {
+        if (e.key === "Enter" || e.key === " ") {
+          e.preventDefault();
+          onSelect();
+        }
+      }}
+      aria-pressed={selected}
+      aria-label={`${card.name}, ${Math.round(usage)}% del cupo usado`}
+    >
+      <div className="tj-pl-top">
+        <span className="tj-chip" aria-hidden />
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <button className="tj-pl-menu" aria-label={`Opciones de ${card.name}`} onClick={(e) => e.stopPropagation()}>
+              <MoreHorizontal />
+            </button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end" onClick={(e) => e.stopPropagation()}>
+            <DropdownMenuItem onClick={onEdit}>
+              <Pencil className="mr-2 h-4 w-4" />
+              Editar
+            </DropdownMenuItem>
+            <DropdownMenuItem onClick={onNewInstallment}>
+              <Plus className="mr-2 h-4 w-4" />
+              Nueva compra
+            </DropdownMenuItem>
+            <DropdownMenuSeparator />
+            <DropdownMenuItem onClick={onDelete} className="text-destructive">
+              <Trash2 className="mr-2 h-4 w-4" />
+              Eliminar
+            </DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
       </div>
-    </Card>
+
+      <div className="tj-pl-mid">
+        <span className="tj-pl-label">usado</span>
+        <span className={cn("tj-pl-big", isPrivacyMode && "privacy-blur")}>{formatCurrency(card.total_used_credit)}</span>
+        <span className={cn("tj-pl-of", isPrivacyMode && "privacy-blur")}>
+          <span>disponible {formatCurrency(card.available_credit)}</span>
+          <span className="tj-pl-pct">{Math.round(usage)}%</span>
+        </span>
+      </div>
+      <div className="tj-pl-track" aria-hidden>
+        <i style={{ width: `${Math.max(usage, card.total_used_credit > 0 ? 1.5 : 0)}%` }} />
+      </div>
+
+      <div className="tj-pl-bot">
+        <span className="tj-pl-name">{card.name}</span>
+        <span className="tj-pl-digits">{card.last_4_digits ? `···· ${card.last_4_digits}` : ""}</span>
+      </div>
+    </div>
   );
 }
 
-// ─── Installment Row ─────────────────────────────────
+// ─── Una compra en cuotas ─────────────────────────────────────────────────
+type ScheduleItem = ReturnType<ReturnType<typeof useInstallments>["getInstallmentSchedule"]>[number];
+
 function InstallmentRow({
   installment,
-  isExpanded,
+  index,
+  open,
+  done,
   isPrivacyMode,
-  isActive,
-  formatCurrency,
-  getInstallmentSchedule,
-  onToggleExpand,
+  schedule,
+  onToggle,
   onEdit,
   onDelete,
 }: {
   installment: InstallmentPurchase;
-  isExpanded: boolean;
+  index: number;
+  open: boolean;
+  done: boolean;
   isPrivacyMode: boolean;
-  isActive: boolean;
-  formatCurrency: (n: number) => string;
-  getInstallmentSchedule: (i: InstallmentPurchase) => Array<{
-    number: number;
-    date: Date;
-    dateFormatted: string;
-    amount: number;
-    isPaid: boolean;
-    isCurrent: boolean;
-    isPastDue: boolean;
-  }>;
-  onToggleExpand: () => void;
+  schedule: ScheduleItem[];
+  onToggle: () => void;
   onEdit: () => void;
   onDelete: () => void;
 }) {
-  const schedule = getInstallmentSchedule(installment);
   const today = new Date();
-  const billedCount = schedule.filter(s => s.date <= today).length;
-  const progress = (billedCount / installment.total_installments) * 100;
+  const billed = schedule.filter((s) => s.date <= today).length;
+  const total = installment.total_installments;
+  const progress = (billed / total) * 100;
+  const remaining = (total - billed) * installment.installment_amount;
+  const next = schedule.find((s) => s.date > today);
 
   return (
-    <Card className={cn(!isActive && "opacity-60")}>
-      <CardContent className="p-3">
-        {/* Main row */}
-        <div className="flex items-center gap-3">
-          {/* Color dot */}
-          <div
-            className="w-2.5 h-2.5 rounded-full flex-shrink-0"
-            style={{ backgroundColor: installment.card_color || "#6366f1" }}
-          />
+    <div className="tj-inst" data-done={done || undefined} data-open={open || undefined}>
+      <button className="tj-inst-main" onClick={onToggle} aria-expanded={open}>
+        <i className="tj-dot" style={{ background: installment.card_color || "var(--tj-fallback)" }} aria-hidden />
+        <span className="n">
+          {installment.description}
+          {installment.card_name && <small>{installment.card_name}</small>}
+        </span>
+        <span className={cn("v", isPrivacyMode && "privacy-blur")}>
+          {formatCurrency(installment.installment_amount)}
+          <small>/mes</small>
+        </span>
+        <span className="row2">
+          <span className="tj-inst-track">
+            <i style={{ width: `${progress}%`, "--i": index } as CSSProperties} />
+          </span>
+          <span className={cn("k", isPrivacyMode && "privacy-blur")}>
+            {billed} de {total}
+            {!done && next && ` · ${day(next.date)}`}
+          </span>
+        </span>
+      </button>
 
-          {/* Description + card */}
-          <div className="flex-1 min-w-0">
-            <div className="flex items-baseline gap-2">
-              <span className="font-medium text-sm truncate">{installment.description}</span>
-              <span className="text-[11px] text-muted-foreground flex-shrink-0">
-                {installment.card_name}
+      {open && (
+        <div className="tj-inst-detail">
+          <p className={cn("tj-inst-meta", isPrivacyMode && "privacy-blur")}>
+            <span>{installment.category_name || "Sin categoría"}</span>
+            <span>total {formatCurrency(installment.total_amount)}</span>
+            {done ? <span>terminada</span> : <span>quedan {formatCurrency(remaining)}</span>}
+          </p>
+          <div className="tj-sched" aria-label="Calendario de cuotas">
+            {schedule.map((s) => (
+              <span key={s.number} data-billed={s.date <= today || undefined} data-next={next?.number === s.number || undefined}>
+                <b>{s.number}</b> {format(s.date, "MMM yy", { locale: es }).replace(".", "")}
               </span>
-            </div>
+            ))}
           </div>
-
-          {/* Progress text */}
-          <div className="flex items-center gap-3 flex-shrink-0">
-            <span className="text-xs text-muted-foreground font-mono tabular-nums">
-              {billedCount}/{installment.total_installments}
-            </span>
-            <span className={cn("text-sm font-semibold font-mono tabular-nums", isPrivacyMode && "privacy-blur")}>
-              {formatCurrency(installment.installment_amount)}
-              <span className="text-[10px] font-normal text-muted-foreground">/mes</span>
-            </span>
+          <div className="tj-inst-actions">
+            <button className="tj-btn" onClick={onEdit}>
+              <Pencil /> Editar
+            </button>
+            <button className="tj-btn tj-btn-danger" onClick={onDelete}>
+              <Trash2 /> Eliminar
+            </button>
           </div>
-
-          {/* Actions */}
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button variant="ghost" size="sm" className="h-7 w-7 p-0 flex-shrink-0">
-                <MoreHorizontal className="h-3.5 w-3.5" />
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end">
-              <DropdownMenuItem onClick={onEdit}>
-                <Pencil className="mr-2 h-4 w-4" />
-                Editar
-              </DropdownMenuItem>
-              <DropdownMenuSeparator />
-              <DropdownMenuItem onClick={onDelete} className="text-destructive">
-                <Trash2 className="mr-2 h-4 w-4" />
-                Eliminar
-              </DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
         </div>
-
-        {/* Progress bar */}
-        <div className="mt-2 flex items-center gap-2">
-          <Progress value={progress} className="h-1 flex-1" />
-          <button
-            onClick={onToggleExpand}
-            className="text-[11px] text-muted-foreground hover:text-foreground transition-colors flex items-center gap-0.5 flex-shrink-0"
-          >
-            Detalle
-            <ChevronDown className={cn("h-3 w-3 transition-transform", isExpanded && "rotate-180")} />
-          </button>
-        </div>
-
-        {/* Expanded schedule */}
-        {isExpanded && (
-          <div className="mt-3 pt-3 border-t">
-            <div className="flex items-center justify-between text-xs text-muted-foreground mb-2">
-              <span>
-                {installment.category_name} · Total {" "}
-                <span className={cn("font-mono tabular-nums", isPrivacyMode && "privacy-blur")}>
-                  {formatCurrency(installment.total_amount)}
-                </span>
-              </span>
-              <span>{installment.total_installments} cuotas</span>
-            </div>
-            <div className="grid grid-cols-4 sm:grid-cols-6 lg:grid-cols-8 gap-1.5">
-              {schedule.map((s) => {
-                const isBilled = s.date <= today;
-                return (
-                  <div
-                    key={s.number}
-                    className={cn(
-                      "text-center py-1.5 px-1 rounded text-[10px]",
-                      isBilled && "bg-success/10 text-success",
-                      !isBilled && "bg-muted/50 text-muted-foreground"
-                    )}
-                  >
-                    <span className="font-bold">{s.number}</span>
-                    <span className="opacity-60 ml-0.5">{s.dateFormatted}</span>
-                    {isBilled ? (
-                      <CheckCircle2 className="h-2.5 w-2.5 mx-auto mt-0.5" />
-                    ) : (
-                      <Clock className="h-2.5 w-2.5 mx-auto mt-0.5 opacity-40" />
-                    )}
-                  </div>
-                );
-              })}
-            </div>
-          </div>
-        )}
-      </CardContent>
-    </Card>
+      )}
+    </div>
   );
 }
