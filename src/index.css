@@ -1183,7 +1183,7 @@ Based on Indigo, Blue, Cyan palette
 .inicio-head-end { margin-left: auto; display: flex; align-items: center; gap: 8px; flex: none; }
 .inicio-pulse-pill { display: none; align-items: center; gap: 6px; font-size: 12px; color: var(--muted-foreground); padding: 6px 11px;
   border-radius: 999px; background: var(--card); border: 1px solid var(--border); }
-.inicio-pulse-pill span { color: var(--primary); font-size: 9px; }
+.inicio-pulse-pill svg { color: var(--primary); flex-shrink: 0; }
 
 /* Acciones: pastillas del color de su tipo, todas iguales */
 .inicio-actions { display: flex; gap: 8px; }

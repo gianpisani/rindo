@@ -24,6 +24,7 @@ import {
   TrendingDown,
   PiggyBank,
   Receipt,
+  Play,
 } from "lucide-react";
 import { BankSyncModal } from "@/components/BankSyncModal";
 import { useBankSyncContext } from "@/contexts/BankSyncContext";
@@ -498,7 +499,7 @@ const Index = () => {
               <div className="inicio-actions">{actions}</div>
               {hasPace && (
                 <button className="inicio-pulse-pill" onClick={() => setStoryOpen(true)}>
-                  <span>▶</span>Tu mes
+                  <Play size={10} strokeWidth={2.5} fill="currentColor" aria-hidden />Tu mes
                 </button>
               )}
             </div>
