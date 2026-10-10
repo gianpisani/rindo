@@ -90,6 +90,72 @@ const RESERVED_HEIGHT = "8.75rem";
 const SCREEN_WIDTH = `min(calc(100vw - 1.5rem), calc((100dvh - ${RESERVED_HEIGHT}) * 16 / 9))`;
 
 /**
+ * El ancho en pantalla completa: no se reserva nada. Las dos barras se montan
+ * sobre la imagen y se van solas, así que la imagen toma la pantalla entera
+ * —como en YouTube— y lo que sobre por la proporción queda en negro.
+ */
+const FULLSCREEN_WIDTH = "min(100vw, calc(100dvh * 16 / 9))";
+
+/** Dónde se pide la pantalla completa, con o sin prefijo de Safari. */
+type FullscreenDocument = Document & {
+  webkitFullscreenElement?: Element | null;
+  webkitExitFullscreen?: () => Promise<void> | void;
+};
+type FullscreenElement = HTMLElement & {
+  webkitRequestFullscreen?: () => Promise<void> | void;
+};
+
+function fullscreenElement(): Element | null {
+  const doc = document as FullscreenDocument;
+  return doc.fullscreenElement ?? doc.webkitFullscreenElement ?? null;
+}
+
+/**
+ * Se pide sobre el documento entero y no sobre el cuadro del video a propósito:
+ * la sala ya ocupa toda la ventana, y lo que se abre encima —la transcripción,
+ * los atajos, los avisos— se monta en el `body`. Si la pantalla completa fuera
+ * de un elemento, todo eso quedaría afuera y no se vería.
+ */
+async function enterFullscreen(): Promise<void> {
+  const root = document.documentElement as FullscreenElement;
+  try {
+    if (root.requestFullscreen) await root.requestFullscreen();
+    else if (root.webkitRequestFullscreen) await root.webkitRequestFullscreen();
+  } catch {
+    // Sin permiso o sin soporte: la sala igual pasa a modo cine.
+  }
+  // En el teléfono la pantalla completa es horizontal. Solo algunos
+  // navegadores dejan pedirlo, y solo estando ya en pantalla completa.
+  try {
+    const orientation = screen.orientation as unknown as
+      | { lock?: (mode: string) => Promise<void> }
+      | undefined;
+    await orientation?.lock?.("landscape");
+  } catch {
+    // El resto gira el teléfono a mano, como siempre.
+  }
+}
+
+async function exitFullscreen(): Promise<void> {
+  try {
+    const orientation = screen.orientation as unknown as
+      | { unlock?: () => void }
+      | undefined;
+    orientation?.unlock?.();
+  } catch {
+    // Nunca estuvo bloqueada.
+  }
+  if (!fullscreenElement()) return;
+  const doc = document as FullscreenDocument;
+  try {
+    if (doc.exitFullscreen) await doc.exitFullscreen();
+    else if (doc.webkitExitFullscreen) await doc.webkitExitFullscreen();
+  } catch {
+    // Ya se había salido.
+  }
+}
+
+/**
  * Cuánto aguanta el cromo antes de irse.
  *
  * Y de dónde vuelve: de fuera del cuadro. Dentro del cuadro la mano está
@@ -101,6 +167,9 @@ const IDLE_MS = 2800;
 
 /** El subtítulo sobre el video: encendido salvo que lo hayas apagado tú. */
 const CAPTION_PREF_KEY = "rindo:learning-caption";
+
+/** El subrayado de palabras bajo el subtítulo: igual, encendido hasta que no. */
+const MARKS_PREF_KEY = "rindo:learning-marks";
 
 export function SessionStudio({
   session,
@@ -196,6 +265,58 @@ export function SessionStudio({
     });
     onActivity();
   }, [onActivity]);
+
+  /**
+   * El subrayado de palabras se apaga igual que el subtítulo, y por la misma
+   * razón: hay días en que las marcas de "esta no la tienes" ayudan a elegir
+   * dónde parar, y hay días en que uno solo quiere leer. Las dos son maneras
+   * válidas de mirar, y la que elegiste queda.
+   */
+  const [marksOn, setMarksOn] = useState(
+    () => localStorage.getItem(MARKS_PREF_KEY) !== "0"
+  );
+
+  const toggleMarks = useCallback(() => {
+    setMarksOn((prev) => {
+      localStorage.setItem(MARKS_PREF_KEY, prev ? "0" : "1");
+      return !prev;
+    });
+    onActivity();
+  }, [onActivity]);
+
+  /**
+   * Pantalla completa: la sala toma la pantalla y la imagen crece hasta los
+   * bordes. Es un estado de la sala y no solo del navegador, porque en el
+   * iPhone no existe la pantalla completa de una página: ahí el modo cine
+   * igual monta las barras sobre la imagen, que es lo que se puede.
+   */
+  const [fullscreen, setFullscreen] = useState(false);
+
+  const toggleFullscreen = useCallback(() => {
+    setFullscreen((prev) => {
+      if (prev) void exitFullscreen();
+      else void enterFullscreen();
+      return !prev;
+    });
+    onActivity();
+  }, [onActivity]);
+
+  // Si saliste con Esc o con el gesto del sistema, la sala se entera.
+  useEffect(() => {
+    const sync = () => {
+      if (!fullscreenElement()) setFullscreen(false);
+    };
+    document.addEventListener("fullscreenchange", sync);
+    document.addEventListener("webkitfullscreenchange", sync);
+    return () => {
+      document.removeEventListener("fullscreenchange", sync);
+      document.removeEventListener("webkitfullscreenchange", sync);
+    };
+  }, []);
+
+  // Salir del estudio nunca te deja la ventana en pantalla completa.
+  useEffect(() => () => void exitFullscreen(), []);
+
   const [transcriptHelpOpen, setTranscriptHelpOpen] = useState(false);
 
   /**
@@ -582,6 +703,9 @@ export function SessionStudio({
         e.preventDefault();
         if (panel) setPanel(null);
         else if (isCapturing) closeCapture(true);
+        // El navegador suele quedarse con el Esc en pantalla completa; si nos
+        // llega, salir de ella es lo de más adentro: no es salir del estudio.
+        else if (fullscreen) toggleFullscreen();
         else onLeave();
         return;
       }
@@ -593,6 +717,18 @@ export function SessionStudio({
       }
 
       if (!hasPlayer) return;
+
+      if (e.key === "f" || e.key === "F") {
+        e.preventDefault();
+        toggleFullscreen();
+        return;
+      }
+
+      if (e.key === "u" || e.key === "U") {
+        e.preventDefault();
+        toggleMarks();
+        return;
+      }
 
       if (e.key === " ") {
         e.preventDefault();
@@ -623,6 +759,9 @@ export function SessionStudio({
     onActivity,
     repeatLine,
     toggleCaption,
+    toggleMarks,
+    toggleFullscreen,
+    fullscreen,
     wake,
     panel,
     isCapturing,
@@ -660,6 +799,7 @@ export function SessionStudio({
           "studio-room dark fixed inset-0 z-[60] flex h-[100dvh] flex-col",
           "overflow-hidden text-foreground"
         )}
+        data-fullscreen={fullscreen || undefined}
         onPointerMove={wakeOutsideScreen}
         onPointerDown={onActivity}
       >
@@ -667,7 +807,11 @@ export function SessionStudio({
         <div
           className={cn(
             "z-20 shrink-0 transition-opacity duration-300",
-            chromeVisible ? "opacity-100" : "pointer-events-none opacity-0"
+            chromeVisible ? "opacity-100" : "pointer-events-none opacity-0",
+            // En pantalla completa la barra flota sobre la imagen, con un velo
+            // para leerse sobre cualquier cuadro.
+            fullscreen &&
+              "absolute inset-x-0 top-0 bg-gradient-to-b from-black/70 to-transparent pb-6"
           )}
         >
           <StudioTopRail
@@ -682,7 +826,10 @@ export function SessionStudio({
         {/* ── La pantalla ────────────────────────────────────── */}
         <div className="relative flex min-h-0 flex-1 items-center justify-center">
           {hasPlayer ? (
-            <div className="flex flex-col" style={{ width: SCREEN_WIDTH }}>
+            <div
+              className="flex flex-col"
+              style={{ width: fullscreen ? FULLSCREEN_WIDTH : SCREEN_WIDTH }}
+            >
               <div
                 /*
                   Dentro del cuadro la mano no pide controles.
@@ -706,7 +853,10 @@ export function SessionStudio({
                 }}
                 className={cn(
                   "studio-screen relative aspect-video w-full shrink-0",
-                  "overflow-hidden rounded-xl bg-black"
+                  "overflow-hidden bg-black",
+                  // A pantalla completa la imagen llega al borde: sin esquinas
+                  // redondeadas ni sombra, que ya no hay sala alrededor.
+                  fullscreen ? "studio-screen-full" : "rounded-xl"
                 )}
               >
                 <YouTubePlayer
@@ -741,6 +891,13 @@ export function SessionStudio({
                     playerRef.current?.toggle();
                     onActivity();
                   }}
+                  // Doble clic sobre la imagen: pantalla completa, como en
+                  // YouTube. Los dos clics simples se anulan entre sí, así que
+                  // el video queda como estaba.
+                  onDoubleClick={() => {
+                    if (panel || isCapturing) return;
+                    toggleFullscreen();
+                  }}
                   aria-label={isVideoPlaying ? "Pausar el video" : "Reproducir"}
                   className="absolute inset-0 flex items-center justify-center"
                 >
@@ -767,8 +924,9 @@ export function SessionStudio({
                   }
                   word={spot.word}
                   onPick={pickFromTranscript}
-                  markOf={markOf}
+                  markOf={marksOn ? markOf : undefined}
                   dimmed={isCapturing}
+                  lifted={fullscreen && chromeVisible}
                 />
 
                 {/*
@@ -789,17 +947,19 @@ export function SessionStudio({
               </div>
 
               {/* Dónde vas: pegada al borde de abajo, fuera de la imagen */}
-              <PlayerTransport
-                playbackRef={playbackRef}
-                playing={isVideoPlaying}
-                durationSeconds={trackDuration}
-                markers={captureMarkers}
-                onSeek={(seconds) => {
-                  playerRef.current?.seekTo(seconds);
-                  onActivity();
-                }}
-                className="mt-1 shrink-0"
-              />
+              {!fullscreen && (
+                <PlayerTransport
+                  playbackRef={playbackRef}
+                  playing={isVideoPlaying}
+                  durationSeconds={trackDuration}
+                  markers={captureMarkers}
+                  onSeek={(seconds) => {
+                    playerRef.current?.seekTo(seconds);
+                    onActivity();
+                  }}
+                  className="mt-1 shrink-0"
+                />
+              )}
             </div>
           ) : (
             <div className="studio-glass mx-4 max-w-md rounded-2xl p-8 text-center">
@@ -833,29 +993,51 @@ export function SessionStudio({
         <div
           className={cn(
             "z-20 shrink-0 transition-opacity duration-300",
-            chromeVisible ? "opacity-100" : "pointer-events-none opacity-0"
+            chromeVisible ? "opacity-100" : "pointer-events-none opacity-0",
+            fullscreen &&
+              "absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/75 to-transparent pt-8"
           )}
         >
           {hasPlayer ? (
-            <StudioControlRail
-              playbackRef={playbackRef}
-              playing={isVideoPlaying}
-              durationSeconds={trackDuration}
-              onToggle={() => {
-                playerRef.current?.toggle();
-                onActivity();
-              }}
-              onRepeat={repeatLine}
-              captionOn={captionOn}
-              onToggleCaption={toggleCaption}
-              hasSubtitles={cues.length > 0}
-              capturedCount={captured.length}
-              onOpenCapture={openCapture}
-              isPaused={isPaused}
-              panel={panel}
-              onPanel={setPanel}
-              onHelp={() => setShortcutsOpen(true)}
-            />
+            <>
+              {/* En pantalla completa la barra de progreso baja con el resto */}
+              {fullscreen && (
+                <PlayerTransport
+                  playbackRef={playbackRef}
+                  playing={isVideoPlaying}
+                  durationSeconds={trackDuration}
+                  markers={captureMarkers}
+                  onSeek={(seconds) => {
+                    playerRef.current?.seekTo(seconds);
+                    onActivity();
+                  }}
+                  className="mx-3 sm:mx-5"
+                />
+              )}
+              <StudioControlRail
+                playbackRef={playbackRef}
+                playing={isVideoPlaying}
+                durationSeconds={trackDuration}
+                onToggle={() => {
+                  playerRef.current?.toggle();
+                  onActivity();
+                }}
+                onRepeat={repeatLine}
+                captionOn={captionOn}
+                onToggleCaption={toggleCaption}
+                marksOn={marksOn}
+                onToggleMarks={toggleMarks}
+                fullscreen={fullscreen}
+                onToggleFullscreen={toggleFullscreen}
+                hasSubtitles={cues.length > 0}
+                capturedCount={captured.length}
+                onOpenCapture={openCapture}
+                isPaused={isPaused}
+                panel={panel}
+                onPanel={setPanel}
+                onHelp={() => setShortcutsOpen(true)}
+              />
+            </>
           ) : (
             /* Sin reproductor no hay nada que manejar: queda la sesión. */
             <div className="flex h-12 items-center justify-end gap-1 px-3 sm:px-5">
@@ -1005,7 +1187,7 @@ export function SessionStudio({
                 setTranscriptOpen(false);
                 onActivity();
               }}
-              markOf={markOf}
+              markOf={marksOn ? markOf : undefined}
               onBringSubtitles={() => setTranscriptHelpOpen(true)}
               onPasteClipboard={pasteTranscript}
               isSaving={saveTranscript.isPending}

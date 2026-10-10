@@ -12,6 +12,11 @@ interface SubtitleCaptionProps {
   markOf?: (word: string) => WordMark | null;
   /** Con la ficha abierta la frase se aparta: la respuesta manda. */
   dimmed?: boolean;
+  /**
+   * Las barras están flotando sobre la imagen y la de abajo le pisa el lugar:
+   * la frase sube lo justo para quedar encima de ellas, como en YouTube.
+   */
+  lifted?: boolean;
 }
 
 /**
@@ -40,6 +45,7 @@ export function SubtitleCaption({
   onPick,
   markOf,
   dimmed,
+  lifted,
 }: SubtitleCaptionProps) {
   const phrase = usePhraseSelection((span: PhraseSpan) => {
     if (!block) return;
@@ -56,10 +62,11 @@ export function SubtitleCaption({
   return (
     <div
       data-marking={phrase.marking || undefined}
+      data-lifted={lifted || undefined}
       className={cn(
         "subtitle-caption pointer-events-none absolute inset-x-0 bottom-0 z-10",
         "flex justify-center px-4 pb-5 sm:px-8 sm:pb-7",
-        "transition-opacity duration-300",
+        "transition-[opacity,transform] duration-300",
         dimmed ? "opacity-0" : "opacity-100"
       )}
     >

@@ -695,6 +695,26 @@ Based on Indigo, Blue, Cyan palette
       0 18px 60px -28px rgb(0 0 0 / 0.9);
   }
 
+  /* A pantalla completa no hay sala: la imagen va al borde, sin sombra. */
+  .studio-screen.studio-screen-full {
+    box-shadow: none;
+  }
+
+  /*
+   * La frase sube cuando las barras flotantes le pisan el lugar.
+   *
+   * Solo hace falta cuando la imagen llega hasta abajo, que es cuando la
+   * pantalla es más ancha que dieciséis novenos. En una más alta —un teléfono
+   * parado— la imagen queda centrada con negro arriba y abajo, y la barra de
+   * controles cae sobre el negro, no sobre el subtítulo: ahí subirla sería
+   * moverla sin motivo cada vez que aparecen los controles.
+   */
+  @media (min-aspect-ratio: 16/9) {
+    .studio-room[data-fullscreen] .subtitle-caption[data-lifted] {
+      transform: translateY(-3.75rem);
+    }
+  }
+
   /*
    * Lo que flota sobre la sala: los paneles y la ficha de captura.
    *

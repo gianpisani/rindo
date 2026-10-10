@@ -13,6 +13,8 @@ const KEYS: [string, string][] = [
   ["R", "repetir la frase que acaba de sonar"],
   ["E", "capturar una expresión a mano"],
   ["C", "esconder el subtítulo"],
+  ["U", "esconder el subrayado de las palabras"],
+  ["F", "pantalla completa — también con doble clic en el video"],
   ["Esc", "cerrar lo que esté abierto, o salir del estudio"],
 ];
 

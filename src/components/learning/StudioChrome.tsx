@@ -5,11 +5,14 @@ import {
   Highlighter,
   HelpCircle,
   List,
+  Maximize,
+  Minimize,
   MoreHorizontal,
   Pause,
   Play,
   Plus,
   RotateCcw,
+  Underline,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { formatClock } from "@/lib/learning-config";
@@ -228,6 +231,10 @@ export function StudioControlRail({
   onRepeat,
   captionOn,
   onToggleCaption,
+  marksOn,
+  onToggleMarks,
+  fullscreen,
+  onToggleFullscreen,
   hasSubtitles,
   capturedCount,
   onOpenCapture,
@@ -243,6 +250,11 @@ export function StudioControlRail({
   onRepeat: () => void;
   captionOn: boolean;
   onToggleCaption: () => void;
+  /** Si las palabras del subtítulo llevan su subrayado. */
+  marksOn: boolean;
+  onToggleMarks: () => void;
+  fullscreen: boolean;
+  onToggleFullscreen: () => void;
   hasSubtitles: boolean;
   capturedCount: number;
   onOpenCapture: () => void;
@@ -293,6 +305,21 @@ export function StudioControlRail({
           }
           onClick={onToggleCaption}
           active={captionOn}
+          hideLabel
+        />
+      )}
+
+      {hasSubtitles && captionOn && (
+        <RailButton
+          icon={<Underline className="h-4 w-4" />}
+          label="Subrayado"
+          title={
+            marksOn
+              ? "Esconder el subrayado de las palabras (U)"
+              : "Subrayar las palabras que no tienes y las que ya guardaste (U)"
+          }
+          onClick={onToggleMarks}
+          active={marksOn}
           hideLabel
         />
       )}
@@ -349,6 +376,24 @@ export function StudioControlRail({
         label="Atajos"
         title="Cómo se maneja esto"
         onClick={onHelp}
+        hideLabel
+      />
+
+      <RailButton
+        icon={
+          fullscreen ? (
+            <Minimize className="h-4 w-4" />
+          ) : (
+            <Maximize className="h-4 w-4" />
+          )
+        }
+        label={fullscreen ? "Salir de pantalla completa" : "Pantalla completa"}
+        title={
+          fullscreen
+            ? "Salir de pantalla completa (F)"
+            : "Pantalla completa (F)"
+        }
+        onClick={onToggleFullscreen}
         hideLabel
       />
     </div>
