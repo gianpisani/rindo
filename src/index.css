@@ -701,17 +701,29 @@ Based on Indigo, Blue, Cyan palette
   }
 
   /*
-   * La frase sube cuando las barras flotantes le pisan el lugar.
+   * A pantalla completa el subtítulo va donde lo pone el cine.
    *
-   * Solo hace falta cuando la imagen llega hasta abajo, que es cuando la
-   * pantalla es más ancha que dieciséis novenos. En una más alta —un teléfono
-   * parado— la imagen queda centrada con negro arriba y abajo, y la barra de
-   * controles cae sobre el negro, no sobre el subtítulo: ahí subirla sería
-   * moverla sin motivo cada vez que aparecen los controles.
+   * Pegado al borde de abajo obliga a bajar la vista hasta el filo de la
+   * pantalla, que en un monitor grande queda lejísimos de las caras. Netflix y
+   * las películas lo dejan cerca de un décimo del alto por sobre el borde: se
+   * lee sin dejar de mirar la escena. El porcentaje de `bottom` es del alto del
+   * cuadro, así que se mantiene igual en cualquier pantalla.
+   */
+  .studio-room[data-fullscreen] .subtitle-caption {
+    bottom: 10%;
+    transition: opacity 300ms, bottom 300ms cubic-bezier(0.22, 1, 0.36, 1);
+  }
+
+  /*
+   * Y si los controles aparecen encima, la frase les deja lugar.
+   *
+   * Solo cuando la imagen llega hasta abajo —pantalla más ancha que dieciséis
+   * novenos— y solo en pantallas bajas: en una alta el diez por ciento ya
+   * queda por sobre la barra.
    */
   @media (min-aspect-ratio: 16/9) {
     .studio-room[data-fullscreen] .subtitle-caption[data-lifted] {
-      transform: translateY(-3.75rem);
+      bottom: max(10%, 4.5rem);
     }
   }
 
