@@ -1,3 +1,4 @@
+import type { ReactNode } from "react";
 import { format } from "date-fns";
 import { es } from "date-fns/locale";
 import { Sheet, SheetContent, SheetDescription, SheetTitle } from "@/components/ui/sheet";
@@ -18,6 +19,8 @@ export interface TxSheetData {
   transactions: Transaction[];
   /** Día (listas de un mes) o mes (listas de varios meses). */
   groupBy: "day" | "month";
+  /** Gráfico opcional sobre la lista: el detalle del período, sin taparla. */
+  chart?: ReactNode;
 }
 
 /**
@@ -60,6 +63,7 @@ export function TxSheet({ data, edit, onClose }: { data: TxSheetData | null; edi
                 <SheetDescription asChild><p className={cn(isPrivacyMode && "privacy-blur")}>{data.summary}</p></SheetDescription>
               </div>
             </div>
+            {data.chart}
             <div className="inicio-scroll">
               {sorted.length === 0 ? (
                 <div className="fin-empty">Sin movimientos</div>

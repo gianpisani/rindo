@@ -217,6 +217,58 @@ export function MonthBars({ months, onHover, onPick }: {
   );
 }
 
+// ─── Una categoría mes a mes ─────────────────────────────────────────────
+// El gasto de la categoría en el rango, para verlo en detalle junto a sus
+// movimientos: la línea punteada es el promedio y cada barra se puede tocar.
+
+export function CategoryHistory({ points, color, privacy }: {
+  points: { label: string; value: number }[];
+  color: string;
+  privacy: boolean;
+}) {
+  const [active, setActive] = useState<number | null>(null);
+  const values = points.map((p) => Math.max(0, p.value));
+  const max = Math.max(1, ...values);
+  const total = values.reduce((s, v) => s + v, 0);
+  const avg = values.length ? total / values.length : 0;
+  const peak = values.indexOf(Math.max(...values));
+  const hovered = active !== null ? points[active] : null;
+
+  return (
+    <div className="fin-sheet-chart">
+      <div className={cn("hd", privacy && "privacy-blur")}>
+        {hovered ? (
+          <><span className="capitalize">{hovered.label}</span> · <b>{clp(Math.max(0, hovered.value))}</b></>
+        ) : (
+          <>promedio <b>{clp(avg)}</b> al mes · máximo <b>{clp(values[peak] ?? 0)}</b> en {points[peak]?.label}</>
+        )}
+      </div>
+      <div className="fin-plot">
+        <div className="fin-bars" onPointerLeave={() => setActive(null)}>
+          {points.map((p, i) => (
+            <button
+              key={`${p.label}-${i}`}
+              className="fin-mon"
+              data-active={active === i}
+              aria-label={`${p.label}: ${clp(values[i])}`}
+              onPointerEnter={() => setActive(i)}
+              onFocus={() => setActive(i)}
+              onBlur={() => setActive(null)}
+            >
+              <i
+                className="out"
+                style={{ height: `max(2px, ${(values[i] / max) * 100}%)`, background: color, "--i": i } as CSSProperties}
+              />
+            </button>
+          ))}
+          {avg > 0 && <span className="fin-avg" style={{ bottom: `${Math.min(1, avg / max) * 100}%` }} title="Promedio al mes" />}
+        </div>
+        <AxisLabels labels={points.map((p) => p.label)} at={(i) => ((i + 0.5) / points.length) * 100} />
+      </div>
+    </div>
+  );
+}
+
 export function Spark({ values, color }: { values: number[]; color: string }) {
   const max = Math.max(1, ...values);
   return (
