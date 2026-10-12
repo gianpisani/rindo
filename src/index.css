@@ -1741,11 +1741,39 @@ Based on Indigo, Blue, Cyan palette
   background: var(--card); border: 1px solid var(--border); transition: color .15s; }
 .fin-pulse:hover { color: var(--foreground); }
 .fin-pulse span { color: var(--primary); font-size: 9px; }
+.fin-filter { display: flex; align-items: center; gap: 6px; font-size: 12px; color: var(--muted-foreground); padding: 6px 11px; border-radius: 999px;
+  background: var(--card); border: 1px solid var(--border); white-space: nowrap; transition: color .15s, border-color .15s; }
+.fin-filter:hover { color: var(--foreground); }
+.fin-filter[data-on="true"] { color: var(--foreground); border-color: color-mix(in oklch, var(--primary) 45%, transparent); }
+.fin-filter svg { width: 14px; height: 14px; }
+.fin-filter b { font-family: "JetBrains Mono", monospace; font-size: 11px; font-weight: 600; color: var(--primary); }
+
+/* Qué categorías entran en la vista (vive en un portal, fuera de .inicio) */
+.fin-picker { --inicio-hover: color-mix(in oklch, var(--foreground) 6%, transparent); width: 248px; padding: 8px; border-radius: 14px; }
+.fin-picker-head { display: flex; align-items: baseline; justify-content: space-between; gap: 10px; padding: 2px 6px 8px; font-size: 11.5px; color: var(--muted-foreground); }
+.fin-picker-head button { color: var(--muted-foreground); }
+.fin-picker-head button:hover { color: var(--foreground); }
+.fin-picks { display: grid; gap: 1px; max-height: 300px; overflow-y: auto; scrollbar-width: thin; scrollbar-color: var(--border) transparent; }
+.fin-picks button { display: grid; grid-template-columns: auto minmax(0, 1fr) 14px; gap: 10px; align-items: center; width: 100%;
+  padding: 5px 6px; border-radius: 9px; text-align: left; }
+.fin-picks button:hover, .fin-picks button:focus-visible { background: var(--inicio-hover); outline: none; }
+.fin-picks .inicio-ico { width: 24px; height: 24px; font-size: 12px; }
+.fin-picks .n { font-size: 12.5px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.fin-picks svg { width: 14px; height: 14px; color: var(--primary); }
+/* Deseleccionada: se apaga, no desaparece */
+.fin-picks button[aria-checked="false"] { color: var(--muted-foreground); }
+.fin-picks button[aria-checked="false"] .inicio-ico { opacity: .35; }
+.fin-picks button[aria-checked="false"] svg { visibility: hidden; }
 
 .fin-card { display: flex; flex-direction: column; overflow: hidden; }
 .fin-card-head { display: flex; justify-content: space-between; align-items: baseline; gap: 10px; padding: 14px 18px 4px; min-height: 36px; }
-.fin-card-head .inicio-num { font-size: 12px; color: var(--muted-foreground); white-space: nowrap; }
+.fin-card-head .inicio-num { margin-left: auto; font-size: 12px; color: var(--muted-foreground); white-space: nowrap; }
 .fin-card-head .inicio-num b { color: var(--foreground); font-weight: 600; }
+.fin-zoom { align-self: center; flex: none; width: 26px; height: 26px; display: grid; place-items: center; border-radius: 8px;
+  color: var(--inicio-faint); transition: background .15s, color .15s; }
+.fin-zoom:hover { background: var(--inicio-hover); color: var(--foreground); }
+.fin-zoom svg { width: 14px; height: 14px; }
+.fin-card-head .inicio-title + .fin-zoom { margin-left: auto; }
 .fin-plot { position: relative; flex: 1; min-height: 0; margin: 4px 18px 0; }
 .fin-empty { flex: 1; display: grid; place-items: center; font-size: 12px; color: var(--muted-foreground); padding: 16px; text-align: center; }
 
@@ -1862,7 +1890,9 @@ Based on Indigo, Blue, Cyan palette
     grid-template-rows: auto auto minmax(0, 1fr);
     grid-template-areas: "head" "worth" "months"; }
   .fin-title { font-size: 18px; }
-  .fin-head-end { width: 100%; margin-left: 0; justify-content: space-between; }
+  .fin-head-end { width: 100%; margin-left: 0; justify-content: space-between; flex-wrap: wrap; }
+  /* Tres pastillas no caben en 360px: el filtro queda en su icono */
+  .fin-filter .lbl { display: none; }
   .fin-stepper .label { min-width: 0; flex: 1; }
   .fin-flow { height: 250px; } .fin-daily { height: 118px; }
   .fin-step .foot .d .suffix { display: none; }
@@ -1885,6 +1915,13 @@ Based on Indigo, Blue, Cyan palette
 }
 .fin-trends-body { display: none; }
 @container inicio (max-width: 600px) { .fin-months[data-tab="trends"] .fin-trends-body { display: block; } }
+
+.fin-grid[data-zoom] { grid-template-columns: minmax(0, 1fr); grid-template-rows: auto minmax(0, 1fr);
+  grid-template-areas: "head" "zoom"; }
+.fin-grid[data-zoom] > .fin-card { display: none; }
+.fin-grid[data-zoom] > .fin-card[data-zoom] { display: flex; grid-area: zoom; height: auto; }
+.fin-card[data-zoom] .fin-card-head { padding-top: 16px; }
+.fin-card[data-zoom] .fin-zoom { color: var(--muted-foreground); }
 
 /* Con "reducir movimiento" la regla global acorta las animaciones, pero no
    sus retardos: sin esto, las barras escalonadas quedarían invisibles un

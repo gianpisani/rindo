@@ -1,9 +1,10 @@
 import { useEffect, useMemo, useState, type CSSProperties } from "react";
 import { format, subMonths } from "date-fns";
 import { es } from "date-fns/locale";
-import { ChevronLeft, ChevronRight } from "lucide-react";
+import { Check, ChevronLeft, ChevronRight, ListFilter, Maximize2, Minimize2 } from "lucide-react";
 import Layout from "@/components/Layout";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { MonthPulse } from "@/components/MonthPulse";
 import { TxSheet, type TxSheetData } from "@/components/finanzas/TxSheet";
 import {
@@ -42,9 +43,16 @@ import { cn } from "@/lib/utils";
  *   que entró contra lo que salió, y la tendencia de cada categoría.
  * Todo cuenta igual que el inicio (mismas funciones) y todo se puede abrir:
  * una categoría, un día o un mes muestran sus movimientos, editables.
+ *
+ * Cada tarjeta se puede agrandar hasta ocupar la pantalla, y un selector en el
+ * encabezado decide qué categorías entran en la vista: deseleccionar una la
+ * saca de todo —la cascada, los días, el histórico y la historia del mes—, no
+ * solo de la lista.
  */
 
 const VIEW_KEY = "finanzas-view";
+/** Las tarjetas de la vista Mes, que son las que se pueden agrandar. */
+type ZoomCard = "flow" | "daily" | "cats";
 const clp = (value: number) =>
   new Intl.NumberFormat("es-CL", { style: "currency", currency: "CLP", minimumFractionDigits: 0 }).format(value);
 const tint = (color?: string | null) => ({
@@ -88,18 +96,56 @@ export default function Overview() {
   });
   const [month, setMonth] = useState(thisMonth);
   const [sheet, setSheet] = useState<TxSheetData | null>(null);
+  const [zoom, setZoom] = useState<ZoomCard | null>(null);
+  /** Las categorías que el usuario sacó de la vista. Vacío = todas entran. */
+  const [hiddenCats, setHiddenCats] = useState<Set<string>>(new Set());
   const [storyOpen, setStoryOpen] = useState(false);
   const [histTab, setHistTab] = useState<"months" | "trends">("months");
   const [hoverDay, setHoverDay] = useState<number | null>(null);
   const [hoverMonth, setHoverMonth] = useState<number | null>(null);
   const [hoverWorth, setHoverWorth] = useState<number | null>(null);
 
+  const exitFullscreen = () => {
+    if (document.fullscreenElement) document.exitFullscreen?.()?.catch(() => { /* ya salió */ });
+  };
+
   const changeView = (next: "mes" | "hist") => {
     setView(next);
+    // Las tarjetas que se agrandan son las del mes: al cambiar de vista, se vuelve.
+    if (zoom) { setZoom(null); exitFullscreen(); }
     try { localStorage.setItem(VIEW_KEY, next); } catch { /* sin almacenamiento, no pasa nada */ }
   };
 
   const colorOf = (name: string) => categories.find((c) => c.name === name)?.color ?? null;
+
+  // ─── Qué categorías entran en la vista ─────────────────
+  // Las que alguna vez tuvieron gasto (o un reembolso contra ellas). Sin
+  // tránsito ni las que Jev aún está categorizando: esas no son una elección.
+  const spendCats = useMemo(() => {
+    const names = new Set<string>();
+    for (const t of transactions) {
+      const name = t.type === "Gasto" ? t.category_name : t.reimbursement_for_category;
+      if (name && !transit.has(name) && name !== ANALYZING_CATEGORY) names.add(name);
+    }
+    return [...names].sort((a, b) => a.localeCompare(b, "es"));
+  }, [transactions]);
+  // Todo lo que la vista cuenta sale de acá: sacar una categoría la saca del
+  // gasto, de la cascada, de los días y del histórico, no solo de la lista.
+  const shownTx = useMemo(() => {
+    if (hiddenCats.size === 0) return transactions;
+    return transactions.filter((t) => {
+      if (t.reimbursement_for_category) return !hiddenCats.has(t.reimbursement_for_category);
+      if (t.type === "Gasto") return !hiddenCats.has(t.category_name);
+      return true;
+    });
+  }, [transactions, hiddenCats]);
+  const allCatsOn = hiddenCats.size === 0;
+  const toggleCat = (name: string) =>
+    setHiddenCats((prev) => {
+      const next = new Set(prev);
+      if (!next.delete(name)) next.add(name);
+      return next;
+    });
 
   // ─── Meses disponibles ────────────────────────────────
   const months = useMemo(() => {
@@ -131,13 +177,54 @@ export default function Overview() {
     return () => window.removeEventListener("keydown", onKey);
   });
 
+  // ─── Agrandar una tarjeta ─────────────────────────────
+  // La pantalla completa se pide sobre el documento, no sobre la tarjeta, para
+  // que lo que se abre encima —un día, una categoría— siga apareciendo. Donde
+  // no la dan (iPhone), la tarjeta igual se queda sola con la grilla.
+  const toggleZoom = (card: ZoomCard) => {
+    const next = zoom === card ? null : card;
+    setZoom(next);
+    if (!next) { exitFullscreen(); return; }
+    if (!document.fullscreenElement) {
+      document.documentElement.requestFullscreen?.()?.catch(() => { /* queda el modo grande */ });
+    }
+  };
+
+  // Salir de la pantalla completa (el Esc del navegador) también achica
+  useEffect(() => {
+    const onChange = () => { if (!document.fullscreenElement) setZoom(null); };
+    document.addEventListener("fullscreenchange", onChange);
+    return () => document.removeEventListener("fullscreenchange", onChange);
+  }, []);
+
+  // Y Esc achica cuando el navegador no dio la pantalla completa. Con un panel
+  // abierto no: ahí Esc es para cerrar el panel.
+  useEffect(() => {
+    if (!zoom || sheet || storyOpen) return;
+    const onKey = (e: KeyboardEvent) => { if (e.key === "Escape") setZoom(null); };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [zoom, sheet, storyOpen]);
+
+  const zoomBtn = (card: ZoomCard, label: string) => (
+    <button
+      className="fin-zoom"
+      aria-pressed={zoom === card}
+      aria-label={zoom === card ? "Achicar" : `Agrandar ${label}`}
+      title={zoom === card ? "Achicar (Esc)" : `${label} en pantalla completa`}
+      onClick={() => toggleZoom(card)}
+    >
+      {zoom === card ? <Minimize2 /> : <Maximize2 />}
+    </button>
+  );
+
   // ─── Mes ──────────────────────────────────────────────
   const isCurrent = month.getTime() === thisMonth.getTime();
   const prevMonth = subMonths(month, 1);
-  const flows = useMemo(() => computeRealFlows(transactions, month, flowConfig), [transactions, month, flowConfig]);
-  const prevFlows = useMemo(() => computeRealFlows(transactions, prevMonth, flowConfig),
+  const flows = useMemo(() => computeRealFlows(shownTx, month, flowConfig), [shownTx, month, flowConfig]);
+  const prevFlows = useMemo(() => computeRealFlows(shownTx, prevMonth, flowConfig),
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [transactions, month, flowConfig]);
+    [shownTx, month, flowConfig]);
   // La cascada es la liquidez del mes (lo mismo que mueve el balde líquido):
   // + entró − gastos − aportes + rescates. El rendimiento no toca la
   // liquidez: va al balde invertido, y por eso se muestra aparte, abajo.
@@ -145,11 +232,11 @@ export default function Overview() {
   const investChange = flows.invertido - flows.rescatado + flows.rendimiento;
   const hasInvestActivity = flows.invertido !== 0 || flows.rescatado !== 0 || flows.rendimiento !== 0;
   const monthTx = useMemo(
-    () => transactions.filter((t) => {
+    () => shownTx.filter((t) => {
       const d = new Date(t.date);
       return d >= month && d <= endOfMonthOf(month);
     }),
-    [transactions, month]
+    [shownTx, month]
   );
   const hasMonthData = monthTx.length > 0 || flows.ingresoReal > 0;
 
@@ -183,17 +270,17 @@ export default function Overview() {
 
   // Categorías del mes contra el anterior
   const monthCats = useMemo(() => {
-    const current = spendByCategory(transactions, month, endOfMonthOf(month));
-    const previous = spendByCategory(transactions, prevMonth, endOfMonthOf(prevMonth));
+    const current = spendByCategory(shownTx, month, endOfMonthOf(month));
+    const previous = spendByCategory(shownTx, prevMonth, endOfMonthOf(prevMonth));
     return [...current.entries()]
       .map(([category, row]) => ({ category, ...row, prev: previous.get(category)?.effectiveAmount ?? 0 }))
       .filter((c) => c.effectiveAmount > 0 || c.amount > 0)
       .sort((a, b) => b.effectiveAmount - a.effectiveAmount);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [transactions, month]);
+  }, [shownTx, month]);
   const topCat = Math.max(1, ...monthCats.map((c) => c.effectiveAmount));
   const openCategory = (category: string, from: Date, to: Date, groupBy: "day" | "month", summary: string) => {
-    const rows = transactions.filter((t) => {
+    const rows = shownTx.filter((t) => {
       const d = new Date(t.date);
       if (d < from || d > to) return false;
       return (t.type === "Gasto" && t.category_name === category) || t.reimbursement_for_category === category;
@@ -203,22 +290,22 @@ export default function Overview() {
 
   // ─── Histórico ────────────────────────────────────────
   const history = useMemo(() => {
-    const sorted = [...transactions].sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
+    const sorted = [...shownTx].sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
     return buildHistory(
       months,
       (m) => {
-        const f = computeRealFlows(transactions, m, flowConfig);
+        const f = computeRealFlows(shownTx, m, flowConfig);
         return { ingreso: f.ingresoReal, gasto: f.consumoNeto, invertido: f.invertido - f.rescatado };
       },
       (end) => computeLedger(sorted.filter((t) => new Date(t.date) <= end))
     );
-  }, [transactions, months, flowConfig]);
+  }, [shownTx, months, flowConfig]);
   const averages = historyAverages(history, now);
   const last12 = months.slice(-12);
   const trends = useMemo(
-    () => categoryTrends(last12, (start, end) => new Map([...spendByCategory(transactions, start, end)].map(([k, v]) => [k, v.effectiveAmount])), now),
+    () => categoryTrends(last12, (start, end) => new Map([...spendByCategory(shownTx, start, end)].map(([k, v]) => [k, v.effectiveAmount])), now),
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [transactions, months]
+    [shownTx, months]
   );
   const worthIndex = hoverWorth ?? history.length - 1;
   const worthNow = history[worthIndex];
@@ -257,6 +344,47 @@ export default function Overview() {
     </div>
   );
 
+  // El selector: con todas marcadas no dice nada más; con alguna fuera, cuántas
+  // quedan, porque entonces lo que se ve en pantalla no es el mes completo.
+  const categoryPicker = spendCats.length > 1 && (
+    <Popover>
+      <PopoverTrigger asChild>
+        <button
+          className="fin-filter"
+          data-on={!allCatsOn}
+          aria-label="Elegir qué categorías entran en la vista"
+          title="Elegir qué categorías entran en la vista"
+        >
+          <ListFilter />
+          <span className="lbl">Categorías</span>
+          {!allCatsOn && <b>{spendCats.length - hiddenCats.size}/{spendCats.length}</b>}
+        </button>
+      </PopoverTrigger>
+      <PopoverContent align="end" sideOffset={6} className="fin-picker">
+        <div className="fin-picker-head">
+          <span>Qué entra en la vista</span>
+          <button onClick={() => setHiddenCats(allCatsOn ? new Set(spendCats) : new Set())}>
+            {allCatsOn ? "Ninguna" : "Todas"}
+          </button>
+        </div>
+        <div className="fin-picks">
+          {spendCats.map((name) => (
+            <button
+              key={name}
+              role="checkbox"
+              aria-checked={!hiddenCats.has(name)}
+              onClick={() => toggleCat(name)}
+            >
+              <span className="inicio-ico" style={tint(colorOf(name))}>{edit.emojiOf(name)}</span>
+              <span className="n">{name}</span>
+              <Check />
+            </button>
+          ))}
+        </div>
+      </PopoverContent>
+    </Popover>
+  );
+
   // ─── Render ───────────────────────────────────────────
   const loading = isLoading && transactions.length === 0;
   const cardSkeleton = <div className="flex-1 p-[18px]"><Skeleton className="h-full w-full rounded-xl" /></div>;
@@ -264,7 +392,7 @@ export default function Overview() {
   return (
     <Layout fit>
       <div className="inicio">
-        <div className="fin-grid" data-view={view}>
+        <div className="fin-grid" data-view={view} data-zoom={zoom ?? undefined}>
           <header className="fin-head">
             <h1 className="fin-title">Finanzas</h1>
             <div className="fin-seg" role="group" aria-label="Vista">
@@ -288,15 +416,17 @@ export default function Overview() {
                   {history.length} mes{history.length === 1 ? "" : "es"} · desde {format(months[0], "MMMM yyyy", { locale: es })}
                 </span>
               )}
+              {categoryPicker}
             </div>
           </header>
 
           {view === "mes" ? (
             <>
               {/* ¿Qué pasó con mi plata? */}
-              <section className="inicio-card fin-card fin-flow">
+              <section className="inicio-card fin-card fin-flow" data-zoom={zoom === "flow" ? "" : undefined}>
                 <div className="fin-card-head">
                   <span className="inicio-title">Flujo del mes</span>
+                  {zoomBtn("flow", "El flujo del mes")}
                 </div>
                 {loading ? cardSkeleton : !hasMonthData ? (
                   <div className="fin-empty">Sin movimientos en {format(month, "MMMM", { locale: es })}</div>
@@ -331,7 +461,7 @@ export default function Overview() {
               </section>
 
               {/* Cada día */}
-              <section className="inicio-card fin-card fin-daily">
+              <section className="inicio-card fin-card fin-daily" data-zoom={zoom === "daily" ? "" : undefined}>
                 <div className="fin-card-head">
                   <span className="inicio-title">Cada día</span>
                   {hasMonthData && (
@@ -343,6 +473,7 @@ export default function Overview() {
                       )}
                     </span>
                   )}
+                  {zoomBtn("daily", "Cada día")}
                 </div>
                 {loading ? cardSkeleton : hasMonthData ? (
                   <div className="fin-plot" style={{ marginBottom: 12 }}>
@@ -359,12 +490,13 @@ export default function Overview() {
               </section>
 
               {/* En qué se fue, contra el mes anterior */}
-              <section className="inicio-card fin-card fin-cats">
+              <section className="inicio-card fin-card fin-cats" data-zoom={zoom === "cats" ? "" : undefined}>
                 <div className="fin-card-head">
                   <span className="inicio-title">
                     Categorías{monthCats.length > 0 && <span className="inicio-count">{monthCats.length}</span>}
                   </span>
                   <span className="inicio-num">vs {format(prevMonth, "MMMM", { locale: es })}</span>
+                  {zoomBtn("cats", "Las categorías")}
                 </div>
                 {loading ? cardSkeleton : monthCats.length === 0 ? (
                   <div className="fin-empty">Sin gastos este mes</div>
@@ -496,7 +628,7 @@ export default function Overview() {
         open={storyOpen}
         onClose={() => setStoryOpen(false)}
         initialMonth={month}
-        transactions={transactions}
+        transactions={shownTx}
         categories={categories}
         flowConfig={flowConfig}
       />
