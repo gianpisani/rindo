@@ -13,6 +13,7 @@ const POLL_INTERVAL_MS = 5_000
 const POLL_MAX_ATTEMPTS = 24  // 24 × 5s = 120s max per job
 const CIRCUIT_BREAKER_LIMIT = 5
 const INVALID_CREDS_LIMIT = 3
+const MAX_LOOKBACK_DAYS = 7
 
 // ── Schedule resolution ───────────────────────────────────────────────────────
 
@@ -39,6 +40,22 @@ function getSchedulesForCurrentHour(): string[] {
   }
 
   return [...new Set(schedules)]
+}
+
+/**
+ * Fecha (DD-MM-YYYY, el formato que espera el scraper) de hace `daysBack` dias
+ * en hora de Chile. Se calcula en America/Santiago y no en UTC porque para el
+ * horario daily_20 la ejecucion cae pasada la medianoche UTC, y restar un dia
+ * sobre la fecha UTC devolvia el dia en curso en Chile.
+ */
+function getFromDate(daysBack: number): string {
+  const nowChile = new Date(
+    new Date().toLocaleString('en-US', { timeZone: 'America/Santiago' }),
+  )
+  nowChile.setDate(nowChile.getDate() - daysBack)
+  const dd = String(nowChile.getDate()).padStart(2, '0')
+  const mm = String(nowChile.getMonth() + 1).padStart(2, '0')
+  return `${dd}-${mm}-${nowChile.getFullYear()}`
 }
 
 // ── Job polling ───────────────────────────────────────────────────────────────
@@ -161,13 +178,12 @@ Deno.serve(async (req) => {
       // Encrypt for transit to the Open Banking API
       const encryptedCredentials = await encryptForTransit(rut, password)
 
-      // Calculate yesterday's date for fromDate
-      const yesterday = new Date()
-      yesterday.setDate(yesterday.getDate() - 1)
-      const dd = String(yesterday.getDate()).padStart(2, '0')
-      const mm = String(yesterday.getMonth() + 1).padStart(2, '0')
-      const yyyy = yesterday.getFullYear()
-      const fromDate = `${dd}-${mm}-${yyyy}`
+      // Con N fallas consecutivas el hueco real es N+1 dias: el run que fallo
+      // cubria desde el dia anterior a su ejecucion. Con N=0 queda el default
+      // de 1 dia. El circuit breaker desactiva a las 5 fallas, asi que el tope
+      // natural son 6 dias; MAX_LOOKBACK_DAYS acota el caso de datos raros.
+      const lookbackDays = Math.min(consecutive_failures + 1, MAX_LOOKBACK_DAYS)
+      const fromDate = getFromDate(lookbackDays)
 
       // Start scraping job
       const scrapeRes = await fetch(`${OPEN_BANKING_BASE}/api/v1/scrape`, {
@@ -182,7 +198,7 @@ Deno.serve(async (req) => {
       }
 
       const { jobId } = await scrapeRes.json()
-      console.log(`Usuario ${userId} banco ${bank}: job ${jobId} iniciado`)
+      console.log(`Usuario ${userId} banco ${bank}: job ${jobId} iniciado (desde ${fromDate}, ${lookbackDays}d)`)
 
       // Poll for result
       const pollResult = await pollJob(jobId, apiKey)
