@@ -2,7 +2,7 @@ import { categorizeBatchForUser } from '../_shared/jev-poc.ts'
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.39.3'
 import { corsHeaders } from '../_shared/cors.ts'
 import { sendBatchNotificationEmail } from '../_shared/email-notification.ts'
-import { importBankMovements } from '../_shared/bank-import.ts'
+import { importBankMovements, resolveCardId } from '../_shared/bank-import.ts'
 import { encryptPassword, decryptPassword, encryptForTransit } from '../_shared/crypto.ts'
 
 const OPEN_BANKING_BASE = 'https://open-banking-api-98187240066.southamerica-west1.run.app'
@@ -219,18 +219,7 @@ Deno.serve(async (req) => {
         const now = new Date()
         const insertDate = `${isoDate}T${now.toISOString().slice(11, 19)}`
 
-        let cardId: string | null = null
-        if (m.card) {
-          const lastFour = m.card.replace(/\*/g, '')
-          const { data: card } = await supabaseClient
-            .from('credit_cards')
-            .select('id')
-            .eq('user_id', userId)
-            .eq('last_4_digits', lastFour)
-            .eq('is_active', true)
-            .maybeSingle()
-          if (card) cardId = card.id
-        }
+        const cardId = await resolveCardId(supabaseClient, userId, m.card)
 
         const { data: inserted, error: insertError } = await supabaseClient
           .from('transactions')

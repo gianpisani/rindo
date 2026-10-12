@@ -123,6 +123,47 @@ function convertDate(dateStr: string, fallbackDate: string): string {
   return `${yyyy}-${mm}-${dd}`
 }
 
+/**
+ * Saca los últimos 4 dígitos de cualquier forma en que el banco identifique
+ * la tarjeta: "****1234", "XXXX-XXXX-XXXX-1234", "Visa Signature 1234",
+ * "Tarjeta de Crédito ···· 1234". Antes solo se quitaban los asteriscos, así
+ * que todo lo que no viniera exactamente como "****1234" no cruzaba contra
+ * credit_cards.last_4_digits (que guarda 4 dígitos pelados).
+ */
+export function extractLastFourDigits(raw: string): string | null {
+  const digits = raw.replace(/\D/g, '')
+  return digits.length >= 4 ? digits.slice(-4) : null
+}
+
+/**
+ * Busca la tarjeta activa del usuario por los últimos 4 dígitos.
+ * Usa limit(1) en vez de maybeSingle() porque dos tarjetas activas con los
+ * mismos 4 dígitos hacían fallar la query y la transacción terminaba sin tarjeta.
+ */
+export async function resolveCardId(
+  supabaseClient: ReturnType<typeof createClient>,
+  userId: string,
+  rawCard?: string | null,
+): Promise<string | null> {
+  if (!rawCard) return null
+  const lastFour = extractLastFourDigits(rawCard)
+  if (!lastFour) return null
+
+  const { data: cards, error } = await supabaseClient
+    .from('credit_cards')
+    .select('id')
+    .eq('user_id', userId)
+    .eq('last_4_digits', lastFour)
+    .eq('is_active', true)
+    .limit(1)
+
+  if (error) {
+    console.error('Card match error for', rawCard, error)
+    return null
+  }
+  return cards?.[0]?.id ?? null
+}
+
 // ── Main import function ──────────────────────────────────────────────────────
 
 /**
@@ -150,7 +191,13 @@ export async function importBankMovements(params: {
   const seenKeys = new Set<string>()
   const allMovements: Movement[] = [
     ...(result.accounts ?? []).flatMap((a) => a.movements),
-    ...(result.creditCards ?? []).flatMap((cc) => cc.movements ?? []),
+    // El label de la tarjeta ("Visa ****1234") es la única pista del plástico
+    // en varios bancos: los movimientos vienen sin `card` propio. Al aplanar
+    // sin heredarlo, todo movimiento de tarjeta de crédito quedaba con
+    // card_id null.
+    ...(result.creditCards ?? []).flatMap((cc) =>
+      (cc.movements ?? []).map((m) => ({ ...m, card: m.card ?? cc.label })),
+    ),
   ].filter((m) => {
     const key = `${m.date}|${m.amount}|${m.description}`
     if (seenKeys.has(key)) return false
@@ -179,6 +226,8 @@ export async function importBankMovements(params: {
 
     const description = movement.description
 
+    const cardId = await resolveCardId(supabaseClient, userId, movement.card)
+
     // Deduplication check — bank-imported rows
     //
     // `isoDate` es la fecha que ya viene liquidada desde el banco, así que se
@@ -190,14 +239,14 @@ export async function importBankMovements(params: {
     // las de bank-sync, las de wallet y las anteriores a esa columna.
     const { data: existingBankRows } = await supabaseClient
       .from('transactions')
-      .select('id, bank_description')
+      .select('id, bank_description, card_id')
       .eq('user_id', userId)
       .eq('amount', absAmount)
       .not('bank_description', 'is', null)
       .or(`bank_settlement_date.eq.${isoDate},and(bank_settlement_date.is.null,date.gte.${isoDate},date.lt.${nextDayStr})`)
       .limit(10)
 
-    const bankDuplicate = existingBankRows?.some((row) => {
+    const duplicateRow = existingBankRows?.find((row) => {
       if (!row.bank_description) return false
       const a = normalizeBankDescription(description)
       const b = normalizeBankDescription(row.bank_description)
@@ -212,6 +261,8 @@ export async function importBankMovements(params: {
       return nameTokensMatch(extractNameTokens(description), extractNameTokens(row.bank_description))
     })
 
+    const bankDuplicate = !!duplicateRow
+
     // Deduplication check — manually entered rows
     const { data: existingManualRows } = await supabaseClient
       .from('transactions')
@@ -224,6 +275,20 @@ export async function importBankMovements(params: {
       .limit(1)
 
     if (bankDuplicate || (existingManualRows && existingManualRows.length > 0)) {
+      // La fila ya existe porque llegó antes por email o por wallet, donde el
+      // aviso del banco no siempre trae la tarjeta. Si el sync sí la trae, se
+      // completa en vez de descartarla con el movimiento duplicado.
+      // Solo para duplicados bancarios: ahí el match es por descripción, no
+      // solo por fecha y monto como en los manuales.
+      if (duplicateRow && cardId && !duplicateRow.card_id) {
+        const { error: cardUpdateError } = await supabaseClient
+          .from('transactions')
+          .update({ card_id: cardId })
+          .eq('id', duplicateRow.id)
+          .eq('user_id', userId)
+        if (cardUpdateError) console.error('Card backfill error:', duplicateRow.id, cardUpdateError)
+      }
+
       skipped++
       skippedItems.push({
         date: movement.date,
@@ -234,20 +299,6 @@ export async function importBankMovements(params: {
         card: movement.card,
       })
       continue
-    }
-
-    // Match credit card by last 4 digits
-    let cardId: string | null = null
-    if (movement.card) {
-      const lastFour = movement.card.replace(/\*/g, '')
-      const { data: card } = await supabaseClient
-        .from('credit_cards')
-        .select('id')
-        .eq('user_id', userId)
-        .eq('last_4_digits', lastFour)
-        .eq('is_active', true)
-        .maybeSingle()
-      if (card) cardId = card.id
     }
 
     const { data: inserted, error: insertError } = await supabaseClient
