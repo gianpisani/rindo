@@ -65,6 +65,7 @@ import {
   signPrefix,
   type TransactionType,
 } from "@/lib/ledger";
+import { getCleanDetail } from "@/lib/whisper";
 import NumberFlow, { type Format } from "@number-flow/react";
 import { useFuzzySearch } from "@/hooks/useFuzzySearch";
 import { useCreditCards } from "@/hooks/useCreditCards";
@@ -190,11 +191,6 @@ function categoryAvatar(name: string, categories: { name: string; icon?: string 
     emoji: analyzing ? "⚡" : category?.icon || getCategoryIcon(name),
     style: { backgroundColor: `color-mix(in oklch, ${tone} 22%, transparent)` },
   };
-}
-
-function getCleanDetail(detail: string | null): string {
-  if (!detail) return "";
-  return detail.replace(/^🤖\s*/, "").trim();
 }
 
 // ── Date group helpers ─────────────────────────────────────────────────────

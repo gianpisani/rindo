@@ -20,6 +20,12 @@ export function parseWhisper(input: string) {
   return { amount, detail: match[2]?.trim() || null };
 }
 
+/** El detalle sin el prefijo 🤖 con que el bot marca lo que detectó. */
+export function getCleanDetail(detail: string | null): string {
+  if (!detail) return '';
+  return detail.replace(/^🤖\s*/, '').trim();
+}
+
 export function categoryFrequency(history: { category_name: string; type: string }[], type: string) {
   const counts = new Map<string, number>();
   for (const tx of history) if (tx.type === type) counts.set(tx.category_name, (counts.get(tx.category_name) ?? 0) + 1);

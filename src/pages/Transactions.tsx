@@ -10,7 +10,7 @@ import { TransactionsToolbar } from "@/components/TransactionsToolbar";
 import { Button } from "@/components/ui/button";
 import { useGlobalDrawers } from "@/hooks/useGlobalDrawers";
 import { usePrivacyMode } from "@/hooks/usePrivacyMode";
-import { categoryFrequency, parseWhisper, WHISPER_TYPES } from "@/lib/whisper";
+import { categoryFrequency, getCleanDetail, parseWhisper, WHISPER_TYPES } from "@/lib/whisper";
 import "@/components/whisper.css";
 import {
   AlertDialog,
@@ -102,6 +102,10 @@ export default function Transactions() {
   const [allCategories, setAllCategories] = useState(false);
   const [newCategory, setNewCategory] = useState<{ name: string; icon: string; color: string } | null>(null);
   const [txError, setTxError] = useState("");
+  // La nota del movimiento, que al guardar pisa el detail. En null el campo
+  // está colapsado y nadie lo tocó: el detail guardado se queda como está.
+  const [note, setNote] = useState<string | null>(null);
+  const noteInputRef = useRef<HTMLInputElement>(null);
   const txInputRef = useRef<HTMLInputElement>(null);
   const txCategoryGroupRef = useRef<HTMLDivElement>(null);
   const txOptionsToggleRef = useRef<HTMLButtonElement>(null);
@@ -166,9 +170,18 @@ export default function Transactions() {
     isLoss: false,
   });
   const parsedDraft = parseWhisper(formData.value);
-  const draftAmount = parsedDraft?.amount ?? 0;
+  // Al editar, el input parte vacío: dejarlo así conserva el monto guardado.
+  const editingMagnitude = editingTransaction ? Math.abs(editingTransaction.amount) : 0;
+  const effectiveAmount = parsedDraft?.amount ?? editingMagnitude;
   const composerType = WHISPER_TYPES.find((t) => t.type === formData.type) ?? WHISPER_TYPES[0];
   const composerAccent = formData.type === "Rendimiento" && formData.isLoss ? LOSS_ACCENT : composerType.color;
+  // Al editar, el placeholder recuerda qué movimiento es: su monto y el nombre
+  // que mandó el banco, que es el que no cambia aunque le pongas una nota.
+  const composerPlaceholder = editingTransaction
+    ? [editingMagnitude, editingTransaction.bank_description || getCleanDetail(editingTransaction.detail)]
+        .filter(Boolean)
+        .join(" ")
+    : composerType.placeholder;
 
 
   // Las categorías que ofrece el filtro: las que aparecen en lo que se está
@@ -251,7 +264,15 @@ export default function Transactions() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
-    if (!parsedDraft) {
+    if (editingTransaction) {
+      // Editando, el input es solo el monto: el texto va en la nota. Vacío
+      // significa "deja el monto como está".
+      if (formData.value.trim() && (!parsedDraft || parsedDraft.detail)) {
+        setTxError("Acá va solo el monto. El detalle se edita en la nota.");
+        txInputRef.current?.focus();
+        return;
+      }
+    } else if (!parsedDraft) {
       setTxError("Escribe un monto en pesos, seguido del detalle.");
       txInputRef.current?.focus();
       return;
@@ -262,22 +283,29 @@ export default function Transactions() {
       return;
     }
 
-    const magnitude = parsedDraft.amount;
+    const magnitude = effectiveAmount;
     // Un rendimiento negativo es un mes malo, no un error: el resto de los
     // tipos siempre va en positivo.
     const parsedAmount =
       allowsNegativeAmount(formData.type) && formData.isLoss ? -magnitude : magnitude;
     const fields = {
-      detail: parsedDraft.detail ?? "",
       category_name: formData.category_name,
       type: formData.type,
       card_id: formData.card_id,
     };
 
     if (editingTransaction) {
+      // El badge del bot sobrevive a que le cambies el texto, igual que en la
+      // edición inline de la tabla.
+      const prefix = (editingTransaction.detail || "").startsWith("🤖") ? "🤖 " : "";
+      const newNote = note?.trim();
+
       await updateTransaction.mutateAsync({
         id: editingTransaction.id,
         ...fields,
+        // Sin nota escrita, el detalle guardado queda intacto. Para borrarlo
+        // está la edición inline de la columna Detalle.
+        ...(newNote ? { detail: prefix + newNote } : {}),
         date: new Date(formData.date).toISOString(),
         amount: parsedAmount,
       });
@@ -292,6 +320,7 @@ export default function Transactions() {
     } else {
       const transaction = await addTransaction.mutateAsync({
         ...fields,
+        detail: parsedDraft?.detail ?? "",
         date: new Date(formData.date).toISOString(),
         amount: parsedAmount,
       });
@@ -355,11 +384,10 @@ export default function Transactions() {
       amount: confirmPaid.amount,
       transactionDetail: confirmPaid.detail,
     });
-    // Actualizar el texto para que "Guardar cambios" no sobreescriba el monto reducido
-    const newAmount = draftAmount - confirmPaid.amount;
+    // Actualizar el monto para que "Guardar cambios" no sobreescriba el monto reducido
+    const newAmount = effectiveAmount - confirmPaid.amount;
     if (newAmount >= 0) {
-      const detail = parsedDraft?.detail ?? "";
-      setFormData((prev) => ({ ...prev, value: detail ? `${newAmount} ${detail}` : String(newAmount) }));
+      setFormData((prev) => ({ ...prev, value: String(newAmount) }));
     }
     setConfirmPaid(null);
   };
@@ -377,6 +405,7 @@ export default function Transactions() {
     setAllCategories(false);
     setNewCategory(null);
     setTxError("");
+    setNote(null);
     setIsShared(false);
     setPendingTransaction(null);
     setAddingDebtor(false);
@@ -403,16 +432,20 @@ export default function Transactions() {
     if (Date.now() - editGhostGuardRef.current < 800) return;
     if (confirmDelete.open || confirmDeleteMultiple.open) return;
     setEditingTransaction(transaction);
-    const magnitude = Math.abs(transaction.amount);
 
+    // El input parte vacío: el monto y el nombre del banco van en el
+    // placeholder, y escribir solo hace falta si querés cambiar el monto.
     setFormData({
       date: toLocalInput(new Date(transaction.date)),
-      value: transaction.detail ? `${magnitude} ${transaction.detail}` : String(magnitude),
+      value: "",
       category_name: transaction.category_name,
       type: transaction.type,
       card_id: transaction.card_id,
       isLoss: transaction.amount < 0,
     });
+    // La nota parte cerrada y vacía: el detalle guardado solo cambia si
+    // marcás la casilla y escribís algo.
+    setNote(null);
 
     const shared = getSharedExpensesByTransaction(transaction.id);
     setIsShared(shared.length > 0);
@@ -682,11 +715,11 @@ export default function Transactions() {
                     <ChevronDown size={12} aria-hidden="true" />
                   </div>
 
-                  {/* Monto y detalle en una línea */}
+                  {/* Al crear, monto y detalle en una línea; al editar, solo el monto */}
                   <div className="whisper-entry">
                     <input
                       ref={txInputRef}
-                      aria-label="Monto y detalle"
+                      aria-label={editingTransaction ? "Monto" : "Monto y detalle"}
                       aria-describedby={txError ? "tx-error tx-shortcuts" : "tx-shortcuts"}
                       aria-invalid={!!txError}
                       autoComplete="off"
@@ -698,8 +731,12 @@ export default function Transactions() {
                         setFormData((prev) => ({ ...prev, value: event.target.value }));
                         setTxError("");
                       }}
-                      placeholder={composerType.placeholder}
-                      className={cn("whisper-input", isPrivacyMode && formData.value && "privacy-blur")}
+                      placeholder={composerPlaceholder}
+                      className={cn(
+                        "whisper-input",
+                        // Al editar el monto vive en el placeholder: también se tapa.
+                        isPrivacyMode && (formData.value || editingTransaction) && "privacy-blur"
+                      )}
                       onKeyDown={(event) => {
                         if (event.nativeEvent.isComposing) {
                           if (event.key === "Enter") event.preventDefault();
@@ -723,11 +760,14 @@ export default function Transactions() {
                         }
                       }}
                     />
-                    <div className={cn("whisper-preview", isPrivacyMode && parsedDraft && "privacy-blur")} aria-hidden="true">
-                      {parsedDraft && (
+                    <div
+                      className={cn("whisper-preview", isPrivacyMode && effectiveAmount > 0 && "privacy-blur")}
+                      aria-hidden="true"
+                    >
+                      {effectiveAmount > 0 && (
                         <span>
                           {formData.type === "Rendimiento" && formData.isLoss ? "−" : ""}
-                          {formatCurrency(parsedDraft.amount)}
+                          {formatCurrency(effectiveAmount)}
                         </span>
                       )}
                     </div>
@@ -863,6 +903,53 @@ export default function Transactions() {
                     </p>
                   </div>
 
+                  {/* Nota: pisa el detalle del movimiento, dejando intacto el
+                      nombre que mandó el banco. El campo aparece solo si marcás
+                      la casilla, y parte vacío para escribir de una. */}
+                  {editingTransaction && (
+                    <div className="whisper-note-block">
+                      <label className="whisper-note-check">
+                        <input
+                          type="checkbox"
+                          checked={note !== null}
+                          onChange={(event) => {
+                            setNote(event.target.checked ? "" : null);
+                            if (event.target.checked) {
+                              requestAnimationFrame(() => noteInputRef.current?.focus());
+                            }
+                          }}
+                        />
+                        Agregar nota
+                      </label>
+                      {note !== null && (
+                        <input
+                          ref={noteInputRef}
+                          aria-label="Nota del movimiento"
+                          className={cn("whisper-note", isPrivacyMode && note && "privacy-blur")}
+                          autoComplete="off"
+                          maxLength={200}
+                          // El detalle actual como placeholder: ves qué vas a reemplazar.
+                          placeholder={getCleanDetail(editingTransaction.detail) || "Tu nota para este movimiento"}
+                          value={note}
+                          onChange={(event) => setNote(event.target.value)}
+                          onKeyDown={(event) => {
+                            if (event.key === "Escape") {
+                              // Cierra la nota, no el diálogo.
+                              event.stopPropagation();
+                              event.preventDefault();
+                              setNote(null);
+                              txInputRef.current?.focus();
+                            }
+                            if (event.key === "Enter") {
+                              event.preventDefault();
+                              noteInputRef.current?.blur();
+                            }
+                          }}
+                        />
+                      )}
+                    </div>
+                  )}
+
                   {/* Más opciones: fecha, cuenta, compartido, saldar */}
                   <AnimatePresence initial={false}>
                     {txExpanded && (
@@ -929,7 +1016,7 @@ export default function Transactions() {
 
                   {/* Vincular a deuda(s) pendiente(s): Ingreso o Reembolso */}
                   {showLinkPanel && (() => {
-                    const txAmount = draftAmount;
+                    const txAmount = effectiveAmount;
                     const selectedTotal = debtsToLink.reduce((sum, d) => sum + d.amount, 0);
                     const totalMismatch = txAmount > 0 && debtsToLink.length > 0 && Math.abs(txAmount - selectedTotal) > 1;
 
@@ -1027,8 +1114,8 @@ export default function Transactions() {
                   {/* Gasto compartido ya dividido: se edita acá mismo */}
                   {formData.type === "Gasto" && existingShared.length > 0 && (() => {
                     const liveTxAmount = editingTransaction
-                      ? (transactions.find((t) => t.id === editingTransaction.id)?.amount ?? draftAmount)
-                      : draftAmount;
+                      ? (transactions.find((t) => t.id === editingTransaction.id)?.amount ?? effectiveAmount)
+                      : effectiveAmount;
                     const alreadyAssignedAll = existingShared.reduce((sum, se) => sum + se.amount_owed, 0);
                     const alreadyAssignedPending = existingShared.filter((se) => !se.paid).reduce((sum, se) => sum + se.amount_owed, 0);
                     const myShare = liveTxAmount - alreadyAssignedPending;
@@ -1052,7 +1139,7 @@ export default function Transactions() {
                           const isEditingThis = editingDebtorId === se.id;
                           const editAmount = parseFloat(editingDebtorAmount || "0");
                           const otherAssigned = existingShared.filter((s) => s.id !== se.id).reduce((sum, s) => sum + s.amount_owed, 0);
-                          const editRemaining = draftAmount - otherAssigned;
+                          const editRemaining = effectiveAmount - otherAssigned;
                           const editExceeds = editAmount > editRemaining;
                           const editValid = editingDebtorAmount && editAmount > 0 && !editExceeds;
 
@@ -1247,7 +1334,7 @@ export default function Transactions() {
 
                   {/* Saldar deuda(s) que yo debo: solo Gasto */}
                   {formData.type === "Gasto" && settleDebtToggle && pendingIOwe.length > 0 && (() => {
-                    const txAmount = draftAmount;
+                    const txAmount = effectiveAmount;
                     const selectedTotal = debtsIOweToSettle.reduce((sum, d) => sum + d.amount, 0);
                     const totalMismatch = txAmount > 0 && debtsIOweToSettle.length > 0 && Math.abs(txAmount - selectedTotal) > 1;
 
@@ -1353,7 +1440,12 @@ export default function Transactions() {
                     <button
                       type="submit"
                       className="whisper-submit"
-                      disabled={!parsedDraft || addTransaction.isPending || updateTransaction.isPending}
+                      disabled={
+                        // Editando se puede guardar sin tocar el monto.
+                        (!parsedDraft && !editingTransaction) ||
+                        addTransaction.isPending ||
+                        updateTransaction.isPending
+                      }
                       aria-label={editingTransaction ? "Guardar cambios" : "Guardar movimiento"}
                     >
                       {editingTransaction ? "Guardar cambios" : "Guardar"}
