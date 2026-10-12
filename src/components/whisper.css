@@ -60,6 +60,24 @@
 .whisper-actions { display: flex; align-items: center; justify-content: center; width: 100%; gap: 26px; }
 .whisper-options-toggle { display: inline-flex; align-items: center; gap: 6px; padding: 10px 0; color: rgb(255 255 255 / .54); font-size: 11px; transition: color .2s; }
 .whisper-options-toggle:hover { color: #fafafa; }
+/* La nota del movimiento: una casilla discreta, y el campo solo si la marcás.
+   El margen negativo la cuelga del bloque de categorías, sin abrir sección. */
+.whisper-note-block {
+  display: flex; flex-direction: column; align-items: center; gap: 10px;
+  width: min(100%, 390px); margin-top: -10px;
+}
+.whisper-note-check {
+  display: inline-flex; align-items: center; gap: 7px; padding: 2px 0; cursor: pointer;
+  color: rgb(255 255 255 / .42); font-size: 11px; transition: color .2s;
+}
+.whisper-note-check:hover { color: #fafafa; }
+.whisper-note-check input { accent-color: var(--whisper-accent); }
+.whisper-note {
+  width: 100%; min-height: 38px; padding: 8px;
+  border-radius: 8px; background: rgb(255 255 255 / .06); border: 1px solid rgb(255 255 255 / .1);
+  color: #e5e5e5; font-size: 12px;
+}
+.whisper-note::placeholder { color: rgb(255 255 255 / .34); }
 .whisper-submit {
   display: inline-flex; align-items: center; gap: 14px; min-height: 36px; padding: 8px 14px;
   font-size: 12px; font-weight: 500; border-radius: 99px;
@@ -85,7 +103,7 @@
 .whisper-check input { accent-color: var(--whisper-accent); }
 .whisper-composer option { background: #171717; color: #fafafa; }
 .whisper-error { font-size: 12px; color: #fca5a5; text-align: center; }
-.whisper-composer button:focus-visible, .whisper-type:has(select:focus-visible), .whisper-options select:focus-visible, .whisper-options input:focus-visible { outline: 2px solid var(--whisper-accent); outline-offset: 4px; }
+.whisper-composer button:focus-visible, .whisper-type:has(select:focus-visible), .whisper-options select:focus-visible, .whisper-options input:focus-visible, .whisper-note:focus-visible { outline: 2px solid var(--whisper-accent); outline-offset: 4px; }
 .whisper-backdrop[data-state=closed], .whisper-composer[data-state=closed] { animation: whisper-fade-out .15s ease-in; }
 @keyframes whisper-fade { from { opacity: 0; } to { opacity: 1; } }
 @keyframes whisper-fade-out { to { opacity: 0; } }
