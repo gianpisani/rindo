@@ -49,6 +49,10 @@ export type NewTransaction = Omit<
     >
   >;
 
+// Techo de filas por request de PostgREST. Pedimos bloques de este tamaño
+// hasta agotar la tabla; si el proyecto sube su límite, esto sigue sirviendo.
+const TRANSACTIONS_PAGE_SIZE = 1000;
+
 // Same minute is common (bank syncs, quick entries): creation order breaks the tie.
 export const byNewest = (a: Pick<Transaction, "date" | "created_at">, b: Pick<Transaction, "date" | "created_at">) =>
   new Date(b.date).getTime() - new Date(a.date).getTime() ||
@@ -64,15 +68,25 @@ export function useTransactions() {
     queryKey: ["transactions"],
     queryFn: async () => {
       console.log("🔍 Fetching transactions...");
-      const { data, error } = await supabase
-        .from("transactions")
-        .select("*")
-        .order("date", { ascending: false })
-        .order("created_at", { ascending: false });
+      // Sin paginar, el servidor corta la respuesta en su techo de filas sin
+      // avisar: se perdía el historial más antiguo y los filtros por fecha
+      // devolvían vacío, porque corren en memoria sobre lo que ya llegó.
+      const all: Transaction[] = [];
+      for (let from = 0; ; from += TRANSACTIONS_PAGE_SIZE) {
+        const { data, error } = await supabase
+          .from("transactions")
+          .select("*")
+          .order("date", { ascending: false })
+          .order("created_at", { ascending: false })
+          .range(from, from + TRANSACTIONS_PAGE_SIZE - 1);
 
-      if (error) throw error;
-      console.log("📦 Transactions fetched:", data?.length || 0);
-      return data as Transaction[];
+        if (error) throw error;
+        all.push(...((data ?? []) as Transaction[]));
+        // Una página corta es la última: el total no se sabe de antemano.
+        if (!data || data.length < TRANSACTIONS_PAGE_SIZE) break;
+      }
+      console.log("📦 Transactions fetched:", all.length);
+      return all;
     },
     refetchOnWindowFocus: true,
     staleTime: 0,
