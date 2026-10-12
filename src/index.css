@@ -1909,6 +1909,7 @@ Based on Indigo, Blue, Cyan palette
   .fin-hist-tabs { display: flex; gap: 4px; padding: 8px 8px 0; }
   .fin-hist-tabs button { flex: 1; font-size: 12px; font-weight: 600; color: var(--muted-foreground); border-radius: 10px; padding: 8px; }
   .fin-hist-tabs button[aria-selected="true"] { color: var(--foreground); background: var(--inicio-hover); }
+  .fin-hist-tabs .fin-zoom { flex: none; }
   .fin-months .fin-card-head { display: none; }
   .fin-months[data-tab="trends"] .fin-months-body { display: none; }
   .fin-months[data-tab="months"] .fin-trends-body { display: none; }
@@ -1916,7 +1917,7 @@ Based on Indigo, Blue, Cyan palette
 .fin-trends-body { display: none; }
 @container inicio (max-width: 600px) { .fin-months[data-tab="trends"] .fin-trends-body { display: block; } }
 
-.fin-grid[data-zoom] { grid-template-columns: minmax(0, 1fr); grid-template-rows: auto minmax(0, 1fr);
+.fin-grid[data-view][data-zoom] { grid-template-columns: minmax(0, 1fr); grid-template-rows: auto minmax(0, 1fr);
   grid-template-areas: "head" "zoom"; }
 .fin-grid[data-zoom] > .fin-card { display: none; }
 .fin-grid[data-zoom] > .fin-card[data-zoom] { display: flex; grid-area: zoom; height: auto; }

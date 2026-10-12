@@ -51,8 +51,8 @@ import { cn } from "@/lib/utils";
  */
 
 const VIEW_KEY = "finanzas-view";
-/** Las tarjetas de la vista Mes, que son las que se pueden agrandar. */
-type ZoomCard = "flow" | "daily" | "cats";
+/** Cada tarjeta que se puede agrandar, en las dos vistas. */
+type ZoomCard = "flow" | "daily" | "cats" | "worth" | "months" | "trends";
 const clp = (value: number) =>
   new Intl.NumberFormat("es-CL", { style: "currency", currency: "CLP", minimumFractionDigits: 0 }).format(value);
 const tint = (color?: string | null) => ({
@@ -111,7 +111,7 @@ export default function Overview() {
 
   const changeView = (next: "mes" | "hist") => {
     setView(next);
-    // Las tarjetas que se agrandan son las del mes: al cambiar de vista, se vuelve.
+    // Cada tarjeta vive en una vista: cambiar de vista achica lo que estaba grande.
     if (zoom) { setZoom(null); exitFullscreen(); }
     try { localStorage.setItem(VIEW_KEY, next); } catch { /* sin almacenamiento, no pasa nada */ }
   };
@@ -178,9 +178,10 @@ export default function Overview() {
   });
 
   // ─── Agrandar una tarjeta ─────────────────────────────
-  // La pantalla completa se pide sobre el documento, no sobre la tarjeta, para
-  // que lo que se abre encima —un día, una categoría— siga apareciendo. Donde
-  // no la dan (iPhone), la tarjeta igual se queda sola con la grilla.
+  // Cualquiera de las seis, en las dos vistas. La pantalla completa se pide
+  // sobre el documento, no sobre la tarjeta, para que lo que se abre encima —un
+  // día, una categoría— siga apareciendo. Donde no la dan (iPhone), la tarjeta
+  // igual se queda sola con la grilla.
   const toggleZoom = (card: ZoomCard) => {
     const next = zoom === card ? null : card;
     setZoom(next);
@@ -533,7 +534,7 @@ export default function Overview() {
           ) : (
             <>
               {/* ¿Cómo va mi plata en el tiempo? */}
-              <section className="inicio-card fin-card fin-worth">
+              <section className="inicio-card fin-card fin-worth" data-zoom={zoom === "worth" ? "" : undefined}>
                 <div className="fin-card-head">
                   <span className="inicio-title">Patrimonio</span>
                   {worthNow && (
@@ -549,6 +550,7 @@ export default function Overview() {
                       )}
                     </span>
                   )}
+                  {zoomBtn("worth", "El patrimonio")}
                 </div>
                 {loading ? cardSkeleton : (
                   <>
@@ -577,10 +579,13 @@ export default function Overview() {
               </section>
 
               {/* Mes a mes (en celular comparte tarjeta con las categorías) */}
-              <section className="inicio-card fin-card fin-months" data-tab={histTab}>
+              <section className="inicio-card fin-card fin-months" data-tab={histTab} data-zoom={zoom === "months" ? "" : undefined}>
                 <div className="fin-hist-tabs" role="tablist">
                   <button role="tab" aria-selected={histTab === "months"} onClick={() => setHistTab("months")}>Mes a mes</button>
                   <button role="tab" aria-selected={histTab === "trends"} onClick={() => setHistTab("trends")}>Categorías</button>
+                  {/* En celular el encabezado va oculto: el botón de agrandar se
+                      viene a las pestañas, que es la única fila que queda */}
+                  {zoomBtn("months", "Mes a mes")}
                 </div>
                 <div className="fin-card-head">
                   <span className="inicio-title">Mes a mes</span>
@@ -591,6 +596,7 @@ export default function Overview() {
                       <><span style={{ color: "var(--inicio-emerald)" }}>entró</span> vs <span style={{ color: SOFT_ROSE }}>salió</span></>
                     )}
                   </span>
+                  {zoomBtn("months", "Mes a mes")}
                 </div>
                 <div className="fin-months-body flex min-h-0 flex-1 flex-col">
                   {loading ? cardSkeleton : (
@@ -606,10 +612,11 @@ export default function Overview() {
                 <div className="fin-trends-body inicio-scroll">{trendRows}</div>
               </section>
 
-              <section className="inicio-card fin-card fin-trends">
+              <section className="inicio-card fin-card fin-trends" data-zoom={zoom === "trends" ? "" : undefined}>
                 <div className="fin-card-head">
                   <span className="inicio-title">Categorías</span>
                   <span className="inicio-num">últimos {last12.length} meses</span>
+                  {zoomBtn("trends", "Las categorías del histórico")}
                 </div>
                 {loading ? cardSkeleton : trends.length === 0 ? (
                   <div className="fin-empty">Sin gastos todavía</div>
