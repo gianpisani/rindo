@@ -152,7 +152,7 @@ export function displaySign(type: TransactionType): -1 | 1 {
 
 /** Prefijo de signo para mostrar un monto (el negativo lo pone el formato). */
 export function signPrefix(type: TransactionType, amount: number): string {
-  if (type === "Rendimiento") return amount > 0 ? "+" : "";
+  if (type === "Rendimiento") return amount > 0 ? "+" : amount < 0 ? "−" : "";
   if (type === "Ingreso" || type === "Rescate") return "+";
   if (type === "Gasto" || type === "Inversión") return "−";
   return "";
