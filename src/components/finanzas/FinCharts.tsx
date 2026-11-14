@@ -78,10 +78,11 @@ export function FlowWaterfall({ steps, result, privacy }: {
 // ─── Gasto de cada día ───────────────────────────────────────────────────
 
 export function DailyBars({ values, month, today, onHover, onPick }: {
-  /** Índice 1..días del mes. */
+  /** Índice 1..días del periodo. */
   values: number[];
+  /** Inicio del periodo (el día 1 de `values`). */
   month: Date;
-  /** Día de hoy si es el mes en curso; lo posterior queda vacío. */
+  /** Día del periodo de hoy si es el mes en curso; lo posterior queda vacío. */
   today: number | null;
   onHover: (day: number | null) => void;
   onPick: (day: number) => void;
@@ -104,7 +105,8 @@ export function DailyBars({ values, month, today, onHover, onPick }: {
         {Array.from({ length: days }, (_, i) => {
           const day = i + 1;
           const future = day > lived;
-          const weekday = new Date(month.getFullYear(), month.getMonth(), day).getDay();
+          const date = new Date(month.getFullYear(), month.getMonth(), month.getDate() + day - 1);
+          const weekday = date.getDay();
           const value = Math.max(0, values[day] ?? 0);
           return (
             <button
@@ -115,7 +117,7 @@ export function DailyBars({ values, month, today, onHover, onPick }: {
               data-today={day === today}
               data-active={active === day}
               disabled={future}
-              aria-label={`Día ${day}`}
+              aria-label={`Día ${date.getDate()}`}
               onPointerEnter={() => !future && hover(day)}
               onFocus={() => !future && hover(day)}
               onClick={() => !future && value > 0 && onPick(day)}
@@ -130,7 +132,9 @@ export function DailyBars({ values, month, today, onHover, onPick }: {
         {avg > 0 && <span className="fin-avg" style={{ bottom: `${Math.min(1, avg / max) * 100}%` }} title="Promedio por día" />}
       </div>
       <div className="fin-axis">
-        {[1, 8, 15, 22, days].map((d) => <span key={d}>{d}</span>)}
+        {[1, 8, 15, 22, days].map((d) => (
+          <span key={d}>{new Date(month.getFullYear(), month.getMonth(), month.getDate() + d - 1).getDate()}</span>
+        ))}
       </div>
     </>
   );

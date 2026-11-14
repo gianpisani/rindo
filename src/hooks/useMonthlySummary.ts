@@ -3,10 +3,8 @@ import { useMemo } from "react";
 import { Transaction } from "./useTransactions";
 import { Category } from "./useCategories";
 import { CategoryLimit } from "./useCategoryLimits";
+import { periodEndOf, periodStartOf, shiftPeriod } from "@/lib/period";
 import {
-  startOfMonth,
-  endOfMonth,
-  subMonths,
   eachDayOfInterval,
   format,
   getDay,
@@ -71,13 +69,14 @@ export function useMonthlySummary(
   limits: CategoryLimit[],
   selectedMonth: Date,
   totalBudget?: number,
-  excludedCategories?: Set<string>
+  excludedCategories?: Set<string>,
+  /** Día en que empieza el mes financiero (1 = calendario). */
+  startDay = 1
 ) {
-  const monthStart = startOfMonth(selectedMonth);
-  const monthEnd = endOfMonth(selectedMonth);
-  const prevMonth = subMonths(selectedMonth, 1);
-  const prevMonthStart = startOfMonth(prevMonth);
-  const prevMonthEnd = endOfMonth(prevMonth);
+  const monthStart = periodStartOf(selectedMonth, startDay);
+  const monthEnd = periodEndOf(monthStart, startDay);
+  const prevMonthStart = shiftPeriod(monthStart, -1, startDay);
+  const prevMonthEnd = periodEndOf(prevMonthStart, startDay);
 
   const currentTransactions = useMemo(
     () =>
@@ -204,9 +203,7 @@ export function useMonthlySummary(
 
   const dailySpending = useMemo((): DailySpending[] => {
     const now = new Date();
-    const isCurrentMonth =
-      now.getFullYear() === selectedMonth.getFullYear() &&
-      now.getMonth() === selectedMonth.getMonth();
+    const isCurrentMonth = now >= monthStart && now <= monthEnd;
     const end = isCurrentMonth
       ? new Date(Math.min(now.getTime(), monthEnd.getTime()))
       : monthEnd;
@@ -238,7 +235,7 @@ export function useMonthlySummary(
         isWeekend: dow === 0 || dow === 6,
       };
     });
-  }, [currentTransactions, monthStart, monthEnd, selectedMonth, excludedCategories]);
+  }, [currentTransactions, monthStart, monthEnd, excludedCategories]);
 
   const dailyStats = useMemo(() => {
     const withSpending = dailySpending.filter((d) => d.amount > 0);

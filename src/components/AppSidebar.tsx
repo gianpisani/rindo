@@ -14,6 +14,7 @@ import {
   Check,
   RotateCcw,
   UserPen,
+  CalendarRange,
 } from "lucide-react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import { useCallback, useEffect, useState } from "react";
@@ -54,6 +55,8 @@ import { useIsMobile } from "@/hooks/use-mobile";
 import { RindoLogo } from "./RindoLogo";
 import { useUserProfile } from "@/hooks/useUserProfile";
 import { useGlobalDrawers } from "@/hooks/useGlobalDrawers";
+import { usePeriodConfig } from "@/hooks/usePeriodConfig";
+import { periodShortLabel } from "@/lib/period";
 import { useNavPreferences } from "@/hooks/useNavPreferences";
 import { SortableNavItem, DragOverlayItem } from "./SortableNavItem";
 import { cn } from "@/lib/utils";
@@ -91,7 +94,8 @@ export function AppSidebar() {
   const isMobile = useIsMobile();
 
   const { profile, avatarUrl } = useUserProfile();
-  const { openProfileEdit } = useGlobalDrawers();
+  const { openProfileEdit, openPeriodSettings } = useGlobalDrawers();
+  const { startDay } = usePeriodConfig();
 
   const {
     hiddenRoutes,
@@ -454,6 +458,14 @@ export function AppSidebar() {
                 >
                   <UserPen className="size-4 text-muted-foreground" />
                   Editar perfil
+                </DropdownMenuItem>
+                <DropdownMenuItem
+                  onClick={() => openPeriodSettings()}
+                  className="gap-2 px-3 py-2 cursor-pointer"
+                >
+                  <CalendarRange className="size-4 text-muted-foreground" />
+                  <span className="flex-1">Mes financiero</span>
+                  <span className="text-xs text-muted-foreground">{periodShortLabel(startDay)}</span>
                 </DropdownMenuItem>
                 <DropdownMenuSeparator />
                 {/* Theme picker */}

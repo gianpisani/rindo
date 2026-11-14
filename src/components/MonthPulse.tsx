@@ -1,8 +1,10 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { ChevronLeft, ChevronRight, X } from "lucide-react";
 import NumberFlow from "@number-flow/react";
-import { addMonths, format, isSameMonth, startOfMonth, subMonths } from "date-fns";
+import { format } from "date-fns";
+import { periodStartOf, shiftPeriod } from "@/lib/period";
+import { usePeriodConfig } from "@/hooks/usePeriodConfig";
 import { es } from "date-fns/locale";
 import type { Transaction } from "@/hooks/useTransactions";
 import type { Category } from "@/hooks/useCategories";
@@ -305,22 +307,29 @@ interface MonthPulseProps {
 
 export function MonthPulse({ open, onClose, initialMonth, transactions, categories, flowConfig }: MonthPulseProps) {
   const { isPrivacyMode } = usePrivacyMode();
-  const [month, setMonth] = useState(() => startOfMonth(initialMonth));
+  const period = usePeriodConfig();
+  const startDay = flowConfig?.periodStartDay ?? period.startDay;
+  const startOf = (d: Date) => periodStartOf(d, startDay);
+  const shift = useCallback((m: Date, delta: number) => shiftPeriod(m, delta, startDay), [startDay]);
+  const [month, setMonth] = useState(() => startOf(initialMonth));
 
   useEffect(() => {
-    if (open) setMonth(startOfMonth(initialMonth));
+    if (open) setMonth(startOf(initialMonth));
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [open]);
+  }, [open, startDay]);
 
   const firstMonth = useMemo(() => {
     let min = Date.now();
     for (const t of transactions) min = Math.min(min, new Date(t.date).getTime());
-    return startOfMonth(new Date(min));
-  }, [transactions]);
+    return periodStartOf(new Date(min), startDay);
+  }, [transactions, startDay]);
   const canBack = month > firstMonth;
-  const canForward = !isSameMonth(month, new Date()) && month < new Date();
+  const canForward = month < startOf(new Date());
 
-  const pace = useMemo(() => computeMonthPace(transactions, month), [transactions, month]);
+  const pace = useMemo(
+    () => computeMonthPace(transactions, month, { startDay }),
+    [transactions, month, startDay]
+  );
   const verdict = paceVerdict(pace);
   const colors = useMemo(() => new Map(categories.map((c) => [c.name, c.color])), [categories]);
 
@@ -330,19 +339,19 @@ export function MonthPulse({ open, onClose, initialMonth, transactions, categori
     const cur = computeRealFlows(transactions, month, flowConfig).ingresoReal;
     if (cur > 0 || !pace.isLive) return { amount: cur, estimated: false };
     const prev = [1, 2, 3]
-      .map((b) => computeRealFlows(transactions, subMonths(month, b), flowConfig).ingresoReal)
+      .map((b) => computeRealFlows(transactions, shift(month, -b), flowConfig).ingresoReal)
       .filter((v) => v > 0)
       .sort((a, b) => a - b);
     return { amount: prev.length ? prev[Math.floor(prev.length / 2)] : 0, estimated: true };
-  }, [transactions, month, flowConfig, pace.isLive]);
+  }, [transactions, month, flowConfig, pace.isLive, shift]);
   const leftover = income.amount - pace.projectedTotal;
 
   useEffect(() => {
     if (!open) return;
     const onKey = (e: KeyboardEvent) => {
       if (e.key === "Escape") onClose();
-      if (e.key === "ArrowLeft" && canBack) setMonth((m) => subMonths(m, 1));
-      if (e.key === "ArrowRight" && canForward) setMonth((m) => addMonths(m, 1));
+      if (e.key === "ArrowLeft" && canBack) setMonth((m) => shift(m, -1));
+      if (e.key === "ArrowRight" && canForward) setMonth((m) => shift(m, 1));
     };
     window.addEventListener("keydown", onKey);
     document.body.style.overflow = "hidden";
@@ -350,7 +359,7 @@ export function MonthPulse({ open, onClose, initialMonth, transactions, categori
       window.removeEventListener("keydown", onKey);
       document.body.style.overflow = "";
     };
-  }, [open, onClose, canBack, canForward]);
+  }, [open, onClose, canBack, canForward, shift]);
 
   return (
     <AnimatePresence>
@@ -367,7 +376,7 @@ export function MonthPulse({ open, onClose, initialMonth, transactions, categori
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-1">
                 <button
-                  onClick={() => setMonth((m) => subMonths(m, 1))}
+                  onClick={() => setMonth((m) => shift(m, -1))}
                   disabled={!canBack}
                   className="grid size-9 place-items-center rounded-full hover:bg-muted disabled:opacity-30"
                   aria-label="Mes anterior"
@@ -377,11 +386,12 @@ export function MonthPulse({ open, onClose, initialMonth, transactions, categori
                 <div className="min-w-32 text-center">
                   <p className="text-sm font-semibold capitalize">{format(month, "MMMM yyyy", { locale: es })}</p>
                   <p className="text-[11px] text-muted-foreground">
+                    {!period.isCalendar && <>{period.rangeLabel(month)} · </>}
                     {pace.isLive ? `Día ${pace.asOfDay} de ${pace.daysInMonth}` : "Mes cerrado"}
                   </p>
                 </div>
                 <button
-                  onClick={() => setMonth((m) => addMonths(m, 1))}
+                  onClick={() => setMonth((m) => shift(m, 1))}
                   disabled={!canForward}
                   className="grid size-9 place-items-center rounded-full hover:bg-muted disabled:opacity-30"
                   aria-label="Mes siguiente"

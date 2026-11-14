@@ -5,13 +5,12 @@ import {
   format,
   startOfDay,
   endOfDay,
-  startOfMonth,
-  endOfMonth,
   startOfWeek,
   endOfWeek,
   subDays,
-  subMonths,
 } from "date-fns";
+import { periodEndOf, periodStartOf, shiftPeriod } from "@/lib/period";
+import { usePeriodConfig } from "@/hooks/usePeriodConfig";
 import { es } from "date-fns/locale";
 import { Button } from "@/components/ui/button";
 import { Calendar } from "@/components/ui/calendar";
@@ -28,7 +27,8 @@ interface Preset {
   getRange: () => DateRangeValue;
 }
 
-const PRESETS: Preset[] = [
+/** "Este mes" y "Mes pasado" siguen el mes financiero del usuario. */
+const presetsFor = (startDay: number): Preset[] => [
   { label: "Hoy", getRange: () => ({ from: startOfDay(new Date()), to: endOfDay(new Date()) }) },
   {
     label: "Ayer",
@@ -49,13 +49,19 @@ const PRESETS: Preset[] = [
       to: endOfWeek(new Date(), { weekStartsOn: 1 }),
     }),
   },
-  { label: "Este mes", getRange: () => ({ from: startOfMonth(new Date()), to: endOfMonth(new Date()) }) },
+  {
+    label: "Este mes",
+    getRange: () => {
+      const from = periodStartOf(new Date(), startDay);
+      return { from, to: periodEndOf(from, startDay) };
+    },
+  },
   {
     label: "Mes pasado",
-    getRange: () => ({
-      from: startOfMonth(subMonths(new Date(), 1)),
-      to: endOfMonth(subMonths(new Date(), 1)),
-    }),
+    getRange: () => {
+      const from = shiftPeriod(periodStartOf(new Date(), startDay), -1, startDay);
+      return { from, to: periodEndOf(from, startDay) };
+    },
   },
 ];
 
@@ -78,6 +84,8 @@ interface DateRangeFilterProps {
 }
 
 export function DateRangeFilter({ value, onChange, className }: DateRangeFilterProps) {
+  const { startDay } = usePeriodConfig();
+  const PRESETS = React.useMemo(() => presetsFor(startDay), [startDay]);
   const [open, setOpen] = React.useState(false);
   const hasValue = Boolean(value.from || value.to);
 

@@ -9,8 +9,13 @@
  * sueldo: el barrido del 29 de agosto es el ahorro de septiembre. Un
  * rescate cuenta en el mes en que ocurre (vuelve a la liquidez de ese mes).
  *
+ * Con un mes financiero que no empieza el 1 (ver `period.ts`), la regla del
+ * día 25 se apaga: el corte del periodo ya decide a qué mes va cada aporte.
+ *
  * Sin dependencias del resto de la app para poder correr en node:test.
  */
+
+import { periodKey, periodStartOf, shiftPeriod } from "./period.ts";
 
 export const SAVINGS_SHIFT_DAY = 25;
 
@@ -32,7 +37,7 @@ export interface Sweep {
 }
 
 export interface SavingsMonth {
-  /** Primer día del mes, en hora local. */
+  /** Inicio del periodo (primer día del mes financiero), en hora local. */
   month: Date;
   /** "yyyy-MM", para keys y comparaciones. */
   key: string;
@@ -43,30 +48,25 @@ export interface SavingsMonth {
   met: boolean;
   /** Los aportes que financian este mes, en orden cronológico. */
   sweeps: Sweep[];
-  /** El gasto más grande del mes calendario (sin tránsito). */
+  /** El gasto más grande del periodo (sin tránsito). */
   biggestHit: { label: string; amount: number } | null;
 }
 
-const monthKey = (d: Date) =>
-  `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
-
-const startOfMonth = (d: Date) => new Date(d.getFullYear(), d.getMonth(), 1);
-
-const addMonths = (d: Date, n: number) =>
-  new Date(d.getFullYear(), d.getMonth() + n, 1);
+const monthKey = periodKey;
 
 /**
  * A qué mes pertenece un aporte: el que financia. Día ≥ 25 → mes siguiente.
  * Devuelve null si la transacción no mueve ahorro.
  */
-export function savingsMonthOf(entry: SavingsEntry): Date | null {
+export function savingsMonthOf(entry: SavingsEntry, startDay = 1): Date | null {
   const date = new Date(entry.date);
+  const period = periodStartOf(date, startDay);
   if (entry.type === "Inversión") {
-    return date.getDate() >= SAVINGS_SHIFT_DAY
-      ? addMonths(date, 1)
-      : startOfMonth(date);
+    return startDay === 1 && date.getDate() >= SAVINGS_SHIFT_DAY
+      ? shiftPeriod(period, 1, startDay)
+      : period;
   }
-  if (entry.type === "Rescate") return startOfMonth(date);
+  if (entry.type === "Rescate") return period;
   return null;
 }
 
@@ -78,13 +78,14 @@ export function computeSavingsMonths(
   entries: SavingsEntry[],
   goal: number,
   endMonth: Date,
-  count = 12
+  count = 12,
+  startDay = 1
 ): SavingsMonth[] {
-  const end = startOfMonth(endMonth);
+  const end = periodStartOf(endMonth, startDay);
   const months: SavingsMonth[] = [];
   const byKey = new Map<string, SavingsMonth>();
   for (let i = count - 1; i >= 0; i--) {
-    const month = addMonths(end, -i);
+    const month = shiftPeriod(end, -i, startDay);
     const row: SavingsMonth = {
       month,
       key: monthKey(month),
@@ -105,7 +106,7 @@ export function computeSavingsMonths(
 
     if (entry.type === "Gasto") {
       if (entry.category_name && TRANSIT_CATEGORIES.has(entry.category_name)) continue;
-      const row = byKey.get(monthKey(new Date(entry.date)));
+      const row = byKey.get(monthKey(periodStartOf(new Date(entry.date), startDay)));
       if (!row) continue;
       if (!row.biggestHit || amount > row.biggestHit.amount) {
         const label = (entry.detail || "").trim() || entry.category_name || "Gasto";
@@ -114,7 +115,7 @@ export function computeSavingsMonths(
       continue;
     }
 
-    const target = savingsMonthOf(entry);
+    const target = savingsMonthOf(entry, startDay);
     if (!target) continue;
     const row = byKey.get(monthKey(target));
     if (!row) continue;
@@ -138,12 +139,12 @@ export function computeSavingsMonths(
  * Lo ya barrido para el mes que viene (aportes de este mes con día ≥ 25).
  * Sirve para no dejar al usuario mirando "$0" recién después de invertir.
  */
-export function computeNextMonthSweep(entries: SavingsEntry[], now: Date): Sweep[] {
-  const nextKey = monthKey(addMonths(now, 1));
+export function computeNextMonthSweep(entries: SavingsEntry[], now: Date, startDay = 1): Sweep[] {
+  const nextKey = monthKey(shiftPeriod(periodStartOf(now, startDay), 1, startDay));
   return entries
     .filter((e) => e.type === "Inversión")
     .filter((e) => {
-      const target = savingsMonthOf(e);
+      const target = savingsMonthOf(e, startDay);
       return target !== null && monthKey(target) === nextKey;
     })
     .map((e) => ({ date: new Date(e.date), amount: Number(e.amount) }))

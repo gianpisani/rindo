@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState, type CSSProperties, type ReactNode } from "react";
-import { format, subMonths } from "date-fns";
+import { format } from "date-fns";
 import { es } from "date-fns/locale";
 import { CalendarRange, Check, ChevronLeft, ChevronRight, ListFilter, Maximize2, Minimize2 } from "lucide-react";
 import Layout from "@/components/Layout";
@@ -34,6 +34,9 @@ import {
   monthsBetween,
   startOfMonthOf,
 } from "@/lib/finance-history";
+import { dateOfPeriodDay, dayOfPeriod, shiftPeriod } from "@/lib/period";
+import { usePeriodConfig } from "@/hooks/usePeriodConfig";
+import { useGlobalDrawers } from "@/hooks/useGlobalDrawers";
 import { ANALYZING_CATEGORY } from "@/lib/auto-category-policy";
 import { cn } from "@/lib/utils";
 
@@ -104,13 +107,16 @@ export default function Overview() {
   const { budget } = useMonthlyBudget();
   const { isPrivacyMode } = usePrivacyMode();
   const edit = useInlineEdit();
+  const period = usePeriodConfig();
+  const { startDay } = period;
+  const openPeriodSettings = useGlobalDrawers((s) => s.openPeriodSettings);
   const flowConfig = useMemo(
-    () => ({ splurgeCategories: budget?.splurge_categories ?? [] }),
-    [budget?.splurge_categories]
+    () => ({ splurgeCategories: budget?.splurge_categories ?? [], periodStartDay: startDay }),
+    [budget?.splurge_categories, startDay]
   );
 
   const now = new Date();
-  const thisMonth = startOfMonthOf(now);
+  const thisMonth = startOfMonthOf(now, startDay);
   const [view, setView] = useState<"mes" | "hist">(() => {
     try { return localStorage.getItem(VIEW_KEY) === "hist" ? "hist" : "mes"; } catch { return "mes"; }
   });
@@ -133,6 +139,11 @@ export default function Overview() {
   const [hoverDay, setHoverDay] = useState<number | null>(null);
   const [hoverMonth, setHoverMonth] = useState<number | null>(null);
   const [hoverWorth, setHoverWorth] = useState<number | null>(null);
+
+  // Si cambia el mes financiero (o termina de cargar), se vuelve al periodo actual.
+  useEffect(() => {
+    setMonth(startOfMonthOf(new Date(), startDay));
+  }, [startDay]);
 
   const exitFullscreen = () => {
     if (document.fullscreenElement) document.exitFullscreen?.()?.catch(() => { /* ya salió */ });
@@ -188,14 +199,14 @@ export default function Overview() {
     }, null);
     // El tope es alto a propósito: un rango a mano puede pedir años atrás. El
     // histórico igual solo calcula los meses del rango elegido.
-    return monthsBetween(first ?? thisMonth, thisMonth, 120);
+    return monthsBetween(first ?? thisMonth, thisMonth, 120, startDay);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [transactions, thisMonth.getTime()]);
   const canPrev = month.getTime() > months[0].getTime();
   const canNext = month.getTime() < thisMonth.getTime();
   const step = (delta: number) =>
     setMonth((m) => {
-      const next = new Date(m.getFullYear(), m.getMonth() + delta, 1);
+      const next = shiftPeriod(m, delta, startDay);
       return next < months[0] || next > thisMonth ? m : next;
     });
 
@@ -255,7 +266,7 @@ export default function Overview() {
 
   // ─── Mes ──────────────────────────────────────────────
   const isCurrent = month.getTime() === thisMonth.getTime();
-  const prevMonth = subMonths(month, 1);
+  const prevMonth = shiftPeriod(month, -1, startDay);
   const flows = useMemo(() => computeRealFlows(shownTx, month, flowConfig), [shownTx, month, flowConfig]);
   const prevFlows = useMemo(() => computeRealFlows(shownTx, prevMonth, flowConfig),
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -269,9 +280,9 @@ export default function Overview() {
   const monthTx = useMemo(
     () => shownTx.filter((t) => {
       const d = new Date(t.date);
-      return d >= month && d <= endOfMonthOf(month);
+      return d >= month && d <= endOfMonthOf(month, startDay);
     }),
-    [shownTx, month]
+    [shownTx, month, startDay]
   );
   const hasMonthData = monthTx.length > 0 || flows.ingresoReal > 0;
 
@@ -289,12 +300,12 @@ export default function Overview() {
   };
 
   // Días
-  const lived = isCurrent ? now.getDate() : flows.dailyNet.length - 1;
+  const lived = isCurrent ? dayOfPeriod(now, month) : flows.dailyNet.length - 1;
   const spentDays = flows.dailyNet.slice(1, lived + 1);
   const avgDay = spentDays.length ? spentDays.reduce((s, v) => s + Math.max(0, v), 0) / spentDays.length : 0;
-  const dayDate = (day: number) => new Date(month.getFullYear(), month.getMonth(), day);
+  const dayDate = (day: number) => dateOfPeriodDay(month, day);
   const openDay = (day: number) => {
-    const rows = monthTx.filter((t) => new Date(t.date).getDate() === day);
+    const rows = monthTx.filter((t) => dayOfPeriod(new Date(t.date), month) === day);
     setSheet({
       title: format(dayDate(day), "EEEE d 'de' MMMM", { locale: es }),
       summary: `Gastaste ${clp(Math.max(0, flows.dailyNet[day] ?? 0))} · ${rows.length} movimiento${rows.length === 1 ? "" : "s"}`,
@@ -305,14 +316,14 @@ export default function Overview() {
 
   // Categorías del mes contra el anterior
   const monthCats = useMemo(() => {
-    const current = spendByCategory(shownTx, month, endOfMonthOf(month));
-    const previous = spendByCategory(shownTx, prevMonth, endOfMonthOf(prevMonth));
+    const current = spendByCategory(shownTx, month, endOfMonthOf(month, startDay));
+    const previous = spendByCategory(shownTx, prevMonth, endOfMonthOf(prevMonth, startDay));
     return [...current.entries()]
       .map(([category, row]) => ({ category, ...row, prev: previous.get(category)?.effectiveAmount ?? 0 }))
       .filter((c) => c.effectiveAmount > 0 || c.amount > 0)
       .sort((a, b) => b.effectiveAmount - a.effectiveAmount);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [shownTx, month]);
+  }, [shownTx, month, startDay]);
   const topCat = Math.max(1, ...monthCats.map((c) => c.effectiveAmount));
   const openCategory = (category: string, from: Date, to: Date, groupBy: "day" | "month", summary: string, chart?: ReactNode) => {
     const rows = shownTx.filter((t) => {
@@ -330,15 +341,16 @@ export default function Overview() {
   const histMonths = useMemo(() => {
     if (range.preset !== "custom") return months.slice(-Number(range.preset));
     // El histórico cuenta por mes: el día elegido entra con todo su mes.
-    const from = startOfMonthOf(dayFromKey(range.from) ?? months[0]);
-    const to = startOfMonthOf(dayFromKey(range.to) ?? months[months.length - 1]);
+    const from = startOfMonthOf(dayFromKey(range.from) ?? months[0], startDay);
+    const to = startOfMonthOf(dayFromKey(range.to) ?? months[months.length - 1], startDay);
     const lo = Math.min(from.getTime(), to.getTime());
     const hi = Math.max(from.getTime(), to.getTime());
     const picked = months.filter((m) => m.getTime() >= lo && m.getTime() <= hi);
     return picked.length ? picked : months.slice(-1);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [months, range]);
   const rangeStart = histMonths[0];
-  const rangeEnd = endOfMonthOf(histMonths[histMonths.length - 1]);
+  const rangeEnd = endOfMonthOf(histMonths[histMonths.length - 1], startDay);
   const history = useMemo(() => {
     const sorted = [...shownTx].sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
     return buildHistory(
@@ -347,15 +359,16 @@ export default function Overview() {
         const f = computeRealFlows(shownTx, m, flowConfig);
         return { ingreso: f.ingresoReal, gasto: f.consumoNeto, invertido: f.invertido - f.rescatado };
       },
-      (end) => computeLedger(sorted.filter((t) => new Date(t.date) <= end))
+      (end) => computeLedger(sorted.filter((t) => new Date(t.date) <= end)),
+      startDay
     );
-  }, [shownTx, histMonths, flowConfig]);
-  const averages = historyAverages(history, now);
+  }, [shownTx, histMonths, flowConfig, startDay]);
+  const averages = historyAverages(history, now, startDay);
   // Sin tope: la tarjeta lista todas las categorías del rango, no solo las que más pesan.
   const trends = useMemo(
-    () => categoryTrends(histMonths, (start, end) => new Map([...spendByCategory(shownTx, start, end)].map(([k, v]) => [k, v.effectiveAmount])), now, Infinity),
+    () => categoryTrends(histMonths, (start, end) => new Map([...spendByCategory(shownTx, start, end)].map(([k, v]) => [k, v.effectiveAmount])), now, Infinity, startDay),
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [shownTx, histMonths]
+    [shownTx, histMonths, startDay]
   );
   const worthIndex = hoverWorth ?? history.length - 1;
   const worthNow = history[worthIndex];
@@ -541,7 +554,19 @@ export default function Overview() {
                 <>
                   <div className="fin-stepper">
                     <button onClick={() => step(-1)} disabled={!canPrev} aria-label="Mes anterior"><ChevronLeft /></button>
-                    <span className="label">{format(month, "MMMM yyyy", { locale: es })}</span>
+                    <span className="label">
+                      {format(month, "MMMM yyyy", { locale: es })}
+                      {!period.isCalendar && (
+                        <button
+                          type="button"
+                          className="block mx-auto text-[11px] font-normal text-muted-foreground hover:text-foreground underline-offset-2 hover:underline"
+                          onClick={openPeriodSettings}
+                          title="Configurar mes financiero"
+                        >
+                          {period.rangeLabel(month)}
+                        </button>
+                      )}
+                    </span>
                     <button onClick={() => step(1)} disabled={!canNext} aria-label="Mes siguiente"><ChevronRight /></button>
                   </div>
                   {hasMonthData && (
@@ -616,7 +641,7 @@ export default function Overview() {
                       key={month.toISOString()}
                       values={flows.dailyNet}
                       month={month}
-                      today={isCurrent ? now.getDate() : null}
+                      today={isCurrent ? dayOfPeriod(now, month) : null}
                       onHover={setHoverDay}
                       onPick={openDay}
                     />
@@ -644,7 +669,7 @@ export default function Overview() {
                         <button
                           key={c.category}
                           className="fin-cat"
-                          onClick={() => openCategory(c.category, month, endOfMonthOf(month), "day",
+                          onClick={() => openCategory(c.category, month, endOfMonthOf(month, startDay), "day",
                             `${clp(c.effectiveAmount)} · ${c.count} movimiento${c.count === 1 ? "" : "s"}${c.reimbursedAmount > 0 ? ` · ${clp(c.reimbursedAmount)} reembolsado` : ""}`)}
                         >
                           <span className="inicio-ico" style={tint(colorOf(c.category))}>{edit.emojiOf(c.category)}</span>

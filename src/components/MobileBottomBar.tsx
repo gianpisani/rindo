@@ -1,6 +1,8 @@
 import { useCallback, useState } from "react";
 import { Link, useLocation } from "react-router-dom";
-import { Plus, ChevronUp, UserPen, SlidersHorizontal, LogOut } from "lucide-react";
+import { Plus, ChevronUp, UserPen, SlidersHorizontal, LogOut, CalendarRange } from "lucide-react";
+import { usePeriodConfig } from "@/hooks/usePeriodConfig";
+import { periodShortLabel } from "@/lib/period";
 import { cn } from "@/lib/utils";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { useGlobalDrawers } from "@/hooks/useGlobalDrawers";
@@ -26,7 +28,8 @@ function RouteIcon({ route, className }: { route: RouteConfig; className?: strin
 export function MobileBottomBar() {
   const isMobile = useIsMobile();
   const location = useLocation();
-  const { openQuickAdd, openProfileEdit } = useGlobalDrawers();
+  const { openQuickAdd, openProfileEdit, openPeriodSettings } = useGlobalDrawers();
+  const { startDay } = usePeriodConfig();
   const { playToggleOn } = useSoundFX();
   const { profile, avatarUrl } = useUserProfile();
   const { mobileTabs, hiddenRoutes } = useNavPreferences();
@@ -184,6 +187,23 @@ export function MobileBottomBar() {
 
             {/* Divider */}
             <div className="my-2 mx-6 h-px bg-border/40" />
+
+            {/* Mes financiero */}
+            <button
+              onClick={() => {
+                setDrawerOpen(false);
+                setTimeout(() => openPeriodSettings(), 300);
+              }}
+              className="flex w-full items-center gap-3 px-4 py-2.5 rounded-xl active:bg-muted/50 transition-colors"
+            >
+              <div className="size-9 rounded-full bg-muted/80 dark:bg-muted/50 grid place-items-center shrink-0">
+                <CalendarRange className="size-4 text-muted-foreground" />
+              </div>
+              <div className="flex-1 text-left min-w-0">
+                <p className="text-sm font-medium">Mes financiero</p>
+                <p className="text-[11px] text-muted-foreground">{periodShortLabel(startDay)}</p>
+              </div>
+            </button>
 
             {/* Profile + Customize */}
             <div className="flex items-center gap-2 px-1">

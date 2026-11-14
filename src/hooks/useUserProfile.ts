@@ -18,6 +18,8 @@ export interface UserProfile {
   accent_color_2: string | null;
   onboarding_completed: boolean;
   nav_preferences: NavPreferencesData | null;
+  /** Día en que empieza el mes financiero (1 = calendario). */
+  period_start_day: number;
   created_at: string;
   updated_at: string;
 }

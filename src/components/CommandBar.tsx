@@ -20,7 +20,9 @@ import {
   ArrowLeftRight,
   ArrowDownToLine,
   LineChart,
+  CalendarRange,
 } from "lucide-react";
+import { useGlobalDrawers } from "@/hooks/useGlobalDrawers";
 import { useTransactions } from "@/hooks/useTransactions";
 import { useCategories } from "@/hooks/useCategories";
 import { useFuzzySearch } from "@/hooks/useFuzzySearch";
@@ -190,6 +192,15 @@ export function CommandBar({ open, onOpenChange, onAddTransaction, onConciliate,
           <CommandItem onSelect={() => runCommand(() => onEditProfile?.())} className="cursor-pointer">
             <UserPen className="mr-2 h-4 w-4 text-muted-foreground" />
             <span>Editar perfil</span>
+          </CommandItem>
+
+          <CommandItem
+            onSelect={() => runCommand(() => useGlobalDrawers.getState().openPeriodSettings())}
+            keywords={["mes", "periodo", "corte", "ciclo", "configurar"]}
+            className="cursor-pointer"
+          >
+            <CalendarRange className="mr-2 h-4 w-4 text-muted-foreground" />
+            <span>Configurar mes financiero</span>
           </CommandItem>
         </CommandGroup>
 

@@ -45,14 +45,19 @@ export interface MonthPace {
   drivers: PaceDriver[];
 }
 
+import {
+  dayOfPeriod,
+  daysInPeriod,
+  periodIndex,
+  periodStartOf,
+  shiftPeriod,
+} from "./period.ts";
+
 export const PACE_LOOKBACK_MONTHS = 6;
 export const DEFAULT_PACE_TRANSIT = ["Reembolsos", "Conciliación"];
 
-const monthKey = (y: number, m: number) => y * 12 + m;
-const daysIn = (y: number, m: number) => new Date(y, m + 1, 0).getDate();
-
-/** Gasto neto por categoría y día de cada mes: key(mes) → categoría → [0..días]. */
-function dailyByCategory(entries: PaceEntry[], transit: Set<string>) {
+/** Gasto neto por categoría y día de cada periodo: índice(periodo) → categoría → [0..días]. */
+function dailyByCategory(entries: PaceEntry[], transit: Set<string>, startDay: number) {
   const months = new Map<number, Map<string, number[]>>();
   for (const e of entries) {
     const expense = e.type === "Gasto" && !transit.has(e.category_name);
@@ -61,15 +66,14 @@ function dailyByCategory(entries: PaceEntry[], transit: Set<string>) {
     if (!expense && !refund) continue;
     const d = new Date(e.date);
     if (!Number.isFinite(d.getTime())) continue;
-    const y = d.getFullYear();
-    const m = d.getMonth();
-    const key = monthKey(y, m);
+    const start = periodStartOf(d, startDay);
+    const key = periodIndex(start);
     const category = expense ? e.category_name : e.reimbursement_for_category!;
     let cats = months.get(key);
     if (!cats) months.set(key, (cats = new Map()));
     let days = cats.get(category);
-    if (!days) cats.set(category, (days = new Array(daysIn(y, m) + 1).fill(0)));
-    days[d.getDate()] += expense ? Number(e.amount) : -Number(e.amount);
+    if (!days) cats.set(category, (days = new Array(daysInPeriod(start, startDay) + 1).fill(0)));
+    days[dayOfPeriod(d, start)] += expense ? Number(e.amount) : -Number(e.amount);
   }
   return months;
 }
@@ -95,20 +99,20 @@ const scaleDay = (d: number, days: number, len: number) =>
 export function computeMonthPace(
   entries: PaceEntry[],
   month: Date,
-  options: { today?: Date; lookback?: number; transit?: string[] } = {}
+  options: { today?: Date; lookback?: number; transit?: string[]; startDay?: number } = {}
 ): MonthPace {
   const today = options.today ?? new Date();
   const lookback = options.lookback ?? PACE_LOOKBACK_MONTHS;
   const transit = new Set(options.transit ?? DEFAULT_PACE_TRANSIT);
-  const y = month.getFullYear();
-  const m = month.getMonth();
-  const days = daysIn(y, m);
-  const key = monthKey(y, m);
-  const todayKey = monthKey(today.getFullYear(), today.getMonth());
-  const isLive = key === todayKey;
-  const asOfDay = isLive ? today.getDate() : days;
+  const startDay = options.startDay ?? 1;
+  const start = periodStartOf(month, startDay);
+  const days = daysInPeriod(start, startDay);
+  const key = periodIndex(start);
+  const todayStart = periodStartOf(today, startDay);
+  const isLive = key === periodIndex(todayStart);
+  const asOfDay = isLive ? Math.min(days, dayOfPeriod(today, start)) : days;
 
-  const byMonth = dailyByCategory(entries, transit);
+  const byMonth = dailyByCategory(entries, transit, startDay);
 
   const totalDaily = (cats: Map<string, number[]> | undefined, len: number) => {
     const out = new Array(len + 1).fill(0);
@@ -125,9 +129,7 @@ export function computeMonthPace(
     const pk = key - back;
     const cats = byMonth.get(pk);
     if (!cats) continue;
-    const py = Math.floor(pk / 12);
-    const pm = pk % 12;
-    const len = daysIn(py, pm);
+    const len = daysInPeriod(shiftPeriod(start, -back, startDay), startDay);
     const cum = cumulative(totalDaily(cats, len));
     if (cum[len] <= 0) continue;
     past.push({ len, cum, cats });
