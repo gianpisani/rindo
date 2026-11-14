@@ -134,7 +134,7 @@ export function PeriodSettingsDialog() {
           <ul className="space-y-1">
             {preview.map((p) => (
               <li key={p.getTime()} className="flex justify-between gap-3">
-                <span className="capitalize">{periodMonthName(p)}</span>
+                <span className="capitalize">{periodMonthName(p, startDay)}</span>
                 <span className="text-muted-foreground">{periodRangeLabel(p, startDay)}</span>
               </li>
             ))}
@@ -144,7 +144,7 @@ export function PeriodSettingsDialog() {
         <p className="text-xs text-muted-foreground">
           {startDay === 1
             ? "Con el mes calendario, el sueldo y los ahorros que llegan desde el día 25 se cuentan en el mes siguiente."
-            : "Cada mes se llama como el mes en que empieza. El sueldo y los ahorros se cuentan en el mes en que llegan, según este corte."}
+            : "Cada mes se llama como el mes en que termina. El sueldo y los ahorros se cuentan en el mes en que llegan, según este corte."}
           {startDay > 28 && " En los meses que no tienen ese día, el mes empieza el último día disponible."}
         </p>
       </div>

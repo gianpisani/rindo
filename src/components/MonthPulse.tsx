@@ -3,7 +3,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { ChevronLeft, ChevronRight, X } from "lucide-react";
 import NumberFlow from "@number-flow/react";
 import { format } from "date-fns";
-import { periodStartOf, shiftPeriod } from "@/lib/period";
+import { periodNameDate, periodStartOf, shiftPeriod } from "@/lib/period";
 import { usePeriodConfig } from "@/hooks/usePeriodConfig";
 import { es } from "date-fns/locale";
 import type { Transaction } from "@/hooks/useTransactions";
@@ -384,7 +384,7 @@ export function MonthPulse({ open, onClose, initialMonth, transactions, categori
                   <ChevronLeft className="size-4" />
                 </button>
                 <div className="min-w-32 text-center">
-                  <p className="text-sm font-semibold capitalize">{format(month, "MMMM yyyy", { locale: es })}</p>
+                  <p className="text-sm font-semibold capitalize">{format(periodNameDate(month, startDay), "MMMM yyyy", { locale: es })}</p>
                   <p className="text-[11px] text-muted-foreground">
                     {!period.isCalendar && <>{period.rangeLabel(month)} · </>}
                     {pace.isLive ? `Día ${pace.asOfDay} de ${pace.daysInMonth}` : "Mes cerrado"}

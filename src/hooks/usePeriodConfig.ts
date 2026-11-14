@@ -5,6 +5,7 @@ import {
   periodEndDay,
   periodEndOf,
   periodMonthName,
+  periodNameDate,
   periodRangeLabel,
   periodStartOf,
   shiftPeriod,
@@ -31,8 +32,10 @@ export function usePeriodConfig() {
       shift: (start: Date, delta: number) => shiftPeriod(start, delta, startDay),
       /** "15 nov – 14 dic". */
       rangeLabel: (start: Date) => periodRangeLabel(start, startDay),
-      /** "noviembre". */
-      monthName: periodMonthName,
+      /** "diciembre" para el 15 nov – 14 dic: el mes en que termina. */
+      monthName: (start: Date) => periodMonthName(start, startDay),
+      /** Fecha del mes que da nombre al periodo, para formatear con date-fns. */
+      nameDate: (start: Date) => periodNameDate(start, startDay),
     };
   }, [startDay]);
 }

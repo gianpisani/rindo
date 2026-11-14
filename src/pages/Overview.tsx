@@ -34,7 +34,7 @@ import {
   monthsBetween,
   startOfMonthOf,
 } from "@/lib/finance-history";
-import { dateOfPeriodDay, dayOfPeriod, shiftPeriod } from "@/lib/period";
+import { dateOfPeriodDay, dayOfPeriod, periodNameDate, shiftPeriod } from "@/lib/period";
 import { usePeriodConfig } from "@/hooks/usePeriodConfig";
 import { useGlobalDrawers } from "@/hooks/useGlobalDrawers";
 import { ANALYZING_CATEGORY } from "@/lib/auto-category-policy";
@@ -117,6 +117,8 @@ export default function Overview() {
 
   const now = new Date();
   const thisMonth = startOfMonthOf(now, startDay);
+  /** Cada periodo se llama como el mes en que termina. */
+  const nameOf = (d: Date) => periodNameDate(d, startDay);
   const [view, setView] = useState<"mes" | "hist">(() => {
     try { return localStorage.getItem(VIEW_KEY) === "hist" ? "hist" : "mes"; } catch { return "mes"; }
   });
@@ -287,8 +289,8 @@ export default function Overview() {
   const hasMonthData = monthTx.length > 0 || flows.ingresoReal > 0;
 
   const steps: FlowStep[] = [
-    { label: "Entró", value: flows.ingresoReal, color: "var(--inicio-emerald)", delta: deltaOf(flows.ingresoReal, prevFlows.ingresoReal, prevMonth, true) },
-    { label: "Gastos", value: -flows.consumoNeto, color: SOFT_ROSE, delta: deltaOf(flows.consumoNeto, prevFlows.consumoNeto, prevMonth, false) },
+    { label: "Entró", value: flows.ingresoReal, color: "var(--inicio-emerald)", delta: deltaOf(flows.ingresoReal, prevFlows.ingresoReal, nameOf(prevMonth), true) },
+    { label: "Gastos", value: -flows.consumoNeto, color: SOFT_ROSE, delta: deltaOf(flows.consumoNeto, prevFlows.consumoNeto, nameOf(prevMonth), false) },
     // Aportes y rescates por separado: netearlos escondía lo que pasó.
     ...(flows.invertido > 0 ? [{ label: "Invertido", value: -flows.invertido, color: "var(--inicio-blue)" }] : []),
     ...(flows.rescatado > 0 ? [{ label: "Rescatado", value: flows.rescatado, color: "var(--inicio-cyan)" }] : []),
@@ -373,11 +375,11 @@ export default function Overview() {
   const worthIndex = hoverWorth ?? history.length - 1;
   const worthNow = history[worthIndex];
   const worthChange = history.length > 1 ? history[history.length - 1].patrimonio - history[0].patrimonio : 0;
-  const monthLabel = (d: Date) => format(d, histMonths.length > 12 ? "MMM yy" : "MMM", { locale: es }).replace(".", "");
+  const monthLabel = (d: Date) => format(nameOf(d), histMonths.length > 12 ? "MMM yy" : "MMM", { locale: es }).replace(".", "");
   /** "últimos 12 meses" o "ene 25 – mar 26": qué período se está mirando. */
   const rangeNote = range.preset === "custom" || histMonths.length < Number(range.preset)
     ? histMonths.length === 1
-      ? format(rangeStart, "MMMM yyyy", { locale: es })
+      ? format(nameOf(rangeStart), "MMMM yyyy", { locale: es })
       : `${monthLabel(rangeStart)} – ${monthLabel(histMonths[histMonths.length - 1])}`
     : `últimos ${histMonths.length} meses`;
   const hovered = hoverMonth !== null ? history[hoverMonth] : null;
@@ -555,11 +557,11 @@ export default function Overview() {
                   <div className="fin-stepper">
                     <button onClick={() => step(-1)} disabled={!canPrev} aria-label="Mes anterior"><ChevronLeft /></button>
                     <span className="label">
-                      {format(month, "MMMM yyyy", { locale: es })}
+                      {format(nameOf(month), "MMMM yyyy", { locale: es })}
                       {!period.isCalendar && (
                         <button
                           type="button"
-                          className="block mx-auto text-[11px] font-normal text-muted-foreground hover:text-foreground underline-offset-2 hover:underline"
+                          className="range"
                           onClick={openPeriodSettings}
                           title="Configurar mes financiero"
                         >
@@ -589,7 +591,7 @@ export default function Overview() {
                   {zoomBtn("flow", "El flujo del mes")}
                 </div>
                 {loading ? cardSkeleton : !hasMonthData ? (
-                  <div className="fin-empty">Sin movimientos en {format(month, "MMMM", { locale: es })}</div>
+                  <div className="fin-empty">Sin movimientos en {format(nameOf(month), "MMMM", { locale: es })}</div>
                 ) : (
                   <>
                     <div className="fin-plot" style={{ marginTop: 26 }}>
@@ -655,7 +657,7 @@ export default function Overview() {
                   <span className="inicio-title">
                     Categorías{monthCats.length > 0 && <span className="inicio-count">{monthCats.length}</span>}
                   </span>
-                  <span className="inicio-num">vs {format(prevMonth, "MMMM", { locale: es })}</span>
+                  <span className="inicio-num">vs {format(nameOf(prevMonth), "MMMM", { locale: es })}</span>
                   {zoomBtn("cats", "Las categorías")}
                 </div>
                 {loading ? cardSkeleton : monthCats.length === 0 ? (

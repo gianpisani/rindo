@@ -13,7 +13,7 @@ import { useCategories } from "@/hooks/useCategories";
 import { useCategoryLimits } from "@/hooks/useCategoryLimits";
 import { useCategoryInsights } from "@/hooks/useCategoryInsights";
 import { usePeriodConfig } from "@/hooks/usePeriodConfig";
-import { dayOfPeriod, shiftPeriod } from "@/lib/period";
+import { dayOfPeriod, periodNameDate, shiftPeriod } from "@/lib/period";
 import { usePrivacyMode } from "@/hooks/usePrivacyMode";
 import { cn } from "@/lib/utils";
 import {
@@ -184,7 +184,7 @@ export default function Meta() {
   // ── El estado del mes en curso, en una frase ──
   const currentTone = toneOf(current, true, todayInPeriod);
   const pct = hasGoal ? Math.min(100, Math.round((current.saved / goal) * 100)) : 0;
-  const nextMonthName = format(shiftPeriod(thisPeriod, 1, startDay), "MMMM", { locale: es });
+  const nextMonthName = format(periodNameDate(shiftPeriod(thisPeriod, 1, startDay), startDay), "MMMM", { locale: es });
   const nextTotal = nextSweeps.reduce((s, x) => s + x.amount, 0);
 
   let note: { text: string; tone: Tone } = { text: "", tone: "wait" };
@@ -201,7 +201,7 @@ export default function Meta() {
   }
 
   // ── El detalle del mes elegido: dos líneas fijas, sin saltos ──
-  const detailTop = `${format(selected.month, "MMMM", { locale: es })} · ${formatCurrency(selected.saved)}`;
+  const detailTop = `${format(periodNameDate(selected.month, startDay), "MMMM", { locale: es })} · ${formatCurrency(selected.saved)}`;
   const detailBottom = (() => {
     const parts: string[] = [];
     if (selected.sweeps.length) parts.push(`barrido el ${listDays(selected.sweeps)}`);
@@ -387,7 +387,7 @@ export default function Meta() {
                       <span className="meta-bar">
                         <i style={{ height }} />
                       </span>
-                      <span className="meta-mon"><span>{format(m.month, "MMM", { locale: es }).replace(".", "")}</span></span>
+                      <span className="meta-mon"><span>{format(periodNameDate(m.month, startDay), "MMM", { locale: es }).replace(".", "")}</span></span>
                     </button>
                   );
                 })}

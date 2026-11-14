@@ -4,7 +4,7 @@
  * `startDay = 1` es exactamente el mes calendario.
  *
  * Un periodo se representa por la fecha local de su inicio (medianoche) y se
- * nombra por el mes en que empieza. Si el mes no tiene el día `startDay`
+ * nombra por el mes en que termina: el 15 nov – 14 dic es "diciembre". Si el mes no tiene el día `startDay`
  * (31 en febrero), el inicio se ajusta al último día de ese mes.
  *
  * Función pura, sin alias `@/`, para poder testearla con `node --test`.
@@ -54,7 +54,7 @@ export function isInPeriod(date: Date, start: Date, startDay: number): boolean {
 /** Índice correlativo del periodo (año*12 + mes que lo nombra). */
 export const periodIndex = (start: Date) => start.getFullYear() * 12 + start.getMonth();
 
-/** "yyyy-MM" del mes que nombra el periodo. */
+/** "yyyy-MM" del mes en que empieza el periodo. Identificador interno, no es su nombre. */
 export const periodKey = (start: Date) =>
   `${start.getFullYear()}-${String(start.getMonth() + 1).padStart(2, "0")}`;
 
@@ -102,8 +102,18 @@ export function periodRangeLabel(start: Date, startDay: number): string {
   return `${shortDate(start)} – ${shortDate(periodEndOf(start, startDay))}`;
 }
 
-/** "noviembre" (el mes en que empieza). */
-export const periodMonthName = (start: Date) => MONTHS_LONG[start.getMonth()];
+/**
+ * Una fecha dentro del mes que da nombre al periodo (el día en que termina),
+ * para formatearla con "MMMM yyyy". Con `startDay = 1` es el mismo mes.
+ */
+export function periodNameDate(start: Date, startDay: number): Date {
+  const end = periodEndOf(start, startDay);
+  return new Date(end.getFullYear(), end.getMonth(), end.getDate());
+}
+
+/** "diciembre" para el 15 nov – 14 dic (el mes en que termina). */
+export const periodMonthName = (start: Date, startDay: number) =>
+  MONTHS_LONG[periodNameDate(start, startDay).getMonth()];
 
 /** Etiqueta corta para menús: "Calendario" o "15 → 14". */
 export const periodShortLabel = (startDay: number) =>

@@ -1737,6 +1737,10 @@ Based on Indigo, Blue, Cyan palette
 .fin-stepper button:disabled { opacity: .3; }
 .fin-stepper button svg { width: 16px; height: 16px; }
 .fin-stepper .label { min-width: 132px; text-align: center; font-size: 14px; font-weight: 600; text-transform: capitalize; }
+/* El rango del mes financiero ("25 oct – 24 nov"), bajo el nombre del mes. No es una flecha: anula su caja de 30px. */
+.fin-stepper .label .range { width: auto; height: auto; display: block; margin: 1px auto 0; padding: 0 6px; border-radius: 6px;
+  font-size: 11px; font-weight: 500; line-height: 1.3; white-space: nowrap; text-transform: none; }
+.fin-stepper .label .range:hover { background: none; color: var(--foreground); text-decoration: underline; text-underline-offset: 2px; }
 .fin-pulse { display: flex; align-items: center; gap: 6px; font-size: 12px; color: var(--muted-foreground); padding: 6px 11px; border-radius: 999px;
   background: var(--card); border: 1px solid var(--border); transition: color .15s; }
 .fin-pulse:hover { color: var(--foreground); }

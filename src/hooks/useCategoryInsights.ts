@@ -3,7 +3,7 @@ import { summarizeCategoryPeriod } from "@/lib/category-spending";
 import { Transaction } from "./useTransactions";
 import { CategoryLimit } from "./useCategoryLimits";
 import { format } from "date-fns";
-import { periodEndOf, periodStartOf, shiftPeriod } from "@/lib/period";
+import { periodEndOf, periodNameDate, periodStartOf, shiftPeriod } from "@/lib/period";
 import { es } from "date-fns/locale";
 
 export interface CategorySpending {
@@ -161,8 +161,8 @@ export function useCategoryInsights(
       );
 
       return {
-        month: format(month, "MMM", { locale: es }),
-        year: month.getFullYear(),
+        month: format(periodNameDate(month, startDay), "MMM", { locale: es }),
+        year: periodNameDate(month, startDay).getFullYear(),
         categories,
       };
     });
