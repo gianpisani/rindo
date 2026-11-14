@@ -1,4 +1,4 @@
-import { categorizeBatchForUser } from '../_shared/jev-poc.ts'
+import { categorizeBankImport, type BankCategorizeItem } from '../_shared/bank-categorize.ts'
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.39.3'
 import { corsHeaders } from '../_shared/cors.ts'
 import { sendBatchNotificationEmail } from '../_shared/email-notification.ts'
@@ -212,7 +212,7 @@ Deno.serve(async (req) => {
 
       const syncDate = new Date().toISOString().split('T')[0]
       let created = 0
-      const toAutoCategorize: { id: string; detail: string }[] = []
+      const toAutoCategorize: BankCategorizeItem[] = []
 
       for (const m of movements) {
         const isoDate = convertDate(m.date, syncDate)
@@ -254,15 +254,12 @@ Deno.serve(async (req) => {
           console.error('Import-skipped insert error:', m.description, insertError)
         } else {
           created++
-          toAutoCategorize.push({ id: inserted.id, detail: m.description })
+          toAutoCategorize.push({ id: inserted.id, detail: m.description, type: m.type })
         }
       }
 
-      if (toAutoCategorize.length > 0) {
-        await categorizeBatchForUser(supabaseClient, toAutoCategorize.map(tx => tx.id), userId,
-          { apiKey: Deno.env.get('AI_GATEWAY_API_KEY') ?? '' })
-          .catch(() => console.error('No se pudo categorizar la importación'))
-      }
+      await categorizeBankImport(supabaseClient, toAutoCategorize, userId,
+        { apiKey: Deno.env.get('AI_GATEWAY_API_KEY') ?? '' })
 
       if (created > 0) {
         try {
