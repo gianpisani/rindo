@@ -7,7 +7,7 @@ export interface CategoryHistoryEntry {
   category_source?: string | null
 }
 
-const stopWords = new Set(['a', 'de', 'del', 'el', 'la', 'las', 'los', 'en', 'por', 'para', 'con', 'un', 'una', 'pago', 'compra', 'transferencia', 'tarjeta', 'credito', 'debito', 'spa', 'sa', 'clp'])
+export const stopWords = new Set(['a', 'de', 'del', 'el', 'la', 'las', 'los', 'en', 'por', 'para', 'con', 'un', 'una', 'pago', 'compra', 'transferencia', 'tarjeta', 'credito', 'debito', 'spa', 'sa', 'clp'])
 export function normalizeMerchant(detail: string) {
   return detail.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase()
     .replace(/\*{2,}\d+/g, '').replace(/[^a-z0-9\s]/g, ' ').replace(/\s+/g, ' ').trim()

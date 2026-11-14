@@ -1,4 +1,4 @@
-import { categorizeBatchForUser } from './jev-poc.ts'
+import { categorizeBankImport, type BankCategorizeItem } from './bank-categorize.ts'
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.39.3'
 import { sendBatchNotificationEmail } from './email-notification.ts'
 
@@ -142,7 +142,7 @@ export async function importBankMovements(params: {
 
   let imported = 0
   let skipped = 0
-  const toAutoCategorize: { id: string; detail: string }[] = []
+  const toAutoCategorize: BankCategorizeItem[] = []
   const importedItems: ImportedItem[] = []
   const skippedItems: SkippedItem[] = []
 
@@ -273,16 +273,13 @@ export async function importBankMovements(params: {
     } else {
       imported++
       importedItems.push({ id: inserted.id, date: movement.date, description, amount: absAmount, type })
-      toAutoCategorize.push({ id: inserted.id, detail: description })
+      toAutoCategorize.push({ id: inserted.id, detail: description, type })
     }
   }
 
-  // Auto-categorize via batch call
-  if (toAutoCategorize.length > 0) {
-    await categorizeBatchForUser(supabaseClient, toAutoCategorize.map(tx => tx.id), userId,
-      { apiKey: Deno.env.get('AI_GATEWAY_API_KEY') ?? '' })
-      .catch(() => console.error('No se pudo categorizar la importación'))
-  }
+  // Auto-categorize: Jev, with simple history match as fallback
+  await categorizeBankImport(supabaseClient, toAutoCategorize, userId,
+    { apiKey: Deno.env.get('AI_GATEWAY_API_KEY') ?? '' })
 
   // Email notification
   if (sendEmail && imported > 0) {
