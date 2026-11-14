@@ -7,6 +7,8 @@ import {
   normalizeStartDay,
   periodEndOf,
   periodKey,
+  periodMonthName,
+  periodNameDate,
   periodRangeLabel,
   periodsBetween,
   periodStartOf,
@@ -65,4 +67,11 @@ test('end day ↔ start day', () => {
   assert.equal(startDayFromEndDay(0), 1);
   assert.equal(normalizeStartDay(0), 1);
   assert.equal(normalizeStartDay(40), 1);
+});
+
+test('a period is named after the month it ends', () => {
+  assert.equal(periodMonthName(new Date(2026, 10, 15), 15), 'diciembre');
+  assert.equal(periodMonthName(new Date(2026, 9, 25), 25), 'noviembre');
+  assert.equal(periodMonthName(new Date(2026, 10, 1), 1), 'noviembre');
+  assert.deepEqual(periodNameDate(new Date(2026, 11, 15), 15), new Date(2027, 0, 14));
 });

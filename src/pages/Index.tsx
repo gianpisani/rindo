@@ -13,7 +13,7 @@ import { useCategoryInsights } from "@/hooks/useCategoryInsights";
 import { useGlobalDrawers } from "@/hooks/useGlobalDrawers";
 import { useMonthlyBudget } from "@/hooks/useMonthlyBudget";
 import { usePeriodConfig } from "@/hooks/usePeriodConfig";
-import { dayOfPeriod, periodIndex, periodStartOf, shiftPeriod } from "@/lib/period";
+import { dayOfPeriod, periodIndex, periodNameDate, periodStartOf, shiftPeriod } from "@/lib/period";
 import {
   useRealFlows,
   computeRealFlows,
@@ -112,6 +112,8 @@ const Index = () => {
   const { startDay } = period;
   const thisPeriod = period.currentPeriod;
   const lastMonth = shiftPeriod(thisPeriod, -1, startDay);
+  /** El mes anterior se llama como el mes en que terminó. */
+  const lastMonthName = periodNameDate(lastMonth, startDay);
 
   const { budget } = useMonthlyBudget();
   const flowConfig = useMemo<Partial<RealFlowsConfig>>(
@@ -206,7 +208,7 @@ const Index = () => {
         id: "sweep",
         icon: PiggyBank,
         label: `${formatCompact(sweepAlert.amount)} sin invertir`,
-        detail: `Cerraste ${format(lastMonth, "MMMM", { locale: es })} con ${formatCompact(
+        detail: `Cerraste ${format(lastMonthName, "MMMM", { locale: es })} con ${formatCompact(
           sweepAlert.amount
         )} ahorrados que no barriste a inversión.`,
         tone: "warning",
@@ -215,7 +217,7 @@ const Index = () => {
     }
     if (learningNotice) list.push(learningNotice);
     return list;
-  }, [sweepAlert, learningNotice, lastMonth, navigate]);
+  }, [sweepAlert, learningNotice, lastMonthName, navigate]);
 
   function getCatEmoji(categoryName: string) {
     const cat = categories.find((c) => c.name === categoryName);
@@ -557,7 +559,7 @@ const Index = () => {
             </div>
             {(lastMonthIncome > 0 || lastMonthExpenses > 0) && (
               <p className={cn("inicio-prev", isPrivacyMode && "privacy-blur")}>
-                <span className="capitalize">{format(lastMonth, "MMM", { locale: es })}</span>
+                <span className="capitalize">{format(lastMonthName, "MMM", { locale: es })}</span>
                 {" · "}+{formatCurrency(lastMonthIncome)}{" · "}−{formatCurrency(lastMonthExpenses)}
               </p>
             )}
