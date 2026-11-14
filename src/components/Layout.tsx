@@ -1,4 +1,5 @@
 import { ReactNode, useCallback, useEffect, useState } from "react";
+import { PeriodSettingsDialog } from "@/components/PeriodSettingsDialog";
 import { CommandBar } from "./CommandBar";
 import { ReconciliationDrawer } from "./ReconciliationDrawer";
 import { WhisperInput } from "./WhisperInput";
@@ -174,6 +175,9 @@ export default function Layout({ children, fit = false }: LayoutProps) {
             setReconciliationOpen(open);
           }}
         />
+
+        {/* Mes financiero - Global */}
+        <PeriodSettingsDialog />
 
         {/* Profile Edit Modal - Global */}
         <OnboardingModal

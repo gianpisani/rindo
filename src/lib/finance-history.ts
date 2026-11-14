@@ -5,6 +5,8 @@
  * inicio), así Finanzas y el inicio nunca cuentan distinto.
  */
 
+import { periodEndOf, periodsBetween, periodStartOf } from "./period.ts";
+
 export interface MonthFlows {
   /** Ingresos reales (sin reembolsos, con el sueldo atribuido al mes que financia). */
   ingreso: number;
@@ -24,24 +26,27 @@ export interface HistoryPoint extends MonthFlows {
   patrimonio: number;
 }
 
-export const startOfMonthOf = (date: Date) => new Date(date.getFullYear(), date.getMonth(), 1);
-export const endOfMonthOf = (date: Date) => new Date(date.getFullYear(), date.getMonth() + 1, 0, 23, 59, 59, 999);
+/**
+ * Un "mes" acá es el mes financiero del usuario (ver `period.ts`): con
+ * `startDay = 1` es el mes calendario. `month` siempre es el inicio del periodo.
+ */
+export const startOfMonthOf = (date: Date, startDay = 1) => periodStartOf(date, startDay);
+export const endOfMonthOf = (month: Date, startDay = 1) => periodEndOf(periodStartOf(month, startDay), startDay);
 
 /** Los meses desde el primero con datos hasta `last`, a lo más `max` (los más recientes). */
-export function monthsBetween(first: Date, last: Date, max = 36): Date[] {
-  const months: Date[] = [];
-  for (let m = startOfMonthOf(first); m <= last; m = new Date(m.getFullYear(), m.getMonth() + 1, 1)) months.push(m);
-  return months.slice(-max);
+export function monthsBetween(first: Date, last: Date, max = 36, startDay = 1): Date[] {
+  return periodsBetween(first, last, startDay, max);
 }
 
 export function buildHistory(
   months: Date[],
   flowsOf: (month: Date) => MonthFlows,
-  bucketsAt: (end: Date) => { liquido: number; invertido: number }
+  bucketsAt: (end: Date) => { liquido: number; invertido: number },
+  startDay = 1
 ): HistoryPoint[] {
   return months.map((month) => {
     const flows = flowsOf(month);
-    const buckets = bucketsAt(endOfMonthOf(month));
+    const buckets = bucketsAt(endOfMonthOf(month, startDay));
     return {
       month,
       ...flows,
@@ -58,8 +63,8 @@ export function buildHistory(
  * arrastraría todo hacia abajo). Divide por meses calendario, no por meses
  * con movimientos: un mes sin ingresos también cuenta.
  */
-export function historyAverages(points: HistoryPoint[], today: Date) {
-  const current = startOfMonthOf(today).getTime();
+export function historyAverages(points: HistoryPoint[], today: Date, startDay = 1) {
+  const current = startOfMonthOf(today, startDay).getTime();
   const closed = points.filter((p) => p.month.getTime() < current);
   const n = closed.length;
   const sum = (pick: (p: HistoryPoint) => number) => closed.reduce((s, p) => s + pick(p), 0);
@@ -95,10 +100,11 @@ export function categoryTrends(
   months: Date[],
   spendOf: (start: Date, end: Date) => Map<string, number>,
   today: Date,
-  limit = 8
+  limit = 8,
+  startDay = 1
 ): CategoryTrend[] {
-  const current = startOfMonthOf(today).getTime();
-  const perMonth = months.map((m) => spendOf(startOfMonthOf(m), endOfMonthOf(m)));
+  const current = startOfMonthOf(today, startDay).getTime();
+  const perMonth = months.map((m) => spendOf(startOfMonthOf(m, startDay), endOfMonthOf(m, startDay)));
   const categories = new Set(perMonth.flatMap((map) => [...map.keys()]));
   const closedIdx = months.map((m, i) => (m.getTime() < current ? i : -1)).filter((i) => i >= 0);
   return [...categories]

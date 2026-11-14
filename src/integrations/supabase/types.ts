@@ -1371,6 +1371,7 @@ export type Database = {
           nav_preferences: Json | null
           nickname: string | null
           onboarding_completed: boolean
+          period_start_day: number
           updated_at: string
           user_id: string
         }
@@ -1384,6 +1385,7 @@ export type Database = {
           nav_preferences?: Json | null
           nickname?: string | null
           onboarding_completed?: boolean
+          period_start_day?: number
           updated_at?: string
           user_id: string
         }
@@ -1397,6 +1399,7 @@ export type Database = {
           nav_preferences?: Json | null
           nickname?: string | null
           onboarding_completed?: boolean
+          period_start_day?: number
           updated_at?: string
           user_id?: string
         }

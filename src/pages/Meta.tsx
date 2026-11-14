@@ -12,6 +12,8 @@ import { useMonthlyBudget } from "@/hooks/useMonthlyBudget";
 import { useCategories } from "@/hooks/useCategories";
 import { useCategoryLimits } from "@/hooks/useCategoryLimits";
 import { useCategoryInsights } from "@/hooks/useCategoryInsights";
+import { usePeriodConfig } from "@/hooks/usePeriodConfig";
+import { dayOfPeriod, shiftPeriod } from "@/lib/period";
 import { usePrivacyMode } from "@/hooks/usePrivacyMode";
 import { cn } from "@/lib/utils";
 import {
@@ -63,10 +65,11 @@ const tint = (color?: string | null) => ({
 
 type Tone = "met" | "part" | "none" | "wait";
 
-const toneOf = (m: SavingsMonth, isCurrent: boolean, today: Date): Tone => {
+/** `dayOfMonth`: día del mes financiero en curso (1 = el día en que empieza). */
+const toneOf = (m: SavingsMonth, isCurrent: boolean, dayOfMonth: number): Tone => {
   if (m.met) return "met";
   if (m.saved > 0) return "part";
-  return isCurrent && today.getDate() <= GRACE_DAY ? "wait" : "none";
+  return isCurrent && dayOfMonth <= GRACE_DAY ? "wait" : "none";
 };
 
 /** Un campo de monto en línea: Enter guarda, Esc cancela. */
@@ -114,23 +117,29 @@ export default function Meta() {
   const { isPrivacyMode } = usePrivacyMode();
 
   const today = new Date();
+  const period = usePeriodConfig();
+  const { startDay } = period;
+  const thisPeriod = period.currentPeriod;
+  const todayInPeriod = dayOfPeriod(today, thisPeriod);
   const goal = budget?.savings_goal ?? 0;
   const hasGoal = goal > 0;
 
   const months = useMemo(
-    () => computeSavingsMonths(transactions, goal, today, MONTHS),
+    () => computeSavingsMonths(transactions, goal, today, MONTHS, startDay),
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [transactions, goal, today.getFullYear(), today.getMonth()]
+    [transactions, goal, thisPeriod.getTime(), startDay]
   );
   const nextSweeps = useMemo(
-    () => computeNextMonthSweep(transactions, today),
+    () => computeNextMonthSweep(transactions, today, startDay),
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [transactions, today.getFullYear(), today.getMonth()]
+    [transactions, thisPeriod.getTime(), startDay]
   );
 
   const current = months[months.length - 1];
   const metCount = months.filter((m) => m.met).length;
   const [selectedKey, setSelectedKey] = useState(current.key);
+  // Si cambia el mes financiero, la selección vuelve al mes en curso.
+  useEffect(() => setSelectedKey(current.key), [current.key]);
   const selected = months.find((m) => m.key === selectedKey) ?? current;
 
   // La escala del gráfico: la meta con aire arriba, o el mejor mes si la pasó.
@@ -173,9 +182,9 @@ export default function Meta() {
   );
 
   // ── El estado del mes en curso, en una frase ──
-  const currentTone = toneOf(current, true, today);
+  const currentTone = toneOf(current, true, todayInPeriod);
   const pct = hasGoal ? Math.min(100, Math.round((current.saved / goal) * 100)) : 0;
-  const nextMonthName = format(new Date(today.getFullYear(), today.getMonth() + 1, 1), "MMMM", { locale: es });
+  const nextMonthName = format(shiftPeriod(thisPeriod, 1, startDay), "MMMM", { locale: es });
   const nextTotal = nextSweeps.reduce((s, x) => s + x.amount, 0);
 
   let note: { text: string; tone: Tone } = { text: "", tone: "wait" };
@@ -205,7 +214,7 @@ export default function Meta() {
   })();
 
   // ── Límites por categoría: las mismas filas que el Inicio, y acá se editan ──
-  const { categorySpending } = useCategoryInsights(transactions, limits, today);
+  const { categorySpending } = useCategoryInsights(transactions, limits, today, 6, startDay);
   const limitRows = useMemo(
     () =>
       categorySpending
@@ -311,7 +320,9 @@ export default function Meta() {
             {/* El mes en curso */}
             <section className="meta-card meta-now" data-tone={currentTone}>
               <div className="meta-now-top">
-                <span className="meta-month">{format(today, "MMMM yyyy", { locale: es })}</span>
+                <span className="meta-month">
+                  {period.isCalendar ? format(today, "MMMM yyyy", { locale: es }) : period.rangeLabel(thisPeriod)}
+                </span>
                 <span className="meta-pct">{pct}%</span>
               </div>
               <div className={cn("meta-big", isPrivacyMode && "privacy-blur")}>
@@ -357,7 +368,7 @@ export default function Meta() {
                 />
                 {months.map((m, i) => {
                   const isCurrent = m.key === current.key;
-                  const tone = toneOf(m, isCurrent, today);
+                  const tone = toneOf(m, isCurrent, todayInPeriod);
                   const height = `${Math.min(100, (m.saved / scale) * 100)}%`;
                   return (
                     <button
@@ -381,7 +392,7 @@ export default function Meta() {
                   );
                 })}
               </div>
-              <div className="meta-detail" data-tone={toneOf(selected, selected.key === current.key, today)}>
+              <div className="meta-detail" data-tone={toneOf(selected, selected.key === current.key, todayInPeriod)}>
                 <p className={cn("meta-detail-top", isPrivacyMode && "privacy-blur")}>{detailTop}</p>
                 <p className={cn("meta-detail-sub", isPrivacyMode && "privacy-blur")}>{detailBottom}</p>
               </div>

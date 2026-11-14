@@ -12,6 +12,8 @@ import { useMonthlySummary } from "@/hooks/useMonthlySummary";
 import { useCategoryInsights } from "@/hooks/useCategoryInsights";
 import { useGlobalDrawers } from "@/hooks/useGlobalDrawers";
 import { useMonthlyBudget } from "@/hooks/useMonthlyBudget";
+import { usePeriodConfig } from "@/hooks/usePeriodConfig";
+import { dayOfPeriod, periodIndex, periodStartOf, shiftPeriod } from "@/lib/period";
 import {
   useRealFlows,
   computeRealFlows,
@@ -30,7 +32,7 @@ import { BankSyncModal } from "@/components/BankSyncModal";
 import { useBankSyncContext } from "@/contexts/BankSyncContext";
 import { useNavigate } from "react-router-dom";
 import { Skeleton } from "@/components/ui/skeleton";
-import { format, subMonths, isToday, isYesterday } from "date-fns";
+import { format, isToday, isYesterday } from "date-fns";
 import { es } from "date-fns/locale";
 import { cn } from "@/lib/utils";
 import NumberFlow from "@number-flow/react";
@@ -104,19 +106,23 @@ const Index = () => {
 
   // Calcular stats del mes actual — flujos reales (ingreso con sueldo-shift,
   // consumo neto de reembolsos, sin tránsito)
+  // "Mes" = el mes financiero del usuario (con inicio 1, el calendario).
   const now = new Date();
-  const lastMonth = subMonths(now, 1);
+  const period = usePeriodConfig();
+  const { startDay } = period;
+  const thisPeriod = period.currentPeriod;
+  const lastMonth = shiftPeriod(thisPeriod, -1, startDay);
 
   const { budget } = useMonthlyBudget();
   const flowConfig = useMemo<Partial<RealFlowsConfig>>(
-    () => ({ splurgeCategories: budget?.splurge_categories ?? [] }),
-    [budget?.splurge_categories]
+    () => ({ splurgeCategories: budget?.splurge_categories ?? [], periodStartDay: startDay }),
+    [budget?.splurge_categories, startDay]
   );
-  const currentFlows = useRealFlows(transactions, now, flowConfig);
+  const currentFlows = useRealFlows(transactions, thisPeriod, flowConfig);
   const lastMonthFlows = useMemo(
     () => computeRealFlows(transactions, lastMonth, flowConfig),
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [transactions, lastMonth.getFullYear(), lastMonth.getMonth(), flowConfig]
+    [transactions, lastMonth.getTime(), flowConfig]
   );
 
   const currentIncome = currentFlows.ingresoReal;
@@ -135,7 +141,7 @@ const Index = () => {
   // Detector de sweep: mes cerrado con ahorro sin invertir, visible los
   // primeros días del mes (solo si el usuario ya opera con meta de ahorro)
   const sweepAlert = useMemo(() => {
-    if (!budget?.savings_goal || now.getDate() > 7) return null;
+    if (!budget?.savings_goal || dayOfPeriod(now, thisPeriod) > 7) return null;
     if (lastMonthFlows.consumoBruto === 0 && lastMonthFlows.ingresoReal === 0)
       return null;
     const saved = lastMonthFlows.ingresoReal - lastMonthFlows.consumoNeto;
@@ -152,20 +158,22 @@ const Index = () => {
     : 0;
 
   // Current month summary for donut chart
-  const currentMonthSummary = useMonthlySummary(transactions, categories, limits, now);
+  const currentMonthSummary = useMonthlySummary(transactions, categories, limits, now, undefined, undefined, startDay);
 
   // Category insights
   const { categorySpending } = useCategoryInsights(
     transactions,
     limits,
-    now
+    now,
+    6,
+    startDay
   );
 
   // El pulso del mes: tu gasto de hoy contra tu mes típico al mismo día
   const monthPace = useMemo(
-    () => computeMonthPace(transactions, now),
+    () => computeMonthPace(transactions, now, { startDay }),
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [transactions, now.getFullYear(), now.getMonth(), now.getDate()]
+    [transactions, now.getFullYear(), now.getMonth(), now.getDate(), startDay]
   );
   const hasPace = monthPace.typical !== null || monthPace.spentSoFar > 0;
 
@@ -301,20 +309,21 @@ const Index = () => {
   // pasó (arriendo, suscripciones) no suma nada, y lo que suele caer a fin
   // de mes sí.
   const remainingTypical = useMemo(() => {
-    const today = now.getDate();
+    const today = dayOfPeriod(now, thisPeriod);
     const sums = new Map<string, number>();
     for (const t of transactions) {
       if (t.type !== "Gasto" && !t.reimbursement_for_category) continue;
       const d = new Date(t.date);
-      const monthsAgo = (now.getFullYear() - d.getFullYear()) * 12 + now.getMonth() - d.getMonth();
-      if (monthsAgo < 1 || monthsAgo > 3 || d.getDate() <= today) continue;
+      const start = periodStartOf(d, startDay);
+      const monthsAgo = periodIndex(thisPeriod) - periodIndex(start);
+      if (monthsAgo < 1 || monthsAgo > 3 || dayOfPeriod(d, start) <= today) continue;
       const category = t.type === "Gasto" ? t.category_name : (t.reimbursement_for_category as string);
       const signed = t.type === "Gasto" ? Number(t.amount) : -Number(t.amount);
       sums.set(category, (sums.get(category) ?? 0) + signed);
     }
     return new Map([...sums].map(([category, sum]) => [category, Math.max(0, sum / 3)]));
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [transactions, now.getFullYear(), now.getMonth(), now.getDate()]);
+  }, [transactions, now.getFullYear(), now.getMonth(), now.getDate(), startDay]);
 
   const projectionOf = (c: (typeof budgetRows)[number]) => {
     const rest = remainingTypical.get(c.category) ?? 0;
@@ -510,7 +519,9 @@ const Index = () => {
           <section className="inicio-card inicio-money">
             <div className="inicio-money-top">
               <span className="inicio-title">Líquido</span>
-              <span className="inicio-month">{format(now, "MMMM yyyy", { locale: es })}</span>
+              <span className="inicio-month">
+                {period.isCalendar ? format(now, "MMMM yyyy", { locale: es }) : period.rangeLabel(thisPeriod)}
+              </span>
             </div>
             <div className={cn("inicio-big", isPrivacyMode && "privacy-blur")}>
               $<NumberFlow
@@ -691,7 +702,7 @@ const Index = () => {
       <MonthPulse
         open={storyOpen}
         onClose={() => setStoryOpen(false)}
-        initialMonth={now}
+        initialMonth={thisPeriod}
         transactions={transactions}
         categories={categories}
         flowConfig={flowConfig}

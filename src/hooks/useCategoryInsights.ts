@@ -2,7 +2,8 @@ import { useMemo } from "react";
 import { summarizeCategoryPeriod } from "@/lib/category-spending";
 import { Transaction } from "./useTransactions";
 import { CategoryLimit } from "./useCategoryLimits";
-import { startOfMonth, endOfMonth, subMonths, format, eachMonthOfInterval } from "date-fns";
+import { format } from "date-fns";
+import { periodEndOf, periodStartOf, shiftPeriod } from "@/lib/period";
 import { es } from "date-fns/locale";
 
 export interface CategorySpending {
@@ -43,15 +44,16 @@ export function useCategoryInsights(
   transactions: Transaction[],
   limits: CategoryLimit[],
   selectedMonth?: Date,
-  months: number = 6
+  months: number = 6,
+  /** Día en que empieza el mes financiero (1 = calendario). */
+  startDay = 1
 ) {
-  const currentMonth = selectedMonth || new Date();
-  const monthStart = startOfMonth(currentMonth);
-  const monthEnd = endOfMonth(currentMonth);
-  
-  const previousMonth = subMonths(currentMonth, 1);
-  const prevMonthStart = startOfMonth(previousMonth);
-  const prevMonthEnd = endOfMonth(previousMonth);
+  const currentMonth = periodStartOf(selectedMonth || new Date(), startDay);
+  const monthStart = currentMonth;
+  const monthEnd = periodEndOf(currentMonth, startDay);
+
+  const prevMonthStart = shiftPeriod(currentMonth, -1, startDay);
+  const prevMonthEnd = periodEndOf(prevMonthStart, startDay);
 
   const currentSpending = useMemo(() => summarizeCategoryPeriod(transactions, monthStart, monthEnd), [transactions, monthStart, monthEnd]);
   const previousSpending = useMemo(() => summarizeCategoryPeriod(transactions, prevMonthStart, prevMonthEnd), [transactions, prevMonthStart, prevMonthEnd]);
@@ -145,14 +147,13 @@ export function useCategoryInsights(
 
   // Get last N months comparison
   const monthlyComparison = useMemo((): MonthlyComparison[] => {
-    const last6Months = eachMonthOfInterval({
-      start: subMonths(currentMonth, months - 1),
-      end: currentMonth,
-    });
+    const last6Months = Array.from({ length: months }, (_, i) =>
+      shiftPeriod(currentMonth, i - (months - 1), startDay)
+    );
 
     return last6Months.map((month) => {
-      const monthStart = startOfMonth(month);
-      const monthEnd = endOfMonth(month);
+      const monthStart = month;
+      const monthEnd = periodEndOf(month, startDay);
 
       const categories = Object.fromEntries(
         [...summarizeCategoryPeriod(transactions, monthStart, monthEnd)]
@@ -165,7 +166,8 @@ export function useCategoryInsights(
         categories,
       };
     });
-  }, [transactions, currentMonth, months]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [transactions, currentMonth.getTime(), months, startDay]);
 
   // Generate insights
   const insights = useMemo((): CategoryInsight[] => {
@@ -256,7 +258,7 @@ export function useCategoryInsights(
     monthlyComparison,
     insights,
     currentMonth,
-    previousMonth,
+    previousMonth: prevMonthStart,
     totalSpending: categorySpending.reduce((sum, c) => sum + c.effectiveAmount, 0),
   };
 }

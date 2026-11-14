@@ -1,11 +1,18 @@
 import { useMemo } from "react";
-import { addMonths, getDate, getDaysInMonth, isSameMonth } from "date-fns";
+import { addMonths, getDate } from "date-fns";
 import type { Transaction } from "./useTransactions";
 import {
   computeBuckets,
   DEFAULT_PASS_THROUGH_CATEGORIES,
   type Buckets,
 } from "@/lib/ledger";
+import {
+  dayOfPeriod,
+  daysInPeriod,
+  isInPeriod,
+  periodStartOf,
+  shiftPeriod,
+} from "@/lib/period";
 
 export { DEFAULT_PASS_THROUGH_CATEGORIES };
 export type { Buckets };
@@ -38,6 +45,11 @@ export interface RealFlowsConfig {
   transitCategories: string[];
   /** Categorías de gasto tratadas como "bombazos" (gastos grandes no recurrentes). */
   splurgeCategories: string[];
+  /**
+   * Día en que empieza el mes financiero (1 = calendario). Con un valor
+   * distinto de 1 la regla del sueldo-shift se apaga: el corte ya la cubre.
+   */
+  periodStartDay: number;
 }
 
 export const DEFAULT_FLOW_CONFIG: RealFlowsConfig = {
@@ -45,6 +57,7 @@ export const DEFAULT_FLOW_CONFIG: RealFlowsConfig = {
   salaryCategories: DEFAULT_SALARY_CATEGORIES,
   transitCategories: DEFAULT_TRANSIT_CATEGORIES,
   splurgeCategories: [],
+  periodStartDay: 1,
 };
 
 export function resolveFlowConfig(
@@ -72,7 +85,7 @@ export interface RealFlows {
   rescatado: number;
   /** Lo que las inversiones ganaron (o perdieron) en el mes. */
   rendimiento: number;
-  /** Gasto neto por día (índice 1..daysInMonth; 0 sin uso). Para burn-down. */
+  /** Gasto neto por día del periodo (índice 1..días; 0 sin uso). Para burn-down. */
   dailyNet: number[];
 }
 
@@ -87,6 +100,7 @@ export function attributionDate(
   const date = new Date(t.date);
   if (
     config.salaryShiftDay !== null &&
+    config.periodStartDay === 1 &&
     t.type === "Ingreso" &&
     !t.reimbursement_for_category &&
     config.salaryCategories.includes(t.category_name) &&
@@ -98,7 +112,8 @@ export function attributionDate(
 }
 
 /**
- * Clasifica los flujos reales de un mes calendario.
+ * Clasifica los flujos reales de un mes financiero (`month` = cualquier fecha
+ * dentro del periodo; con `periodStartDay = 1` es el mes calendario).
  * Función pura (sin hooks) para poder testearla y computar rangos de meses.
  */
 export function computeRealFlows(
@@ -109,7 +124,10 @@ export function computeRealFlows(
   const config = resolveFlowConfig(partialConfig);
   const transit = new Set(config.transitCategories);
   const splurge = new Set(config.splurgeCategories);
-  const daysInMonth = getDaysInMonth(month);
+  const startDay = config.periodStartDay;
+  const start = periodStartOf(month, startDay);
+  const daysInMonth = daysInPeriod(start, startDay);
+  const inMonth = (date: Date) => isInPeriod(date, start, startDay);
 
   let ingresoReal = 0;
   let reembolsosRecibidos = 0;
@@ -127,24 +145,24 @@ export function computeRealFlows(
 
     if (t.type === "Ingreso") {
       if (t.reimbursement_for_category) {
-        if (!isSameMonth(date, month)) continue;
+        if (!inMonth(date)) continue;
         reembolsosRecibidos += amount;
-        const day = date.getDate();
+        const day = dayOfPeriod(date, start);
         if (day >= 1 && day <= daysInMonth) dailyNet[day] -= amount;
-      } else if (isSameMonth(attributionDate(t, config), month)) {
+      } else if (inMonth(attributionDate(t, config))) {
         ingresoReal += amount;
       }
       continue;
     }
 
-    if (!isSameMonth(date, month)) continue;
+    if (!inMonth(date)) continue;
 
     if (t.type === "Gasto") {
       if (transit.has(t.category_name)) continue;
       consumoBruto += amount;
       if (splurge.has(t.category_name)) bombazos += amount;
       else vida += amount;
-      const day = date.getDate();
+      const day = dayOfPeriod(date, start);
       if (day >= 1 && day <= daysInMonth) dailyNet[day] += amount;
     } else if (t.type === "Inversión") {
       invertido += amount;
@@ -163,7 +181,7 @@ export function computeRealFlows(
       t.type === "Ingreso" &&
       t.reimbursement_for_category &&
       splurge.has(t.reimbursement_for_category) &&
-      isSameMonth(new Date(t.date), month)
+      inMonth(new Date(t.date))
     ) {
       reembolsosBombazo += Number(t.amount);
     }
@@ -221,13 +239,14 @@ export function computeSplurgeFund(
   upTo: Date,
   partialConfig?: Partial<RealFlowsConfig>
 ): number {
+  const startDay = resolveFlowConfig(partialConfig).periodStartDay;
   let fund = 0;
-  let cursor = new Date(fundStart.getFullYear(), fundStart.getMonth(), 1);
-  const end = new Date(upTo.getFullYear(), upTo.getMonth(), 1);
+  let cursor = periodStartOf(fundStart, startDay);
+  const end = periodStartOf(upTo, startDay);
   while (cursor <= end) {
     const { bombazos } = computeRealFlows(transactions, cursor, partialConfig);
     fund += fundMonthly - bombazos;
-    cursor = addMonths(cursor, 1);
+    cursor = shiftPeriod(cursor, 1, startDay);
   }
   return fund;
 }
@@ -241,6 +260,6 @@ export function useRealFlows(
   return useMemo(
     () => computeRealFlows(transactions, month, partialConfig),
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [transactions, month.getFullYear(), month.getMonth(), JSON.stringify(partialConfig)]
+    [transactions, month.getTime(), JSON.stringify(partialConfig)]
   );
 }
