@@ -1,11 +1,11 @@
-import { useState, useCallback, useEffect, useMemo, useRef } from "react";
+import { useState, useEffect, useMemo, useRef } from "react";
 import { useSearchParams } from "react-router-dom";
 import * as Dialog from "@radix-ui/react-dialog";
 import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
 import Layout from "@/components/Layout";
 import ConfirmDialog from "@/components/ConfirmDialog";
 import { ImportCSVModal } from "@/components/ImportCSVModal";
-import { TransactionsTable, getCategoryIcon } from "@/components/TransactionsTable";
+import { TransactionsTable, getCategoryIcon, typeAmountColors } from "@/components/TransactionsTable";
 import { TransactionsToolbar } from "@/components/TransactionsToolbar";
 import { Button } from "@/components/ui/button";
 import { useGlobalDrawers } from "@/hooks/useGlobalDrawers";
@@ -41,16 +41,6 @@ import { TransactionType, TRANSACTION_TYPES, allowsNegativeAmount } from "@/lib/
 
 // ── Editor de movimientos: el composer del Whisper con el texto precargado ──
 
-/** El color del monto en el diálogo de eliminar, por tipo. */
-const AMOUNT_TEXT: Record<TransactionType, string> = {
-  Gasto: "text-rose-500",
-  Ingreso: "text-emerald-500",
-  Inversión: "text-blue-500",
-  Rescate: "text-cyan-500",
-  Rendimiento: "text-violet-500",
-  Reembolso: "text-amber-500",
-};
-
 /** Colores para una categoría nueva creada desde el composer. */
 const CATEGORY_COLORS = [
   "#ef4444", "#f97316", "#f59e0b", "#10b981", "#14b8a6", "#0ea5e9",
@@ -62,12 +52,113 @@ const LOSS_ACCENT = "#f87171";
 /** Un instante como valor de <input type="datetime-local">, en hora local. */
 const toLocalInput = (d: Date) => new Date(d.getTime() - d.getTimezoneOffset() * 60000).toISOString().slice(0, 16);
 
+const formatCurrency = (amount: number) =>
+  new Intl.NumberFormat("es-CL", { style: "currency", currency: "CLP" }).format(amount);
+
+const EMPTY_FORM = {
+  // Fecha y hora como valor de datetime-local, en hora local.
+  date: "",
+  // El monto nuevo; vacío deja el guardado.
+  value: "",
+  category_name: "",
+  type: "Gasto" as TransactionType,
+  card_id: null as string | null,
+  // Solo aplica al rendimiento, el único tipo que puede ser negativo.
+  isLoss: false,
+};
+
+/** Agrega el ítem a la lista, o lo saca si ya estaba. */
+const toggleById = <T extends { id: string }>(list: T[], item: T) =>
+  list.some((d) => d.id === item.id) ? list.filter((d) => d.id !== item.id) : [...list, item];
+
+/** Panel para elegir deudas pendientes y aplicarles este movimiento. */
+function DebtPanel({
+  title,
+  onClose,
+  debts,
+  selected,
+  txAmount,
+  blur,
+  confirmLabel,
+  pending,
+  onConfirm,
+}: {
+  title: string;
+  onClose?: () => void;
+  debts: Array<{ id: string; name: string; amount: number; detail: React.ReactNode; onToggle: () => void }>;
+  selected: Array<{ id: string; amount: number }>;
+  txAmount: number;
+  blur: boolean;
+  confirmLabel: string;
+  pending: boolean;
+  onConfirm: () => void;
+}) {
+  const selectedTotal = selected.reduce((sum, d) => sum + d.amount, 0);
+  const totalMismatch = txAmount > 0 && selected.length > 0 && Math.abs(txAmount - selectedTotal) > 1;
+  const plural = selected.length > 1 ? "s" : "";
+
+  return (
+    <div className="whisper-tx-panel">
+      <div className="whisper-tx-panel-head">
+        <span><Users aria-hidden="true" /> {title}</span>
+        {onClose && (
+          <button type="button" className="whisper-tx-icon-btn" aria-label="Cerrar" onClick={onClose}>
+            <X size={13} />
+          </button>
+        )}
+      </div>
+      {debts.map((debt) => {
+        const isSelected = selected.some((d) => d.id === debt.id);
+        return (
+          <div
+            key={debt.id}
+            role="checkbox"
+            aria-checked={isSelected}
+            tabIndex={0}
+            onClick={debt.onToggle}
+            onKeyDown={(e) => {
+              if (e.key === "Enter" || e.key === " ") {
+                e.preventDefault();
+                debt.onToggle();
+              }
+            }}
+            className="whisper-tx-row"
+          >
+            {/* Indicador visual, NO un Checkbox de Radix: un Checkbox
+                controlado dentro de un <form> monta un input oculto que
+                re-despacha un evento 'click' burbujeante cada vez que
+                cambia `checked`, y entra en loop infinito. */}
+            <span className="whisper-tx-check" aria-hidden="true">{isSelected && <Check size={10} />}</span>
+            <span className="name">
+              <span>{debt.name}</span>
+              <small>{debt.detail}</small>
+            </span>
+            <span className={cn("amt", blur && "privacy-blur")}>{formatCurrency(debt.amount)}</span>
+          </div>
+        );
+      })}
+      {selected.length > 0 && (
+        <>
+          <div className="whisper-tx-foot">
+            <span>
+              {selected.length} deuda{plural} seleccionada{plural}
+            </span>
+            <b className={cn(totalMismatch && "warn", blur && "privacy-blur")}>{formatCurrency(selectedTotal)}</b>
+          </div>
+          <button type="button" className="whisper-tx-mini primary" disabled={pending} onClick={onConfirm}>
+            <Check size={12} /> {confirmLabel}
+          </button>
+        </>
+      )}
+    </div>
+  );
+}
+
 export default function Transactions() {
   const {
     transactions,
     futureTransactions,
     allTransactions,
-    addTransaction,
     updateTransaction,
     updateTransactionSilent,
     deleteTransaction,
@@ -96,7 +187,10 @@ export default function Transactions() {
   const [showFuture, setShowFuture] = useState(false);
   const [isBankSyncOpen, setIsBankSyncOpen] = useState(false);
 
+  // El composer solo edita: los movimientos nuevos entran por el QuickAdd global.
+  // editingTransaction queda puesto al cerrar, así el fade de salida no cambia de modo.
   const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const [editingTransaction, setEditingTransaction] = useState<Transaction | null>(null);
   // El composer: opciones abiertas, todas las categorías, categoría nueva en línea, error.
   const [txExpanded, setTxExpanded] = useState(false);
   const [allCategories, setAllCategories] = useState(false);
@@ -110,16 +204,13 @@ export default function Transactions() {
   const txCategoryGroupRef = useRef<HTMLDivElement>(null);
   const txOptionsToggleRef = useRef<HTMLButtonElement>(null);
   const [isImportDialogOpen, setIsImportDialogOpen] = useState(false);
-  const [editingTransaction, setEditingTransaction] = useState<Transaction | null>(null);
   const [isShared, setIsShared] = useState(false);
   const [sharedDrawerOpen, setSharedDrawerOpen] = useState(false);
   const [pendingTransaction, setPendingTransaction] = useState<{ id: string; amount: number } | null>(null);
   const [confirmPaid, setConfirmPaid] = useState<{ id: string; name: string; amount: number; detail?: string } | null>(null);
-  const [addingDebtor, setAddingDebtor] = useState(false);
-  const [newDebtorName, setNewDebtorName] = useState("");
-  const [newDebtorAmount, setNewDebtorAmount] = useState("");
-  const [editingDebtorId, setEditingDebtorId] = useState<string | null>(null);
-  const [editingDebtorAmount, setEditingDebtorAmount] = useState("");
+  // Gasto ya dividido: la persona que se está agregando, o la deuda cuyo monto se edita.
+  const [newDebtor, setNewDebtor] = useState<{ name: string; amount: string } | null>(null);
+  const [editingDebtor, setEditingDebtor] = useState<{ id: string; amount: string } | null>(null);
   const [debtsToLink, setDebtsToLink] = useState<Array<{ id: string; debtorName: string; amount: number; transactionDetail?: string }>>([]);
   const [debtsIOweToSettle, setDebtsIOweToSettle] = useState<Array<{ id: string; debtorName: string; amount: number }>>([]);
   const [settleDebtToggle, setSettleDebtToggle] = useState(false);
@@ -150,39 +241,16 @@ export default function Transactions() {
       return () => clearTimeout(timer);
     }
   }, []);
-  const [confirmDelete, setConfirmDelete] = useState<{ open: boolean; id: string | null }>({
-    open: false,
-    id: null,
-  });
-  const [confirmDeleteMultiple, setConfirmDeleteMultiple] = useState<{ open: boolean; ids: string[] }>({
-    open: false,
-    ids: [],
-  });
-  const [formData, setFormData] = useState({
-    // Fecha y hora como valor de datetime-local, en hora local.
-    date: toLocalInput(new Date()),
-    // "monto detalle" en una línea, como en el Whisper.
-    value: "",
-    category_name: "",
-    type: "Gasto" as TransactionType,
-    card_id: null as string | null,
-    // Solo aplica al rendimiento, el único tipo que puede ser negativo.
-    isLoss: false,
-  });
+  // Lo que espera confirmación para eliminarse: un id, o los de la selección.
+  const [deleteId, setDeleteId] = useState<string | null>(null);
+  const [deleteIds, setDeleteIds] = useState<string[]>([]);
+  const [formData, setFormData] = useState(() => ({ ...EMPTY_FORM, date: toLocalInput(new Date()) }));
   const parsedDraft = parseWhisper(formData.value);
-  // Al editar, el input parte vacío: dejarlo así conserva el monto guardado.
+  // El input parte vacío: dejarlo así conserva el monto guardado.
   const editingMagnitude = editingTransaction ? Math.abs(editingTransaction.amount) : 0;
   const effectiveAmount = parsedDraft?.amount ?? editingMagnitude;
   const composerType = WHISPER_TYPES.find((t) => t.type === formData.type) ?? WHISPER_TYPES[0];
   const composerAccent = formData.type === "Rendimiento" && formData.isLoss ? LOSS_ACCENT : composerType.color;
-  // Al editar, el placeholder recuerda qué movimiento es: su monto y el nombre
-  // que mandó el banco, que es el que no cambia aunque le pongas una nota.
-  const composerPlaceholder = editingTransaction
-    ? [editingMagnitude, editingTransaction.bank_description || getCleanDetail(editingTransaction.detail)]
-        .filter(Boolean)
-        .join(" ")
-    : composerType.placeholder;
-
 
   // Las categorías que ofrece el filtro: las que aparecen en lo que se está
   // viendo, con su emoji ya resuelto.
@@ -261,19 +329,19 @@ export default function Transactions() {
   const showLinkPanel =
     (formData.type === "Ingreso" || formData.type === "Reembolso") && !editingAlreadyLinked && pendingDebts.length > 0;
 
+  const closeComposer = () => {
+    setIsDialogOpen(false);
+    resetForm();
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!editingTransaction) return;
 
-    if (editingTransaction) {
-      // Editando, el input es solo el monto: el texto va en la nota. Vacío
-      // significa "deja el monto como está".
-      if (formData.value.trim() && (!parsedDraft || parsedDraft.detail)) {
-        setTxError("Acá va solo el monto. El detalle se edita en la nota.");
-        txInputRef.current?.focus();
-        return;
-      }
-    } else if (!parsedDraft) {
-      setTxError("Escribe un monto en pesos, seguido del detalle.");
+    // El input es solo el monto: el texto va en la nota. Vacío significa
+    // "deja el monto como está".
+    if (formData.value.trim() && (!parsedDraft || parsedDraft.detail)) {
+      setTxError("Acá va solo el monto. El detalle se edita en la nota.");
       txInputRef.current?.focus();
       return;
     }
@@ -283,74 +351,35 @@ export default function Transactions() {
       return;
     }
 
-    const magnitude = effectiveAmount;
     // Un rendimiento negativo es un mes malo, no un error: el resto de los
     // tipos siempre va en positivo.
     const parsedAmount =
-      allowsNegativeAmount(formData.type) && formData.isLoss ? -magnitude : magnitude;
-    const fields = {
+      allowsNegativeAmount(formData.type) && formData.isLoss ? -effectiveAmount : effectiveAmount;
+    // El badge del bot sobrevive a que le cambies el texto, igual que en la
+    // edición inline de la tabla.
+    const prefix = (editingTransaction.detail || "").startsWith("🤖") ? "🤖 " : "";
+    const newNote = note?.trim();
+
+    await updateTransaction.mutateAsync({
+      id: editingTransaction.id,
       category_name: formData.category_name,
       type: formData.type,
       card_id: formData.card_id,
-    };
+      // Sin nota escrita, el detalle guardado queda intacto. Para borrarlo
+      // está la edición inline de la columna Detalle.
+      ...(newNote ? { detail: prefix + newNote } : {}),
+      date: new Date(formData.date).toISOString(),
+      amount: parsedAmount,
+    });
 
-    if (editingTransaction) {
-      // El badge del bot sobrevive a que le cambies el texto, igual que en la
-      // edición inline de la tabla.
-      const prefix = (editingTransaction.detail || "").startsWith("🤖") ? "🤖 " : "";
-      const newNote = note?.trim();
-
-      await updateTransaction.mutateAsync({
-        id: editingTransaction.id,
-        ...fields,
-        // Sin nota escrita, el detalle guardado queda intacto. Para borrarlo
-        // está la edición inline de la columna Detalle.
-        ...(newNote ? { detail: prefix + newNote } : {}),
-        date: new Date(formData.date).toISOString(),
-        amount: parsedAmount,
-      });
-
-      const existingShared = getSharedExpensesByTransaction(editingTransaction.id);
-      if (isShared && formData.type === "Gasto" && existingShared.length === 0) {
-        setPendingTransaction({ id: editingTransaction.id, amount: parsedAmount });
-        setIsDialogOpen(false);
-        setSharedDrawerOpen(true);
-        return;
-      }
-    } else {
-      const transaction = await addTransaction.mutateAsync({
-        ...fields,
-        detail: parsedDraft?.detail ?? "",
-        date: new Date(formData.date).toISOString(),
-        amount: parsedAmount,
-      });
-
-      if (debtsToLink.length > 0 && transaction?.id) {
-        await linkExistingTransactionToDebts.mutateAsync({
-          debts: debtsToLink.map((d) => ({
-            sharedExpenseId: d.id,
-            amount: d.amount,
-            debtorName: d.debtorName,
-            transactionDetail: d.transactionDetail,
-          })),
-          existingTransactionId: transaction.id,
-        });
-      } else if (debtsIOweToSettle.length > 0 && transaction?.id) {
-        await settleDebtsIOwe.mutateAsync({
-          debts: debtsIOweToSettle.map((d) => ({ sharedExpenseId: d.id })),
-          existingTransactionId: transaction.id,
-        });
-      } else if (isShared && formData.type === "Gasto" && transaction?.id) {
-        setPendingTransaction({ id: transaction.id, amount: parsedAmount });
-        setIsDialogOpen(false);
-        setSharedDrawerOpen(true);
-        return;
-      }
+    if (isShared && formData.type === "Gasto" && existingShared.length === 0) {
+      setPendingTransaction({ id: editingTransaction.id, amount: parsedAmount });
+      setIsDialogOpen(false);
+      setSharedDrawerOpen(true);
+      return;
     }
 
-    setIsDialogOpen(false);
-    setEditingTransaction(null);
-    resetForm();
+    closeComposer();
   };
 
   const handleSharedExpenseConfirm = async (debtors: Array<{ name: string; amount: number }>) => {
@@ -372,7 +401,6 @@ export default function Transactions() {
     }
 
     setPendingTransaction(null);
-    setEditingTransaction(null);
     resetForm();
   };
 
@@ -393,14 +421,7 @@ export default function Transactions() {
   };
 
   const resetForm = () => {
-    setFormData({
-      date: toLocalInput(new Date()),
-      value: "",
-      category_name: "",
-      type: "Gasto",
-      card_id: null,
-      isLoss: false,
-    });
+    setFormData({ ...EMPTY_FORM, date: toLocalInput(new Date()) });
     setTxExpanded(false);
     setAllCategories(false);
     setNewCategory(null);
@@ -408,11 +429,8 @@ export default function Transactions() {
     setNote(null);
     setIsShared(false);
     setPendingTransaction(null);
-    setAddingDebtor(false);
-    setNewDebtorName("");
-    setNewDebtorAmount("");
-    setEditingDebtorId(null);
-    setEditingDebtorAmount("");
+    setNewDebtor(null);
+    setEditingDebtor(null);
     setDebtsToLink([]);
     setDebtsIOweToSettle([]);
     setSettleDebtToggle(false);
@@ -430,14 +448,14 @@ export default function Transactions() {
 
   const handleEdit = (transaction: Transaction) => {
     if (Date.now() - editGhostGuardRef.current < 800) return;
-    if (confirmDelete.open || confirmDeleteMultiple.open) return;
+    if (deleteId || deleteIds.length > 0) return;
     setEditingTransaction(transaction);
 
     // El input parte vacío: el monto y el nombre del banco van en el
     // placeholder, y escribir solo hace falta si querés cambiar el monto.
     setFormData({
+      ...EMPTY_FORM,
       date: toLocalInput(new Date(transaction.date)),
-      value: "",
       category_name: transaction.category_name,
       type: transaction.type,
       card_id: transaction.card_id,
@@ -458,42 +476,13 @@ export default function Transactions() {
 
   const handleDelete = (id: string) => {
     armEditGuard();
-    setConfirmDelete({ open: true, id });
+    setDeleteId(id);
   };
 
-  const confirmDeleteAction = async () => {
-    if (confirmDelete.id) {
-      await deleteTransaction.mutateAsync(confirmDelete.id);
-    }
-  };
-
-  // Inline update handler (silent, no modal)
-  const handleUpdateSilent = useCallback(async (id: string, updates: Partial<Transaction>) => {
-    await updateTransactionSilent.mutateAsync({ id, ...updates });
-  }, [updateTransactionSilent]);
-
-  // Delete multiple handler
-  const handleDeleteMultiple = useCallback(async (ids: string[]) => {
+  const handleDeleteMultiple = async (ids: string[]) => {
     armEditGuard();
-    setConfirmDeleteMultiple({ open: true, ids });
-  }, []);
-
-  const confirmDeleteMultipleAction = async () => {
-    if (confirmDeleteMultiple.ids.length > 0) {
-      await deleteMultipleTransactions.mutateAsync(confirmDeleteMultiple.ids);
-      setConfirmDeleteMultiple({ open: false, ids: [] });
-    }
+    setDeleteIds(ids);
   };
-
-  // Update multiple handler
-  const handleUpdateMultiple = useCallback(async (ids: string[], updates: Partial<Pick<Transaction, "category_name" | "type">>) => {
-    await updateMultipleTransactions.mutateAsync({ ids, updates });
-  }, [updateMultipleTransactions]);
-
-  // Duplicate handler
-  const handleDuplicate = useCallback(async (ids: string[]) => {
-    await duplicateTransactions.mutateAsync(ids);
-  }, [duplicateTransactions]);
 
   const handleExportCSV = () => {
     const csvData = transactions.map((t) => ({
@@ -510,13 +499,6 @@ export default function Transactions() {
     link.href = URL.createObjectURL(blob);
     link.download = `transacciones_${format(new Date(), "yyyy-MM-dd")}.csv`;
     link.click();
-  };
-
-  const formatCurrency = (amount: number) => {
-    return new Intl.NumberFormat("es-CL", {
-      style: "currency",
-      currency: "CLP",
-    }).format(amount);
   };
 
   const handleImportCSV = async (file: File) => {
@@ -664,249 +646,241 @@ export default function Transactions() {
             <span className="hidden md:inline">Agregar</span>
           </Button>
 
-          <Dialog.Root
-            open={isDialogOpen}
-            onOpenChange={(open) => {
-              setIsDialogOpen(open);
-              if (!open) {
-                setEditingTransaction(null);
-                resetForm();
-              }
-            }}
-          >
-            <Dialog.Portal>
-              <Dialog.Overlay className="whisper-backdrop" />
-              <Dialog.Content
-                data-scrollable
-                className="whisper-composer"
-                style={{ "--whisper-accent": composerAccent } as React.CSSProperties}
-                onOpenAutoFocus={(event) => {
-                  event.preventDefault();
-                  txInputRef.current?.focus();
-                }}
-              >
-                <Dialog.Title className="sr-only">
-                  {editingTransaction ? "Editar movimiento" : "Nuevo movimiento"}
-                </Dialog.Title>
-                <Dialog.Description className="sr-only">
-                  Escribe monto y detalle en una línea. Tab cambia el tipo; flecha abajo lleva a las categorías. En más opciones están la fecha, la cuenta y los gastos compartidos.
-                </Dialog.Description>
-                <Dialog.Close className="whisper-close" aria-label="Cerrar">
-                  <X size={16} />
-                </Dialog.Close>
+          {editingTransaction && (
+            <Dialog.Root
+              open={isDialogOpen}
+              onOpenChange={(open) => {
+                setIsDialogOpen(open);
+                if (!open) resetForm();
+              }}
+            >
+              <Dialog.Portal>
+                <Dialog.Overlay className="whisper-backdrop" />
+                <Dialog.Content
+                  data-scrollable
+                  className="whisper-composer"
+                  style={{ "--whisper-accent": composerAccent } as React.CSSProperties}
+                  onOpenAutoFocus={(event) => {
+                    event.preventDefault();
+                    txInputRef.current?.focus();
+                  }}
+                >
+                  <Dialog.Title className="sr-only">Editar movimiento</Dialog.Title>
+                  <Dialog.Description className="sr-only">
+                    Escribe monto y detalle en una línea. Tab cambia el tipo; flecha abajo lleva a las categorías. En más opciones están la fecha, la cuenta y los gastos compartidos.
+                  </Dialog.Description>
+                  <Dialog.Close className="whisper-close" aria-label="Cerrar">
+                    <X size={16} />
+                  </Dialog.Close>
 
-                <form id="transaction-form" onSubmit={handleSubmit} className="whisper-form">
-                  {/* Tipo */}
-                  <div className="whisper-type">
-                    <span className="whisper-dot" aria-hidden="true" />
-                    <span aria-hidden="true">{formData.type}</span>
-                    <select
-                      aria-label="Tipo de movimiento"
-                      value={formData.type}
-                      onChange={(event) => {
-                        changeType(event.target.value as TransactionType);
-                        txInputRef.current?.focus();
-                      }}
-                    >
-                      {WHISPER_TYPES.map((t) => (
-                        <option key={t.type}>{t.type}</option>
-                      ))}
-                    </select>
-                    <ChevronDown size={12} aria-hidden="true" />
-                  </div>
-
-                  {/* Al crear, monto y detalle en una línea; al editar, solo el monto */}
-                  <div className="whisper-entry">
-                    <input
-                      ref={txInputRef}
-                      aria-label={editingTransaction ? "Monto" : "Monto y detalle"}
-                      aria-describedby={txError ? "tx-error tx-shortcuts" : "tx-shortcuts"}
-                      aria-invalid={!!txError}
-                      autoComplete="off"
-                      autoCorrect="off"
-                      spellCheck={false}
-                      maxLength={1000}
-                      value={formData.value}
-                      onChange={(event) => {
-                        setFormData((prev) => ({ ...prev, value: event.target.value }));
-                        setTxError("");
-                      }}
-                      placeholder={composerPlaceholder}
-                      className={cn(
-                        "whisper-input",
-                        // Al editar el monto vive en el placeholder: también se tapa.
-                        isPrivacyMode && (formData.value || editingTransaction) && "privacy-blur"
-                      )}
-                      onKeyDown={(event) => {
-                        if (event.nativeEvent.isComposing) {
-                          if (event.key === "Enter") event.preventDefault();
-                          return;
-                        }
-                        if (event.key === "Tab" && !event.altKey && !event.ctrlKey && !event.metaKey) {
-                          event.preventDefault();
-                          cycleType(event.shiftKey);
-                          return;
-                        }
-                        if (event.key === "ArrowDown" && !event.altKey && !event.ctrlKey && !event.metaKey && !event.shiftKey) {
-                          event.preventDefault();
-                          const selected = txCategoryGroupRef.current?.querySelector<HTMLButtonElement>('button[aria-pressed="true"]');
-                          const first = txCategoryGroupRef.current?.querySelector<HTMLButtonElement>("button");
-                          (selected ?? first ?? txOptionsToggleRef.current)?.focus();
-                          return;
-                        }
-                        if (event.altKey && ["ArrowRight", "ArrowLeft"].includes(event.key)) {
-                          event.preventDefault();
-                          cycleType(event.key === "ArrowLeft");
-                        }
-                      }}
-                    />
-                    <div
-                      className={cn("whisper-preview", isPrivacyMode && effectiveAmount > 0 && "privacy-blur")}
-                      aria-hidden="true"
-                    >
-                      {effectiveAmount > 0 && (
-                        <span>
-                          {formData.type === "Rendimiento" && formData.isLoss ? "−" : ""}
-                          {formatCurrency(effectiveAmount)}
-                        </span>
-                      )}
-                    </div>
-                  </div>
-
-                  {/* Categorías */}
-                  <div className="whisper-category-space">
-                    {formData.type === "Rendimiento" && (
-                      <div className="whisper-categories whisper-tx-sign" role="group" aria-label="Ganancia o pérdida">
-                        {[
-                          { loss: false, label: "Ganancia" },
-                          { loss: true, label: "Pérdida" },
-                        ].map((opt) => (
-                          <button
-                            key={opt.label}
-                            type="button"
-                            className="whisper-category"
-                            aria-pressed={formData.isLoss === opt.loss}
-                            onClick={() => setFormData((prev) => ({ ...prev, isLoss: opt.loss }))}
-                          >
-                            <span className="whisper-category-dot" aria-hidden="true" />
-                            {opt.label}
-                          </button>
+                  <form id="transaction-form" onSubmit={handleSubmit} className="whisper-form">
+                    {/* Tipo */}
+                    <div className="whisper-type">
+                      <span className="whisper-dot" aria-hidden="true" />
+                      <span aria-hidden="true">{formData.type}</span>
+                      <select
+                        aria-label="Tipo de movimiento"
+                        value={formData.type}
+                        onChange={(event) => {
+                          changeType(event.target.value as TransactionType);
+                          txInputRef.current?.focus();
+                        }}
+                      >
+                        {WHISPER_TYPES.map((t) => (
+                          <option key={t.type}>{t.type}</option>
                         ))}
-                      </div>
-                    )}
+                      </select>
+                      <ChevronDown size={12} aria-hidden="true" />
+                    </div>
 
-                    {newCategory ? (
-                      <div className="whisper-tx-newcat" role="group" aria-label="Nueva categoría">
-                        <div className="whisper-tx-inline">
-                          <input
-                            className="whisper-tx-emoji"
-                            aria-label="Emoji de la categoría"
-                            maxLength={4}
-                            value={newCategory.icon}
-                            onChange={(e) => setNewCategory({ ...newCategory, icon: e.target.value })}
-                          />
-                          <input
-                            className="grow"
-                            aria-label="Nombre de la categoría"
-                            placeholder={`Nueva categoría de ${formData.type.toLowerCase()}`}
-                            value={newCategory.name}
-                            autoFocus
-                            onChange={(e) => setNewCategory({ ...newCategory, name: e.target.value })}
-                            onKeyDown={(e) => {
-                              if (e.key === "Enter") {
-                                e.preventDefault();
-                                createCategory();
-                              }
-                              if (e.key === "Escape") {
-                                e.preventDefault();
-                                e.stopPropagation();
-                                setNewCategory(null);
-                              }
-                            }}
-                          />
-                        </div>
-                        <div className="whisper-swatches" role="radiogroup" aria-label="Color de la categoría">
-                          {CATEGORY_COLORS.map((c) => (
+                    {/* Solo el monto: el detalle va en la nota */}
+                    <div className="whisper-entry">
+                      <input
+                        ref={txInputRef}
+                        aria-label="Monto"
+                        aria-describedby={txError ? "tx-error tx-shortcuts" : "tx-shortcuts"}
+                        aria-invalid={!!txError}
+                        autoComplete="off"
+                        autoCorrect="off"
+                        spellCheck={false}
+                        maxLength={1000}
+                        value={formData.value}
+                        onChange={(event) => {
+                          setFormData((prev) => ({ ...prev, value: event.target.value }));
+                          setTxError("");
+                        }}
+                        // El placeholder recuerda qué movimiento es: su monto y el nombre
+                        // que mandó el banco, que es el que no cambia aunque le pongas una nota.
+                        placeholder={[editingMagnitude, editingTransaction.bank_description || getCleanDetail(editingTransaction.detail)]
+                          .filter(Boolean)
+                          .join(" ")}
+                        // El monto vive en el placeholder: también se tapa.
+                        className={cn("whisper-input", isPrivacyMode && "privacy-blur")}
+                        onKeyDown={(event) => {
+                          if (event.nativeEvent.isComposing) {
+                            if (event.key === "Enter") event.preventDefault();
+                            return;
+                          }
+                          if (event.key === "Tab" && !event.altKey && !event.ctrlKey && !event.metaKey) {
+                            event.preventDefault();
+                            cycleType(event.shiftKey);
+                            return;
+                          }
+                          if (event.key === "ArrowDown" && !event.altKey && !event.ctrlKey && !event.metaKey && !event.shiftKey) {
+                            event.preventDefault();
+                            const selected = txCategoryGroupRef.current?.querySelector<HTMLButtonElement>('button[aria-pressed="true"]');
+                            const first = txCategoryGroupRef.current?.querySelector<HTMLButtonElement>("button");
+                            (selected ?? first ?? txOptionsToggleRef.current)?.focus();
+                            return;
+                          }
+                          if (event.altKey && ["ArrowRight", "ArrowLeft"].includes(event.key)) {
+                            event.preventDefault();
+                            cycleType(event.key === "ArrowLeft");
+                          }
+                        }}
+                      />
+                      <div
+                        className={cn("whisper-preview", isPrivacyMode && effectiveAmount > 0 && "privacy-blur")}
+                        aria-hidden="true"
+                      >
+                        {effectiveAmount > 0 && (
+                          <span>
+                            {formData.type === "Rendimiento" && formData.isLoss ? "−" : ""}
+                            {formatCurrency(effectiveAmount)}
+                          </span>
+                        )}
+                      </div>
+                    </div>
+
+                    {/* Categorías */}
+                    <div className="whisper-category-space">
+                      {formData.type === "Rendimiento" && (
+                        <div className="whisper-categories whisper-tx-sign" role="group" aria-label="Ganancia o pérdida">
+                          {[
+                            { loss: false, label: "Ganancia" },
+                            { loss: true, label: "Pérdida" },
+                          ].map((opt) => (
                             <button
-                              key={c}
+                              key={opt.label}
                               type="button"
-                              role="radio"
-                              aria-checked={newCategory.color === c}
-                              aria-label={`Color ${c}`}
-                              className="whisper-swatch"
-                              style={{ "--swatch": c } as React.CSSProperties}
-                              onClick={() => setNewCategory({ ...newCategory, color: c })}
-                            />
+                              className="whisper-category"
+                              aria-pressed={formData.isLoss === opt.loss}
+                              onClick={() => setFormData((prev) => ({ ...prev, isLoss: opt.loss }))}
+                            >
+                              <span className="whisper-category-dot" aria-hidden="true" />
+                              {opt.label}
+                            </button>
                           ))}
                         </div>
-                        <div className="whisper-tx-inline">
-                          <button
-                            type="button"
-                            className="whisper-tx-mini primary"
-                            disabled={!newCategory.name.trim() || addCategory.isPending}
-                            onClick={createCategory}
-                          >
-                            <Check size={12} /> Crear {newCategory.icon} {newCategory.name.trim() || "categoría"}
-                          </button>
-                          <button type="button" className="whisper-tx-mini" onClick={() => setNewCategory(null)}>
-                            Cancelar
-                          </button>
+                      )}
+
+                      {newCategory ? (
+                        <div className="whisper-tx-newcat" role="group" aria-label="Nueva categoría">
+                          <div className="whisper-tx-inline">
+                            <input
+                              className="whisper-tx-emoji"
+                              aria-label="Emoji de la categoría"
+                              maxLength={4}
+                              value={newCategory.icon}
+                              onChange={(e) => setNewCategory({ ...newCategory, icon: e.target.value })}
+                            />
+                            <input
+                              className="grow"
+                              aria-label="Nombre de la categoría"
+                              placeholder={`Nueva categoría de ${formData.type.toLowerCase()}`}
+                              value={newCategory.name}
+                              autoFocus
+                              onChange={(e) => setNewCategory({ ...newCategory, name: e.target.value })}
+                              onKeyDown={(e) => {
+                                if (e.key === "Enter") {
+                                  e.preventDefault();
+                                  createCategory();
+                                }
+                                if (e.key === "Escape") {
+                                  e.preventDefault();
+                                  e.stopPropagation();
+                                  setNewCategory(null);
+                                }
+                              }}
+                            />
+                          </div>
+                          <div className="whisper-swatches" role="radiogroup" aria-label="Color de la categoría">
+                            {CATEGORY_COLORS.map((c) => (
+                              <button
+                                key={c}
+                                type="button"
+                                role="radio"
+                                aria-checked={newCategory.color === c}
+                                aria-label={`Color ${c}`}
+                                className="whisper-swatch"
+                                style={{ "--swatch": c } as React.CSSProperties}
+                                onClick={() => setNewCategory({ ...newCategory, color: c })}
+                              />
+                            ))}
+                          </div>
+                          <div className="whisper-tx-inline">
+                            <button
+                              type="button"
+                              className="whisper-tx-mini primary"
+                              disabled={!newCategory.name.trim() || addCategory.isPending}
+                              onClick={createCategory}
+                            >
+                              <Check size={12} /> Crear {newCategory.icon} {newCategory.name.trim() || "categoría"}
+                            </button>
+                            <button type="button" className="whisper-tx-mini" onClick={() => setNewCategory(null)}>
+                              Cancelar
+                            </button>
+                          </div>
                         </div>
-                      </div>
-                    ) : (
-                      <div ref={txCategoryGroupRef} className="whisper-categories" role="group" aria-label="Categorías disponibles">
-                        {visibleCategories.map((category) => (
-                          <button
-                            key={category.id}
-                            type="button"
-                            className="whisper-category"
-                            aria-pressed={formData.category_name === category.name}
-                            onClick={() => {
-                              setFormData((prev) => ({
-                                ...prev,
-                                category_name: prev.category_name === category.name ? "" : category.name,
-                              }));
-                              txInputRef.current?.focus();
-                            }}
-                          >
-                            <span className="whisper-category-dot" aria-hidden="true" />
-                            {category.icon || getCategoryIcon(category.name)} {category.name}
-                            {formData.category_name === category.name && <Check size={12} aria-hidden="true" />}
-                          </button>
-                        ))}
-                        {availableCategories.length > 5 && (
+                      ) : (
+                        <div ref={txCategoryGroupRef} className="whisper-categories" role="group" aria-label="Categorías disponibles">
+                          {visibleCategories.map((category) => (
+                            <button
+                              key={category.id}
+                              type="button"
+                              className="whisper-category"
+                              aria-pressed={formData.category_name === category.name}
+                              onClick={() => {
+                                setFormData((prev) => ({
+                                  ...prev,
+                                  category_name: prev.category_name === category.name ? "" : category.name,
+                                }));
+                                txInputRef.current?.focus();
+                              }}
+                            >
+                              <span className="whisper-category-dot" aria-hidden="true" />
+                              {category.icon || getCategoryIcon(category.name)} {category.name}
+                              {formData.category_name === category.name && <Check size={12} aria-hidden="true" />}
+                            </button>
+                          ))}
+                          {availableCategories.length > 5 && (
+                            <button
+                              type="button"
+                              className="whisper-more-categories"
+                              aria-expanded={allCategories}
+                              onClick={() => setAllCategories(!allCategories)}
+                            >
+                              {allCategories ? "Menos" : `+${availableCategories.length - 5}`}
+                            </button>
+                          )}
                           <button
                             type="button"
                             className="whisper-more-categories"
-                            aria-expanded={allCategories}
-                            onClick={() => setAllCategories(!allCategories)}
+                            onClick={() => setNewCategory({ name: "", icon: "🏷️", color: CATEGORY_COLORS[0] })}
                           >
-                            {allCategories ? "Menos" : `+${availableCategories.length - 5}`}
+                            <Plus size={11} aria-hidden="true" /> Nueva
                           </button>
-                        )}
-                        <button
-                          type="button"
-                          className="whisper-more-categories"
-                          onClick={() => setNewCategory({ name: "", icon: "🏷️", color: CATEGORY_COLORS[0] })}
-                        >
-                          <Plus size={11} aria-hidden="true" /> Nueva
-                        </button>
-                      </div>
-                    )}
+                        </div>
+                      )}
 
-                    <p className="whisper-caption" aria-live="polite">
-                      {formData.category_name
-                        ? `Se guardará en ${formData.category_name}`
-                        : !editingTransaction && ["Gasto", "Ingreso", "Inversión"].includes(formData.type)
-                        ? "O deja que se categorice al guardar"
-                        : "Elige una categoría"}
-                    </p>
-                  </div>
+                      <p className="whisper-caption" aria-live="polite">
+                        {formData.category_name ? `Se guardará en ${formData.category_name}` : "Elige una categoría"}
+                      </p>
+                    </div>
 
-                  {/* Nota: pisa el detalle del movimiento, dejando intacto el
-                      nombre que mandó el banco. El campo aparece solo si marcás
-                      la casilla, y parte vacío para escribir de una. */}
-                  {editingTransaction && (
+                    {/* Nota: pisa el detalle del movimiento, dejando intacto el
+                        nombre que mandó el banco. El campo aparece solo si marcás
+                        la casilla, y parte vacío para escribir de una. */}
                     <div className="whisper-note-block">
                       <label className="whisper-note-check">
                         <input
@@ -948,520 +922,387 @@ export default function Transactions() {
                         />
                       )}
                     </div>
-                  )}
 
-                  {/* Más opciones: fecha, cuenta, compartido, saldar */}
-                  <AnimatePresence initial={false}>
-                    {txExpanded && (
-                      <motion.div
-                        className="whisper-options"
-                        initial={{ height: 0, opacity: 0 }}
-                        animate={{ height: "auto", opacity: 1 }}
-                        exit={{ height: 0, opacity: 0 }}
-                        transition={{ duration: reducedMotion ? 0 : 0.18 }}
-                      >
-                        <label>
-                          Fecha y hora
-                          <input
-                            type="datetime-local"
-                            aria-label="Fecha y hora del movimiento"
-                            value={formData.date}
-                            onChange={(event) => setFormData((prev) => ({ ...prev, date: event.target.value }))}
-                          />
-                        </label>
-                        {formData.type !== "Inversión" && creditCards.length > 0 && (
+                    {/* Más opciones: fecha, cuenta, compartido, saldar */}
+                    <AnimatePresence initial={false}>
+                      {txExpanded && (
+                        <motion.div
+                          className="whisper-options"
+                          initial={{ height: 0, opacity: 0 }}
+                          animate={{ height: "auto", opacity: 1 }}
+                          exit={{ height: 0, opacity: 0 }}
+                          transition={{ duration: reducedMotion ? 0 : 0.18 }}
+                        >
                           <label>
-                            Cuenta
-                            <select
-                              aria-label="Cuenta o tarjeta"
-                              value={formData.card_id ?? ""}
-                              onChange={(event) =>
-                                setFormData((prev) => ({ ...prev, card_id: event.target.value || null }))
-                              }
-                            >
-                              <option value="">Cuenta</option>
-                              {creditCards
-                                .filter((card) => card.is_active)
-                                .map((card) => (
-                                  <option key={card.id} value={card.id}>
-                                    {card.name}
-                                    {card.last_4_digits ? ` ···· ${card.last_4_digits}` : ""}
-                                  </option>
-                                ))}
-                            </select>
-                          </label>
-                        )}
-                        {formData.type === "Gasto" && existingShared.length === 0 && (
-                          <label className="whisper-check">
-                            <input type="checkbox" checked={isShared} onChange={(event) => setIsShared(event.target.checked)} />
-                            Gasto compartido
-                          </label>
-                        )}
-                        {formData.type === "Gasto" && pendingIOwe.length > 0 && (
-                          <label className="whisper-check">
+                            Fecha y hora
                             <input
-                              type="checkbox"
-                              checked={settleDebtToggle}
-                              onChange={(event) => {
-                                setSettleDebtToggle(event.target.checked);
-                                if (!event.target.checked) setDebtsIOweToSettle([]);
-                              }}
+                              type="datetime-local"
+                              aria-label="Fecha y hora del movimiento"
+                              value={formData.date}
+                              onChange={(event) => setFormData((prev) => ({ ...prev, date: event.target.value }))}
                             />
-                            Salda una deuda que debo
                           </label>
-                        )}
-                      </motion.div>
-                    )}
-                  </AnimatePresence>
-
-                  {/* Vincular a deuda(s) pendiente(s): Ingreso o Reembolso */}
-                  {showLinkPanel && (() => {
-                    const txAmount = effectiveAmount;
-                    const selectedTotal = debtsToLink.reduce((sum, d) => sum + d.amount, 0);
-                    const totalMismatch = txAmount > 0 && debtsToLink.length > 0 && Math.abs(txAmount - selectedTotal) > 1;
-
-                    const toggleDebt = (debt: typeof pendingDebts[number]) => {
-                      setDebtsToLink((prev) => {
-                        const exists = prev.some((d) => d.id === debt.id);
-                        if (exists) return prev.filter((d) => d.id !== debt.id);
-                        return [...prev, { id: debt.id, debtorName: debt.debtor_name, amount: debt.amount_owed, transactionDetail: debt.transaction_detail || undefined }];
-                      });
-                      if (!editingTransaction) {
-                        setFormData((prev) => ({ ...prev, type: "Reembolso", category_name: "" }));
-                      }
-                    };
-
-                    return (
-                      <div className="whisper-tx-panel">
-                        <div className="whisper-tx-panel-head">
-                          <span><Users aria-hidden="true" /> Vincular a una deuda pendiente</span>
-                        </div>
-                        {pendingDebts.map((debt) => {
-                          const isSelected = debtsToLink.some((d) => d.id === debt.id);
-                          const amountMismatch = txAmount > 0 && Math.abs(txAmount - debt.amount_owed) > 1;
-                          return (
-                            <div
-                              key={debt.id}
-                              role="checkbox"
-                              aria-checked={isSelected}
-                              tabIndex={0}
-                              onClick={() => toggleDebt(debt)}
-                              onKeyDown={(e) => {
-                                if (e.key === "Enter" || e.key === " ") {
-                                  e.preventDefault();
-                                  toggleDebt(debt);
+                          {formData.type !== "Inversión" && creditCards.length > 0 && (
+                            <label>
+                              Cuenta
+                              <select
+                                aria-label="Cuenta o tarjeta"
+                                value={formData.card_id ?? ""}
+                                onChange={(event) =>
+                                  setFormData((prev) => ({ ...prev, card_id: event.target.value || null }))
                                 }
-                              }}
-                              className="whisper-tx-row"
-                            >
-                              {/* Indicador visual, NO un Checkbox de Radix: un Checkbox
-                                  controlado dentro de un <form> monta un input oculto que
-                                  re-despacha un evento 'click' burbujeante cada vez que
-                                  cambia `checked`, y entra en loop infinito. */}
-                              <span className="whisper-tx-check" aria-hidden="true">{isSelected && <Check size={10} />}</span>
-                              <span className="name">
-                                <span>{debt.debtor_name}</span>
-                                <small>
-                                  {debt.transaction_detail || "Sin detalle"} · {new Date(debt.transaction_date).toLocaleDateString("es-CL", { day: "numeric", month: "short" })}
-                                  {debtsToLink.length <= 1 && amountMismatch && " · monto distinto a la deuda"}
-                                </small>
-                              </span>
-                              <span className={cn("amt", isPrivacyMode && "privacy-blur")}>{formatCurrency(debt.amount_owed)}</span>
-                            </div>
-                          );
-                        })}
-                        {debtsToLink.length > 0 && (
-                          <>
-                            <div className="whisper-tx-foot">
-                              <span>
-                                {debtsToLink.length} deuda{debtsToLink.length > 1 ? "s" : ""} seleccionada{debtsToLink.length > 1 ? "s" : ""}
-                              </span>
-                              <b className={cn(totalMismatch && "warn", isPrivacyMode && "privacy-blur")}>{formatCurrency(selectedTotal)}</b>
-                            </div>
-                            {editingTransaction ? (
-                              <button
-                                type="button"
-                                className="whisper-tx-mini primary"
-                                disabled={linkExistingTransactionToDebts.isPending}
-                                onClick={async () => {
-                                  await linkExistingTransactionToDebts.mutateAsync({
-                                    debts: debtsToLink.map((d) => ({
-                                      sharedExpenseId: d.id,
-                                      amount: d.amount,
-                                      debtorName: d.debtorName,
-                                      transactionDetail: d.transactionDetail,
-                                    })),
-                                    existingTransactionId: editingTransaction.id,
-                                  });
-                                  setIsDialogOpen(false);
-                                  setEditingTransaction(null);
-                                  resetForm();
-                                }}
                               >
-                                <Check size={12} /> Vincular seleccionadas
-                              </button>
-                            ) : (
-                              <p className="whisper-tx-note">
-                                Al guardar, este movimiento queda como pago de {[...new Set(debtsToLink.map((d) => d.debtorName))].join(", ")} y se registra como Reembolso.
-                              </p>
-                            )}
-                          </>
-                        )}
-                      </div>
-                    );
-                  })()}
-
-                  {/* Gasto compartido ya dividido: se edita acá mismo */}
-                  {formData.type === "Gasto" && existingShared.length > 0 && (() => {
-                    const liveTxAmount = editingTransaction
-                      ? (transactions.find((t) => t.id === editingTransaction.id)?.amount ?? effectiveAmount)
-                      : effectiveAmount;
-                    const alreadyAssignedAll = existingShared.reduce((sum, se) => sum + se.amount_owed, 0);
-                    const alreadyAssignedPending = existingShared.filter((se) => !se.paid).reduce((sum, se) => sum + se.amount_owed, 0);
-                    const myShare = liveTxAmount - alreadyAssignedPending;
-                    const remaining = liveTxAmount - alreadyAssignedAll;
-                    const newAmount = parseFloat(newDebtorAmount || "0");
-                    const exceedsLimit = newAmount > remaining;
-                    const isFormValid = newDebtorName.trim() && newDebtorAmount && !exceedsLimit;
-
-                    return (
-                      <div className="whisper-tx-panel">
-                        <div className="whisper-tx-panel-head">
-                          <span><Users aria-hidden="true" /> Gasto compartido</span>
-                          {!addingDebtor && (
-                            <button type="button" className="whisper-tx-mini" onClick={() => setAddingDebtor(true)}>
-                              <Plus size={11} /> Persona
-                            </button>
+                                <option value="">Cuenta</option>
+                                {creditCards
+                                  .filter((card) => card.is_active)
+                                  .map((card) => (
+                                    <option key={card.id} value={card.id}>
+                                      {card.name}
+                                      {card.last_4_digits ? ` ···· ${card.last_4_digits}` : ""}
+                                    </option>
+                                  ))}
+                              </select>
+                            </label>
                           )}
-                        </div>
+                          {formData.type === "Gasto" && existingShared.length === 0 && (
+                            <label className="whisper-check">
+                              <input type="checkbox" checked={isShared} onChange={(event) => setIsShared(event.target.checked)} />
+                              Gasto compartido
+                            </label>
+                          )}
+                          {formData.type === "Gasto" && pendingIOwe.length > 0 && (
+                            <label className="whisper-check">
+                              <input
+                                type="checkbox"
+                                checked={settleDebtToggle}
+                                onChange={(event) => {
+                                  setSettleDebtToggle(event.target.checked);
+                                  if (!event.target.checked) setDebtsIOweToSettle([]);
+                                }}
+                              />
+                              Salda una deuda que debo
+                            </label>
+                          )}
+                        </motion.div>
+                      )}
+                    </AnimatePresence>
 
-                        {existingShared.map((se) => {
-                          const isEditingThis = editingDebtorId === se.id;
-                          const editAmount = parseFloat(editingDebtorAmount || "0");
-                          const otherAssigned = existingShared.filter((s) => s.id !== se.id).reduce((sum, s) => sum + s.amount_owed, 0);
-                          const editRemaining = effectiveAmount - otherAssigned;
-                          const editExceeds = editAmount > editRemaining;
-                          const editValid = editingDebtorAmount && editAmount > 0 && !editExceeds;
+                    {/* Vincular a deuda(s) pendiente(s): Ingreso o Reembolso */}
+                    {showLinkPanel && (
+                      <DebtPanel
+                        title="Vincular a una deuda pendiente"
+                        debts={pendingDebts.map((debt) => ({
+                          id: debt.id,
+                          name: debt.debtor_name,
+                          amount: debt.amount_owed,
+                          detail: (
+                            <>
+                              {debt.transaction_detail || "Sin detalle"} · {new Date(debt.transaction_date).toLocaleDateString("es-CL", { day: "numeric", month: "short" })}
+                              {debtsToLink.length <= 1 && effectiveAmount > 0 && Math.abs(effectiveAmount - debt.amount_owed) > 1 && " · monto distinto a la deuda"}
+                            </>
+                          ),
+                          onToggle: () =>
+                            setDebtsToLink((prev) =>
+                              toggleById(prev, { id: debt.id, debtorName: debt.debtor_name, amount: debt.amount_owed, transactionDetail: debt.transaction_detail || undefined })
+                            ),
+                        }))}
+                        selected={debtsToLink}
+                        txAmount={effectiveAmount}
+                        blur={isPrivacyMode}
+                        confirmLabel="Vincular seleccionadas"
+                        pending={linkExistingTransactionToDebts.isPending}
+                        onConfirm={async () => {
+                          await linkExistingTransactionToDebts.mutateAsync({
+                            debts: debtsToLink.map((d) => ({
+                              sharedExpenseId: d.id,
+                              amount: d.amount,
+                              debtorName: d.debtorName,
+                              transactionDetail: d.transactionDetail,
+                            })),
+                            existingTransactionId: editingTransaction.id,
+                          });
+                          closeComposer();
+                        }}
+                      />
+                    )}
 
-                          return (
-                            <div key={se.id} className="whisper-tx-row" data-paid={se.paid || undefined}>
-                              {se.paid ? (
-                                <CheckCircle2 size={14} className="whisper-tx-status paid" aria-label="Pagado" />
-                              ) : (
-                                <Clock size={14} className="whisper-tx-status" aria-label="Pendiente" />
-                              )}
-                              <span className="name">
-                                <span>{se.debtor_name}</span>
-                                {se.paid && (
-                                  <small>Pagado {se.paid_at ? new Date(se.paid_at).toLocaleDateString("es-CL") : ""}</small>
+                    {/* Gasto compartido ya dividido: se edita acá mismo */}
+                    {formData.type === "Gasto" && existingShared.length > 0 && (() => {
+                      const liveTxAmount = transactions.find((t) => t.id === editingTransaction.id)?.amount ?? effectiveAmount;
+                      const alreadyAssignedAll = existingShared.reduce((sum, se) => sum + se.amount_owed, 0);
+                      const alreadyAssignedPending = existingShared.filter((se) => !se.paid).reduce((sum, se) => sum + se.amount_owed, 0);
+                      const myShare = liveTxAmount - alreadyAssignedPending;
+                      const remaining = liveTxAmount - alreadyAssignedAll;
+                      const newAmount = parseFloat(newDebtor?.amount || "0");
+                      const exceedsLimit = newAmount > remaining;
+                      const isFormValid = newDebtor?.name.trim() && newDebtor.amount && !exceedsLimit;
+
+                      return (
+                        <div className="whisper-tx-panel">
+                          <div className="whisper-tx-panel-head">
+                            <span><Users aria-hidden="true" /> Gasto compartido</span>
+                            {!newDebtor && (
+                              <button type="button" className="whisper-tx-mini" onClick={() => setNewDebtor({ name: "", amount: "" })}>
+                                <Plus size={11} /> Persona
+                              </button>
+                            )}
+                          </div>
+
+                          {existingShared.map((se) => {
+                            const draft = editingDebtor?.id === se.id ? editingDebtor.amount : null;
+                            const isEditingThis = draft !== null;
+                            const editAmount = parseFloat(draft || "0");
+                            const otherAssigned = existingShared.filter((s) => s.id !== se.id).reduce((sum, s) => sum + s.amount_owed, 0);
+                            const editRemaining = effectiveAmount - otherAssigned;
+                            const editExceeds = editAmount > editRemaining;
+                            const editValid = draft && editAmount > 0 && !editExceeds;
+                            const saveAmount = async () => {
+                              await updateSharedExpenseAmount.mutateAsync({ id: se.id, amount_owed: editAmount });
+                              setEditingDebtor(null);
+                            };
+
+                            return (
+                              <div key={se.id} className="whisper-tx-row" data-paid={se.paid || undefined}>
+                                {se.paid ? (
+                                  <CheckCircle2 size={14} className="whisper-tx-status paid" aria-label="Pagado" />
+                                ) : (
+                                  <Clock size={14} className="whisper-tx-status" aria-label="Pendiente" />
                                 )}
-                                {isEditingThis && editExceeds && (
-                                  <small className="warn">Máximo disponible: {formatCurrency(editRemaining)}</small>
-                                )}
-                              </span>
-                              {isEditingThis ? (
-                                <span className="whisper-tx-inline">
-                                  <input
-                                    className="amt"
-                                    inputMode="numeric"
-                                    aria-label={`Monto de ${se.debtor_name}`}
-                                    value={editingDebtorAmount}
-                                    onChange={(e) => setEditingDebtorAmount(e.target.value.replace(/\D/g, ""))}
-                                    autoFocus
-                                    onKeyDown={async (e) => {
-                                      if (e.key === "Enter" && editValid) {
-                                        e.preventDefault();
-                                        await updateSharedExpenseAmount.mutateAsync({ id: se.id, amount_owed: editAmount });
-                                        setEditingDebtorId(null);
-                                        setEditingDebtorAmount("");
-                                      }
-                                      if (e.key === "Escape") {
-                                        e.preventDefault();
-                                        e.stopPropagation();
-                                        setEditingDebtorId(null);
-                                        setEditingDebtorAmount("");
-                                      }
-                                    }}
-                                  />
-                                  <button
-                                    type="button"
-                                    className="whisper-tx-icon-btn"
-                                    aria-label="Guardar monto"
-                                    disabled={!editValid}
-                                    onClick={async () => {
-                                      await updateSharedExpenseAmount.mutateAsync({ id: se.id, amount_owed: editAmount });
-                                      setEditingDebtorId(null);
-                                      setEditingDebtorAmount("");
-                                    }}
-                                  >
-                                    <Check size={13} />
-                                  </button>
-                                  <button
-                                    type="button"
-                                    className="whisper-tx-icon-btn"
-                                    aria-label="Cancelar"
-                                    onClick={() => {
-                                      setEditingDebtorId(null);
-                                      setEditingDebtorAmount("");
-                                    }}
-                                  >
-                                    <X size={13} />
-                                  </button>
+                                <span className="name">
+                                  <span>{se.debtor_name}</span>
+                                  {se.paid && (
+                                    <small>Pagado {se.paid_at ? new Date(se.paid_at).toLocaleDateString("es-CL") : ""}</small>
+                                  )}
+                                  {isEditingThis && editExceeds && (
+                                    <small className="warn">Máximo disponible: {formatCurrency(editRemaining)}</small>
+                                  )}
                                 </span>
-                              ) : (
-                                <>
-                                  <span className={cn("amt", isPrivacyMode && "privacy-blur")}>{formatCurrency(se.amount_owed)}</span>
-                                  <span className="whisper-tx-row-actions">
-                                    {!se.paid && (
-                                      <>
-                                        <button
-                                          type="button"
-                                          className="whisper-tx-icon-btn"
-                                          aria-label={`Editar monto de ${se.debtor_name}`}
-                                          onClick={() => {
-                                            setEditingDebtorId(se.id);
-                                            setEditingDebtorAmount(se.amount_owed.toString());
-                                          }}
-                                        >
-                                          <Pencil size={12} />
-                                        </button>
-                                        <button
-                                          type="button"
-                                          className="whisper-tx-mini"
-                                          onClick={() =>
-                                            setConfirmPaid({
-                                              id: se.id,
-                                              name: se.debtor_name,
-                                              amount: se.amount_owed,
-                                              detail: editingTransaction?.detail || undefined,
-                                            })
-                                          }
-                                        >
-                                          <CheckCircle2 size={11} /> Pagado
-                                        </button>
-                                      </>
-                                    )}
+                                {isEditingThis ? (
+                                  <span className="whisper-tx-inline">
+                                    <input
+                                      className="amt"
+                                      inputMode="numeric"
+                                      aria-label={`Monto de ${se.debtor_name}`}
+                                      value={draft}
+                                      onChange={(e) => setEditingDebtor({ id: se.id, amount: e.target.value.replace(/\D/g, "") })}
+                                      autoFocus
+                                      onKeyDown={(e) => {
+                                        if (e.key === "Enter" && editValid) {
+                                          e.preventDefault();
+                                          saveAmount();
+                                        }
+                                        if (e.key === "Escape") {
+                                          e.preventDefault();
+                                          e.stopPropagation();
+                                          setEditingDebtor(null);
+                                        }
+                                      }}
+                                    />
                                     <button
                                       type="button"
-                                      className="whisper-tx-icon-btn danger"
-                                      aria-label={`Quitar a ${se.debtor_name}`}
-                                      onClick={() => deleteSharedExpense.mutate(se.id)}
+                                      className="whisper-tx-icon-btn"
+                                      aria-label="Guardar monto"
+                                      disabled={!editValid}
+                                      onClick={saveAmount}
                                     >
-                                      <Trash2 size={12} />
+                                      <Check size={13} />
+                                    </button>
+                                    <button
+                                      type="button"
+                                      className="whisper-tx-icon-btn"
+                                      aria-label="Cancelar"
+                                      onClick={() => setEditingDebtor(null)}
+                                    >
+                                      <X size={13} />
                                     </button>
                                   </span>
-                                </>
+                                ) : (
+                                  <>
+                                    <span className={cn("amt", isPrivacyMode && "privacy-blur")}>{formatCurrency(se.amount_owed)}</span>
+                                    <span className="whisper-tx-row-actions">
+                                      {!se.paid && (
+                                        <>
+                                          <button
+                                            type="button"
+                                            className="whisper-tx-icon-btn"
+                                            aria-label={`Editar monto de ${se.debtor_name}`}
+                                            onClick={() => setEditingDebtor({ id: se.id, amount: se.amount_owed.toString() })}
+                                          >
+                                            <Pencil size={12} />
+                                          </button>
+                                          <button
+                                            type="button"
+                                            className="whisper-tx-mini"
+                                            onClick={() =>
+                                              setConfirmPaid({
+                                                id: se.id,
+                                                name: se.debtor_name,
+                                                amount: se.amount_owed,
+                                                detail: editingTransaction.detail || undefined,
+                                              })
+                                            }
+                                          >
+                                            <CheckCircle2 size={11} /> Pagado
+                                          </button>
+                                        </>
+                                      )}
+                                      <button
+                                        type="button"
+                                        className="whisper-tx-icon-btn danger"
+                                        aria-label={`Quitar a ${se.debtor_name}`}
+                                        onClick={() => deleteSharedExpense.mutate(se.id)}
+                                      >
+                                        <Trash2 size={12} />
+                                      </button>
+                                    </span>
+                                  </>
+                                )}
+                              </div>
+                            );
+                          })}
+
+                          {myShare >= 0 && (
+                            <div className="whisper-tx-foot">
+                              <span>Tu parte</span>
+                              <b className={cn(isPrivacyMode && "privacy-blur")}>{formatCurrency(myShare)}</b>
+                            </div>
+                          )}
+
+                          {newDebtor && (
+                            <div className="whisper-tx-add">
+                              <div className="whisper-tx-foot">
+                                <span>Disponible para asignar</span>
+                                <b className={cn(remaining <= 0 && "warn", isPrivacyMode && "privacy-blur")}>{formatCurrency(remaining)}</b>
+                              </div>
+                              <div className="whisper-tx-inline">
+                                <input
+                                  className="grow"
+                                  placeholder="Nombre"
+                                  aria-label="Nombre de la persona"
+                                  list="tx-debtor-suggestions"
+                                  value={newDebtor.name}
+                                  onChange={(e) => setNewDebtor({ ...newDebtor, name: e.target.value })}
+                                  autoFocus
+                                />
+                                <datalist id="tx-debtor-suggestions">
+                                  {uniqueDebtorNames("they_owe_me").map((name) => (
+                                    <option key={name} value={name} />
+                                  ))}
+                                </datalist>
+                                <input
+                                  className={cn("amt", exceedsLimit && "invalid")}
+                                  inputMode="numeric"
+                                  placeholder="Monto"
+                                  aria-label="Monto que debe"
+                                  value={newDebtor.amount}
+                                  onChange={(e) => setNewDebtor({ ...newDebtor, amount: e.target.value.replace(/\D/g, "") })}
+                                />
+                                <button
+                                  type="button"
+                                  className="whisper-tx-mini primary"
+                                  disabled={!isFormValid}
+                                  onClick={async () => {
+                                    await addSharedExpenses.mutateAsync([{
+                                      transaction_id: editingTransaction.id,
+                                      debtor_name: newDebtor.name.trim(),
+                                      amount_owed: newAmount,
+                                      detail: null,
+                                    }]);
+                                    setNewDebtor(null);
+                                  }}
+                                >
+                                  <Check size={12} /> Agregar
+                                </button>
+                                <button
+                                  type="button"
+                                  className="whisper-tx-icon-btn"
+                                  aria-label="Cancelar"
+                                  onClick={() => setNewDebtor(null)}
+                                >
+                                  <X size={13} />
+                                </button>
+                              </div>
+                              {exceedsLimit && (
+                                <p className="whisper-tx-note warn">El monto supera el disponible ({formatCurrency(remaining)})</p>
                               )}
                             </div>
-                          );
-                        })}
-
-                        {myShare >= 0 && (
-                          <div className="whisper-tx-foot">
-                            <span>Tu parte</span>
-                            <b className={cn(isPrivacyMode && "privacy-blur")}>{formatCurrency(myShare)}</b>
-                          </div>
-                        )}
-
-                        {addingDebtor && (
-                          <div className="whisper-tx-add">
-                            <div className="whisper-tx-foot">
-                              <span>Disponible para asignar</span>
-                              <b className={cn(remaining <= 0 && "warn", isPrivacyMode && "privacy-blur")}>{formatCurrency(remaining)}</b>
-                            </div>
-                            <div className="whisper-tx-inline">
-                              <input
-                                className="grow"
-                                placeholder="Nombre"
-                                aria-label="Nombre de la persona"
-                                list="tx-debtor-suggestions"
-                                value={newDebtorName}
-                                onChange={(e) => setNewDebtorName(e.target.value)}
-                                autoFocus
-                              />
-                              <datalist id="tx-debtor-suggestions">
-                                {uniqueDebtorNames("they_owe_me").map((name) => (
-                                  <option key={name} value={name} />
-                                ))}
-                              </datalist>
-                              <input
-                                className={cn("amt", exceedsLimit && "invalid")}
-                                inputMode="numeric"
-                                placeholder="Monto"
-                                aria-label="Monto que debe"
-                                value={newDebtorAmount}
-                                onChange={(e) => setNewDebtorAmount(e.target.value.replace(/\D/g, ""))}
-                              />
-                              <button
-                                type="button"
-                                className="whisper-tx-mini primary"
-                                disabled={!isFormValid}
-                                onClick={async () => {
-                                  await addSharedExpenses.mutateAsync([{
-                                    transaction_id: editingTransaction!.id,
-                                    debtor_name: newDebtorName.trim(),
-                                    amount_owed: newAmount,
-                                    detail: null,
-                                  }]);
-                                  setNewDebtorName("");
-                                  setNewDebtorAmount("");
-                                  setAddingDebtor(false);
-                                }}
-                              >
-                                <Check size={12} /> Agregar
-                              </button>
-                              <button
-                                type="button"
-                                className="whisper-tx-icon-btn"
-                                aria-label="Cancelar"
-                                onClick={() => {
-                                  setAddingDebtor(false);
-                                  setNewDebtorName("");
-                                  setNewDebtorAmount("");
-                                }}
-                              >
-                                <X size={13} />
-                              </button>
-                            </div>
-                            {exceedsLimit && (
-                              <p className="whisper-tx-note warn">El monto supera el disponible ({formatCurrency(remaining)})</p>
-                            )}
-                          </div>
-                        )}
-                      </div>
-                    );
-                  })()}
-
-                  {/* Saldar deuda(s) que yo debo: solo Gasto */}
-                  {formData.type === "Gasto" && settleDebtToggle && pendingIOwe.length > 0 && (() => {
-                    const txAmount = effectiveAmount;
-                    const selectedTotal = debtsIOweToSettle.reduce((sum, d) => sum + d.amount, 0);
-                    const totalMismatch = txAmount > 0 && debtsIOweToSettle.length > 0 && Math.abs(txAmount - selectedTotal) > 1;
-
-                    const toggleDebt = (debt: typeof pendingIOwe[number]) => {
-                      setDebtsIOweToSettle((prev) => {
-                        const exists = prev.some((d) => d.id === debt.id);
-                        if (exists) return prev.filter((d) => d.id !== debt.id);
-                        return [...prev, { id: debt.id, debtorName: debt.debtor_name, amount: debt.amount_owed }];
-                      });
-                    };
-
-                    return (
-                      <div className="whisper-tx-panel">
-                        <div className="whisper-tx-panel-head">
-                          <span><Users aria-hidden="true" /> Saldar una deuda que debo</span>
-                          <button
-                            type="button"
-                            className="whisper-tx-icon-btn"
-                            aria-label="Cerrar"
-                            onClick={() => {
-                              setSettleDebtToggle(false);
-                              setDebtsIOweToSettle([]);
-                            }}
-                          >
-                            <X size={13} />
-                          </button>
+                          )}
                         </div>
-                        {pendingIOwe.map((debt) => {
-                          const isSelected = debtsIOweToSettle.some((d) => d.id === debt.id);
-                          return (
-                            <div
-                              key={debt.id}
-                              role="checkbox"
-                              aria-checked={isSelected}
-                              tabIndex={0}
-                              onClick={() => toggleDebt(debt)}
-                              onKeyDown={(e) => {
-                                if (e.key === "Enter" || e.key === " ") {
-                                  e.preventDefault();
-                                  toggleDebt(debt);
-                                }
-                              }}
-                              className="whisper-tx-row"
-                            >
-                              <span className="whisper-tx-check" aria-hidden="true">{isSelected && <Check size={10} />}</span>
-                              <span className="name">
-                                <span>{debt.debtor_name}</span>
-                                <small>{debt.transaction_detail || debt.detail || "Sin detalle"}</small>
-                              </span>
-                              <span className={cn("amt", isPrivacyMode && "privacy-blur")}>{formatCurrency(debt.amount_owed)}</span>
-                            </div>
-                          );
-                        })}
-                        {debtsIOweToSettle.length > 0 && (
-                          <>
-                            <div className="whisper-tx-foot">
-                              <span>
-                                {debtsIOweToSettle.length} deuda{debtsIOweToSettle.length > 1 ? "s" : ""} seleccionada{debtsIOweToSettle.length > 1 ? "s" : ""}
-                              </span>
-                              <b className={cn(totalMismatch && "warn", isPrivacyMode && "privacy-blur")}>{formatCurrency(selectedTotal)}</b>
-                            </div>
-                            {editingTransaction && (
-                              <button
-                                type="button"
-                                className="whisper-tx-mini primary"
-                                disabled={settleDebtsIOwe.isPending}
-                                onClick={async () => {
-                                  await settleDebtsIOwe.mutateAsync({
-                                    debts: debtsIOweToSettle.map((d) => ({ sharedExpenseId: d.id })),
-                                    existingTransactionId: editingTransaction.id,
-                                  });
-                                  setIsDialogOpen(false);
-                                  setEditingTransaction(null);
-                                  resetForm();
-                                }}
-                              >
-                                <Check size={12} /> Saldar seleccionadas
-                              </button>
-                            )}
-                          </>
-                        )}
-                      </div>
-                    );
-                  })()}
+                      );
+                    })()}
 
-                  {txError && (
-                    <p id="tx-error" role="alert" className="whisper-error">
-                      {txError}
+                    {/* Saldar deuda(s) que yo debo: solo Gasto */}
+                    {formData.type === "Gasto" && settleDebtToggle && pendingIOwe.length > 0 && (
+                      <DebtPanel
+                        title="Saldar una deuda que debo"
+                        onClose={() => {
+                          setSettleDebtToggle(false);
+                          setDebtsIOweToSettle([]);
+                        }}
+                        debts={pendingIOwe.map((debt) => ({
+                          id: debt.id,
+                          name: debt.debtor_name,
+                          amount: debt.amount_owed,
+                          detail: debt.transaction_detail || debt.detail || "Sin detalle",
+                          onToggle: () =>
+                            setDebtsIOweToSettle((prev) =>
+                              toggleById(prev, { id: debt.id, debtorName: debt.debtor_name, amount: debt.amount_owed })
+                            ),
+                        }))}
+                        selected={debtsIOweToSettle}
+                        txAmount={effectiveAmount}
+                        blur={isPrivacyMode}
+                        confirmLabel="Saldar seleccionadas"
+                        pending={settleDebtsIOwe.isPending}
+                        onConfirm={async () => {
+                          await settleDebtsIOwe.mutateAsync({
+                            debts: debtsIOweToSettle.map((d) => ({ sharedExpenseId: d.id })),
+                            existingTransactionId: editingTransaction.id,
+                          });
+                          closeComposer();
+                        }}
+                      />
+                    )}
+
+                    {txError && (
+                      <p id="tx-error" role="alert" className="whisper-error">
+                        {txError}
+                      </p>
+                    )}
+
+                    <div className="whisper-actions">
+                      <button
+                        ref={txOptionsToggleRef}
+                        type="button"
+                        className="whisper-options-toggle"
+                        aria-expanded={txExpanded}
+                        onClick={() => setTxExpanded(!txExpanded)}
+                      >
+                        {txExpanded ? "Menos opciones" : "Más opciones"}
+                        <ChevronDown size={12} className={cn(txExpanded && "rotate-180")} />
+                      </button>
+                      <button
+                        type="submit"
+                        className="whisper-submit"
+                        // Se puede guardar sin tocar el monto.
+                        disabled={updateTransaction.isPending}
+                        aria-label="Guardar cambios"
+                      >
+                        Guardar cambios
+                        <span className="hidden sm:inline" aria-hidden="true">↵</span>
+                        <ArrowUp size={14} className="sm:hidden" aria-hidden="true" />
+                      </button>
+                    </div>
+                    <p id="tx-shortcuts" className="whisper-shortcuts">
+                      <span><kbd>Tab</kbd> tipo</span>
+                      <span><kbd>↓</kbd> categorías</span>
+                      <span><kbd>Esc</kbd> cerrar</span>
                     </p>
-                  )}
-
-                  <div className="whisper-actions">
-                    <button
-                      ref={txOptionsToggleRef}
-                      type="button"
-                      className="whisper-options-toggle"
-                      aria-expanded={txExpanded}
-                      onClick={() => setTxExpanded(!txExpanded)}
-                    >
-                      {txExpanded ? "Menos opciones" : "Más opciones"}
-                      <ChevronDown size={12} className={cn(txExpanded && "rotate-180")} />
-                    </button>
-                    <button
-                      type="submit"
-                      className="whisper-submit"
-                      disabled={
-                        // Editando se puede guardar sin tocar el monto.
-                        (!parsedDraft && !editingTransaction) ||
-                        addTransaction.isPending ||
-                        updateTransaction.isPending
-                      }
-                      aria-label={editingTransaction ? "Guardar cambios" : "Guardar movimiento"}
-                    >
-                      {editingTransaction ? "Guardar cambios" : "Guardar"}
-                      <span className="hidden sm:inline" aria-hidden="true">↵</span>
-                      <ArrowUp size={14} className="sm:hidden" aria-hidden="true" />
-                    </button>
-                  </div>
-                  <p id="tx-shortcuts" className="whisper-shortcuts">
-                    <span><kbd>Tab</kbd> tipo</span>
-                    <span><kbd>↓</kbd> categorías</span>
-                    <span><kbd>Esc</kbd> cerrar</span>
-                  </p>
-                </form>
-              </Dialog.Content>
-            </Dialog.Portal>
-          </Dialog.Root>
+                  </form>
+                </Dialog.Content>
+              </Dialog.Portal>
+            </Dialog.Root>
+          )}
         </div>
 
         <BankSyncModal
@@ -1517,11 +1358,16 @@ export default function Transactions() {
           categories={categories}
           onEdit={handleEdit}
           onDelete={handleDelete}
-          onUpdateSilent={handleUpdateSilent}
+          onUpdateSilent={async (id, updates) => {
+            await updateTransactionSilent.mutateAsync({ id, ...updates });
+          }}
           onDeleteMultiple={handleDeleteMultiple}
-          onUpdateMultiple={handleUpdateMultiple}
-          onDuplicate={handleDuplicate}
-          isUpdating={updateTransactionSilent.isPending}
+          onUpdateMultiple={async (ids, updates) => {
+            await updateMultipleTransactions.mutateAsync({ ids, updates });
+          }}
+          onDuplicate={async (ids) => {
+            await duplicateTransactions.mutateAsync(ids);
+          }}
           searchValue={searchValue}
           onSearchChange={setSearchValue}
           typeFilter={typeFilter}
@@ -1545,19 +1391,20 @@ export default function Transactions() {
       />
 
       <ConfirmDialog
-        open={confirmDelete.open}
+        open={deleteId !== null}
         onOpenChange={(open) => {
-          if (!open) armEditGuard();
-          setConfirmDelete({ open, id: open ? confirmDelete.id : null });
+          if (open) return;
+          armEditGuard();
+          setDeleteId(null);
         }}
-        onConfirm={confirmDeleteAction}
+        onConfirm={() => deleteId && deleteTransaction.mutateAsync(deleteId)}
         title="¿Eliminar transacción?"
         description="Esta acción no se puede deshacer."
         confirmText="Eliminar"
         cancelText="Cancelar"
       >
-        {confirmDelete.id && (() => {
-          const tx = transactions.find(t => t.id === confirmDelete.id);
+        {deleteId && (() => {
+          const tx = transactions.find(t => t.id === deleteId);
           if (!tx) return null;
           return (
             <div className="rounded-lg border bg-muted/50 p-3 space-y-1 text-sm">
@@ -1565,7 +1412,7 @@ export default function Transactions() {
                 <span className="font-medium">{tx.detail || "Sin detalle"}</span>
                 <span className={cn(
                   "font-bold font-mono tabular-nums",
-                  AMOUNT_TEXT[tx.type] ?? "text-rose-500"
+                  typeAmountColors[tx.type] ?? "text-rose-500"
                 )}>
                   {formatCurrency(tx.amount)}
                 </span>
@@ -1580,15 +1427,16 @@ export default function Transactions() {
       </ConfirmDialog>
 
       <ConfirmDialog
-        open={confirmDeleteMultiple.open}
+        open={deleteIds.length > 0}
         onOpenChange={(open) => {
-          if (!open) armEditGuard();
-          setConfirmDeleteMultiple({ open, ids: open ? confirmDeleteMultiple.ids : [] });
+          if (open) return;
+          armEditGuard();
+          setDeleteIds([]);
         }}
-        onConfirm={confirmDeleteMultipleAction}
-        title={`¿Eliminar ${confirmDeleteMultiple.ids.length} transacciones?`}
+        onConfirm={() => deleteMultipleTransactions.mutateAsync(deleteIds)}
+        title={`¿Eliminar ${deleteIds.length} transacciones?`}
         description="Esta acción eliminará las transacciones seleccionadas. Podrás deshacerlo desde el toast de confirmación."
-        confirmText={`Eliminar ${confirmDeleteMultiple.ids.length}`}
+        confirmText={`Eliminar ${deleteIds.length}`}
         cancelText="Cancelar"
         variant="destructive"
       />

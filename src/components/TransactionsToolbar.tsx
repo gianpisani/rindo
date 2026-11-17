@@ -27,7 +27,7 @@ import {
   CommandList,
 } from "./ui/command";
 import { DateRangeFilter, type DateRangeValue } from "./DateRangeFilter";
-import { TRANSACTION_TYPES, type TransactionType } from "@/lib/ledger";
+import { TRANSACTION_TYPES } from "@/lib/ledger";
 import { cn } from "@/lib/utils";
 
 /**
@@ -53,7 +53,7 @@ import { cn } from "@/lib/utils";
 /** Chips visibles antes de colapsar al contador. Igual que HomeNotices. */
 const MAX_CHIPS = 2;
 
-export const ALL = "all";
+const ALL = "all";
 
 export interface ToolbarCategory {
   name: string;
@@ -173,11 +173,7 @@ export function TransactionsToolbar({
   // muestra suelta y trae su propio botón de limpiar.
   const active: ActiveFilter[] = [];
   if (typeFilter !== ALL) {
-    active.push({
-      key: "type",
-      label: typeFilter,
-      clear: () => onTypeFilterChange(ALL),
-    });
+    active.push({ key: "type", label: typeFilter, clear: () => onTypeFilterChange(ALL) });
   }
   if (cardFilter !== ALL) {
     active.push({
@@ -205,15 +201,7 @@ export function TransactionsToolbar({
   };
 
   const chips: ActiveFilter[] =
-    active.length > MAX_CHIPS
-      ? [
-          {
-            key: "all",
-            label: `${active.length} filtros`,
-            clear: clearAll,
-          },
-        ]
-      : active;
+    active.length > MAX_CHIPS ? [{ key: "all", label: `${active.length} filtros`, clear: clearAll }] : active;
 
   return (
     <div className="flex flex-wrap items-center gap-2 sm:flex-nowrap">
@@ -305,7 +293,7 @@ export function TransactionsToolbar({
               >
                 Todos
               </OptionChip>
-              {TRANSACTION_TYPES.map((type: TransactionType) => (
+              {TRANSACTION_TYPES.map((type) => (
                 <OptionChip
                   key={type}
                   active={typeFilter === type}
@@ -460,5 +448,3 @@ export function TransactionsToolbar({
     </div>
   );
 }
-
-export default TransactionsToolbar;
