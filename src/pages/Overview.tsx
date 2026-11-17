@@ -46,7 +46,6 @@ const clp = (value: number) =>
 const tint = (color?: string | null) => ({
   background: `color-mix(in oklch, ${color || "var(--muted-foreground)"} 22%, transparent)`,
 });
-const SOFT_ROSE = "color-mix(in oklch, var(--inicio-rose) 62%, var(--muted-foreground))";
 const transit = new Set(DEFAULT_TRANSIT_CATEGORIES);
 
 /** Gasto neto por categoría de un período, sin tránsito ni lo que Jev aún categoriza. */
@@ -154,8 +153,8 @@ export default function Overview() {
     <button key={c.category} className="fin-trend" onClick={() => openTrend(c)}>
       <span className="inicio-ico" style={tint(colorOf(c.category))}>{edit.emojiOf(c.category)}</span>
       <span className="n">{c.category}</span>
-      <Spark values={c.perMonth} color={colorOf(c.category) || "var(--muted-foreground)"} />
-      <span className={cn("v", isPrivacyMode && "privacy-blur")}>{clp(c.average)}<small>al mes</small></span>
+      <Spark values={c.perMonth} />
+      <span className={cn("v", isPrivacyMode && "privacy-blur")}>{clp(c.average)}</span>
     </button>
   ));
 
@@ -237,7 +236,7 @@ export default function Overview() {
                 {hovered ? (
                   <><span className="capitalize">{format(nameOf(hovered.month), "MMM yyyy", { locale: es })}</span> · <b style={{ color: "var(--inicio-emerald)" }}>+{clpShort(hovered.ingreso)}</b> · <b>−{clpShort(hovered.gasto)}</b></>
                 ) : (
-                  <><span style={{ color: "var(--inicio-emerald)" }}>entró</span> vs <span style={{ color: SOFT_ROSE }}>salió</span></>
+                  <><span style={{ color: "var(--inicio-emerald)" }}>entró</span> vs salió</>
                 )}
               </span>
             </div>
@@ -263,7 +262,11 @@ export default function Overview() {
                 </>
               )}
             </div>
-            <div className="fin-trends-body inicio-scroll">{trendRows}</div>
+            <div className="fin-trends-body inicio-scroll">
+              {/* En celular el encabezado va oculto: aquí se dice una vez qué son los montos */}
+              <div className="px-[18px] pt-2 text-[11.5px] text-muted-foreground">promedio al mes</div>
+              {trendRows}
+            </div>
           </section>
 
           <section className="inicio-card fin-card fin-trends">

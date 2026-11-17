@@ -138,7 +138,7 @@ export default function PendingDebts() {
         <h1 className="text-2xl font-bold tracking-tight">Deudas</h1>
 
         {sections.length === 0 ? (
-          <div className="rounded-2xl border border-dashed border-border/60 py-16 text-center">
+          <div className="py-16 text-center">
             <p className="text-base font-medium text-muted-foreground mb-1">Nadie te debe y no le debes a nadie</p>
             <p className="text-sm text-muted-foreground/70">
               Para crear una deuda, divide un gasto desde{" "}

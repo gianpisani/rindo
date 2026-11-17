@@ -1132,8 +1132,8 @@ Based on Indigo, Blue, Cyan palette
 .fin-mon { flex: 1; height: 100%; display: flex; align-items: flex-end; justify-content: center; gap: 2px; border-radius: 5px; cursor: pointer; padding: 0 1px; transition: background .15s; }
 .fin-mon:hover, .fin-mon[data-active="true"] { background: var(--inicio-hover); }
 .fin-mon i { flex: 1; max-width: 14px; border-radius: 3px 3px 1px 1px; transform-origin: bottom; animation: fin-rise .55s cubic-bezier(.2, .8, .2, 1) both; animation-delay: calc(var(--i, 0) * 25ms); }
-.fin-mon i.in { background: color-mix(in oklch, var(--inicio-emerald) 75%, transparent); }
-.fin-mon i.out { background: color-mix(in oklch, var(--inicio-rose) 62%, var(--muted-foreground)); }
+.fin-mon i.in { background: color-mix(in oklch, var(--inicio-emerald) 40%, transparent); }
+.fin-mon i.out { background: color-mix(in oklch, var(--muted-foreground) 35%, transparent); }
 .fin-mon[data-current="true"] i { opacity: .55; }
 .fin-axis-abs { position: absolute; left: 0; right: 0; bottom: 0; height: 14px; }
 .fin-axis-abs span { position: absolute; top: 0; font-family: "JetBrains Mono", monospace; font-size: 9.5px; color: var(--inicio-faint);
@@ -1145,10 +1145,9 @@ Based on Indigo, Blue, Cyan palette
 .fin-trend .inicio-ico { width: 26px; height: 26px; font-size: 12px; }
 .fin-trend .n { font-size: 12.5px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .fin-spark { display: flex; align-items: flex-end; gap: 1.5px; width: 84px; height: 22px; }
-.fin-spark i { flex: 1; min-height: 1px; border-radius: 1.5px; transform-origin: bottom; animation: fin-rise .5s cubic-bezier(.2, .8, .2, 1) both; }
-.fin-spark i:last-child { opacity: .5; }
+.fin-spark i { flex: 1; min-height: 1px; border-radius: 1.5px; background: color-mix(in oklch, var(--muted-foreground) 45%, transparent); transform-origin: bottom; animation: fin-rise .5s cubic-bezier(.2, .8, .2, 1) both; }
+.fin-spark i:last-child { background: var(--muted-foreground); }
 .fin-trend .v { font-family: "JetBrains Mono", monospace; font-variant-numeric: tabular-nums; font-size: 12px; font-weight: 600; text-align: right; white-space: nowrap; min-width: 76px; }
-.fin-trend .v small { display: block; font-size: 9.5px; font-weight: 400; color: var(--inicio-faint); }
 
 /* Panel con los movimientos de una categoría, un día o un mes */
 .fin-sheet { display: flex; flex-direction: column; padding: 0; gap: 0; }
@@ -1200,8 +1199,7 @@ Based on Indigo, Blue, Cyan palette
    exacta, como Meta y Finanzas. Arriba los plásticos, cada uno con su ciclo
    (se toca uno para ver su estado de cuenta). Abajo dos paneles que
    scrollean adentro: las cuotas y el estado de cuenta ciclo por ciclo. El
-   color de cada tarjeta lo elige el usuario; acá solo se oscurece y se le
-   da brillo. */
+   color de cada tarjeta lo elige el usuario; va plano, sin adornos. */
 .tj {
   container: tj / inline-size;
   display: flex;
@@ -1262,14 +1260,10 @@ Based on Indigo, Blue, Cyan palette
 .tj-plastic {
   position: relative; flex: none; width: 300px; aspect-ratio: 1.586; border-radius: 16px; padding: 16px 18px 15px;
   display: flex; flex-direction: column; text-align: left; color: white; cursor: pointer; scroll-snap-align: start;
-  background:
-    radial-gradient(120% 100% at 100% 0%, color-mix(in oklch, white 22%, transparent), transparent 55%),
-    linear-gradient(135deg, var(--tj-c), color-mix(in oklch, var(--tj-c) 68%, black));
-  box-shadow: 0 1px 2px color-mix(in oklch, black 25%, transparent), 0 12px 28px -14px color-mix(in oklch, var(--tj-c) 70%, black);
+  background: var(--tj-c);
   outline: 2px solid transparent; outline-offset: 3px;
-  transition: transform .2s, box-shadow .2s, outline-color .15s;
+  transition: transform .2s, outline-color .15s;
 }
-.tj-plastic::after { content: ""; position: absolute; inset: 0; border-radius: inherit; box-shadow: inset 0 0 0 1px color-mix(in oklch, white 14%, transparent); pointer-events: none; }
 .tj-plastic:hover { transform: translateY(-2px); }
 .tj-plastic:focus-visible, .tj-plastic[data-selected] { outline-color: var(--foreground); }
 .tj-pl-top { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
@@ -1282,12 +1276,6 @@ Based on Indigo, Blue, Cyan palette
 .tj-pl-of { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; font-family: var(--tj-mono); font-variant-numeric: tabular-nums; font-size: 11px; opacity: .85; margin-top: 4px; }
 .tj-pl-bot { display: flex; justify-content: space-between; align-items: baseline; gap: 10px; font-family: var(--tj-mono); font-variant-numeric: tabular-nums; font-size: 11px; opacity: .8; white-space: nowrap; }
 .tj-pl-name { min-width: 0; font-size: 13px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-/* Agregar: un plástico punteado, angosto */
-.tj-plastic-new { width: 110px; aspect-ratio: auto; align-items: center; justify-content: center; flex-direction: row; gap: 5px; color: var(--muted-foreground);
-  background: none; box-shadow: none; border: 1px dashed var(--border); font-size: 12px; font-weight: 600; }
-.tj-plastic-new::after { display: none; }
-.tj-plastic-new svg { width: 14px; height: 14px; }
-.tj-plastic-new:hover { transform: none; background: var(--tj-hover); color: var(--foreground); border-color: color-mix(in oklch, var(--foreground) 22%, transparent); }
 
 /* ── Cuotas ── */
 .tj-inst { border-top: 1px solid color-mix(in oklch, var(--border) 60%, transparent); }
@@ -1350,7 +1338,6 @@ Based on Indigo, Blue, Cyan palette
   .tj-wallet { gap: 10px; scroll-snap-type: x mandatory; }
   .tj-plastic { width: min(300px, 82cqw); padding: 14px 16px 13px; }
   .tj-plastic:hover { transform: none; }
-  .tj-plastic-new { width: 84px; }
   .tj-pl-big { font-size: 22px; }
   /* Las pestañas: qué panel ocupa el resto de la pantalla */
   .tj-tabs { grid-area: tabs; display: flex; gap: 4px; padding: 2px; border-radius: 12px; background: var(--card); border: 1px solid var(--border); }
