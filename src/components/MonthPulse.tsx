@@ -201,7 +201,7 @@ function PaceRace({ pace, verdict, privacy }: { pace: MonthPace; verdict: PaceVe
 }
 
 // ─── Lo que explica la diferencia ────────────────────────
-function Drivers({ pace, colors, privacy }: { pace: MonthPace; colors: Map<string, string>; privacy: boolean }) {
+function Drivers({ pace, colors, privacy }: { pace: MonthPace; colors: Map<string, string | null>; privacy: boolean }) {
   const floor = Math.max(3_000, pace.typicalSoFar * 0.02);
   const rows = pace.drivers.filter((d) => Math.abs(d.delta) >= floor).slice(0, 4);
   if (rows.length === 0) return null;

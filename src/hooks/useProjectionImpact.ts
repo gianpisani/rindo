@@ -70,7 +70,7 @@ export function calculateProjectionImpact(
   
   let avgMonthlyGrowth = 0;
   if (recentCompleteMonths.length >= 2) {
-    const growths = [];
+    const growths: number[] = [];
     for (let i = 1; i < recentCompleteMonths.length; i++) {
       const growth = recentCompleteMonths[i].patrimonio - recentCompleteMonths[i - 1].patrimonio;
       growths.push(growth);

@@ -29,7 +29,7 @@ export function TestPushNotification() {
     },
   ];
 
-  const handleTest = async (testFn: () => Promise<any>, label: string) => {
+  const handleTest = async (testFn: () => Promise<{ success: boolean }>, label: string) => {
     toast.loading(`Enviando ${label}...`);
     const result = await testFn();
     

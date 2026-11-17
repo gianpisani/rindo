@@ -1,8 +1,19 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
+import type { TablesInsert } from "@/integrations/supabase/types";
 import { toast } from "sonner";
 import { addMonths, format } from "date-fns";
 import { es } from "date-fns/locale";
+
+export interface InstallmentScheduleItem {
+  number: number;
+  date: Date;
+  dateFormatted: string;
+  amount: number;
+  isPaid: boolean;
+  isCurrent: boolean;
+  isPastDue: boolean;
+}
 
 export interface InstallmentPurchase {
   id: string;
@@ -77,7 +88,7 @@ export function useInstallments() {
 
       // 2. Create ALL transactions linked by installment_id
       const firstDate = new Date(purchase.first_installment_date);
-      const transactionsToCreate = [];
+      const transactionsToCreate: TablesInsert<"transactions">[] = [];
 
       for (let i = 0; i < purchase.total_installments; i++) {
         const installmentDate = addMonths(firstDate, i);
@@ -148,7 +159,7 @@ export function useInstallments() {
       // 3. Regenerate transactions with updated data
       const updatedPurchase = data as InstallmentPurchase;
       const firstDate = new Date(updatedPurchase.first_installment_date);
-      const transactionsToCreate = [];
+      const transactionsToCreate: TablesInsert<"transactions">[] = [];
 
       for (let i = 0; i < updatedPurchase.total_installments; i++) {
         const installmentDate = addMonths(firstDate, i);
@@ -232,7 +243,7 @@ export function useInstallments() {
 
   // Helper: Generate installment schedule
   const getInstallmentSchedule = (purchase: InstallmentPurchase) => {
-    const schedule = [];
+    const schedule: InstallmentScheduleItem[] = [];
     const firstDate = new Date(purchase.first_installment_date);
     const today = new Date();
 

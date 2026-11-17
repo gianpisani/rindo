@@ -229,7 +229,7 @@ export function useSharedExpenses() {
 
       toast.success("Pago registrado. Se ha creado el ingreso automáticamente");
     },
-    onError: (error: any) => {
+    onError: (error: Error) => {
       toast.error(error.message);
     },
   });
@@ -325,7 +325,7 @@ export function useSharedExpenses() {
       queryClient.invalidateQueries({ queryKey: ["transactions"] });
       toast.success("Deuda vinculada a transacción existente");
     },
-    onError: (error: any) => {
+    onError: (error: Error) => {
       toast.error(error.message);
     },
   });
@@ -408,7 +408,7 @@ export function useSharedExpenses() {
       queryClient.invalidateQueries({ queryKey: ["transactions"] });
       toast.success("Deudas vinculadas a la transacción");
     },
-    onError: (error: any) => {
+    onError: (error: Error) => {
       toast.error(error.message);
     },
   });
@@ -479,7 +479,7 @@ export function useSharedExpenses() {
       queryClient.invalidateQueries({ queryKey: ["transactions"] });
       toast.success("Deuda creada");
     },
-    onError: (error: any) => {
+    onError: (error: Error) => {
       toast.error(error.message);
     },
   });
@@ -520,7 +520,7 @@ export function useSharedExpenses() {
       queryClient.invalidateQueries({ queryKey: ["pending_by_creditor"] });
       toast.success("Deuda registrada");
     },
-    onError: (error: any) => {
+    onError: (error: Error) => {
       toast.error(error.message);
     },
   });
@@ -562,7 +562,7 @@ export function useSharedExpenses() {
       queryClient.invalidateQueries({ queryKey: ["transactions"] });
       toast.success("Deuda saldada");
     },
-    onError: (error: any) => {
+    onError: (error: Error) => {
       toast.error(error.message);
     },
   });
