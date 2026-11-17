@@ -1,4 +1,3 @@
-import { canCategorizeOwner } from '../_shared/category-auth.ts'
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.39.3'
 import { corsHeaders } from '../_shared/cors.ts'
 import { bankSettlementDate } from '../_shared/business-day.ts'
@@ -441,12 +440,6 @@ Deno.serve(async (req) => {
     const settlementDate = parsed.isTransfer
       ? await bankSettlementDate(supabase, new Date(transactionDate), { bank: parsed.bank })
       : null
-
-    // These importers use a service client, so authenticate the owner explicitly.
-    if (!await canCategorizeOwner(supabase, req.headers.get('Authorization'), user_id, Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? '')) {
-      return new Response(JSON.stringify({ success: false, error: 'Se requiere una sesión válida o un importador autenticado' }),
-        { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } })
-    }
 
     const { id, category, weeklyStats } = await ingestTransaction(supabase, {
       user_id,
