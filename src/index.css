@@ -156,8 +156,10 @@ Based on Indigo, Blue, Cyan palette
     /* Un verde y un rojo. --success es lo bueno (ingresos, metas cumplidas);
        --destructive es lo único que avisa (ritmo pasado, límites, errores,
        eliminar). Tripletes OKLCH: oklch(var(--success)). El gasto no es una
-       alerta: va en --foreground. */
+       alerta: sus montos van en --foreground y, donde se compara con lo que
+       entró (mes a mes), en --spend: un violeta frío, vivo pero no rojo. */
     --success: var(--accent-emerald);
+    --spend: var(--accent-violet);
 
     /* Additional functional colors (HSL for compatibility) */
     --warning: 38 92% 50%;
@@ -616,7 +618,7 @@ Based on Indigo, Blue, Cyan palette
 .inicio-money-top { display: flex; justify-content: space-between; align-items: baseline; }
 .inicio-month:hover { color: var(--foreground); }
 .inicio-month { font-size: var(--fs-1); font-weight: 500; color: var(--muted-foreground); text-transform: capitalize; }
-.inicio-big { font-family: var(--font-mono); font-variant-numeric: tabular-nums; font-size: var(--fs-hero); line-height: 1; font-weight: 500; letter-spacing: -0.03em; margin: 8px 0 12px; }
+.inicio-big { font-family: var(--font-mono); font-variant-numeric: tabular-nums; font-size: var(--fs-hero); line-height: 1; font-weight: 600; letter-spacing: -0.03em; margin: 8px 0 12px; }
 .inicio-pace { flex: 1; min-height: 0; display: flex; flex-direction: column; gap: 8px; text-align: left; border-radius: var(--radius-card); margin: 0 -8px 12px; padding: 6px 8px; transition: background .15s; }
 .inicio-pace:hover { background: var(--inicio-hover); }
 .inicio-pace-text { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; }
@@ -914,7 +916,7 @@ Based on Indigo, Blue, Cyan palette
 /* El mes en curso */
 .meta-now { padding: 16px 16px; display: flex; flex-direction: column; }
 .meta-month { font-size: var(--fs-1); font-weight: 500; color: var(--muted-foreground); text-transform: capitalize; }
-.meta-big { font-family: var(--font-mono); font-variant-numeric: tabular-nums; font-size: var(--fs-hero); line-height: 1; font-weight: 500; letter-spacing: -0.03em; margin: 12px 0 4px; }
+.meta-big { font-family: var(--font-mono); font-variant-numeric: tabular-nums; font-size: var(--fs-hero); line-height: 1; font-weight: 600; letter-spacing: -0.03em; margin: 12px 0 4px; }
 .meta-of { font-family: var(--font-mono); font-variant-numeric: tabular-nums; font-size: var(--fs-1); color: var(--muted-foreground); padding-bottom: 16px; }
 /* En web la tarjeta es tan alta como los doce meses: el aire se reparte entre el número, la barra y la frase */
 .meta-track { height: 6px; border-radius: 9999px; background: var(--meta-hover); overflow: hidden; margin: auto 0 12px; padding-top: 0; }
@@ -1088,8 +1090,8 @@ Based on Indigo, Blue, Cyan palette
 .fin-mon { flex: 1; height: 100%; display: flex; align-items: flex-end; justify-content: center; gap: 2px; border-radius: var(--radius-card); cursor: pointer; padding: 0 1px; transition: background .15s; }
 .fin-mon:hover, .fin-mon[data-active="true"] { background: var(--inicio-hover); }
 .fin-mon i { flex: 1; max-width: 14px; border-radius: 3px 3px 1px 1px; transform-origin: bottom; animation: fin-rise .55s cubic-bezier(.2, .8, .2, 1) both; animation-delay: calc(var(--i, 0) * 25ms); }
-.fin-mon i.in { background: oklch(var(--success) / .4); }
-.fin-mon i.out { background: color-mix(in oklch, var(--muted-foreground) 35%, transparent); }
+.fin-mon i.in { background: oklch(var(--success)); }
+.fin-mon i.out { background: oklch(var(--spend)); }
 .fin-mon[data-current="true"] i { opacity: .55; }
 .fin-axis-abs { position: absolute; left: 0; right: 0; bottom: 0; height: 14px; }
 .fin-axis-abs span { position: absolute; top: 0; font-size: var(--fs-1); color: var(--inicio-faint);
@@ -1101,8 +1103,8 @@ Based on Indigo, Blue, Cyan palette
 .fin-trend .inicio-ico { width: 26px; height: 26px; font-size: var(--fs-1); }
 .fin-trend .n { font-size: var(--fs-1); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .fin-spark { display: flex; align-items: flex-end; gap: 1.4px; width: 84px; height: 22px; }
-.fin-spark i { flex: 1; min-height: 1px; border-radius: 1.5px; background: color-mix(in oklch, var(--muted-foreground) 45%, transparent); transform-origin: bottom; animation: fin-rise .5s cubic-bezier(.2, .8, .2, 1) both; }
-.fin-spark i:last-child { background: var(--muted-foreground); }
+.fin-spark i { flex: 1; min-height: 1px; border-radius: 1.5px; background: color-mix(in oklch, var(--c, var(--muted-foreground)) 45%, transparent); transform-origin: bottom; animation: fin-rise .5s cubic-bezier(.2, .8, .2, 1) both; }
+.fin-spark i:last-child { background: var(--c, var(--muted-foreground)); }
 .fin-trend .v { font-family: var(--font-mono); font-variant-numeric: tabular-nums; font-size: var(--fs-1); font-weight: 500; text-align: right; white-space: nowrap; min-width: 76px; }
 
 /* Panel con los movimientos de una categoría, un día o un mes */
@@ -1211,7 +1213,7 @@ Based on Indigo, Blue, Cyan palette
 .tj-wallet::-webkit-scrollbar { display: none; }
 .tj-plastic {
   position: relative; flex: none; width: 300px; aspect-ratio: 1.586; border-radius: var(--radius-card); padding: 16px 16px 16px;
-  display: flex; flex-direction: column; text-align: left; color: white; cursor: pointer; scroll-snap-align: start;
+  display: flex; flex-direction: column; text-align: left; color: var(--tj-ink, white); cursor: pointer; scroll-snap-align: start;
   background: var(--tj-c);
   outline: 2px solid transparent; outline-offset: 3px;
   transition: transform .2s, outline-color .15s;
@@ -1219,12 +1221,12 @@ Based on Indigo, Blue, Cyan palette
 .tj-plastic:hover { transform: translateY(-2px); }
 .tj-plastic:focus-visible, .tj-plastic[data-selected] { outline-color: var(--foreground); }
 .tj-pl-top { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
-.tj-pl-menu { width: 26px; height: 26px; margin: -4px -6px -4px 0; border-radius: 9999px; display: grid; place-items: center; color: white; opacity: .6; transition: opacity .15s, background .15s; }
+.tj-pl-menu { width: 26px; height: 26px; margin: -4px -6px -4px 0; border-radius: 9999px; display: grid; place-items: center; color: inherit; opacity: .6; transition: opacity .15s, background .15s; }
 .tj-pl-menu svg { width: 16px; height: 16px; }
-.tj-pl-menu:hover, .tj-pl-menu[data-state="open"] { opacity: 1; background: color-mix(in oklch, white 18%, transparent); }
+.tj-pl-menu:hover, .tj-pl-menu[data-state="open"] { opacity: 1; background: color-mix(in oklch, currentColor 18%, transparent); }
 .tj-pl-mid { display: flex; flex-direction: column; margin: auto 0 12px; }
 .tj-pl-label { font-size: var(--fs-1); opacity: .7; }
-.tj-pl-big { font-family: var(--font-mono); font-variant-numeric: tabular-nums; font-size: var(--fs-hero); line-height: 1.1; font-weight: 500; letter-spacing: -0.02em; margin-top: 1px; }
+.tj-pl-big { font-family: var(--font-mono); font-variant-numeric: tabular-nums; font-size: var(--fs-hero); line-height: 1.1; font-weight: 600; letter-spacing: -0.02em; margin-top: 1px; }
 .tj-pl-of { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; font-variant-numeric: tabular-nums; font-size: var(--fs-1); opacity: .85; margin-top: 4px; }
 .tj-pl-bot { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; font-variant-numeric: tabular-nums; font-size: var(--fs-1); opacity: .8; white-space: nowrap; }
 .tj-pl-name { min-width: 0; font-size: var(--fs-2); font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }

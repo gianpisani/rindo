@@ -20,6 +20,7 @@ import { InstallmentModal } from "@/components/InstallmentModal";
 import ConfirmDialog from "@/components/ConfirmDialog";
 import { usePrivacyMode } from "@/hooks/usePrivacyMode";
 import { cn } from "@/lib/utils";
+import { inkOn } from "@/lib/category-color";
 
 /**
  * Tarjetas: ¿cuánto llevo este ciclo, cuándo cierra y cuándo pago? Cada
@@ -357,7 +358,7 @@ function Plastic({
       tabIndex={0}
       className="tj-plastic"
       data-selected={selected || undefined}
-      style={{ "--tj-c": card.color || "var(--tj-fallback)" } as CSSProperties}
+      style={{ "--tj-c": card.color || "var(--tj-fallback)", "--tj-ink": inkOn(card.color) } as CSSProperties}
       onClick={onSelect}
       onKeyDown={(e) => {
         if (e.key === "Enter" || e.key === " ") {

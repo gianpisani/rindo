@@ -39,6 +39,7 @@ import { useUserProfile } from "@/hooks/useUserProfile";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import { ANALYZING_CATEGORY } from "@/lib/auto-category-policy";
 import { isCardPayment } from "@/lib/ledger";
+import { tint } from "@/lib/category-color";
 
 /*
  * Inicio: ¿cómo voy este mes? Lo gastado y el ritmo, en qué se va la plata,
@@ -61,9 +62,6 @@ const sinceLabel = (iso: string) => {
 };
 
 /** El ícono de una categoría sobre un tono de su color. */
-const tint = (color?: string | null) => ({
-  background: `color-mix(in oklch, ${color || "var(--muted-foreground)"} 22%, transparent)`,
-});
 
 const formatCurrency = (value: number) =>
   new Intl.NumberFormat("es-CL", { style: "currency", currency: "CLP", minimumFractionDigits: 0 }).format(value);

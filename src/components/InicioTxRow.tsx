@@ -2,6 +2,7 @@ import { useEffect, useLayoutEffect, useRef, useState, type ChangeEvent, type HT
 import { Trash2 } from "lucide-react";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { cn } from "@/lib/utils";
+import { tint } from "@/lib/category-color";
 
 /**
  * Una fila de Recientes que se edita donde está: solo lo que ya se ve.
@@ -147,7 +148,7 @@ export function InicioTxRow({
                       if (option.name !== category) onSave({ category_name: option.name });
                     }}
                   >
-                    <span className="inicio-ico" style={{ background: `color-mix(in oklch, ${option.color || "var(--muted-foreground)"} 22%, transparent)` }}>
+                    <span className="inicio-ico" style={tint(option.color)}>
                       {option.icon}
                     </span>
                     {option.name}

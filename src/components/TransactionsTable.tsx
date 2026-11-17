@@ -79,6 +79,7 @@ import { CategoryComposer } from "./CategoryComposer";
 import { Popover, PopoverContent, PopoverTrigger } from "./ui/popover";
 import { Command, CommandInput, CommandList, CommandEmpty, CommandGroup, CommandItem } from "./ui/command";
 import type { DateRangeValue } from "./DateRangeFilter";
+import { tintColor } from "@/lib/category-color";
 
 // ── Category icon map ──────────────────────────────────────────────────────
 
@@ -182,11 +183,10 @@ export function getCategoryIcon(name: string): string {
 // category color. Uncolored categories fall back to the neutral muted tone.
 function categoryAvatar(name: string, categories: { name: string; icon?: string | null; color?: string | null }[]) {
   const category = categories.find(c => c.name === name);
-  const tone = category?.color || "var(--muted-foreground)";
   const analyzing = name === "⚡ Analizando...";
   return {
     emoji: analyzing ? "⚡" : category?.icon || getCategoryIcon(name),
-    style: { backgroundColor: `color-mix(in oklch, ${tone} 22%, transparent)` },
+    style: { backgroundColor: tintColor(category?.color) },
   };
 }
 

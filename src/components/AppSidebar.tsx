@@ -278,7 +278,7 @@ function NavItem({ route, isActive }: { route: RouteConfig; isActive: boolean })
           isCollapsed && "justify-center px-0 flex-initial",
         )}
       >
-        <Icon className="size-4" />
+        <Icon className={cn("size-4", isActive && "text-primary")} />
         {!isCollapsed && <span className="truncate">{route.title}</span>}
       </button>
     </div>

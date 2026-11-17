@@ -32,7 +32,7 @@
   display: block; width: 100%; height: 56px; padding: 0;
   border: 0; outline: none; background: transparent; box-shadow: none;
   color: var(--whisper-accent); caret-color: var(--whisper-accent);
-  font-size: var(--fs-hero); font-weight: 400; letter-spacing: -.035em; text-align: center;
+  font-size: var(--fs-hero); font-weight: 600; letter-spacing: -.035em; text-align: center;
   transition: color .25s, caret-color .25s;
 }
 .whisper-input::placeholder { color: rgb(255 255 255 / .32); }
