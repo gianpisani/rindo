@@ -116,8 +116,8 @@ const Index = () => {
 
   const { budget } = useMonthlyBudget();
   const flowConfig = useMemo<Partial<RealFlowsConfig>>(
-    () => ({ splurgeCategories: budget?.splurge_categories ?? [], periodStartDay: startDay }),
-    [budget?.splurge_categories, startDay]
+    () => ({ periodStartDay: startDay }),
+    [startDay]
   );
   const currentFlows = useRealFlows(transactions, thisPeriod, flowConfig);
   const lastMonthFlows = useMemo(

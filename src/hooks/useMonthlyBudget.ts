@@ -9,26 +9,11 @@ export interface MonthlyBudget {
   total_budget: number;
   /** La meta de ahorro mensual — el input sagrado. */
   savings_goal: number | null;
-  /** Aporte mensual al fondo de bombazos. */
-  splurge_fund_monthly: number | null;
-  /** Desde cuándo acumula el fondo (date ISO yyyy-MM-dd). */
-  splurge_fund_start: string | null;
-  /** Categorías de gasto tratadas como bombazos (configurables por usuario). */
-  splurge_categories: string[];
   created_at: string;
   updated_at: string;
 }
 
-export type MonthlyBudgetPatch = Partial<
-  Pick<
-    MonthlyBudget,
-    | "total_budget"
-    | "savings_goal"
-    | "splurge_fund_monthly"
-    | "splurge_fund_start"
-    | "splurge_categories"
-  >
->;
+export type MonthlyBudgetPatch = Partial<Pick<MonthlyBudget, "total_budget" | "savings_goal">>;
 
 export function useMonthlyBudget() {
   const queryClient = useQueryClient();

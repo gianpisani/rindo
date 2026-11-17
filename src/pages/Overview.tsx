@@ -20,7 +20,6 @@ import {
 } from "@/components/finanzas/FinCharts";
 import { useTransactions, type Transaction } from "@/hooks/useTransactions";
 import { useCategories } from "@/hooks/useCategories";
-import { useMonthlyBudget } from "@/hooks/useMonthlyBudget";
 import { usePrivacyMode } from "@/hooks/usePrivacyMode";
 import { useInlineEdit } from "@/hooks/useInlineEdit";
 import { computeLedger, computeRealFlows, DEFAULT_TRANSIT_CATEGORIES } from "@/hooks/useRealFlows";
@@ -104,15 +103,14 @@ const deltaOf = (current: number, previous: number, prevMonth: Date, goodWhenUp:
 export default function Overview() {
   const { transactions, isLoading } = useTransactions();
   const { categories } = useCategories();
-  const { budget } = useMonthlyBudget();
   const { isPrivacyMode } = usePrivacyMode();
   const edit = useInlineEdit();
   const period = usePeriodConfig();
   const { startDay } = period;
   const openPeriodSettings = useGlobalDrawers((s) => s.openPeriodSettings);
   const flowConfig = useMemo(
-    () => ({ splurgeCategories: budget?.splurge_categories ?? [], periodStartDay: startDay }),
-    [budget?.splurge_categories, startDay]
+    () => ({ periodStartDay: startDay }),
+    [startDay]
   );
 
   const now = new Date();
