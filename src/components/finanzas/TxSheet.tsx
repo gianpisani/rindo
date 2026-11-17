@@ -9,6 +9,7 @@ import type { InlineEdit } from "@/hooks/useInlineEdit";
 import { usePrivacyMode } from "@/hooks/usePrivacyMode";
 import { byNewest } from "@/hooks/useTransactions";
 import { cn } from "@/lib/utils";
+import { tint } from "@/lib/category-color";
 
 export interface TxSheetData {
   title: string;
@@ -54,7 +55,7 @@ export function TxSheet({ data, edit, onClose }: { data: TxSheetData | null; edi
           <>
             <div className="fin-sheet-head">
               {data.icon && (
-                <span className="inicio-ico" style={{ background: `color-mix(in oklch, ${data.color || "var(--muted-foreground)"} 22%, transparent)` }}>
+                <span className="inicio-ico" style={tint(data.color)}>
                   {data.icon}
                 </span>
               )}

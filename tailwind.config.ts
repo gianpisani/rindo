@@ -8,7 +8,7 @@ export default {
   content: ["./pages/**/*.{ts,tsx}", "./components/**/*.{ts,tsx}", "./app/**/*.{ts,tsx}", "./src/**/*.{ts,tsx}"],
   prefix: "",
   theme: {
-  	// La escala tipográfica es cerrada: cuatro tamaños y dos grosores. Los
+  	// La escala tipográfica es cerrada: cuatro tamaños y dos grosores (más el del hero). Los
   	// valores viven en src/index.css (--fs-*), compartidos con el CSS propio.
   	fontSize: {
   		xs: ['var(--fs-1)', { lineHeight: '1rem' }],
@@ -29,9 +29,12 @@ export default {
   		none: 'none',
   		float: 'var(--shadow-float)'
   	},
+  	// Dos grosores para todo, y un tercero (semibold) reservado al número
+  	// protagonista de cada pantalla (text-hero).
   	fontWeight: {
   		normal: '400',
-  		medium: '500'
+  		medium: '500',
+  		semibold: '600'
   	},
   	container: {
   		center: true,
@@ -102,6 +105,7 @@ export default {
 				foreground: 'var(--destructive-foreground)'
 			},
 			success: 'oklch(var(--success) / <alpha-value>)',
+			spend: 'oklch(var(--spend) / <alpha-value>)',
 			warning: {
 				DEFAULT: 'hsl(var(--warning))',
 				foreground: 'hsl(var(--warning-foreground))'

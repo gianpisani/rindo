@@ -222,13 +222,6 @@ function AmbientBackground() {
     <div className="absolute inset-0 overflow-hidden pointer-events-none">
       {/* Radial gradient center glow */}
       <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] rounded-full bg-white/[0.012] blur-[120px]" />
-      {/* Subtle primary accent */}
-      <motion.div
-        animate={{ opacity: [0.015, 0.03, 0.015] }}
-        transition={{ duration: 8, repeat: Infinity, ease: "easeInOut" }}
-        className="absolute top-1/3 left-1/2 -translate-x-1/2 w-[400px] h-[400px] rounded-full blur-[100px]"
-        style={{ backgroundColor: "hsl(var(--primary))" }}
-      />
       {/* Noise texture */}
       <div
         className="absolute inset-0 opacity-[0.015]"

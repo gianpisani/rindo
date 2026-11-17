@@ -254,7 +254,7 @@ function Headline({ pace, verdict, privacy }: { pace: MonthPace; verdict: PaceVe
   if (!pace.typical) {
     return (
       <div>
-        <p className="text-hero font-medium tracking-tight tabular-nums">
+        <p className="text-hero font-semibold tracking-tight tabular-nums">
           <span className={cn(privacy && "privacy-blur")}>{clp(pace.spentSoFar)}</span>
         </p>
         <p className="mt-2 text-sm text-muted-foreground">
@@ -273,7 +273,7 @@ function Headline({ pace, verdict, privacy }: { pace: MonthPace; verdict: PaceVe
         <p className="text-hero font-medium tracking-tight">Justo {phrase}</p>
       ) : (
         <p className="text-hero font-medium tracking-tight">
-          <span className={cn("tabular-nums", privacy && "privacy-blur")} style={{ color: tone }}>
+          <span className={cn("font-semibold tabular-nums", privacy && "privacy-blur")} style={{ color: tone }}>
             $<NumberFlow value={Math.round(Math.abs(pace.delta))} locales="es-CL" format={{ maximumFractionDigits: 0 }} />
           </span>
           <span className="block text-xl font-medium text-muted-foreground lg:mt-1">{phrase}</span>

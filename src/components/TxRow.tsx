@@ -8,13 +8,11 @@ import { usePrivacyMode } from "@/hooks/usePrivacyMode";
 import { signPrefix } from "@/lib/ledger";
 import { AMOUNT_TONE, isAnalyzing } from "@/lib/tx-display";
 import { cn } from "@/lib/utils";
+import { tint } from "@/lib/category-color";
 
 const clp = (value: number) =>
   new Intl.NumberFormat("es-CL", { style: "currency", currency: "CLP", minimumFractionDigits: 0 }).format(value);
 
-const tint = (color?: string | null) => ({
-  background: `color-mix(in oklch, ${color || "var(--muted-foreground)"} 22%, transparent)`,
-});
 
 interface Props extends HTMLAttributes<HTMLDivElement> {
   t: Transaction;

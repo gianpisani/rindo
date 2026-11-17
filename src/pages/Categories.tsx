@@ -5,6 +5,7 @@ import { CategoryComposer, type CategoryValues } from "@/components/CategoryComp
 import { Plus, Pencil, Trash2, TrendingUp, TrendingDown, PiggyBank, ArrowLeftRight, ArrowDownToLine, LineChart } from "lucide-react";
 import { useCategories } from "@/hooks/useCategories";
 import { cn } from "@/lib/utils";
+import { tintColor } from "@/lib/category-color";
 import { TRANSACTION_TYPES, type TransactionType } from "@/lib/ledger";
 
 const typeConfig: Record<
@@ -16,7 +17,7 @@ const typeConfig: Record<
   Inversión: { icon: PiggyBank, label: "Inversiones", color: "text-info" },
   Rescate: { icon: ArrowDownToLine, label: "Rescates", color: "text-cyan-500" },
   Rendimiento: { icon: LineChart, label: "Rendimientos", color: "text-violet-500" },
-  Reembolso: { icon: ArrowLeftRight, label: "Reembolsos", color: "text-amber-500" },
+  Reembolso: { icon: ArrowLeftRight, label: "Reembolsos", color: "text-success" },
 };
 
 interface Category {
@@ -110,7 +111,8 @@ export default function Categories() {
                 {cats.map((cat) => (
                   <div
                     key={cat.id}
-                    className="group relative inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-secondary text-sm font-medium"
+                    className="group relative inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full border text-sm font-medium"
+                    style={{ background: tintColor(cat.color, 14), borderColor: tintColor(cat.color, 24) }}
                   >
                     <span className="text-sm leading-none">{cat.icon || "🏷️"}</span>
                     <span>{cat.name}</span>

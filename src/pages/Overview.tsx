@@ -26,6 +26,7 @@ import { periodNameDate } from "@/lib/period";
 import { usePeriodConfig } from "@/hooks/usePeriodConfig";
 import { ANALYZING_CATEGORY } from "@/lib/auto-category-policy";
 import { cn } from "@/lib/utils";
+import { tint } from "@/lib/category-color";
 
 /**
  * Finanzas: ¿cómo vengo en el tiempo? El mes en curso vive en el Inicio; acá
@@ -43,9 +44,6 @@ type Range = (typeof RANGES)[number];
 const clp = (value: number) =>
   (value < 0 ? "−" : "") +
   new Intl.NumberFormat("es-CL", { style: "currency", currency: "CLP", minimumFractionDigits: 0 }).format(Math.abs(value));
-const tint = (color?: string | null) => ({
-  background: `color-mix(in oklch, ${color || "var(--muted-foreground)"} 22%, transparent)`,
-});
 const transit = new Set(DEFAULT_TRANSIT_CATEGORIES);
 
 /** Gasto neto por categoría de un período, sin tránsito ni lo que Jev aún categoriza. */
@@ -153,7 +151,7 @@ export default function Overview() {
     <button key={c.category} className="fin-trend" onClick={() => openTrend(c)}>
       <span className="inicio-ico" style={tint(colorOf(c.category))}>{edit.emojiOf(c.category)}</span>
       <span className="n">{c.category}</span>
-      <Spark values={c.perMonth} />
+      <Spark values={c.perMonth} color={colorOf(c.category)} />
       <span className={cn("v", isPrivacyMode && "privacy-blur")}>{clp(c.average)}</span>
     </button>
   ));
@@ -214,10 +212,12 @@ export default function Overview() {
                 )}
                 {averages.months > 0 && (
                   <div className={cn("fin-stats", isPrivacyMode && "privacy-blur")}>
-                    <span>Entra al mes <b style={{ color: "oklch(var(--success))" }}>{clp(averages.ingreso)}</b></span>
-                    <span>Sale <b>{clp(averages.gasto)}</b></span>
-                    {averages.ahorro !== null && <span>Ahorras <b>{Math.round(averages.ahorro * 100)}%</b></span>}
-                    <span className="text-xs">promedio de {averages.months} mes{averages.months === 1 ? "" : "es"} cerrado{averages.months === 1 ? "" : "s"}</span>
+                    <div className="fin-stats-row">
+                      <span>Entra al mes <b style={{ color: "oklch(var(--success))" }}>{clp(averages.ingreso)}</b></span>
+                      <span>Sale <b>{clp(averages.gasto)}</b></span>
+                      {averages.ahorro !== null && <span>Ahorras <b>{Math.round(averages.ahorro * 100)}%</b></span>}
+                    </div>
+                    <p>promedio de {averages.months} mes{averages.months === 1 ? "" : "es"} cerrado{averages.months === 1 ? "" : "s"}</p>
                   </div>
                 )}
               </>
@@ -236,7 +236,7 @@ export default function Overview() {
                 {hovered ? (
                   <><span className="capitalize">{format(nameOf(hovered.month), "MMM yyyy", { locale: es })}</span> · <b style={{ color: "oklch(var(--success))" }}>+{clpShort(hovered.ingreso)}</b> · <b>−{clpShort(hovered.gasto)}</b></>
                 ) : (
-                  <><span className="text-success">entró</span> vs salió</>
+                  <><span className="text-success">entró</span> vs <span className="text-spend">salió</span></>
                 )}
               </span>
             </div>

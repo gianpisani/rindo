@@ -24,6 +24,7 @@ import {
   type SavingsMonth,
   type Sweep,
 } from "@/lib/savings-goal";
+import { tint } from "@/lib/category-color";
 
 /**
  * Meta: ahorrar $X al mes. La página responde una sola pregunta, ¿la estás
@@ -53,9 +54,6 @@ const parseAmount = (raw: string) => parseInt(raw.replace(/\D/g, ""), 10) || 0;
 const formatInput = (raw: string) => (raw ? parseAmount(raw).toLocaleString("es-CL") : "");
 
 /** El ícono de una categoría sobre un tono de su color. */
-const tint = (color?: string | null) => ({
-  background: `color-mix(in oklch, ${color || "var(--muted-foreground)"} 22%, transparent)`,
-});
 
 type Tone = "met" | "part" | "none" | "wait";
 

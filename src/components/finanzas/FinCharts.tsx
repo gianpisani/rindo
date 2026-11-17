@@ -136,11 +136,11 @@ export function CategoryHistory({ points, color, privacy }: {
   );
 }
 
-/** La tendencia de una categoría: un solo tono neutro, el mes en curso más marcado. */
-export function Spark({ values }: { values: number[] }) {
+/** La tendencia de una categoría, en su color: los meses previos atenuados, el en curso pleno. */
+export function Spark({ values, color }: { values: number[]; color?: string | null }) {
   const max = Math.max(1, ...values);
   return (
-    <span className="fin-spark" aria-hidden="true">
+    <span className="fin-spark" aria-hidden="true" style={color ? ({ "--c": color } as CSSProperties) : undefined}>
       {values.map((v, i) => <i key={i} style={{ height: `max(1px, ${(v / max) * 100}%)`, animationDelay: `${i * 18}ms` }} />)}
     </span>
   );
@@ -152,16 +152,17 @@ export function Spark({ values }: { values: number[] }) {
  * bordes para no salirse de la tarjeta.
  */
 function AxisLabels({ labels, at }: { labels: string[]; at: (index: number) => number }) {
+  const last = labels.length - 1;
   const every = Math.max(1, Math.ceil(labels.length / 6));
-  const shown = labels.map((_, i) => i).filter((i) => i % every === 0 || i === labels.length - 1)
-    // Si la última queda pegada a la anterior, se va la anterior.
-    .filter((i, k, list) => !(k === list.length - 2 && labels.length - 1 - i < every / 2));
+  // Se cuenta hacia atrás desde el último mes: siempre aparece y el paso es
+  // parejo, así ninguna etiqueta se pisa con la de al lado.
+  const shown = labels.map((_, i) => i).filter((i) => (last - i) % every === 0);
   return (
     <div className="fin-axis-abs" aria-hidden="true">
       {shown.map((i) => (
         <span
           key={i}
-          style={{ left: `${at(i)}%`, transform: i === 0 ? "none" : i === labels.length - 1 ? "translateX(-100%)" : "translateX(-50%)" }}
+          style={{ left: `${at(i)}%`, transform: i === 0 ? "none" : i === last ? "translateX(-100%)" : "translateX(-50%)" }}
         >
           {labels[i]}
         </span>
