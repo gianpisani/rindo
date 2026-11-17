@@ -606,12 +606,6 @@ Based on Indigo, Blue, Cyan palette
 .inicio-hello { font-size: var(--fs-3); font-weight: 500; min-width: 0; }
 .inicio-head-end { margin-left: auto; display: flex; align-items: center; gap: 8px; flex: none; }
 
-/* Sincronizar: un ícono, y hace cuánto */
-.inicio-act { display: flex; align-items: center; gap: 6px; height: 32px; padding: 0 8px; border-radius: 9999px;
-  font-size: var(--fs-1); color: var(--muted-foreground); white-space: nowrap; transition: background .15s, color .15s; }
-.inicio-act:hover { background: var(--inicio-hover); color: var(--foreground); }
-.inicio-act svg { width: 15px; height: 15px; flex: none; }
-
 /* El mes: lo gastado grande, el ritmo, y lo que entró chico. El mini
    gráfico del ritmo toma el alto que sobra: la tarjeta no deja huecos. */
 .inicio-money { padding: 16px 16px; display: flex; flex-direction: column; }
@@ -773,11 +767,8 @@ Based on Indigo, Blue, Cyan palette
 
 /* Borrar: aparece al pasar por la fila y el monto le hace espacio */
 .inicio-tx .m { transition: transform .18s cubic-bezier(.2, .8, .2, 1); }
-.inicio-delete { position: absolute; right: 12px; top: 50%; width: 28px; height: 28px; margin-top: -14px; border-radius: 9999px;
-  display: grid; place-items: center; color: var(--muted-foreground); opacity: 0; transform: scale(.85); pointer-events: none;
-  transition: opacity .16s, transform .16s, color .15s, background .15s; }
-.inicio-delete svg { width: 14px; height: 14px; }
-.inicio-delete:hover, .inicio-delete:focus-visible { color: oklch(var(--destructive)); background: oklch(var(--destructive) / .14); }
+.inicio-delete { position: absolute; right: 12px; top: 50%; margin-top: -14px;
+  opacity: 0; transform: scale(.85); pointer-events: none; transition: opacity .16s, transform .16s, color .15s, background .15s; }
 @media (hover: hover) {
   .inicio-tx.is-editable:hover .inicio-delete { opacity: 1; transform: none; pointer-events: auto; }
   .inicio-tx.is-editable:hover > .m { transform: translateX(-32px); }
@@ -882,12 +873,6 @@ Based on Indigo, Blue, Cyan palette
 .meta-edit-field:focus-within { border-color: var(--ring); }
 .meta-edit-field input { width: 108px; min-width: 0; background: transparent; outline: none; font: inherit; font-weight: 500; color: var(--foreground); font-variant-numeric: tabular-nums; }
 .meta-edit-field input::placeholder { color: var(--meta-faint); font-weight: 400; }
-.meta-edit-btn { display: grid; place-items: center; width: 32px; height: 32px; border-radius: 9999px; color: var(--muted-foreground); transition: background .15s, color .15s; flex: none; }
-.meta-edit-btn svg { width: 15px; height: 15px; }
-.meta-edit-btn:hover:not(:disabled) { background: var(--meta-hover); color: var(--foreground); }
-.meta-edit-btn:disabled { opacity: .35; cursor: default; }
-.meta-edit-danger { margin-left: auto; }
-.meta-edit-danger:hover:not(:disabled) { color: oklch(var(--destructive)); background: oklch(var(--destructive) / .12); }
 
 /* La grilla de web: dos filas, la de abajo a lo ancho. Sin estirar: el
    espacio que sobre queda abajo, no dentro de las tarjetas. */
@@ -977,14 +962,6 @@ Based on Indigo, Blue, Cyan palette
 .meta-lim-edit { grid-column: 2 / -1; display: flex; align-items: center; gap: 2px; margin-top: 2px; }
 .meta-lim-edit .meta-edit-field, .meta-lim-add .meta-edit-field { height: 28px; font-size: var(--fs-1); padding: 0 8px; border-radius: var(--radius-card); }
 .meta-lim-edit .meta-edit-field input { width: 84px; }
-.meta-lim-edit .meta-edit-btn, .meta-lim-add .meta-edit-btn { width: 28px; height: 28px; border-radius: 9999px; }
-.meta-lim-edit .meta-edit-btn svg, .meta-lim-add .meta-edit-btn svg { width: 14px; height: 14px; }
-/* Agregar: la última tarjeta, punteada */
-.meta-lim-new { display: flex; align-items: center; justify-content: center; gap: 4px; min-height: 64px; padding: 8px 12px; border-radius: var(--radius-card); border: 1px dashed var(--border);
-  font-size: var(--fs-1); font-weight: 500; color: var(--muted-foreground); transition: background .15s, color .15s, border-color .15s; }
-.meta-lim-new svg { width: 14px; height: 14px; }
-.meta-lim-new:hover:not(:disabled) { background: var(--meta-hover); color: var(--foreground); border-color: color-mix(in oklch, var(--foreground) 22%, transparent); }
-.meta-lim-new:disabled { opacity: .4; cursor: default; }
 .meta-lim-add { display: flex; align-items: center; gap: 4px; flex-wrap: wrap; padding: 8px 12px; border-radius: var(--radius-card); border: 1px dashed color-mix(in oklch, var(--foreground) 22%, transparent); }
 .meta-lim-add .meta-edit-field input { width: 80px; }
 .meta-lim-select { height: 28px !important; width: auto !important; min-width: 0; flex: 1 1 120px; border-radius: var(--radius-card) !important; font-size: var(--fs-1) !important; padding: 0 8px !important; }
@@ -1026,7 +1003,6 @@ Based on Indigo, Blue, Cyan palette
   .meta-lim-empty { padding: 4px 12px 8px; }
   .meta-lim { padding: 8px 12px; border: 0; border-radius: 0; }
   .meta-lim[data-editing] { background: var(--meta-hover); }
-  .meta-lim-new { min-height: 0; margin: 4px 12px 0; padding: 8px 12px; justify-content: flex-start; }
   .meta-lim-add { margin: 4px 12px 0; }
   .meta-bar { max-width: 22px; }
 }
@@ -1192,16 +1168,6 @@ Based on Indigo, Blue, Cyan palette
 .tj-label small { font-size: var(--fs-1); font-weight: 500; color: var(--tj-faint); }
 .tj-list { flex: 1; min-height: 0; overflow-y: auto; padding-bottom: 6px; scrollbar-width: thin; scrollbar-color: var(--border) transparent; }
 .tj-empty { padding: 12px 16px 16px; font-size: var(--fs-1); color: var(--muted-foreground); }
-
-/* Botones chicos: agregar, editar, eliminar */
-.tj-btn { display: inline-flex; align-items: center; gap: 4px; height: 28px; padding: 0 8px; border-radius: 9999px; border: 1px solid var(--border);
-  font-size: var(--fs-1); font-weight: 500; color: var(--muted-foreground); white-space: nowrap; transition: background .15s, color .15s, border-color .15s; }
-.tj-btn svg { width: 13px; height: 13px; }
-.tj-btn:hover:not(:disabled) { background: var(--tj-hover); color: var(--foreground); border-color: color-mix(in oklch, var(--foreground) 22%, transparent); }
-.tj-btn:disabled { opacity: .4; cursor: default; }
-.tj-btn-danger:hover:not(:disabled) { color: oklch(var(--destructive)); border-color: oklch(var(--destructive) / .45); background: oklch(var(--destructive) / .1); }
-.tj-btn-primary { height: 34px; padding: 0 12px; background: var(--foreground); color: var(--background); border-color: var(--foreground); }
-.tj-btn-primary:hover:not(:disabled) { background: color-mix(in oklch, var(--foreground) 85%, var(--background)); color: var(--background); }
 
 /* Primera vez */
 .tj-setup { max-width: 420px; padding: 24px 24px; gap: 8px; align-items: flex-start; }

@@ -3,6 +3,7 @@ import { format } from "date-fns";
 import { es } from "date-fns/locale";
 import { ChevronLeft, ChevronRight, MoreHorizontal, Pencil, Plus, Trash2 } from "lucide-react";
 import Layout from "@/components/Layout";
+import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import {
   DropdownMenu,
@@ -158,9 +159,9 @@ export default function CreditCards() {
         <header className="tj-head">
           <h1 className="tj-title">Tarjetas</h1>
           {hasCards && (
-            <button className="tj-btn" onClick={openNewCard}>
+            <Button variant="ghost" size="sm" onClick={openNewCard}>
               <Plus /> Tarjeta
-            </button>
+            </Button>
           )}
         </header>
 
@@ -177,9 +178,9 @@ export default function CreditCards() {
           <section className="tj-card tj-setup">
             <h2>Tu primera tarjeta</h2>
             <p>Verás cuánto llevas en el ciclo, cuándo cierra y cuándo pagas.</p>
-            <button className="tj-btn tj-btn-primary" onClick={openNewCard}>
+            <Button onClick={openNewCard}>
               <Plus /> Agregar tarjeta
-            </button>
+            </Button>
           </section>
         ) : (
           <div className="tj-grid" data-tab={tab}>
@@ -223,9 +224,9 @@ export default function CreditCards() {
                     </small>
                   )}
                 </span>
-                <button className="tj-btn" onClick={() => openInstallmentModal(null)}>
+                <Button variant="ghost" size="sm" onClick={() => openInstallmentModal(null)}>
                   <Plus /> Compra
-                </button>
+                </Button>
               </div>
               <div className="tj-list" data-scrollable>
                 {sortedInstallments.length === 0 ? (
@@ -464,12 +465,12 @@ function InstallmentRow({
             <span>última {format(last, "MMM yyyy", { locale: es }).replace(".", "")}</span>
           </p>
           <div className="tj-inst-actions">
-            <button className="tj-btn" onClick={onEdit}>
+            <Button variant="ghost" size="sm" onClick={onEdit}>
               <Pencil /> Editar
-            </button>
-            <button className="tj-btn tj-btn-danger" onClick={onDelete}>
+            </Button>
+            <Button variant="ghost" size="sm" className="text-destructive hover:bg-destructive/10 hover:text-destructive" onClick={onDelete}>
               <Trash2 /> Eliminar
-            </button>
+            </Button>
           </div>
         </div>
       )}

@@ -1,5 +1,6 @@
 import { useEffect, useLayoutEffect, useRef, useState, type ChangeEvent, type HTMLAttributes, type KeyboardEvent, type ReactNode } from "react";
 import { Trash2 } from "lucide-react";
+import { Button } from "@/components/ui/button";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { cn } from "@/lib/utils";
 import { tint } from "@/lib/category-color";
@@ -190,15 +191,17 @@ export function InicioTxRow({
         </button>
       )}
       {editable && (
-        <button
-          className="inicio-delete"
+        <Button
+          variant="ghost"
+          size="icon"
+          className="inicio-delete size-7 text-muted-foreground hover:bg-destructive/10 hover:text-destructive"
           aria-label="Borrar movimiento"
           // Que el blur del campo no se coma el toque: borrar gana.
           onPointerDown={(e) => e.preventDefault()}
           onClick={onDelete}
         >
           <Trash2 />
-        </button>
+        </Button>
       )}
     </div>
   );

@@ -200,11 +200,11 @@ function EntryDetail({ entry }: { entry: SyncLogEntry }) {
             <Button
               onClick={handleDelete}
               disabled={isDeleting}
-              size="sm"
+              size="xs"
               variant="ghost"
-              className="w-full h-8 text-xs"
+              className="w-full"
             >
-              {isDeleting ? <Loader2 className="h-3.5 w-3.5 animate-spin mr-1.5" /> : <Trash2 className="h-3.5 w-3.5 mr-1.5" />}
+              {isDeleting ? <Loader2 className="animate-spin" /> : <Trash2 />}
               Eliminar {selectedImported.size} seleccionada{selectedImported.size !== 1 ? "s" : ""}
             </Button>
           )}
@@ -272,11 +272,11 @@ function EntryDetail({ entry }: { entry: SyncLogEntry }) {
             <Button
               onClick={handleImport}
               disabled={isImporting}
-              size="sm"
+              size="xs"
               variant="ghost"
-              className="w-full h-8 text-xs"
+              className="w-full"
             >
-              {isImporting ? <Loader2 className="h-3.5 w-3.5 animate-spin mr-1.5" /> : <Plus className="h-3.5 w-3.5 mr-1.5" />}
+              {isImporting ? <Loader2 className="animate-spin" /> : <Plus />}
               Importar {selectedSkipped.size} seleccionada{selectedSkipped.size !== 1 ? "s" : ""}
             </Button>
           )}

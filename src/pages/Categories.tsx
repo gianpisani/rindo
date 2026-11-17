@@ -1,6 +1,7 @@
 import React, { useState } from "react";
 import Layout from "@/components/Layout";
 import ConfirmDialog from "@/components/ConfirmDialog";
+import { Button } from "@/components/ui/button";
 import { CategoryComposer, type CategoryValues } from "@/components/CategoryComposer";
 import { Plus, Pencil, Trash2, TrendingUp, TrendingDown, PiggyBank, ArrowLeftRight, ArrowDownToLine, LineChart } from "lucide-react";
 import { useCategories } from "@/hooks/useCategories";
@@ -80,13 +81,10 @@ export default function Categories() {
 
   // Crear vive al final de cada grupo, discreto: abre con el tipo del grupo, que se puede cambiar.
   const newChip = (type?: TransactionType) => (
-    <button
-      className="inline-flex items-center gap-1 px-3 py-1.5 rounded-full text-sm text-muted-foreground hover:bg-secondary hover:text-foreground transition-colors"
-      onClick={() => handleNew(type)}
-    >
-      <Plus className="h-3.5 w-3.5" />
+    <Button variant="ghost" size="sm" className="text-muted-foreground" onClick={() => handleNew(type)}>
+      <Plus />
       Nueva
-    </button>
+    </Button>
   );
 
   return (
@@ -107,7 +105,7 @@ export default function Categories() {
                 <span className="text-xs text-muted-foreground tabular-nums">({cats.length})</span>
               </div>
 
-              <div className="flex flex-wrap gap-2">
+              <div className="flex flex-wrap items-center gap-2">
                 {cats.map((cat) => (
                   <div
                     key={cat.id}
@@ -119,19 +117,24 @@ export default function Categories() {
                     {cat.is_active === false && <span className="text-xs text-muted-foreground">Archivada</span>}
                     {/* Hover actions */}
                     <div className="absolute inset-0 rounded-full flex items-center justify-end pr-1.5 gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity backdrop-blur-sm">
-                      <button
-                        className="h-6 w-6 rounded-full flex items-center justify-center hover:bg-muted transition-colors"
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="size-6 text-muted-foreground"
                         aria-label={`Editar ${cat.name}`}
                         onClick={() => handleEdit(cat)}
                       >
-                        <Pencil className="h-3 w-3 text-muted-foreground" />
-                      </button>
-                      <button
-                        className="h-6 w-6 rounded-full flex items-center justify-center hover:bg-destructive/10 transition-colors"
+                        <Pencil />
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="size-6 text-destructive hover:bg-destructive/10 hover:text-destructive"
+                        aria-label={`Eliminar ${cat.name}`}
                         onClick={() => handleDelete(cat.id)}
                       >
-                        <Trash2 className="h-3 w-3 text-destructive" />
-                      </button>
+                        <Trash2 />
+                      </Button>
                     </div>
                   </div>
                 ))}

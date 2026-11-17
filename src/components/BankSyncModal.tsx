@@ -753,8 +753,8 @@ export function BankSyncModal({
                         ))}
                       </div>
                       {selectedImported.size > 0 && (
-                        <Button onClick={handleDeleteSelected} disabled={isDeleting} className="w-full h-10" variant="ghost">
-                          {isDeleting ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Trash2 className="h-4 w-4 mr-2" />}
+                        <Button onClick={handleDeleteSelected} disabled={isDeleting} className="w-full" variant="ghost">
+                          {isDeleting ? <Loader2 className="animate-spin" /> : <Trash2 />}
                           Eliminar {selectedImported.size} seleccionada{selectedImported.size !== 1 ? "s" : ""}
                         </Button>
                       )}
@@ -803,8 +803,8 @@ export function BankSyncModal({
                         })}
                       </div>
                       {selectedSkipped.size > 0 && (
-                        <Button onClick={handleImportSelected} disabled={isImporting} className="w-full h-10" variant="ghost">
-                          {isImporting ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Plus className="h-4 w-4 mr-2" />}
+                        <Button onClick={handleImportSelected} disabled={isImporting} className="w-full" variant="ghost">
+                          {isImporting ? <Loader2 className="animate-spin" /> : <Plus />}
                           Importar {selectedSkipped.size} seleccionada{selectedSkipped.size !== 1 ? "s" : ""}
                         </Button>
                       )}
