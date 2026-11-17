@@ -952,27 +952,23 @@ Based on Indigo, Blue, Cyan palette
   min-width: 0;
 }
 .inicio-title { font-size: 13px; font-weight: 600; color: var(--muted-foreground); }
+/* Lo secundario no compite con lo gastado */
+.inicio-spend .inicio-title, .inicio-panel-head .inicio-title { font-weight: 500; }
 .inicio-count { font-family: "JetBrains Mono", monospace; font-size: 11px; font-weight: 400; color: var(--inicio-faint); margin-left: 6px; }
 .inicio-num { font-family: "JetBrains Mono", monospace; font-variant-numeric: tabular-nums; }
 
 /* Encabezado */
-.inicio-avatar { width: 34px; height: 34px; border-radius: 999px; flex: none; overflow: hidden;
+.inicio-avatar { width: 28px; height: 28px; border-radius: 999px; flex: none; overflow: hidden;
   box-shadow: 0 0 0 1px color-mix(in oklch, var(--foreground) 14%, transparent); transition: box-shadow .2s; }
 .inicio-avatar:hover { box-shadow: 0 0 0 1px color-mix(in oklch, var(--foreground) 32%, transparent); }
-.inicio-hello { font-size: 22px; font-weight: 700; letter-spacing: -0.02em; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0; }
-.inicio-hello em { font-style: normal; color: var(--primary); }
+.inicio-hello { font-size: 16px; font-weight: 600; min-width: 0; }
 .inicio-head-end { margin-left: auto; display: flex; align-items: center; gap: 8px; flex: none; }
 
-/* Sincronizar: una pastilla */
-.inicio-act { --tone: var(--muted-foreground); display: flex; align-items: center; gap: 7px; height: 36px; padding: 0 14px; border-radius: 999px;
-  font-size: 12.5px; font-weight: 600; color: var(--tone); white-space: nowrap; cursor: pointer;
-  background: color-mix(in oklch, var(--tone) 10%, transparent); border: 1px solid color-mix(in oklch, var(--tone) 22%, transparent);
-  transition: background .15s, border-color .15s; }
-.inicio-act:hover { background: color-mix(in oklch, var(--tone) 18%, transparent); border-color: color-mix(in oklch, var(--tone) 32%, transparent); }
+/* Sincronizar: un ícono, y hace cuánto */
+.inicio-act { display: flex; align-items: center; gap: 6px; height: 32px; padding: 0 8px; border-radius: 999px;
+  font-size: 11px; color: var(--muted-foreground); white-space: nowrap; transition: background .15s, color .15s; }
+.inicio-act:hover { background: var(--inicio-hover); color: var(--foreground); }
 .inicio-act svg { width: 15px; height: 15px; flex: none; }
-.inicio-banks { display: flex; }
-.inicio-banks img { width: 16px; height: 16px; border-radius: 999px; object-fit: contain; background: var(--card); box-shadow: 0 0 0 1.5px var(--card); margin-left: -5px; }
-.inicio-banks img:first-child { margin-left: 0; }
 
 /* El mes: lo gastado grande, el ritmo, y lo que entró chico. El mini
    gráfico del ritmo toma el alto que sobra: la tarjeta no deja huecos. */
@@ -1030,11 +1026,8 @@ Based on Indigo, Blue, Cyan palette
 .inicio-tx .m { font-family: "JetBrains Mono", monospace; font-variant-numeric: tabular-nums; font-size: 13px; font-weight: 600; flex: none; }
 
 /* Límites */
-.inicio-limits-summary { display: flex; flex-wrap: wrap; gap: 8px; padding: 2px 18px 10px; }
-.inicio-pill { font-family: "JetBrains Mono", monospace; font-size: 11px; font-weight: 600; padding: 2px 8px; border-radius: 999px; white-space: nowrap; }
-.inicio-pill[data-state="over"] { color: var(--inicio-rose); background: color-mix(in oklch, var(--inicio-rose) 12%, transparent); }
-.inicio-pill[data-state="near"] { color: var(--inicio-amber); background: color-mix(in oklch, var(--inicio-amber) 12%, transparent); }
-.inicio-pill[data-state="ok"] { color: var(--inicio-emerald); background: color-mix(in oklch, var(--inicio-emerald) 12%, transparent); }
+.inicio-pill { font-family: "JetBrains Mono", monospace; font-size: 11px; font-weight: 600; padding: 2px 8px; border-radius: 999px; white-space: nowrap;
+  color: var(--inicio-rose); background: color-mix(in oklch, var(--inicio-rose) 12%, transparent); }
 .inicio-lim { width: 100%; padding: 8px 18px; display: grid; grid-template-columns: auto minmax(0, 1fr) auto; gap: 3px 10px; align-items: center; text-align: left; }
 .inicio-lim:hover { background: var(--inicio-hover); }
 .inicio-lim .inicio-ico { width: 26px; height: 26px; font-size: 12px; grid-row: span 3; }
@@ -1046,9 +1039,8 @@ Based on Indigo, Blue, Cyan palette
 .inicio-lim .of span:last-child { flex: none; }
 .inicio-lim .of { grid-column: 2 / -1; min-width: 0; font-family: "JetBrains Mono", monospace; font-variant-numeric: tabular-nums; font-size: 10px; color: var(--inicio-faint); display: flex; justify-content: space-between; gap: 6px; }
 .inicio-lim .inicio-track { grid-column: 2 / -1; height: 4px; margin-top: 2px; }
-.inicio-lim[data-state="over"] .pct, .inicio-lim[data-state="over"] .extra { color: var(--inicio-rose); }
-.inicio-lim[data-state="near"] .pct { color: var(--inicio-amber); }
-.inicio-lim[data-state="ok"] .pct { color: var(--muted-foreground); }
+.inicio-lim .pct, .inicio-lim .extra { color: var(--inicio-rose); }
+.inicio-see-all { display: block; padding: 8px 18px; }
 .inicio-tabs { display: none; }
 .inicio-list-limits { display: none; }
 
@@ -1061,15 +1053,6 @@ Based on Indigo, Blue, Cyan palette
 @keyframes inicio-grow { from { transform: scaleX(0); } }
 .inicio-track i { transform-origin: left center; animation: inicio-grow .7s cubic-bezier(.2, .8, .2, 1) both; animation-delay: calc(var(--i, 0) * 45ms + 60ms); }
 .inicio-stack i { transform-origin: left center; animation: inicio-grow .8s cubic-bezier(.2, .8, .2, 1) both; }
-
-/* Cómo voy: detrás de la barra, una estela tenue hasta donde cierro el mes
-   si lo que queda se parece a los meses anteriores. Crece después de la
-   barra, como si la siguiera. */
-.inicio-lim .inicio-track { position: relative; }
-.inicio-lim .inicio-track i:first-child { position: relative; z-index: 1; }
-.inicio-track i.inicio-ghost { position: absolute; top: 0; height: 100%; border-radius: 0 4px 4px 0; opacity: .32;
-  animation-delay: calc(var(--i, 0) * 45ms + 520ms); }
-.inicio-lim .proj { font-size: 10.5px; font-weight: 500; color: var(--inicio-amber); margin-right: 6px; }
 
 /* Una fila que llega: se abre su espacio, entra y brilla un momento */
 @keyframes inicio-row-in {
@@ -1115,9 +1098,6 @@ Based on Indigo, Blue, Cyan palette
 
 /* Cambio de pestaña en celular */
 .inicio-list-feed, .inicio-list-limits { animation: inicio-fade-in .22s ease-out; }
-
-/* Hace cuánto se sincronizó */
-.inicio-since { font-size: 10.5px; font-weight: 500; opacity: .6; margin-left: 6px; }
 
 /* La leyenda del celular abre cada categoría */
 .inicio-legend button { display: flex; align-items: center; gap: 5px; white-space: nowrap; padding: 2px 6px; margin: -2px 0; border-radius: 999px; }
@@ -1189,7 +1169,6 @@ Based on Indigo, Blue, Cyan palette
 /* ══ Tablet ══ */
 @container inicio (max-width: 900px) {
   .inicio-grid { grid-template-columns: minmax(0, 1.15fr) minmax(0, 1fr); grid-template-areas: "head head" "money spend" "feed limits"; }
-  .inicio-act .long { display: none; }
 }
 
 /* ══ Celular: una pantalla, sin scroll de página ══ */
@@ -1197,7 +1176,7 @@ Based on Indigo, Blue, Cyan palette
   .inicio-grid { gap: 10px; grid-template-columns: minmax(0, 1fr);
     grid-template-rows: auto auto auto minmax(0, 1fr);
     grid-template-areas: "head" "money" "spend" "feed"; }
-  .inicio-hello { font-size: 18px; }
+  .inicio-hello { font-size: 15px; }
   .inicio-money { padding: 14px 16px; }
   .inicio-big { font-size: 32px; margin: 6px 0 8px; }
   /* En celular el ritmo va en una línea, con el gráfico a la derecha */
@@ -1222,7 +1201,6 @@ Based on Indigo, Blue, Cyan palette
   .inicio-tab .inicio-pill { margin-left: 4px; }
   .inicio-grid[data-tab="limits"] .inicio-list-feed { display: none; }
   .inicio-grid[data-tab="limits"] .inicio-list-limits { display: block; }
-  .inicio-list-limits .inicio-limits-summary { padding-top: 8px; }
 }
 
 /* ══ Meta ═══════════════════════════════════════════════════════════════
@@ -1245,8 +1223,7 @@ Based on Indigo, Blue, Cyan palette
   --meta-rose: oklch(var(--accent-rose));
   --meta-amber: oklch(var(--accent-amber));
   --meta-mono: "JetBrains Mono", monospace;
-  /* Alto reservado sobre y bajo cada barra: la línea de la meta se ubica con esto */
-  --meta-amt: 16px;
+  /* Alto reservado bajo cada barra: la línea de la meta se ubica con esto */
   --meta-mon: 18px;
 }
 .meta-head { display: flex; align-items: center; gap: 14px; min-width: 0; flex-wrap: wrap; }
@@ -1298,16 +1275,13 @@ Based on Indigo, Blue, Cyan palette
 
 /* El mes en curso */
 .meta-now { padding: 18px 20px; display: flex; flex-direction: column; }
-.meta-now-top { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; }
 .meta-month { font-family: var(--meta-mono); font-size: 11px; font-weight: 500; color: var(--muted-foreground); text-transform: capitalize; }
-.meta-pct { font-family: var(--meta-mono); font-size: 12px; font-weight: 600; color: var(--muted-foreground); }
 .meta-big { font-family: var(--meta-mono); font-variant-numeric: tabular-nums; font-size: 44px; line-height: 1; font-weight: 700; letter-spacing: -0.03em; margin: 14px 0 4px; }
 .meta-of { font-family: var(--meta-mono); font-variant-numeric: tabular-nums; font-size: 12px; color: var(--muted-foreground); padding-bottom: 16px; }
 /* En web la tarjeta es tan alta como los doce meses: el aire se reparte entre el número, la barra y la frase */
 .meta-track { height: 6px; border-radius: 6px; background: var(--meta-hover); overflow: hidden; margin: auto 0 12px; padding-top: 0; }
 .meta-track i { display: block; height: 100%; border-radius: 6px; background: var(--foreground); transform-origin: left center; animation: meta-grow .8s cubic-bezier(.2, .8, .2, 1) both; transition: width .5s ease-out; }
 .meta-now[data-tone="met"] .meta-track i { background: var(--meta-emerald); }
-.meta-now[data-tone="met"] .meta-pct { color: var(--meta-emerald); }
 .meta-note { font-size: 12px; color: var(--muted-foreground); margin-top: auto; }
 .meta-note[data-tone="met"] { color: var(--meta-emerald); }
 .meta-note[data-tone="none"] { color: var(--meta-rose); }
@@ -1318,17 +1292,12 @@ Based on Indigo, Blue, Cyan palette
 .meta-goal-line { position: absolute; left: 0; right: 0; border-top: 1px dashed color-mix(in oklch, var(--foreground) 30%, transparent); pointer-events: none; z-index: 1; }
 .meta-col { display: flex; flex-direction: column; align-items: center; min-width: 0; border-radius: 8px; text-align: center; transition: background .15s; }
 .meta-col:hover { background: var(--meta-hover); }
-.meta-amt { height: var(--meta-amt); display: flex; align-items: center; justify-content: center; gap: 2px; font-family: var(--meta-mono); font-variant-numeric: tabular-nums; font-size: 10.5px; font-weight: 500; color: var(--meta-faint); white-space: nowrap; }
-.meta-check { display: none; font-size: 10px; }
 .meta-bar { position: relative; flex: 1; width: 100%; max-width: 30px; min-height: 0; margin: 2px 0; }
 .meta-bar i { position: absolute; left: 0; right: 0; bottom: 0; min-height: 3px; border-radius: 5px 5px 3px 3px; background: color-mix(in oklch, var(--foreground) 45%, transparent);
   transform-origin: bottom center; animation: meta-rise .7s cubic-bezier(.2, .8, .2, 1) both; animation-delay: calc(var(--i, 0) * 35ms + 60ms); transition: height .5s ease-out; }
 .meta-col[data-tone="met"] .meta-bar i { background: var(--meta-emerald); }
-.meta-col[data-tone="met"] .meta-amt { color: var(--meta-emerald); font-weight: 600; }
 .meta-col[data-tone="none"] .meta-bar i { background: var(--meta-rose); height: 3px; }
 .meta-col[data-tone="wait"] .meta-bar i { background: var(--meta-faint); height: 3px; }
-.meta-col[aria-selected="true"] .meta-amt { color: var(--foreground); }
-.meta-col[aria-selected="true"][data-tone="met"] .meta-amt { color: var(--meta-emerald); }
 .meta-mon { height: var(--meta-mon); display: flex; align-items: flex-end; font-size: 10.5px; color: var(--muted-foreground); text-transform: lowercase; }
 .meta-mon span { padding: 1px 5px; margin: 0 -5px; border-radius: 6px; transition: background .15s, color .15s; }
 .meta-col[aria-selected="true"] .meta-mon span { color: var(--foreground); font-weight: 600; background: color-mix(in oklch, var(--foreground) 9%, transparent); }
@@ -1355,6 +1324,12 @@ Based on Indigo, Blue, Cyan palette
 .meta-lim[data-state="near"] .pct { color: var(--meta-amber); }
 .meta-lim-track { grid-column: 2 / -1; height: 4px; border-radius: 4px; background: var(--meta-hover); overflow: hidden; }
 .meta-lim-track i { display: block; height: 100%; border-radius: 4px; transform-origin: left center; animation: meta-grow .7s cubic-bezier(.2, .8, .2, 1) both; animation-delay: calc(var(--i, 0) * 45ms + 60ms); transition: width .5s ease-out; }
+/* Cómo voy: una estela tenue hasta donde cierro el mes si lo que queda se
+   parece a los meses anteriores. Crece después de la barra. */
+.meta-lim-track { position: relative; }
+.meta-lim-track i:first-child { position: relative; z-index: 1; }
+.meta-lim-track i.meta-ghost { position: absolute; top: 0; border-radius: 0 4px 4px 0; opacity: .32; animation-delay: calc(var(--i, 0) * 45ms + 520ms); }
+.meta-lim .proj { font-size: 10.5px; font-weight: 500; color: var(--meta-faint); margin-right: 6px; }
 .meta-lim .of { grid-column: 2 / -1; font-family: var(--meta-mono); font-variant-numeric: tabular-nums; font-size: 10.5px; color: var(--meta-faint); display: flex; justify-content: space-between; gap: 8px; }
 .meta-lim .of span { white-space: nowrap; }
 .meta-lim .of span:first-child { min-width: 0; overflow: hidden; text-overflow: ellipsis; }
@@ -1414,9 +1389,6 @@ Based on Indigo, Blue, Cyan palette
   .meta-lim[data-editing] { background: var(--meta-hover); }
   .meta-lim-new { min-height: 0; margin: 4px 14px 0; padding: 8px 12px; justify-content: flex-start; }
   .meta-lim-add { margin: 4px 14px 0; }
-  /* Doce montos no caben en 360px: queda el ✓ del mes cumplido y el detalle de abajo */
-  .meta-amt-num { display: none; }
-  .meta-check { display: inline; }
   .meta-bar { max-width: 22px; }
   .meta-mon { font-size: 10px; }
 }
