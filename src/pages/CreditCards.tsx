@@ -1,5 +1,5 @@
 import { useMemo, useState, type CSSProperties } from "react";
-import { addMonths, format, startOfDay } from "date-fns";
+import { format } from "date-fns";
 import { es } from "date-fns/locale";
 import { ChevronLeft, ChevronRight, MoreHorizontal, Pencil, Plus, Trash2 } from "lucide-react";
 import Layout from "@/components/Layout";
@@ -12,7 +12,9 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { useCreditCards, type CreditCard, type CreditCardSummary } from "@/hooks/useCreditCards";
 import { installmentProgress, useInstallments, type InstallmentPurchase } from "@/hooks/useInstallments";
-import { useTransactions, type Transaction } from "@/hooks/useTransactions";
+import { useTransactions } from "@/hooks/useTransactions";
+import { billingCycle, cardStatus, cycleStatement, type CardStatus } from "@/lib/card-cycle";
+import { isCardPayment } from "@/lib/ledger";
 import { CreditCardModal } from "@/components/CreditCardModal";
 import { InstallmentModal } from "@/components/InstallmentModal";
 import ConfirmDialog from "@/components/ConfirmDialog";
@@ -26,48 +28,16 @@ import { cn } from "@/lib/utils";
  * largo scrollea adentro de su panel, nunca la página.
  */
 
-// Banco de Chile: el ciclo corre de 14:00 a 14:00 del día de cierre.
-const BILLING_CUTOFF_HOUR = 14;
-
 const formatCurrency = (v: number) =>
   new Intl.NumberFormat("es-CL", { style: "currency", currency: "CLP", maximumFractionDigits: 0 }).format(v);
 
 const day = (d: Date) => format(d, "d MMM", { locale: es }).replace(".", "");
 
-/** El día `d` del mes, o el último si el mes es más corto (un 31 en febrero es el 28). */
-const dayOfMonth = (year: number, month: number, d: number, hour = 0) =>
-  new Date(year, month, Math.min(d, new Date(year, month + 1, 0).getDate()), hour);
-
-function getBillingCycle(billingDay: number, cycleOffset: number = 0) {
-  const now = new Date();
-  const billingDateThisMonth = dayOfMonth(now.getFullYear(), now.getMonth(), billingDay, BILLING_CUTOFF_HOUR);
-  const end = addMonths(now < billingDateThisMonth ? billingDateThisMonth : addMonths(billingDateThisMonth, 1), cycleOffset);
-  return { start: addMonths(end, -1), end, label: format(end, "MMMM yyyy", { locale: es }) };
-}
-
-type Cycle = ReturnType<typeof getBillingCycle>;
-
-/** El primer día de pago después del cierre del ciclo. */
-const paymentDate = (cycle: Cycle, paymentDay: number) => {
-  const sameMonth = dayOfMonth(cycle.end.getFullYear(), cycle.end.getMonth(), paymentDay);
-  return sameMonth > cycle.end ? sameMonth : dayOfMonth(cycle.end.getFullYear(), cycle.end.getMonth() + 1, paymentDay);
+/** El ciclo que se muestra en el estado de cuenta, con su nombre. */
+const labeledCycle = (billingDay: number, offset: number) => {
+  const cycle = billingCycle(billingDay, offset);
+  return { ...cycle, label: format(cycle.end, "MMMM yyyy", { locale: es }) };
 };
-
-/** Los movimientos de una tarjeta en un ciclo, del más nuevo al más viejo, y su total (cargos menos abonos). */
-function statement(transactions: Transaction[], cardId: string, cycle: Cycle) {
-  const txs = transactions
-    .filter((t) => {
-      if (t.card_id !== cardId) return false;
-      const at = new Date(t.date).getTime();
-      return at >= cycle.start.getTime() && at < cycle.end.getTime();
-    })
-    .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
-  const total = txs.reduce(
-    (sum, t) => sum + (t.type === "Gasto" ? Number(t.amount) : t.type === "Ingreso" ? -Number(t.amount) : 0),
-    0
-  );
-  return { txs, total };
-}
 
 export default function CreditCards() {
   const { isPrivacyMode } = usePrivacyMode();
@@ -106,33 +76,18 @@ export default function CreditCards() {
   const [cycleOffset, setCycleOffset] = useState(0);
   const selected = cardSummaries.find((c) => c.id === selectedId) ?? cardSummaries[0];
 
-  // Lo que muestra cada plástico: este ciclo, cuándo cierra y el próximo pago.
-  const cardCycles = useMemo(() => {
-    const today = startOfDay(new Date());
-    return new Map(
-      cardSummaries.map((card) => {
-        const current = getBillingCycle(card.billing_day, 0);
-        // Si el estado de cuenta anterior todavía no vence, ese es el próximo pago. Sin
-        // monto: se calcularía con movimientos vinculados, que pueden no calzar con el banco.
-        const billedPayment = paymentDate(getBillingCycle(card.billing_day, -1), card.payment_day);
-        return [
-          card.id,
-          {
-            total: statement(transactions, card.id, current).total,
-            closes: current.end,
-            pay: billedPayment >= today ? billedPayment : paymentDate(current, card.payment_day),
-          },
-        ] as const;
-      })
-    );
-  }, [cardSummaries, transactions]);
+  // Lo que muestra cada plástico: lo por facturar y lo que queda por pagar.
+  const cardCycles = useMemo(
+    () => new Map(cardSummaries.map((card) => [card.id, cardStatus(transactions, card)] as const)),
+    [cardSummaries, transactions]
+  );
 
   const cycle = useMemo(
-    () => (selected ? getBillingCycle(selected.billing_day, cycleOffset) : null),
+    () => (selected ? labeledCycle(selected.billing_day, cycleOffset) : null),
     [selected, cycleOffset]
   );
-  const cycleStatement = useMemo(
-    () => (selected && cycle ? statement(transactions, selected.id, cycle) : { txs: [], total: 0 }),
+  const cycleTxs = useMemo(
+    () => (selected && cycle ? cycleStatement(transactions, selected.id, cycle) : { txs: [], total: 0 }),
     [transactions, selected, cycle]
   );
 
@@ -308,23 +263,27 @@ export default function CreditCards() {
                   <span>
                     {day(cycle.start)} → {day(cycle.end)}
                   </span>
-                  <b className={cn(isPrivacyMode && "privacy-blur")}>{formatCurrency(cycleStatement.total)}</b>
+                  <b className={cn(isPrivacyMode && "privacy-blur")}>{formatCurrency(cycleTxs.total)}</b>
                 </div>
               )}
               <div className="tj-list" data-scrollable>
-                {cycleStatement.txs.length === 0 ? (
+                {cycleTxs.txs.length === 0 ? (
                   <p className="tj-empty">Sin movimientos en este ciclo.</p>
                 ) : (
-                  cycleStatement.txs.map((tx) => (
-                    <div key={tx.id} className="tj-tx" data-in={tx.type === "Ingreso" || undefined}>
-                      <span className="d">{format(new Date(tx.date), "dd/MM")}</span>
-                      <span className={cn("n", isPrivacyMode && "privacy-blur")}>{tx.detail || tx.category_name}</span>
-                      <span className={cn("v", isPrivacyMode && "privacy-blur")}>
-                        {tx.type === "Ingreso" ? "+" : ""}
-                        {formatCurrency(Number(tx.amount))}
-                      </span>
-                    </div>
-                  ))
+                  cycleTxs.txs.map((tx) => {
+                    // Un pago (de cualquier lado) se ve como abono: no suma al total.
+                    const credit = tx.type === "Ingreso" || isCardPayment(tx);
+                    return (
+                      <div key={tx.id} className="tj-tx" data-in={credit || undefined}>
+                        <span className="d">{format(new Date(tx.date), "dd/MM")}</span>
+                        <span className={cn("n", isPrivacyMode && "privacy-blur")}>{tx.detail || tx.category_name}</span>
+                        <span className={cn("v", isPrivacyMode && "privacy-blur")}>
+                          {credit ? "+" : ""}
+                          {formatCurrency(Number(tx.amount))}
+                        </span>
+                      </div>
+                    );
+                  })
                 )}
               </div>
             </section>
@@ -380,7 +339,7 @@ function Plastic({
   onDelete,
 }: {
   card: CreditCardSummary;
-  cycle: { total: number; closes: Date; pay: Date };
+  cycle: CardStatus;
   selected: boolean;
   isPrivacyMode: boolean;
   onSelect: () => void;
@@ -402,7 +361,9 @@ function Plastic({
         }
       }}
       aria-pressed={selected}
-      aria-label={`${card.name}, este ciclo ${formatCurrency(cycle.total)}`}
+      aria-label={`${card.name}, por facturar ${formatCurrency(cycle.porFacturar)}${
+        cycle.showAPagar ? `, a pagar ${formatCurrency(cycle.aPagar)} el ${day(cycle.payDate)}` : ""
+      }`}
     >
       <div className="tj-pl-top">
         <span className="tj-pl-name">{card.name}</span>
@@ -426,11 +387,17 @@ function Plastic({
       </div>
 
       <div className="tj-pl-mid">
-        <span className="tj-pl-label">este ciclo</span>
-        <span className={cn("tj-pl-big", isPrivacyMode && "privacy-blur")}>{formatCurrency(cycle.total)}</span>
+        <span className="tj-pl-label">por facturar</span>
+        <span className={cn("tj-pl-big", isPrivacyMode && "privacy-blur")}>{formatCurrency(cycle.porFacturar)}</span>
         <span className="tj-pl-of">
-          <span>cierra {day(cycle.closes)}</span>
-          <span>pagas el {day(cycle.pay)}</span>
+          <span>cierra el {day(cycle.closes)}</span>
+          {cycle.showAPagar ? (
+            <span>
+              a pagar <b className={cn(isPrivacyMode && "privacy-blur")}>{formatCurrency(cycle.aPagar)}</b> el {day(cycle.payDate)}
+            </span>
+          ) : (
+            <span>pagas el {day(cycle.nextPay)}</span>
+          )}
         </span>
       </div>
 

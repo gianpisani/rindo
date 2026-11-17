@@ -5,38 +5,40 @@ import { Button } from "./ui/button";
 import { CreditCard, Wallet, AlertTriangle, CheckCircle2, PencilRuler, TrendingUp, TrendingDown } from "lucide-react";
 import { useTransactions } from "@/hooks/useTransactions";
 import { useCategories } from "@/hooks/useCategories";
+import { useCreditCards } from "@/hooks/useCreditCards";
 import { useSoundFX } from "@/hooks/useSoundFX";
+import { computeRealBalance } from "@/hooks/useRealFlows";
+import { cardsDebt } from "@/lib/card-cycle";
 
 interface ReconciliationCardProps {
   onSuccess?: () => void;
 }
 
+/**
+ * Conciliar: el líquido de Rindo es la liquidez real (cada compra con tarjeta
+ * ya restó), así que se compara contra el saldo del banco menos la deuda de
+ * las tarjetas que Rindo conoce (por facturar + a pagar).
+ */
 export function ReconciliationCard({ onSuccess }: ReconciliationCardProps = {}) {
   const { transactions, addTransaction } = useTransactions();
   const { categories } = useCategories();
+  const { cardSummaries } = useCreditCards();
   const { playCelebration } = useSoundFX();
   const [cuentaCorriente, setCuentaCorriente] = useState<string>("");
-  const [tarjetaCredito, setTarjetaCredito] = useState<string>("");
   const [isCreating, setIsCreating] = useState(false);
   const [showPreview, setShowPreview] = useState(false);
 
-  // Calcular balance de la app automáticamente
-  const balanceApp = transactions.reduce((acc, transaction) => {
-    if (transaction.type === "Ingreso") {
-      return acc + Number(transaction.amount);
-    } else if (transaction.type === "Gasto" || transaction.type === "Inversión") {
-      return acc - Number(transaction.amount);
-    }
-    return acc;
-  }, 0);
+  // El líquido de la app: el mismo cálculo que Finanzas.
+  const balanceApp = computeRealBalance(transactions);
+  // Lo que se debe en las tarjetas, según sus compras y pagos vinculados.
+  const deudaTarjetas = cardsDebt(transactions, cardSummaries);
 
   const cuentaCorrienteNum = parseFloat(cuentaCorriente) || 0;
-  const tarjetaCreditoNum = parseFloat(tarjetaCredito) || 0;
 
-  // Balance Real = Cuenta corriente - Tarjeta de Crédito
-  const balanceReal = cuentaCorrienteNum - tarjetaCreditoNum;
+  // Liquidez real = saldo del banco − deuda de tarjetas
+  const balanceReal = cuentaCorrienteNum - deudaTarjetas;
 
-  // Diferencia a Conciliar = Balance Real - Balance App
+  // Diferencia a Conciliar = Liquidez real − Balance App
   const diferencia = balanceReal - balanceApp;
 
   const formatCurrency = (amount: number) => {
@@ -61,20 +63,17 @@ export function ReconciliationCard({ onSuccess }: ReconciliationCardProps = {}) 
 
   // Persistir en localStorage
   useEffect(() => {
-    const saved = localStorage.getItem("reconciliation-data");
-    if (saved) {
-      const { cc, tc } = JSON.parse(saved);
-      setCuentaCorriente(cc || "");
-      setTarjetaCredito(tc || "");
-    }
+    try {
+      const saved = localStorage.getItem("reconciliation-data");
+      if (saved) setCuentaCorriente(JSON.parse(saved).cc || "");
+    } catch { /* sin almacenamiento, no pasa nada */ }
   }, []);
 
   useEffect(() => {
-    localStorage.setItem(
-      "reconciliation-data",
-      JSON.stringify({ cc: cuentaCorriente, tc: tarjetaCredito })
-    );
-  }, [cuentaCorriente, tarjetaCredito]);
+    try {
+      localStorage.setItem("reconciliation-data", JSON.stringify({ cc: cuentaCorriente }));
+    } catch { /* sin almacenamiento, no pasa nada */ }
+  }, [cuentaCorriente]);
 
   const diferenciaColor = 
     Math.abs(diferencia) < 1000 
@@ -110,7 +109,6 @@ export function ReconciliationCard({ onSuccess }: ReconciliationCardProps = {}) 
       
       // Limpiar inputs después de conciliar
       setCuentaCorriente("");
-      setTarjetaCredito("");
       setShowPreview(false);
 
       playCelebration();
@@ -124,7 +122,7 @@ export function ReconciliationCard({ onSuccess }: ReconciliationCardProps = {}) 
     }
   };
 
-  const hasInputs = cuentaCorrienteNum > 0 || tarjetaCreditoNum > 0;
+  const hasInputs = cuentaCorrienteNum > 0;
 
   return (
     <div className="space-y-4">
@@ -133,7 +131,7 @@ export function ReconciliationCard({ onSuccess }: ReconciliationCardProps = {}) 
         <div className="space-y-2">
           <Label htmlFor="cuenta-corriente" className="flex items-center gap-2 text-sm font-medium">
             <Wallet className="h-4 w-4 text-success" />
-            Cuenta corriente
+            Saldo en tu banco
           </Label>
           <div className="relative">
             <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm text-muted-foreground">$</span>
@@ -148,40 +146,37 @@ export function ReconciliationCard({ onSuccess }: ReconciliationCardProps = {}) 
           </div>
         </div>
 
-        <div className="space-y-2">
-          <Label htmlFor="tarjeta-credito" className="flex items-center gap-2 text-sm font-medium">
-            <CreditCard className="h-4 w-4 text-destructive" />
-            Tarjeta de Crédito (Deuda)
-          </Label>
-          <div className="relative">
-            <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm text-muted-foreground">$</span>
-            <Input
-              id="tarjeta-credito"
-              type="text"
-              placeholder="0"
-              value={formatNumber(tarjetaCredito)}
-              onChange={(e) => handleInputChange(e, setTarjetaCredito)}
-              className="pl-7 h-11"
-            />
-          </div>
-        </div>
       </div>
 
       {/* Results */}
       {hasInputs && (
         <div className="space-y-3 pt-4 border-t">
-          <div className="flex justify-between items-center">
-            <span className="text-sm text-muted-foreground">Balance Real</span>
-            <span className={`text-lg font-semibold font-mono tabular-nums ${balanceReal >= 0 ? "text-success" : "text-destructive"}`}>
-              {formatCurrency(balanceReal)}
-            </span>
+          {/* Saldo en tu banco − Tarjetas = Liquidez real */}
+          <div className="space-y-1.5 text-sm">
+            <div className="flex justify-between items-center">
+              <span className="flex items-center gap-2 text-muted-foreground"><Wallet className="h-4 w-4" />Saldo en tu banco</span>
+              <span className="font-mono tabular-nums">{formatCurrency(cuentaCorrienteNum)}</span>
+            </div>
+            <div className="flex justify-between items-center">
+              <span className="flex items-center gap-2 text-muted-foreground"><CreditCard className="h-4 w-4" />− Tarjetas</span>
+              <span className="font-mono tabular-nums">{formatCurrency(deudaTarjetas)}</span>
+            </div>
+            <div className="flex justify-between items-center border-t pt-1.5">
+              <span className="font-medium">= Liquidez real</span>
+              <span className={`text-lg font-semibold font-mono tabular-nums ${balanceReal >= 0 ? "text-success" : "text-destructive"}`}>
+                {formatCurrency(balanceReal)}
+              </span>
+            </div>
           </div>
           <div className="flex justify-between items-center">
-            <span className="text-sm text-muted-foreground">Balance App</span>
+            <span className="text-sm text-muted-foreground">Líquido en Rindo</span>
             <span className={`text-lg font-semibold font-mono tabular-nums ${balanceApp >= 0 ? "text-success" : "text-destructive"}`}>
               {formatCurrency(balanceApp)}
             </span>
           </div>
+          <p className="text-xs text-muted-foreground">
+            Tarjetas es lo que Rindo sabe que debes: lo por facturar más lo que queda por pagar del estado de cuenta cerrado.
+          </p>
 
           {/* Diferencia */}
           <div className={`rounded-lg p-4 mt-2 ${

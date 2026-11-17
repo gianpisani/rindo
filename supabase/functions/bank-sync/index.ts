@@ -186,14 +186,15 @@ Deno.serve(async (req) => {
       const toAutoCategorize: BankCategorizeItem[] = []
 
       for (const m of movements) {
-        const { id, error: insertError } = await insertBankMovement(supabaseClient, userId, {
+        const { id, error: insertError, category } = await insertBankMovement(supabaseClient, userId, {
           isoDate: convertDate(m.date, syncDate), description: m.description, type: m.type, amount: m.amount, card: m.card,
         })
         if (insertError) {
           console.error('Import-skipped insert error:', m.description, insertError)
         } else {
           created++
-          toAutoCategorize.push({ id: id!, detail: m.description, type: m.type })
+          // El pago de tarjeta ya entra categorizado.
+          if (category === 'Sin categoría') toAutoCategorize.push({ id: id!, detail: m.description, type: m.type })
         }
       }
 
