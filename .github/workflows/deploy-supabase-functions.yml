@@ -5,6 +5,7 @@ on:
     branches: [main]
     paths:
       - 'supabase/functions/**'
+      - '.github/workflows/deploy-supabase-functions.yml'
 
 jobs:
   deploy:
@@ -23,7 +24,7 @@ jobs:
             func=$(basename "$dir")
             [[ "$func" == _shared ]] && continue
             echo "Deploying $func..."
-            supabase functions deploy "$func" --project-ref ${{ secrets.SUPABASE_PROJECT_REF }} --no-verify-jwt
+            supabase functions deploy "$func" --project-ref ${{ secrets.SUPABASE_PROJECT_REF }} --no-verify-jwt --yes
           done
         env:
           SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
