@@ -112,18 +112,15 @@ export default function CreditCards() {
     return new Map(
       cardSummaries.map((card) => {
         const current = getBillingCycle(card.billing_day, 0);
-        const previous = getBillingCycle(card.billing_day, -1);
-        const billed = statement(transactions, card.id, previous).total;
-        const billedPayment = paymentDate(previous, card.payment_day);
-        // Si el estado de cuenta anterior todavía no vence, ese es el próximo pago.
-        const pending = billed > 0 && billedPayment >= today;
+        // Si el estado de cuenta anterior todavía no vence, ese es el próximo pago. Sin
+        // monto: se calcularía con movimientos vinculados, que pueden no calzar con el banco.
+        const billedPayment = paymentDate(getBillingCycle(card.billing_day, -1), card.payment_day);
         return [
           card.id,
           {
             total: statement(transactions, card.id, current).total,
             closes: current.end,
-            pay: pending ? billedPayment : paymentDate(current, card.payment_day),
-            payAmount: pending ? billed : null,
+            pay: billedPayment >= today ? billedPayment : paymentDate(current, card.payment_day),
           },
         ] as const;
       })
@@ -383,7 +380,7 @@ function Plastic({
   onDelete,
 }: {
   card: CreditCardSummary;
-  cycle: { total: number; closes: Date; pay: Date; payAmount: number | null };
+  cycle: { total: number; closes: Date; pay: Date };
   selected: boolean;
   isPrivacyMode: boolean;
   onSelect: () => void;
@@ -433,9 +430,7 @@ function Plastic({
         <span className={cn("tj-pl-big", isPrivacyMode && "privacy-blur")}>{formatCurrency(cycle.total)}</span>
         <span className="tj-pl-of">
           <span>cierra {day(cycle.closes)}</span>
-          <span className={cn(cycle.payAmount !== null && isPrivacyMode && "privacy-blur")}>
-            {cycle.payAmount !== null ? `pagas ${formatCurrency(cycle.payAmount)} el ${day(cycle.pay)}` : `pago ${day(cycle.pay)}`}
-          </span>
+          <span>pagas el {day(cycle.pay)}</span>
         </span>
       </div>
 
