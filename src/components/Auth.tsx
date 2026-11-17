@@ -84,7 +84,6 @@ interface ActivityItem {
   detail?: string;
   color: string;
   side: "left" | "right";
-  shortcut?: string; // keyboard shortcut that triggered it
 }
 
 const ACTIVITY_ITEMS: ActivityItem[] = [
@@ -99,12 +98,11 @@ const ACTIVITY_ITEMS: ActivityItem[] = [
   { icon: "📱", text: "Categorizado con IA", detail: "Spotify → Suscripciones", color: "text-purple-400", side: "left" },
   { icon: "🔔", text: "Cuota 3/12 detectada", detail: "Bicicleta · −$133.250", color: "text-orange-400", side: "right" },
   { icon: "📊", text: "Presupuesto comida", detail: "78% usado · quedan 11 días", color: "text-amber-400", side: "left" },
-  // ── Control con shortcuts ──
-  { icon: "🍔", text: "Pago Uber Eats", detail: "−$12.500 · Comida", color: "text-red-400", side: "right", shortcut: "N" },
-  { icon: "💰", text: "Ingreso sueldo", detail: "+$1.850.000", color: "text-emerald-400", side: "left", shortcut: "N" },
-  { icon: "🔍", text: "Buscar transacción", detail: '"arriendo mayo"', color: "text-white/60", side: "right", shortcut: "⌘K" },
-  { icon: "🏠", text: "Pago arriendo", detail: "−$450.000 · Hogar", color: "text-red-400", side: "left", shortcut: "N" },
-  { icon: "📋", text: "Conciliación rápida", detail: "3 pendientes", color: "text-blue-400", side: "right", shortcut: "R" },
+  // ── Movimientos del día ──
+  { icon: "🍔", text: "Pago Uber Eats", detail: "−$12.500 · Comida", color: "text-red-400", side: "right" },
+  { icon: "💰", text: "Ingreso sueldo", detail: "+$1.850.000", color: "text-emerald-400", side: "left" },
+  { icon: "🏠", text: "Pago arriendo", detail: "−$450.000 · Hogar", color: "text-red-400", side: "left" },
+  { icon: "📋", text: "Conciliación rápida", detail: "3 pendientes", color: "text-blue-400", side: "right" },
 ];
 
 interface FloatingCard {
@@ -198,16 +196,9 @@ function FloatingActivity() {
             }}
           >
             <div className="flex items-center gap-2.5 pl-2.5 pr-3.5 py-2 rounded-2xl border border-white/[0.08] bg-gradient-to-r from-white/[0.04] to-white/[0.02] backdrop-blur-md shadow-[0_4px_20px_rgba(0,0,0,0.3)]">
-              {card.item.shortcut ? (
-                <kbd className="w-6 h-6 flex items-center justify-center text-[10px] font-mono font-semibold rounded-lg border border-white/[0.12] bg-white/[0.06] text-white/40 shrink-0">
-                  {card.item.shortcut}
-                </kbd>
-              ) : (
-                <span className="text-base leading-none shrink-0">{card.item.icon}</span>
-              )}
+              <span className="text-base leading-none shrink-0">{card.item.icon}</span>
               <div className="flex flex-col gap-0.5">
                 <span className="text-[11px] text-white/50 font-medium leading-none whitespace-nowrap tracking-wide">
-                  {card.item.shortcut && <span className="mr-1.5 text-white/25">{card.item.icon}</span>}
                   {card.item.text}
                 </span>
                 {card.item.detail && (

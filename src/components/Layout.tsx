@@ -1,13 +1,12 @@
-import { ReactNode, useCallback, useEffect, useState } from "react";
+import { ReactNode, useEffect } from "react";
 import { PeriodSettingsDialog } from "@/components/PeriodSettingsDialog";
-import { CommandBar } from "./CommandBar";
 import { ReconciliationDrawer } from "./ReconciliationDrawer";
 import { WhisperInput } from "./WhisperInput";
 import { OnboardingModal } from "./OnboardingModal";
 import { SidebarProvider, SidebarTrigger, SidebarInset } from "@/components/ui/sidebar";
 import { AppSidebar } from "@/components/AppSidebar";
 import { Button } from "./ui/button";
-import { Bell, BellOff, Eye, EyeOff, Keyboard, Volume2, VolumeOff } from "lucide-react";
+import { Bell, BellOff, Eye, EyeOff, Volume2, VolumeOff } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { usePrivacyMode } from "@/hooks/usePrivacyMode";
 import { useGlobalDrawers } from "@/hooks/useGlobalDrawers";
@@ -15,7 +14,6 @@ import { useKeyboardShortcuts } from "@/hooks/useKeyboardShortcuts";
 import { useSoundPreferences } from "@/hooks/useSoundPreferences";
 import { useSoundFX } from "@/hooks/useSoundFX";
 import { initSounds } from "@/lib/snd";
-import { ShortcutsPopover } from "@/components/ShortcutsPopover";
 import { RindoLogo } from "./RindoLogo";
 import { usePushNotifications } from "@/hooks/usePushNotifications";
 import { MobileBottomBar } from "./MobileBottomBar";
@@ -55,8 +53,6 @@ export default function Layout({ children, fit = false }: LayoutProps) {
     quickAddRevision,
     reconciliationOpen,
     setReconciliationOpen,
-    openQuickAdd,
-    openReconciliation,
     profileEditOpen,
     setProfileEditOpen,
   } = useGlobalDrawers();
@@ -64,52 +60,13 @@ export default function Layout({ children, fit = false }: LayoutProps) {
   const { isSupported: pushSupported, isSubscribed: pushSubscribed, isLoading: pushLoading, subscribe: pushSubscribe, unsubscribe: pushUnsubscribe } = usePushNotifications();
   const isMobile = useIsMobile();
   useNavPreferencesSync();
-  const [commandBarOpen, setCommandBarOpen] = useState(false);
-  const [showShortcutsPopover, setShowShortcutsPopover] = useState(false);
   // Initialize sound system once
   useEffect(() => {
     initSounds().catch(() => {});
   }, []);
 
-  const toggleCommandBar = useCallback(() => {
-    setCommandBarOpen((prev) => !prev);
-  }, []);
-
-  const toggleShortcutsPopover = useCallback(() => {
-    setShowShortcutsPopover((prev) => !prev);
-  }, []);
-
-  const toggleWhisper = useCallback(() => {
-    if (quickAddOpen) setQuickAddOpen(false);
-    else openQuickAdd("Gasto");
-  }, [quickAddOpen, setQuickAddOpen, openQuickAdd]);
-
   // Register all keyboard shortcuts
-  useKeyboardShortcuts({
-    onToggleCommandBar: toggleCommandBar,
-    onToggleShortcutsPopover: toggleShortcutsPopover,
-    onToggleWhisper: toggleWhisper,
-    onQuickAdd: () => openQuickAdd("Gasto"),
-  });
-
-  // Close popover when clicking outside
-  useEffect(() => {
-    if (!showShortcutsPopover) return;
-
-    const handleClickOutside = (e: MouseEvent) => {
-      const target = e.target as HTMLElement;
-      if (
-        target.closest("[data-shortcuts-popover]") ||
-        target.closest("[data-shortcuts-trigger]")
-      ) {
-        return;
-      }
-      setShowShortcutsPopover(false);
-    };
-
-    document.addEventListener("mousedown", handleClickOutside);
-    return () => document.removeEventListener("mousedown", handleClickOutside);
-  }, [showShortcutsPopover]);
+  useKeyboardShortcuts();
 
   // Prevent zoom on iOS with double-tap and optimize scroll
   useEffect(() => {
@@ -146,16 +103,7 @@ export default function Layout({ children, fit = false }: LayoutProps) {
   return (
     <TooltipProvider delayDuration={200}>
       <SidebarProvider>
-        {/* Command Bar - Global (controlled) */}
-        <CommandBar
-          open={commandBarOpen}
-          onOpenChange={setCommandBarOpen}
-          onAddTransaction={() => openQuickAdd()}
-          onConciliate={() => openReconciliation()}
-          onEditProfile={() => setProfileEditOpen(true)}
-        />
-
-        {/* One composer for W, dashboard, mobile and the command palette. */}
+        {/* El único composer para anotar a mano. */}
         <WhisperInput
           key={quickAddRevision}
           open={quickAddOpen}
@@ -289,26 +237,6 @@ export default function Layout({ children, fit = false }: LayoutProps) {
                       : "Activar modo privado (P)"}
                   </TooltipContent>
                 </Tooltip>
-                <div className="hidden lg:block relative">
-                  <Tooltip>
-                    <TooltipTrigger asChild>
-                      <button
-                        data-shortcuts-trigger
-                        className="h-7 select-none items-center gap-1 rounded bg-muted px-2 font-mono text-[11px] font-medium border border-border inline-flex cursor-pointer hover:bg-muted/80 transition-all"
-                        onClick={toggleShortcutsPopover}
-                      >
-                        <Keyboard className="h-3.5 w-3.5" />
-                      </button>
-                    </TooltipTrigger>
-                    <TooltipContent>Atajos del teclado (?)</TooltipContent>
-                  </Tooltip>
-                  <div data-shortcuts-popover>
-                    <ShortcutsPopover
-                      isVisible={showShortcutsPopover}
-                      onClose={() => setShowShortcutsPopover(false)}
-                    />
-                  </div>
-                </div>
               </div>
             </div>
           </header>

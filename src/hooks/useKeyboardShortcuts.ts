@@ -3,19 +3,7 @@ import { useNavigate, useLocation } from "react-router-dom";
 import { usePrivacyMode } from "@/hooks/usePrivacyMode";
 import { useNavPreferences } from "@/hooks/useNavPreferences";
 
-interface UseKeyboardShortcutsOptions {
-  onToggleCommandBar: () => void;
-  onToggleShortcutsPopover: () => void;
-  onToggleWhisper: () => void;
-  onQuickAdd: () => void;
-}
-
-export function useKeyboardShortcuts({
-  onToggleCommandBar,
-  onToggleShortcutsPopover,
-  onToggleWhisper,
-  onQuickAdd,
-}: UseKeyboardShortcutsOptions) {
+export function useKeyboardShortcuts() {
   const navigate = useNavigate();
   const location = useLocation();
   const { togglePrivacyMode } = usePrivacyMode();
@@ -35,13 +23,6 @@ export function useKeyboardShortcuts({
         !!target.closest('[role="dialog"], [role="alertdialog"]') ||
         target.isContentEditable;
 
-      // Cmd+K → Command palette (modifier shortcut, always active)
-      if ((e.metaKey || e.ctrlKey) && e.key === "k") {
-        e.preventDefault();
-        onToggleCommandBar();
-        return;
-      }
-
       // All single-key shortcuts: ignore when inside inputs
       if (isInputField) return;
 
@@ -49,27 +30,10 @@ export function useKeyboardShortcuts({
       if (e.metaKey || e.ctrlKey || e.altKey) return;
 
       switch (e.key) {
-        case "n":
-        case "N":
-          e.preventDefault();
-          onQuickAdd();
-          break;
-
-        case "w":
-        case "W":
-          e.preventDefault();
-          onToggleWhisper();
-          break;
-
         case "p":
         case "P":
           e.preventDefault();
           togglePrivacyMode();
-          break;
-
-        case "?":
-          e.preventDefault();
-          onToggleShortcutsPopover();
           break;
 
         case "ArrowUp": {
@@ -108,10 +72,6 @@ export function useKeyboardShortcuts({
     location.pathname,
     routePaths,
     maxShortcut,
-    onToggleCommandBar,
-    onToggleShortcutsPopover,
-    onToggleWhisper,
-    onQuickAdd,
     togglePrivacyMode,
   ]);
 }
