@@ -110,14 +110,17 @@ function CredentialRow({
           <p className="text-sm font-medium">{bank.label}</p>
           <p className="text-xs text-muted-foreground">{cred.rut}</p>
         </div>
-        <button
+        <Button
           type="button"
+          variant="ghost"
+          size="icon"
           onClick={() => onOpenPreferences(cred)}
-          className="shrink-0 cursor-pointer text-muted-foreground hover:text-foreground transition-colors"
+          className="size-8 shrink-0 text-muted-foreground"
+          aria-label="Configurar auto-sync"
           title="Configurar auto-sync"
         >
-          <Settings2 className="h-5 w-5" />
-        </button>
+          <Settings2 />
+        </Button>
       </div>
 
       {/* Auto-sync activo/pausado */}
@@ -136,17 +139,15 @@ function CredentialRow({
         {confirmDelete ? (
           <div className="flex gap-1.5 shrink-0">
             <Button
-              size="sm"
+              size="xs"
               variant="destructive"
-              className="h-8 text-xs px-2"
               onClick={() => { onDelete(cred.bank); setConfirmDelete(false); }}
             >
               Eliminar
             </Button>
             <Button
-              size="sm"
+              size="xs"
               variant="ghost"
-              className="h-8 text-xs px-2"
               onClick={() => setConfirmDelete(false)}
             >
               No
@@ -154,12 +155,13 @@ function CredentialRow({
           </div>
         ) : (
           <Button
-            size="sm"
+            size="icon"
             variant="ghost"
-            className="h-8 w-8 p-0 text-muted-foreground hover:text-destructive shrink-0"
+            className="size-8 shrink-0 text-muted-foreground hover:bg-destructive/10 hover:text-destructive"
+            aria-label={`Quitar ${bank.label}`}
             onClick={() => setConfirmDelete(true)}
           >
-            <Trash2 className="h-3.5 w-3.5" />
+            <Trash2 />
           </Button>
         )}
       </div>
@@ -207,10 +209,9 @@ export function BankSyncSettings({ onAddBank }: BankSyncSettingsProps) {
         <Button
           size="sm"
           variant="ghost"
-          className="h-8 text-xs gap-1.5"
           onClick={onAddBank}
         >
-          <Plus className="h-3.5 w-3.5" />
+          <Plus />
           Agregar
         </Button>
       </div>

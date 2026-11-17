@@ -443,7 +443,7 @@ function EmptyState({ hasFilters, onClear }: { hasFilters: boolean; onClear: () 
         </p>
       </div>
       {hasFilters && (
-        <Button variant="ghost" size="sm" className="h-8 text-xs" onClick={onClear}>
+        <Button variant="ghost" size="xs" onClick={onClear}>
           Limpiar filtros
         </Button>
       )}
@@ -933,8 +933,8 @@ export function TransactionsTable({
             <DropdownMenuTrigger asChild>
               <Button
                 variant="ghost"
-                size="sm"
-                className="h-8 w-8 p-0 opacity-40 hover:opacity-100"
+                size="icon"
+                className="size-8 opacity-40 hover:opacity-100"
                 onClick={(e) => e.stopPropagation()}
               >
                 <MoreHorizontal className="h-4 w-4" />
@@ -1335,12 +1335,9 @@ export function TransactionsTable({
                   seleccionada{selectedIds.length > 1 ? "s" : ""}
                 </span>
                 <div className="flex-1" />
-                <button
-                  onClick={() => setPanelExpanded(false)}
-                  className="p-0.5 transition-colors"
-                >
-                  <Minimize2 className="h-3.5 w-3.5" />
-                </button>
+                <Button variant="ghost" size="icon" className="size-7" aria-label="Minimizar" onClick={() => setPanelExpanded(false)}>
+                  <Minimize2 />
+                </Button>
               </div>
 
               {/* Actions */}
@@ -1435,13 +1432,10 @@ export function TransactionsTable({
 
               {/* Deselect */}
               <div className="px-2 py-1.5 border-t">
-                <button
-                  onClick={() => setRowSelection({})}
-                  className="w-full flex items-center justify-center gap-1 py-1 rounded-card text-xs text-muted-foreground transition-colors"
-                >
-                  <X className="h-3 w-3" />
+                <Button variant="ghost" size="xs" className="w-full text-muted-foreground" onClick={() => setRowSelection({})}>
+                  <X />
                   Deseleccionar todo
-                </button>
+                </Button>
               </div>
             </div>
           )}
@@ -1456,7 +1450,7 @@ export function TransactionsTable({
               ? `${selectedIds.length} seleccionado${selectedIds.length > 1 ? "s" : ""}`
               : "Toca los movimientos para seleccionarlos"}
           </span>
-          <Button variant="ghost" size="sm" className="h-8" onClick={() => onSelectingChange(false)}>
+          <Button variant="ghost" size="xs" onClick={() => onSelectingChange(false)}>
             Listo
           </Button>
         </div>
@@ -1553,10 +1547,10 @@ export function TransactionsTable({
         {table.getPageCount() > 1 && (
           <div className="flex items-center gap-1">
             <Button
-              variant="ghost" size="sm"
+              variant="ghost" size="icon"
               onClick={() => table.previousPage()}
               disabled={!table.getCanPreviousPage()}
-              className="h-8 w-8 p-0"
+              className="size-8"
               aria-label="Página anterior"
             >
               <ChevronLeft className="h-4 w-4" />
@@ -1565,10 +1559,10 @@ export function TransactionsTable({
               {pageIndex + 1} de {table.getPageCount()}
             </span>
             <Button
-              variant="ghost" size="sm"
+              variant="ghost" size="icon"
               onClick={() => table.nextPage()}
               disabled={!table.getCanNextPage()}
-              className="h-8 w-8 p-0"
+              className="size-8"
               aria-label="Página siguiente"
             >
               <ChevronRight className="h-4 w-4" />

@@ -5,6 +5,7 @@ import { useLocation } from "react-router-dom";
 import NumberFlow from "@number-flow/react";
 import { Check, Pencil, Plus, Trash2, X } from "lucide-react";
 import Layout from "@/components/Layout";
+import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { CategorySelect } from "@/components/CategorySelect";
 import { getCategoryIcon } from "@/components/TransactionsTable";
@@ -162,13 +163,13 @@ export default function Meta() {
         autoFocus={autoFocus}
         label="Meta de ahorro mensual"
       />
-      <button onClick={saveGoal} disabled={parseAmount(draft) <= 0} aria-label="Guardar meta" className="meta-edit-btn">
+      <Button variant="ghost" size="icon" className="size-8" onClick={saveGoal} disabled={parseAmount(draft) <= 0} aria-label="Guardar meta">
         <Check />
-      </button>
+      </Button>
       {hasGoal && (
-        <button onClick={() => setEditing(false)} aria-label="Cancelar" className="meta-edit-btn">
+        <Button variant="ghost" size="icon" className="size-8" onClick={() => setEditing(false)} aria-label="Cancelar">
           <X />
-        </button>
+        </Button>
       )}
     </span>
   );
@@ -484,15 +485,21 @@ export default function Meta() {
                             placeholder="100.000"
                             label={`Límite mensual de ${row.category}`}
                           />
-                          <button onClick={saveLimit} disabled={parseAmount(limitDraft) <= 0} aria-label="Guardar límite" className="meta-edit-btn">
+                          <Button variant="ghost" size="icon" className="size-7" onClick={saveLimit} disabled={parseAmount(limitDraft) <= 0} aria-label="Guardar límite">
                             <Check />
-                          </button>
-                          <button onClick={() => setEditingCat(null)} aria-label="Cancelar" className="meta-edit-btn">
+                          </Button>
+                          <Button variant="ghost" size="icon" className="size-7" onClick={() => setEditingCat(null)} aria-label="Cancelar">
                             <X />
-                          </button>
-                          <button onClick={() => removeLimit(row.category)} aria-label="Quitar límite" className="meta-edit-btn meta-edit-danger">
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="ml-auto size-7 text-destructive hover:bg-destructive/10 hover:text-destructive"
+                            onClick={() => removeLimit(row.category)}
+                            aria-label="Quitar límite"
+                          >
                             <Trash2 />
-                          </button>
+                          </Button>
                         </span>
                       ) : (
                         <span className={cn("of", isPrivacyMode && "privacy-blur")}>
@@ -525,17 +532,17 @@ export default function Meta() {
                       placeholder="100.000"
                       label="Límite mensual"
                     />
-                    <button onClick={saveAdd} disabled={!addCat || parseAmount(addDraft) <= 0} aria-label="Guardar límite" className="meta-edit-btn">
+                    <Button variant="ghost" size="icon" className="size-7" onClick={saveAdd} disabled={!addCat || parseAmount(addDraft) <= 0} aria-label="Guardar límite">
                       <Check />
-                    </button>
-                    <button onClick={() => setAdding(false)} aria-label="Cancelar" className="meta-edit-btn">
+                    </Button>
+                    <Button variant="ghost" size="icon" className="size-7" onClick={() => setAdding(false)} aria-label="Cancelar">
                       <X />
-                    </button>
+                    </Button>
                   </div>
                 ) : (
-                  <button className="meta-lim-new" onClick={startAdd} disabled={addable.length === 0}>
+                  <Button variant="ghost" size="sm" className="self-start justify-self-start max-md:mx-3 max-md:mt-1" onClick={startAdd} disabled={addable.length === 0}>
                     <Plus /> Límite
-                  </button>
+                  </Button>
                 )}
               </div>
             </section>

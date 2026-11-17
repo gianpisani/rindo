@@ -245,8 +245,9 @@ export function TransactionsToolbar({
         {searchValue && (
           <Button
             variant="ghost"
-            size="sm"
-            className="absolute right-1 top-1/2 h-7 w-7 -translate-y-1/2 p-0"
+            size="icon"
+            className="absolute right-1 top-1/2 size-7 -translate-y-1/2"
+            aria-label="Limpiar búsqueda"
             onClick={() => onSearchChange("")}
           >
             <X className="h-4 w-4" />
@@ -286,8 +287,7 @@ export function TransactionsToolbar({
         <PopoverTrigger asChild>
           <Button
             variant="ghost"
-            size="sm"
-            className="h-10 shrink-0 gap-2 border border-input"
+            className="shrink-0 border border-input"
           >
             <SlidersHorizontal className="h-4 w-4" />
             <span className="hidden sm:inline">Filtros</span>
@@ -404,9 +404,9 @@ export function TransactionsToolbar({
           {active.length > 0 && (
             <Button
               variant="ghost"
-              size="sm"
+              size="xs"
               onClick={clearAll}
-              className="h-8 w-full text-xs"
+              className="w-full"
             >
               Limpiar filtros
             </Button>
@@ -420,7 +420,7 @@ export function TransactionsToolbar({
           <Button
             variant="ghost"
             size="icon"
-            className="h-10 w-10 shrink-0 border border-input"
+            className="shrink-0 border border-input"
             aria-label={isSyncing ? "Más opciones (sincronizando)" : "Más opciones"}
           >
             {isSyncing ? (

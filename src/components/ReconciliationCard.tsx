@@ -205,7 +205,7 @@ export function ReconciliationCard({ onSuccess }: ReconciliationCardProps = {}) 
                 onClick={() => setShowPreview(true)}
                 className="w-full"
               >
-                <PencilRuler className="h-4 w-4 mr-2" />
+                <PencilRuler />
                 Crear Transacción de Ajuste
               </Button>
             )}

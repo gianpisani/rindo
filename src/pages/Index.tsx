@@ -25,6 +25,7 @@ import { PiggyBank, Receipt, ChevronRight, RefreshCw } from "lucide-react";
 import { BankSyncModal } from "@/components/BankSyncModal";
 import { useBankSyncContext } from "@/contexts/BankSyncContext";
 import { useNavigate } from "react-router-dom";
+import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { format, isToday, isYesterday } from "date-fns";
 import { es } from "date-fns/locale";
@@ -346,15 +347,17 @@ const Index = () => {
             </h1>
             <div className="inicio-head-end">
               <HomeNotices notices={notices} className="shrink-0" />
-              <button
-                className="inicio-act"
+              <Button
+                variant="ghost"
+                size="xs"
+                className="text-muted-foreground"
                 onClick={() => setIsBankSyncOpen(true)}
                 aria-label={lastSync ? `Sincronizar bancos, última vez ${sinceLabel(lastSync)}` : "Sincronizar bancos"}
                 title="Sincronizar bancos"
               >
-                {lastSync && <small>{sinceLabel(lastSync)}</small>}
+                {lastSync && sinceLabel(lastSync)}
                 <RefreshCw aria-hidden />
-              </button>
+              </Button>
             </div>
           </header>
 
