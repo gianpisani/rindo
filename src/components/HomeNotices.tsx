@@ -84,7 +84,7 @@ function NoticePill({ notice }: { notice: HomeNotice }) {
         type="button"
         onClick={notice.onClick}
         title={notice.detail}
-        className="flex min-w-0 items-center gap-1.5 focus-visible:outline-none"
+        className="flex min-w-0 items-center gap-1.5"
       >
         <notice.icon className={cn("h-3.5 w-3.5 shrink-0", tone.icon)} />
         <span className="truncate text-xs font-medium">{notice.label}</span>
@@ -102,7 +102,7 @@ function NoticeRow({ notice }: { notice: HomeNotice }) {
       <button
         type="button"
         onClick={notice.onClick}
-        className="flex min-w-0 flex-1 items-start gap-2 text-left focus-visible:outline-none"
+        className="flex min-w-0 flex-1 items-start gap-2 text-left"
       >
         <notice.icon className={cn("mt-0.5 h-4 w-4 shrink-0", tone.icon)} />
         <span className="min-w-0">

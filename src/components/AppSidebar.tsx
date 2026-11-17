@@ -118,11 +118,12 @@ export function AppSidebar() {
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <button
+                  aria-label={`Cuenta de ${displayName}`}
                   className="flex items-center gap-2 w-full rounded-card px-2 py-2 text-sm hover:bg-sidebar-accent transition-colors data-[state=open]:bg-sidebar-accent sm:mb-0 mb-4 group-data-[collapsible=icon]:!size-8 group-data-[collapsible=icon]:!p-0 group-data-[collapsible=icon]:justify-center"
                 >
                   <div className="rounded-full p-0.5 bg-border shrink-0">
                     <Avatar className="size-7">
-                      {avatarUrl && <AvatarImage src={avatarUrl} className="object-cover" />}
+                      {avatarUrl && <AvatarImage src={avatarUrl} alt="" className="object-cover" />}
                       <AvatarFallback className="bg-sidebar text-xs font-medium">
                         {userInitials}
                       </AvatarFallback>
@@ -147,7 +148,7 @@ export function AppSidebar() {
                   <div className="flex items-center gap-3 px-3 py-3">
                     <div className="rounded-full p-0.5 bg-border shrink-0">
                       <Avatar className="size-9">
-                        {avatarUrl && <AvatarImage src={avatarUrl} className="object-cover" />}
+                        {avatarUrl && <AvatarImage src={avatarUrl} alt="" className="object-cover" />}
                         <AvatarFallback className="bg-popover text-sm font-medium">
                           {userInitials}
                         </AvatarFallback>

@@ -354,7 +354,7 @@ const Index = () => {
             {displayName && (
               <button onClick={() => openProfileEdit()} className="inicio-avatar" aria-label="Editar perfil">
                 <Avatar className="size-full">
-                  {avatarUrl && <AvatarImage src={avatarUrl} className="object-cover" />}
+                  {avatarUrl && <AvatarImage src={avatarUrl} alt="" className="object-cover" />}
                   <AvatarFallback className="text-xs font-medium">
                     {greetingInitials}
                   </AvatarFallback>

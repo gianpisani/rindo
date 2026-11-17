@@ -471,6 +471,7 @@ export function OnboardingModal({
             <button
               key={i}
               onClick={() => goToStep(i)}
+              aria-label={s.label}
               className={cn(
                 "flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium transition-all duration-200",
                 i > step && "text-muted-foreground"
@@ -528,6 +529,7 @@ export function OnboardingModal({
                 {currentAvatarSrc && (
                   <AvatarImage
                     src={currentAvatarSrc}
+                    alt=""
                     className="rounded-full object-cover"
                   />
                 )}

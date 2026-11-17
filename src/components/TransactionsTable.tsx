@@ -218,9 +218,10 @@ const typeIcons: Record<TransactionType, typeof TrendingUp> = {
 export const typeAmountColors: Record<TransactionType, string> = {
   Ingreso: "text-success",
   Gasto: "text-foreground",
-  Inversión: "text-blue-500",
-  Rescate: "text-cyan-500",
-  Rendimiento: "text-violet-500",
+  // Montos como texto: un tono más oscuro en claro para llegar a 4.5:1.
+  Inversión: "text-blue-600 dark:text-blue-500",
+  Rescate: "text-cyan-700 dark:text-cyan-500",
+  Rendimiento: "text-violet-600 dark:text-violet-500",
   Reembolso: "text-success",
 };
 
@@ -370,7 +371,7 @@ function EditableAmountCell({
 
 /** Clases del botón que abre un editor inline de celda. */
 const CELL_TRIGGER =
-  "flex items-center gap-1 px-2 py-1 rounded-card transition-all group cursor-pointer focus:outline-none";
+  "flex items-center gap-1 px-2 py-1 rounded-card transition-all group cursor-pointer";
 
 interface SelectableCellProps<T extends string> {
   value: T;
@@ -807,7 +808,6 @@ export function TransactionsTable({
                       className={cn(
                         "inline-flex items-center gap-1 rounded-full px-1.5 py-0.5 text-xs leading-none flex-shrink-0",
                         "cursor-pointer transition-all hover:brightness-125",
-                        "focus:outline-none",
                         linkedCategory
                           ? "bg-success/15 text-success font-medium"
                           : "bg-white/5 italic"
@@ -912,6 +912,7 @@ export function TransactionsTable({
                 size="icon"
                 className="size-9 opacity-40 hover:opacity-100"
                 onClick={(e) => e.stopPropagation()}
+                aria-label="Opciones del movimiento"
               >
                 <MoreHorizontal className="h-4 w-4" />
               </Button>
@@ -1190,7 +1191,7 @@ export function TransactionsTable({
         <div className="flex-shrink-0 ml-1">
           <DropdownMenu onOpenChange={trackMenuClose}>
             <DropdownMenuTrigger asChild>
-              <button className="mobile-tx-actions-btn" onClick={(e) => e.stopPropagation()}>
+              <button className="mobile-tx-actions-btn" onClick={(e) => e.stopPropagation()} aria-label="Opciones del movimiento">
                 <MoreHorizontal className="h-4 w-4" />
               </button>
             </DropdownMenuTrigger>
@@ -1286,6 +1287,7 @@ export function TransactionsTable({
               <button
                 onClick={() => setPanelExpanded(true)}
                 className="size-9 grid place-items-center"
+                aria-label="Expandir acciones"
               >
                 <ChevronRight className="h-3.5 w-3.5 rotate-180" />
               </button>
