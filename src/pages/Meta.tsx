@@ -17,6 +17,7 @@ import { usePeriodConfig } from "@/hooks/usePeriodConfig";
 import { dayOfPeriod, periodIndex, periodNameDate, periodStartOf, shiftPeriod } from "@/lib/period";
 import { usePrivacyMode } from "@/hooks/usePrivacyMode";
 import { cn } from "@/lib/utils";
+import { isCardPayment, isCardPaymentCategory } from "@/lib/ledger";
 import {
   computeNextMonthSweep,
   computeSavingsMonths,
@@ -232,6 +233,7 @@ export default function Meta() {
     const sums = new Map<string, number>();
     for (const t of transactions) {
       if (t.type !== "Gasto" && !t.reimbursement_for_category) continue;
+      if (isCardPayment(t)) continue;
       const d = new Date(t.date);
       const start = periodStartOf(d, startDay);
       const monthsAgo = periodIndex(thisPeriod) - periodIndex(start);
@@ -257,7 +259,7 @@ export default function Meta() {
   // Categorías de gasto que todavía no tienen límite: las que se pueden agregar.
   const limited = new Set(limits.map((l) => l.category_name));
   const addable = categories
-    .filter((c) => c.type === "Gasto" && c.is_active !== false && !limited.has(c.name))
+    .filter((c) => c.type === "Gasto" && c.is_active !== false && !limited.has(c.name) && !isCardPaymentCategory(c.name))
     .map((c) => ({ value: c.name, label: c.name, emoji: c.icon || getCategoryIcon(c.name) }));
 
   const [editingCat, setEditingCat] = useState<string | null>(null);

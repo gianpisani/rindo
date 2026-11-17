@@ -36,7 +36,13 @@ import Papa from "papaparse";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import type { DateRangeValue } from "@/components/DateRangeFilter";
-import { TransactionType, allowsNegativeAmount } from "@/lib/ledger";
+import {
+  TransactionType,
+  allowsNegativeAmount,
+  CARD_PAYMENT_CATEGORY,
+  CARD_PAYMENT_ICON,
+  isCardPaymentCategory,
+} from "@/lib/ledger";
 
 // ── Editor de movimientos: corregir la categoría es un toque ──
 
@@ -263,12 +269,30 @@ export default function Transactions() {
       )
       .sort((a, b) => (frequency.get(b.name) ?? 0) - (frequency.get(a.name) ?? 0) || a.name.localeCompare(b.name));
   }, [categories, allTransactions, formData.type]);
+  // "Pago de tarjeta" es una categoría del sistema: no vive en la tabla, pero
+  // se elige acá para marcar a mano un pago que la importación no reconoció.
+  // Siempre a la vista en Gasto e Ingreso; si alguien ya tiene la suya ("Pago
+  // Tarjeta"), se ofrece esa.
+  const cardPaymentOption = useMemo(() => {
+    if (formData.type !== "Gasto" && formData.type !== "Ingreso") return null;
+    const own = availableCategories.find((c) => isCardPaymentCategory(c.name));
+    return own ?? {
+      id: "system-card-payment",
+      name: CARD_PAYMENT_CATEGORY,
+      type: formData.type,
+      icon: CARD_PAYMENT_ICON,
+      color: null,
+      user_id: "",
+      created_at: "",
+    };
+  }, [availableCategories, formData.type]);
   const visibleCategories = useMemo(() => {
     const top = allCategories ? availableCategories : availableCategories.slice(0, 5);
     // La categoría del movimiento que se edita siempre se ve, aunque no sea de las frecuentes.
     const current = availableCategories.find((c) => c.name === formData.category_name);
-    return current && !top.includes(current) ? [...top, current] : top;
-  }, [availableCategories, allCategories, formData.category_name]);
+    const shown = current && !top.includes(current) ? [...top, current] : top;
+    return cardPaymentOption && !shown.includes(cardPaymentOption) ? [...shown, cardPaymentOption] : shown;
+  }, [availableCategories, allCategories, formData.category_name, cardPaymentOption]);
 
   const changeType = (type: TransactionType) => {
     setFormData((prev) => ({ ...prev, type, category_name: "" }));

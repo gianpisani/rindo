@@ -58,6 +58,9 @@ import {
   allowsNegativeAmount,
   displaySign,
   signPrefix,
+  isCardPayment,
+  isCardPaymentCategory,
+  CARD_PAYMENT_ICON,
   type TransactionType,
 } from "@/lib/ledger";
 import { getCleanDetail } from "@/lib/whisper";
@@ -164,6 +167,7 @@ const CATEGORY_ICONS: Record<string, string> = {
 
 export function getCategoryIcon(name: string): string {
   if (!name) return "🏷️";
+  if (isCardPaymentCategory(name)) return CARD_PAYMENT_ICON;
   const lower = name.toLowerCase();
   if (CATEGORY_ICONS[lower]) return CATEGORY_ICONS[lower];
   for (const [key, icon] of Object.entries(CATEGORY_ICONS)) {
@@ -1048,11 +1052,12 @@ export function TransactionsTable({
   const summaryStats = (() => {
     const rows = selectedRows.map(r => r.original);
     if (rows.length === 0) return null;
-    // Montos con signo: Gasto/Inversión restan, Ingreso/Reembolso suman
-    const amounts = rows.map(r => displaySign(r.type) * r.amount);
+    // Montos con signo: Gasto/Inversión restan, Ingreso/Reembolso suman.
+    // El pago de tarjeta no es gasto ni ingreso (sus compras ya contaron): vale 0.
+    const amounts = rows.map(r => isCardPayment(r) ? 0 : displaySign(r.type) * r.amount);
     const sum = amounts.reduce((a, b) => a + b, 0);
-    const income = rows.reduce((a, r) => a + Math.max(0, displaySign(r.type) * r.amount), 0);
-    const expense = rows.reduce((a, r) => a + Math.max(0, -displaySign(r.type) * r.amount), 0);
+    const income = amounts.reduce((a, v) => a + Math.max(0, v), 0);
+    const expense = amounts.reduce((a, v) => a + Math.max(0, -v), 0);
     return {
       sum,
       avg: Math.round(sum / amounts.length),

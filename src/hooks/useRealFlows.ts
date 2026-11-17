@@ -4,6 +4,8 @@ import type { Transaction } from "./useTransactions";
 import {
   computeBuckets,
   DEFAULT_PASS_THROUGH_CATEGORIES,
+  DEFAULT_TRANSIT_CATEGORIES,
+  isCardPayment,
   type Buckets,
 } from "@/lib/ledger";
 import {
@@ -13,7 +15,7 @@ import {
   periodStartOf,
 } from "@/lib/period";
 
-export { DEFAULT_PASS_THROUGH_CATEGORIES };
+export { DEFAULT_PASS_THROUGH_CATEGORIES, DEFAULT_TRANSIT_CATEGORIES };
 export type { Buckets };
 
 // ─── Configuración (defaults, todo parametrizable) ───────
@@ -25,12 +27,6 @@ export const SALARY_SHIFT_DAY = 25;
 
 /** Categorías de ingreso que se consideran "sueldo" para la regla de atribución. */
 export const DEFAULT_SALARY_CATEGORIES = ["Sueldo"];
-
-/**
- * Categorías de gasto que son plata en tránsito (se pone por otros y vuelve,
- * o ajustes contables). Se excluyen de todo cálculo.
- */
-export const DEFAULT_TRANSIT_CATEGORIES = ["Reembolsos", "Conciliación"];
 
 /** Diferencia mínima entre ahorrado e invertido para avisar "cerraste el mes sin barrer". */
 export const SWEEP_ALERT_THRESHOLD = 200_000;
@@ -67,7 +63,7 @@ export interface RealFlows {
   ingresoReal: number;
   /** Ingresos con `reimbursement_for_category` recibidos en el mes. */
   reembolsosRecibidos: number;
-  /** Gastos del mes, sin tránsito. */
+  /** Gastos del mes, sin tránsito ni pagos de tarjeta. */
   consumoBruto: number;
   /** consumoBruto − reembolsosRecibidos. */
   consumoNeto: number;
@@ -129,6 +125,8 @@ export function computeRealFlows(
   const dailyNet = new Array(daysInMonth + 1).fill(0);
 
   for (const t of transactions) {
+    // El pago de la tarjeta no es ingreso ni gasto: sus compras ya contaron.
+    if (isCardPayment(t)) continue;
     const date = new Date(t.date);
     const amount = Number(t.amount);
 
@@ -186,7 +184,9 @@ export function computeLedger(
 /**
  * Balance líquido histórico: lo que puedo gastar hoy. Ingresos − gastos −
  * aportes + rescates, excluyendo el tránsito puro en ambas direcciones (el
- * gasto puesto por otros y su devolución tagueada). Las categorías de ajuste
+ * gasto puesto por otros y su devolución tagueada, y el pago de la tarjeta).
+ * Como cada compra con tarjeta ya restó, es la liquidez real: saldo del banco
+ * menos la deuda de las tarjetas. Las categorías de ajuste
  * (p.ej. Conciliación) SÍ cuentan: existen para corregir el balance.
  */
 export function computeRealBalance(

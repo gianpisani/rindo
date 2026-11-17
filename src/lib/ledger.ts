@@ -13,6 +13,7 @@
  *   Rescate          +          −           =      vuelta: cambia de balde
  *   Rendimiento      ·          ±           ±      lo que ganó (o perdió) solo
  *   Reembolso        ·          ·           ·      tránsito (ver abajo)
+ *   Pago de tarjeta  ·          ·           ·      la compra ya restó (ver abajo)
  *
  * Las dos filas que cambian de balde no crean ni destruyen patrimonio: por eso
  * un rescate NO es un ingreso y un aporte NO es un gasto, y ninguno de los dos
@@ -21,6 +22,14 @@
  * `Rendimiento` es el único tipo que admite monto negativo: un mes malo es un
  * dato, no un error de tipeo.
  */
+
+import {
+  CARD_PAYMENT_CATEGORY,
+  CARD_PAYMENT_ICON,
+  isCardPaymentCategory,
+} from "../../supabase/functions/_shared/card-payment.ts";
+
+export { CARD_PAYMENT_CATEGORY, CARD_PAYMENT_ICON, isCardPaymentCategory };
 
 export type TransactionType =
   | "Ingreso"
@@ -63,6 +72,32 @@ export function allowsNegativeAmount(type: TransactionType): boolean {
  */
 export const DEFAULT_PASS_THROUGH_CATEGORIES = ["Reembolsos"];
 
+/**
+ * Categorías de gasto que no son consumo propio: plata en tránsito (se pone
+ * por otros y vuelve) o ajustes contables. Fuera del gasto del mes, del ritmo
+ * y de "Por categoría". Conciliación sí mueve el líquido: corrige el balance.
+ */
+export const DEFAULT_TRANSIT_CATEGORIES = ["Reembolsos", "Conciliación"];
+
+/**
+ * El pago de la tarjeta de crédito. Cada compra con tarjeta ya es un Gasto el
+ * día en que se hizo; pagar la tarjeta solo mueve plata de la cuenta a la
+ * deuda. Por eso queda fuera de TODO, en cualquier tipo y dirección: gasto e
+ * ingreso del mes, por categoría, límites, ritmo, historial y líquido. El
+ * líquido, entonces, es la liquidez real: lo que tengo menos lo que debo en
+ * la tarjeta. Reconoce también las categorías que algunos crearon a mano
+ * ("Pago Tarjeta"): ver `isCardPaymentCategory`.
+ */
+export function isCardPayment(entry: {
+  category_name?: string | null;
+  reimbursement_for_category?: string | null;
+}): boolean {
+  return (
+    isCardPaymentCategory(entry.category_name) ||
+    isCardPaymentCategory(entry.reimbursement_for_category)
+  );
+}
+
 /** Lo mínimo que necesita el ledger de una transacción para clasificarla. */
 export interface LedgerEntry {
   type: TransactionType;
@@ -84,11 +119,13 @@ export const EMPTY_BUCKETS: Buckets = { liquido: 0, invertido: 0, patrimonio: 0 
 
 /**
  * Plata en tránsito puro: el gasto que puse por otros y su devolución
- * tagueada. No es mío en ninguna dirección, así que no entra a ningún balde.
+ * tagueada, y el pago de la tarjeta (sus compras ya restaron). No es mío en
+ * ninguna dirección, así que no entra a ningún balde.
  * Las categorías de ajuste (p.ej. Conciliación) SÍ cuentan: existen para
  * corregir el balance.
  */
 function isPassThrough(entry: LedgerEntry, passThrough: Set<string>): boolean {
+  if (isCardPayment(entry)) return true;
   if (entry.type === "Gasto") return passThrough.has(entry.category_name);
   if (entry.type === "Ingreso") {
     return Boolean(

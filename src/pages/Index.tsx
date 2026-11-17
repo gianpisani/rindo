@@ -38,6 +38,7 @@ import { HomeNotices, type HomeNotice } from "@/components/HomeNotices";
 import { useUserProfile } from "@/hooks/useUserProfile";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import { ANALYZING_CATEGORY } from "@/lib/auto-category-policy";
+import { isCardPayment } from "@/lib/ledger";
 
 /*
  * Inicio: ¿cómo voy este mes? Lo gastado y el ritmo, en qué se va la plata,
@@ -223,7 +224,7 @@ const Index = () => {
   }, {} as Record<string, Transaction[]>);
 
   const dayExpenses = (dateKey: string) =>
-    groupedTransactions[dateKey].reduce((sum, t) => sum + (t.type === "Gasto" ? Number(t.amount) : 0), 0);
+    groupedTransactions[dateKey].reduce((sum, t) => sum + (t.type === "Gasto" && !isCardPayment(t) ? Number(t.amount) : 0), 0);
 
   const sortedDateKeys = Object.keys(groupedTransactions).sort(
     (a, b) => new Date(b).getTime() - new Date(a).getTime()

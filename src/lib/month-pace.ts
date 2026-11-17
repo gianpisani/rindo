@@ -52,14 +52,16 @@ import {
   periodStartOf,
   shiftPeriod,
 } from "./period.ts";
+import { DEFAULT_TRANSIT_CATEGORIES, isCardPayment } from "./ledger.ts";
 
 export const PACE_LOOKBACK_MONTHS = 6;
-export const DEFAULT_PACE_TRANSIT = ["Reembolsos", "Conciliación"];
 
 /** Gasto neto por categoría y día de cada periodo: índice(periodo) → categoría → [0..días]. */
 function dailyByCategory(entries: PaceEntry[], transit: Set<string>, startDay: number) {
   const months = new Map<number, Map<string, number[]>>();
   for (const e of entries) {
+    // El pago de la tarjeta no es gasto: sus compras ya cuentan.
+    if (isCardPayment(e)) continue;
     const expense = e.type === "Gasto" && !transit.has(e.category_name);
     const refund =
       (e.type === "Ingreso" || e.type === "Reembolso") && !!e.reimbursement_for_category;
@@ -103,7 +105,7 @@ export function computeMonthPace(
 ): MonthPace {
   const today = options.today ?? new Date();
   const lookback = options.lookback ?? PACE_LOOKBACK_MONTHS;
-  const transit = new Set(options.transit ?? DEFAULT_PACE_TRANSIT);
+  const transit = new Set(options.transit ?? DEFAULT_TRANSIT_CATEGORIES);
   const startDay = options.startDay ?? 1;
   const start = periodStartOf(month, startDay);
   const days = daysInPeriod(start, startDay);

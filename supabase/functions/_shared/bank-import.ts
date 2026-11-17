@@ -1,6 +1,7 @@
 import { categorizeBankImport, type BankCategorizeItem } from './bank-categorize.ts'
 import { createClient, type SupabaseClient } from 'https://esm.sh/@supabase/supabase-js@2.39.3'
 import { sendBatchNotificationEmail } from './email-notification.ts'
+import { CARD_PAYMENT_CATEGORY, isCardPaymentText, lastFourIn, paymentCardFor } from './card-payment.ts'
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -131,15 +132,22 @@ export function convertDate(dateStr: string, fallbackDate: string): string {
 /**
  * Inserta un movimiento bancario como transacción 'Sin categoría', asociando la
  * tarjeta por sus últimos 4 dígitos. No categoriza: eso se hace en lote después.
+ * La excepción es el pago de una tarjeta, que entra ya como 'Pago de tarjeta' y
+ * vinculado a su tarjeta: devuelve `category` para que no se mande a categorizar.
  */
 export async function insertBankMovement(
   supabaseClient: Client,
   userId: string,
   m: { isoDate: string; description: string; type: string; amount: number; card?: string },
-): Promise<{ id: string | null; error: unknown }> {
+): Promise<{ id: string | null; error: unknown; category: string }> {
+  const lastFour = m.card ? m.card.replace(/\*/g, '') : null
+  const isCardPayment = isCardPaymentText(m.type, m.description)
+  const category = isCardPayment ? CARD_PAYMENT_CATEGORY : 'Sin categoría'
+
   let cardId: string | null = null
-  if (m.card) {
-    const lastFour = m.card.replace(/\*/g, '')
+  if (isCardPayment) {
+    cardId = await paymentCardFor(supabaseClient, userId, lastFour || lastFourIn(m.description))
+  } else if (lastFour) {
     const { data: card } = await supabaseClient
       .from('credit_cards')
       .select('id')
@@ -161,14 +169,14 @@ export async function insertBankMovement(
       bank_description: m.description,
       type: m.type,
       amount: m.amount,
-      category_name: 'Sin categoría',
+      category_name: category,
       card_id: cardId,
       installment_id: null,
       reimbursement_for_category: null,
     })
     .select('id')
     .single()
-  return { id: inserted?.id ?? null, error }
+  return { id: inserted?.id ?? null, error, category }
 }
 
 /** Manda el resumen de movimientos importados al email del usuario. Lanza si falla. */
@@ -295,7 +303,7 @@ export async function importBankMovements(params: {
       continue
     }
 
-    const { id: insertedId, error: insertError } = await insertBankMovement(supabaseClient, userId, {
+    const { id: insertedId, error: insertError, category } = await insertBankMovement(supabaseClient, userId, {
       isoDate, description, type, amount: absAmount, card: movement.card,
     })
 
@@ -304,7 +312,7 @@ export async function importBankMovements(params: {
     } else {
       imported++
       importedItems.push({ id: insertedId!, date: movement.date, description, amount: absAmount, type })
-      toAutoCategorize.push({ id: insertedId!, detail: description, type })
+      if (category !== CARD_PAYMENT_CATEGORY) toAutoCategorize.push({ id: insertedId!, detail: description, type })
     }
   }
 

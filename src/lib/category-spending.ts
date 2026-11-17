@@ -1,3 +1,5 @@
+import { isCardPayment } from "./ledger.ts";
+
 interface SpendingEntry {
   type: string;
   date: string;
@@ -8,12 +10,14 @@ interface SpendingEntry {
 
 /** Reimbursements belong to their tagged category and the month received.
  * They reduce spending but never increase the number of purchases.
+ * Card payments are not spending (their purchases already are): skipped.
  */
 export function summarizeCategoryPeriod<T extends SpendingEntry>(entries: T[], start: Date, end: Date) {
   const result = new Map<string, { amount: number; reimbursedAmount: number; effectiveAmount: number; count: number; transactions: T[] }>();
   for (const entry of entries) {
     const date = new Date(entry.date);
     if (!Number.isFinite(date.getTime()) || date < start || date > end) continue;
+    if (isCardPayment(entry)) continue;
     const expense = entry.type === 'Gasto';
     const reimbursement = ['Ingreso', 'Reembolso'].includes(entry.type) && entry.reimbursement_for_category;
     if (!expense && !reimbursement) continue;
