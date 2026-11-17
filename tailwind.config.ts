@@ -130,81 +130,6 @@ export default {
   			md: 'calc(var(--radius) - 2px)',
   			sm: 'calc(var(--radius) - 4px)'
   		},
-  		keyframes: {
-  			'accordion-down': {
-  				from: {
-  					height: '0'
-  				},
-  				to: {
-  					height: 'var(--radix-accordion-content-height)'
-  				}
-  			},
-  			'accordion-up': {
-  				from: {
-  					height: 'var(--radix-accordion-content-height)'
-  				},
-  				to: {
-  					height: '0'
-  				}
-  			},
-  			'collapsible-down': {
-  				from: {
-  					height: '0'
-  				},
-  				to: {
-  					height: 'var(--radix-collapsible-content-height)'
-  				}
-  			},
-  			'collapsible-up': {
-  				from: {
-  					height: 'var(--radix-collapsible-content-height)'
-  				},
-  				to: {
-  					height: '0'
-  				}
-  			},
-  			shimmer: {
-  				'0%': {
-  					transform: 'translateX(-100%)'
-  				},
-  				'100%': {
-  					transform: 'translateX(100%)'
-  				}
-  			},
-  			breathe: {
-  				'0%, 100%': {
-  					transform: 'scale(1)',
-  					opacity: '1'
-  				},
-  				'50%': {
-  					transform: 'scale(1.08)',
-  					opacity: '0.85'
-  				}
-  			},
-  			float: {
-  				'0%, 100%': {
-  					transform: 'translateY(0)'
-  				},
-  				'50%': {
-  					transform: 'translateY(-8px)'
-  				}
-  			}
-  		},
-  		animation: {
-  			'accordion-down': 'accordion-down 0.2s ease-out',
-  			'accordion-up': 'accordion-up 0.2s ease-out',
-  			'collapsible-down': 'collapsible-down 0.2s ease-out',
-  			'collapsible-up': 'collapsible-up 0.2s ease-out',
-  			shimmer: 'shimmer 2s infinite',
-  			breathe: 'breathe 2s ease-in-out infinite',
-  			float: 'float 3s ease-in-out infinite'
-  		},
-  		spacing: {
-  			'safe-top': 'env(safe-area-inset-top)',
-  			'safe-bottom': 'env(safe-area-inset-bottom)',
-  			'safe-left': 'env(safe-area-inset-left)',
-  			'safe-right': 'env(safe-area-inset-right)'
-  		}
   	}
   },
   plugins: [
@@ -213,32 +138,6 @@ export default {
       const newUtilities = {
         '.pb-safe': {
           paddingBottom: 'env(safe-area-inset-bottom)',
-        },
-        '.pt-safe': {
-          paddingTop: 'env(safe-area-inset-top)',
-        },
-        '.pl-safe': {
-          paddingLeft: 'env(safe-area-inset-left)',
-        },
-        '.pr-safe': {
-          paddingRight: 'env(safe-area-inset-right)',
-        },
-        '.mb-safe': {
-          marginBottom: 'env(safe-area-inset-bottom)',
-        },
-        '.mt-safe': {
-          marginTop: 'env(safe-area-inset-top)',
-        },
-        /* Fila que se arrastra de lado sin mostrar la barra de scroll. */
-        '.no-scrollbar': {
-          '-ms-overflow-style': 'none',
-          'scrollbar-width': 'none',
-          '&::-webkit-scrollbar': { display: 'none' },
-        },
-        '.scrollbar-hide': {
-          '-ms-overflow-style': 'none',
-          'scrollbar-width': 'none',
-          '&::-webkit-scrollbar': { display: 'none' },
         },
       }
       addUtilities(newUtilities)
