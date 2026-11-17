@@ -209,32 +209,9 @@
 }
 .whisper-options .whisper-cat-textarea:focus-visible { outline: 2px solid var(--whisper-accent); outline-offset: 4px; }
 
-/* Composer de video (Aprendizaje): el link es largo, así que la línea grande
-   baja de tamaño; el VideoPreview de siempre vive adentro con los tonos
-   oscuros del composer, aunque la app esté en claro. */
-.whisper-video-input { font-size: clamp(17px, 3vw, 22px); font-weight: 400; letter-spacing: -.01em; }
-.whisper-video-preview {
-  width: min(100%, 420px); margin: 0 auto;
-  --border: rgb(255 255 255 / .1); --muted: rgb(255 255 255 / .08); --muted-foreground: #a3a3a3;
-  --foreground: #fafafa; --destructive: 0.68 0.21 18;
-}
-.whisper-video-cta-icon:empty { display: none; }
-.whisper-video-cta-icon { display: inline-flex; }
-.whisper-video-cta-icon svg { margin: 0; }
-
 /* Composer de inversiones: los montos dentro de los textos chicos. */
 .whisper-inv-amount { font-variant-numeric: tabular-nums; color: #e5e5e5; }
 
-/* Composers de Clases: el alumno existente es una pastilla con su × */
-.whisper-class-student {
-  display: inline-flex; align-items: center; gap: 7px; min-height: 32px; padding: 5px 5px 5px 11px;
-  border: 1px solid rgb(255 255 255 / .07); border-radius: 99px; background: rgb(255 255 255 / .025);
-  color: rgb(255 255 255 / .72); font-size: 11px; line-height: 1.2;
-}
-.whisper-class-avatar { width: 6px; height: 6px; border-radius: 50%; flex-shrink: 0; }
-.whisper-class-student button { display: grid; place-items: center; width: 20px; height: 20px; border-radius: 50%; color: rgb(255 255 255 / .4); transition: color .2s, background .2s; }
-.whisper-class-student button:hover { color: #fca5a5; background: rgb(255 255 255 / .08); }
-.whisper-options label.whisper-class-wide { grid-column: 1 / -1; }
 .whisper-options .whisper-cat-textarea { box-sizing: border-box; }
 
 /* Editor de movimientos (Transactions): los paneles de deudas y gasto

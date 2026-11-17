@@ -40,7 +40,6 @@ import { usePrivacyMode } from "@/hooks/usePrivacyMode";
 import { MonthPulse, MonthPulseCard } from "@/components/MonthPulse";
 import { computeMonthPace } from "@/lib/month-pace";
 import { HomeNotices, type HomeNotice } from "@/components/HomeNotices";
-import { useLearningNotice } from "@/hooks/useLearningNotice";
 import { useUserProfile } from "@/hooks/useUserProfile";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import { getCategoryIcon } from "@/components/TransactionsTable";
@@ -200,7 +199,6 @@ const Index = () => {
 
   // ─── Avisos ───────────────────────────────────────────
   // Viven en la fila del saludo: ver HomeNotices para el por qué.
-  const learningNotice = useLearningNotice();
   const notices = useMemo(() => {
     const list: HomeNotice[] = [];
     if (sweepAlert) {
@@ -215,9 +213,8 @@ const Index = () => {
         onClick: () => navigate("/budget"),
       });
     }
-    if (learningNotice) list.push(learningNotice);
     return list;
-  }, [sweepAlert, learningNotice, lastMonthName, navigate]);
+  }, [sweepAlert, lastMonthName, navigate]);
 
   function getCatEmoji(categoryName: string) {
     const cat = categories.find((c) => c.name === categoryName);

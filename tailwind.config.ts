@@ -1,5 +1,7 @@
 import type { Config } from "tailwindcss";
 import defaultColors from "tailwindcss/colors";
+import type { PluginAPI } from "tailwindcss/types/config";
+import tailwindcssAnimate from "tailwindcss-animate";
 
 export default {
   darkMode: ["class"],
@@ -206,8 +208,8 @@ export default {
   	}
   },
   plugins: [
-    require("tailwindcss-animate"),
-    function({ addUtilities }: any) {
+    tailwindcssAnimate,
+    function({ addUtilities }: PluginAPI) {
       const newUtilities = {
         '.pb-safe': {
           paddingBottom: 'env(safe-area-inset-bottom)',

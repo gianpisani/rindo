@@ -8,6 +8,8 @@ import {
   flexRender,
   SortingState,
   ColumnDef,
+  Column,
+  Row,
   RowSelectionState,
 } from "@tanstack/react-table";
 import { Button } from "./ui/button";
@@ -38,7 +40,6 @@ import {
   TrendingUp,
   TrendingDown,
   PiggyBank,
-  Search,
   X,
   Copy,
   Check,
@@ -55,6 +56,8 @@ import {
   Plus,
   ArrowDownToLine,
   LineChart,
+  ChevronsLeft,
+  ChevronsRight,
 } from "lucide-react";
 import { Transaction } from "@/hooks/useTransactions";
 import {
@@ -72,17 +75,15 @@ import { useCreditCards } from "@/hooks/useCreditCards";
 import { format, subDays } from "date-fns";
 import { es } from "date-fns/locale";
 import { cn } from "@/lib/utils";
-import { useSearchParams } from "react-router-dom";
 import { usePrivacyMode } from "@/hooks/usePrivacyMode";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { AnalyzingBadge } from "./AnalyzingBadge";
 import { InlineDateTimePicker } from "./ui/date-time-picker";
-import { ChevronDoubleLeftIcon, ChevronDoubleRightIcon } from "@heroicons/react/24/outline";
 import { useCategories } from "@/hooks/useCategories";
 import { CategoryComposer } from "./CategoryComposer";
 import { Popover, PopoverContent, PopoverTrigger } from "./ui/popover";
 import { Command, CommandInput, CommandList, CommandEmpty, CommandGroup, CommandItem } from "./ui/command";
-import { DateRangeFilter, DateRangeValue } from "./DateRangeFilter";
+import type { DateRangeValue } from "./DateRangeFilter";
 
 // ── Category icon map ──────────────────────────────────────────────────────
 
@@ -217,7 +218,7 @@ const typeIcons: Record<TransactionType, typeof TrendingUp> = {
   Reembolso: ArrowLeftRight,
 };
 
-const typeAmountColors: Record<TransactionType, string> = {
+export const typeAmountColors: Record<TransactionType, string> = {
   Ingreso: "text-emerald-500",
   Gasto: "text-rose-500",
   Inversión: "text-blue-500",
@@ -226,8 +227,11 @@ const typeAmountColors: Record<TransactionType, string> = {
   Reembolso: "text-amber-500",
 };
 
-// Signo contable de cada tipo: lo que sale de la liquidez se ve en negativo.
-const typeSign = displaySign;
+const formatCLP = (amount: number) =>
+  new Intl.NumberFormat("es-CL", { style: "currency", currency: "CLP", minimumFractionDigits: 0 }).format(amount);
+
+const signColor = (amount: number) =>
+  amount > 0 ? "text-emerald-500" : amount < 0 ? "text-rose-500" : "";
 
 // Formato para NumberFlow en las stats del resumen (dígitos animados)
 const SIGNED_CLP: Format = {
@@ -239,15 +243,12 @@ const SIGNED_CLP: Format = {
 
 // ── Editable cell components ───────────────────────────────────────────────
 
-interface EditableCellProps {
+function EditableTextCell({ value, onSave, className, placeholder }: {
   value: string;
   onSave: (value: string) => void;
-  type?: "text" | "number";
   className?: string;
   placeholder?: string;
-}
-
-function EditableTextCell({ value, onSave, className, placeholder }: EditableCellProps) {
+}) {
   const [isEditing, setIsEditing] = useState(false);
   const [editValue, setEditValue] = useState(value);
 
@@ -315,9 +316,6 @@ function EditableAmountCell({
     setEditValue(value.toString());
   }, [value]);
 
-  const formatCurrency = (amount: number) =>
-    new Intl.NumberFormat("es-CL", { style: "currency", currency: "CLP", minimumFractionDigits: 0 }).format(amount);
-
   // El signo sobrevive al tipeo solo donde tiene sentido; el resto son dígitos.
   const sanitize = (raw: string) => {
     const isNegative = allowNegative && /^\s*[-−]/.test(raw);
@@ -366,11 +364,15 @@ function EditableAmountCell({
         className
       )}
     >
-      <span>{formatCurrency(value)}</span>
+      <span>{formatCLP(value)}</span>
       <Pencil className="h-3 w-3 opacity-0 group-hover:opacity-50 transition-opacity flex-shrink-0" />
     </div>
   );
 }
+
+/** Clases del botón que abre un editor inline de celda. */
+const CELL_TRIGGER =
+  "flex items-center gap-1 px-2 py-1 rounded-md transition-all hover:bg-muted/80 group cursor-pointer focus:outline-none focus-visible:bg-muted/80";
 
 interface SelectableCellProps<T extends string> {
   value: T;
@@ -386,14 +388,7 @@ function SelectableCell<T extends string>({ value, options, onSave, renderValue,
   return (
     <DropdownMenu open={open} onOpenChange={setOpen}>
       <DropdownMenuTrigger asChild>
-        <button
-          className={cn(
-            "flex items-center gap-1 px-2 py-1 rounded-md transition-all",
-            "hover:bg-muted/80 group cursor-pointer",
-            "focus:outline-none focus-visible:bg-muted/80",
-            className
-          )}
-        >
+        <button className={cn(CELL_TRIGGER, className)}>
           {renderValue ? renderValue(value) : value}
           <ChevronDown className="h-3 w-3 opacity-0 group-hover:opacity-50 transition-opacity" />
         </button>
@@ -412,6 +407,22 @@ function SelectableCell<T extends string>({ value, options, onSave, renderValue,
         ))}
       </DropdownMenuContent>
     </DropdownMenu>
+  );
+}
+
+/** Encabezado que ordena la columna al hacer click. */
+function SortHeader({ column, label, alignEnd }: { column: Column<Transaction>; label: string; alignEnd?: boolean }) {
+  const sorted = column.getIsSorted();
+  return (
+    <div
+      className={cn("flex items-center cursor-pointer hover:bg-muted rounded px-2 py-1", alignEnd && "justify-end ml-auto")}
+      onClick={() => column.toggleSorting(sorted === "asc")}
+    >
+      <span className="text-xs font-semibold">{label}</span>
+      {sorted === "asc" ? <ChevronUp className="ml-2 h-4 w-4" /> :
+        sorted === "desc" ? <ChevronDown className="ml-2 h-4 w-4" /> :
+          <ChevronsUpDown className="ml-2 h-4 w-4 opacity-50" />}
+    </div>
   );
 }
 
@@ -456,14 +467,14 @@ interface CategoryComboboxProps {
   value: string;
   options: CategoryComboboxOption[];
   onSave: (value: string) => void;
-  renderValue: (value: string) => React.ReactNode;
-  className?: string;
+  /** El botón que abre la lista. */
+  trigger: React.ReactNode;
   placeholder?: string;
   /** Si se entrega, muestra la acción de crear categoría con el texto buscado. */
   onCreate?: (name: string) => void;
 }
 
-function CategoryCombobox({ value, options, onSave, renderValue, className, placeholder = "Buscar categoría...", onCreate }: CategoryComboboxProps) {
+function CategoryCombobox({ value, options, onSave, trigger, placeholder = "Buscar categoría...", onCreate }: CategoryComboboxProps) {
   const [open, setOpen] = useState(false);
   const [search, setSearch] = useState("");
 
@@ -475,19 +486,7 @@ function CategoryCombobox({ value, options, onSave, renderValue, className, plac
         if (!next) setSearch("");
       }}
     >
-      <PopoverTrigger asChild>
-        <button
-          className={cn(
-            "flex items-center gap-1 px-2 py-1 rounded-md transition-all",
-            "hover:bg-muted/80 group cursor-pointer",
-            "focus:outline-none focus-visible:bg-muted/80",
-            className
-          )}
-        >
-          {renderValue(value)}
-          <ChevronDown className="h-3 w-3 opacity-0 group-hover:opacity-50 transition-opacity" />
-        </button>
-      </PopoverTrigger>
+      <PopoverTrigger asChild>{trigger}</PopoverTrigger>
       <PopoverContent className="w-[220px] p-0 border-0 shadow-lg shadow-black/10 dark:shadow-black/30 rounded-lg overflow-hidden" align="start" side="bottom" sideOffset={4}>
         <Command className="rounded-lg">
           <CommandInput
@@ -553,76 +552,6 @@ function CategoryCombobox({ value, options, onSave, renderValue, className, plac
   );
 }
 
-// ── Reimbursement Pill (inline clickable badge with own popover) ─────────
-
-interface ReimbursementPillProps {
-  value: string;
-  options: CategoryComboboxOption[];
-  onSave: (value: string) => void;
-}
-
-function ReimbursementPill({ value, options, onSave }: ReimbursementPillProps) {
-  const [open, setOpen] = useState(false);
-
-  return (
-    <Popover open={open} onOpenChange={setOpen}>
-      <PopoverTrigger asChild>
-        <button
-          className={cn(
-            "inline-flex items-center gap-1 rounded-full px-1.5 py-0.5 text-[10px] leading-none flex-shrink-0",
-            "cursor-pointer transition-all hover:brightness-125",
-            "focus:outline-none",
-            value
-              ? "bg-emerald-500/15 text-emerald-400 font-medium"
-              : "bg-white/5 text-muted-foreground/40 italic hover:text-muted-foreground/60"
-          )}
-          onClick={(e) => e.stopPropagation()}
-        >
-          <Undo2 className="h-2 w-2 flex-shrink-0" />
-          {value || "vincular"}
-        </button>
-      </PopoverTrigger>
-      <PopoverContent className="w-[220px] p-0 border-0 shadow-lg shadow-black/10 dark:shadow-black/30 rounded-lg overflow-hidden" align="start" side="bottom" sideOffset={4}>
-        <Command className="rounded-lg">
-          <CommandInput placeholder="Buscar gasto..." className="h-8 text-xs border-0 ring-0 focus:ring-0" />
-          <CommandList>
-            <CommandEmpty className="py-3 text-center text-xs text-muted-foreground">
-              Sin resultados
-            </CommandEmpty>
-            <CommandGroup>
-              {options.map((option) => (
-                <CommandItem
-                  key={option.value}
-                  value={option.label}
-                  onSelect={() => {
-                    if (option.value !== value) onSave(option.value);
-                    setOpen(false);
-                  }}
-                  className="flex items-center gap-2 cursor-pointer"
-                >
-                  {option.emoji && (
-                    <span className="text-base leading-none flex-shrink-0">{option.emoji}</span>
-                  )}
-                  {option.color && (
-                    <div
-                      className="w-2 h-2 rounded-full flex-shrink-0"
-                      style={{ backgroundColor: option.color }}
-                    />
-                  )}
-                  <span className="truncate text-sm">{option.label}</span>
-                  {option.value === value && (
-                    <Check className="h-3.5 w-3.5 ml-auto flex-shrink-0 text-primary" />
-                  )}
-                </CommandItem>
-              ))}
-            </CommandGroup>
-          </CommandList>
-        </Command>
-      </PopoverContent>
-    </Popover>
-  );
-}
-
 // ── Props ──────────────────────────────────────────────────────────────────
 
 interface TransactionsTableProps {
@@ -634,22 +563,19 @@ interface TransactionsTableProps {
   onUpdateMultiple: (ids: string[], updates: Partial<Pick<Transaction, "category_name" | "type">>) => Promise<void>;
   onDuplicate: (ids: string[]) => Promise<void>;
   categories: Array<{ id?: string; name: string; type: string; color?: string | null; icon?: string | null }>;
-  isUpdating?: boolean;
-  // Controlled filters (lifted to parent)
-  searchValue?: string;
-  onSearchChange?: (v: string) => void;
-  typeFilter?: string;
-  onTypeFilterChange?: (v: string) => void;
+  // Los filtros viven en la página (los edita TransactionsToolbar).
+  searchValue: string;
+  onSearchChange: (v: string) => void;
+  typeFilter: string;
+  onTypeFilterChange: (v: string) => void;
   highlightId?: string | null;
-  categoryFilter?: string;
-  onCategoryFilterChange?: (v: string) => void;
-  cardFilter?: string;
-  onCardFilterChange?: (v: string) => void;
-  dateRange?: DateRangeValue;
-  onDateRangeChange?: (v: DateRangeValue) => void;
+  categoryFilter: string;
+  onCategoryFilterChange: (v: string) => void;
+  cardFilter: string;
+  onCardFilterChange: (v: string) => void;
+  dateRange: DateRangeValue;
+  onDateRangeChange: (v: DateRangeValue) => void;
 }
-
-const EMPTY_DATE_RANGE: DateRangeValue = {};
 
 // ── Main component ─────────────────────────────────────────────────────────
 
@@ -662,32 +588,23 @@ export function TransactionsTable({
   onUpdateMultiple,
   onDuplicate,
   categories,
-  isUpdating = false,
-  searchValue: externalSearch,
+  searchValue,
   onSearchChange,
-  typeFilter: externalTypeFilter,
+  typeFilter,
   onTypeFilterChange,
   highlightId,
-  categoryFilter: externalCategoryFilter,
+  categoryFilter,
   onCategoryFilterChange,
-  cardFilter: externalCardFilter,
+  cardFilter,
   onCardFilterChange,
-  dateRange: externalDateRange,
+  dateRange,
   onDateRangeChange,
 }: TransactionsTableProps) {
-  const [searchParams] = useSearchParams();
   const [sorting, setSorting] = useState<SortingState>([{ id: "date", desc: true }]);
-  const [internalSearch, setInternalSearch] = useState(searchParams.get("search") || "");
-  const [internalTypeFilter, setInternalTypeFilter] = useState<string>("all");
-  const [internalCategoryFilter, setInternalCategoryFilter] = useState<string>("all");
-  const [internalCardFilter, setInternalCardFilter] = useState<string>("all");
-  const [internalDateRange, setInternalDateRange] = useState<DateRangeValue>({});
   const [rowSelection, setRowSelection] = useState<RowSelectionState>({});
   const [panelExpanded, setPanelExpanded] = useState(false);
   const [panelY, setPanelY] = useState<number | null>(null);
-  const panelDragRef = React.useRef<{ startY: number; startTop: number } | null>(null);
-  const rowDragRef = React.useRef<{ active: boolean; startIdx: number; currentIdx: number; initialSelection: RowSelectionState } | null>(null);
-  const tbodyRef = React.useRef<HTMLTableSectionElement>(null);
+  const tbodyRef = useRef<HTMLTableSectionElement>(null);
   const { isPrivacyMode } = usePrivacyMode();
   const { creditCards, isLoading: isLoadingCards } = useCreditCards();
   const { addCategory } = useCategories();
@@ -714,33 +631,16 @@ export function TransactionsTable({
     if (!t.isPending) onEdit(t);
   };
 
-  const isControlled = externalSearch !== undefined;
-  const globalFilter = isControlled ? externalSearch! : internalSearch;
-  const setGlobalFilter = isControlled ? onSearchChange! : setInternalSearch;
-  const typeFilter = isControlled ? externalTypeFilter! : internalTypeFilter;
-  const setTypeFilter = isControlled ? onTypeFilterChange! : setInternalTypeFilter;
-  const categoryFilter = isControlled ? externalCategoryFilter! : internalCategoryFilter;
-  const setCategoryFilter = isControlled ? onCategoryFilterChange! : setInternalCategoryFilter;
-  const cardFilter = isControlled ? (externalCardFilter ?? "all") : internalCardFilter;
-  const setCardFilter = isControlled ? (onCardFilterChange ?? setInternalCardFilter) : setInternalCardFilter;
-  const dateRange = isControlled ? (externalDateRange ?? EMPTY_DATE_RANGE) : internalDateRange;
-  const setDateRange = isControlled ? (onDateRangeChange ?? setInternalDateRange) : setInternalDateRange;
-
   const hasActiveFilters =
-    Boolean(globalFilter) || typeFilter !== "all" || categoryFilter !== "all" || cardFilter !== "all" ||
+    Boolean(searchValue) || typeFilter !== "all" || categoryFilter !== "all" || cardFilter !== "all" ||
     Boolean(dateRange.from || dateRange.to);
   const clearFilters = () => {
-    setGlobalFilter("");
-    setTypeFilter("all");
-    setCategoryFilter("all");
-    setCardFilter("all");
-    setDateRange({});
+    onSearchChange("");
+    onTypeFilterChange("all");
+    onCategoryFilterChange("all");
+    onCardFilterChange("all");
+    onDateRangeChange({});
   };
-
-  useEffect(() => {
-    const searchFromUrl = searchParams.get("search");
-    if (searchFromUrl && !isControlled) setInternalSearch(searchFromUrl);
-  }, [searchParams]);
 
   useEffect(() => {
     setRowSelection({});
@@ -757,12 +657,6 @@ export function TransactionsTable({
     }, 150);
     return () => clearTimeout(timer);
   }, [highlightId]);
-
-  const formatCurrency = (amount: number) =>
-    new Intl.NumberFormat("es-CL", { style: "currency", currency: "CLP", minimumFractionDigits: 0 }).format(amount);
-
-  const signColor = (amount: number) =>
-    amount > 0 ? "text-emerald-500" : amount < 0 ? "text-rose-500" : "";
 
   const handleInlineUpdate = useCallback(async (id: string, field: keyof Transaction, value: unknown) => {
     if (id.startsWith("pending-")) return;
@@ -806,17 +700,7 @@ export function TransactionsTable({
       {
         accessorKey: "date",
         size: 120, minSize: 120, maxSize: 120,
-        header: ({ column }) => (
-          <div
-            className="flex items-center cursor-pointer hover:bg-muted rounded px-2 py-1"
-            onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
-          >
-            <span className="text-xs font-semibold">Fecha</span>
-            {column.getIsSorted() === "asc" ? <ChevronUp className="ml-2 h-4 w-4" /> :
-              column.getIsSorted() === "desc" ? <ChevronDown className="ml-2 h-4 w-4" /> :
-                <ChevronsUpDown className="ml-2 h-4 w-4 opacity-50" />}
-          </div>
-        ),
+        header: ({ column }) => <SortHeader column={column} label="Fecha" />,
         cell: ({ row }) => {
           const date = new Date(row.original.date);
           return (
@@ -890,17 +774,7 @@ export function TransactionsTable({
       {
         accessorKey: "category_name",
         size: 200, minSize: 170, maxSize: 240,
-        header: ({ column }) => (
-          <div
-            className="flex items-center cursor-pointer hover:bg-muted rounded px-2 py-1"
-            onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
-          >
-            <span className="text-xs font-semibold">Categoría</span>
-            {column.getIsSorted() === "asc" ? <ChevronUp className="ml-2 h-4 w-4" /> :
-              column.getIsSorted() === "desc" ? <ChevronDown className="ml-2 h-4 w-4" /> :
-                <ChevronsUpDown className="ml-2 h-4 w-4 opacity-50" />}
-          </div>
-        ),
+        header: ({ column }) => <SortHeader column={column} label="Categoría" />,
         cell: ({ row }) => {
           const categoryName = row.original.category_name;
           const type = row.original.type;
@@ -910,68 +784,75 @@ export function TransactionsTable({
 
           if (row.original.isPending || categoryName === "⚡ Analizando...") return <AnalyzingBadge saving={row.original.isPending} />;
 
-          const catData = categories.find(c => c.name === categoryName);
-          const dotColor = catData?.color || null;
-          const filteredCats = categories.filter(c => c.type === type);
-          const expenseCategories = categories.filter(c => c.type === "Gasto");
-
-          const reimbursementOptions = isReimbursement ? [
-            { value: "", label: "Sin vincular", emoji: "🔗" },
-            ...expenseCategories.map(c => ({
+          const dotColor = categories.find(c => c.name === categoryName)?.color;
+          const optionsOfType = (t: string) =>
+            categories.filter(c => c.type === t).map(c => ({
               value: c.name,
               label: c.name,
               emoji: c.icon || getCategoryIcon(c.name),
               color: c.color,
-            })),
-          ] : [];
+            }));
 
           return (
             <div className={cn("flex items-center gap-1 overflow-hidden", isPrivacyMode && "privacy-blur")}>
               <CategoryCombobox
                 value={categoryName}
-                options={filteredCats.map(c => ({
-                  value: c.name,
-                  label: c.name,
-                  emoji: c.icon || getCategoryIcon(c.name),
-                  color: c.color,
-                }))}
+                options={optionsOfType(type)}
                 onSave={(newCategory) => handleInlineUpdate(row.original.id, "category_name", newCategory)}
                 onCreate={(name) =>
                   setCategoryDraft({ transactionId: row.original.id, type, name })
                 }
-                renderValue={(val) => (
-                  <div className="flex items-center gap-1.5 min-w-0">
-                    {dotColor && (
-                      <div
-                        className="w-1.5 h-1.5 rounded-full flex-shrink-0"
-                        style={{ backgroundColor: dotColor }}
-                      />
-                    )}
-                    <span
-                      className={cn(
-                        "font-medium text-sm truncate",
-                        isMissing && "text-amber-500"
+                trigger={
+                  <button className={cn(CELL_TRIGGER, "max-w-full overflow-hidden")}>
+                    <div className="flex items-center gap-1.5 min-w-0">
+                      {dotColor && (
+                        <div
+                          className="w-1.5 h-1.5 rounded-full flex-shrink-0"
+                          style={{ backgroundColor: dotColor }}
+                        />
                       )}
-                      title={val}
-                    >
-                      {val}
-                    </span>
-                  </div>
-                )}
-                className="max-w-full overflow-hidden"
+                      <span
+                        className={cn(
+                          "font-medium text-sm truncate",
+                          isMissing && "text-amber-500"
+                        )}
+                        title={categoryName}
+                      >
+                        {categoryName}
+                      </span>
+                    </div>
+                    <ChevronDown className="h-3 w-3 opacity-0 group-hover:opacity-50 transition-opacity" />
+                  </button>
+                }
               />
-              {/* Reimbursement linked category — compact inline pill with its own popover */}
+              {/* Reembolso: a qué categoría de gasto devuelve, en una píldora con su propio popover */}
               {isReimbursement && (
-                <ReimbursementPill
+                <CategoryCombobox
                   value={linkedCategory || ""}
-                  options={reimbursementOptions}
+                  options={[{ value: "", label: "Sin vincular", emoji: "🔗" }, ...optionsOfType("Gasto")]}
                   onSave={(val) => handleInlineUpdate(row.original.id, "reimbursement_for_category", val || null)}
+                  placeholder="Buscar gasto..."
+                  trigger={
+                    <button
+                      className={cn(
+                        "inline-flex items-center gap-1 rounded-full px-1.5 py-0.5 text-[10px] leading-none flex-shrink-0",
+                        "cursor-pointer transition-all hover:brightness-125",
+                        "focus:outline-none",
+                        linkedCategory
+                          ? "bg-emerald-500/15 text-emerald-400 font-medium"
+                          : "bg-white/5 text-muted-foreground/40 italic hover:text-muted-foreground/60"
+                      )}
+                      onClick={(e) => e.stopPropagation()}
+                    >
+                      <Undo2 className="h-2 w-2 flex-shrink-0" />
+                      {linkedCategory || "vincular"}
+                    </button>
+                  }
                 />
               )}
             </div>
           );
         },
-        filterFn: (row, id, value) => value === "all" || row.getValue(id) === value,
       },
 
       // ── Tarjeta ──────────────────────────────────────────────────────────
@@ -990,15 +871,14 @@ export function TransactionsTable({
           if (INVESTMENT_TYPES.includes(type)) return <span className="text-xs text-muted-foreground/50">—</span>;
 
           const selectedCard = creditCards.find(c => c.id === cardId);
-          const cardOptions = [
-            { value: "", label: "Cuenta", color: null },
-            ...creditCards.map(c => ({ value: c.id, label: c.name, color: c.color })),
-          ];
 
           return (
             <SelectableCell
               value={cardId || ""}
-              options={cardOptions.map(c => ({ value: c.value, label: c.label }))}
+              options={[
+                { value: "", label: "Cuenta" },
+                ...creditCards.map(c => ({ value: c.id, label: c.name })),
+              ]}
               onSave={(newCardId) => handleInlineUpdate(row.original.id, "card_id", newCardId || null)}
               renderValue={() => {
                 if (!selectedCard) {
@@ -1031,21 +911,10 @@ export function TransactionsTable({
       {
         accessorKey: "amount",
         size: 170, minSize: 150, maxSize: 180,
-        header: ({ column }) => (
-          <div
-            className="flex items-center justify-end cursor-pointer hover:bg-muted rounded px-2 py-1 ml-auto"
-            onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
-          >
-            <span className="text-xs font-semibold">Monto</span>
-            {column.getIsSorted() === "asc" ? <ChevronUp className="ml-2 h-4 w-4" /> :
-              column.getIsSorted() === "desc" ? <ChevronDown className="ml-2 h-4 w-4" /> :
-                <ChevronsUpDown className="ml-2 h-4 w-4 opacity-50" />}
-          </div>
-        ),
+        header: ({ column }) => <SortHeader column={column} label="Monto" alignEnd />,
         cell: ({ row }) => {
           const amount = parseFloat(row.getValue("amount"));
           const type = row.original.type;
-          const TypeIcon = typeIcons[type];
           const amountColor = typeAmountColors[type];
 
           return (
@@ -1121,19 +990,13 @@ export function TransactionsTable({
 
   // ── Filtering ────────────────────────────────────────────────────────────
 
-  const fuzzyResults = useFuzzySearch(transactions, globalFilter);
+  const fuzzyResults = useFuzzySearch(transactions, searchValue);
 
   const filteredData = useMemo(() => {
-    let data = globalFilter ? fuzzyResults : transactions;
+    let data = searchValue ? fuzzyResults : transactions;
     if (typeFilter !== "all") data = data.filter(t => t.type === typeFilter);
     if (categoryFilter !== "all") data = data.filter(t => t.category_name === categoryFilter);
-    if (cardFilter !== "all") {
-      if (cardFilter === "none") {
-        data = data.filter(t => !t.card_id);
-      } else {
-        data = data.filter(t => t.card_id === cardFilter);
-      }
-    }
+    if (cardFilter !== "all") data = data.filter(t => (cardFilter === "none" ? !t.card_id : t.card_id === cardFilter));
     if (dateRange.from || dateRange.to) {
       data = data.filter(t => {
         const date = new Date(t.date);
@@ -1143,7 +1006,7 @@ export function TransactionsTable({
       });
     }
     return data;
-  }, [fuzzyResults, transactions, globalFilter, typeFilter, categoryFilter, cardFilter, dateRange]);
+  }, [fuzzyResults, transactions, searchValue, typeFilter, categoryFilter, cardFilter, dateRange]);
 
   const table = useReactTable({
     data: filteredData,
@@ -1166,56 +1029,33 @@ export function TransactionsTable({
   const hasSelection = selectedIds.length > 0;
 
   // ── Drag-to-select (Excel-like) ─────────────────────────────────────────
-  const getRowIndexFromEvent = useCallback((e: MouseEvent | React.MouseEvent): number | null => {
-    const tbody = tbodyRef.current;
-    if (!tbody) return null;
-    // Find the <tr> with data-row-index under the cursor
-    const el = document.elementFromPoint(e.clientX, e.clientY);
-    const tr = el?.closest("tr[data-row-index]");
-    if (!tr) return null;
-    const idx = parseInt(tr.getAttribute("data-row-index") || "", 10);
-    return isNaN(idx) ? null : idx;
-  }, []);
-
-  const handleRowMouseDown = useCallback((e: React.MouseEvent, rowIndex: number) => {
+  const handleRowMouseDown = (e: React.MouseEvent, startIdx: number) => {
     // Only left-click, ignore interactive elements
     if (e.button !== 0) return;
     const target = e.target as HTMLElement;
     if (target.closest('button, input, [role="menuitem"], [role="combobox"], [role="listbox"], [data-radix-collection-item], [type="checkbox"]')) return;
 
-    rowDragRef.current = {
-      active: false,
-      startIdx: rowIndex,
-      currentIdx: rowIndex,
-      initialSelection: { ...rowSelection },
-    };
-
+    const initialSelection = { ...rowSelection };
     const allRows = table.getRowModel().rows;
+    let currentIdx = startIdx;
 
     const handleMove = (ev: MouseEvent) => {
-      if (!rowDragRef.current) return;
-      const idx = getRowIndexFromEvent(ev);
-      if (idx === null || idx === rowDragRef.current.currentIdx) return;
-
-      // Mark as actively dragging (past threshold of 1 row)
-      if (!rowDragRef.current.active && idx !== rowDragRef.current.startIdx) {
-        rowDragRef.current.active = true;
-      }
-
-      rowDragRef.current.currentIdx = idx;
-      const start = Math.min(rowDragRef.current.startIdx, idx);
-      const end = Math.max(rowDragRef.current.startIdx, idx);
+      if (!tbodyRef.current) return;
+      // La fila con data-row-index bajo el cursor
+      const tr = document.elementFromPoint(ev.clientX, ev.clientY)?.closest("tr[data-row-index]");
+      const idx = tr ? parseInt(tr.getAttribute("data-row-index") || "", 10) : NaN;
+      if (isNaN(idx) || idx === currentIdx) return;
+      currentIdx = idx;
 
       // Build selection: keep initial + add drag range
-      const newSelection: RowSelectionState = { ...rowDragRef.current.initialSelection };
-      for (let i = start; i <= end; i++) {
+      const newSelection: RowSelectionState = { ...initialSelection };
+      for (let i = Math.min(startIdx, idx); i <= Math.max(startIdx, idx); i++) {
         if (allRows[i]) newSelection[allRows[i].id] = true;
       }
       setRowSelection(newSelection);
     };
 
     const handleUp = () => {
-      rowDragRef.current = null;
       window.removeEventListener("mousemove", handleMove);
       window.removeEventListener("mouseup", handleUp);
       // Re-enable text selection
@@ -1226,21 +1066,17 @@ export function TransactionsTable({
     document.body.style.userSelect = "none";
     window.addEventListener("mousemove", handleMove);
     window.addEventListener("mouseup", handleUp);
-  }, [table, rowSelection, getRowIndexFromEvent]);
-
-  const uniqueCategories = Array.from(new Set(transactions.map((t) => t.category_name)));
+  };
 
   // ── Summary stats (selected rows or current page) ────────────────────────
-  const summaryStats = useMemo(() => {
-    const rows = hasSelection
-      ? selectedRows.map(r => r.original)
-      : table.getRowModel().rows.map(r => r.original);
+  const summaryStats = (() => {
+    const rows = (hasSelection ? selectedRows : table.getRowModel().rows).map(r => r.original);
     if (rows.length === 0) return null;
     // Montos con signo: Gasto/Inversión restan, Ingreso/Reembolso suman
-    const amounts = rows.map(r => typeSign(r.type) * r.amount);
+    const amounts = rows.map(r => displaySign(r.type) * r.amount);
     const sum = amounts.reduce((a, b) => a + b, 0);
-    const income = rows.reduce((a, r) => a + Math.max(0, typeSign(r.type) * r.amount), 0);
-    const expense = rows.reduce((a, r) => a + Math.max(0, -typeSign(r.type) * r.amount), 0);
+    const income = rows.reduce((a, r) => a + Math.max(0, displaySign(r.type) * r.amount), 0);
+    const expense = rows.reduce((a, r) => a + Math.max(0, -displaySign(r.type) * r.amount), 0);
     return {
       count: rows.length,
       sum,
@@ -1251,51 +1087,35 @@ export function TransactionsTable({
       expense,
       mixed: income > 0 && expense > 0,
     };
-  }, [hasSelection, selectedRows, table.getRowModel().rows]);
+  })();
 
-  // ── Batch handlers ────────────────────────────────────────────────────────
-
-  const handleBatchDelete = async () => {
-    await onDeleteMultiple(selectedIds);
+  // ── Batch handlers: aplican a lo seleccionado y limpian la selección ──────
+  const runBatch = async (action: Promise<void>) => {
+    await action;
     setRowSelection({});
   };
 
-  const handleBatchCategoryChange = async (category: string) => {
-    await onUpdateMultiple(selectedIds, { category_name: category });
-    setRowSelection({});
-  };
-
-  const handleBatchTypeChange = async (type: Transaction["type"]) => {
+  const handleBatchTypeChange = (type: Transaction["type"]) => {
     const matchingCategory = categories.find(c => c.type === type);
-    await onUpdateMultiple(selectedIds, { type, category_name: matchingCategory?.name || "Sin categoría" });
-    setRowSelection({});
-  };
-
-  const handleBatchDuplicate = async () => {
-    await onDuplicate(selectedIds);
-    setRowSelection({});
+    runBatch(onUpdateMultiple(selectedIds, { type, category_name: matchingCategory?.name || "Sin categoría" }));
   };
 
   // ── Panel drag handlers ──────────────────────────────────────────────────
-  const handleDragStart = useCallback((e: React.MouseEvent) => {
+  const handleDragStart = (e: React.MouseEvent) => {
     e.preventDefault();
-    const currentTop = panelY ?? 160;
-    panelDragRef.current = { startY: e.clientY, startTop: currentTop };
+    const startY = e.clientY;
+    const startTop = panelY ?? 160;
 
     const handleMove = (ev: MouseEvent) => {
-      if (!panelDragRef.current) return;
-      const delta = ev.clientY - panelDragRef.current.startY;
-      const newTop = Math.max(60, Math.min(window.innerHeight - 100, panelDragRef.current.startTop + delta));
-      setPanelY(newTop);
+      setPanelY(Math.max(60, Math.min(window.innerHeight - 100, startTop + ev.clientY - startY)));
     };
     const handleUp = () => {
-      panelDragRef.current = null;
       window.removeEventListener("mousemove", handleMove);
       window.removeEventListener("mouseup", handleUp);
     };
     window.addEventListener("mousemove", handleMove);
     window.addEventListener("mouseup", handleUp);
-  }, [panelY]);
+  };
 
   // Reset panel state when selection is cleared
   useEffect(() => {
@@ -1313,96 +1133,164 @@ export function TransactionsTable({
     const rows = table.getRowModel().rows;
     if (!isDateSorted) return null;
 
-    const groups: { dayKey: string; rows: typeof rows }[] = [];
-    for (const row of rows) {
+    // `start`: índice de la primera fila del grupo en la página, para el drag-to-select.
+    const groups: { dayKey: string; start: number; rows: typeof rows }[] = [];
+    rows.forEach((row, i) => {
       const dayKey = format(new Date(row.original.date), "yyyy-MM-dd");
       const lastGroup = groups[groups.length - 1];
       if (lastGroup && lastGroup.dayKey === dayKey) {
         lastGroup.rows.push(row);
       } else {
-        groups.push({ dayKey, rows: [row] });
+        groups.push({ dayKey, start: i, rows: [row] });
       }
-    }
+    });
     return groups;
   }, [table.getRowModel().rows, isDateSorted]);
+
+  // Card de la lista móvil. Agrupada por día basta la hora; sin agrupar, va la fecha.
+  const renderMobileCard = (row: Row<Transaction>, timeLabel: string) => {
+    const t = row.original;
+    const clean = getCleanDetail(t.detail);
+    const avatar = categoryAvatar(t.category_name, categories);
+    const isBot = (t.detail || "").startsWith("🤖");
+    const catData = categories.find(c => c.name === t.category_name);
+    const isMissing = t.category_name === "Sin categoría";
+    const isSelected = row.getIsSelected();
+
+    return (
+      <div
+        key={row.id}
+        className={cn(
+          "mobile-tx-card",
+          t.isPending && "pointer-events-none opacity-60",
+          isSelected && "mobile-tx-card-selected",
+          isMissing && "mobile-tx-card-missing"
+        )}
+        onClick={() => guardedEdit(t)}
+      >
+        {/* Selection checkbox */}
+        <div
+          className="mobile-tx-checkbox"
+          onClick={(e) => {
+            e.stopPropagation();
+            row.toggleSelected(!isSelected);
+          }}
+        >
+          <Checkbox checked={isSelected} className="h-4 w-4" tabIndex={-1} />
+        </div>
+
+        {/* Avatar */}
+        <div className="relative flex-shrink-0">
+          <div
+            className="w-10 h-10 rounded-full flex items-center justify-center text-lg leading-none select-none"
+            style={avatar.style}
+          >
+            {avatar.emoji}
+          </div>
+          {isBot && (
+            <div className="absolute -bottom-0.5 -right-0.5 w-4 h-4 rounded-full bg-background flex items-center justify-center">
+              <span className="text-[9px] leading-none">🤖</span>
+            </div>
+          )}
+        </div>
+
+        {/* Content */}
+        <div className="flex-1 min-w-0 ml-3">
+          <div className="flex items-center justify-between gap-2">
+            <span className={cn("text-sm font-semibold truncate", isPrivacyMode && "privacy-blur")}>
+              {clean || <span className="text-muted-foreground/50 italic font-normal">Sin detalle</span>}
+            </span>
+            <span className={cn(
+              "text-sm font-bold tabular-nums whitespace-nowrap font-mono",
+              typeAmountColors[t.type],
+              isPrivacyMode && "privacy-blur"
+            )}>
+              {signPrefix(t.type, t.amount)}
+              {formatCLP(Math.abs(t.amount))}
+            </span>
+          </div>
+          <div className="flex items-center justify-between gap-2 mt-0.5">
+            <div className="flex items-center gap-1.5 min-w-0">
+              {t.isPending || t.category_name === "⚡ Analizando..." ? (
+                <AnalyzingBadge saving={t.isPending} />
+              ) : (
+                <>
+                  <span className="h-1.5 w-1.5 rounded-full shrink-0" style={{ backgroundColor: catData?.color || "currentColor" }} aria-hidden="true" />
+                  <span className={cn("text-xs truncate", isMissing ? "text-amber-500" : "text-muted-foreground")}>
+                    {t.category_name}
+                  </span>
+                </>
+              )}
+            </div>
+            <span className="text-[11px] text-muted-foreground/50 tabular-nums flex-shrink-0">
+              {timeLabel}
+            </span>
+          </div>
+        </div>
+
+        {/* Actions */}
+        <div className="flex-shrink-0 ml-1">
+          <DropdownMenu onOpenChange={trackMenuClose}>
+            <DropdownMenuTrigger asChild>
+              <button className="mobile-tx-actions-btn" onClick={(e) => e.stopPropagation()}>
+                <MoreHorizontal className="h-4 w-4" />
+              </button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end">
+              <DropdownMenuItem onClick={() => onEdit(t)}>
+                <Pencil className="mr-2 h-4 w-4" />
+                Editar
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={() => onDuplicate([t.id])}>
+                <Copy className="mr-2 h-4 w-4" />
+                Duplicar
+              </DropdownMenuItem>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem
+                onClick={() => onDelete(t.id)}
+                className="text-destructive focus:text-destructive"
+              >
+                <Trash2 className="mr-2 h-4 w-4" />
+                Eliminar
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+        </div>
+      </div>
+    );
+  };
+
+  // Fila de la tabla de escritorio; `index` es su posición en la página.
+  const renderDesktopRow = (row: Row<Transaction>, index: number) => {
+    const isMissing = row.original.category_name === "Sin categoría";
+    return (
+      <tr
+        key={row.id}
+        data-row-index={index}
+        data-transaction-id={row.original.id}
+        data-state={row.getIsSelected() && "selected"}
+        className={cn(
+          "hover:bg-muted/40 transition-colors",
+          row.original.isPending && "pointer-events-none opacity-60",
+          row.getIsSelected() && "bg-primary/5 hover:bg-primary/10",
+          isMissing && "border-l-2 border-l-amber-400/70",
+          highlightId === row.original.id && "tx-highlight-pulse"
+        )}
+        onMouseDown={(e) => handleRowMouseDown(e, index)}
+      >
+        {row.getVisibleCells().map((cell) => (
+          <td key={cell.id} className={cn("px-3 py-1.5 overflow-hidden", isMissing && "bg-amber-400/5")}>
+            {flexRender(cell.column.columnDef.cell, cell.getContext())}
+          </td>
+        ))}
+      </tr>
+    );
+  };
 
   // ── Render ────────────────────────────────────────────────────────────────
 
   return (
     <div className="space-y-4 mx-auto">
-      {/* Filters — solo se renderizan si no están controlados externamente */}
-      {!isControlled && (
-        <div className="flex flex-col sm:flex-row gap-3">
-          <div className="relative flex-1">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-            <Input
-              placeholder="Buscar transacciones..."
-              value={globalFilter}
-              onChange={(e) => setGlobalFilter(e.target.value)}
-              className="pl-9"
-            />
-            {globalFilter && (
-              <Button
-                variant="ghost"
-                size="sm"
-                className="absolute right-1 top-1/2 -translate-y-1/2 h-7 w-7 p-0"
-                onClick={() => setGlobalFilter("")}
-              >
-                <X className="h-4 w-4" />
-              </Button>
-            )}
-          </div>
-
-          <Select value={typeFilter} onValueChange={setTypeFilter}>
-            <SelectTrigger className="w-full sm:w-[180px]">
-              <SelectValue placeholder="Tipo" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">Todos los tipos</SelectItem>
-              <SelectItem value="Ingreso">Ingresos</SelectItem>
-              <SelectItem value="Gasto">Gastos</SelectItem>
-              <SelectItem value="Inversión">Inversiones</SelectItem>
-              <SelectItem value="Rescate">Rescates</SelectItem>
-              <SelectItem value="Rendimiento">Rendimientos</SelectItem>
-              <SelectItem value="Reembolso">Reembolsos</SelectItem>
-            </SelectContent>
-          </Select>
-
-          <Select value={categoryFilter} onValueChange={setCategoryFilter}>
-            <SelectTrigger className="w-full sm:w-[200px]">
-              <SelectValue placeholder="Categoría" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">Todas las categorías</SelectItem>
-              {uniqueCategories
-                .filter((cat) => cat && cat.trim().length > 0)
-                .map((cat) => (
-                  <SelectItem key={cat} value={cat}>
-                    {categories.find(c => c.name === cat)?.icon || getCategoryIcon(cat)} {cat}
-                  </SelectItem>
-                ))}
-            </SelectContent>
-          </Select>
-
-          <Select value={cardFilter} onValueChange={setCardFilter}>
-            <SelectTrigger className="w-full sm:w-[180px]">
-              <SelectValue placeholder="Tarjeta" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">Todas las tarjetas</SelectItem>
-              <SelectItem value="none">Sin tarjeta</SelectItem>
-              {creditCards.map((card) => (
-                <SelectItem key={card.id} value={card.id}>
-                  {card.name}{card.last_4_digits ? ` ···${card.last_4_digits}` : ""}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-
-          <DateRangeFilter value={dateRange} onChange={setDateRange} className="w-full sm:w-[200px]" />
-        </div>
-      )}
-
       {/* ── Floating Selection Panel (right side) ────────────────────────── */}
       {hasSelection && (
         <div
@@ -1494,7 +1382,7 @@ export function TransactionsTable({
                     {categories
                       .filter(c => c.name && c.name.trim().length > 0)
                       .map((cat) => (
-                        <DropdownMenuItem key={cat.name + cat.type} onClick={() => handleBatchCategoryChange(cat.name)}>
+                        <DropdownMenuItem key={cat.name + cat.type} onClick={() => runBatch(onUpdateMultiple(selectedIds, { category_name: cat.name }))}>
                           <span className="mr-2">{cat.icon || getCategoryIcon(cat.name)}</span>
                           {cat.name}
                         </DropdownMenuItem>
@@ -1510,26 +1398,19 @@ export function TransactionsTable({
                     </button>
                   </DropdownMenuTrigger>
                   <DropdownMenuContent align="end" side="left">
-                    <DropdownMenuItem onClick={() => handleBatchTypeChange("Ingreso")}>
-                      <TrendingUp className="h-4 w-4 mr-2 text-emerald-500" /> Ingreso
-                    </DropdownMenuItem>
-                    <DropdownMenuItem onClick={() => handleBatchTypeChange("Gasto")}>
-                      <TrendingDown className="h-4 w-4 mr-2 text-rose-500" /> Gasto
-                    </DropdownMenuItem>
-                    <DropdownMenuItem onClick={() => handleBatchTypeChange("Inversión")}>
-                      <PiggyBank className="h-4 w-4 mr-2 text-blue-500" /> Inversión
-                    </DropdownMenuItem>
-                    <DropdownMenuItem onClick={() => handleBatchTypeChange("Rescate")}>
-                      <ArrowDownToLine className="h-4 w-4 mr-2 text-cyan-500" /> Rescate
-                    </DropdownMenuItem>
-                    <DropdownMenuItem onClick={() => handleBatchTypeChange("Rendimiento")}>
-                      <LineChart className="h-4 w-4 mr-2 text-violet-500" /> Rendimiento
-                    </DropdownMenuItem>
+                    {TRANSACTION_TYPES.filter((type) => type !== "Reembolso").map((type) => {
+                      const Icon = typeIcons[type];
+                      return (
+                        <DropdownMenuItem key={type} onClick={() => handleBatchTypeChange(type)}>
+                          <Icon className={cn("h-4 w-4 mr-2", typeAmountColors[type])} /> {type}
+                        </DropdownMenuItem>
+                      );
+                    })}
                   </DropdownMenuContent>
                 </DropdownMenu>
 
                 <button
-                  onClick={handleBatchDuplicate}
+                  onClick={() => runBatch(onDuplicate(selectedIds))}
                   className="w-full flex items-center gap-2.5 px-2.5 py-1.5 rounded-lg text-sm hover:bg-muted/60 transition-colors text-left"
                 >
                   <Copy className="h-3.5 w-3.5 text-muted-foreground" />
@@ -1539,7 +1420,7 @@ export function TransactionsTable({
                 <div className="my-1 border-t border-border/40" />
 
                 <button
-                  onClick={handleBatchDelete}
+                  onClick={() => runBatch(onDeleteMultiple(selectedIds))}
                   className="w-full flex items-center gap-2.5 px-2.5 py-1.5 rounded-lg text-sm hover:bg-destructive/10 text-destructive transition-colors text-left"
                 >
                   <Trash2 className="h-3.5 w-3.5" />
@@ -1551,38 +1432,27 @@ export function TransactionsTable({
               {summaryStats && (
                 <div className="px-3 py-2 border-t border-border/40 bg-muted/20">
                   <div className="grid grid-cols-2 gap-x-4 gap-y-1">
-                    <div className="flex items-center justify-between">
-                      <span className="text-[10px] text-muted-foreground/60">Suma</span>
-                      <span className={cn("text-[11px] font-mono font-bold tabular-nums", signColor(summaryStats.sum), isPrivacyMode && "privacy-blur")}>
-                        <NumberFlow value={summaryStats.sum} locales="es-CL" format={SIGNED_CLP} />
-                      </span>
-                    </div>
-                    <div className="flex items-center justify-between">
-                      <span className="text-[10px] text-muted-foreground/60">Prom</span>
-                      <span className={cn("text-[11px] font-mono font-semibold tabular-nums", signColor(summaryStats.avg), isPrivacyMode && "privacy-blur")}>
-                        <NumberFlow value={summaryStats.avg} locales="es-CL" format={SIGNED_CLP} />
-                      </span>
-                    </div>
-                    <div className="flex items-center justify-between">
-                      <span className="text-[10px] text-muted-foreground/60">Min</span>
-                      <span className={cn("text-[11px] font-mono tabular-nums", signColor(summaryStats.min), isPrivacyMode && "privacy-blur")}>
-                        <NumberFlow value={summaryStats.min} locales="es-CL" format={SIGNED_CLP} />
-                      </span>
-                    </div>
-                    <div className="flex items-center justify-between">
-                      <span className="text-[10px] text-muted-foreground/60">Max</span>
-                      <span className={cn("text-[11px] font-mono tabular-nums", signColor(summaryStats.max), isPrivacyMode && "privacy-blur")}>
-                        <NumberFlow value={summaryStats.max} locales="es-CL" format={SIGNED_CLP} />
-                      </span>
-                    </div>
+                    {([
+                      ["Suma", summaryStats.sum, "font-bold"],
+                      ["Prom", summaryStats.avg, "font-semibold"],
+                      ["Min", summaryStats.min, ""],
+                      ["Max", summaryStats.max, ""],
+                    ] as const).map(([label, value, weight]) => (
+                      <div key={label} className="flex items-center justify-between">
+                        <span className="text-[10px] text-muted-foreground/60">{label}</span>
+                        <span className={cn("text-[11px] font-mono tabular-nums", weight, signColor(value), isPrivacyMode && "privacy-blur")}>
+                          <NumberFlow value={value} locales="es-CL" format={SIGNED_CLP} />
+                        </span>
+                      </div>
+                    ))}
                   </div>
                   {summaryStats.mixed && (
                     <div className="flex items-center justify-between mt-1.5 pt-1.5 border-t border-border/30">
                       <span className={cn("text-[10px] font-mono tabular-nums text-emerald-500", isPrivacyMode && "privacy-blur")}>
-                        +{formatCurrency(summaryStats.income)}
+                        +{formatCLP(summaryStats.income)}
                       </span>
                       <span className={cn("text-[10px] font-mono tabular-nums text-rose-500", isPrivacyMode && "privacy-blur")}>
-                        −{formatCurrency(summaryStats.expense)}
+                        −{formatCLP(summaryStats.expense)}
                       </span>
                     </div>
                   )}
@@ -1613,259 +1483,16 @@ export function TransactionsTable({
             ) : groupedRows ? (
               groupedRows.map((group) => (
                 <React.Fragment key={group.dayKey}>
-                  {/* Date sticky header */}
                   <div className="mobile-tx-date-header">
                     {formatGroupDate(group.dayKey)}
                   </div>
-                  {/* Transaction cards */}
-                  {group.rows.map((row) => {
-                    const t = row.original;
-                    const clean = getCleanDetail(t.detail);
-                    const avatar = categoryAvatar(t.category_name, categories);
-                    const isBot = (t.detail || "").startsWith("🤖");
-                    const catData = categories.find(c => c.name === t.category_name);
-                    const amountColor = typeAmountColors[t.type];
-                    const time = format(new Date(t.date), "HH:mm");
-                    const isMissing = t.category_name === "Sin categoría";
-                    const isSelected = row.getIsSelected();
-
-                    return (
-                      <div
-                        key={row.id}
-                        className={cn(
-                          "mobile-tx-card",
-                      t.isPending && "pointer-events-none opacity-60",
-                          isSelected && "mobile-tx-card-selected",
-                          isMissing && "mobile-tx-card-missing"
-                        )}
-                        onClick={() => guardedEdit(t)}
-                      >
-                        {/* Selection checkbox */}
-                        <div
-                          className="mobile-tx-checkbox"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            row.toggleSelected(!isSelected);
-                          }}
-                        >
-                          <Checkbox
-                            checked={isSelected}
-                            className="h-4 w-4"
-                            tabIndex={-1}
-                          />
-                        </div>
-
-                        {/* Avatar */}
-                        <div className="relative flex-shrink-0">
-                          <div
-                            className="w-10 h-10 rounded-full flex items-center justify-center text-lg leading-none select-none"
-                            style={avatar.style}
-                          >
-                            {avatar.emoji}
-                          </div>
-                          {isBot && (
-                            <div className="absolute -bottom-0.5 -right-0.5 w-4 h-4 rounded-full bg-background flex items-center justify-center">
-                              <span className="text-[9px] leading-none">🤖</span>
-                            </div>
-                          )}
-                        </div>
-
-                        {/* Content */}
-                        <div className="flex-1 min-w-0 ml-3">
-                          <div className="flex items-center justify-between gap-2">
-                            <span className={cn(
-                              "text-sm font-semibold truncate",
-                              isPrivacyMode && "privacy-blur"
-                            )}>
-                              {clean || <span className="text-muted-foreground/50 italic font-normal">Sin detalle</span>}
-                            </span>
-                            <span className={cn(
-                              "text-sm font-bold tabular-nums whitespace-nowrap font-mono",
-                              amountColor,
-                              isPrivacyMode && "privacy-blur"
-                            )}>
-                              {signPrefix(t.type, t.amount)}
-                              {formatCurrency(Math.abs(t.amount))}
-                            </span>
-                          </div>
-                          <div className="flex items-center justify-between gap-2 mt-0.5">
-                            <div className="flex items-center gap-1.5 min-w-0">
-                              {t.isPending || t.category_name === "⚡ Analizando..." ? (
-                                <AnalyzingBadge saving={t.isPending} />
-                              ) : (
-                                <>
-                                  <span className="h-1.5 w-1.5 rounded-full shrink-0" style={{ backgroundColor: catData?.color || "currentColor" }} aria-hidden="true" />
-                                  <span className={cn(
-                                    "text-xs truncate",
-                                    isMissing ? "text-amber-500" : "text-muted-foreground"
-                                  )}>
-                                    {t.category_name}
-                                  </span>
-                                </>
-                              )}
-                            </div>
-                            <span className="text-[11px] text-muted-foreground/50 tabular-nums flex-shrink-0">
-                              {time}
-                            </span>
-                          </div>
-                        </div>
-
-                        {/* Actions */}
-                        <div className="flex-shrink-0 ml-1">
-                          <DropdownMenu onOpenChange={trackMenuClose}>
-                            <DropdownMenuTrigger asChild>
-                              <button
-                                className="mobile-tx-actions-btn"
-                                onClick={(e) => e.stopPropagation()}
-                              >
-                                <MoreHorizontal className="h-4 w-4" />
-                              </button>
-                            </DropdownMenuTrigger>
-                            <DropdownMenuContent align="end">
-                              <DropdownMenuItem onClick={() => onEdit(t)}>
-                                <Pencil className="mr-2 h-4 w-4" />
-                                Editar
-                              </DropdownMenuItem>
-                              <DropdownMenuItem onClick={() => onDuplicate([t.id])}>
-                                <Copy className="mr-2 h-4 w-4" />
-                                Duplicar
-                              </DropdownMenuItem>
-                              <DropdownMenuSeparator />
-                              <DropdownMenuItem
-                                onClick={() => onDelete(t.id)}
-                                className="text-destructive focus:text-destructive"
-                              >
-                                <Trash2 className="mr-2 h-4 w-4" />
-                                Eliminar
-                              </DropdownMenuItem>
-                            </DropdownMenuContent>
-                          </DropdownMenu>
-                        </div>
-                      </div>
-                    );
-                  })}
+                  {group.rows.map((row) => renderMobileCard(row, format(new Date(row.original.date), "HH:mm")))}
                 </React.Fragment>
               ))
             ) : (
-              // Flat list
-              table.getRowModel().rows.map((row) => {
-                const t = row.original;
-                const clean = getCleanDetail(t.detail);
-                const avatar = categoryAvatar(t.category_name, categories);
-                const isBot = (t.detail || "").startsWith("🤖");
-                const catData = categories.find(c => c.name === t.category_name);
-                const amountColor = typeAmountColors[t.type];
-                const dateStr = format(new Date(t.date), "d MMM HH:mm", { locale: es });
-                const isMissing = t.category_name === "Sin categoría";
-                const isSelected = row.getIsSelected();
-
-                return (
-                  <div
-                    key={row.id}
-                    className={cn(
-                      "mobile-tx-card",
-                      t.isPending && "pointer-events-none opacity-60",
-                      isSelected && "mobile-tx-card-selected",
-                      isMissing && "mobile-tx-card-missing"
-                    )}
-                    onClick={() => guardedEdit(t)}
-                  >
-                    <div
-                      className="mobile-tx-checkbox"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        row.toggleSelected(!isSelected);
-                      }}
-                    >
-                      <Checkbox
-                        checked={isSelected}
-                        className="h-4 w-4"
-                        tabIndex={-1}
-                      />
-                    </div>
-
-                    <div className="relative flex-shrink-0">
-                      <div
-                        className="w-10 h-10 rounded-full flex items-center justify-center text-lg leading-none select-none"
-                        style={avatar.style}
-                      >
-                        {avatar.emoji}
-                      </div>
-                      {isBot && (
-                        <div className="absolute -bottom-0.5 -right-0.5 w-4 h-4 rounded-full bg-background flex items-center justify-center">
-                          <span className="text-[9px] leading-none">🤖</span>
-                        </div>
-                      )}
-                    </div>
-
-                    <div className="flex-1 min-w-0 ml-3">
-                      <div className="flex items-center justify-between gap-2">
-                        <span className={cn(
-                          "text-sm font-semibold truncate",
-                          isPrivacyMode && "privacy-blur"
-                        )}>
-                          {clean || <span className="text-muted-foreground/50 italic font-normal">Sin detalle</span>}
-                        </span>
-                        <span className={cn(
-                          "text-sm font-bold tabular-nums whitespace-nowrap font-mono",
-                          amountColor,
-                          isPrivacyMode && "privacy-blur"
-                        )}>
-                          {signPrefix(t.type, t.amount)}
-                          {formatCurrency(Math.abs(t.amount))}
-                        </span>
-                      </div>
-                      <div className="flex items-center justify-between gap-2 mt-0.5">
-                        <div className="flex items-center gap-1.5 min-w-0">
-                          <span className="h-1.5 w-1.5 rounded-full shrink-0" style={{ backgroundColor: catData?.color || "currentColor" }} aria-hidden="true" />
-                          {t.isPending || t.category_name === "⚡ Analizando..." ? <AnalyzingBadge saving={t.isPending} /> : (
-                          <span className={cn(
-                            "text-xs truncate",
-                            isMissing ? "text-amber-500" : "text-muted-foreground"
-                          )}>
-                            {t.category_name}
-                          </span>
-                          )}
-                        </div>
-                        <span className="text-[11px] text-muted-foreground/50 tabular-nums flex-shrink-0">
-                          {dateStr}
-                        </span>
-                      </div>
-                    </div>
-
-                    <div className="flex-shrink-0 ml-1">
-                      <DropdownMenu onOpenChange={trackMenuClose}>
-                        <DropdownMenuTrigger asChild>
-                          <button
-                            className="mobile-tx-actions-btn"
-                            onClick={(e) => e.stopPropagation()}
-                          >
-                            <MoreHorizontal className="h-4 w-4" />
-                          </button>
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent align="end">
-                          <DropdownMenuItem onClick={() => onEdit(t)}>
-                            <Pencil className="mr-2 h-4 w-4" />
-                            Editar
-                          </DropdownMenuItem>
-                          <DropdownMenuItem onClick={() => onDuplicate([t.id])}>
-                            <Copy className="mr-2 h-4 w-4" />
-                            Duplicar
-                          </DropdownMenuItem>
-                          <DropdownMenuSeparator />
-                          <DropdownMenuItem
-                            onClick={() => onDelete(t.id)}
-                            className="text-destructive focus:text-destructive"
-                          >
-                            <Trash2 className="mr-2 h-4 w-4" />
-                            Eliminar
-                          </DropdownMenuItem>
-                        </DropdownMenuContent>
-                      </DropdownMenu>
-                    </div>
-                  </div>
-                );
-              })
+              table.getRowModel().rows.map((row) =>
+                renderMobileCard(row, format(new Date(row.original.date), "d MMM HH:mm", { locale: es }))
+              )
             )}
           </div>
 
@@ -1932,81 +1559,23 @@ export function TransactionsTable({
                       </td>
                     </tr>
                   ) : groupedRows ? (
-                    groupedRows.map((group) => {
-                      // Calculate flat index offset for shift+click
-                      let flatOffset = 0;
-                      for (const g of groupedRows) {
-                        if (g.dayKey === group.dayKey) break;
-                        flatOffset += g.rows.length;
-                      }
-                      return (
-                        <React.Fragment key={group.dayKey}>
-                          <tr>
-                            <td
-                              colSpan={columns.length}
-                              className="px-4 py-1 bg-muted/30 border-t border-border/30 first:border-t-0"
-                            >
-                              <span className="text-xs font-semibold text-muted-foreground">
-                                {formatGroupDate(group.dayKey)}
-                              </span>
-                            </td>
-                          </tr>
-                          {group.rows.map((row, i) => {
-                            const isMissing = row.original.category_name === "Sin categoría";
-                            const isHighlighted = highlightId === row.original.id;
-                            return (
-                              <tr
-                                key={row.id}
-                                data-row-index={flatOffset + i}
-                                data-transaction-id={row.original.id}
-                                data-state={row.getIsSelected() && "selected"}
-                                className={cn(
-                                  "hover:bg-muted/40 transition-colors",
-                                  row.original.isPending && "pointer-events-none opacity-60",
-                                  row.getIsSelected() && "bg-primary/5 hover:bg-primary/10",
-                                  isMissing && "border-l-2 border-l-amber-400/70",
-                                  isHighlighted && "tx-highlight-pulse"
-                                )}
-                                onMouseDown={(e) => handleRowMouseDown(e, flatOffset + i)}
-                              >
-                                {row.getVisibleCells().map((cell) => (
-                                  <td key={cell.id} className={cn("px-3 py-1.5 overflow-hidden", isMissing && "bg-amber-400/5")}>
-                                    {flexRender(cell.column.columnDef.cell, cell.getContext())}
-                                  </td>
-                                ))}
-                              </tr>
-                            );
-                          })}
-                        </React.Fragment>
-                      );
-                    })
-                  ) : (
-                    table.getRowModel().rows.map((row, i) => {
-                      const isMissing = row.original.category_name === "Sin categoría";
-                      const isHighlighted = highlightId === row.original.id;
-                      return (
-                        <tr
-                          key={row.id}
-                          data-row-index={i}
-                          data-transaction-id={row.original.id}
-                          data-state={row.getIsSelected() && "selected"}
-                          className={cn(
-                            "hover:bg-muted/40 transition-colors",
-                                  row.original.isPending && "pointer-events-none opacity-60",
-                            row.getIsSelected() && "bg-primary/5 hover:bg-primary/10",
-                            isMissing && "border-l-2 border-l-amber-400/70",
-                            isHighlighted && "tx-highlight-pulse"
-                          )}
-                          onMouseDown={(e) => handleRowMouseDown(e, i)}
-                        >
-                          {row.getVisibleCells().map((cell) => (
-                            <td key={cell.id} className={cn("px-3 py-1.5 overflow-hidden", isMissing && "bg-amber-400/5")}>
-                              {flexRender(cell.column.columnDef.cell, cell.getContext())}
-                            </td>
-                          ))}
+                    groupedRows.map((group) => (
+                      <React.Fragment key={group.dayKey}>
+                        <tr>
+                          <td
+                            colSpan={columns.length}
+                            className="px-4 py-1 bg-muted/30 border-t border-border/30 first:border-t-0"
+                          >
+                            <span className="text-xs font-semibold text-muted-foreground">
+                              {formatGroupDate(group.dayKey)}
+                            </span>
+                          </td>
                         </tr>
-                      );
-                    })
+                        {group.rows.map((row, i) => renderDesktopRow(row, group.start + i))}
+                      </React.Fragment>
+                    ))
+                  ) : (
+                    table.getRowModel().rows.map(renderDesktopRow)
                   )}
                 </tbody>
               </table>
@@ -2025,41 +1594,30 @@ export function TransactionsTable({
                     <div className="flex items-center gap-1">
                       <span className="text-[11px] text-muted-foreground/60">Ingresos</span>
                       <span className={cn("text-xs font-mono font-semibold tabular-nums text-emerald-500", isPrivacyMode && "privacy-blur")}>
-                        +{formatCurrency(summaryStats.income)}
+                        +{formatCLP(summaryStats.income)}
                       </span>
                     </div>
                     <div className="flex items-center gap-1">
                       <span className="text-[11px] text-muted-foreground/60">Gastos</span>
                       <span className={cn("text-xs font-mono font-semibold tabular-nums text-rose-500", isPrivacyMode && "privacy-blur")}>
-                        −{formatCurrency(summaryStats.expense)}
+                        −{formatCLP(summaryStats.expense)}
                       </span>
                     </div>
                   </>
                 )}
-                <div className="flex items-center gap-1">
-                  <span className="text-[11px] text-muted-foreground/60">Min</span>
-                  <span className={cn("text-xs font-mono font-semibold tabular-nums", signColor(summaryStats.min), isPrivacyMode && "privacy-blur")}>
-                    <NumberFlow value={summaryStats.min} locales="es-CL" format={SIGNED_CLP} />
-                  </span>
-                </div>
-                <div className="flex items-center gap-1">
-                  <span className="text-[11px] text-muted-foreground/60">Max</span>
-                  <span className={cn("text-xs font-mono font-semibold tabular-nums", signColor(summaryStats.max), isPrivacyMode && "privacy-blur")}>
-                    <NumberFlow value={summaryStats.max} locales="es-CL" format={SIGNED_CLP} />
-                  </span>
-                </div>
-                <div className="flex items-center gap-1">
-                  <span className="text-[11px] text-muted-foreground/60">Prom</span>
-                  <span className={cn("text-xs font-mono font-semibold tabular-nums", signColor(summaryStats.avg), isPrivacyMode && "privacy-blur")}>
-                    <NumberFlow value={summaryStats.avg} locales="es-CL" format={SIGNED_CLP} />
-                  </span>
-                </div>
-                <div className="flex items-center gap-1">
-                  <span className="text-[11px] text-muted-foreground/60">Suma</span>
-                  <span className={cn("text-xs font-mono font-bold tabular-nums", signColor(summaryStats.sum), isPrivacyMode && "privacy-blur")}>
-                    <NumberFlow value={summaryStats.sum} locales="es-CL" format={SIGNED_CLP} />
-                  </span>
-                </div>
+                {([
+                  ["Min", summaryStats.min, "font-semibold"],
+                  ["Max", summaryStats.max, "font-semibold"],
+                  ["Prom", summaryStats.avg, "font-semibold"],
+                  ["Suma", summaryStats.sum, "font-bold"],
+                ] as const).map(([label, value, weight]) => (
+                  <div key={label} className="flex items-center gap-1">
+                    <span className="text-[11px] text-muted-foreground/60">{label}</span>
+                    <span className={cn("text-xs font-mono tabular-nums", weight, signColor(value), isPrivacyMode && "privacy-blur")}>
+                      <NumberFlow value={value} locales="es-CL" format={SIGNED_CLP} />
+                    </span>
+                  </div>
+                ))}
               </div>
             )}
           </div>
@@ -2098,7 +1656,7 @@ export function TransactionsTable({
                   disabled={!table.getCanPreviousPage()}
                   className="h-8 w-8 p-0"
                 >
-                  <ChevronDoubleLeftIcon className="h-4 w-4" />
+                  <ChevronsLeft className="h-4 w-4" />
                 </Button>
                 <Button
                   variant="outline" size="sm"
@@ -2141,7 +1699,7 @@ export function TransactionsTable({
                   disabled={!table.getCanNextPage()}
                   className="h-8 w-8 p-0"
                 >
-                  <ChevronDoubleRightIcon className="h-4 w-4" />
+                  <ChevronsRight className="h-4 w-4" />
                 </Button>
               </div>
             </div>

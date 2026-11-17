@@ -2,7 +2,6 @@ import { useEffect } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import { usePrivacyMode } from "@/hooks/usePrivacyMode";
 import { useNavPreferences } from "@/hooks/useNavPreferences";
-import { useKeyboardIsCaptured } from "@/hooks/useKeyboardCapture";
 
 interface UseKeyboardShortcutsOptions {
   onToggleCommandBar: () => void;
@@ -21,7 +20,6 @@ export function useKeyboardShortcuts({
   const location = useLocation();
   const { togglePrivacyMode } = usePrivacyMode();
   const { getVisibleRoutes } = useNavPreferences();
-  const keyboardCaptured = useKeyboardIsCaptured();
 
   const visibleRoutes = getVisibleRoutes();
   const routePaths = visibleRoutes.map((r) => r.url);
@@ -46,10 +44,6 @@ export function useKeyboardShortcuts({
 
       // All single-key shortcuts: ignore when inside inputs
       if (isInputField) return;
-
-      // A view can claim the keyboard for itself (the learning studio uses
-      // Space, arrows and single letters of its own).
-      if (keyboardCaptured) return;
 
       // Don't fire single-key shortcuts when modifiers are held
       if (e.metaKey || e.ctrlKey || e.altKey) return;
@@ -119,6 +113,5 @@ export function useKeyboardShortcuts({
     onToggleWhisper,
     onQuickAdd,
     togglePrivacyMode,
-    keyboardCaptured,
   ]);
 }

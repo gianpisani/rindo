@@ -26,7 +26,7 @@ export async function loadCategoryContext(client: SupabaseClient, userId: string
 }
 
 // Only call from handlers that have already authenticated their user/job.
-// Public HTTP callers use tryJevPoc below, never supply an arbitrary owner.
+// Public HTTP callers use categorizeForSession below, never supply an arbitrary owner.
 export async function categorizeForUser(
   client: SupabaseClient, transactionId: string, userId: string, config: Config, context?: UserContext,
 ) {
@@ -54,7 +54,7 @@ export async function categorizeForUser(
   return { success: true, applied: Boolean(updated?.length), category: result.category, confidence: Math.round((result.confidence ?? 0) * 100), method: 'jev', decision: result }
 }
 
-export async function tryJevPoc(client: SupabaseClient, body: { transactionId?: string }, config: Config) {
+export async function categorizeForSession(client: SupabaseClient, body: { transactionId?: string }, config: Config) {
   const { data: { user }, error: authError } = await client.auth.getUser(config.accessToken)
   if (authError || !user) throw new Error('Sesión inválida para categorizar')
   if (typeof body.transactionId !== 'string' || !body.transactionId) throw new Error('Falta el movimiento')

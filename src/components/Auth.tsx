@@ -4,7 +4,7 @@ import { Button } from "./ui/button";
 import { Input } from "./ui/input";
 import { Label } from "./ui/label";
 import { toast } from "sonner";
-import { CheckCircleIcon } from "@heroicons/react/24/outline";
+import { CheckCircle } from "lucide-react";
 import { AnimatePresence, motion } from "framer-motion";
 import { RindoLogo } from "./RindoLogo";
 
@@ -523,7 +523,7 @@ export default function Auth() {
                   animate={{ scale: 1, opacity: 1 }}
                   transition={{ duration: 0.5, delay: 0.2, type: "spring" }}
                 >
-                  <CheckCircleIcon className="h-16 w-16 text-white/80 mx-auto" />
+                  <CheckCircle className="h-16 w-16 text-white/80 mx-auto" />
                 </motion.div>
 
                 <div className="space-y-3">
@@ -550,7 +550,7 @@ export default function Auth() {
                     className="pt-4 space-y-3"
                   >
                     <div className="flex items-start gap-2 text-xs text-white/25 text-left bg-white/[0.03] border border-white/[0.06] p-3 rounded-xl">
-                      <CheckCircleIcon className="h-4 w-4 mt-0.5 flex-shrink-0 text-white/40" />
+                      <CheckCircle className="h-4 w-4 mt-0.5 flex-shrink-0 text-white/40" />
                       <span>Revisa tu bandeja de entrada (y spam por si acaso)</span>
                     </div>
                     <Button

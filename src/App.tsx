@@ -1,5 +1,4 @@
 import { useEffect, useState } from "react";
-import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
@@ -13,8 +12,6 @@ import Categories from "./pages/Categories";
 import Meta from "./pages/Meta";
 import PendingDebts from "./pages/PendingDebts";
 import CreditCards from "./pages/CreditCards";
-import TutoringClasses from "./pages/TutoringClasses";
-import Learning from "./pages/Learning";
 import NotFound from "./pages/NotFound";
 import Auth from "./components/Auth";
 import { OnboardingModal } from "./components/OnboardingModal";
@@ -128,7 +125,6 @@ const App = () => {
       <QueryClientProvider client={queryClient}>
         <TooltipProvider>
           <div className="app-enter">
-            <Toaster />
             <Sonner />
             <Auth />
           </div>
@@ -141,7 +137,6 @@ const App = () => {
     <QueryClientProvider client={queryClient}>
       <TooltipProvider>
         <div className="app-enter">
-          <Toaster />
           <Sonner />
           <AuthenticatedApp />
         </div>
@@ -177,8 +172,6 @@ function AuthenticatedApp() {
           <Route path="/budget" element={<Meta />} />
           <Route path="/pending-debts" element={<PendingDebts />} />
           <Route path="/credit-cards" element={<CreditCards />} />
-          <Route path="/tutoring" element={<TutoringClasses />} />
-          <Route path="/learning" element={<Learning />} />
           <Route path="*" element={<NotFound />} />
         </Routes>
       </BrowserRouter>

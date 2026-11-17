@@ -4,11 +4,11 @@
 
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.39.3'
 import { corsHeaders } from '../_shared/cors.ts'
-import { decryptPassword, encryptForTransit } from '../_shared/crypto.ts'
-import { importBankMovements } from '../_shared/bank-import.ts'
+import { decryptPassword } from '../_shared/crypto.ts'
+import { importBankMovements, type ScrapeResult } from '../_shared/bank-import.ts'
 import { sendBankSyncFailureEmail } from '../_shared/email-notification.ts'
+import { getJob, startScrape, type JobStatus } from '../_shared/open-banking.ts'
 
-const OPEN_BANKING_BASE = 'https://open-banking-api-98187240066.southamerica-west1.run.app'
 const POLL_INTERVAL_MS = 5_000
 const POLL_MAX_ATTEMPTS = 24  // 24 × 5s = 120s max per job
 const CIRCUIT_BREAKER_LIMIT = 5
@@ -60,11 +60,9 @@ function getFromDate(daysBack: number): string {
 
 // ── Job polling ───────────────────────────────────────────────────────────────
 
-type JobStatus = 'queued' | 'running' | 'awaiting_2fa' | 'completed' | 'failed'
-
 interface JobPollResult {
   status: JobStatus
-  result?: import('../_shared/bank-import.ts').ScrapeResult
+  result?: ScrapeResult
   error?: string
 }
 
@@ -72,15 +70,10 @@ async function pollJob(jobId: string, apiKey: string): Promise<JobPollResult> {
   for (let i = 0; i < POLL_MAX_ATTEMPTS; i++) {
     await new Promise((r) => setTimeout(r, POLL_INTERVAL_MS))
 
-    const res = await fetch(`${OPEN_BANKING_BASE}/api/v1/jobs/${jobId}`, {
-      headers: { 'Authorization': `Bearer ${apiKey}` },
-    })
-
-    if (!res.ok) {
-      return { status: 'failed', error: `Job poll HTTP ${res.status}` }
+    const data = await getJob(apiKey, jobId)
+    if ('apiError' in data) {
+      return { status: 'failed', error: data.apiError }
     }
-
-    const data = await res.json()
 
     if (data.status === 'awaiting_2fa') {
       return { status: 'awaiting_2fa', error: '2FA requerida — sync automático no puede continuar' }
@@ -175,9 +168,6 @@ Deno.serve(async (req) => {
       // Decrypt password from at-rest storage
       const password = await decryptPassword(encrypted_password)
 
-      // Encrypt for transit to the Open Banking API
-      const encryptedCredentials = await encryptForTransit(rut, password)
-
       // Con N fallas consecutivas el hueco real es N+1 dias: el run que fallo
       // cubria desde el dia anterior a su ejecucion. Con N=0 queda el default
       // de 1 dia. El circuit breaker desactiva a las 5 fallas, asi que el tope
@@ -186,18 +176,9 @@ Deno.serve(async (req) => {
       const fromDate = getFromDate(lookbackDays)
 
       // Start scraping job
-      const scrapeRes = await fetch(`${OPEN_BANKING_BASE}/api/v1/scrape`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${apiKey}` },
-        body: JSON.stringify({ bank, encryptedCredentials, fromDate }),
-      })
-
-      if (!scrapeRes.ok) {
-        const errText = await scrapeRes.text()
-        throw new Error(`Scrape API error ${scrapeRes.status}: ${errText}`)
-      }
-
-      const { jobId } = await scrapeRes.json()
+      const started = await startScrape(apiKey, { bank, rut, password, fromDate })
+      if ('apiError' in started) throw new Error(started.apiError)
+      const { jobId } = started
       console.log(`Usuario ${userId} banco ${bank}: job ${jobId} iniciado (desde ${fromDate}, ${lookbackDays}d)`)
 
       // Poll for result

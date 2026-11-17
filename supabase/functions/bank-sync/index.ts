@@ -1,24 +1,9 @@
 import { categorizeBankImport, type BankCategorizeItem } from '../_shared/bank-categorize.ts'
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.39.3'
 import { corsHeaders } from '../_shared/cors.ts'
-import { sendBatchNotificationEmail } from '../_shared/email-notification.ts'
-import { importBankMovements } from '../_shared/bank-import.ts'
-import { encryptPassword, decryptPassword, encryptForTransit } from '../_shared/crypto.ts'
-
-const OPEN_BANKING_BASE = 'https://open-banking-api-98187240066.southamerica-west1.run.app'
-
-// ── Types from open-banking-chile API ────────────────────────────────────────
-
-interface JobResponse {
-  id: string
-  bank: string
-  status: 'queued' | 'running' | 'awaiting_2fa' | 'completed' | 'failed'
-  progress?: string
-  createdAt: number
-  completedAt?: number
-  result?: import('../_shared/bank-import.ts').ScrapeResult
-  error?: string
-}
+import { convertDate, emailBatchToUser, importBankMovements, insertBankMovement } from '../_shared/bank-import.ts'
+import { encryptPassword, decryptPassword } from '../_shared/crypto.ts'
+import { getJob, startScrape } from '../_shared/open-banking.ts'
 
 // ── Main handler ─────────────────────────────────────────────────────────────
 
@@ -60,26 +45,16 @@ Deno.serve(async (req) => {
     // ── Shared scrape helper ──────────────────────────────────────────────────
 
     async function startScrapeJob(rut: string, password: string, bank: string, fromDate?: string): Promise<Response> {
-      const encryptedCredentials = await encryptForTransit(rut, password)
-      const scrapeBody: Record<string, string> = { bank, encryptedCredentials }
-      if (fromDate) scrapeBody.fromDate = fromDate
-
-      const scrapeRes = await fetch(`${OPEN_BANKING_BASE}/api/v1/scrape`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${apiKey}` },
-        body: JSON.stringify(scrapeBody),
-      })
-
-      if (!scrapeRes.ok) {
-        const errText = await scrapeRes.text()
-        console.error('Scrape error:', scrapeRes.status, errText)
+      const started = await startScrape(apiKey!, { bank, rut, password, fromDate })
+      if ('apiError' in started) {
+        console.error('Scrape error:', started.apiError)
         return new Response(
           JSON.stringify({ error: 'Error al iniciar la sincronización bancaria' }),
           { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 502 },
         )
       }
 
-      const { jobId, status } = await scrapeRes.json()
+      const { jobId, status } = started
       return new Response(
         JSON.stringify({ jobId, status }),
         { headers: { ...corsHeaders, 'Content-Type': 'application/json' } },
@@ -142,18 +117,14 @@ Deno.serve(async (req) => {
         )
       }
 
-      const jobRes = await fetch(`${OPEN_BANKING_BASE}/api/v1/jobs/${jobId}`, {
-        headers: { 'Authorization': `Bearer ${apiKey}` },
-      })
+      const jobData = await getJob(apiKey, jobId)
 
-      if (!jobRes.ok) {
+      if ('apiError' in jobData) {
         return new Response(
           JSON.stringify({ error: 'Error al consultar el estado del job' }),
           { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 502 },
         )
       }
-
-      const jobData = await jobRes.json() as JobResponse
 
       if (jobData.status !== 'completed' && jobData.status !== 'failed') {
         return new Response(
@@ -215,46 +186,14 @@ Deno.serve(async (req) => {
       const toAutoCategorize: BankCategorizeItem[] = []
 
       for (const m of movements) {
-        const isoDate = convertDate(m.date, syncDate)
-        const now = new Date()
-        const insertDate = `${isoDate}T${now.toISOString().slice(11, 19)}`
-
-        let cardId: string | null = null
-        if (m.card) {
-          const lastFour = m.card.replace(/\*/g, '')
-          const { data: card } = await supabaseClient
-            .from('credit_cards')
-            .select('id')
-            .eq('user_id', userId)
-            .eq('last_4_digits', lastFour)
-            .eq('is_active', true)
-            .maybeSingle()
-          if (card) cardId = card.id
-        }
-
-        const { data: inserted, error: insertError } = await supabaseClient
-          .from('transactions')
-          .insert({
-            user_id: userId,
-            date: insertDate,
-            import_source: 'bank-sync',
-            detail: `🤖 ${m.description}`,
-            bank_description: m.description,
-            type: m.type,
-            amount: m.amount,
-            category_name: 'Sin categoría',
-            card_id: cardId,
-            installment_id: null,
-            reimbursement_for_category: null,
-          })
-          .select('id')
-          .single()
-
+        const { id, error: insertError } = await insertBankMovement(supabaseClient, userId, {
+          isoDate: convertDate(m.date, syncDate), description: m.description, type: m.type, amount: m.amount, card: m.card,
+        })
         if (insertError) {
           console.error('Import-skipped insert error:', m.description, insertError)
         } else {
           created++
-          toAutoCategorize.push({ id: inserted.id, detail: m.description, type: m.type })
+          toAutoCategorize.push({ id: id!, detail: m.description, type: m.type })
         }
       }
 
@@ -275,19 +214,8 @@ Deno.serve(async (req) => {
           }
 
           if (notifyEmail) {
-            const serviceRoleClient = createClient(
-              Deno.env.get('SUPABASE_URL')!,
-              Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!,
-            )
-            const { data: userData } = await serviceRoleClient.auth.admin.getUserById(userId)
-            const userEmail = userData?.user?.email
-            if (userEmail) {
-              await sendBatchNotificationEmail({
-                to: userEmail,
-                bank: skippedBank ?? 'Banco',
-                transactions: movements.map((m) => ({ date: m.date, description: m.description, amount: m.amount, type: m.type })),
-              })
-            }
+            await emailBatchToUser(userId, skippedBank ?? 'Banco',
+              movements.map((m) => ({ date: m.date, description: m.description, amount: m.amount, type: m.type })))
           }
         } catch (emailError) {
           console.error('⚠️ Email notification error (import-skipped):', emailError)
@@ -475,13 +403,3 @@ Deno.serve(async (req) => {
     )
   }
 })
-
-// ── Helper (kept local for import-skipped action) ─────────────────────────────
-
-function convertDate(dateStr: string, fallbackDate: string): string {
-  if (dateStr.toLowerCase() === 'pendiente') return fallbackDate
-  const parts = dateStr.split('-')
-  if (parts[0].length === 4) return dateStr
-  const [dd, mm, yyyy] = parts
-  return `${yyyy}-${mm}-${dd}`
-}

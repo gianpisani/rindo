@@ -1,7 +1,7 @@
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.39.3'
 import { corsHeaders } from '../_shared/cors.ts'
-import { sendNotificationEmail } from '../_shared/email-notification.ts'
 import { bankSettlementDate } from '../_shared/business-day.ts'
+import { ingestTransaction } from '../_shared/ingest-transaction.ts'
 
 interface EmailPayload {
   subject: string
@@ -441,190 +441,27 @@ Deno.serve(async (req) => {
       ? await bankSettlementDate(supabase, new Date(transactionDate), { bank: parsed.bank })
       : null
 
-    // Auto-categorize: check user's history for similar details
-    let categoryName = 'Sin categoría'
-    try {
-      // Use first meaningful word (skip the 🤖 prefix)
-      const searchDetail = parsed.detail.replace(/^🤖\s*/, '')
-      const searchTerm = searchDetail.split(/[\s(]/)[0]
-
-      if (searchTerm && searchTerm.length > 2 && !/^transferencia$/i.test(searchTerm)) {
-        const { data: similar } = await supabase
-          .from('transactions')
-          .select('category_name')
-          .eq('user_id', user_id)
-          .neq('category_name', 'Sin categoría')
-          .neq('category_name', '⚡ Analizando...')
-          .ilike('detail', `%${searchTerm}%`)
-          .limit(5)
-
-        if (similar && similar.length > 0) {
-          const counts: Record<string, number> = {}
-          for (const tx of similar) {
-            counts[tx.category_name] = (counts[tx.category_name] || 0) + 1
-          }
-          const best = Object.entries(counts).sort((a, b) => b[1] - a[1])[0]
-          if (best) categoryName = best[0]
-        }
-      }
-    } catch (e) {
-      console.error('⚠️ Auto-categorize error:', e)
-    }
-
-    // Match credit card by last 4 digits
-    let cardId: string | null = null
-    if (parsed.cardLastFour) {
-      try {
-        const { data: card } = await supabase
-          .from('credit_cards')
-          .select('id')
-          .eq('user_id', user_id)
-          .eq('last_4_digits', parsed.cardLastFour)
-          .eq('is_active', true)
-          .maybeSingle()
-
-        if (card) {
-          cardId = card.id
-          console.log(`💳 Tarjeta matched: ****${parsed.cardLastFour} → ${card.id}`)
-        }
-      } catch (e) {
-        console.error('⚠️ Card match error:', e)
-      }
-    }
-
-    const { data, error } = await supabase
-      .from('transactions')
-      .insert({
-        user_id: user_id,
-        date: transactionDate,
-        bank_settlement_date: settlementDate,
-        import_source: 'email',
-        detail: parsed.detail,
-        bank_description: bankDescription,
-        category_name: categoryName,
-        type: parsed.type,
-        amount: parsed.amount,
-        card_id: cardId,
-      })
-      .select()
-      .single()
-
-    if (error) {
-      console.error('❌ Error al crear transacción:', error)
-      throw error
-    }
-
-    console.log('✅ Transacción creada:', data.id, parsed.detail, parsed.amount)
-
-    // Weekly category stats for email notification
-    let weeklyStats = null
-    try {
-      const now = new Date(transactionDate)
-      const weekAgo = new Date(now)
-      weekAgo.setDate(weekAgo.getDate() - 6)
-      const weekAgoStr = weekAgo.toISOString().split('T')[0]
-
-      const { data: weekTxns } = await supabase
-        .from('transactions')
-        .select('date, amount, detail')
-        .eq('user_id', user_id)
-        .eq('category_name', categoryName)
-        .eq('type', parsed.type)
-        .gte('date', weekAgoStr)
-        .order('amount', { ascending: false })
-
-      if (weekTxns && weekTxns.length > 0) {
-        const dailyTotals: { date: string; day: string; total: number }[] = []
-        const dayNames = ['Dom', 'Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb']
-        for (let i = 6; i >= 0; i--) {
-          const d = new Date(now)
-          d.setDate(d.getDate() - i)
-          const dateStr = d.toISOString().split('T')[0]
-          const dayTotal = weekTxns
-            .filter(t => t.date.startsWith(dateStr))
-            .reduce((sum, t) => sum + t.amount, 0)
-          dailyTotals.push({
-            date: dateStr,
-            day: dayNames[d.getDay()],
-            total: dayTotal,
-          })
-        }
-
-        const top3 = weekTxns.slice(0, 3).map(t => ({
-          detail: t.detail.replace(/^🤖\s*/, ''),
-          amount: t.amount,
-        }))
-
-        const weekTotal = weekTxns.reduce((sum, t) => sum + t.amount, 0)
-        weeklyStats = { dailyTotals, top3, weekTotal, count: weekTxns.length }
-      }
-    } catch (e) {
-      console.error('⚠️ Weekly stats error:', e)
-    }
-
-    // Push notification
-    try {
-      const supabaseUrl = Deno.env.get('SUPABASE_URL')!
-      const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
-
-      const emoji = parsed.type === 'Ingreso' ? '💰' : '💳'
-      const formatted = new Intl.NumberFormat('es-CL', {
-        style: 'currency',
-        currency: 'CLP',
-        minimumFractionDigits: 0,
-      }).format(parsed.amount)
-
-      await fetch(`${supabaseUrl}/functions/v1/send-push-notification`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${supabaseKey}`,
-        },
-        body: JSON.stringify({
-          userId: user_id,
-          notification: {
-            title: `${emoji} ${parsed.type}: ${formatted}`,
-            body: parsed.detail,
-            tag: 'email-transaction',
-            requireInteraction: true,
-          },
-        }),
-      })
-    } catch (pushError) {
-      console.error('⚠️ Push notification error:', pushError)
-    }
-
-    // Email notification via Resend
-    try {
-      const { data: userData } = await supabase.auth.admin.getUserById(user_id)
-      const userEmail = userData?.user?.email
-      if (userEmail) {
-        await sendNotificationEmail({
-          to: userEmail,
-          amount: parsed.amount,
-          detail: parsed.detail,
-          category: categoryName,
-          bank: parsed.bank,
-          type: parsed.type,
-          weeklyStats,
-        })
-      } else {
-        console.warn('⚠️ No email found for user', user_id)
-      }
-    } catch (emailError) {
-      console.error('⚠️ Email notification error:', emailError)
-    }
+    const { id, category, weeklyStats } = await ingestTransaction(supabase, {
+      user_id,
+      date: transactionDate,
+      bank_settlement_date: settlementDate,
+      import_source: 'email',
+      detail: parsed.detail,
+      bank_description: bankDescription,
+      type: parsed.type,
+      amount: parsed.amount,
+    }, { bank: parsed.bank, pushTag: 'email-transaction', cardLastFour: parsed.cardLastFour })
 
     return new Response(
       JSON.stringify({
         success: true,
-        transaction_id: data.id,
+        transaction_id: id,
         parsed: {
           amount: parsed.amount,
           type: parsed.type,
           bank: parsed.bank,
           detail: parsed.detail,
-          category: categoryName,
+          category,
           weeklyStats,
         },
       }),

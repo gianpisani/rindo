@@ -24,8 +24,6 @@ dev-dist
 *.sln
 *.sw?
 
-dev-dist/*
-
 .temp/*
 
 # Fuentes de Unicode/CLDR descargadas por scripts/generate-emojis.py
