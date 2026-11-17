@@ -679,6 +679,10 @@ Based on Indigo, Blue, Cyan palette
 .inicio-lim .inicio-track { grid-column: 2 / -1; height: 4px; margin-top: 2px; }
 .inicio-lim .pct, .inicio-lim .extra { color: oklch(var(--destructive)); }
 .inicio-see-all { display: block; padding: 8px 16px; }
+/* "N por revisar": una línea callada sobre Recientes, solo si hay */
+.inicio-review { display: block; width: 100%; padding: 8px 16px; text-align: left; font-size: var(--fs-1); color: var(--muted-foreground); }
+.inicio-review b { font-weight: 500; color: var(--foreground); }
+.inicio-review:hover { color: var(--foreground); }
 .inicio-tabs { display: none; }
 .inicio-list-limits { display: none; }
 

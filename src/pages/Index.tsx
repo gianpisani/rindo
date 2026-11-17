@@ -1,10 +1,10 @@
-import { useState, useMemo, useRef, type CSSProperties, type TouchEvent } from "react";
+import { useState, useMemo, useRef, useEffect, type CSSProperties, type TouchEvent } from "react";
 import Layout from "@/components/Layout";
 import { byNewest, useTransactions, type Transaction } from "@/hooks/useTransactions";
 import { useLiveRows } from "@/hooks/useLiveRows";
 import { useInlineEdit } from "@/hooks/useInlineEdit";
 import { TxRow } from "@/components/TxRow";
-import { isAnalyzing } from "@/lib/tx-display";
+import { isAnalyzing, needsReview } from "@/lib/tx-display";
 import { useBankSyncCredentials } from "@/hooks/useBankSyncCredentials";
 import { useCategories } from "@/hooks/useCategories";
 import { useCategoryLimits } from "@/hooks/useCategoryLimits";
@@ -81,6 +81,7 @@ const Index = () => {
   const [storyOpen, setStoryOpen] = useState(false);
   const [isBankSyncOpen, setIsBankSyncOpen] = useState(false);
   const [sheet, setSheet] = useState<TxSheetData | null>(null);
+  const [reviewing, setReviewing] = useState(false);
   const [showAllCats, setShowAllCats] = useState(false);
   // En celular Recientes y Límites comparten la tarjeta.
   const [mobileTab, setMobileTab] = useState<"feed" | "limits">("feed");
@@ -188,6 +189,25 @@ const Index = () => {
       groupBy: "day",
     });
   };
+
+  // ─── Por revisar ──────────────────────────────────────
+  // Lo que quedó sin categoría, solo de tipos que tienen categorías para
+  // elegir. La lista es en vivo: lo que se corrige sale de ella, y al
+  // quedar vacía la hoja se cierra sola.
+  const { categoryOptions } = edit;
+  const toReview = useMemo(
+    () => transactions.filter((t) => needsReview(t) && categoryOptions(t.type).length > 0),
+    [transactions, categoryOptions]
+  );
+  useEffect(() => {
+    if (reviewing && toReview.length === 0) setReviewing(false);
+  }, [reviewing, toReview.length]);
+  const reviewSheet: TxSheetData | null = reviewing && toReview.length > 0 ? {
+    title: "Por revisar",
+    summary: `${toReview.length} sin categoría · toca el ícono para elegirla`,
+    transactions: toReview,
+    groupBy: "month",
+  } : null;
 
   // ─── Avisos ───────────────────────────────────────────
   // Viven en la fila del saludo: ver HomeNotices para el por qué.
@@ -297,28 +317,35 @@ const Index = () => {
       </span>
     </div>
   ) : (
-    sortedDateKeys.map((dateKey) => (
-      <div key={dateKey}>
-        <div className="inicio-day">
-          {getDateLabel(dateKey)}
-          {/* Cuánto se fue ese día dice más que cuántos movimientos hubo */}
-          {dayExpenses(dateKey) > 0 && (
-            <span className={cn(isPrivacyMode && "privacy-blur")}>−{formatCurrency(dayExpenses(dateKey))}</span>
-          )}
+    <>
+      {toReview.length > 0 && (
+        <button className="inicio-review" onClick={() => setReviewing(true)}>
+          <b>{toReview.length}</b> por revisar →
+        </button>
+      )}
+      {sortedDateKeys.map((dateKey) => (
+        <div key={dateKey}>
+          <div className="inicio-day">
+            {getDateLabel(dateKey)}
+            {/* Cuánto se fue ese día dice más que cuántos movimientos hubo */}
+            {dayExpenses(dateKey) > 0 && (
+              <span className={cn(isPrivacyMode && "privacy-blur")}>−{formatCurrency(dayExpenses(dateKey))}</span>
+            )}
+          </div>
+          {groupedTransactions[dateKey].map((t) => {
+            const key = live.keyOf(t);
+            return (
+              <TxRow
+                key={key}
+                t={t}
+                edit={edit}
+                className={cn(live.entered.has(key) && "is-new", live.resolved.has(key) && "is-resolved")}
+              />
+            );
+          })}
         </div>
-        {groupedTransactions[dateKey].map((t) => {
-          const key = live.keyOf(t);
-          return (
-            <TxRow
-              key={key}
-              t={t}
-              edit={edit}
-              className={cn(live.entered.has(key) && "is-new", live.resolved.has(key) && "is-resolved")}
-            />
-          );
-        })}
-      </div>
-    ))
+      ))}
+    </>
   );
 
   const stackRest = monthExpenses - shownCategories.reduce((s, c) => s + c.effectiveAmount, 0);
@@ -501,7 +528,7 @@ const Index = () => {
         />
       </div>
 
-      <TxSheet data={sheet} edit={edit} onClose={() => setSheet(null)} />
+      <TxSheet data={reviewSheet ?? sheet} edit={edit} onClose={() => { setSheet(null); setReviewing(false); }} />
 
       <MonthPulse
         open={storyOpen}
