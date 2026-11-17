@@ -1,5 +1,6 @@
 import { useMemo } from "react";
 import { summarizeCategoryPeriod } from "@/lib/category-spending";
+import { isCardPayment, isCardPaymentCategory } from "@/lib/ledger";
 import { Transaction } from "./useTransactions";
 import { CategoryLimit } from "./useCategoryLimits";
 import { format } from "date-fns";
@@ -62,11 +63,12 @@ export function useCategoryInsights(
   const allCategories = useMemo(() => {
     const categorySet = new Set<string>();
     transactions
-      .filter((t) => t.type === "Gasto")
+      .filter((t) => t.type === "Gasto" && !isCardPayment(t))
       .forEach((t) => categorySet.add(t.category_name));
     
     // Also add categories that have limits but no transactions yet
-    limits.forEach((l) => categorySet.add(l.category_name));
+    // (el pago de tarjeta no es gasto: no tiene fila ni límite)
+    limits.filter((l) => !isCardPaymentCategory(l.category_name)).forEach((l) => categorySet.add(l.category_name));
     
     return Array.from(categorySet);
   }, [transactions, limits]);

@@ -16,11 +16,12 @@
  */
 
 import { periodKey, periodStartOf, shiftPeriod } from "./period.ts";
+import { DEFAULT_TRANSIT_CATEGORIES, isCardPayment } from "./ledger.ts";
 
 export const SAVINGS_SHIFT_DAY = 25;
 
 /** Categorías de gasto que son plata en tránsito, no consumo propio. */
-const TRANSIT_CATEGORIES = new Set(["Reembolsos", "Conciliación"]);
+const TRANSIT_CATEGORIES = new Set(DEFAULT_TRANSIT_CATEGORIES);
 
 export interface SavingsEntry {
   type: string;
@@ -106,6 +107,7 @@ export function computeSavingsMonths(
 
     if (entry.type === "Gasto") {
       if (entry.category_name && TRANSIT_CATEGORIES.has(entry.category_name)) continue;
+      if (isCardPayment(entry)) continue;
       const row = byKey.get(monthKey(periodStartOf(new Date(entry.date), startDay)));
       if (!row) continue;
       if (!row.biggestHit || amount > row.biggestHit.amount) {

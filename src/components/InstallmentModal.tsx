@@ -11,6 +11,7 @@ import type { CreditCard } from "@/hooks/useCreditCards";
 import { useCategories } from "@/hooks/useCategories";
 import { useSoundFX } from "@/hooks/useSoundFX";
 import { cn } from "@/lib/utils";
+import { isCardPaymentCategory } from "@/lib/ledger";
 import "./whisper.css";
 
 /**
@@ -64,7 +65,7 @@ export function InstallmentModal({ open, onOpenChange, installment, creditCards,
   const installmentAmount = parsed ? Math.ceil(parsed.amount / count) : 0;
   const ready = !!parsed && description.length > 0 && !!cardId;
   const selectedCard = creditCards.find((c) => c.id === cardId);
-  const expenseCategories = categories.filter((c) => c.type === "Gasto" && c.is_active !== false);
+  const expenseCategories = categories.filter((c) => c.type === "Gasto" && c.is_active !== false && !isCardPaymentCategory(c.name));
   // Una cantidad rara (10, 48) se muestra como pastilla propia mientras se edita.
   const counts = INSTALLMENT_OPTIONS.includes(count) ? INSTALLMENT_OPTIONS : [...INSTALLMENT_OPTIONS, count].sort((a, b) => a - b);
 
