@@ -376,102 +376,6 @@ export function useSharedExpenses() {
     },
   });
 
-  // Crear deuda rápida "me deben" (crea transacción + shared_expense en un paso)
-  const addQuickDebt = useMutation({
-    mutationFn: async ({
-      debtorName,
-      amount,
-      detail,
-    }: {
-      debtorName: string;
-      amount: number;
-      detail?: string;
-    }) => {
-      const { data: userData } = await supabase.auth.getUser();
-      if (!userData.user) throw new Error("No user found");
-
-      // 1. Crear transacción de gasto
-      const { data: transaction, error: txError } = await supabase
-        .from("transactions")
-        .insert({
-          date: new Date().toISOString(),
-          amount,
-          type: "Gasto",
-          category_name: "Gastos compartidos",
-          detail: detail || `Deuda de ${debtorName}`,
-          user_id: userData.user.id,
-        })
-        .select()
-        .single();
-
-      if (txError) throw txError;
-
-      // 2. Crear shared_expense vinculado
-      const { error: seError } = await supabase
-        .from("shared_expenses")
-        .insert({
-          transaction_id: transaction.id,
-          debtor_name: debtorName,
-          amount_owed: amount,
-          direction: "they_owe_me",
-          user_id: userData.user.id,
-        });
-
-      if (seError) throw seError;
-
-      return transaction;
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["shared_expenses"] });
-      queryClient.invalidateQueries({ queryKey: ["shared_expenses_with_transaction"] });
-      queryClient.invalidateQueries({ queryKey: ["transactions"] });
-      toast.success("Deuda creada");
-    },
-    onError: (error: Error) => {
-      toast.error(error.message);
-    },
-  });
-
-  // Crear deuda manual "yo debo" — sin transacción original, se vincula recién al saldarla
-  const addManualDebtIOwe = useMutation({
-    mutationFn: async ({
-      creditorName,
-      amount,
-      detail,
-    }: {
-      creditorName: string;
-      amount: number;
-      detail?: string;
-    }) => {
-      const { data: userData } = await supabase.auth.getUser();
-      if (!userData.user) throw new Error("No user found");
-
-      const { data, error } = await supabase
-        .from("shared_expenses")
-        .insert({
-          transaction_id: null,
-          debtor_name: creditorName,
-          amount_owed: amount,
-          direction: "i_owe_them",
-          detail: detail?.trim() || null,
-          user_id: userData.user.id,
-        })
-        .select()
-        .single();
-
-      if (error) throw error;
-      return data as SharedExpense;
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["shared_expenses"] });
-      queryClient.invalidateQueries({ queryKey: ["shared_expenses_with_transaction"] });
-      toast.success("Deuda registrada");
-    },
-    onError: (error: Error) => {
-      toast.error(error.message);
-    },
-  });
-
   // Saldar una o varias deudas "yo debo" vinculando un Gasto real ya existente.
   // A diferencia de linkExistingTransactionToDebts, no toca type/category_name
   // de la transacción: sigue siendo un Gasto normal.
@@ -518,8 +422,6 @@ export function useSharedExpenses() {
     sharedExpensesWithTransaction,
     isLoading,
     addSharedExpenses,
-    addQuickDebt,
-    addManualDebtIOwe,
     updateSharedExpenseAmount,
     markAsPaid,
     linkExistingTransaction,

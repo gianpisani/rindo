@@ -1,8 +1,8 @@
-import { useMemo, useRef, useState, type ReactNode, type RefObject } from "react";
+import { useMemo, useRef, useState } from "react";
+import { Link } from "react-router-dom";
 import * as Dialog from "@radix-ui/react-dialog";
 import Layout from "@/components/Layout";
 import { GlassCard } from "@/components/GlassCard";
-import { Button } from "@/components/ui/button";
 import ConfirmDialog from "@/components/ConfirmDialog";
 import {
   useSharedExpenses,
@@ -11,9 +11,8 @@ import {
 } from "@/hooks/useSharedExpenses";
 import { useTransactions } from "@/hooks/useTransactions";
 import { usePrivacyMode } from "@/hooks/usePrivacyMode";
-import { parseWhisper } from "@/lib/whisper";
 import { cn } from "@/lib/utils";
-import { Plus, CheckCircle2, Trash2, ChevronDown, HandCoins, ArrowUp, Check, X } from "lucide-react";
+import { CheckCircle2, Trash2, ChevronDown, HandCoins, X } from "lucide-react";
 import { LoadingScreen } from "@/components/LoadingScreen";
 import "@/components/whisper.css";
 
@@ -23,57 +22,15 @@ const shortDate = (d: string) => new Date(d).toLocaleDateString("es-CL", { day: 
 type Debt = SharedExpenseWithTransaction;
 
 /**
- * Deudas responde una pregunta: quién me debe, a quién le debo y cuánto.
- * Las dos direcciones van en la misma pantalla, cada persona con su total y
- * sus deudas abajo. Lo pagado queda detrás de un toque.
+ * Deudas es para ver quién me debe, a quién le debo y cuánto. Las deudas
+ * nacen en Movimientos, al dividir un gasto, y casi siempre se pagan solas
+ * cuando llega la transferencia. Acá solo queda la salida para lo que se pagó
+ * en efectivo (marcar como pagada o saldar) y eliminar.
  */
-const directions: { value: SharedExpenseDirection; label: string; color: string; amountClass: string }[] = [
-  { value: "they_owe_me", label: "Me deben", color: "#4ade80", amountClass: "text-amber-500" },
-  { value: "i_owe_them", label: "Yo debo", color: "#f87171", amountClass: "text-destructive" },
+const directions: { value: SharedExpenseDirection; label: string; amountClass: string }[] = [
+  { value: "they_owe_me", label: "Me deben", amountClass: "text-amber-500" },
+  { value: "i_owe_them", label: "Yo debo", amountClass: "text-destructive" },
 ];
-
-/** La carcasa común de los dos composers (nueva deuda y saldar deuda). */
-function Composer({
-  open,
-  onClose,
-  title,
-  description,
-  accent,
-  focusRef,
-  children,
-}: {
-  open: boolean;
-  onClose: () => void;
-  title: string;
-  description: string;
-  accent: string;
-  focusRef: RefObject<HTMLInputElement>;
-  children: ReactNode;
-}) {
-  return (
-    <Dialog.Root open={open} onOpenChange={(next) => !next && onClose()}>
-      <Dialog.Portal>
-        <Dialog.Overlay className="whisper-backdrop" />
-        <Dialog.Content
-          data-scrollable
-          className="whisper-composer"
-          style={{ "--whisper-accent": accent } as React.CSSProperties}
-          onOpenAutoFocus={(event) => {
-            event.preventDefault();
-            focusRef.current?.focus();
-          }}
-        >
-          <Dialog.Title className="sr-only">{title}</Dialog.Title>
-          <Dialog.Description className="sr-only">{description}</Dialog.Description>
-          <Dialog.Close className="whisper-close" aria-label="Cerrar">
-            <X size={16} />
-          </Dialog.Close>
-          {children}
-        </Dialog.Content>
-      </Dialog.Portal>
-    </Dialog.Root>
-  );
-}
 
 export default function PendingDebts() {
   const {
@@ -81,9 +38,6 @@ export default function PendingDebts() {
     markAsPaid,
     settleDebtsIOwe,
     deleteSharedExpense,
-    addQuickDebt,
-    addManualDebtIOwe,
-    uniqueDebtorNames,
     isLoading,
   } = useSharedExpenses();
   const { transactions } = useTransactions();
@@ -94,27 +48,10 @@ export default function PendingDebts() {
   const [confirm, setConfirm] = useState<{ kind: "paid" | "delete"; debt: Debt } | null>(null);
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [settleTarget, setSettleTarget] = useState<Debt | null>(null);
-  const [showAddModal, setShowAddModal] = useState(false);
   const [showPaid, setShowPaid] = useState(false);
 
-  // Composer de nueva deuda: la línea "monto nombre"; el nombre también se puede tocar en una pastilla.
-  const [direction, setDirection] = useState<SharedExpenseDirection>("they_owe_me");
-  const [debtValue, setDebtValue] = useState("");
-  const [pickedName, setPickedName] = useState("");
-  const [debtDetail, setDebtDetail] = useState("");
-  const [debtExpanded, setDebtExpanded] = useState(false);
-  const [debtError, setDebtError] = useState("");
   const [settleQuery, setSettleQuery] = useState("");
-  const savingDebt = useRef(false);
-  const debtInputRef = useRef<HTMLInputElement>(null);
   const settleInputRef = useRef<HTMLInputElement>(null);
-
-  const isOwedToMe = direction === "they_owe_me";
-  const currentDirection = directions.find((d) => d.value === direction) ?? directions[0];
-  const parsedDebt = parseWhisper(debtValue);
-  const debtName = (parsedDebt?.detail ?? "").trim() || pickedName;
-  const debtReady = !!parsedDebt && debtName.length > 0;
-  const suggestedNames = uniqueDebtorNames(direction);
 
   // Pendientes agrupadas por dirección y persona, de mayor a menor.
   const sections = useMemo(
@@ -153,19 +90,6 @@ export default function PendingDebts() {
       .slice(0, 30);
   }, [transactions, settleQuery]);
 
-  const resetDebt = () => {
-    setDebtValue("");
-    setPickedName("");
-    setDebtDetail("");
-    setDebtExpanded(false);
-    setDebtError("");
-  };
-
-  const closeAdd = () => {
-    setShowAddModal(false);
-    resetDebt();
-  };
-
   const closeSettle = () => {
     setSettleTarget(null);
     setSettleQuery("");
@@ -200,40 +124,6 @@ export default function PendingDebts() {
     closeSettle();
   };
 
-  const handleAddDebt = async (event?: React.FormEvent) => {
-    event?.preventDefault();
-    if (savingDebt.current) return;
-    if (!parsedDebt) {
-      setDebtError("Escribe el monto en pesos, seguido de la persona.");
-      debtInputRef.current?.focus();
-      return;
-    }
-    if (!debtName) {
-      setDebtError(isOwedToMe ? "¿Quién te debe? Escribe el nombre después del monto." : "¿A quién le debes? Escribe el nombre después del monto.");
-      debtInputRef.current?.focus();
-      return;
-    }
-    savingDebt.current = true;
-    try {
-      const detail = debtDetail.trim() || undefined;
-      if (isOwedToMe) {
-        await addQuickDebt.mutateAsync({ debtorName: debtName, amount: parsedDebt.amount, detail });
-      } else {
-        await addManualDebtIOwe.mutateAsync({ creditorName: debtName, amount: parsedDebt.amount, detail });
-      }
-      closeAdd();
-    } catch {
-      setDebtError("No se guardó la deuda. Intenta de nuevo.");
-    } finally {
-      savingDebt.current = false;
-    }
-  };
-
-  const switchDirection = (next: SharedExpenseDirection) => {
-    setDirection(next);
-    setPickedName("");
-  };
-
   if (isLoading) {
     return (
       <Layout>
@@ -245,24 +135,18 @@ export default function PendingDebts() {
   return (
     <Layout>
       <div className="space-y-6">
-        <div className="flex items-center justify-between">
-          <h1 className="text-2xl font-bold tracking-tight">Deudas</h1>
-          <Button
-            className="rounded-full h-10 w-10 p-0 md:w-auto md:px-5 md:h-10"
-            onClick={() => setShowAddModal(true)}
-          >
-            <Plus className="h-4 w-4 md:mr-2" />
-            <span className="hidden md:inline text-sm">Nueva deuda</span>
-          </Button>
-        </div>
+        <h1 className="text-2xl font-bold tracking-tight">Deudas</h1>
 
         {sections.length === 0 ? (
           <div className="rounded-2xl border border-dashed border-border/60 py-16 text-center">
-            <p className="text-base font-medium text-muted-foreground mb-4">Nadie te debe y no le debes a nadie</p>
-            <Button variant="outline" size="sm" className="rounded-full" onClick={() => setShowAddModal(true)}>
-              <Plus className="h-4 w-4 mr-1.5" />
-              Nueva deuda
-            </Button>
+            <p className="text-base font-medium text-muted-foreground mb-1">Nadie te debe y no le debes a nadie</p>
+            <p className="text-sm text-muted-foreground/70">
+              Para crear una deuda, divide un gasto desde{" "}
+              <Link to="/transactions" className="underline underline-offset-2 hover:text-foreground">
+                Movimientos
+              </Link>
+              .
+            </p>
           </div>
         ) : (
           sections.map((section) => (
@@ -295,7 +179,17 @@ export default function PendingDebts() {
                         )}
                       >
                         <div className="flex-1 min-w-0">
-                          <p className="text-sm truncate">{debt.transaction_detail || debt.detail || "Sin detalle"}</p>
+                          {/* La deuda lleva al movimiento que la originó, si lo tiene. */}
+                          {debt.transaction_id ? (
+                            <Link
+                              to={`/transactions?search=${encodeURIComponent(debt.transaction_detail ?? "")}&highlight=${debt.transaction_id}`}
+                              className="block text-sm truncate hover:underline underline-offset-2"
+                            >
+                              {debt.transaction_detail || "Sin detalle"}
+                            </Link>
+                          ) : (
+                            <p className="text-sm truncate">{debt.detail || "Sin detalle"}</p>
+                          )}
                           <p className="text-xs text-muted-foreground">
                             {shortDate(debt.transaction_date ?? debt.created_at)}
                           </p>
@@ -370,228 +264,84 @@ export default function PendingDebts() {
         )}
       </div>
 
-      {/* Nueva deuda: una línea con el monto y la persona ("25000 Juan"), la
-          dirección en la pastilla de arriba y el detalle en "Más opciones". */}
-      <Composer
-        open={showAddModal}
-        onClose={closeAdd}
-        title="Nueva deuda"
-        description="Escribe el monto y el nombre de la persona en una línea. Tab cambia entre me deben y yo debo. Abajo puedes tocar un nombre frecuente y, en más opciones, agregar un detalle."
-        accent={currentDirection.color}
-        focusRef={debtInputRef}
-      >
-        <form onSubmit={handleAddDebt} className="whisper-form">
-          <div className="whisper-type">
-            <span className="whisper-dot" aria-hidden="true" />
-            <span aria-hidden="true">{currentDirection.label}</span>
-            <select
-              aria-label="Dirección de la deuda"
-              value={direction}
-              onChange={(event) => {
-                switchDirection(event.target.value as SharedExpenseDirection);
-                debtInputRef.current?.focus();
-              }}
-            >
-              {directions.map((d) => (
-                <option key={d.value} value={d.value}>
-                  {d.label}
-                </option>
-              ))}
-            </select>
-            <ChevronDown size={12} aria-hidden="true" />
-          </div>
-
-          <div className="whisper-entry">
-            <input
-              ref={debtInputRef}
-              aria-label="Monto y persona"
-              aria-describedby={debtError ? "debt-error debt-shortcuts" : "debt-shortcuts"}
-              aria-invalid={!!debtError}
-              autoComplete="off"
-              autoCorrect="off"
-              spellCheck={false}
-              maxLength={200}
-              value={debtValue}
-              onChange={(event) => {
-                setDebtValue(event.target.value);
-                setDebtError("");
-              }}
-              placeholder="25000 Juan"
-              className={cn("whisper-input", isPrivacyMode && debtValue && "privacy-blur")}
-              onKeyDown={(event) => {
-                if (event.nativeEvent.isComposing) return;
-                if (event.key === "Tab" && !event.altKey && !event.ctrlKey && !event.metaKey) {
-                  event.preventDefault();
-                  switchDirection(isOwedToMe ? "i_owe_them" : "they_owe_me");
-                }
-              }}
-            />
-            <div className={cn("whisper-preview", isPrivacyMode && parsedDebt && "privacy-blur")} aria-hidden="true">
-              {parsedDebt && <span>{fmt(parsedDebt.amount)}</span>}
-            </div>
-          </div>
-
-          <div className="whisper-category-space">
-            {suggestedNames.length > 0 && (
-              <div className="whisper-categories" role="group" aria-label="Personas frecuentes">
-                {suggestedNames.slice(0, 8).map((name) => {
-                  const pressed = debtName.toLowerCase() === name.toLowerCase();
-                  return (
-                    <button
-                      key={name}
-                      type="button"
-                      className="whisper-category"
-                      aria-pressed={pressed}
-                      onClick={() => {
-                        // Si ya hay un nombre escrito en la línea, la pastilla lo reemplaza.
-                        const amountPart = debtValue.trim().match(/^\$?\s*[\d.,]+/)?.[0] ?? "";
-                        setPickedName(pressed ? "" : name);
-                        setDebtValue(pressed ? amountPart.trim() : amountPart ? `${amountPart.trim()} ${name}` : "");
-                        setDebtError("");
-                        debtInputRef.current?.focus();
-                      }}
-                    >
-                      <span className="whisper-category-dot" aria-hidden="true" />
-                      {name}
-                      {pressed && <Check size={12} aria-hidden="true" />}
-                    </button>
-                  );
-                })}
-              </div>
-            )}
-            <p className="whisper-caption" aria-live="polite">
-              {debtName
-                ? isOwedToMe
-                  ? `${debtName} te debe${parsedDebt ? ` ${fmt(parsedDebt.amount)}` : ""}`
-                  : `Le debes${parsedDebt ? ` ${fmt(parsedDebt.amount)}` : ""} a ${debtName}`
-                : isOwedToMe
-                ? "El nombre va después del monto"
-                : "¿A quién le debes? Va después del monto"}
-              {debtDetail.trim() && ` · ${debtDetail.trim()}`}
-            </p>
-          </div>
-
-          {debtExpanded && (
-            <div className="whisper-options whisper-debt-options">
-              <label>
-                Detalle
-                <input
-                  value={debtDetail}
-                  onChange={(event) => setDebtDetail(event.target.value)}
-                  placeholder="Cena del viernes"
-                  aria-label="Detalle de la deuda"
-                  onKeyDown={(event) => {
-                    if (event.key === "Enter") {
-                      event.preventDefault();
-                      handleAddDebt();
-                    }
-                  }}
-                />
-              </label>
-            </div>
-          )}
-
-          {debtError && (
-            <p id="debt-error" role="alert" className="whisper-error">
-              {debtError}
-            </p>
-          )}
-
-          <div className="whisper-actions">
-            <button type="button" className="whisper-options-toggle" aria-expanded={debtExpanded} onClick={() => setDebtExpanded(!debtExpanded)}>
-              {debtExpanded ? "Menos opciones" : "Más opciones"}
-              <ChevronDown size={12} className={cn(debtExpanded && "rotate-180")} />
-            </button>
-            <button
-              type="submit"
-              className="whisper-submit"
-              disabled={!debtReady || addQuickDebt.isPending || addManualDebtIOwe.isPending}
-              aria-label="Crear deuda"
-            >
-              Crear deuda
-              <span className="hidden sm:inline" aria-hidden="true">↵</span>
-              <ArrowUp size={14} className="sm:hidden" aria-hidden="true" />
-            </button>
-          </div>
-          <p id="debt-shortcuts" className="whisper-shortcuts">
-            <span>
-              <kbd>Tab</kbd> me deben / yo debo
-            </span>
-            <span>
-              <kbd>↵</kbd> guardar
-            </span>
-            <span>
-              <kbd>Esc</kbd> cerrar
-            </span>
-          </p>
-        </form>
-      </Composer>
-
       {/* Saldar deuda: elegir el gasto con el que pagaste. */}
-      <Composer
-        open={!!settleTarget}
-        onClose={closeSettle}
-        title="Saldar deuda"
-        description="Elige el gasto con el que pagaste esta deuda. Puedes escribir para buscar entre tus últimos gastos."
-        accent="#f87171"
-        focusRef={settleInputRef}
-      >
-        <div className="whisper-form">
-          <div className="whisper-type" data-static>
-            <span className="whisper-dot" aria-hidden="true" />
-            <span>Saldar deuda</span>
-          </div>
+      <Dialog.Root open={!!settleTarget} onOpenChange={(open) => !open && closeSettle()}>
+        <Dialog.Portal>
+          <Dialog.Overlay className="whisper-backdrop" />
+          <Dialog.Content
+            data-scrollable
+            className="whisper-composer"
+            style={{ "--whisper-accent": "#f87171" } as React.CSSProperties}
+            onOpenAutoFocus={(event) => {
+              event.preventDefault();
+              settleInputRef.current?.focus();
+            }}
+          >
+            <Dialog.Title className="sr-only">Saldar deuda</Dialog.Title>
+            <Dialog.Description className="sr-only">
+              Elige el gasto con el que pagaste esta deuda. Puedes escribir para buscar entre tus últimos gastos.
+            </Dialog.Description>
+            <Dialog.Close className="whisper-close" aria-label="Cerrar">
+              <X size={16} />
+            </Dialog.Close>
+            <div className="whisper-form">
+              <div className="whisper-type" data-static>
+                <span className="whisper-dot" aria-hidden="true" />
+                <span>Saldar deuda</span>
+              </div>
 
-          <div className="whisper-entry">
-            <input
-              ref={settleInputRef}
-              aria-label="Buscar el gasto con el que pagaste"
-              autoComplete="off"
-              autoCorrect="off"
-              spellCheck={false}
-              value={settleQuery}
-              onChange={(event) => setSettleQuery(event.target.value)}
-              placeholder="Buscar gasto"
-              className="whisper-input whisper-debt-search"
-            />
-            <div className={cn("whisper-preview", isPrivacyMode && "privacy-blur")} aria-hidden="true">
-              {settleTarget && (
-                <span>
-                  le pagaste {fmt(settleTarget.amount_owed)} a {settleTarget.debtor_name}
-                </span>
-              )}
+              <div className="whisper-entry">
+                <input
+                  ref={settleInputRef}
+                  aria-label="Buscar el gasto con el que pagaste"
+                  autoComplete="off"
+                  autoCorrect="off"
+                  spellCheck={false}
+                  value={settleQuery}
+                  onChange={(event) => setSettleQuery(event.target.value)}
+                  placeholder="Buscar gasto"
+                  className="whisper-input whisper-debt-search"
+                />
+                <div className={cn("whisper-preview", isPrivacyMode && "privacy-blur")} aria-hidden="true">
+                  {settleTarget && (
+                    <span>
+                      le pagaste {fmt(settleTarget.amount_owed)} a {settleTarget.debtor_name}
+                    </span>
+                  )}
+                </div>
+              </div>
+
+              <div className="whisper-debt-list" role="listbox" aria-label="Últimos gastos">
+                {recentGastos.length === 0 && (
+                  <p className="whisper-caption">
+                    {settleQuery.trim() ? "Ningún gasto calza con eso." : "No tienes gastos registrados todavía."}
+                  </p>
+                )}
+                {recentGastos.map((tx) => (
+                  <button
+                    key={tx.id}
+                    type="button"
+                    role="option"
+                    aria-selected={false}
+                    disabled={settleDebtsIOwe.isPending}
+                    onClick={() => handleSettleWithTransaction(tx.id)}
+                    className="whisper-debt-row"
+                  >
+                    <HandCoins size={14} aria-hidden="true" />
+                    <span className="whisper-debt-row-main">
+                      <span className={cn("whisper-debt-row-detail", isPrivacyMode && "privacy-blur")}>{tx.detail || "Sin detalle"}</span>
+                      <span className="whisper-debt-row-meta">
+                        {shortDate(tx.date)} · {tx.category_name}
+                      </span>
+                    </span>
+                    <span className={cn("whisper-debt-row-amount", isPrivacyMode && "privacy-blur")}>{fmt(tx.amount)}</span>
+                  </button>
+                ))}
+              </div>
             </div>
-          </div>
-
-          <div className="whisper-debt-list" role="listbox" aria-label="Últimos gastos">
-            {recentGastos.length === 0 && (
-              <p className="whisper-caption">
-                {settleQuery.trim() ? "Ningún gasto calza con eso." : "No tienes gastos registrados todavía."}
-              </p>
-            )}
-            {recentGastos.map((tx) => (
-              <button
-                key={tx.id}
-                type="button"
-                role="option"
-                aria-selected={false}
-                disabled={settleDebtsIOwe.isPending}
-                onClick={() => handleSettleWithTransaction(tx.id)}
-                className="whisper-debt-row"
-              >
-                <HandCoins size={14} aria-hidden="true" />
-                <span className="whisper-debt-row-main">
-                  <span className={cn("whisper-debt-row-detail", isPrivacyMode && "privacy-blur")}>{tx.detail || "Sin detalle"}</span>
-                  <span className="whisper-debt-row-meta">
-                    {shortDate(tx.date)} · {tx.category_name}
-                  </span>
-                </span>
-                <span className={cn("whisper-debt-row-amount", isPrivacyMode && "privacy-blur")}>{fmt(tx.amount)}</span>
-              </button>
-            ))}
-          </div>
-        </div>
-      </Composer>
+          </Dialog.Content>
+        </Dialog.Portal>
+      </Dialog.Root>
 
       <ConfirmDialog
         open={confirmOpen}
