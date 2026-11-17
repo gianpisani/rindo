@@ -8,6 +8,7 @@ import { Avatar, AvatarImage, AvatarFallback } from "./ui/avatar";
 import { useUserProfile } from "@/hooks/useUserProfile";
 import {
   THEME_PRESETS,
+  findPreset,
   FONT_OPTIONS,
   applyThemePreview,
   applyFontPreview,
@@ -16,6 +17,7 @@ import {
   generatePaletteFromHue,
   parseCustomSettings,
   type CustomThemeSettings,
+  type PaletteVars,
 } from "@/hooks/useCustomTheme";
 import { useTheme } from "next-themes";
 import {
@@ -30,7 +32,6 @@ import {
   Check,
   Loader2,
   Trash2,
-  Paintbrush,
   Type,
   Circle,
 } from "lucide-react";
@@ -52,80 +53,84 @@ const STEPS = [
 const DEFAULT_RADIUS = 0.75;
 
 // ── Mini preview card for a theme palette ─────────────────────────────
+// Una miniatura de la app con los colores que se van a aplicar: fondo,
+// barra lateral con la navegación activa en el acento y tarjetas con su
+// texto y su texto secundario.
+type PreviewPalette = Pick<
+  PaletteVars,
+  "background" | "card" | "sidebar" | "primary" | "foreground" | "mutedForeground" | "border"
+>;
+
+// El tema Rindo de index.css, para su miniatura.
+const RINDO_PREVIEW: Record<"light" | "dark", PreviewPalette> = {
+  light: {
+    background: "oklch(0.965 0.002 286)",
+    card: "oklch(0.995 0 0)",
+    sidebar: "oklch(0.955 0.002 286)",
+    primary: "oklch(0.586 0.253 17.585)",
+    foreground: "oklch(0.13 0.005 285.823)",
+    mutedForeground: "oklch(0.355 0.016 285.938)",
+    border: "oklch(0.835 0.008 286)",
+  },
+  dark: {
+    background: "oklch(0.098 0.005 285.823)",
+    card: "oklch(0.141 0.005 285.823)",
+    sidebar: "oklch(0.12 0.005 285.823)",
+    primary: "oklch(0.645 0.246 16.439)",
+    foreground: "oklch(0.985 0 0)",
+    mutedForeground: "oklch(0.705 0.015 286.067)",
+    border: "oklch(1 0 0 / 8%)",
+  },
+};
+
 function ThemePreviewCard({
   palette,
   name,
   selected,
   onClick,
 }: {
-  palette: {
-    background: string;
-    card: string;
-    primary: string;
-    foreground: string;
-    muted: string;
-    border: string;
-  };
+  palette: PreviewPalette;
   name: string;
   selected: boolean;
   onClick: () => void;
 }) {
+  const line = (color: string, width: string) => (
+    <div className="h-1 rounded-full" style={{ backgroundColor: color, width }} />
+  );
   return (
     <button
       onClick={onClick}
       className={cn(
         "flex flex-col items-center gap-1.5 p-1.5 rounded-card transition-all duration-200",
-        selected
-          ? "ring-2 ring-foreground scale-[1.02]"
-          : "active:scale-[0.97]"
+        selected ? "ring-2 ring-foreground" : "active:scale-[0.97]"
       )}
     >
       <div
-        className="w-full aspect-[4/3] rounded-card overflow-hidden border"
-        style={{
-          backgroundColor: palette.background,
-          borderColor: palette.border,
-        }}
+        className="flex w-full aspect-[4/3] rounded-card overflow-hidden border"
+        style={{ backgroundColor: palette.background, borderColor: palette.border }}
       >
-        <div className="flex h-full">
-          <div className="w-1/4 h-full" style={{ backgroundColor: palette.muted }}>
-            <div
-              className="w-2/3 h-1 rounded-full mt-2 mx-auto"
-              style={{ backgroundColor: palette.primary }}
-            />
-            <div
-              className="w-1/2 h-0.5 rounded-full mt-1.5 mx-auto opacity-40"
-              style={{ backgroundColor: palette.foreground }}
-            />
-            <div
-              className="w-1/2 h-0.5 rounded-full mt-1 mx-auto opacity-30"
-              style={{ backgroundColor: palette.foreground }}
-            />
+        <div
+          className="w-1/4 h-full flex flex-col items-center gap-1 pt-2 border-r"
+          style={{ backgroundColor: palette.sidebar, borderColor: palette.border }}
+        >
+          <div className="size-1.5 rounded-full" style={{ backgroundColor: palette.primary }} />
+          {line(palette.mutedForeground, "50%")}
+          {line(palette.mutedForeground, "50%")}
+        </div>
+        <div className="flex-1 p-1.5 space-y-1">
+          {line(palette.foreground, "60%")}
+          <div
+            className="rounded-card border p-1 space-y-1"
+            style={{ backgroundColor: palette.card, borderColor: palette.border }}
+          >
+            {line(palette.foreground, "70%")}
+            {line(palette.mutedForeground, "45%")}
           </div>
-          <div className="flex-1 p-1.5 space-y-1">
-            <div
-              className="w-3/4 h-1 rounded-full"
-              style={{ backgroundColor: palette.foreground, opacity: 0.7 }}
-            />
-            <div
-              className="w-full h-4 rounded-card"
-              style={{
-                backgroundColor: palette.card,
-                border: `0.5px solid ${palette.border}`,
-              }}
-            >
-              <div
-                className="w-1/2 h-0.5 rounded-full mt-1 ml-1"
-                style={{ backgroundColor: palette.primary }}
-              />
-            </div>
-            <div
-              className="w-full h-3 rounded-card"
-              style={{
-                backgroundColor: palette.card,
-                border: `0.5px solid ${palette.border}`,
-              }}
-            />
+          <div
+            className="rounded-card border p-1"
+            style={{ backgroundColor: palette.card, borderColor: palette.border }}
+          >
+            {line(palette.mutedForeground, "55%")}
           </div>
         </div>
       </div>
@@ -257,7 +262,9 @@ export function OnboardingModal({
       setFullName(profile.full_name || "");
       setNickname(profile.nickname || "");
       setLocalAvatarPreview(null);
-      setSelectedTheme(profile.accent_color_1 || null);
+      const saved = profile.accent_color_1;
+      // Un id retirado se muestra como el tema al que hoy apunta.
+      setSelectedTheme(saved === "custom" ? saved : findPreset(saved)?.id ?? null);
       const settings = parseCustomSettings(profile.accent_color_2);
       setCustomHue(settings.hue ?? 240);
       setSelectedFont(settings.font ?? "default");
@@ -600,35 +607,10 @@ export function OnboardingModal({
             {/* ── Color ───────────────────────────────────────── */}
             <div>
               <SectionLabel icon={Palette}>Color</SectionLabel>
-              <div className="grid grid-cols-3 sm:grid-cols-5 gap-2 p-0.5">
+              <div className="grid grid-cols-4 gap-2 p-0.5">
                 {/* Default Rindo */}
                 <ThemePreviewCard
-                  palette={{
-                    background:
-                      currentMode === "dark"
-                        ? "oklch(0.098 0.005 285.823)"
-                        : "oklch(1 0 0)",
-                    card:
-                      currentMode === "dark"
-                        ? "oklch(0.141 0.005 285.823)"
-                        : "oklch(1 0 0)",
-                    primary:
-                      currentMode === "dark"
-                        ? "oklch(0.645 0.246 16.439)"
-                        : "oklch(0.586 0.253 17.585)",
-                    foreground:
-                      currentMode === "dark"
-                        ? "oklch(0.985 0 0)"
-                        : "oklch(0.141 0.005 285.823)",
-                    muted:
-                      currentMode === "dark"
-                        ? "oklch(0.21 0.006 285.885)"
-                        : "oklch(0.967 0.001 286.375)",
-                    border:
-                      currentMode === "dark"
-                        ? "oklch(0.28 0.006 285)"
-                        : "oklch(0.92 0.004 286.32)",
-                  }}
+                  palette={RINDO_PREVIEW[currentMode]}
                   name="Rindo"
                   selected={selectedTheme === null}
                   onClick={() => handleSelectTheme(null)}
@@ -646,28 +628,13 @@ export function OnboardingModal({
                     />
                   );
                 })}
-                {/* Custom — la tarjeta muestra el gradiente que va a aplicar */}
-                <button
+                {/* Custom: la miniatura muestra el tono del slider */}
+                <ThemePreviewCard
+                  palette={customPalette}
+                  name="Custom"
+                  selected={selectedTheme === "custom"}
                   onClick={() => handleSelectTheme("custom")}
-                  className={cn(
-                    "flex flex-col items-center gap-1.5 p-1.5 rounded-card transition-all duration-200",
-                    selectedTheme === "custom"
-                      ? "ring-2 ring-foreground scale-[1.02]"
-                      : "active:scale-[0.97]"
-                  )}
-                >
-                  <div
-                    className="w-full aspect-[4/3] rounded-card overflow-hidden flex items-center justify-center"
-                    style={{
-                      background: `linear-gradient(135deg, ${customPalette.primary}, ${customPalette.ring})`,
-                    }}
-                  >
-                    <Paintbrush className="size-5 text-white/90 drop-shadow-md" />
-                  </div>
-                  <span className="text-xs font-medium text-muted-foreground">
-                    Custom
-                  </span>
-                </button>
+                />
               </div>
 
               {/* Hue slider — slides in when custom selected */}
