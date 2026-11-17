@@ -1,12 +1,24 @@
 import { useCallback, useState } from "react";
 import { Link, useLocation } from "react-router-dom";
-import { Plus, ChevronUp, UserPen, LogOut, CalendarRange } from "lucide-react";
+import {
+  Plus,
+  ChevronUp,
+  UserPen,
+  LogOut,
+  CalendarRange,
+  Bell,
+  BellOff,
+  Volume2,
+  VolumeOff,
+} from "lucide-react";
 import { usePeriodConfig } from "@/hooks/usePeriodConfig";
 import { periodShortLabel } from "@/lib/period";
 import { cn } from "@/lib/utils";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { useGlobalDrawers } from "@/hooks/useGlobalDrawers";
 import { useSoundFX } from "@/hooks/useSoundFX";
+import { useSoundPreferences } from "@/hooks/useSoundPreferences";
+import { usePushNotifications } from "@/hooks/usePushNotifications";
 import { useUserProfile } from "@/hooks/useUserProfile";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
@@ -23,12 +35,26 @@ function RouteIcon({ route, className }: { route: RouteConfig; className?: strin
   return <Icon className={className} />;
 }
 
+// Todas las filas de la hoja "Más" se ven igual: ícono chico + texto.
+const rowClass =
+  "flex w-full items-center gap-3 px-3 py-2 rounded-xl text-left active:bg-muted/50 transition-colors";
+const rowIconClass =
+  "size-8 rounded-full bg-muted/80 dark:bg-muted/50 grid place-items-center shrink-0 text-muted-foreground";
+
 export function MobileBottomBar() {
   const isMobile = useIsMobile();
   const location = useLocation();
   const { openQuickAdd, openProfileEdit, openPeriodSettings } = useGlobalDrawers();
   const { startDay } = usePeriodConfig();
-  const { playToggleOn } = useSoundFX();
+  const { playToggleOn, playToggleOff } = useSoundFX();
+  const { soundEnabled, toggleSound } = useSoundPreferences();
+  const {
+    isSupported: pushSupported,
+    isSubscribed: pushSubscribed,
+    isLoading: pushLoading,
+    subscribe: pushSubscribe,
+    unsubscribe: pushUnsubscribe,
+  } = usePushNotifications();
   const { profile, avatarUrl } = useUserProfile();
   const [drawerOpen, setDrawerOpen] = useState(false);
 
@@ -118,100 +144,104 @@ export function MobileBottomBar() {
         <DrawerContent className="mobile-drawer-content">
           <DrawerTitle className="sr-only">Menú</DrawerTitle>
 
-          <div className="px-4 pt-4 pb-2">
-            {/* Quick Add - Centered hero */}
-            <div className="flex flex-col items-center py-3">
-              <button
-                onClick={handleQuickAdd}
-                className="mobile-drawer-quickadd-btn group"
-              >
-                <div className="mobile-drawer-quickadd-ring">
-                  <div className="mobile-drawer-quickadd-icon">
-                    <Plus className="h-6 w-6 text-primary-foreground" strokeWidth={2.5} />
-                  </div>
-                </div>
-              </button>
-              <span className="text-[13px] font-semibold text-foreground mt-3 tracking-tight">
-                Agregar movimiento
-              </span>
-              <span className="text-[11px] text-muted-foreground mt-0.5">
-                Ingreso o gasto rápido
-              </span>
-            </div>
-
-            {/* Divider */}
-            <div className="my-2 mx-6 h-px bg-border/40" />
+          <div className="px-3 pt-3 pb-2 min-h-0 overflow-y-auto">
+            <button onClick={handleQuickAdd} className={rowClass}>
+              <div className={rowIconClass}>
+                <Plus className="size-4" />
+              </div>
+              <span className="text-sm font-medium">Agregar movimiento</span>
+            </button>
 
             {/* Routes not in bottom bar */}
-            <div className="mobile-drawer-grid">
-              {drawerRoutes.map((route) => {
-                const isActive = location.pathname === route.url;
-                return (
-                  <Link
-                    key={route.url}
-                    to={route.url}
-                    onClick={() => setDrawerOpen(false)}
-                    className={cn(
-                      "mobile-drawer-item",
-                      isActive && "mobile-drawer-item-active"
-                    )}
-                  >
-                    <div className={cn(
-                      "mobile-drawer-item-icon",
-                      isActive
-                        ? "bg-primary/15 text-primary"
-                        : "bg-muted/80 text-foreground/60 dark:bg-muted/50 dark:text-muted-foreground"
-                    )}>
-                      <RouteIcon route={route} className="h-5 w-5" />
-                    </div>
-                    <span className={cn(
-                      "text-xs font-medium",
-                      isActive ? "text-primary" : "text-foreground/70"
-                    )}>
-                      {route.title}
-                    </span>
-                  </Link>
-                );
-              })}
-            </div>
+            {drawerRoutes.map((route) => {
+              const isActive = location.pathname === route.url;
+              return (
+                <Link
+                  key={route.url}
+                  to={route.url}
+                  onClick={() => setDrawerOpen(false)}
+                  aria-current={isActive ? "page" : undefined}
+                  className={cn(rowClass, isActive && "bg-muted/60")}
+                >
+                  <div className={cn(rowIconClass, isActive && "text-primary")}>
+                    <RouteIcon route={route} className="size-4" />
+                  </div>
+                  <span className={cn("text-sm font-medium", isActive && "text-primary")}>
+                    {route.title}
+                  </span>
+                </Link>
+              );
+            })}
 
-            {/* Divider */}
-            <div className="my-2 mx-6 h-px bg-border/40" />
+            <div className="my-2 mx-3 h-px bg-border/40" />
 
-            {/* Mes financiero */}
             <button
               onClick={() => {
                 setDrawerOpen(false);
                 setTimeout(() => openPeriodSettings(), 300);
               }}
-              className="flex w-full items-center gap-3 px-4 py-2.5 rounded-xl active:bg-muted/50 transition-colors"
+              className={rowClass}
             >
-              <div className="size-9 rounded-full bg-muted/80 dark:bg-muted/50 grid place-items-center shrink-0">
-                <CalendarRange className="size-4 text-muted-foreground" />
+              <div className={rowIconClass}>
+                <CalendarRange className="size-4" />
               </div>
-              <div className="flex-1 text-left min-w-0">
-                <p className="text-sm font-medium">Mes financiero</p>
-                <p className="text-[11px] text-muted-foreground">{periodShortLabel(startDay)}</p>
-              </div>
+              <span className="flex-1 text-sm font-medium">Mes financiero</span>
+              <span className="text-[11px] text-muted-foreground">{periodShortLabel(startDay)}</span>
             </button>
 
+            {pushSupported && (
+              <button
+                onClick={() => {
+                  if (pushSubscribed) pushUnsubscribe(); else pushSubscribe();
+                }}
+                disabled={pushLoading}
+                className={cn(rowClass, "disabled:opacity-60")}
+              >
+                <div className={rowIconClass}>
+                  {pushSubscribed ? <Bell className="size-4" /> : <BellOff className="size-4" />}
+                </div>
+                <span className="flex-1 text-sm font-medium">Notificaciones</span>
+                <span className="text-[11px] text-muted-foreground">
+                  {pushLoading ? "..." : pushSubscribed ? "Activadas" : "Desactivadas"}
+                </span>
+              </button>
+            )}
+
+            <button
+              onClick={() => {
+                toggleSound();
+                if (soundEnabled) playToggleOff(); else playToggleOn();
+              }}
+              className={rowClass}
+            >
+              <div className={rowIconClass}>
+                {soundEnabled ? <Volume2 className="size-4" /> : <VolumeOff className="size-4" />}
+              </div>
+              <span className="flex-1 text-sm font-medium">Sonidos</span>
+              <span className="text-[11px] text-muted-foreground">
+                {soundEnabled ? "Activados" : "Desactivados"}
+              </span>
+            </button>
+
+            <div className="my-2 mx-3 h-px bg-border/40" />
+
             {/* Profile + Logout */}
-            <div className="flex items-center gap-2 px-1">
+            <div className="flex items-center gap-2">
               {/* Profile */}
               <button
                 onClick={() => {
                   setDrawerOpen(false);
                   openProfileEdit();
                 }}
-                className="flex items-center gap-3 flex-1 min-w-0 px-3 py-2.5 rounded-xl active:bg-muted/50 transition-colors"
+                className={cn(rowClass, "min-w-0")}
               >
-                <Avatar className="size-9 ring-1 ring-border/50 shrink-0">
+                <Avatar className="size-8 ring-1 ring-border/50 shrink-0">
                   {avatarUrl && <AvatarImage src={avatarUrl} className="object-cover" />}
                   <AvatarFallback className="bg-primary/10 text-primary text-xs font-semibold">
                     {userInitials}
                   </AvatarFallback>
                 </Avatar>
-                <div className="flex-1 text-left min-w-0">
+                <div className="flex-1 min-w-0">
                   <p className="text-sm font-medium truncate">{displayName || "Mi perfil"}</p>
                   <p className="text-[11px] text-muted-foreground">Editar perfil</p>
                 </div>
@@ -225,6 +255,7 @@ export function MobileBottomBar() {
                   await supabase.auth.signOut();
                   toast.success("Sesión cerrada exitosamente");
                 }}
+                aria-label="Cerrar sesión"
                 className="size-11 rounded-xl bg-muted/60 flex items-center justify-center shrink-0 active:bg-destructive/10 active:scale-95 transition-all"
               >
                 <LogOut className="size-4.5 text-muted-foreground" />

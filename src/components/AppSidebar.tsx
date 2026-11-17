@@ -29,7 +29,6 @@ import {
   SidebarFooter,
   SidebarGroup,
   SidebarGroupContent,
-  SidebarGroupLabel,
   SidebarHeader,
   SidebarMenu,
   SidebarMenuItem,
@@ -49,14 +48,13 @@ import {
   TooltipContent,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
-import { useIsMobile } from "@/hooks/use-mobile";
 import { RindoLogo } from "./RindoLogo";
 import { useUserProfile } from "@/hooks/useUserProfile";
 import { useGlobalDrawers } from "@/hooks/useGlobalDrawers";
 import { usePeriodConfig } from "@/hooks/usePeriodConfig";
 import { periodShortLabel } from "@/lib/period";
 import { cn } from "@/lib/utils";
-import { getMainRoutes, getToolRoutes, type RouteConfig } from "@/lib/routes-config";
+import { APP_ROUTES, type RouteConfig } from "@/lib/routes-config";
 
 export function AppSidebar() {
   const location = useLocation();
@@ -65,7 +63,6 @@ export function AppSidebar() {
   const { playToggleOn, playToggleOff } = useSoundFX();
   const { isSupported, isSubscribed, isLoading, subscribe, unsubscribe } = usePushNotifications();
   const { theme, setTheme } = useTheme();
-  const isMobile = useIsMobile();
 
   const { profile, avatarUrl } = useUserProfile();
   const { openProfileEdit, openPeriodSettings } = useGlobalDrawers();
@@ -83,9 +80,6 @@ export function AppSidebar() {
   const userInitials = (profile?.nickname || profile?.full_name || userEmail || "U")
     .slice(0, 2)
     .toUpperCase();
-
-  const mainRoutes = getMainRoutes();
-  const toolRoutes = getToolRoutes();
 
   const handleLogout = async () => {
     await supabase.auth.signOut();
@@ -166,33 +160,11 @@ export function AppSidebar() {
 
       <SidebarContent>
         <SidebarGroup>
-          <SidebarGroupLabel>Principal</SidebarGroupLabel>
           <SidebarGroupContent>
             <SidebarMenu>
-              {mainRoutes.map((route) => (
+              {APP_ROUTES.map((route) => (
                 <SidebarMenuItem key={route.url}>
-                  <NavItem
-                    route={route}
-                    isActive={location.pathname === route.url}
-                    showShortcut={!isMobile}
-                  />
-                </SidebarMenuItem>
-              ))}
-            </SidebarMenu>
-          </SidebarGroupContent>
-        </SidebarGroup>
-
-        <SidebarGroup>
-          <SidebarGroupLabel>Herramientas</SidebarGroupLabel>
-          <SidebarGroupContent>
-            <SidebarMenu>
-              {toolRoutes.map((route) => (
-                <SidebarMenuItem key={route.url}>
-                  <NavItem
-                    route={route}
-                    isActive={location.pathname === route.url}
-                    showShortcut={!isMobile}
-                  />
+                  <NavItem route={route} isActive={location.pathname === route.url} />
                 </SidebarMenuItem>
               ))}
             </SidebarMenu>
@@ -345,19 +317,13 @@ export function AppSidebar() {
 }
 
 
-function NavItem({
-  route,
-  isActive,
-  showShortcut,
-}: {
-  route: RouteConfig;
-  isActive: boolean;
-  showShortcut: boolean;
-}) {
+function NavItem({ route, isActive }: { route: RouteConfig; isActive: boolean }) {
   const navigate = useNavigate();
   const { state: sidebarState, isMobile: isSidebarMobile } = useSidebar();
   const isCollapsed = sidebarState === "collapsed" && !isSidebarMobile;
   const Icon = route.icon;
+  // El atajo no se muestra en la lista: vive en el tooltip.
+  const label = route.shortcut ? `${route.title} (${route.shortcut})` : route.title;
 
   const item = (
     <div
@@ -369,6 +335,7 @@ function NavItem({
     >
       <button
         onClick={() => navigate(route.url)}
+        title={isCollapsed ? undefined : label}
         className={cn(
           "flex items-center gap-2 flex-1 px-2 py-1.5 min-h-[32px] text-left cursor-pointer",
           isCollapsed && "justify-center px-0 flex-initial",
@@ -377,11 +344,6 @@ function NavItem({
         <Icon className="size-4" />
         {!isCollapsed && <span className="truncate">{route.title}</span>}
       </button>
-      {!isCollapsed && showShortcut && route.shortcut && (
-        <span className="flex gap-0.5 opacity-60 mr-2 shrink-0 text-[10px] px-1 py-0.5 bg-muted rounded font-mono">
-          {route.shortcut}
-        </span>
-      )}
     </div>
   );
 
@@ -390,7 +352,7 @@ function NavItem({
       <Tooltip>
         <TooltipTrigger asChild>{item}</TooltipTrigger>
         <TooltipContent side="right" align="center">
-          {route.title}
+          {label}
         </TooltipContent>
       </Tooltip>
     );
