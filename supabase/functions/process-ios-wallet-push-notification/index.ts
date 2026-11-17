@@ -1,3 +1,5 @@
+import { categorizeForUser } from '../_shared/jev-poc.ts'
+import { canCategorizeOwner } from '../_shared/category-auth.ts'
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.39.3'
 import { corsHeaders } from '../_shared/cors.ts'
 import { sendNotificationEmail } from '../_shared/email-notification.ts'
@@ -94,31 +96,11 @@ Deno.serve(async (req) => {
       Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
     )
 
-    // Auto-categorize: check user's history for similar details
     let categoryName = 'Sin categoría'
-    try {
-      const searchTerm = comercio.split(/[\s(]/)[0]
-      if (searchTerm && searchTerm.length > 2) {
-        const { data: similar } = await supabase
-          .from('transactions')
-          .select('category_name')
-          .eq('user_id', usuario)
-          .neq('category_name', 'Sin categoría')
-          .neq('category_name', '⚡ Analizando...')
-          .ilike('detail', `%${searchTerm}%`)
-          .limit(5)
-
-        if (similar && similar.length > 0) {
-          const counts: Record<string, number> = {}
-          for (const tx of similar) {
-            counts[tx.category_name] = (counts[tx.category_name] || 0) + 1
-          }
-          const best = Object.entries(counts).sort((a, b) => b[1] - a[1])[0]
-          if (best) categoryName = best[0]
-        }
-      }
-    } catch (e) {
-      console.error('⚠️ Auto-categorize error:', e)
+    // These importers use a service client, so authenticate the owner explicitly.
+    if (!await canCategorizeOwner(supabase, req.headers.get('Authorization'), usuario, Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? '')) {
+      return new Response(JSON.stringify({ success: false, error: 'Se requiere una sesión válida o un importador autenticado' }),
+        { status: 401, headers: { ...walletCorsHeaders, 'Content-Type': 'application/json' } })
     }
 
     // Match credit card by last 4 digits
@@ -164,6 +146,12 @@ Deno.serve(async (req) => {
     }
 
     console.log('✅ Transacción creada:', data.id, detail, parsedAmount)
+
+    try {
+      const result = await categorizeForUser(supabase, data.id, usuario, { apiKey: Deno.env.get('AI_GATEWAY_API_KEY') ?? '' })
+      categoryName = result.category
+    } catch { console.error('No se pudo categorizar el movimiento importado') }
+
 
     // Weekly stats
     let weeklyStats = null
