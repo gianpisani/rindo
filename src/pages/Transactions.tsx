@@ -1,5 +1,4 @@
 import { useState, useEffect, useMemo, useRef } from "react";
-import { useSearchParams } from "react-router-dom";
 import * as Dialog from "@radix-ui/react-dialog";
 import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
 import Layout from "@/components/Layout";
@@ -211,32 +210,14 @@ export default function Transactions() {
   const [debtsToLink, setDebtsToLink] = useState<Array<{ id: string; debtorName: string; amount: number; transactionDetail?: string }>>([]);
   const [debtsIOweToSettle, setDebtsIOweToSettle] = useState<Array<{ id: string; debtorName: string; amount: number }>>([]);
   const [settleDebtToggle, setSettleDebtToggle] = useState(false);
-  const [searchParams, setSearchParams] = useSearchParams();
-  const [searchValue, setSearchValue] = useState(searchParams.get("search") || "");
+  const [searchValue, setSearchValue] = useState("");
   const searchInputRef = useRef<HTMLInputElement>(null);
   useSearchFocusShortcut(searchInputRef);
-  const [highlightId, setHighlightId] = useState<string | null>(searchParams.get("highlight"));
   const [typeFilter, setTypeFilter] = useState("all");
   const [categoryFilter, setCategoryFilter] = useState("all");
   const [cardFilter, setCardFilter] = useState("all");
   const [dateRange, setDateRange] = useState<DateRangeValue>({});
 
-  // Sync from URL params (e.g. coming from ⌘K)
-  useEffect(() => {
-    const urlSearch = searchParams.get("search");
-    const urlHighlight = searchParams.get("highlight");
-    if (urlSearch) {
-      setSearchValue(urlSearch);
-      // Clean URL params without triggering re-render loop
-      setSearchParams({}, { replace: true });
-    }
-    if (urlHighlight) {
-      setHighlightId(urlHighlight);
-      // Clear highlight after animation
-      const timer = setTimeout(() => setHighlightId(null), 3000);
-      return () => clearTimeout(timer);
-    }
-  }, []);
   // Lo que espera confirmación para eliminarse: un id, o los de la selección.
   const [deleteId, setDeleteId] = useState<string | null>(null);
   const [deleteIds, setDeleteIds] = useState<string[]>([]);
@@ -1237,7 +1218,6 @@ export default function Transactions() {
           onCardFilterChange={setCardFilter}
           dateRange={dateRange}
           onDateRangeChange={setDateRange}
-          highlightId={highlightId}
         />
       </div>
 
