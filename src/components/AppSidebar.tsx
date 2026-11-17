@@ -29,7 +29,6 @@ import {
   SidebarFooter,
   SidebarGroup,
   SidebarGroupContent,
-  SidebarGroupLabel,
   SidebarHeader,
   SidebarMenu,
   SidebarMenuItem,
@@ -49,14 +48,13 @@ import {
   TooltipContent,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
-import { useIsMobile } from "@/hooks/use-mobile";
 import { RindoLogo } from "./RindoLogo";
 import { useUserProfile } from "@/hooks/useUserProfile";
 import { useGlobalDrawers } from "@/hooks/useGlobalDrawers";
 import { usePeriodConfig } from "@/hooks/usePeriodConfig";
 import { periodShortLabel } from "@/lib/period";
 import { cn } from "@/lib/utils";
-import { getMainRoutes, getToolRoutes, type RouteConfig } from "@/lib/routes-config";
+import { APP_ROUTES, type RouteConfig } from "@/lib/routes-config";
 
 export function AppSidebar() {
   const location = useLocation();
@@ -65,7 +63,6 @@ export function AppSidebar() {
   const { playToggleOn, playToggleOff } = useSoundFX();
   const { isSupported, isSubscribed, isLoading, subscribe, unsubscribe } = usePushNotifications();
   const { theme, setTheme } = useTheme();
-  const isMobile = useIsMobile();
 
   const { profile, avatarUrl } = useUserProfile();
   const { openProfileEdit, openPeriodSettings } = useGlobalDrawers();
@@ -83,9 +80,6 @@ export function AppSidebar() {
   const userInitials = (profile?.nickname || profile?.full_name || userEmail || "U")
     .slice(0, 2)
     .toUpperCase();
-
-  const mainRoutes = getMainRoutes();
-  const toolRoutes = getToolRoutes();
 
   const handleLogout = async () => {
     await supabase.auth.signOut();
@@ -111,18 +105,18 @@ export function AppSidebar() {
           <SidebarMenuItem>
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
-                <button className="flex items-center gap-2 w-full rounded-md px-2 py-2 text-sm hover:bg-sidebar-accent transition-colors data-[state=open]:bg-sidebar-accent group-data-[collapsible=icon]:!size-8 group-data-[collapsible=icon]:!p-0 group-data-[collapsible=icon]:justify-center">
+                <button className="flex items-center gap-2 w-full rounded-card px-2 py-2 text-sm hover:bg-sidebar-accent transition-colors data-[state=open]:bg-sidebar-accent group-data-[collapsible=icon]:!size-8 group-data-[collapsible=icon]:!p-0 group-data-[collapsible=icon]:justify-center">
                   <div className="flex aspect-square size-8 items-center justify-center shrink-0">
                     <RindoLogo size={28} className="text-foreground" />
                   </div>
                   <div className="grid flex-1 text-left text-sm leading-tight group-data-[collapsible=icon]:hidden">
-                    <span className="truncate font-semibold">rindo<span className="text-primary">.</span></span>
+                    <span className="truncate font-medium">rindo<span className="text-primary">.</span></span>
                   </div>
-                  <ChevronsUpDown className="ml-auto size-4 text-muted-foreground/50 group-data-[collapsible=icon]:hidden" />
+                  <ChevronsUpDown className="ml-auto size-4 group-data-[collapsible=icon]:hidden" />
                 </button>
               </DropdownMenuTrigger>
               <DropdownMenuContent
-                className="w-[--radix-dropdown-menu-trigger-width] min-w-56 rounded-xl"
+                className="w-[--radix-dropdown-menu-trigger-width] min-w-56 rounded-card"
                 align="start"
                 side="bottom"
                 sideOffset={4}
@@ -166,33 +160,11 @@ export function AppSidebar() {
 
       <SidebarContent>
         <SidebarGroup>
-          <SidebarGroupLabel>Principal</SidebarGroupLabel>
           <SidebarGroupContent>
             <SidebarMenu>
-              {mainRoutes.map((route) => (
+              {APP_ROUTES.map((route) => (
                 <SidebarMenuItem key={route.url}>
-                  <NavItem
-                    route={route}
-                    isActive={location.pathname === route.url}
-                    showShortcut={!isMobile}
-                  />
-                </SidebarMenuItem>
-              ))}
-            </SidebarMenu>
-          </SidebarGroupContent>
-        </SidebarGroup>
-
-        <SidebarGroup>
-          <SidebarGroupLabel>Herramientas</SidebarGroupLabel>
-          <SidebarGroupContent>
-            <SidebarMenu>
-              {toolRoutes.map((route) => (
-                <SidebarMenuItem key={route.url}>
-                  <NavItem
-                    route={route}
-                    isActive={location.pathname === route.url}
-                    showShortcut={!isMobile}
-                  />
+                  <NavItem route={route} isActive={location.pathname === route.url} />
                 </SidebarMenuItem>
               ))}
             </SidebarMenu>
@@ -206,43 +178,43 @@ export function AppSidebar() {
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <button
-                  className="flex items-center gap-2 w-full rounded-md px-2 py-2 text-sm hover:bg-sidebar-accent transition-colors data-[state=open]:bg-sidebar-accent sm:mb-0 mb-4 group-data-[collapsible=icon]:!size-8 group-data-[collapsible=icon]:!p-0 group-data-[collapsible=icon]:justify-center"
+                  className="flex items-center gap-2 w-full rounded-card px-2 py-2 text-sm hover:bg-sidebar-accent transition-colors data-[state=open]:bg-sidebar-accent sm:mb-0 mb-4 group-data-[collapsible=icon]:!size-8 group-data-[collapsible=icon]:!p-0 group-data-[collapsible=icon]:justify-center"
                 >
-                  <div className="rounded-full p-[2px] accent-gradient-bg shrink-0">
+                  <div className="rounded-full p-0.5 bg-border shrink-0">
                     <Avatar className="size-7">
                       {avatarUrl && <AvatarImage src={avatarUrl} className="object-cover" />}
-                      <AvatarFallback className="bg-sidebar text-primary text-[10px] font-semibold">
+                      <AvatarFallback className="bg-sidebar text-xs font-medium">
                         {userInitials}
                       </AvatarFallback>
                     </Avatar>
                   </div>
                   <div className="grid flex-1 text-left text-sm leading-tight group-data-[collapsible=icon]:hidden">
-                    <span className="truncate font-semibold">{displayName}</span>
+                    <span className="truncate font-medium">{displayName}</span>
                     <span className="truncate text-xs text-muted-foreground">
                       {userEmail ?? "Cargando..."}
                     </span>
                   </div>
-                  <ChevronsUpDown className="ml-auto size-4 text-muted-foreground/50 group-data-[collapsible=icon]:hidden" />
+                  <ChevronsUpDown className="ml-auto size-4 group-data-[collapsible=icon]:hidden" />
                 </button>
               </DropdownMenuTrigger>
               <DropdownMenuContent
-                className="w-[--radix-dropdown-menu-trigger-width] min-w-56 rounded-xl max-h-[calc(var(--radix-dropdown-menu-content-available-height)-16px)] overflow-y-auto"
+                className="w-[--radix-dropdown-menu-trigger-width] min-w-56 rounded-card max-h-[calc(var(--radix-dropdown-menu-content-available-height)-16px)] overflow-y-auto"
                 side="top"
                 align="end"
                 sideOffset={4}
               >
                 <DropdownMenuLabel className="p-0 font-normal">
                   <div className="flex items-center gap-3 px-3 py-3">
-                    <div className="rounded-full p-[2px] accent-gradient-bg shrink-0">
+                    <div className="rounded-full p-0.5 bg-border shrink-0">
                       <Avatar className="size-9">
                         {avatarUrl && <AvatarImage src={avatarUrl} className="object-cover" />}
-                        <AvatarFallback className="bg-popover text-primary text-sm font-semibold">
+                        <AvatarFallback className="bg-popover text-sm font-medium">
                           {userInitials}
                         </AvatarFallback>
                       </Avatar>
                     </div>
                     <div className="grid flex-1 text-left text-sm leading-tight">
-                      <span className="truncate font-semibold">{displayName}</span>
+                      <span className="truncate font-medium">{displayName}</span>
                       <span className="truncate text-xs text-muted-foreground">
                         {userEmail ?? ""}
                       </span>
@@ -269,7 +241,7 @@ export function AppSidebar() {
                 {/* Theme picker */}
                 <div className="px-3 py-2">
                   <span className="text-xs font-medium text-muted-foreground">Tema</span>
-                  <div className="flex items-center gap-1 mt-1.5 p-1 rounded-lg bg-muted/50">
+                  <div className="flex items-center gap-1 mt-1.5 p-1 rounded-full">
                     {([
                       { value: "light", icon: Sun },
                       { value: "dark", icon: Moon },
@@ -279,9 +251,9 @@ export function AppSidebar() {
                         key={value}
                         onClick={() => setTheme(value)}
                         className={cn(
-                          "flex-1 flex items-center justify-center rounded-md py-1.5 transition-all",
+                          "flex-1 flex items-center justify-center rounded-full py-1.5 transition-all",
                           theme === value
-                            ? "bg-primary/15 text-primary shadow-sm ring-1 ring-primary/30"
+                            ? "bg-muted text-foreground"
                             : "text-muted-foreground hover:text-foreground hover:bg-muted"
                         )}
                       >
@@ -345,30 +317,25 @@ export function AppSidebar() {
 }
 
 
-function NavItem({
-  route,
-  isActive,
-  showShortcut,
-}: {
-  route: RouteConfig;
-  isActive: boolean;
-  showShortcut: boolean;
-}) {
+function NavItem({ route, isActive }: { route: RouteConfig; isActive: boolean }) {
   const navigate = useNavigate();
   const { state: sidebarState, isMobile: isSidebarMobile } = useSidebar();
   const isCollapsed = sidebarState === "collapsed" && !isSidebarMobile;
   const Icon = route.icon;
+  // El atajo no se muestra en la lista: vive en el tooltip.
+  const label = route.shortcut ? `${route.title} (${route.shortcut})` : route.title;
 
   const item = (
     <div
       className={cn(
-        "relative flex items-center rounded-md text-sm transition-[background-color] duration-150",
-        isActive ? "bg-sidebar-accent text-sidebar-accent-foreground" : "hover:bg-sidebar-accent/50",
+        "relative flex items-center rounded-card text-sm transition-[background-color] duration-150",
+        isActive && "bg-sidebar-accent text-sidebar-accent-foreground",
         isCollapsed && "justify-center",
       )}
     >
       <button
         onClick={() => navigate(route.url)}
+        title={isCollapsed ? undefined : label}
         className={cn(
           "flex items-center gap-2 flex-1 px-2 py-1.5 min-h-[32px] text-left cursor-pointer",
           isCollapsed && "justify-center px-0 flex-initial",
@@ -377,11 +344,6 @@ function NavItem({
         <Icon className="size-4" />
         {!isCollapsed && <span className="truncate">{route.title}</span>}
       </button>
-      {!isCollapsed && showShortcut && route.shortcut && (
-        <span className="flex gap-0.5 opacity-60 mr-2 shrink-0 text-[10px] px-1 py-0.5 bg-muted rounded font-mono">
-          {route.shortcut}
-        </span>
-      )}
     </div>
   );
 
@@ -390,7 +352,7 @@ function NavItem({
       <Tooltip>
         <TooltipTrigger asChild>{item}</TooltipTrigger>
         <TooltipContent side="right" align="center">
-          {route.title}
+          {label}
         </TooltipContent>
       </Tooltip>
     );

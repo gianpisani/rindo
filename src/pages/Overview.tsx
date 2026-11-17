@@ -46,7 +46,6 @@ const clp = (value: number) =>
 const tint = (color?: string | null) => ({
   background: `color-mix(in oklch, ${color || "var(--muted-foreground)"} 22%, transparent)`,
 });
-const SOFT_ROSE = "color-mix(in oklch, var(--inicio-rose) 62%, var(--muted-foreground))";
 const transit = new Set(DEFAULT_TRANSIT_CATEGORIES);
 
 /** Gasto neto por categoría de un período, sin tránsito ni lo que Jev aún categoriza. */
@@ -154,13 +153,13 @@ export default function Overview() {
     <button key={c.category} className="fin-trend" onClick={() => openTrend(c)}>
       <span className="inicio-ico" style={tint(colorOf(c.category))}>{edit.emojiOf(c.category)}</span>
       <span className="n">{c.category}</span>
-      <Spark values={c.perMonth} color={colorOf(c.category) || "var(--muted-foreground)"} />
-      <span className={cn("v", isPrivacyMode && "privacy-blur")}>{clp(c.average)}<small>al mes</small></span>
+      <Spark values={c.perMonth} />
+      <span className={cn("v", isPrivacyMode && "privacy-blur")}>{clp(c.average)}</span>
     </button>
   ));
 
   const loading = isLoading && transactions.length === 0;
-  const cardSkeleton = <div className="flex-1 p-[18px]"><Skeleton className="h-full w-full rounded-xl" /></div>;
+  const cardSkeleton = <div className="flex-1 p-4"><Skeleton className="h-full w-full rounded-card" /></div>;
 
   return (
     <Layout fit>
@@ -185,7 +184,7 @@ export default function Overview() {
                     <><span className="capitalize">{format(nameOf(worthNow.month), "MMMM yyyy", { locale: es })}</span> · <b>{clp(worthNow.patrimonio)}</b></>
                   ) : (
                     <><b>{clp(worthNow.patrimonio)}</b>{worthChange !== 0 && (
-                      <span style={{ color: worthChange > 0 ? "var(--inicio-emerald)" : "var(--inicio-rose)" }}>
+                      <span className={worthChange > 0 ? "text-success" : "text-destructive"}>
                         {" "}{worthChange > 0 ? "+" : "−"}{clpShort(Math.abs(worthChange))} en {history.length - 1} mes{history.length === 2 ? "" : "es"}
                       </span>
                     )}</>
@@ -195,7 +194,7 @@ export default function Overview() {
             </div>
             {loading ? cardSkeleton : (
               <>
-                <div className="fin-plot" style={{ marginBottom: 10 }}>
+                <div className="fin-plot" style={{ marginBottom: 8 }}>
                   <WorthChart
                     points={history.map((p) => ({ label: monthLabel(p.month), liquido: p.liquido, invertido: p.invertidoAcumulado }))}
                     onHover={setHoverWorth}
@@ -205,7 +204,7 @@ export default function Overview() {
                   <div className={cn("fin-legend", isPrivacyMode && "privacy-blur")}>
                     {/* Rindo no conoce el saldo inicial: si no calza con el banco, tocarlo concilia */}
                     <button className="is-liquid" onClick={() => openReconciliation()} title="Conciliar con tu banco">
-                      <i style={{ background: "var(--inicio-emerald)" }} />Líquido <b>{clp(worthNow.liquido)}</b>
+                      <i className="bg-success" />Líquido <b>{clp(worthNow.liquido)}</b>
                     </button>
                     {/* Tocar lo invertido abre el rescate y el valor de hoy de las inversiones */}
                     <button onClick={() => setInvestmentMoveOpen(true)} title="Rescatar o actualizar inversiones">
@@ -215,10 +214,10 @@ export default function Overview() {
                 )}
                 {averages.months > 0 && (
                   <div className={cn("fin-stats", isPrivacyMode && "privacy-blur")}>
-                    <span>Entra al mes <b style={{ color: "var(--inicio-emerald)" }}>{clp(averages.ingreso)}</b></span>
+                    <span>Entra al mes <b style={{ color: "oklch(var(--success))" }}>{clp(averages.ingreso)}</b></span>
                     <span>Sale <b>{clp(averages.gasto)}</b></span>
                     {averages.ahorro !== null && <span>Ahorras <b>{Math.round(averages.ahorro * 100)}%</b></span>}
-                    <span className="text-[11px]">promedio de {averages.months} mes{averages.months === 1 ? "" : "es"} cerrado{averages.months === 1 ? "" : "s"}</span>
+                    <span className="text-xs">promedio de {averages.months} mes{averages.months === 1 ? "" : "es"} cerrado{averages.months === 1 ? "" : "s"}</span>
                   </div>
                 )}
               </>
@@ -235,9 +234,9 @@ export default function Overview() {
               <span className="inicio-title">Mes a mes</span>
               <span className={cn("inicio-num", isPrivacyMode && "privacy-blur")}>
                 {hovered ? (
-                  <><span className="capitalize">{format(nameOf(hovered.month), "MMM yyyy", { locale: es })}</span> · <b style={{ color: "var(--inicio-emerald)" }}>+{clpShort(hovered.ingreso)}</b> · <b>−{clpShort(hovered.gasto)}</b></>
+                  <><span className="capitalize">{format(nameOf(hovered.month), "MMM yyyy", { locale: es })}</span> · <b style={{ color: "oklch(var(--success))" }}>+{clpShort(hovered.ingreso)}</b> · <b>−{clpShort(hovered.gasto)}</b></>
                 ) : (
-                  <><span style={{ color: "var(--inicio-emerald)" }}>entró</span> vs <span style={{ color: SOFT_ROSE }}>salió</span></>
+                  <><span className="text-success">entró</span> vs salió</>
                 )}
               </span>
             </div>
@@ -245,10 +244,10 @@ export default function Overview() {
               {loading ? cardSkeleton : (
                 <>
                   {/* En celular el encabezado va oculto: el mes activo se lee acá */}
-                  <div className={cn("px-[18px] pt-2 text-[11.5px] text-muted-foreground inicio-num sm:hidden", isPrivacyMode && "privacy-blur")}>
+                  <div className={cn("px-4 pt-2 text-xs text-muted-foreground inicio-num sm:hidden", isPrivacyMode && "privacy-blur")}>
                     {hovered ? `${format(nameOf(hovered.month), "MMM yyyy", { locale: es })} · +${clpShort(hovered.ingreso)} · −${clpShort(hovered.gasto)}` : "Toca un mes para verlo"}
                   </div>
-                  <div className="fin-plot" style={{ marginBottom: 14 }}>
+                  <div className="fin-plot" style={{ marginBottom: 12 }}>
                     <MonthBars
                       months={history.map((p) => ({
                         key: p.month.toISOString(),
@@ -263,7 +262,11 @@ export default function Overview() {
                 </>
               )}
             </div>
-            <div className="fin-trends-body inicio-scroll">{trendRows}</div>
+            <div className="fin-trends-body inicio-scroll">
+              {/* En celular el encabezado va oculto: aquí se dice una vez qué son los montos */}
+              <div className="px-4 pt-2 text-xs text-muted-foreground">promedio al mes</div>
+              {trendRows}
+            </div>
           </section>
 
           <section className="inicio-card fin-card fin-trends">

@@ -20,10 +20,10 @@ export function AnalyzingBadge({ saving = false }: { saving?: boolean }) {
         </TooltipTrigger>
         <TooltipContent 
           side="top" 
-          className="max-w-xs bg-card border border-border/50 shadow-lg"
+          className="max-w-xs bg-card border shadow-float"
         >
           <div className="space-y-2 p-2">
-            <p className="font-semibold text-sm text-foreground">
+            <p className="font-medium text-sm text-foreground">
               Categorización automática
             </p>
             <p className="text-xs text-muted-foreground leading-relaxed">

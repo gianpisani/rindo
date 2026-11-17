@@ -18,6 +18,7 @@ import {
   useDeleteCredentials,
 } from "@/hooks/useBankSyncCredentials";
 import type { BankCredential } from "@/hooks/useBankSyncCredentials";
+import { cn } from "@/lib/utils";
 
 // ── Status helpers ────────────────────────────────────────────────────────────
 
@@ -31,7 +32,7 @@ function StatusBadge({ status }: { status: BankCredential["last_sync_status"] })
   }
 
   const configs = {
-    success: { icon: CheckCircle2, label: "Exitosa", className: "text-green-500" },
+    success: { icon: CheckCircle2, label: "Exitosa", className: "text-success" },
     failed: { icon: XCircle, label: "Error", className: "text-destructive" },
     "2fa_blocked": { icon: AlertTriangle, label: "2FA bloqueado", className: "text-amber-500" },
     invalid_credentials: { icon: XCircle, label: "Credenciales inválidas", className: "text-destructive" },
@@ -66,7 +67,7 @@ function ActiveIndicator({ isActive, color }: { isActive: boolean; color: string
       style={{ color: isActive ? color : undefined }}
     >
       <span
-        className={isActive ? "h-1.5 w-1.5 rounded-full" : "h-1.5 w-1.5 rounded-full bg-muted-foreground/50"}
+        className={isActive ? "h-1.5 w-1.5 rounded-full" : "h-1.5 w-1.5 rounded-full"}
         style={{ backgroundColor: isActive ? color : undefined }}
       />
       <span className={isActive ? "" : "text-muted-foreground"}>
@@ -100,15 +101,13 @@ function CredentialRow({
 
   return (
     <div
-      className={`flex flex-col gap-3 p-4 rounded-xl border bg-card transition-opacity ${
-        cred.is_active ? "border-border/50" : "border-border/50 opacity-70"
-      }`}
+      className={cn("flex flex-col gap-3 p-4 rounded-card border bg-card transition-opacity", !cred.is_active && "opacity-70")}
     >
       {/* Top row: logo + name + settings gear */}
       <div className="flex items-center gap-3">
         <BankLogo bank={bank} size="sm" />
         <div className="flex-1 min-w-0">
-          <p className="text-sm font-semibold">{bank.label}</p>
+          <p className="text-sm font-medium">{bank.label}</p>
           <p className="text-xs text-muted-foreground">{cred.rut}</p>
         </div>
         <button
@@ -139,7 +138,7 @@ function CredentialRow({
             <Button
               size="sm"
               variant="destructive"
-              className="h-8 text-xs px-2.5 rounded-lg"
+              className="h-8 text-xs px-2"
               onClick={() => { onDelete(cred.bank); setConfirmDelete(false); }}
             >
               Eliminar
@@ -147,7 +146,7 @@ function CredentialRow({
             <Button
               size="sm"
               variant="ghost"
-              className="h-8 text-xs px-2.5 rounded-lg"
+              className="h-8 text-xs px-2"
               onClick={() => setConfirmDelete(false)}
             >
               No
@@ -157,7 +156,7 @@ function CredentialRow({
           <Button
             size="sm"
             variant="ghost"
-            className="h-8 w-8 p-0 rounded-lg text-muted-foreground hover:text-destructive shrink-0"
+            className="h-8 w-8 p-0 text-muted-foreground hover:text-destructive shrink-0"
             onClick={() => setConfirmDelete(true)}
           >
             <Trash2 className="h-3.5 w-3.5" />
@@ -167,7 +166,7 @@ function CredentialRow({
 
       {/* Error message */}
       {cred.last_error && (cred.last_sync_status === "failed" || cred.last_sync_status === "invalid_credentials") && (
-        <p className="text-[11px] text-destructive/80 bg-destructive/5 rounded-lg px-2.5 py-1.5">
+        <p className="text-xs text-destructive/80 bg-destructive/5 rounded-card px-2 py-1.5">
           {getFriendlyError(cred.last_sync_status)}
         </p>
       )}
@@ -188,7 +187,7 @@ export function BankSyncSettings({ onAddBank }: BankSyncSettingsProps) {
 
   if (isLoading) {
     return (
-      <div className="flex items-center justify-center py-10">
+      <div className="flex items-center justify-center py-8">
         <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
       </div>
     );
@@ -198,7 +197,7 @@ export function BankSyncSettings({ onAddBank }: BankSyncSettingsProps) {
     <div className="space-y-4">
       <div className="flex items-center justify-between">
         <div>
-          <p className="text-sm font-semibold">Bancos configurados</p>
+          <p className="text-sm font-medium">Bancos configurados</p>
           <p className="text-xs text-muted-foreground">
             {credentials && credentials.length > 0
               ? `${credentials.filter((c) => c.is_active).length} activo${credentials.filter((c) => c.is_active).length !== 1 ? "s" : ""}`
@@ -207,8 +206,8 @@ export function BankSyncSettings({ onAddBank }: BankSyncSettingsProps) {
         </div>
         <Button
           size="sm"
-          variant="outline"
-          className="rounded-xl h-8 text-xs gap-1.5"
+          variant="ghost"
+          className="h-8 text-xs gap-1.5"
           onClick={onAddBank}
         >
           <Plus className="h-3.5 w-3.5" />
@@ -217,12 +216,12 @@ export function BankSyncSettings({ onAddBank }: BankSyncSettingsProps) {
       </div>
 
       {!credentials || credentials.length === 0 ? (
-        <div className="flex flex-col items-center justify-center py-8 text-center space-y-2 rounded-xl border border-dashed border-border/50">
-          <Settings2 className="h-8 w-8 text-muted-foreground/40" />
+        <div className="flex flex-col items-center justify-center py-8 text-center space-y-2 rounded-card border border-dashed">
+          <Settings2 className="h-8 w-8" />
           <p className="text-sm text-muted-foreground">
             No hay bancos configurados para auto-sync.
           </p>
-          <p className="text-xs text-muted-foreground/70">
+          <p className="text-xs">
             Al sincronizar, marca "Guardar para auto-sync" para activar.
           </p>
         </div>

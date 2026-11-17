@@ -152,7 +152,7 @@ export function ReconciliationCard({ onSuccess }: ReconciliationCardProps = {}) 
       {hasInputs && (
         <div className="space-y-3 pt-4 border-t">
           {/* Saldo en tu banco − Tarjetas = Liquidez real */}
-          <div className="space-y-1.5 text-sm">
+          <div className="space-y-2 text-sm">
             <div className="flex justify-between items-center">
               <span className="flex items-center gap-2 text-muted-foreground"><Wallet className="h-4 w-4" />Saldo en tu banco</span>
               <span className="font-mono tabular-nums">{formatCurrency(cuentaCorrienteNum)}</span>
@@ -161,16 +161,16 @@ export function ReconciliationCard({ onSuccess }: ReconciliationCardProps = {}) 
               <span className="flex items-center gap-2 text-muted-foreground"><CreditCard className="h-4 w-4" />− Tarjetas</span>
               <span className="font-mono tabular-nums">{formatCurrency(deudaTarjetas)}</span>
             </div>
-            <div className="flex justify-between items-center border-t pt-1.5">
+            <div className="flex justify-between items-center border-t pt-2">
               <span className="font-medium">= Liquidez real</span>
-              <span className={`text-lg font-semibold font-mono tabular-nums ${balanceReal >= 0 ? "text-success" : "text-destructive"}`}>
+              <span className={`text-xl font-medium font-mono tabular-nums ${balanceReal >= 0 ? "text-success" : "text-destructive"}`}>
                 {formatCurrency(balanceReal)}
               </span>
             </div>
           </div>
           <div className="flex justify-between items-center">
             <span className="text-sm text-muted-foreground">Líquido en Rindo</span>
-            <span className={`text-lg font-semibold font-mono tabular-nums ${balanceApp >= 0 ? "text-success" : "text-destructive"}`}>
+            <span className={`text-xl font-medium font-mono tabular-nums ${balanceApp >= 0 ? "text-success" : "text-destructive"}`}>
               {formatCurrency(balanceApp)}
             </span>
           </div>
@@ -179,7 +179,7 @@ export function ReconciliationCard({ onSuccess }: ReconciliationCardProps = {}) 
           </p>
 
           {/* Diferencia */}
-          <div className={`rounded-lg p-4 mt-2 ${
+          <div className={`rounded-card p-4 mt-2 ${
             !needsReconciliation 
               ? "bg-success/10 border border-success/20" 
               : "bg-destructive/10 border border-destructive/20"
@@ -195,7 +195,7 @@ export function ReconciliationCard({ onSuccess }: ReconciliationCardProps = {}) 
                   {!needsReconciliation ? "Balances conciliados ✓" : "Diferencia detectada"}
                 </span>
               </div>
-              <span className={`text-xl font-bold font-mono tabular-nums ${diferenciaColor}`}>
+              <span className={`text-xl font-medium font-mono tabular-nums ${diferenciaColor}`}>
                 {formatCurrency(Math.abs(diferencia))}
               </span>
             </div>
@@ -219,19 +219,19 @@ export function ReconciliationCard({ onSuccess }: ReconciliationCardProps = {}) 
               const categoryName = conciliacionCategory?.name || "Otros";
 
               return (
-                <div className="space-y-3 mt-2 rounded-lg border bg-background p-3 animate-in fade-in slide-in-from-top-2 duration-200">
-                  <p className="text-xs font-semibold text-muted-foreground">Preview de transacción</p>
-                  <div className="space-y-1.5 text-sm">
+                <div className="space-y-3 mt-2 rounded-card border bg-background p-3 animate-in fade-in slide-in-from-top-2 duration-200">
+                  <p className="text-xs font-medium text-muted-foreground">Preview de transacción</p>
+                  <div className="space-y-2 text-sm">
                     <div className="flex items-center justify-between">
                       <span className="text-muted-foreground">Tipo</span>
                       <span className="flex items-center gap-1.5 font-medium">
-                        {type === "Ingreso" ? <TrendingUp className="h-3.5 w-3.5 text-success" /> : <TrendingDown className="h-3.5 w-3.5 text-destructive" />}
+                        {type === "Ingreso" ? <TrendingUp className="h-3.5 w-3.5 text-success" /> : <TrendingDown className="h-3.5 w-3.5 text-muted-foreground" />}
                         {type}
                       </span>
                     </div>
                     <div className="flex items-center justify-between">
                       <span className="text-muted-foreground">Monto</span>
-                      <span className="font-bold font-mono tabular-nums">{formatCurrency(Math.abs(diferencia))}</span>
+                      <span className="font-medium font-mono tabular-nums">{formatCurrency(Math.abs(diferencia))}</span>
                     </div>
                     <div className="flex items-center justify-between">
                       <span className="text-muted-foreground">Categoría</span>
@@ -244,7 +244,7 @@ export function ReconciliationCard({ onSuccess }: ReconciliationCardProps = {}) 
                   </div>
                   <div className="flex gap-2 pt-1">
                     <Button
-                      variant="outline"
+                      variant="ghost"
                       size="sm"
                       onClick={() => setShowPreview(false)}
                       className="flex-1"

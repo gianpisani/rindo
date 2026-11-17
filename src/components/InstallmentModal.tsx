@@ -33,7 +33,7 @@ interface InstallmentModalProps {
 
 const INSTALLMENT_OPTIONS = [3, 6, 12, 18, 24, 36];
 const DEFAULT_CATEGORY = "Otros gastos";
-const FALLBACK_ACCENT = "#f87171";
+const FALLBACK_ACCENT = "#fafafa";
 
 const formatCurrency = (v: number) =>
   new Intl.NumberFormat("es-CL", { style: "currency", currency: "CLP", maximumFractionDigits: 0 }).format(v);

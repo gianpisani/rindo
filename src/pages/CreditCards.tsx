@@ -31,6 +31,9 @@ import { cn } from "@/lib/utils";
 const formatCurrency = (v: number) =>
   new Intl.NumberFormat("es-CL", { style: "currency", currency: "CLP", maximumFractionDigits: 0 }).format(v);
 
+/** Las filas del estado de cuenta van sin íconos: algunos detalles traen emoji y otros no. */
+const withoutEmoji = (text: string) => text.replace(/[\p{Extended_Pictographic}\u{FE0F}\u{200D}]/gu, "").replace(/\s+/g, " ").trim();
+
 const day = (d: Date) => format(d, "d MMM", { locale: es }).replace(".", "");
 
 /** El ciclo que se muestra en el estado de cuenta, con su nombre. */
@@ -153,6 +156,11 @@ export default function CreditCards() {
       <div className="tj">
         <header className="tj-head">
           <h1 className="tj-title">Tarjetas</h1>
+          {hasCards && (
+            <button className="tj-btn" onClick={openNewCard}>
+              <Plus /> Tarjeta
+            </button>
+          )}
         </header>
 
         {loading ? (
@@ -191,9 +199,6 @@ export default function CreditCards() {
                   onDelete={() => askDelete("card", card.id)}
                 />
               ))}
-              <button className="tj-plastic tj-plastic-new" onClick={openNewCard}>
-                <Plus /> Tarjeta
-              </button>
             </section>
 
             {/* Solo en celular: qué panel se ve */}
@@ -276,7 +281,7 @@ export default function CreditCards() {
                     return (
                       <div key={tx.id} className="tj-tx" data-in={credit || undefined}>
                         <span className="d">{format(new Date(tx.date), "dd/MM")}</span>
-                        <span className={cn("n", isPrivacyMode && "privacy-blur")}>{tx.detail || tx.category_name}</span>
+                        <span className={cn("n", isPrivacyMode && "privacy-blur")}>{withoutEmoji(tx.detail || tx.category_name)}</span>
                         <span className={cn("v", isPrivacyMode && "privacy-blur")}>
                           {credit ? "+" : ""}
                           {formatCurrency(Number(tx.amount))}

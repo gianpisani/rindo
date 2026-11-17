@@ -12,7 +12,7 @@ export function BankLogo({ bank, size = "sm" }: BankLogoProps) {
     <img
       src={`/banks/${bank.value}.png`}
       alt={bank.label}
-      className={cn(px, "rounded-lg object-contain shrink-0")}
+      className={cn(px, "rounded-card object-contain shrink-0")}
     />
   );
 }

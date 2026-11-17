@@ -12,6 +12,7 @@ import {
 import { useTransactions } from "@/hooks/useTransactions";
 import { usePrivacyMode } from "@/hooks/usePrivacyMode";
 import { cn } from "@/lib/utils";
+import { Button } from "@/components/ui/button";
 import { CheckCircle2, Trash2, ChevronDown, HandCoins, X } from "lucide-react";
 import { LoadingScreen } from "@/components/LoadingScreen";
 import "@/components/whisper.css";
@@ -29,7 +30,7 @@ type Debt = SharedExpenseWithTransaction;
  */
 const directions: { value: SharedExpenseDirection; label: string; amountClass: string }[] = [
   { value: "they_owe_me", label: "Me deben", amountClass: "text-amber-500" },
-  { value: "i_owe_them", label: "Yo debo", amountClass: "text-destructive" },
+  { value: "i_owe_them", label: "Yo debo", amountClass: "text-foreground" },
 ];
 
 export default function PendingDebts() {
@@ -135,12 +136,12 @@ export default function PendingDebts() {
   return (
     <Layout>
       <div className="space-y-6">
-        <h1 className="text-2xl font-bold tracking-tight">Deudas</h1>
+        <h1 className="text-xl font-medium">Deudas</h1>
 
         {sections.length === 0 ? (
-          <div className="rounded-2xl border border-dashed border-border/60 py-16 text-center">
-            <p className="text-base font-medium text-muted-foreground mb-1">Nadie te debe y no le debes a nadie</p>
-            <p className="text-sm text-muted-foreground/70">
+          <div className="py-12 text-center">
+            <p className="text-sm font-medium text-muted-foreground mb-1">Nadie te debe y no le debes a nadie</p>
+            <p className="text-sm">
               Para crear una deuda, divide un gasto desde{" "}
               <Link to="/transactions" className="underline underline-offset-2 hover:text-foreground">
                 Movimientos
@@ -154,7 +155,7 @@ export default function PendingDebts() {
               <div className="flex items-baseline justify-between">
                 <h2 className="text-sm font-medium text-muted-foreground">{section.label}</h2>
                 <span
-                  className={cn("text-lg font-bold tabular-nums", section.amountClass, isPrivacyMode && "privacy-blur")}
+                  className={cn("text-xl font-medium tabular-nums", section.amountClass, isPrivacyMode && "privacy-blur")}
                 >
                   {fmt(section.total)}
                 </span>
@@ -163,19 +164,19 @@ export default function PendingDebts() {
               {section.people.map((person) => (
                 <GlassCard key={person.name}>
                   <div className="flex items-center justify-between gap-3 px-4 py-3">
-                    <p className="font-semibold text-sm truncate">{person.name}</p>
-                    <span className={cn("text-base font-bold tabular-nums", isPrivacyMode && "privacy-blur")}>
+                    <p className="font-medium text-sm truncate">{person.name}</p>
+                    <span className={cn("text-sm font-medium tabular-nums", isPrivacyMode && "privacy-blur")}>
                       {fmt(person.total)}
                     </span>
                   </div>
 
-                  <div className="border-t border-border/40">
+                  <div className="border-t">
                     {person.debts.map((debt, i) => (
                       <div
                         key={debt.id}
                         className={cn(
-                          "flex items-center gap-2 px-4 py-2 hover:bg-accent/30 transition-colors",
-                          i < person.debts.length - 1 && "border-b border-border/20"
+                          "flex items-center gap-2 px-4 py-2 transition-colors",
+                          i < person.debts.length - 1 && "border-b"
                         )}
                       >
                         <div className="flex-1 min-w-0">
@@ -199,8 +200,10 @@ export default function PendingDebts() {
                             {fmt(debt.amount_owed)}
                           </span>
                         )}
-                        <button
-                          className="h-9 w-9 rounded-full flex items-center justify-center shrink-0 hover:bg-success/10 active:bg-success/20 transition-colors"
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="size-9 shrink-0 hover:bg-success/10 active:bg-success/20"
                           title={debt.direction === "they_owe_me" ? "Marcar como pagada" : "Saldar"}
                           aria-label={debt.direction === "they_owe_me" ? "Marcar como pagada" : "Saldar"}
                           onClick={() =>
@@ -209,16 +212,18 @@ export default function PendingDebts() {
                               : setSettleTarget(debt)
                           }
                         >
-                          <CheckCircle2 className="h-[18px] w-[18px] text-success" />
-                        </button>
-                        <button
-                          className="h-9 w-9 rounded-full flex items-center justify-center shrink-0 hover:bg-destructive/10 active:bg-destructive/20 transition-colors"
+                          <CheckCircle2 className="text-success" />
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="size-9 shrink-0 hover:bg-destructive/10 active:bg-destructive/20"
                           title="Eliminar"
                           aria-label="Eliminar"
                           onClick={() => askConfirm("delete", debt)}
                         >
-                          <Trash2 className="h-4 w-4 text-muted-foreground hover:text-destructive transition-colors" />
-                        </button>
+                          <Trash2 className="text-muted-foreground hover:text-destructive transition-colors" />
+                        </Button>
                       </div>
                     ))}
                   </div>
@@ -244,7 +249,7 @@ export default function PendingDebts() {
                 {paidDebts.map((debt) => (
                   <div
                     key={debt.id}
-                    className="flex items-center gap-3 px-3 py-2 rounded-lg text-sm text-muted-foreground"
+                    className="flex items-center gap-3 px-3 py-2 rounded-card text-sm text-muted-foreground"
                   >
                     <div className="flex-1 min-w-0 truncate">
                       {debt.debtor_name}
@@ -271,7 +276,6 @@ export default function PendingDebts() {
           <Dialog.Content
             data-scrollable
             className="whisper-composer"
-            style={{ "--whisper-accent": "#f87171" } as React.CSSProperties}
             onOpenAutoFocus={(event) => {
               event.preventDefault();
               settleInputRef.current?.focus();

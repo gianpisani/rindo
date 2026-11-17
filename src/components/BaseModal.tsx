@@ -91,16 +91,16 @@ export function BaseModal({
         onInteractOutside={(e) => !dismissible && e.preventDefault()}
         className={cn(
           maxWidthClasses[maxWidth],
-          "w-[92vw] max-h-[90vh] flex flex-col p-0 gap-0 rounded-2xl",
+          "w-[92vw] max-h-[90vh] flex flex-col p-0 gap-0 rounded-card",
           styles.border
         )}
       >
         <DialogHeader className={cn(
-          "px-6 pt-6 pb-4 flex-shrink-0 rounded-t-2xl",
+          "px-6 pt-6 pb-4 flex-shrink-0 rounded-t-card",
           styles.header
         )}>
           <DialogTitle className={cn(
-            "text-2xl text-center font-bold",
+            "text-xl text-center font-medium",
             styles.accent
           )}>
             {title}
@@ -128,7 +128,7 @@ export function BaseModal({
         </div>
 
         {footer && (
-          <div className="flex-shrink-0 px-6 pb-6 pt-4 border-t border-border/50">
+          <div className="flex-shrink-0 px-6 pb-6 pt-4 border-t">
             {footer}
           </div>
         )}

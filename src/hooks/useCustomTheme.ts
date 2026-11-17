@@ -175,7 +175,7 @@ export function generatePaletteFromHue(
   mode: "light" | "dark"
 ): PaletteVars {
   const h = +(((hue % 360) + 360) % 360).toFixed(1);
-  // El ring corre el tono unos grados: el gradiente del sistema vive
+  // El ring corre el tono unos grados: el gradiente de la muestra vive
   // entre el primary y el ring, y ese corrimiento es lo que lo hace brillar.
   const hRing = (h + 26) % 360;
   const band = mode === "dark" ? DARK_ACCENT_BAND : LIGHT_ACCENT_BAND;
@@ -266,7 +266,6 @@ const CSS_VARS = [
   "--accent-foreground",
   "--border",
   "--input",
-  "--ring",
   "--sidebar",
   "--sidebar-foreground",
   "--sidebar-primary",
@@ -274,8 +273,6 @@ const CSS_VARS = [
   "--sidebar-accent",
   "--sidebar-accent-foreground",
   "--sidebar-border",
-  "--sidebar-ring",
-  "--accent-gradient",
   "--chart-1",
   "--chart-2",
   "--chart-3",
@@ -315,7 +312,6 @@ function applyPalette(root: HTMLElement, p: PaletteVars) {
   root.style.setProperty("--accent-foreground", p.foreground);
   root.style.setProperty("--border", p.border);
   root.style.setProperty("--input", p.input);
-  root.style.setProperty("--ring", p.ring);
   root.style.setProperty("--sidebar", p.sidebar);
   root.style.setProperty("--sidebar-foreground", p.foreground);
   root.style.setProperty("--sidebar-primary", p.primary);
@@ -323,11 +319,6 @@ function applyPalette(root: HTMLElement, p: PaletteVars) {
   root.style.setProperty("--sidebar-accent", p.muted);
   root.style.setProperty("--sidebar-accent-foreground", p.foreground);
   root.style.setProperty("--sidebar-border", p.sidebarBorder);
-  root.style.setProperty("--sidebar-ring", p.ring);
-  root.style.setProperty(
-    "--accent-gradient",
-    `linear-gradient(135deg, ${p.primary}, ${p.ring})`
-  );
 
   // Update meta theme-color for browser/PWA chrome
   setMetaThemeColor(p.sidebar);

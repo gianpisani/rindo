@@ -6,16 +6,13 @@ import { OnboardingModal } from "./OnboardingModal";
 import { SidebarProvider, SidebarTrigger, SidebarInset } from "@/components/ui/sidebar";
 import { AppSidebar } from "@/components/AppSidebar";
 import { Button } from "./ui/button";
-import { Bell, BellOff, Eye, EyeOff, Volume2, VolumeOff } from "lucide-react";
+import { Eye, EyeOff } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { usePrivacyMode } from "@/hooks/usePrivacyMode";
 import { useGlobalDrawers } from "@/hooks/useGlobalDrawers";
 import { useKeyboardShortcuts } from "@/hooks/useKeyboardShortcuts";
-import { useSoundPreferences } from "@/hooks/useSoundPreferences";
 import { useSoundFX } from "@/hooks/useSoundFX";
 import { initSounds } from "@/lib/snd";
-import { RindoLogo } from "./RindoLogo";
-import { usePushNotifications } from "@/hooks/usePushNotifications";
 import { MobileBottomBar } from "./MobileBottomBar";
 import { useIsMobile } from "@/hooks/use-mobile";
 import {
@@ -42,7 +39,6 @@ interface LayoutProps {
 
 export default function Layout({ children, fit = false }: LayoutProps) {
   const { isPrivacyMode, togglePrivacyMode } = usePrivacyMode();
-  const { soundEnabled, toggleSound } = useSoundPreferences();
   const { playToggleOn, playToggleOff } = useSoundFX();
   const {
     quickAddOpen,
@@ -56,7 +52,6 @@ export default function Layout({ children, fit = false }: LayoutProps) {
     setProfileEditOpen,
   } = useGlobalDrawers();
 
-  const { isSupported: pushSupported, isSubscribed: pushSubscribed, isLoading: pushLoading, subscribe: pushSubscribe, unsubscribe: pushUnsubscribe } = usePushNotifications();
   const isMobile = useIsMobile();
   // Initialize sound system once
   useEffect(() => {
@@ -137,106 +132,41 @@ export default function Layout({ children, fit = false }: LayoutProps) {
 
         <SidebarInset className={cn(fit && "h-svh")}>
           {/* Top Bar with Trigger and Actions */}
-          <header className="sticky top-0 z-40 flex h-14 shrink-0 items-center gap-2 border-b border-border/40 shadow-[0_1px_2px_-1px_rgba(0,0,0,0.06)] bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 px-4">
+          <header className="sticky top-0 z-40 flex h-14 shrink-0 items-center gap-2 border-b backdrop-blur px-4">
             {!isMobile && <SidebarTrigger className="-ml-1" />}
-            <div className="flex flex-1 items-center justify-between">
-              <div className="flex items-center gap-2">
-                <span className="text-lg font-bold tracking-tight">
-                  rindo<span className="text-primary">.</span>
-                </span>
-              </div>
-              <div className="flex items-center gap-3">
-                {pushSupported && (
-                  <Tooltip>
-                    <TooltipTrigger asChild>
-                      <Button
-                        onClick={() => {
-                          if (pushSubscribed) pushUnsubscribe(); else pushSubscribe();
-                        }}
-                        disabled={pushLoading}
-                        variant="ghost"
-                        size="sm"
-                        aria-label={pushSubscribed ? "Desactivar notificaciones" : "Activar notificaciones"}
-                        className={cn(
-                          "rounded-full h-8 w-8 p-0 transition-all duration-200",
-                          pushSubscribed
-                            ? "bg-primary/20 text-primary hover:bg-primary/30"
-                            : "bg-muted/10 text-muted-foreground hover:bg-muted hover:text-foreground"
-                        )}
-                      >
-                        {pushSubscribed ? (
-                          <Bell className="h-4 w-4" />
-                        ) : (
-                          <BellOff className="h-4 w-4" />
-                        )}
-                      </Button>
-                    </TooltipTrigger>
-                    <TooltipContent>
-                      {pushSubscribed
-                        ? "Desactivar notificaciones"
-                        : "Activar notificaciones"}
-                    </TooltipContent>
-                  </Tooltip>
-                )}
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <Button
-                      onClick={() => {
-                        toggleSound();
-                        if (soundEnabled) playToggleOff(); else playToggleOn();
-                      }}
-                      variant="ghost"
-                      size="sm"
-                      aria-label={soundEnabled ? "Desactivar sonidos" : "Activar sonidos"}
-                      className={cn(
-                        "rounded-full h-8 w-8 p-0 transition-all duration-200",
-                        soundEnabled
-                          ? "bg-muted/10 text-muted-foreground hover:bg-muted hover:text-foreground"
-                          : "bg-primary/20 text-primary hover:bg-primary/30"
-                      )}
-                    >
-                      {soundEnabled ? (
-                        <Volume2 className="h-4 w-4" />
-                      ) : (
-                        <VolumeOff className="h-4 w-4" />
-                      )}
-                    </Button>
-                  </TooltipTrigger>
-                  <TooltipContent>
-                    {soundEnabled
-                      ? "Desactivar sonidos"
-                      : "Activar sonidos"}
-                  </TooltipContent>
-                </Tooltip>
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <Button
-                      onClick={togglePrivacyMode}
-                      variant="ghost"
-                      size="sm"
-                      aria-label={isPrivacyMode ? "Desactivar modo privado" : "Activar modo privado"}
-                      className={cn(
-                        "rounded-full h-8 w-8 p-0 transition-all duration-200",
-                        isPrivacyMode
-                          ? "bg-primary/20 text-primary hover:bg-primary/30"
-                          : "bg-muted/10 text-muted-foreground hover:bg-muted hover:text-foreground"
-                      )}
-                    >
-                      {isPrivacyMode ? (
-                        <EyeOff className="h-4 w-4" />
-                      ) : (
-                        <Eye className="h-4 w-4" />
-                      )}
-                    </Button>
-                  </TooltipTrigger>
-                  <TooltipContent>
-                    {isPrivacyMode
-                      ? "Desactivar modo privado (P)"
-                      : "Activar modo privado (P)"}
-                  </TooltipContent>
-                </Tooltip>
-              </div>
-            </div>
+            {/* En escritorio el logo ya está arriba de la barra lateral. */}
+            {isMobile && (
+              <span className="text-xl font-medium">
+                rindo<span className="text-primary">.</span>
+              </span>
+            )}
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button
+                  onClick={togglePrivacyMode}
+                  variant="ghost"
+                  size="sm"
+                  aria-label={isPrivacyMode ? "Desactivar modo privado" : "Activar modo privado"}
+                  className={cn(
+                    "ml-auto rounded-full h-8 w-8 p-0 transition-all duration-200",
+                    isPrivacyMode
+                      ? "bg-muted text-foreground"
+                      : "text-muted-foreground hover:bg-muted hover:text-foreground"
+                  )}
+                >
+                  {isPrivacyMode ? (
+                    <EyeOff className="h-4 w-4" />
+                  ) : (
+                    <Eye className="h-4 w-4" />
+                  )}
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent>
+                {isPrivacyMode
+                  ? "Desactivar modo privado (P)"
+                  : "Activar modo privado (P)"}
+              </TooltipContent>
+            </Tooltip>
           </header>
 
           {/* Main Content */}

@@ -13,14 +13,14 @@ const NotFound = () => {
   return (
     <div className="flex min-h-screen items-center justify-center bg-background px-4">
       <div className="text-center max-w-sm space-y-6">
-        <div className="inline-flex items-center justify-center size-20 rounded-2xl bg-muted/50">
-          <span className="text-4xl">🗺️</span>
+        <div className="inline-flex items-center justify-center size-20 rounded-card">
+          <span className="text-hero">🗺️</span>
         </div>
 
         <div className="space-y-2">
-          <h1 className="text-2xl font-bold">Un poco perdido...</h1>
+          <h1 className="text-xl font-medium">Un poco perdido...</h1>
           <p className="text-sm text-muted-foreground">
-            La página <code className="text-xs bg-muted px-1.5 py-0.5 rounded">{location.pathname}</code> no existe.
+            La página <code className="text-xs bg-muted px-1.5 py-0.5 rounded-full">{location.pathname}</code> no existe.
           </p>
         </div>
 
@@ -34,13 +34,13 @@ const NotFound = () => {
               </Link>
             </Button>
             <div className="grid grid-cols-2 gap-2">
-              <Button asChild variant="outline" size="sm" className="gap-1.5">
+              <Button asChild variant="ghost" size="sm" className="gap-1.5">
                 <Link to="/transactions">
                   <Receipt className="h-3.5 w-3.5" />
                   Movimientos
                 </Link>
               </Button>
-              <Button asChild variant="outline" size="sm" className="gap-1.5">
+              <Button asChild variant="ghost" size="sm" className="gap-1.5">
                 <Link to="/finances">
                   <BarChart3 className="h-3.5 w-3.5" />
                   Finanzas

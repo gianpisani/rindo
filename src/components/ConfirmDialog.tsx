@@ -53,8 +53,8 @@ export default function ConfirmDialog({
               <AlertTriangle className="h-6 w-6 text-destructive" />
             </div>
           )}
-          <DialogTitle className="text-xl text-center font-bold">{title}</DialogTitle>
-          <DialogDescription className="text-center text-base">
+          <DialogTitle className="text-xl text-center font-medium">{title}</DialogTitle>
+          <DialogDescription className="text-center text-sm">
             {description}
           </DialogDescription>
         </DialogHeader>
@@ -65,7 +65,7 @@ export default function ConfirmDialog({
         )}
         <DialogFooter className="flex-row gap-2 sm:gap-2 px-6 pb-6">
           <Button
-            variant="outline"
+            variant="ghost"
             onClick={() => onOpenChange(false)}
             className="flex-1"
           >

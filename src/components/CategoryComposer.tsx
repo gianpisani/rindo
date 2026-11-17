@@ -5,6 +5,7 @@ import { ArrowUp, Check, ChevronDown, X } from "lucide-react";
 import { EmojiPicker } from "@/components/EmojiPicker";
 import { TRANSACTION_TYPES, type TransactionType } from "@/lib/ledger";
 import { cn } from "@/lib/utils";
+import { WHISPER_TYPES } from "@/lib/whisper";
 import "./whisper.css";
 
 /**
@@ -33,6 +34,8 @@ interface CategoryComposerProps {
   initialName?: string;
   /** Con tipo fijo la categoría nace de ese tipo y no se ofrece cambiarlo. */
   fixedType?: TransactionType;
+  /** Tipo con el que abre al crear; a diferencia de fixedType, se puede cambiar. */
+  initialType?: TransactionType;
   /** Muestra "Qué incluye" y "En uso" (solo si el perfil ya usa ese contexto). */
   withContext?: boolean;
   pending?: boolean;
@@ -41,14 +44,7 @@ interface CategoryComposerProps {
 }
 
 // Los mismos colores que el Whisper le da a cada tipo.
-const TYPE_ACCENT: Record<TransactionType, string> = {
-  Gasto: "#f87171",
-  Ingreso: "#4ade80",
-  Inversión: "#60a5fa",
-  Rescate: "#22d3ee",
-  Rendimiento: "#a78bfa",
-  Reembolso: "#fbbf24",
-};
+const TYPE_ACCENT = Object.fromEntries(WHISPER_TYPES.map((t) => [t.type, t.color])) as Record<TransactionType, string>;
 
 const DEFAULT_COLORS = [
   "#10b981", "#059669", "#34d399", "#6ee7b7",
@@ -65,6 +61,7 @@ export function CategoryComposer({
   category,
   initialName = "",
   fixedType,
+  initialType,
   withContext = false,
   pending = false,
   onSave,
@@ -89,7 +86,7 @@ export function CategoryComposer({
   useEffect(() => {
     if (!open) return;
     setName(category?.name ?? initialName);
-    setType(fixedType ?? category?.type ?? "Gasto");
+    setType(fixedType ?? category?.type ?? initialType ?? "Gasto");
     setColor(category?.color || DEFAULT_COLOR);
     setIcon(category?.icon || DEFAULT_ICON);
     setDescription(category?.description ?? "");
@@ -97,7 +94,7 @@ export function CategoryComposer({
     setEmojiOpen(false);
     setExpanded(false);
     setError("");
-  }, [open, category, initialName, fixedType]);
+  }, [open, category, initialName, fixedType, initialType]);
 
   const submit = async (event: React.FormEvent) => {
     event.preventDefault();

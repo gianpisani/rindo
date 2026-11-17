@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo, useRef } from "react";
+import { useState, useMemo, useRef } from "react";
 import { useSearchParams } from "react-router-dom";
 import * as Dialog from "@radix-ui/react-dialog";
 import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
@@ -52,7 +52,7 @@ const CATEGORY_COLORS = [
   "#3b82f6", "#6366f1", "#8b5cf6", "#a855f7", "#ec4899", "#64748b",
 ];
 
-const LOSS_ACCENT = "#f87171";
+const LOSS_ACCENT = "oklch(var(--destructive))";
 
 /** Un instante como valor de <input type="datetime-local">, en hora local. */
 const toLocalInput = (d: Date) => new Date(d.getTime() - d.getTimezoneOffset() * 60000).toISOString().slice(0, 16);
@@ -191,6 +191,9 @@ export default function Transactions() {
 
   const [showFuture, setShowFuture] = useState(false);
   const [isBankSyncOpen, setIsBankSyncOpen] = useState(false);
+  // Modo selección: los checkboxes y las acciones masivas aparecen a pedido.
+  const [selecting, setSelecting] = useState(false);
+  const [pageSize, setPageSize] = useState(100);
 
   // El composer solo edita: los movimientos nuevos entran por el QuickAdd global.
   // editingTransaction queda puesto al cerrar, así el fade de salida no cambia de modo.
@@ -494,15 +497,11 @@ export default function Transactions() {
     <Layout>
       <div className="space-y-6">
         <div className="flex items-center justify-between">
-          <div>
-            <h1 className="text-2xl font-bold tracking-tight mb-1">Transacciones</h1>
-            <p className="text-sm text-muted-foreground">
-              Gestiona todas tus transacciones
-            </p>
-          </div>
-          <Button className="rounded-full h-12 w-12 p-0 md:w-auto md:px-6" onClick={() => useGlobalDrawers.getState().openQuickAdd("Gasto")} aria-label="Agregar movimiento">
-            <Plus className="h-5 w-5 md:mr-2" />
-            <span className="hidden md:inline">Agregar</span>
+          <h1 className="text-xl font-medium">Movimientos</h1>
+          {/* Casi todo llega solo: anotar a mano es secundario */}
+          <Button variant="ghost" size="sm" className="gap-1.5 text-muted-foreground" onClick={() => useGlobalDrawers.getState().openQuickAdd("Gasto")} aria-label="Agregar movimiento">
+            <Plus className="h-4 w-4" />
+            <span className="hidden sm:inline">Agregar</span>
           </Button>
 
           {editingTransaction && (
@@ -1119,6 +1118,10 @@ export default function Transactions() {
           isSyncing={bankSync.isRunning}
           onSync={() => setIsBankSyncOpen(true)}
           onExport={handleExportCSV}
+          selecting={selecting}
+          onSelectingChange={setSelecting}
+          pageSize={pageSize}
+          onPageSizeChange={setPageSize}
         />
 
         <TransactionsTable
@@ -1146,6 +1149,9 @@ export default function Transactions() {
           onCardFilterChange={setCardFilter}
           dateRange={dateRange}
           onDateRangeChange={setDateRange}
+          selecting={selecting}
+          onSelectingChange={setSelecting}
+          pageSize={pageSize}
         />
       </div>
 
@@ -1174,12 +1180,12 @@ export default function Transactions() {
           const tx = transactions.find(t => t.id === deleteId);
           if (!tx) return null;
           return (
-            <div className="rounded-lg border bg-muted/50 p-3 space-y-1 text-sm">
+            <div className="rounded-card border p-3 space-y-1 text-sm">
               <div className="flex items-center justify-between">
                 <span className="font-medium">{tx.detail || "Sin detalle"}</span>
                 <span className={cn(
-                  "font-bold font-mono tabular-nums",
-                  typeAmountColors[tx.type] ?? "text-rose-500"
+                  "font-medium font-mono tabular-nums",
+                  typeAmountColors[tx.type]
                 )}>
                   {formatCurrency(tx.amount)}
                 </span>
@@ -1220,10 +1226,10 @@ export default function Transactions() {
             <AlertDialogTitle>¿Confirmar pago?</AlertDialogTitle>
             <AlertDialogDescription>
               Se creará automáticamente un reembolso de{" "}
-              <span className="font-bold">
+              <span className="font-medium">
                 ${confirmPaid && new Intl.NumberFormat("es-CL").format(confirmPaid.amount)}
               </span>{" "}
-              por el pago de <span className="font-bold">{confirmPaid?.name}</span>.
+              por el pago de <span className="font-medium">{confirmPaid?.name}</span>.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>

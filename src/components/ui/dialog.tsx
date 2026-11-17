@@ -40,13 +40,13 @@ const DialogContent = React.forwardRef<
       ref={ref}
       className={cn(
         "fixed left-[50%] top-[50%] z-50 grid w-full max-w-lg translate-x-[-50%] translate-y-[-50%] gap-4",
-        "border border-border dark:border-white/10 bg-card dark:bg-background/95 backdrop-blur-xl shadow-[0_25px_60px_-12px_rgba(0,0,0,0.18)] dark:shadow-2xl",
+        "border border-border dark:border-white/10 bg-card backdrop-blur-xl shadow-float",
         "max-h-[90vh] overflow-hidden",
         "data-[state=open]:animate-in data-[state=closed]:animate-out",
         "data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0",
         "data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95",
         "data-[state=closed]:slide-out-to-top-[2%] data-[state=open]:slide-in-from-top-[2%]",
-        "rounded-2xl",
+        "rounded-card",
         "duration-200",
         className,
       )}
@@ -54,7 +54,7 @@ const DialogContent = React.forwardRef<
     >
       {children}
       {!hideClose && (
-      <DialogPrimitive.Close className="absolute right-3 top-3 rounded-full p-2 opacity-70 ring-offset-background transition-all hover:opacity-100 hover:bg-accent/50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none z-10">
+      <DialogPrimitive.Close className="absolute right-3 top-3 rounded-full p-2 opacity-70 ring-offset-background transition-all hover:opacity-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none z-10">
         <X className="h-4 w-4" />
         <span className="sr-only">Cerrar</span>
       </DialogPrimitive.Close>
@@ -80,7 +80,7 @@ const DialogTitle = React.forwardRef<
 >(({ className, ...props }, ref) => (
   <DialogPrimitive.Title
     ref={ref}
-    className={cn("text-lg font-semibold leading-none tracking-tight", className)}
+    className={cn("text-xl font-medium leading-none", className)}
     {...props}
   />
 ));

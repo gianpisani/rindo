@@ -24,13 +24,6 @@ import {
   DropdownMenuSeparator,
 } from "./ui/dropdown-menu";
 import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "./ui/select";
-import {
   ChevronDown,
   ChevronUp,
   ChevronsUpDown,
@@ -49,6 +42,7 @@ import {
   Undo2,
   ArrowLeftRight,
   GripVertical,
+  ChevronLeft,
   ChevronRight,
   Minimize2,
   SearchX,
@@ -56,8 +50,6 @@ import {
   Plus,
   ArrowDownToLine,
   LineChart,
-  ChevronsLeft,
-  ChevronsRight,
 } from "lucide-react";
 import { Transaction } from "@/hooks/useTransactions";
 import {
@@ -223,8 +215,8 @@ const typeIcons: Record<TransactionType, typeof TrendingUp> = {
 };
 
 export const typeAmountColors: Record<TransactionType, string> = {
-  Ingreso: "text-emerald-500",
-  Gasto: "text-rose-500",
+  Ingreso: "text-success",
+  Gasto: "text-foreground",
   Inversión: "text-blue-500",
   Rescate: "text-cyan-500",
   Rendimiento: "text-violet-500",
@@ -235,15 +227,16 @@ const formatCLP = (amount: number) =>
   new Intl.NumberFormat("es-CL", { style: "currency", currency: "CLP", minimumFractionDigits: 0 }).format(amount);
 
 const signColor = (amount: number) =>
-  amount > 0 ? "text-emerald-500" : amount < 0 ? "text-rose-500" : "";
+  amount > 0 ? "text-success" : "";
 
-// Formato para NumberFlow en las stats del resumen (dígitos animados)
+// Formato con signo: NumberFlow en el panel de selección y la suma del pie.
 const SIGNED_CLP: Format = {
   style: "currency",
   currency: "CLP",
   maximumFractionDigits: 0,
   signDisplay: "exceptZero",
 };
+const formatSignedCLP = new Intl.NumberFormat("es-CL", SIGNED_CLP).format;
 
 // ── Editable cell components ───────────────────────────────────────────────
 
@@ -288,8 +281,8 @@ function EditableTextCell({ value, onSave, className, placeholder }: {
     <div
       onClick={() => setIsEditing(true)}
       className={cn(
-        "px-2 py-1 rounded-md cursor-pointer transition-all",
-        "hover:bg-muted/80 group flex items-center gap-1",
+        "px-2 py-1 rounded-card cursor-pointer transition-all",
+        "group flex items-center gap-1",
         className
       )}
     >
@@ -363,8 +356,8 @@ function EditableAmountCell({
     <div
       onClick={() => setIsEditing(true)}
       className={cn(
-        "px-2 py-1 rounded-md cursor-pointer transition-all text-right",
-        "hover:bg-muted/80 group flex items-center justify-end gap-1 font-semibold font-mono tabular-nums",
+        "px-2 py-1 rounded-card cursor-pointer transition-all text-right",
+        "group flex items-center justify-end gap-1 font-medium font-mono tabular-nums",
         className
       )}
     >
@@ -376,7 +369,7 @@ function EditableAmountCell({
 
 /** Clases del botón que abre un editor inline de celda. */
 const CELL_TRIGGER =
-  "flex items-center gap-1 px-2 py-1 rounded-md transition-all hover:bg-muted/80 group cursor-pointer focus:outline-none focus-visible:bg-muted/80";
+  "flex items-center gap-1 px-2 py-1 rounded-card transition-all group cursor-pointer focus:outline-none";
 
 interface SelectableCellProps<T extends string> {
   value: T;
@@ -419,10 +412,10 @@ function SortHeader({ column, label, alignEnd }: { column: Column<Transaction>; 
   const sorted = column.getIsSorted();
   return (
     <div
-      className={cn("flex items-center cursor-pointer hover:bg-muted rounded px-2 py-1", alignEnd && "justify-end ml-auto")}
+      className={cn("flex items-center cursor-pointer hover:bg-muted rounded-card px-2 py-1", alignEnd && "justify-end ml-auto")}
       onClick={() => column.toggleSorting(sorted === "asc")}
     >
-      <span className="text-xs font-semibold">{label}</span>
+      <span className="text-xs font-medium">{label}</span>
       {sorted === "asc" ? <ChevronUp className="ml-2 h-4 w-4" /> :
         sorted === "desc" ? <ChevronDown className="ml-2 h-4 w-4" /> :
           <ChevronsUpDown className="ml-2 h-4 w-4 opacity-50" />}
@@ -435,13 +428,13 @@ function SortHeader({ column, label, alignEnd }: { column: Column<Transaction>; 
 function EmptyState({ hasFilters, onClear }: { hasFilters: boolean; onClear: () => void }) {
   const Icon = hasFilters ? SearchX : Inbox;
   return (
-    <div className="flex flex-col items-center gap-3 py-14 text-center">
-      <div className="flex h-12 w-12 items-center justify-center rounded-full bg-muted/60">
-        <Icon className="h-5 w-5 text-muted-foreground/70" />
+    <div className="flex flex-col items-center gap-3 py-12 text-center">
+      <div className="flex h-12 w-12 items-center justify-center rounded-full">
+        <Icon className="h-5 w-5" />
       </div>
       <div className="space-y-1">
         <p className="text-sm font-medium">
-          {hasFilters ? "Nada con estos filtros" : "Sin transacciones todavía"}
+          {hasFilters ? "Nada con estos filtros" : "Sin movimientos todavía"}
         </p>
         <p className="text-xs text-muted-foreground">
           {hasFilters
@@ -450,7 +443,7 @@ function EmptyState({ hasFilters, onClear }: { hasFilters: boolean; onClear: () 
         </p>
       </div>
       {hasFilters && (
-        <Button variant="outline" size="sm" className="h-8 rounded-full text-xs" onClick={onClear}>
+        <Button variant="ghost" size="sm" className="h-8 text-xs" onClick={onClear}>
           Limpiar filtros
         </Button>
       )}
@@ -491,8 +484,8 @@ function CategoryCombobox({ value, options, onSave, trigger, placeholder = "Busc
       }}
     >
       <PopoverTrigger asChild>{trigger}</PopoverTrigger>
-      <PopoverContent className="w-[220px] p-0 border-0 shadow-lg shadow-black/10 dark:shadow-black/30 rounded-lg overflow-hidden" align="start" side="bottom" sideOffset={4}>
-        <Command className="rounded-lg">
+      <PopoverContent className="w-[220px] p-0 border-0 rounded-card overflow-hidden" align="start" side="bottom" sideOffset={4}>
+        <Command className="rounded-card">
           <CommandInput
             value={search}
             onValueChange={setSearch}
@@ -515,7 +508,7 @@ function CategoryCombobox({ value, options, onSave, trigger, placeholder = "Busc
                   className="flex items-center gap-2 cursor-pointer"
                 >
                   {option.emoji && (
-                    <span className="text-base leading-none flex-shrink-0">{option.emoji}</span>
+                    <span className="text-sm leading-none flex-shrink-0">{option.emoji}</span>
                   )}
                   {option.color && (
                     <div
@@ -525,7 +518,7 @@ function CategoryCombobox({ value, options, onSave, trigger, placeholder = "Busc
                   )}
                   <span className="truncate text-sm">{option.label}</span>
                   {option.value === value && (
-                    <Check className="h-3.5 w-3.5 ml-auto flex-shrink-0 text-primary" />
+                    <Check className="h-3.5 w-3.5 ml-auto flex-shrink-0 text-foreground" />
                   )}
                 </CommandItem>
               ))}
@@ -542,7 +535,7 @@ function CategoryCombobox({ value, options, onSave, trigger, placeholder = "Busc
                 setSearch("");
                 onCreate(name);
               }}
-              className="flex w-full items-center gap-2 border-t border-border/60 px-2 py-2 text-left text-xs text-primary transition-colors hover:bg-muted/60"
+              className="flex w-full items-center gap-2 border-t px-2 py-2 text-left text-xs text-foreground transition-colors"
             >
               <Plus className="h-3.5 w-3.5 flex-shrink-0" />
               <span className="truncate">
@@ -578,6 +571,10 @@ interface TransactionsTableProps {
   onCardFilterChange: (v: string) => void;
   dateRange: DateRangeValue;
   onDateRangeChange: (v: DateRangeValue) => void;
+  /** Modo selección: solo entonces se ven los checkboxes y se puede marcar filas. */
+  selecting: boolean;
+  onSelectingChange: (v: boolean) => void;
+  pageSize: number;
 }
 
 // ── Main component ─────────────────────────────────────────────────────────
@@ -601,9 +598,13 @@ export function TransactionsTable({
   onCardFilterChange,
   dateRange,
   onDateRangeChange,
+  selecting,
+  onSelectingChange,
+  pageSize,
 }: TransactionsTableProps) {
   const [sorting, setSorting] = useState<SortingState>([{ id: "date", desc: true }]);
   const [rowSelection, setRowSelection] = useState<RowSelectionState>({});
+  const [pageIndex, setPageIndex] = useState(0);
   const [panelExpanded, setPanelExpanded] = useState(false);
   const [panelY, setPanelY] = useState<number | null>(null);
   const tbodyRef = useRef<HTMLTableSectionElement>(null);
@@ -648,21 +649,24 @@ export function TransactionsTable({
     setRowSelection({});
   }, [transactions.length]);
 
+  // Salir del modo selección suelta lo marcado.
+  useEffect(() => {
+    if (!selecting) setRowSelection({});
+  }, [selecting]);
+
+  useEffect(() => {
+    setPageIndex(0);
+  }, [pageSize]);
+
   const handleInlineUpdate = useCallback(async (id: string, field: keyof Transaction, value: unknown) => {
     if (id.startsWith("pending-")) return;
     await onUpdateSilent(id, { [field]: value });
   }, [onUpdateSilent]);
 
   const columns = useMemo<ColumnDef<Transaction>[]>(() => {
-    const typeOptions = TRANSACTION_TYPES.map((value) => ({
-      value,
-      label: value,
-      icon: typeIcons[value],
-    }));
-
     return [
-      // ── Select ──────────────────────────────────────────────────────────
-      {
+      // ── Select (solo en modo selección) ─────────────────────────────────
+      ...(selecting ? [{
         id: "select",
         size: 48, minSize: 48, maxSize: 48,
         header: ({ table }) => (
@@ -684,7 +688,7 @@ export function TransactionsTable({
         ),
         enableSorting: false,
         enableHiding: false,
-      },
+      }] as ColumnDef<Transaction>[] : []),
 
       // ── Fecha ────────────────────────────────────────────────────────────
       {
@@ -717,7 +721,7 @@ export function TransactionsTable({
           const avatar = categoryAvatar(row.original.category_name, categories);
 
           return (
-            <div className={cn("flex items-center gap-2.5 max-w-[300px]", isPrivacyMode && "privacy-blur")}>
+            <div className={cn("flex items-center gap-2 max-w-[300px]", isPrivacyMode && "privacy-blur")}>
               {/* Avatar */}
               <div className="relative flex-shrink-0">
                 <div
@@ -748,7 +752,7 @@ export function TransactionsTable({
                 />
                 {row.original.bank_description && row.original.bank_description !== clean && (
                   <p
-                    className="text-[10px] text-muted-foreground/50 truncate leading-none mt-0.5"
+                    className="text-xs truncate leading-none mt-0.5"
                     title={row.original.bank_description}
                   >
                     {row.original.bank_description}
@@ -825,12 +829,12 @@ export function TransactionsTable({
                   trigger={
                     <button
                       className={cn(
-                        "inline-flex items-center gap-1 rounded-full px-1.5 py-0.5 text-[10px] leading-none flex-shrink-0",
+                        "inline-flex items-center gap-1 rounded-full px-1.5 py-0.5 text-xs leading-none flex-shrink-0",
                         "cursor-pointer transition-all hover:brightness-125",
                         "focus:outline-none",
                         linkedCategory
-                          ? "bg-emerald-500/15 text-emerald-400 font-medium"
-                          : "bg-white/5 text-muted-foreground/40 italic hover:text-muted-foreground/60"
+                          ? "bg-success/15 text-success font-medium"
+                          : "bg-white/5 italic"
                       )}
                       onClick={(e) => e.stopPropagation()}
                     >
@@ -850,7 +854,7 @@ export function TransactionsTable({
         id: "card",
         size: 90, minSize: 80, maxSize: 110,
         header: () => (
-          <div className="flex items-center gap-1 text-xs font-semibold">
+          <div className="flex items-center gap-1 text-xs font-medium">
             <CreditCard className="h-3.5 w-3.5" />
             Tarjeta
           </div>
@@ -858,7 +862,7 @@ export function TransactionsTable({
         cell: ({ row }: { row: { original: Transaction } }) => {
           const type = row.original.type;
           const cardId = row.original.card_id;
-          if (INVESTMENT_TYPES.includes(type)) return <span className="text-xs text-muted-foreground/50">—</span>;
+          if (INVESTMENT_TYPES.includes(type)) return <span className="text-xs">—</span>;
 
           const selectedCard = creditCards.find(c => c.id === cardId);
 
@@ -873,7 +877,7 @@ export function TransactionsTable({
               renderValue={() => {
                 if (!selectedCard) {
                   return (
-                    <span className="text-xs text-muted-foreground/60 flex items-center gap-1">
+                    <span className="text-xs flex items-center gap-1">
                       <CreditCard className="h-3 w-3" />
                       Cuenta
                     </span>
@@ -886,7 +890,7 @@ export function TransactionsTable({
                       className="w-2 h-2 rounded-full flex-shrink-0"
                       style={{ backgroundColor: selectedCard.color || "#6366f1" }}
                     />
-                    <span className="text-xs font-mono font-medium">
+                    <span className="text-xs font-medium">
                       {digits ? `****${digits}` : selectedCard.name}
                     </span>
                   </div>
@@ -897,7 +901,7 @@ export function TransactionsTable({
         },
       }] as ColumnDef<Transaction>[] : []),
 
-      // ── Monto (coloreado + tipo inline) ──────────────────────────────────
+      // ── Monto (coloreado; el tipo se cambia en el editor) ───────────────
       {
         accessorKey: "amount",
         size: 170, minSize: 150, maxSize: 180,
@@ -908,30 +912,12 @@ export function TransactionsTable({
           const amountColor = typeAmountColors[type];
 
           return (
-            <div className={cn("flex items-center justify-end gap-1", isPrivacyMode && "privacy-blur")}>
-              {/* Tipo como icono clickeable */}
-              <SelectableCell
-                value={type}
-                options={typeOptions}
-                onSave={(newType) => {
-                  handleInlineUpdate(row.original.id, "type", newType);
-                  if (!categories.some(c => c.name === row.original.category_name && c.type === newType)) {
-                    const matchingCategory = categories.find(c => c.type === newType);
-                    handleInlineUpdate(row.original.id, "category_name", matchingCategory?.name || "Sin categoría");
-                  }
-                }}
-                renderValue={(val) => {
-                  const Icon = typeIcons[val];
-                  return <Icon className={cn("h-3.5 w-3.5", typeAmountColors[val])} />;
-                }}
-                className="p-1 opacity-40 hover:opacity-100"
-              />
-              {/* Monto coloreado */}
+            <div className={cn("flex items-center justify-end", isPrivacyMode && "privacy-blur")}>
               <EditableAmountCell
                 value={amount}
                 allowNegative={allowsNegativeAmount(type)}
                 onSave={(newAmount) => handleInlineUpdate(row.original.id, "amount", newAmount)}
-                className={cn("text-sm font-semibold", amountColor)}
+                className={cn("text-sm font-medium", amountColor)}
               />
             </div>
           );
@@ -976,7 +962,7 @@ export function TransactionsTable({
         ),
       },
     ];
-  }, [onEdit, onDelete, onDuplicate, categories, creditCards, isPrivacyMode, handleInlineUpdate]);
+  }, [selecting, onEdit, onDelete, onDuplicate, categories, creditCards, isPrivacyMode, handleInlineUpdate]);
 
   // ── Filtering ────────────────────────────────────────────────────────────
 
@@ -1007,8 +993,9 @@ export function TransactionsTable({
     getFilteredRowModel: getFilteredRowModel(),
     onSortingChange: setSorting,
     onRowSelectionChange: setRowSelection,
-    state: { sorting, rowSelection },
-    initialState: { pagination: { pageSize: 100 } },
+    onPaginationChange: (updater) =>
+      setPageIndex((typeof updater === "function" ? updater({ pageIndex, pageSize }) : updater).pageIndex),
+    state: { sorting, rowSelection, pagination: { pageIndex, pageSize } },
     enableRowSelection: row => !row.original.isPending,
     autoResetPageIndex: false,
     getRowId: (row) => row.id,
@@ -1020,8 +1007,8 @@ export function TransactionsTable({
 
   // ── Drag-to-select (Excel-like) ─────────────────────────────────────────
   const handleRowMouseDown = (e: React.MouseEvent, startIdx: number) => {
-    // Only left-click, ignore interactive elements
-    if (e.button !== 0) return;
+    // Solo en modo selección, con click izquierdo y fuera de controles
+    if (!selecting || e.button !== 0) return;
     const target = e.target as HTMLElement;
     if (target.closest('button, input, [role="menuitem"], [role="combobox"], [role="listbox"], [data-radix-collection-item], [type="checkbox"]')) return;
 
@@ -1058,9 +1045,12 @@ export function TransactionsTable({
     window.addEventListener("mouseup", handleUp);
   };
 
-  // ── Summary stats (selected rows or current page) ────────────────────────
+  // Suma con signo de lo filtrado: Gasto/Inversión restan, Ingreso/Reembolso suman
+  const filteredSum = filteredData.reduce((sum, t) => sum + displaySign(t.type) * t.amount, 0);
+
+  // ── Stats de la selección (panel flotante) ──────────────────────────────
   const summaryStats = (() => {
-    const rows = (hasSelection ? selectedRows : table.getRowModel().rows).map(r => r.original);
+    const rows = selectedRows.map(r => r.original);
     if (rows.length === 0) return null;
     // Montos con signo: Gasto/Inversión restan, Ingreso/Reembolso suman.
     // El pago de tarjeta no es gasto ni ingreso (sus compras ya contaron): vale 0.
@@ -1069,7 +1059,6 @@ export function TransactionsTable({
     const income = amounts.reduce((a, v) => a + Math.max(0, v), 0);
     const expense = amounts.reduce((a, v) => a + Math.max(0, -v), 0);
     return {
-      count: rows.length,
       sum,
       avg: Math.round(sum / amounts.length),
       min: Math.min(...amounts),
@@ -1157,23 +1146,19 @@ export function TransactionsTable({
           isSelected && "mobile-tx-card-selected",
           isMissing && "mobile-tx-card-missing"
         )}
-        onClick={() => guardedEdit(t)}
+        // En modo selección tocar la card la marca; si no, abre el editor.
+        onClick={() => (selecting ? row.toggleSelected(!isSelected) : guardedEdit(t))}
       >
-        {/* Selection checkbox */}
-        <div
-          className="mobile-tx-checkbox"
-          onClick={(e) => {
-            e.stopPropagation();
-            row.toggleSelected(!isSelected);
-          }}
-        >
-          <Checkbox checked={isSelected} className="h-4 w-4" tabIndex={-1} />
-        </div>
+        {selecting && (
+          <div className="mobile-tx-checkbox">
+            <Checkbox checked={isSelected} className="h-4 w-4" tabIndex={-1} />
+          </div>
+        )}
 
         {/* Avatar */}
         <div className="relative flex-shrink-0">
           <div
-            className="w-10 h-10 rounded-full flex items-center justify-center text-lg leading-none select-none"
+            className="w-10 h-10 rounded-full flex items-center justify-center text-xl leading-none select-none"
             style={avatar.style}
           >
             {avatar.emoji}
@@ -1188,11 +1173,11 @@ export function TransactionsTable({
         {/* Content */}
         <div className="flex-1 min-w-0 ml-3">
           <div className="flex items-center justify-between gap-2">
-            <span className={cn("text-sm font-semibold truncate", isPrivacyMode && "privacy-blur")}>
-              {clean || <span className="text-muted-foreground/50 italic font-normal">Sin detalle</span>}
+            <span className={cn("text-sm font-medium truncate", isPrivacyMode && "privacy-blur")}>
+              {clean || <span className="italic font-normal">Sin detalle</span>}
             </span>
             <span className={cn(
-              "text-sm font-bold tabular-nums whitespace-nowrap font-mono",
+              "text-sm font-medium tabular-nums whitespace-nowrap font-mono",
               typeAmountColors[t.type],
               isPrivacyMode && "privacy-blur"
             )}>
@@ -1213,7 +1198,7 @@ export function TransactionsTable({
                 </>
               )}
             </div>
-            <span className="text-[11px] text-muted-foreground/50 tabular-nums flex-shrink-0">
+            <span className="text-xs tabular-nums flex-shrink-0">
               {timeLabel}
             </span>
           </div>
@@ -1261,9 +1246,8 @@ export function TransactionsTable({
         data-transaction-id={row.original.id}
         data-state={row.getIsSelected() && "selected"}
         className={cn(
-          "hover:bg-muted/40 transition-colors",
+          "transition-colors",
           row.original.isPending && "pointer-events-none opacity-60",
-          row.getIsSelected() && "bg-primary/5 hover:bg-primary/10",
           isMissing && "border-l-2 border-l-amber-400/70"
         )}
         onMouseDown={(e) => handleRowMouseDown(e, index)}
@@ -1295,14 +1279,14 @@ export function TransactionsTable({
           {!panelExpanded && (
             <div
               className={cn(
-                "flex flex-col items-center gap-1 py-2.5 px-1 rounded-xl",
-                "bg-background/95 backdrop-blur-xl border border-border/60",
-                "shadow-lg shadow-black/8 dark:shadow-black/25"
+                "flex flex-col items-center gap-1 py-2 px-1 rounded-card",
+                "backdrop-blur-xl border",
+                "shadow-float"
               )}
             >
               {/* Drag handle */}
               <div
-                className="cursor-grab active:cursor-grabbing p-0.5 text-muted-foreground/40 hover:text-muted-foreground/70 transition-colors"
+                className="cursor-grab active:cursor-grabbing p-0.5 transition-colors"
                 onMouseDown={handleDragStart}
               >
                 <GripVertical className="h-3.5 w-3.5" />
@@ -1311,7 +1295,7 @@ export function TransactionsTable({
               {/* Count badge */}
               <button
                 onClick={() => setPanelExpanded(true)}
-                className="w-8 h-8 rounded-lg bg-primary/10 text-primary flex items-center justify-center text-xs font-bold hover:bg-primary/20 transition-colors"
+                className="w-8 h-8 rounded-full bg-muted text-foreground flex items-center justify-center text-xs font-medium transition-colors"
               >
                 {selectedIds.length}
               </button>
@@ -1319,7 +1303,7 @@ export function TransactionsTable({
               {/* Expand arrow */}
               <button
                 onClick={() => setPanelExpanded(true)}
-                className="p-0.5 text-muted-foreground/40 hover:text-muted-foreground/70 transition-colors"
+                className="p-0.5 transition-colors"
               >
                 <ChevronRight className="h-3.5 w-3.5 rotate-180" />
               </button>
@@ -1330,30 +1314,30 @@ export function TransactionsTable({
           {panelExpanded && (
             <div
               className={cn(
-                "rounded-xl overflow-hidden",
-                "bg-background/95 backdrop-blur-xl border border-border/60",
-                "shadow-xl shadow-black/10 dark:shadow-black/30",
+                "rounded-card overflow-hidden",
+                "backdrop-blur-xl border",
+                "shadow-float",
                 "animate-in slide-in-from-right-3 fade-in-0 duration-200"
               )}
             >
               {/* Header with drag handle */}
-              <div className="flex items-center gap-2 px-3 py-2 border-b border-border/40 bg-muted/30">
+              <div className="flex items-center gap-2 px-3 py-2 border-b">
                 <div
-                  className="cursor-grab active:cursor-grabbing text-muted-foreground/40 hover:text-muted-foreground/70 transition-colors"
+                  className="cursor-grab active:cursor-grabbing transition-colors"
                   onMouseDown={handleDragStart}
                 >
                   <GripVertical className="h-3.5 w-3.5" />
                 </div>
-                <Badge variant="secondary" className="font-semibold text-[11px] h-5 px-1.5">
+                <Badge variant="secondary" className="font-medium text-xs h-5 px-1.5">
                   {selectedIds.length}
                 </Badge>
-                <span className="text-[11px] text-muted-foreground">
+                <span className="text-xs text-muted-foreground">
                   seleccionada{selectedIds.length > 1 ? "s" : ""}
                 </span>
                 <div className="flex-1" />
                 <button
                   onClick={() => setPanelExpanded(false)}
-                  className="p-0.5 text-muted-foreground/40 hover:text-muted-foreground/70 transition-colors"
+                  className="p-0.5 transition-colors"
                 >
                   <Minimize2 className="h-3.5 w-3.5" />
                 </button>
@@ -1363,9 +1347,9 @@ export function TransactionsTable({
               <div className="p-2 space-y-0.5">
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild>
-                    <button className="w-full flex items-center gap-2.5 px-2.5 py-1.5 rounded-lg text-sm hover:bg-muted/60 transition-colors text-left">
+                    <button className="w-full flex items-center gap-2 px-2 py-1.5 rounded-card text-sm transition-colors text-left">
                       <Tag className="h-3.5 w-3.5 text-muted-foreground" />
-                      <span className="text-[13px]">Cambiar categoría</span>
+                      <span className="text-sm">Cambiar categoría</span>
                     </button>
                   </DropdownMenuTrigger>
                   <DropdownMenuContent align="end" side="left" className="max-h-[300px] overflow-auto">
@@ -1382,9 +1366,9 @@ export function TransactionsTable({
 
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild>
-                    <button className="w-full flex items-center gap-2.5 px-2.5 py-1.5 rounded-lg text-sm hover:bg-muted/60 transition-colors text-left">
+                    <button className="w-full flex items-center gap-2 px-2 py-1.5 rounded-card text-sm transition-colors text-left">
                       <ArrowRightLeft className="h-3.5 w-3.5 text-muted-foreground" />
-                      <span className="text-[13px]">Cambiar tipo</span>
+                      <span className="text-sm">Cambiar tipo</span>
                     </button>
                   </DropdownMenuTrigger>
                   <DropdownMenuContent align="end" side="left">
@@ -1401,47 +1385,47 @@ export function TransactionsTable({
 
                 <button
                   onClick={() => runBatch(onDuplicate(selectedIds))}
-                  className="w-full flex items-center gap-2.5 px-2.5 py-1.5 rounded-lg text-sm hover:bg-muted/60 transition-colors text-left"
+                  className="w-full flex items-center gap-2 px-2 py-1.5 rounded-card text-sm transition-colors text-left"
                 >
                   <Copy className="h-3.5 w-3.5 text-muted-foreground" />
-                  <span className="text-[13px]">Duplicar</span>
+                  <span className="text-sm">Duplicar</span>
                 </button>
 
-                <div className="my-1 border-t border-border/40" />
+                <div className="my-1 border-t" />
 
                 <button
                   onClick={() => runBatch(onDeleteMultiple(selectedIds))}
-                  className="w-full flex items-center gap-2.5 px-2.5 py-1.5 rounded-lg text-sm hover:bg-destructive/10 text-destructive transition-colors text-left"
+                  className="w-full flex items-center gap-2 px-2 py-1.5 rounded-card text-sm hover:bg-destructive/10 text-destructive transition-colors text-left"
                 >
                   <Trash2 className="h-3.5 w-3.5" />
-                  <span className="text-[13px]">Eliminar</span>
+                  <span className="text-sm">Eliminar</span>
                 </button>
               </div>
 
               {/* Quick summary */}
               {summaryStats && (
-                <div className="px-3 py-2 border-t border-border/40 bg-muted/20">
+                <div className="px-3 py-2 border-t">
                   <div className="grid grid-cols-2 gap-x-4 gap-y-1">
                     {([
-                      ["Suma", summaryStats.sum, "font-bold"],
-                      ["Prom", summaryStats.avg, "font-semibold"],
+                      ["Suma", summaryStats.sum, "font-medium"],
+                      ["Prom", summaryStats.avg, "font-medium"],
                       ["Min", summaryStats.min, ""],
                       ["Max", summaryStats.max, ""],
                     ] as const).map(([label, value, weight]) => (
                       <div key={label} className="flex items-center justify-between">
-                        <span className="text-[10px] text-muted-foreground/60">{label}</span>
-                        <span className={cn("text-[11px] font-mono tabular-nums", weight, signColor(value), isPrivacyMode && "privacy-blur")}>
+                        <span className="text-xs">{label}</span>
+                        <span className={cn("text-xs font-mono tabular-nums", weight, signColor(value), isPrivacyMode && "privacy-blur")}>
                           <NumberFlow value={value} locales="es-CL" format={SIGNED_CLP} />
                         </span>
                       </div>
                     ))}
                   </div>
                   {summaryStats.mixed && (
-                    <div className="flex items-center justify-between mt-1.5 pt-1.5 border-t border-border/30">
-                      <span className={cn("text-[10px] font-mono tabular-nums text-emerald-500", isPrivacyMode && "privacy-blur")}>
+                    <div className="flex items-center justify-between mt-1.5 pt-1.5 border-t">
+                      <span className={cn("text-xs font-mono tabular-nums text-success", isPrivacyMode && "privacy-blur")}>
                         +{formatCLP(summaryStats.income)}
                       </span>
-                      <span className={cn("text-[10px] font-mono tabular-nums text-rose-500", isPrivacyMode && "privacy-blur")}>
+                      <span className={cn("text-xs font-mono tabular-nums", isPrivacyMode && "privacy-blur")}>
                         −{formatCLP(summaryStats.expense)}
                       </span>
                     </div>
@@ -1450,10 +1434,10 @@ export function TransactionsTable({
               )}
 
               {/* Deselect */}
-              <div className="px-2 py-1.5 border-t border-border/40">
+              <div className="px-2 py-1.5 border-t">
                 <button
                   onClick={() => setRowSelection({})}
-                  className="w-full flex items-center justify-center gap-1 py-1 rounded-lg text-[11px] text-muted-foreground hover:bg-muted/60 transition-colors"
+                  className="w-full flex items-center justify-center gap-1 py-1 rounded-card text-xs text-muted-foreground transition-colors"
                 >
                   <X className="h-3 w-3" />
                   Deseleccionar todo
@@ -1464,238 +1448,134 @@ export function TransactionsTable({
         </div>
       )}
 
-      {/* ── Mobile Card List ─────────────────────────────────────────────── */}
-      {isMobile ? (
-        <>
-          <div className="mobile-tx-list">
-            {table.getRowModel().rows.length === 0 ? (
-              <EmptyState hasFilters={hasActiveFilters} onClear={clearFilters} />
-            ) : groupedRows ? (
-              groupedRows.map((group) => (
-                <React.Fragment key={group.dayKey}>
-                  <div className="mobile-tx-date-header">
-                    {formatGroupDate(group.dayKey)}
-                  </div>
-                  {group.rows.map((row) => renderMobileCard(row, format(new Date(row.original.date), "HH:mm")))}
-                </React.Fragment>
-              ))
-            ) : (
-              table.getRowModel().rows.map((row) =>
-                renderMobileCard(row, format(new Date(row.original.date), "d MMM HH:mm", { locale: es }))
-              )
-            )}
-          </div>
-
-          {/* Mobile Pagination */}
-          <div className="flex items-center justify-between pt-1">
-            <span className="text-xs text-muted-foreground">
-              {table.getFilteredRowModel().rows.length} movimientos
-            </span>
-            <div className="flex items-center gap-1">
-              <Button
-                variant="ghost" size="sm"
-                onClick={() => table.previousPage()}
-                disabled={!table.getCanPreviousPage()}
-                className="h-8 px-2 text-xs"
-              >
-                <ChevronUp className="h-4 w-4 rotate-[-90deg] mr-1" />
-                Ant
-              </Button>
-              <span className="text-xs text-muted-foreground tabular-nums px-2">
-                {table.getState().pagination.pageIndex + 1}/{table.getPageCount()}
-              </span>
-              <Button
-                variant="ghost" size="sm"
-                onClick={() => table.nextPage()}
-                disabled={!table.getCanNextPage()}
-                className="h-8 px-2 text-xs"
-              >
-                Sig
-                <ChevronDown className="h-4 w-4 rotate-[-90deg] ml-1" />
-              </Button>
-            </div>
-          </div>
-        </>
-      ) : (
-        <>
-          {/* ── Desktop Table ──────────────────────────────────────────────── */}
-          <div className="border border-border/50 rounded-lg overflow-hidden">
-            <div className="overflow-x-auto overflow-y-auto max-h-[calc(100vh-320px)] min-h-[300px]">
-              <table className="w-full table-fixed">
-                <thead className="bg-card border-b border-border sticky top-0 z-10 shadow-sm">
-                  {table.getHeaderGroups().map((headerGroup) => (
-                    <tr key={headerGroup.id}>
-                      {headerGroup.headers.map((header) => (
-                        <th
-                          key={header.id}
-                          className="px-3 py-1.5 text-left text-xs font-semibold text-foreground"
-                          style={{
-                            width: header.column.columnDef.size,
-                            minWidth: header.column.columnDef.minSize,
-                            maxWidth: header.column.columnDef.maxSize,
-                          }}
-                        >
-                          {header.isPlaceholder ? null : flexRender(header.column.columnDef.header, header.getContext())}
-                        </th>
-                      ))}
-                    </tr>
-                  ))}
-                </thead>
-                <tbody ref={tbodyRef} className="divide-y divide-border/50 bg-card">
-                  {table.getRowModel().rows.length === 0 ? (
-                    <tr>
-                      <td colSpan={columns.length}>
-                        <EmptyState hasFilters={hasActiveFilters} onClear={clearFilters} />
-                      </td>
-                    </tr>
-                  ) : groupedRows ? (
-                    groupedRows.map((group) => (
-                      <React.Fragment key={group.dayKey}>
-                        <tr>
-                          <td
-                            colSpan={columns.length}
-                            className="px-4 py-1 bg-muted/30 border-t border-border/30 first:border-t-0"
-                          >
-                            <span className="text-xs font-semibold text-muted-foreground">
-                              {formatGroupDate(group.dayKey)}
-                            </span>
-                          </td>
-                        </tr>
-                        {group.rows.map((row, i) => renderDesktopRow(row, group.start + i))}
-                      </React.Fragment>
-                    ))
-                  ) : (
-                    table.getRowModel().rows.map(renderDesktopRow)
-                  )}
-                </tbody>
-              </table>
-            </div>
-
-            {/* ── Summary Footer (Excel-style) ─────────────────────────────── */}
-            {summaryStats && (
-              <div className="border-t border-border/50 bg-muted/20 px-3 py-1.5 flex items-center justify-end gap-6">
-                {hasSelection && (
-                  <span className="text-[11px] text-muted-foreground/60 mr-auto">
-                    {summaryStats.count} seleccionada{summaryStats.count > 1 ? "s" : ""}
-                  </span>
-                )}
-                {summaryStats.mixed && (
-                  <>
-                    <div className="flex items-center gap-1">
-                      <span className="text-[11px] text-muted-foreground/60">Ingresos</span>
-                      <span className={cn("text-xs font-mono font-semibold tabular-nums text-emerald-500", isPrivacyMode && "privacy-blur")}>
-                        +{formatCLP(summaryStats.income)}
-                      </span>
-                    </div>
-                    <div className="flex items-center gap-1">
-                      <span className="text-[11px] text-muted-foreground/60">Gastos</span>
-                      <span className={cn("text-xs font-mono font-semibold tabular-nums text-rose-500", isPrivacyMode && "privacy-blur")}>
-                        −{formatCLP(summaryStats.expense)}
-                      </span>
-                    </div>
-                  </>
-                )}
-                {([
-                  ["Min", summaryStats.min, "font-semibold"],
-                  ["Max", summaryStats.max, "font-semibold"],
-                  ["Prom", summaryStats.avg, "font-semibold"],
-                  ["Suma", summaryStats.sum, "font-bold"],
-                ] as const).map(([label, value, weight]) => (
-                  <div key={label} className="flex items-center gap-1">
-                    <span className="text-[11px] text-muted-foreground/60">{label}</span>
-                    <span className={cn("text-xs font-mono tabular-nums", weight, signColor(value), isPrivacyMode && "privacy-blur")}>
-                      <NumberFlow value={value} locales="es-CL" format={SIGNED_CLP} />
-                    </span>
-                  </div>
-                ))}
-              </div>
-            )}
-          </div>
-
-          {/* Desktop Pagination */}
-          <div className="flex items-center justify-between flex-wrap gap-3">
-            <div className="text-sm text-muted-foreground">
-              {hasSelection ? (
-                <span className="mr-2 font-medium text-primary">
-                  {selectedIds.length} de {table.getFilteredRowModel().rows.length} seleccionada(s)
-                </span>
-              ) : (
-                <span>{table.getFilteredRowModel().rows.length} transacción(es)</span>
-              )}
-            </div>
-            <div className="flex items-center gap-2">
-              <Select
-                value={table.getState().pagination.pageSize.toString()}
-                onValueChange={(value) => table.setPageSize(Number(value))}
-              >
-                <SelectTrigger className="h-8 w-[100px]">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="10">10 filas</SelectItem>
-                  <SelectItem value="20">20 filas</SelectItem>
-                  <SelectItem value="50">50 filas</SelectItem>
-                  <SelectItem value="100">100 filas</SelectItem>
-                </SelectContent>
-              </Select>
-
-              <div className="flex items-center gap-1">
-                <Button
-                  variant="outline" size="sm"
-                  onClick={() => table.setPageIndex(0)}
-                  disabled={!table.getCanPreviousPage()}
-                  className="h-8 w-8 p-0"
-                >
-                  <ChevronsLeft className="h-4 w-4" />
-                </Button>
-                <Button
-                  variant="outline" size="sm"
-                  onClick={() => table.previousPage()}
-                  disabled={!table.getCanPreviousPage()}
-                  className="h-8 px-2"
-                >
-                  <ChevronUp className="h-4 w-4 rotate-[-90deg]" />
-                </Button>
-              </div>
-
-              <div className="flex items-center gap-1.5">
-                <span className="text-sm text-muted-foreground">Pág.</span>
-                <Input
-                  type="number"
-                  min={1}
-                  max={table.getPageCount()}
-                  value={table.getState().pagination.pageIndex + 1}
-                  onChange={(e) => {
-                    const page = e.target.value ? Number(e.target.value) - 1 : 0;
-                    if (page >= 0 && page < table.getPageCount()) table.setPageIndex(page);
-                  }}
-                  className="h-8 w-14 text-center"
-                />
-                <span className="text-sm text-muted-foreground">de {table.getPageCount()}</span>
-              </div>
-
-              <div className="flex items-center gap-1">
-                <Button
-                  variant="outline" size="sm"
-                  onClick={() => table.nextPage()}
-                  disabled={!table.getCanNextPage()}
-                  className="h-8 px-2"
-                >
-                  <ChevronDown className="h-4 w-4 rotate-[-90deg]" />
-                </Button>
-                <Button
-                  variant="outline" size="sm"
-                  onClick={() => table.setPageIndex(table.getPageCount() - 1)}
-                  disabled={!table.getCanNextPage()}
-                  className="h-8 w-8 p-0"
-                >
-                  <ChevronsRight className="h-4 w-4" />
-                </Button>
-              </div>
-            </div>
-          </div>
-        </>
+      {/* ── Modo selección: cuántas van y cómo salir ─────────────────────── */}
+      {selecting && (
+        <div className="flex items-center justify-between gap-2 text-sm text-muted-foreground">
+          <span>
+            {hasSelection
+              ? `${selectedIds.length} seleccionado${selectedIds.length > 1 ? "s" : ""}`
+              : "Toca los movimientos para seleccionarlos"}
+          </span>
+          <Button variant="ghost" size="sm" className="h-8" onClick={() => onSelectingChange(false)}>
+            Listo
+          </Button>
+        </div>
       )}
+
+      {/* ── Lista: cards en el celular, tabla en escritorio ──────────────── */}
+      {isMobile ? (
+        <div className="mobile-tx-list">
+          {table.getRowModel().rows.length === 0 ? (
+            <EmptyState hasFilters={hasActiveFilters} onClear={clearFilters} />
+          ) : groupedRows ? (
+            groupedRows.map((group) => (
+              <React.Fragment key={group.dayKey}>
+                <div className="mobile-tx-date-header">
+                  {formatGroupDate(group.dayKey)}
+                </div>
+                {group.rows.map((row) => renderMobileCard(row, format(new Date(row.original.date), "HH:mm")))}
+              </React.Fragment>
+            ))
+          ) : (
+            table.getRowModel().rows.map((row) =>
+              renderMobileCard(row, format(new Date(row.original.date), "d MMM HH:mm", { locale: es }))
+            )
+          )}
+        </div>
+      ) : (
+        <div className="border rounded-card overflow-hidden">
+          <div className="overflow-x-auto overflow-y-auto max-h-[calc(100vh-320px)] min-h-[300px]">
+            <table className="w-full table-fixed">
+              <thead className="bg-card border-b border-border sticky top-0 z-10">
+                {table.getHeaderGroups().map((headerGroup) => (
+                  <tr key={headerGroup.id}>
+                    {headerGroup.headers.map((header) => (
+                      <th
+                        key={header.id}
+                        className="px-3 py-1.5 text-left text-xs font-medium text-foreground"
+                        style={{
+                          width: header.column.columnDef.size,
+                          minWidth: header.column.columnDef.minSize,
+                          maxWidth: header.column.columnDef.maxSize,
+                        }}
+                      >
+                        {header.isPlaceholder ? null : flexRender(header.column.columnDef.header, header.getContext())}
+                      </th>
+                    ))}
+                  </tr>
+                ))}
+              </thead>
+              <tbody ref={tbodyRef} className="divide-y bg-card">
+                {table.getRowModel().rows.length === 0 ? (
+                  <tr>
+                    <td colSpan={columns.length}>
+                      <EmptyState hasFilters={hasActiveFilters} onClear={clearFilters} />
+                    </td>
+                  </tr>
+                ) : groupedRows ? (
+                  groupedRows.map((group) => (
+                    <React.Fragment key={group.dayKey}>
+                      <tr>
+                        <td
+                          colSpan={columns.length}
+                          className="px-4 py-1 border-t first:border-t-0"
+                        >
+                          <span className="text-xs font-medium text-muted-foreground">
+                            {formatGroupDate(group.dayKey)}
+                          </span>
+                        </td>
+                      </tr>
+                      {group.rows.map((row, i) => renderDesktopRow(row, group.start + i))}
+                    </React.Fragment>
+                  ))
+                ) : (
+                  table.getRowModel().rows.map(renderDesktopRow)
+                )}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
+
+      {/* ── Pie: cuántos, su suma y la página ───────────────────────────── */}
+      <div className="flex items-center justify-between gap-3 text-xs text-muted-foreground">
+        <span>
+          {filteredData.length} movimiento{filteredData.length === 1 ? "" : "s"}
+          {filteredData.length > 0 && (
+            <>
+              {" · Suma "}
+              <span className={cn("font-mono tabular-nums", isPrivacyMode && "privacy-blur")}>
+                {formatSignedCLP(filteredSum)}
+              </span>
+            </>
+          )}
+        </span>
+        {table.getPageCount() > 1 && (
+          <div className="flex items-center gap-1">
+            <Button
+              variant="ghost" size="sm"
+              onClick={() => table.previousPage()}
+              disabled={!table.getCanPreviousPage()}
+              className="h-8 w-8 p-0"
+              aria-label="Página anterior"
+            >
+              <ChevronLeft className="h-4 w-4" />
+            </Button>
+            <span className="tabular-nums">
+              {pageIndex + 1} de {table.getPageCount()}
+            </span>
+            <Button
+              variant="ghost" size="sm"
+              onClick={() => table.nextPage()}
+              disabled={!table.getCanNextPage()}
+              className="h-8 w-8 p-0"
+              aria-label="Página siguiente"
+            >
+              <ChevronRight className="h-4 w-4" />
+            </Button>
+          </div>
+        )}
+      </div>
 
       {/* Crear categoría desde una celda y asignarla a esa transacción */}
       <CategoryComposer

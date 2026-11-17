@@ -115,10 +115,10 @@ export function DateRangeFilter({ value, onChange, className }: DateRangeFilterP
     <Popover open={open} onOpenChange={setOpen}>
       <PopoverTrigger asChild>
         <Button
-          variant="outline"
+          variant="ghost"
           size="sm"
           className={cn(
-            "h-10 gap-2 justify-start font-normal w-[160px] sm:w-[200px]",
+            "h-10 gap-2 justify-start font-normal w-[160px] sm:w-[200px] border border-input",
             !hasValue && "text-muted-foreground",
             className
           )}
@@ -129,7 +129,7 @@ export function DateRangeFilter({ value, onChange, className }: DateRangeFilterP
             <span
               role="button"
               onClick={handleClear}
-              className="ml-auto shrink-0 rounded-sm p-0.5 hover:bg-muted-foreground/20"
+              className="ml-auto shrink-0 rounded-full p-0.5"
             >
               <X className="h-3.5 w-3.5" />
             </span>
@@ -144,7 +144,7 @@ export function DateRangeFilter({ value, onChange, className }: DateRangeFilterP
                 key={preset.label}
                 type="button"
                 onClick={() => handlePreset(preset)}
-                className="text-left text-sm px-2 py-1.5 rounded-md hover:bg-muted transition-colors"
+                className="text-left text-sm px-2 py-1.5 rounded-card hover:bg-muted transition-colors"
               >
                 {preset.label}
               </button>

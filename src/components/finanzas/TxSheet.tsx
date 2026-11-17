@@ -46,7 +46,7 @@ export function TxSheet({ data, edit, onClose }: { data: TxSheetData | null; edi
     <Sheet open={data !== null} onOpenChange={(open) => !open && onClose()}>
       <SheetContent
         side={isMobile ? "bottom" : "right"}
-        className={cn("inicio fin-sheet", isMobile ? "h-[82dvh] rounded-t-[22px]" : "w-full sm:max-w-md")}
+        className={cn("inicio fin-sheet", isMobile ? "h-[82dvh] rounded-t-card" : "w-full sm:max-w-md")}
         // Abrir no debe dejar una fila "seleccionada": el foco va al panel.
         onOpenAutoFocus={(e) => { e.preventDefault(); (e.currentTarget as HTMLElement).focus(); }}
       >

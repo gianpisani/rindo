@@ -8,6 +8,31 @@ export default {
   content: ["./pages/**/*.{ts,tsx}", "./components/**/*.{ts,tsx}", "./app/**/*.{ts,tsx}", "./src/**/*.{ts,tsx}"],
   prefix: "",
   theme: {
+  	// La escala tipográfica es cerrada: cuatro tamaños y dos grosores. Los
+  	// valores viven en src/index.css (--fs-*), compartidos con el CSS propio.
+  	fontSize: {
+  		xs: ['var(--fs-1)', { lineHeight: '1rem' }],
+  		sm: ['var(--fs-2)', { lineHeight: '1.25rem' }],
+  		xl: ['var(--fs-3)', { lineHeight: '1.75rem' }],
+  		hero: ['var(--fs-hero)', { lineHeight: '1' }]
+  	},
+  	// Dos radios: `card` para superficies (tarjetas, paneles, hojas, diálogos,
+  	// popovers, inputs) y `full` para todo lo que se toca o marca (botones,
+  	// chips, avatares, barras de progreso, puntos).
+  	borderRadius: {
+  		none: '0',
+  		card: 'var(--radius-card)',
+  		full: '9999px'
+  	},
+  	// Una sola sombra, y solo para lo que flota sobre el contenido.
+  	boxShadow: {
+  		none: 'none',
+  		float: 'var(--shadow-float)'
+  	},
+  	fontWeight: {
+  		normal: '400',
+  		medium: '500'
+  	},
   	container: {
   		center: true,
   		padding: '2rem',
@@ -21,10 +46,7 @@ export default {
   				'Plus Jakarta Sans',
   				'sans-serif'
   			],
-  			mono: [
-  				'JetBrains Mono',
-  				'monospace'
-  			]
+  			mono: ['var(--font-mono)']
   		},
 		colors: {
 			blue: {
@@ -79,10 +101,7 @@ export default {
 				DEFAULT: 'oklch(var(--destructive) / <alpha-value>)',
 				foreground: 'var(--destructive-foreground)'
 			},
-			success: {
-				DEFAULT: 'hsl(var(--success))',
-				foreground: 'hsl(var(--success-foreground))'
-			},
+			success: 'oklch(var(--success) / <alpha-value>)',
 			warning: {
 				DEFAULT: 'hsl(var(--warning))',
 				foreground: 'hsl(var(--warning-foreground))'
@@ -125,86 +144,6 @@ export default {
 				'5': 'var(--chart-5)'
 			}
   		},
-  		borderRadius: {
-  			lg: 'var(--radius)',
-  			md: 'calc(var(--radius) - 2px)',
-  			sm: 'calc(var(--radius) - 4px)'
-  		},
-  		keyframes: {
-  			'accordion-down': {
-  				from: {
-  					height: '0'
-  				},
-  				to: {
-  					height: 'var(--radix-accordion-content-height)'
-  				}
-  			},
-  			'accordion-up': {
-  				from: {
-  					height: 'var(--radix-accordion-content-height)'
-  				},
-  				to: {
-  					height: '0'
-  				}
-  			},
-  			'collapsible-down': {
-  				from: {
-  					height: '0'
-  				},
-  				to: {
-  					height: 'var(--radix-collapsible-content-height)'
-  				}
-  			},
-  			'collapsible-up': {
-  				from: {
-  					height: 'var(--radix-collapsible-content-height)'
-  				},
-  				to: {
-  					height: '0'
-  				}
-  			},
-  			shimmer: {
-  				'0%': {
-  					transform: 'translateX(-100%)'
-  				},
-  				'100%': {
-  					transform: 'translateX(100%)'
-  				}
-  			},
-  			breathe: {
-  				'0%, 100%': {
-  					transform: 'scale(1)',
-  					opacity: '1'
-  				},
-  				'50%': {
-  					transform: 'scale(1.08)',
-  					opacity: '0.85'
-  				}
-  			},
-  			float: {
-  				'0%, 100%': {
-  					transform: 'translateY(0)'
-  				},
-  				'50%': {
-  					transform: 'translateY(-8px)'
-  				}
-  			}
-  		},
-  		animation: {
-  			'accordion-down': 'accordion-down 0.2s ease-out',
-  			'accordion-up': 'accordion-up 0.2s ease-out',
-  			'collapsible-down': 'collapsible-down 0.2s ease-out',
-  			'collapsible-up': 'collapsible-up 0.2s ease-out',
-  			shimmer: 'shimmer 2s infinite',
-  			breathe: 'breathe 2s ease-in-out infinite',
-  			float: 'float 3s ease-in-out infinite'
-  		},
-  		spacing: {
-  			'safe-top': 'env(safe-area-inset-top)',
-  			'safe-bottom': 'env(safe-area-inset-bottom)',
-  			'safe-left': 'env(safe-area-inset-left)',
-  			'safe-right': 'env(safe-area-inset-right)'
-  		}
   	}
   },
   plugins: [
@@ -213,32 +152,6 @@ export default {
       const newUtilities = {
         '.pb-safe': {
           paddingBottom: 'env(safe-area-inset-bottom)',
-        },
-        '.pt-safe': {
-          paddingTop: 'env(safe-area-inset-top)',
-        },
-        '.pl-safe': {
-          paddingLeft: 'env(safe-area-inset-left)',
-        },
-        '.pr-safe': {
-          paddingRight: 'env(safe-area-inset-right)',
-        },
-        '.mb-safe': {
-          marginBottom: 'env(safe-area-inset-bottom)',
-        },
-        '.mt-safe': {
-          marginTop: 'env(safe-area-inset-top)',
-        },
-        /* Fila que se arrastra de lado sin mostrar la barra de scroll. */
-        '.no-scrollbar': {
-          '-ms-overflow-style': 'none',
-          'scrollbar-width': 'none',
-          '&::-webkit-scrollbar': { display: 'none' },
-        },
-        '.scrollbar-hide': {
-          '-ms-overflow-style': 'none',
-          'scrollbar-width': 'none',
-          '&::-webkit-scrollbar': { display: 'none' },
         },
       }
       addUtilities(newUtilities)

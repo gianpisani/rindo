@@ -36,8 +36,8 @@ const MAX_PILLS = 2;
 
 const tones = {
   primary: {
-    pill: "border-primary/25 bg-primary/[0.06] hover:bg-primary/10",
-    icon: "text-primary",
+    pill: "",
+    icon: "text-muted-foreground",
   },
   warning: {
     pill: "border-amber-500/30 bg-amber-500/[0.06] hover:bg-amber-500/10",
@@ -61,7 +61,7 @@ function DismissButton({
       }}
       aria-label="Cerrar aviso"
       className={cn(
-        "shrink-0 text-muted-foreground/60 transition-colors hover:text-foreground",
+        "shrink-0 transition-colors hover:text-foreground",
         className
       )}
     >
@@ -76,7 +76,7 @@ function NoticePill({ notice }: { notice: HomeNotice }) {
   return (
     <div
       className={cn(
-        "flex h-7 items-center gap-1.5 rounded-full border pl-2.5 pr-2 transition-colors",
+        "flex h-7 items-center gap-1.5 rounded-full border pl-2 pr-2 transition-colors",
         tone.pill
       )}
     >
@@ -87,7 +87,7 @@ function NoticePill({ notice }: { notice: HomeNotice }) {
         className="flex min-w-0 items-center gap-1.5 focus-visible:outline-none"
       >
         <notice.icon className={cn("h-3.5 w-3.5 shrink-0", tone.icon)} />
-        <span className="truncate text-[11px] font-medium">{notice.label}</span>
+        <span className="truncate text-xs font-medium">{notice.label}</span>
       </button>
       {notice.onDismiss && <DismissButton onDismiss={notice.onDismiss} />}
     </div>
@@ -98,23 +98,23 @@ function NoticePill({ notice }: { notice: HomeNotice }) {
 function NoticeRow({ notice }: { notice: HomeNotice }) {
   const tone = tones[notice.tone];
   return (
-    <div className="flex items-start gap-2.5 rounded-lg px-2 py-2 transition-colors hover:bg-muted/50">
+    <div className="flex items-start gap-2 rounded-card px-2 py-2 transition-colors">
       <button
         type="button"
         onClick={notice.onClick}
-        className="flex min-w-0 flex-1 items-start gap-2.5 text-left focus-visible:outline-none"
+        className="flex min-w-0 flex-1 items-start gap-2 text-left focus-visible:outline-none"
       >
         <notice.icon className={cn("mt-0.5 h-4 w-4 shrink-0", tone.icon)} />
         <span className="min-w-0">
-          <span className="block text-[13px] font-semibold leading-snug">
+          <span className="block text-sm font-medium leading-snug">
             {notice.label}
           </span>
-          <span className="block text-[11px] leading-snug text-muted-foreground">
+          <span className="block text-xs leading-snug text-muted-foreground">
             {notice.detail}
           </span>
         </span>
         {notice.onClick && (
-          <ChevronRight className="mt-0.5 h-3.5 w-3.5 shrink-0 text-muted-foreground/50" />
+          <ChevronRight className="mt-0.5 h-3.5 w-3.5 shrink-0" />
         )}
       </button>
       {notice.onDismiss && (
@@ -141,13 +141,13 @@ function NoticeCounter({
           type="button"
           aria-label={`${notices.length} ${notices.length === 1 ? "aviso" : "avisos"}`}
           className={cn(
-            "flex h-7 items-center gap-1.5 rounded-full border px-2.5 transition-colors",
+            "flex h-7 items-center gap-1.5 rounded-full border px-2 transition-colors",
             tones[tone].pill,
             className
           )}
         >
           <AlertCircle className={cn("h-3.5 w-3.5", tones[tone].icon)} />
-          <span className="font-mono text-[11px] font-semibold tabular-nums">
+          <span className="text-xs font-medium tabular-nums">
             {notices.length}
           </span>
         </button>

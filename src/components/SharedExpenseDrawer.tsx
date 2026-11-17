@@ -25,8 +25,6 @@ interface SharedExpenseDrawerProps {
   suggestions?: string[];
 }
 
-const ACCENT = "#f87171";
-
 const formatCurrency = (v: number) =>
   new Intl.NumberFormat("es-CL", { style: "currency", currency: "CLP", maximumFractionDigits: 0 }).format(v);
 const parseAmount = (raw: string) => parseInt(raw.replace(/\D/g, ""), 10) || 0;
@@ -107,7 +105,6 @@ export default function SharedExpenseDrawer({
         <Dialog.Content
           data-scrollable
           className="whisper-composer"
-          style={{ "--whisper-accent": ACCENT } as React.CSSProperties}
           onOpenAutoFocus={(event) => {
             event.preventDefault();
             firstNameRef.current?.querySelector("input")?.focus();
