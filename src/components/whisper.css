@@ -60,24 +60,23 @@
 .whisper-actions { display: flex; align-items: center; justify-content: center; width: 100%; gap: 26px; }
 .whisper-options-toggle { display: inline-flex; align-items: center; gap: 6px; padding: 10px 0; color: rgb(255 255 255 / .54); font-size: 11px; transition: color .2s; }
 .whisper-options-toggle:hover { color: #fafafa; }
-/* La nota del movimiento: una casilla discreta, y el campo solo si la marcás.
-   El margen negativo la cuelga del bloque de categorías, sin abrir sección. */
-.whisper-note-block {
-  display: flex; flex-direction: column; align-items: center; gap: 10px;
-  width: min(100%, 390px); margin-top: -10px;
+/* Editor de movimiento: el nombre como título editable, una línea con
+   monto · fecha · cuenta, y las categorías que guardan con un toque. */
+.edit-tx-head { display: flex; flex-direction: column; align-items: center; gap: 6px; width: 100%; }
+.edit-tx-title {
+  width: 100%; padding: 4px 8px; border: 0; border-bottom: 1px dashed transparent; border-radius: 0;
+  background: transparent; outline: none; color: #fafafa; text-align: center; text-overflow: ellipsis;
+  font-size: clamp(19px, 3.2vw, 24px); font-weight: 400; letter-spacing: -.02em;
+  transition: border-color .2s;
 }
-.whisper-note-check {
-  display: inline-flex; align-items: center; gap: 7px; padding: 2px 0; cursor: pointer;
-  color: rgb(255 255 255 / .42); font-size: 11px; transition: color .2s;
-}
-.whisper-note-check:hover { color: #fafafa; }
-.whisper-note-check input { accent-color: var(--whisper-accent); }
-.whisper-note {
-  width: 100%; min-height: 38px; padding: 8px;
-  border-radius: 8px; background: rgb(255 255 255 / .06); border: 1px solid rgb(255 255 255 / .1);
-  color: #e5e5e5; font-size: 12px;
-}
-.whisper-note::placeholder { color: rgb(255 255 255 / .34); }
+.edit-tx-title:hover { border-bottom-color: rgb(255 255 255 / .18); }
+.edit-tx-title:focus { border-bottom-color: var(--whisper-accent); }
+.edit-tx-title::placeholder { color: rgb(255 255 255 / .32); }
+.edit-tx-meta { display: flex; flex-wrap: wrap; justify-content: center; gap: 4px 10px; color: rgb(255 255 255 / .5); font-size: 12px; font-variant-numeric: tabular-nums; }
+.edit-tx-meta b { color: var(--whisper-accent); font-weight: 500; }
+.edit-tx-meta span::before { content: "·"; margin-right: 10px; opacity: .6; }
+.edit-tx .whisper-category:disabled, .edit-tx-split:disabled { opacity: .5; cursor: default; }
+.edit-tx-split { margin-top: -6px; }
 .whisper-submit {
   display: inline-flex; align-items: center; gap: 14px; min-height: 36px; padding: 8px 14px;
   font-size: 12px; font-weight: 500; border-radius: 99px;
@@ -103,7 +102,7 @@
 .whisper-check input { accent-color: var(--whisper-accent); }
 .whisper-composer option { background: #171717; color: #fafafa; }
 .whisper-error { font-size: 12px; color: #fca5a5; text-align: center; }
-.whisper-composer button:focus-visible, .whisper-type:has(select:focus-visible), .whisper-options select:focus-visible, .whisper-options input:focus-visible, .whisper-note:focus-visible { outline: 2px solid var(--whisper-accent); outline-offset: 4px; }
+.whisper-composer button:focus-visible, .whisper-type:has(select:focus-visible), .whisper-options select:focus-visible, .whisper-options input:focus-visible, .edit-tx-title:focus-visible { outline: 2px solid var(--whisper-accent); outline-offset: 4px; }
 .whisper-backdrop[data-state=closed], .whisper-composer[data-state=closed] { animation: whisper-fade-out .15s ease-in; }
 @keyframes whisper-fade { from { opacity: 0; } to { opacity: 1; } }
 @keyframes whisper-fade-out { to { opacity: 0; } }
