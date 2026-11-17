@@ -1,23 +1,14 @@
-import { create } from 'zustand';
-import { persist } from 'zustand/middleware';
+import { create } from "zustand";
+import { persist } from "zustand/middleware";
 
-interface SoundPreferencesState {
-  soundEnabled: boolean;
-  volume: number;
-  toggleSound: () => void;
-  setVolume: (v: number) => void;
-}
-
-export const useSoundPreferences = create<SoundPreferencesState>()(
+// Un único on/off. Misma clave de localStorage de siempre ("sound-preferences"),
+// así quien apagó los sonidos los sigue teniendo apagados.
+export const useSoundPreferences = create<{ soundEnabled: boolean; toggleSound: () => void }>()(
   persist(
     (set) => ({
       soundEnabled: true,
-      volume: 0.5,
-      toggleSound: () => set((state) => ({ soundEnabled: !state.soundEnabled })),
-      setVolume: (v: number) => set({ volume: Math.max(0, Math.min(1, v)) }),
+      toggleSound: () => set((s) => ({ soundEnabled: !s.soundEnabled })),
     }),
-    {
-      name: 'sound-preferences',
-    }
-  )
+    { name: "sound-preferences" },
+  ),
 );

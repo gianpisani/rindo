@@ -149,23 +149,10 @@ export function useCreditCards() {
     },
   });
 
-  // Calculate totals across all cards
-  const totals = cardSummaries.reduce(
-    (acc, card) => {
-      acc.totalLimit += card.credit_limit;
-      acc.totalUsed += card.total_used_credit;
-      acc.totalAvailable += card.available_credit;
-      acc.totalNextPayment += card.next_payment_installments;
-      return acc;
-    },
-    { totalLimit: 0, totalUsed: 0, totalAvailable: 0, totalNextPayment: 0 }
-  );
-
   return {
     creditCards,
     cardSummaries,
     isLoading: isLoading || isLoadingSummaries,
-    totals,
     addCreditCard,
     updateCreditCard,
     deleteCreditCard,

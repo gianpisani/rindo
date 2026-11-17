@@ -1,26 +1,13 @@
-import { useEffect, useMemo, useState, type CSSProperties, type ReactNode } from "react";
+import { useMemo, useState } from "react";
 import { format } from "date-fns";
 import { es } from "date-fns/locale";
-import { CalendarRange, Check, ChevronLeft, ChevronRight, ListFilter, Maximize2, Minimize2 } from "lucide-react";
 import Layout from "@/components/Layout";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { Calendar } from "@/components/ui/calendar";
-import type { DateRange } from "react-day-picker";
-import { MonthPulse } from "@/components/MonthPulse";
+import { InvestmentMoveDrawer } from "@/components/InvestmentMoveDrawer";
 import { TxSheet, type TxSheetData } from "@/components/finanzas/TxSheet";
-import {
-  CategoryHistory,
-  DailyBars,
-  FlowWaterfall,
-  MonthBars,
-  Spark,
-  WorthChart,
-  type FlowStep,
-} from "@/components/finanzas/FinCharts";
+import { CategoryHistory, MonthBars, Spark, WorthChart } from "@/components/finanzas/FinCharts";
 import { useTransactions, type Transaction } from "@/hooks/useTransactions";
 import { useCategories } from "@/hooks/useCategories";
-import { useMonthlyBudget } from "@/hooks/useMonthlyBudget";
 import { usePrivacyMode } from "@/hooks/usePrivacyMode";
 import { useInlineEdit } from "@/hooks/useInlineEdit";
 import { computeLedger, computeRealFlows, DEFAULT_TRANSIT_CATEGORIES } from "@/hooks/useRealFlows";
@@ -34,48 +21,23 @@ import {
   monthsBetween,
   startOfMonthOf,
 } from "@/lib/finance-history";
-import { dateOfPeriodDay, dayOfPeriod, periodNameDate, shiftPeriod } from "@/lib/period";
+import { periodNameDate } from "@/lib/period";
 import { usePeriodConfig } from "@/hooks/usePeriodConfig";
-import { useGlobalDrawers } from "@/hooks/useGlobalDrawers";
 import { ANALYZING_CATEGORY } from "@/lib/auto-category-policy";
 import { cn } from "@/lib/utils";
 
 /**
- * Finanzas: dos preguntas, una por vista.
- * - Mes: ¿qué pasó con mi plata este mes? Una cascada (entró → gastos →
- *   invertido → quedó), el gasto de cada día y las categorías contra el mes
- *   anterior.
- * - Histórico: ¿cómo va en el tiempo? El patrimonio creciendo, mes a mes lo
- *   que entró contra lo que salió, y la tendencia de cada categoría.
- * Todo cuenta igual que el inicio (mismas funciones) y todo se puede abrir:
- * una categoría, un día o un mes muestran sus movimientos, editables.
- *
- * Cada tarjeta se puede agrandar hasta ocupar la pantalla, y un selector en el
- * encabezado decide qué categorías entran en la vista: deseleccionar una la
- * saca de todo —la cascada, los días, el histórico y la historia del mes—, no
- * solo de la lista. En el histórico, otro selector decide el rango que se
- * analiza (12, 6 o 3 meses, o uno a mano) y todo lo que esa vista muestra
- * —patrimonio, mes a mes, promedios y categorías— se recalcula en ese rango.
+ * Finanzas: ¿cómo vengo en el tiempo? El mes en curso vive en el Inicio; acá
+ * está la historia. El patrimonio creciendo, mes a mes lo que entró contra lo
+ * que salió, y la tendencia de cada categoría. Todo cuenta igual que el
+ * Inicio (mismas funciones) y cada categoría abre sus movimientos, editables.
  */
 
-const VIEW_KEY = "finanzas-view";
-const RANGE_KEY = "finanzas-hist-range";
-/** Las tarjetas que se pueden agrandar: las tres del mes y las tres del histórico. */
-type ZoomCard = "flow" | "daily" | "cats" | "worth" | "months" | "trends";
-/** Cuántos meses analiza el histórico. "custom" usa los meses de `from`–`to`. */
-type RangePreset = "3" | "6" | "12" | "custom";
-interface HistRange { preset: RangePreset; from: string; to: string }
-const RANGE_PRESETS: { value: RangePreset; label: string; short: string }[] = [
-  { value: "12", label: "Últimos 12 meses", short: "12 meses" },
-  { value: "6", label: "Últimos 6 meses", short: "6 meses" },
-  { value: "3", label: "Últimos 3 meses", short: "3 meses" },
-];
-/** "2026-03-18": la fecha guardada del rango a elección, sin zona horaria. */
-const dayKey = (date: Date) => format(date, "yyyy-MM-dd");
-const dayFromKey = (key: string) => {
-  const [year, month, day] = (key ?? "").split("-").map(Number);
-  return Number.isFinite(year) && Number.isFinite(month) ? new Date(year, month - 1, day || 1) : undefined;
-};
+const RANGE_KEY = "finanzas-meses";
+/** Cuántos meses mira la historia. */
+const RANGES = [12, 6, 3] as const;
+type Range = (typeof RANGES)[number];
+
 const clp = (value: number) =>
   new Intl.NumberFormat("es-CL", { style: "currency", currency: "CLP", minimumFractionDigits: 0 }).format(value);
 const tint = (color?: string | null) => ({
@@ -91,309 +53,98 @@ const spendByCategory = (transactions: Transaction[], start: Date, end: Date) =>
   return map;
 };
 
-/** "+11% vs ago": el tono dice si el cambio es bueno o malo para ese número. */
-const deltaOf = (current: number, previous: number, prevMonth: Date, goodWhenUp: boolean | null) => {
-  if (previous <= 0 || current < 0) return undefined;
-  const pct = Math.round(((current - previous) / previous) * 100);
-  if (!Number.isFinite(pct) || Math.abs(pct) > 500) return undefined;
-  const up = pct > 0;
-  const tone = pct === 0 || goodWhenUp === null ? undefined : up === goodWhenUp ? "var(--inicio-emerald)" : "var(--inicio-rose)";
-  return { text: `${up ? "+" : ""}${pct}%`, suffix: ` vs ${format(prevMonth, "MMM", { locale: es })}`, tone };
-};
-
 export default function Overview() {
   const { transactions, isLoading } = useTransactions();
   const { categories } = useCategories();
-  const { budget } = useMonthlyBudget();
   const { isPrivacyMode } = usePrivacyMode();
   const edit = useInlineEdit();
-  const period = usePeriodConfig();
-  const { startDay } = period;
-  const openPeriodSettings = useGlobalDrawers((s) => s.openPeriodSettings);
-  const flowConfig = useMemo(
-    () => ({ splurgeCategories: budget?.splurge_categories ?? [], periodStartDay: startDay }),
-    [budget?.splurge_categories, startDay]
-  );
+  const { startDay } = usePeriodConfig();
+  const flowConfig = useMemo(() => ({ periodStartDay: startDay }), [startDay]);
 
   const now = new Date();
   const thisMonth = startOfMonthOf(now, startDay);
   /** Cada periodo se llama como el mes en que termina. */
   const nameOf = (d: Date) => periodNameDate(d, startDay);
-  const [view, setView] = useState<"mes" | "hist">(() => {
-    try { return localStorage.getItem(VIEW_KEY) === "hist" ? "hist" : "mes"; } catch { return "mes"; }
-  });
-  const [month, setMonth] = useState(thisMonth);
   const [sheet, setSheet] = useState<TxSheetData | null>(null);
-  const [zoom, setZoom] = useState<ZoomCard | null>(null);
-  /** Las categorías que el usuario sacó de la vista. Vacío = todas entran. */
-  const [hiddenCats, setHiddenCats] = useState<Set<string>>(new Set());
-  const [storyOpen, setStoryOpen] = useState(false);
+  const [investmentMoveOpen, setInvestmentMoveOpen] = useState(false);
   const [histTab, setHistTab] = useState<"months" | "trends">("months");
-  /** El rango que analiza el histórico. Por defecto, los últimos 12 meses. */
-  const [range, setRange] = useState<HistRange>(() => {
+  const [range, setRange] = useState<Range>(() => {
     try {
-      const saved = JSON.parse(localStorage.getItem(RANGE_KEY) ?? "null") as HistRange | null;
-      const known = saved?.preset === "custom" || RANGE_PRESETS.some((p) => p.value === saved?.preset);
-      if (saved && known) return { preset: saved.preset, from: saved.from ?? "", to: saved.to ?? "" };
-    } catch { /* sin almacenamiento, van los 12 meses */ }
-    return { preset: "12", from: "", to: "" };
+      const saved = Number(localStorage.getItem(RANGE_KEY));
+      return (RANGES as readonly number[]).includes(saved) ? (saved as Range) : 12;
+    } catch { return 12; }
   });
-  const [hoverDay, setHoverDay] = useState<number | null>(null);
   const [hoverMonth, setHoverMonth] = useState<number | null>(null);
   const [hoverWorth, setHoverWorth] = useState<number | null>(null);
 
-  // Si cambia el mes financiero (o termina de cargar), se vuelve al periodo actual.
-  useEffect(() => {
-    setMonth(startOfMonthOf(new Date(), startDay));
-  }, [startDay]);
-
-  const exitFullscreen = () => {
-    if (document.fullscreenElement) document.exitFullscreen?.()?.catch(() => { /* ya salió */ });
+  const pickRange = (next: Range) => {
+    setRange(next);
+    try { localStorage.setItem(RANGE_KEY, String(next)); } catch { /* sin almacenamiento, no pasa nada */ }
   };
-
-  const changeView = (next: "mes" | "hist") => {
-    setView(next);
-    // Cada vista tiene sus tarjetas: al cambiar de vista, la agrandada se achica.
-    if (zoom) { setZoom(null); exitFullscreen(); }
-    try { localStorage.setItem(VIEW_KEY, next); } catch { /* sin almacenamiento, no pasa nada */ }
-  };
-
-  useEffect(() => {
-    try { localStorage.setItem(RANGE_KEY, JSON.stringify(range)); } catch { /* sin almacenamiento, no pasa nada */ }
-  }, [range]);
 
   const colorOf = (name: string) => categories.find((c) => c.name === name)?.color ?? null;
 
-  // ─── Qué categorías entran en la vista ─────────────────
-  // Las que alguna vez tuvieron gasto (o un reembolso contra ellas). Sin
-  // tránsito ni las que Jev aún está categorizando: esas no son una elección.
-  const spendCats = useMemo(() => {
-    const names = new Set<string>();
-    for (const t of transactions) {
-      const name = t.type === "Gasto" ? t.category_name : t.reimbursement_for_category;
-      if (name && !transit.has(name) && name !== ANALYZING_CATEGORY) names.add(name);
-    }
-    return [...names].sort((a, b) => a.localeCompare(b, "es"));
-  }, [transactions]);
-  // Todo lo que la vista cuenta sale de acá: sacar una categoría la saca del
-  // gasto, de la cascada, de los días y del histórico, no solo de la lista.
-  const shownTx = useMemo(() => {
-    if (hiddenCats.size === 0) return transactions;
-    return transactions.filter((t) => {
-      if (t.reimbursement_for_category) return !hiddenCats.has(t.reimbursement_for_category);
-      if (t.type === "Gasto") return !hiddenCats.has(t.category_name);
-      return true;
-    });
-  }, [transactions, hiddenCats]);
-  const allCatsOn = hiddenCats.size === 0;
-  const toggleCat = (name: string) =>
-    setHiddenCats((prev) => {
-      const next = new Set(prev);
-      if (!next.delete(name)) next.add(name);
-      return next;
-    });
-
-  // ─── Meses disponibles ────────────────────────────────
+  // Los últimos N meses con datos, contando el mes en curso.
   const months = useMemo(() => {
     const first = transactions.reduce<Date | null>((min, t) => {
       const d = new Date(t.date);
       return !min || d < min ? d : min;
     }, null);
-    // El tope es alto a propósito: un rango a mano puede pedir años atrás. El
-    // histórico igual solo calcula los meses del rango elegido.
-    return monthsBetween(first ?? thisMonth, thisMonth, 120, startDay);
+    return monthsBetween(first ?? thisMonth, thisMonth, range, startDay);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [transactions, thisMonth.getTime()]);
-  const canPrev = month.getTime() > months[0].getTime();
-  const canNext = month.getTime() < thisMonth.getTime();
-  const step = (delta: number) =>
-    setMonth((m) => {
-      const next = shiftPeriod(m, delta, startDay);
-      return next < months[0] || next > thisMonth ? m : next;
-    });
+  }, [transactions, thisMonth.getTime(), range, startDay]);
+  const rangeStart = months[0];
+  const rangeEnd = endOfMonthOf(months[months.length - 1], startDay);
 
-  // ← y → cambian de mes (sin robarle las flechas a un campo que se edita)
-  useEffect(() => {
-    if (view !== "mes") return;
-    const onKey = (e: KeyboardEvent) => {
-      const el = e.target as HTMLElement;
-      if (el.closest("input, textarea, [contenteditable='true'], [role='dialog']")) return;
-      if (e.key === "ArrowLeft") step(-1);
-      if (e.key === "ArrowRight") step(1);
-    };
-    window.addEventListener("keydown", onKey);
-    return () => window.removeEventListener("keydown", onKey);
-  });
-
-  // ─── Agrandar una tarjeta ─────────────────────────────
-  // La pantalla completa se pide sobre el documento, no sobre la tarjeta, para
-  // que lo que se abre encima —un día, una categoría— siga apareciendo. Donde
-  // no la dan (iPhone), la tarjeta igual se queda sola con la grilla.
-  const toggleZoom = (card: ZoomCard) => {
-    const next = zoom === card ? null : card;
-    setZoom(next);
-    if (!next) { exitFullscreen(); return; }
-    if (!document.fullscreenElement) {
-      document.documentElement.requestFullscreen?.()?.catch(() => { /* queda el modo grande */ });
-    }
-  };
-
-  // Salir de la pantalla completa (el Esc del navegador) también achica
-  useEffect(() => {
-    const onChange = () => { if (!document.fullscreenElement) setZoom(null); };
-    document.addEventListener("fullscreenchange", onChange);
-    return () => document.removeEventListener("fullscreenchange", onChange);
-  }, []);
-
-  // Y Esc achica cuando el navegador no dio la pantalla completa. Con un panel
-  // abierto no: ahí Esc es para cerrar el panel.
-  useEffect(() => {
-    if (!zoom || sheet || storyOpen) return;
-    const onKey = (e: KeyboardEvent) => { if (e.key === "Escape") setZoom(null); };
-    window.addEventListener("keydown", onKey);
-    return () => window.removeEventListener("keydown", onKey);
-  }, [zoom, sheet, storyOpen]);
-
-  const zoomBtn = (card: ZoomCard, label: string) => (
-    <button
-      className="fin-zoom"
-      aria-pressed={zoom === card}
-      aria-label={zoom === card ? "Achicar" : `Agrandar ${label}`}
-      title={zoom === card ? "Achicar (Esc)" : `${label} en pantalla completa`}
-      onClick={() => toggleZoom(card)}
-    >
-      {zoom === card ? <Minimize2 /> : <Maximize2 />}
-    </button>
-  );
-
-  // ─── Mes ──────────────────────────────────────────────
-  const isCurrent = month.getTime() === thisMonth.getTime();
-  const prevMonth = shiftPeriod(month, -1, startDay);
-  const flows = useMemo(() => computeRealFlows(shownTx, month, flowConfig), [shownTx, month, flowConfig]);
-  const prevFlows = useMemo(() => computeRealFlows(shownTx, prevMonth, flowConfig),
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    [shownTx, month, flowConfig]);
-  // La cascada es la liquidez del mes (lo mismo que mueve el balde líquido):
-  // + entró − gastos − aportes + rescates. El rendimiento no toca la
-  // liquidez: va al balde invertido, y por eso se muestra aparte, abajo.
-  const quedo = flows.ingresoReal - flows.consumoNeto - flows.invertido + flows.rescatado;
-  const investChange = flows.invertido - flows.rescatado + flows.rendimiento;
-  const hasInvestActivity = flows.invertido !== 0 || flows.rescatado !== 0 || flows.rendimiento !== 0;
-  const monthTx = useMemo(
-    () => shownTx.filter((t) => {
-      const d = new Date(t.date);
-      return d >= month && d <= endOfMonthOf(month, startDay);
-    }),
-    [shownTx, month, startDay]
-  );
-  const hasMonthData = monthTx.length > 0 || flows.ingresoReal > 0;
-
-  const steps: FlowStep[] = [
-    { label: "Entró", value: flows.ingresoReal, color: "var(--inicio-emerald)", delta: deltaOf(flows.ingresoReal, prevFlows.ingresoReal, nameOf(prevMonth), true) },
-    { label: "Gastos", value: -flows.consumoNeto, color: SOFT_ROSE, delta: deltaOf(flows.consumoNeto, prevFlows.consumoNeto, nameOf(prevMonth), false) },
-    // Aportes y rescates por separado: netearlos escondía lo que pasó.
-    ...(flows.invertido > 0 ? [{ label: "Invertido", value: -flows.invertido, color: "var(--inicio-blue)" }] : []),
-    ...(flows.rescatado > 0 ? [{ label: "Rescatado", value: flows.rescatado, color: "var(--inicio-cyan)" }] : []),
-  ];
-  const result: FlowStep = {
-    label: isCurrent ? "Va quedando" : "Quedó",
-    value: quedo,
-    color: quedo >= 0 ? "var(--inicio-emerald)" : "var(--inicio-rose)",
-  };
-
-  // Días
-  const lived = isCurrent ? dayOfPeriod(now, month) : flows.dailyNet.length - 1;
-  const spentDays = flows.dailyNet.slice(1, lived + 1);
-  const avgDay = spentDays.length ? spentDays.reduce((s, v) => s + Math.max(0, v), 0) / spentDays.length : 0;
-  const dayDate = (day: number) => dateOfPeriodDay(month, day);
-  const openDay = (day: number) => {
-    const rows = monthTx.filter((t) => dayOfPeriod(new Date(t.date), month) === day);
-    setSheet({
-      title: format(dayDate(day), "EEEE d 'de' MMMM", { locale: es }),
-      summary: `Gastaste ${clp(Math.max(0, flows.dailyNet[day] ?? 0))} · ${rows.length} movimiento${rows.length === 1 ? "" : "s"}`,
-      transactions: rows,
-      groupBy: "day",
-    });
-  };
-
-  // Categorías del mes contra el anterior
-  const monthCats = useMemo(() => {
-    const current = spendByCategory(shownTx, month, endOfMonthOf(month, startDay));
-    const previous = spendByCategory(shownTx, prevMonth, endOfMonthOf(prevMonth, startDay));
-    return [...current.entries()]
-      .map(([category, row]) => ({ category, ...row, prev: previous.get(category)?.effectiveAmount ?? 0 }))
-      .filter((c) => c.effectiveAmount > 0 || c.amount > 0)
-      .sort((a, b) => b.effectiveAmount - a.effectiveAmount);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [shownTx, month, startDay]);
-  const topCat = Math.max(1, ...monthCats.map((c) => c.effectiveAmount));
-  const openCategory = (category: string, from: Date, to: Date, groupBy: "day" | "month", summary: string, chart?: ReactNode) => {
-    const rows = shownTx.filter((t) => {
-      const d = new Date(t.date);
-      if (d < from || d > to) return false;
-      return (t.type === "Gasto" && t.category_name === category) || t.reimbursement_for_category === category;
-    });
-    setSheet({ title: category, icon: edit.emojiOf(category), color: colorOf(category), summary, transactions: rows, groupBy, chart });
-  };
-
-  // ─── Histórico ────────────────────────────────────────
-  // Los meses del rango elegido: un preset toma los últimos N, y el rango a
-  // mano, los que caen entre sus dos extremos. Si el rango queda fuera de los
-  // meses con datos, se muestra el último: una vista vacía no dice nada.
-  const histMonths = useMemo(() => {
-    if (range.preset !== "custom") return months.slice(-Number(range.preset));
-    // El histórico cuenta por mes: el día elegido entra con todo su mes.
-    const from = startOfMonthOf(dayFromKey(range.from) ?? months[0], startDay);
-    const to = startOfMonthOf(dayFromKey(range.to) ?? months[months.length - 1], startDay);
-    const lo = Math.min(from.getTime(), to.getTime());
-    const hi = Math.max(from.getTime(), to.getTime());
-    const picked = months.filter((m) => m.getTime() >= lo && m.getTime() <= hi);
-    return picked.length ? picked : months.slice(-1);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [months, range]);
-  const rangeStart = histMonths[0];
-  const rangeEnd = endOfMonthOf(histMonths[histMonths.length - 1], startDay);
   const history = useMemo(() => {
-    const sorted = [...shownTx].sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
+    const sorted = [...transactions].sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
     return buildHistory(
-      histMonths,
+      months,
       (m) => {
-        const f = computeRealFlows(shownTx, m, flowConfig);
+        const f = computeRealFlows(transactions, m, flowConfig);
         return { ingreso: f.ingresoReal, gasto: f.consumoNeto, invertido: f.invertido - f.rescatado };
       },
       (end) => computeLedger(sorted.filter((t) => new Date(t.date) <= end)),
       startDay
     );
-  }, [shownTx, histMonths, flowConfig, startDay]);
+  }, [transactions, months, flowConfig, startDay]);
   const averages = historyAverages(history, now, startDay);
   // Sin tope: la tarjeta lista todas las categorías del rango, no solo las que más pesan.
   const trends = useMemo(
-    () => categoryTrends(histMonths, (start, end) => new Map([...spendByCategory(shownTx, start, end)].map(([k, v]) => [k, v.effectiveAmount])), now, Infinity, startDay),
+    () => categoryTrends(months, (start, end) => new Map([...spendByCategory(transactions, start, end)].map(([k, v]) => [k, v.effectiveAmount])), now, Infinity, startDay),
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [shownTx, histMonths, startDay]
+    [transactions, months, startDay]
   );
   const worthIndex = hoverWorth ?? history.length - 1;
   const worthNow = history[worthIndex];
   const worthChange = history.length > 1 ? history[history.length - 1].patrimonio - history[0].patrimonio : 0;
-  const monthLabel = (d: Date) => format(nameOf(d), histMonths.length > 12 ? "MMM yy" : "MMM", { locale: es }).replace(".", "");
-  /** "últimos 12 meses" o "ene 25 – mar 26": qué período se está mirando. */
-  const rangeNote = range.preset === "custom" || histMonths.length < Number(range.preset)
-    ? histMonths.length === 1
-      ? format(nameOf(rangeStart), "MMMM yyyy", { locale: es })
-      : `${monthLabel(rangeStart)} – ${monthLabel(histMonths[histMonths.length - 1])}`
-    : `últimos ${histMonths.length} meses`;
+  const monthLabel = (d: Date) => format(nameOf(d), "MMM", { locale: es }).replace(".", "");
   const hovered = hoverMonth !== null ? history[hoverMonth] : null;
 
-  // Abrir una categoría del histórico muestra su gasto mes a mes en el rango,
-  // sobre la lista de movimientos: el detalle del gráfico sin perder el resto.
-  const openTrend = (c: typeof trends[number]) =>
-    openCategory(c.category, rangeStart, rangeEnd, "month",
-      `${clp(c.average)} al mes en promedio · ${clp(c.total)} en ${histMonths.length} mes${histMonths.length === 1 ? "" : "es"}`,
-      <CategoryHistory
-        points={histMonths.map((m, i) => ({ label: monthLabel(m), value: c.perMonth[i] ?? 0 }))}
-        color={colorOf(c.category) || "var(--muted-foreground)"}
-        privacy={isPrivacyMode}
-      />);
+  // Abrir una categoría muestra su gasto mes a mes en el rango, sobre la
+  // lista de movimientos: el detalle del gráfico sin perder el resto.
+  const openTrend = (c: typeof trends[number]) => {
+    const rows = transactions.filter((t) => {
+      const d = new Date(t.date);
+      if (d < rangeStart || d > rangeEnd) return false;
+      return (t.type === "Gasto" && t.category_name === c.category) || t.reimbursement_for_category === c.category;
+    });
+    setSheet({
+      title: c.category,
+      icon: edit.emojiOf(c.category),
+      color: colorOf(c.category),
+      summary: `${clp(c.average)} al mes en promedio · ${clp(c.total)} en ${months.length} mes${months.length === 1 ? "" : "es"}`,
+      transactions: rows,
+      groupBy: "month",
+      chart: (
+        <CategoryHistory
+          points={months.map((m, i) => ({ label: monthLabel(m), value: c.perMonth[i] ?? 0 }))}
+          color={colorOf(c.category) || "var(--muted-foreground)"}
+          privacy={isPrivacyMode}
+        />
+      ),
+    });
+  };
 
   const trendRows = trends.map((c) => (
     <button key={c.category} className="fin-trend" onClick={() => openTrend(c)}>
@@ -404,401 +155,129 @@ export default function Overview() {
     </button>
   ));
 
-  const monthsChart = (
-    <div className="fin-plot" style={{ marginBottom: 14 }}>
-      <MonthBars
-        months={history.map((p) => ({
-          key: p.month.toISOString(),
-          label: monthLabel(p.month),
-          ingreso: Math.max(0, p.ingreso),
-          gasto: Math.max(0, p.gasto),
-          current: p.month.getTime() === thisMonth.getTime(),
-        }))}
-        onHover={setHoverMonth}
-        onPick={(i) => { setMonth(history[i].month); changeView("mes"); }}
-      />
-    </div>
-  );
-
-  // El rango del análisis: los presets de 12, 6 y 3 meses, o uno a elección en
-  // el mismo calendario de rango que filtra las transacciones. El histórico
-  // cuenta por mes, así que el día elegido entra con todo su mes y el pie del
-  // calendario dice cuántos meses quedaron adentro.
-  const customRange: DateRange | undefined =
-    range.preset === "custom" ? { from: dayFromKey(range.from), to: dayFromKey(range.to) } : undefined;
-  const pickRange = (picked: DateRange | undefined) =>
-    setRange({
-      preset: "custom",
-      from: picked?.from ? dayKey(picked.from) : "",
-      to: picked?.to ? dayKey(picked.to) : "",
-    });
-  const rangePicker = (
-    <Popover>
-      <PopoverTrigger asChild>
-        <button
-          className="fin-filter"
-          data-on={range.preset !== "12"}
-          aria-label="Elegir el rango que analiza el histórico"
-          title="Elegir el rango que analiza el histórico"
-        >
-          <CalendarRange />
-          <span className="lbl">
-            {range.preset === "custom"
-              ? `${monthLabel(rangeStart)} – ${monthLabel(histMonths[histMonths.length - 1])}`
-              : RANGE_PRESETS.find((p) => p.value === range.preset)?.short}
-          </span>
-        </button>
-      </PopoverTrigger>
-      <PopoverContent align="end" sideOffset={6} className="fin-picker fin-range">
-        <div className="fin-picker-head"><span>Qué rango se analiza</span></div>
-        <div className="fin-picks" role="radiogroup" aria-label="Rango del análisis">
-          {RANGE_PRESETS.map((preset) => (
-            <button
-              key={preset.value}
-              role="radio"
-              aria-checked={range.preset === preset.value}
-              onClick={() => setRange((r) => ({ ...r, preset: preset.value }))}
-            >
-              <span className="n">{preset.label}</span>
-              <Check />
-            </button>
-          ))}
-          <button
-            role="radio"
-            aria-checked={range.preset === "custom"}
-            onClick={() => setRange((r) => ({ preset: "custom", from: r.from || dayKey(months[0]), to: r.to || dayKey(now) }))}
-          >
-            <span className="n">Rango a elección</span>
-            <Check />
-          </button>
-        </div>
-        {range.preset === "custom" && (
-          <div className="fin-range-cal">
-            <Calendar
-              className="p-0"
-              mode="range"
-              selected={customRange}
-              onSelect={pickRange}
-              defaultMonth={customRange?.from ?? months[months.length - 1]}
-              disabled={{ before: months[0], after: now }}
-              numberOfMonths={1}
-              locale={es}
-            />
-            {/* El histórico cuenta meses enteros: se dice qué queda adentro */}
-            <p>
-              {customRange?.from && customRange?.to
-                ? `Entran ${histMonths.length} mes${histMonths.length === 1 ? "" : "es"}: ${rangeNote}`
-                : "Elige el primer día y el último del rango"}
-            </p>
-          </div>
-        )}
-      </PopoverContent>
-    </Popover>
-  );
-
-  // El selector: con todas marcadas no dice nada más; con alguna fuera, cuántas
-  // quedan, porque entonces lo que se ve en pantalla no es el mes completo.
-  const categoryPicker = spendCats.length > 1 && (
-    <Popover>
-      <PopoverTrigger asChild>
-        <button
-          className="fin-filter fin-filter-cats"
-          data-on={!allCatsOn}
-          aria-label="Elegir qué categorías entran en la vista"
-          title="Elegir qué categorías entran en la vista"
-        >
-          <ListFilter />
-          <span className="lbl">Categorías</span>
-          {!allCatsOn && <b>{spendCats.length - hiddenCats.size}/{spendCats.length}</b>}
-        </button>
-      </PopoverTrigger>
-      <PopoverContent align="end" sideOffset={6} className="fin-picker">
-        <div className="fin-picker-head">
-          <span>Qué entra en la vista</span>
-          <button onClick={() => setHiddenCats(allCatsOn ? new Set(spendCats) : new Set())}>
-            {allCatsOn ? "Ninguna" : "Todas"}
-          </button>
-        </div>
-        <div className="fin-picks">
-          {spendCats.map((name) => (
-            <button
-              key={name}
-              role="checkbox"
-              aria-checked={!hiddenCats.has(name)}
-              onClick={() => toggleCat(name)}
-            >
-              <span className="inicio-ico" style={tint(colorOf(name))}>{edit.emojiOf(name)}</span>
-              <span className="n">{name}</span>
-              <Check />
-            </button>
-          ))}
-        </div>
-      </PopoverContent>
-    </Popover>
-  );
-
-  // ─── Render ───────────────────────────────────────────
   const loading = isLoading && transactions.length === 0;
   const cardSkeleton = <div className="flex-1 p-[18px]"><Skeleton className="h-full w-full rounded-xl" /></div>;
 
   return (
     <Layout fit>
       <div className="inicio">
-        <div className="fin-grid" data-view={view} data-zoom={zoom ?? undefined}>
+        <div className="fin-grid">
           <header className="fin-head">
             <h1 className="fin-title">Finanzas</h1>
-            <div className="fin-seg" role="group" aria-label="Vista">
-              <button aria-pressed={view === "mes"} onClick={() => changeView("mes")}>Mes</button>
-              <button aria-pressed={view === "hist"} onClick={() => changeView("hist")}>Histórico</button>
-            </div>
-            <div className="fin-head-end">
-              {view === "mes" ? (
-                <>
-                  <div className="fin-stepper">
-                    <button onClick={() => step(-1)} disabled={!canPrev} aria-label="Mes anterior"><ChevronLeft /></button>
-                    <span className="label">
-                      {format(nameOf(month), "MMMM yyyy", { locale: es })}
-                      {!period.isCalendar && (
-                        <button
-                          type="button"
-                          className="range"
-                          onClick={openPeriodSettings}
-                          title="Configurar mes financiero"
-                        >
-                          {period.rangeLabel(month)}
-                        </button>
-                      )}
-                    </span>
-                    <button onClick={() => step(1)} disabled={!canNext} aria-label="Mes siguiente"><ChevronRight /></button>
-                  </div>
-                  {hasMonthData && (
-                    <button className="fin-pulse" onClick={() => setStoryOpen(true)}><span>▶</span>Tu mes</button>
-                  )}
-                </>
-              ) : (
-                rangePicker
-              )}
-              {categoryPicker}
+            <div className="fin-seg" role="group" aria-label="Cuántos meses mirar">
+              {RANGES.map((n) => (
+                <button key={n} aria-pressed={range === n} onClick={() => pickRange(n)}>{n} meses</button>
+              ))}
             </div>
           </header>
 
-          {view === "mes" ? (
-            <>
-              {/* ¿Qué pasó con mi plata? */}
-              <section className="inicio-card fin-card fin-flow" data-zoom={zoom === "flow" ? "" : undefined}>
-                <div className="fin-card-head">
-                  <span className="inicio-title">Flujo del mes</span>
-                  {zoomBtn("flow", "El flujo del mes")}
-                </div>
-                {loading ? cardSkeleton : !hasMonthData ? (
-                  <div className="fin-empty">Sin movimientos en {format(nameOf(month), "MMMM", { locale: es })}</div>
-                ) : (
-                  <>
-                    <div className="fin-plot" style={{ marginTop: 26 }}>
-                      <FlowWaterfall key={month.toISOString()} steps={steps} result={result} privacy={isPrivacyMode} />
-                    </div>
-                    {/* El otro balde: aportes − rescates + rendimiento */}
-                    {hasInvestActivity && (
-                      <div className={cn("fin-invest", isPrivacyMode && "privacy-blur")}>
-                        <span>
-                          Inversiones
-                          {/* Rescatar no es malo: si bajan, en gris, no en rojo */}
-                          <b style={{ color: investChange >= 0 ? "var(--inicio-blue)" : "var(--muted-foreground)" }}>
-                            {investChange >= 0 ? "+" : "−"}{clp(Math.abs(investChange))}
-                          </b>
-                          {flows.rendimiento !== 0 && (
-                            <small>{flows.rendimiento > 0 ? "+" : "−"}{clp(Math.abs(flows.rendimiento))} de rendimiento</small>
-                          )}
-                        </span>
-                        <span className="ml-auto">
-                          Patrimonio
-                          <b style={{ color: quedo + investChange >= 0 ? "var(--inicio-emerald)" : "var(--inicio-rose)" }}>
-                            {quedo + investChange >= 0 ? "+" : "−"}{clp(Math.abs(quedo + investChange))}
-                          </b>
-                        </span>
-                      </div>
-                    )}
-                  </>
-                )}
-              </section>
-
-              {/* Cada día */}
-              <section className="inicio-card fin-card fin-daily" data-zoom={zoom === "daily" ? "" : undefined}>
-                <div className="fin-card-head">
-                  <span className="inicio-title">Cada día</span>
-                  {hasMonthData && (
-                    <span className={cn("inicio-num", isPrivacyMode && "privacy-blur")}>
-                      {hoverDay !== null ? (
-                        <><span className="capitalize">{format(dayDate(hoverDay), "EEE d", { locale: es })}</span> · <b>{clp(Math.max(0, flows.dailyNet[hoverDay] ?? 0))}</b></>
-                      ) : (
-                        <>promedio <b>{clp(avgDay)}</b> al día</>
-                      )}
-                    </span>
+          {/* ¿Cómo va mi plata en el tiempo? */}
+          <section className="inicio-card fin-card fin-worth">
+            <div className="fin-card-head">
+              <span className="inicio-title">Patrimonio</span>
+              {worthNow && (
+                <span className={cn("inicio-num", isPrivacyMode && "privacy-blur")}>
+                  {hoverWorth !== null ? (
+                    <><span className="capitalize">{format(nameOf(worthNow.month), "MMMM yyyy", { locale: es })}</span> · <b>{clp(worthNow.patrimonio)}</b></>
+                  ) : (
+                    <><b>{clp(worthNow.patrimonio)}</b>{worthChange !== 0 && (
+                      <span style={{ color: worthChange > 0 ? "var(--inicio-emerald)" : "var(--inicio-rose)" }}>
+                        {" "}{worthChange > 0 ? "+" : "−"}{clpShort(Math.abs(worthChange))} en {history.length - 1} mes{history.length === 2 ? "" : "es"}
+                      </span>
+                    )}</>
                   )}
-                  {zoomBtn("daily", "Cada día")}
+                </span>
+              )}
+            </div>
+            {loading ? cardSkeleton : (
+              <>
+                <div className="fin-plot" style={{ marginBottom: 10 }}>
+                  <WorthChart
+                    points={history.map((p) => ({ label: monthLabel(p.month), liquido: p.liquido, invertido: p.invertidoAcumulado }))}
+                    onHover={setHoverWorth}
+                  />
                 </div>
-                {loading ? cardSkeleton : hasMonthData ? (
-                  <div className="fin-plot" style={{ marginBottom: 12 }}>
-                    <DailyBars
-                      key={month.toISOString()}
-                      values={flows.dailyNet}
-                      month={month}
-                      today={isCurrent ? dayOfPeriod(now, month) : null}
-                      onHover={setHoverDay}
-                      onPick={openDay}
+                {worthNow && (
+                  <div className={cn("fin-legend", isPrivacyMode && "privacy-blur")}>
+                    <span><i style={{ background: "var(--inicio-emerald)" }} />Líquido <b>{clp(worthNow.liquido)}</b></span>
+                    {/* Tocar lo invertido abre el rescate y el valor de hoy de las inversiones */}
+                    <button onClick={() => setInvestmentMoveOpen(true)} title="Rescatar o actualizar inversiones">
+                      <i style={{ background: "var(--inicio-blue)" }} />Invertido <b>{clp(worthNow.invertidoAcumulado)}</b>
+                    </button>
+                  </div>
+                )}
+                {averages.months > 0 && (
+                  <div className={cn("fin-stats", isPrivacyMode && "privacy-blur")}>
+                    <span>Entra al mes <b style={{ color: "var(--inicio-emerald)" }}>{clp(averages.ingreso)}</b></span>
+                    <span>Sale <b>{clp(averages.gasto)}</b></span>
+                    {averages.ahorro !== null && <span>Ahorras <b>{Math.round(averages.ahorro * 100)}%</b></span>}
+                    <span className="text-[11px]">promedio de {averages.months} mes{averages.months === 1 ? "" : "es"} cerrado{averages.months === 1 ? "" : "s"}</span>
+                  </div>
+                )}
+              </>
+            )}
+          </section>
+
+          {/* Mes a mes (en celular comparte tarjeta con las categorías) */}
+          <section className="inicio-card fin-card fin-months" data-tab={histTab}>
+            <div className="fin-hist-tabs" role="tablist">
+              <button role="tab" aria-selected={histTab === "months"} onClick={() => setHistTab("months")}>Mes a mes</button>
+              <button role="tab" aria-selected={histTab === "trends"} onClick={() => setHistTab("trends")}>Categorías</button>
+            </div>
+            <div className="fin-card-head">
+              <span className="inicio-title">Mes a mes</span>
+              <span className={cn("inicio-num", isPrivacyMode && "privacy-blur")}>
+                {hovered ? (
+                  <><span className="capitalize">{format(nameOf(hovered.month), "MMM yyyy", { locale: es })}</span> · <b style={{ color: "var(--inicio-emerald)" }}>+{clpShort(hovered.ingreso)}</b> · <b>−{clpShort(hovered.gasto)}</b></>
+                ) : (
+                  <><span style={{ color: "var(--inicio-emerald)" }}>entró</span> vs <span style={{ color: SOFT_ROSE }}>salió</span></>
+                )}
+              </span>
+            </div>
+            <div className="fin-months-body flex min-h-0 flex-1 flex-col">
+              {loading ? cardSkeleton : (
+                <>
+                  {/* En celular el encabezado va oculto: el mes activo se lee acá */}
+                  <div className={cn("px-[18px] pt-2 text-[11.5px] text-muted-foreground inicio-num sm:hidden", isPrivacyMode && "privacy-blur")}>
+                    {hovered ? `${format(nameOf(hovered.month), "MMM yyyy", { locale: es })} · +${clpShort(hovered.ingreso)} · −${clpShort(hovered.gasto)}` : "Toca un mes para verlo"}
+                  </div>
+                  <div className="fin-plot" style={{ marginBottom: 14 }}>
+                    <MonthBars
+                      months={history.map((p) => ({
+                        key: p.month.toISOString(),
+                        label: monthLabel(p.month),
+                        ingreso: Math.max(0, p.ingreso),
+                        gasto: Math.max(0, p.gasto),
+                        current: p.month.getTime() === thisMonth.getTime(),
+                      }))}
+                      onHover={setHoverMonth}
                     />
                   </div>
-                ) : <div className="fin-empty" />}
-              </section>
+                </>
+              )}
+            </div>
+            <div className="fin-trends-body inicio-scroll">{trendRows}</div>
+          </section>
 
-              {/* En qué se fue, contra el mes anterior */}
-              <section className="inicio-card fin-card fin-cats" data-zoom={zoom === "cats" ? "" : undefined}>
-                <div className="fin-card-head">
-                  <span className="inicio-title">
-                    Categorías{monthCats.length > 0 && <span className="inicio-count">{monthCats.length}</span>}
-                  </span>
-                  <span className="inicio-num">vs {format(nameOf(prevMonth), "MMMM", { locale: es })}</span>
-                  {zoomBtn("cats", "Las categorías")}
-                </div>
-                {loading ? cardSkeleton : monthCats.length === 0 ? (
-                  <div className="fin-empty">Sin gastos este mes</div>
-                ) : (
-                  <div className="inicio-scroll">
-                    {monthCats.map((c, index) => {
-                      const diff = c.effectiveAmount - c.prev;
-                      const dir = Math.abs(diff) < 1 ? "flat" : diff > 0 ? "up" : "down";
-                      return (
-                        <button
-                          key={c.category}
-                          className="fin-cat"
-                          onClick={() => openCategory(c.category, month, endOfMonthOf(month, startDay), "day",
-                            `${clp(c.effectiveAmount)} · ${c.count} movimiento${c.count === 1 ? "" : "s"}${c.reimbursedAmount > 0 ? ` · ${clp(c.reimbursedAmount)} reembolsado` : ""}`)}
-                        >
-                          <span className="inicio-ico" style={tint(colorOf(c.category))}>{edit.emojiOf(c.category)}</span>
-                          <span className="n">{c.category}</span>
-                          <span className={cn("v", isPrivacyMode && "privacy-blur")}>{clp(c.effectiveAmount)}</span>
-                          <span className="row2">
-                            <span className="inicio-track">
-                              <i style={{ width: `${Math.max((c.effectiveAmount / topCat) * 100, 1.5)}%`, background: colorOf(c.category) || "var(--muted-foreground)", "--i": index } as CSSProperties} />
-                            </span>
-                            <span className={cn("delta", isPrivacyMode && "privacy-blur")} data-dir={c.prev === 0 ? "flat" : dir}>
-                              {c.prev === 0 ? "nuevo" : dir === "flat" ? "igual" : `${dir === "up" ? "↑" : "↓"} ${clp(Math.abs(diff))}`}
-                            </span>
-                          </span>
-                        </button>
-                      );
-                    })}
-                  </div>
-                )}
-              </section>
-            </>
-          ) : (
-            <>
-              {/* ¿Cómo va mi plata en el tiempo? */}
-              <section className="inicio-card fin-card fin-worth" data-zoom={zoom === "worth" ? "" : undefined}>
-                <div className="fin-card-head">
-                  <span className="inicio-title">Patrimonio</span>
-                  {worthNow && (
-                    <span className={cn("inicio-num", isPrivacyMode && "privacy-blur")}>
-                      {hoverWorth !== null ? (
-                        <><span className="capitalize">{format(worthNow.month, "MMMM yyyy", { locale: es })}</span> · <b>{clp(worthNow.patrimonio)}</b></>
-                      ) : (
-                        <><b>{clp(worthNow.patrimonio)}</b>{worthChange !== 0 && (
-                          <span style={{ color: worthChange > 0 ? "var(--inicio-emerald)" : "var(--inicio-rose)" }}>
-                            {" "}{worthChange > 0 ? "+" : "−"}{clpShort(Math.abs(worthChange))} en {history.length - 1} mes{history.length === 2 ? "" : "es"}
-                          </span>
-                        )}</>
-                      )}
-                    </span>
-                  )}
-                  {zoomBtn("worth", "El patrimonio")}
-                </div>
-                {loading ? cardSkeleton : (
-                  <>
-                    <div className="fin-plot" style={{ marginBottom: 10 }}>
-                      <WorthChart
-                        points={history.map((p) => ({ label: monthLabel(p.month), liquido: p.liquido, invertido: p.invertidoAcumulado }))}
-                        onHover={setHoverWorth}
-                      />
-                    </div>
-                    {worthNow && (
-                      <div className={cn("fin-legend", isPrivacyMode && "privacy-blur")}>
-                        <span><i style={{ background: "var(--inicio-emerald)" }} />Líquido <b>{clp(worthNow.liquido)}</b></span>
-                        <span><i style={{ background: "var(--inicio-blue)" }} />Invertido <b>{clp(worthNow.invertidoAcumulado)}</b></span>
-                      </div>
-                    )}
-                    {averages.months > 0 && (
-                      <div className={cn("fin-stats", isPrivacyMode && "privacy-blur")}>
-                        <span>Entra al mes <b style={{ color: "var(--inicio-emerald)" }}>{clp(averages.ingreso)}</b></span>
-                        <span>Sale <b>{clp(averages.gasto)}</b></span>
-                        {averages.ahorro !== null && <span>Ahorras <b>{Math.round(averages.ahorro * 100)}%</b></span>}
-                        <span className="text-[11px]">promedio de {averages.months} mes{averages.months === 1 ? "" : "es"} cerrado{averages.months === 1 ? "" : "s"}</span>
-                      </div>
-                    )}
-                  </>
-                )}
-              </section>
-
-              {/* Mes a mes (en celular comparte tarjeta con las categorías) */}
-              <section className="inicio-card fin-card fin-months" data-tab={histTab} data-zoom={zoom === "months" ? "" : undefined}>
-                <div className="fin-hist-tabs" role="tablist">
-                  <button role="tab" aria-selected={histTab === "months"} onClick={() => setHistTab("months")}>Mes a mes</button>
-                  <button role="tab" aria-selected={histTab === "trends"} onClick={() => setHistTab("trends")}>Categorías</button>
-                </div>
-                <div className="fin-card-head">
-                  <span className="inicio-title">Mes a mes</span>
-                  <span className={cn("inicio-num", isPrivacyMode && "privacy-blur")}>
-                    {hovered ? (
-                      <><span className="capitalize">{format(hovered.month, "MMM yyyy", { locale: es })}</span> · <b style={{ color: "var(--inicio-emerald)" }}>+{clpShort(hovered.ingreso)}</b> · <b>−{clpShort(hovered.gasto)}</b></>
-                    ) : (
-                      <><span style={{ color: "var(--inicio-emerald)" }}>entró</span> vs <span style={{ color: SOFT_ROSE }}>salió</span></>
-                    )}
-                  </span>
-                  {zoomBtn("months", "Mes a mes")}
-                </div>
-                <div className="fin-months-body flex min-h-0 flex-1 flex-col">
-                  {loading ? cardSkeleton : (
-                    <>
-                      {/* En celular el encabezado va oculto: el mes activo se lee acá */}
-                      <div className={cn("px-[18px] pt-2 text-[11.5px] text-muted-foreground inicio-num sm:hidden", isPrivacyMode && "privacy-blur")}>
-                        {hovered ? `${format(hovered.month, "MMM yyyy", { locale: es })} · +${clpShort(hovered.ingreso)} · −${clpShort(hovered.gasto)}` : "Toca un mes para verlo"}
-                      </div>
-                      {monthsChart}
-                    </>
-                  )}
-                </div>
-                <div className="fin-trends-body inicio-scroll">{trendRows}</div>
-              </section>
-
-              <section className="inicio-card fin-card fin-trends" data-zoom={zoom === "trends" ? "" : undefined}>
-                <div className="fin-card-head">
-                  <span className="inicio-title">
-                    Categorías{trends.length > 0 && <span className="inicio-count">{trends.length}</span>}
-                  </span>
-                  <span className="inicio-num">{rangeNote}</span>
-                  {zoomBtn("trends", "Las categorías")}
-                </div>
-                {loading ? cardSkeleton : trends.length === 0 ? (
-                  <div className="fin-empty">Sin gastos todavía</div>
-                ) : (
-                  <div className="inicio-scroll">{trendRows}</div>
-                )}
-              </section>
-            </>
-          )}
+          <section className="inicio-card fin-card fin-trends">
+            <div className="fin-card-head">
+              <span className="inicio-title">
+                Categorías{trends.length > 0 && <span className="inicio-count">{trends.length}</span>}
+              </span>
+              <span className="inicio-num">promedio al mes</span>
+            </div>
+            {loading ? cardSkeleton : trends.length === 0 ? (
+              <div className="fin-empty">Sin gastos todavía</div>
+            ) : (
+              <div className="inicio-scroll">{trendRows}</div>
+            )}
+          </section>
         </div>
       </div>
 
       <TxSheet data={sheet} edit={edit} onClose={() => setSheet(null)} />
 
-      <MonthPulse
-        open={storyOpen}
-        onClose={() => setStoryOpen(false)}
-        initialMonth={month}
-        transactions={shownTx}
-        categories={categories}
-        flowConfig={flowConfig}
-      />
+      <InvestmentMoveDrawer open={investmentMoveOpen} onOpenChange={setInvestmentMoveOpen} />
     </Layout>
   );
 }

@@ -568,7 +568,6 @@ interface TransactionsTableProps {
   onSearchChange: (v: string) => void;
   typeFilter: string;
   onTypeFilterChange: (v: string) => void;
-  highlightId?: string | null;
   categoryFilter: string;
   onCategoryFilterChange: (v: string) => void;
   cardFilter: string;
@@ -592,7 +591,6 @@ export function TransactionsTable({
   onSearchChange,
   typeFilter,
   onTypeFilterChange,
-  highlightId,
   categoryFilter,
   onCategoryFilterChange,
   cardFilter,
@@ -645,18 +643,6 @@ export function TransactionsTable({
   useEffect(() => {
     setRowSelection({});
   }, [transactions.length]);
-
-  // Scroll to highlighted row from ⌘K
-  useEffect(() => {
-    if (!highlightId || !tbodyRef.current) return;
-    const timer = setTimeout(() => {
-      const row = tbodyRef.current?.querySelector(`[data-transaction-id="${highlightId}"]`);
-      if (row) {
-        row.scrollIntoView({ behavior: "smooth", block: "center" });
-      }
-    }, 150);
-    return () => clearTimeout(timer);
-  }, [highlightId]);
 
   const handleInlineUpdate = useCallback(async (id: string, field: keyof Transaction, value: unknown) => {
     if (id.startsWith("pending-")) return;
@@ -1273,8 +1259,7 @@ export function TransactionsTable({
           "hover:bg-muted/40 transition-colors",
           row.original.isPending && "pointer-events-none opacity-60",
           row.getIsSelected() && "bg-primary/5 hover:bg-primary/10",
-          isMissing && "border-l-2 border-l-amber-400/70",
-          highlightId === row.original.id && "tx-highlight-pulse"
+          isMissing && "border-l-2 border-l-amber-400/70"
         )}
         onMouseDown={(e) => handleRowMouseDown(e, index)}
       >

@@ -164,9 +164,7 @@
   .whisper-shared-row[data-manual] { grid-template-columns: minmax(0, 1fr) 100px auto; }
 }
 
-/* Deudas: nueva deuda y saldar deuda. Un detalle opcional a lo ancho, y la
-   lista de gastos con los que se puede saldar. */
-.whisper-debt-options { grid-template-columns: minmax(0, 1fr); }
+/* Deudas: saldar deuda. La lista de gastos con los que se puede saldar. */
 .whisper-debt-search { font-size: clamp(22px, 4vw, 28px); }
 .whisper-debt-list { display: flex; flex-direction: column; gap: 4px; width: min(100%, 440px); max-height: 46dvh; overflow-y: auto; padding: 2px; scrollbar-width: thin; scrollbar-color: rgb(255 255 255 / .15) transparent; }
 .whisper-debt-row {

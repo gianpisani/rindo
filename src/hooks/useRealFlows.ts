@@ -11,7 +11,6 @@ import {
   daysInPeriod,
   isInPeriod,
   periodStartOf,
-  shiftPeriod,
 } from "@/lib/period";
 
 export { DEFAULT_PASS_THROUGH_CATEGORIES };
@@ -43,8 +42,6 @@ export interface RealFlowsConfig {
   salaryCategories: string[];
   /** Categorías de gasto en tránsito, excluidas de todo. */
   transitCategories: string[];
-  /** Categorías de gasto tratadas como "bombazos" (gastos grandes no recurrentes). */
-  splurgeCategories: string[];
   /**
    * Día en que empieza el mes financiero (1 = calendario). Con un valor
    * distinto de 1 la regla del sueldo-shift se apaga: el corte ya la cubre.
@@ -56,7 +53,6 @@ export const DEFAULT_FLOW_CONFIG: RealFlowsConfig = {
   salaryShiftDay: SALARY_SHIFT_DAY,
   salaryCategories: DEFAULT_SALARY_CATEGORIES,
   transitCategories: DEFAULT_TRANSIT_CATEGORIES,
-  splurgeCategories: [],
   periodStartDay: 1,
 };
 
@@ -75,10 +71,6 @@ export interface RealFlows {
   consumoBruto: number;
   /** consumoBruto − reembolsosRecibidos. */
   consumoNeto: number;
-  /** Consumo neto de categorías NO bombazo. */
-  vida: number;
-  /** Consumo bruto en categorías bombazo. */
-  bombazos: number;
   /** Aportes a inversiones del mes. */
   invertido: number;
   /** Plata rescatada de las inversiones en el mes (volvió a la liquidez). */
@@ -123,7 +115,6 @@ export function computeRealFlows(
 ): RealFlows {
   const config = resolveFlowConfig(partialConfig);
   const transit = new Set(config.transitCategories);
-  const splurge = new Set(config.splurgeCategories);
   const startDay = config.periodStartDay;
   const start = periodStartOf(month, startDay);
   const daysInMonth = daysInPeriod(start, startDay);
@@ -132,8 +123,6 @@ export function computeRealFlows(
   let ingresoReal = 0;
   let reembolsosRecibidos = 0;
   let consumoBruto = 0;
-  let vida = 0;
-  let bombazos = 0;
   let invertido = 0;
   let rescatado = 0;
   let rendimiento = 0;
@@ -160,8 +149,6 @@ export function computeRealFlows(
     if (t.type === "Gasto") {
       if (transit.has(t.category_name)) continue;
       consumoBruto += amount;
-      if (splurge.has(t.category_name)) bombazos += amount;
-      else vida += amount;
       const day = dayOfPeriod(date, start);
       if (day >= 1 && day <= daysInMonth) dailyNet[day] += amount;
     } else if (t.type === "Inversión") {
@@ -173,30 +160,11 @@ export function computeRealFlows(
     }
   }
 
-  // Los reembolsos netean contra el mes en que llegan. Se restan de "vida"
-  // salvo que vengan tagueados a una categoría bombazo.
-  let reembolsosBombazo = 0;
-  for (const t of transactions) {
-    if (
-      t.type === "Ingreso" &&
-      t.reimbursement_for_category &&
-      splurge.has(t.reimbursement_for_category) &&
-      inMonth(new Date(t.date))
-    ) {
-      reembolsosBombazo += Number(t.amount);
-    }
-  }
-  const reembolsosVida = reembolsosRecibidos - reembolsosBombazo;
-  vida -= reembolsosVida;
-  bombazos -= reembolsosBombazo;
-
   return {
     ingresoReal,
     reembolsosRecibidos,
     consumoBruto,
     consumoNeto: consumoBruto - reembolsosRecibidos,
-    vida,
-    bombazos,
     invertido,
     rescatado,
     rendimiento,
@@ -226,29 +194,6 @@ export function computeRealBalance(
   passThroughCategories: string[] = DEFAULT_PASS_THROUGH_CATEGORIES
 ): number {
   return computeBuckets(transactions, passThroughCategories).liquido;
-}
-
-/**
- * Fondo acumulable para bombazos: Σ (aporte mensual − bombazos del mes)
- * desde `fundStart` hasta `upTo` inclusive.
- */
-export function computeSplurgeFund(
-  transactions: Transaction[],
-  fundMonthly: number,
-  fundStart: Date,
-  upTo: Date,
-  partialConfig?: Partial<RealFlowsConfig>
-): number {
-  const startDay = resolveFlowConfig(partialConfig).periodStartDay;
-  let fund = 0;
-  let cursor = periodStartOf(fundStart, startDay);
-  const end = periodStartOf(upTo, startDay);
-  while (cursor <= end) {
-    const { bombazos } = computeRealFlows(transactions, cursor, partialConfig);
-    fund += fundMonthly - bombazos;
-    cursor = shiftPeriod(cursor, 1, startDay);
-  }
-  return fund;
 }
 
 /** Hook de conveniencia: flujos reales del mes, memoizados. */
