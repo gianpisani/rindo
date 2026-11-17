@@ -1,6 +1,7 @@
 // Ingesta de un movimiento individual: insertarlo, categorizarlo con Jev y
 // avisar al usuario (push + email con el resumen semanal).
-// Lo usa process-email-v2, que solo parsea el correo y arma la fila.
+// Lo usan process-email-v2 y process-ios-wallet-push-notification: cada función
+// solo parsea su entrada y arma la fila.
 
 import type { SupabaseClient } from 'https://esm.sh/@supabase/supabase-js@2.39.3'
 import { categorizeForUser } from './categorize.ts'
@@ -16,7 +17,7 @@ export interface TransactionRow {
   type: 'Gasto' | 'Ingreso'
   amount: number
   detail: string
-  import_source: 'email'
+  import_source: 'email' | 'wallet'
   bank_description: string
   bank_settlement_date?: string | null
 }
@@ -35,6 +36,8 @@ export interface WeeklyStats {
 export async function ingestTransaction(client: Client, row: TransactionRow, options: {
   /** Banco que se muestra en el email. */
   bank: string
+  /** Tag de la push (agrupa notificaciones del mismo origen). */
+  pushTag: string
   /** Últimos 4 dígitos para asociar la tarjeta de crédito. */
   cardLastFour?: string | null
 }) {
@@ -82,7 +85,7 @@ export async function ingestTransaction(client: Client, row: TransactionRow, opt
   } catch { console.error('No se pudo categorizar el movimiento importado') }
 
   const weeklyStats = await weeklyCategoryStats(client, row, category)
-  await sendPush(row, 'email-transaction')
+  await sendPush(row, options.pushTag)
   await sendEmail(client, row, category, options.bank, weeklyStats)
 
   return { id: transaction.id as string, category, weeklyStats }
