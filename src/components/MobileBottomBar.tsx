@@ -1,6 +1,6 @@
 import { useCallback, useState } from "react";
 import { Link, useLocation } from "react-router-dom";
-import { Plus, ChevronUp, UserPen, SlidersHorizontal, LogOut, CalendarRange } from "lucide-react";
+import { Plus, ChevronUp, UserPen, LogOut, CalendarRange } from "lucide-react";
 import { usePeriodConfig } from "@/hooks/usePeriodConfig";
 import { periodShortLabel } from "@/lib/period";
 import { cn } from "@/lib/utils";
@@ -8,17 +8,15 @@ import { useIsMobile } from "@/hooks/use-mobile";
 import { useGlobalDrawers } from "@/hooks/useGlobalDrawers";
 import { useSoundFX } from "@/hooks/useSoundFX";
 import { useUserProfile } from "@/hooks/useUserProfile";
-import { useNavPreferences } from "@/hooks/useNavPreferences";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
-import { APP_ROUTES, type RouteConfig } from "@/lib/routes-config";
+import { getMainRoutes, getToolRoutes, type RouteConfig } from "@/lib/routes-config";
 import {
   Drawer,
   DrawerContent,
   DrawerTitle,
 } from "@/components/ui/drawer";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
-import { CustomizeNavDrawer } from "./CustomizeNavDrawer";
 
 function RouteIcon({ route, className }: { route: RouteConfig; className?: string }) {
   const Icon = route.icon;
@@ -32,22 +30,14 @@ export function MobileBottomBar() {
   const { startDay } = usePeriodConfig();
   const { playToggleOn } = useSoundFX();
   const { profile, avatarUrl } = useUserProfile();
-  const { mobileTabs, hiddenRoutes } = useNavPreferences();
   const [drawerOpen, setDrawerOpen] = useState(false);
-  const [customizeOpen, setCustomizeOpen] = useState(false);
 
   const displayName = profile?.nickname || profile?.full_name || null;
   const userInitials = (displayName || "U").slice(0, 2).toUpperCase();
 
-  // Get mobile tab routes from preferences
-  const tabRoutes = mobileTabs
-    .map((url) => APP_ROUTES.find((r) => r.url === url))
-    .filter(Boolean) as RouteConfig[];
-
-  // Tool routes for the drawer = not in bottom bar AND not hidden
-  const drawerRoutes = APP_ROUTES.filter(
-    (r) => !mobileTabs.includes(r.url) && !hiddenRoutes.includes(r.url)
-  );
+  // Menú fijo: las rutas principales van en la barra, las herramientas en el drawer
+  const tabRoutes = getMainRoutes();
+  const drawerRoutes = getToolRoutes();
 
   const handleQuickAdd = useCallback(() => {
     playToggleOn();
@@ -65,7 +55,7 @@ export function MobileBottomBar() {
         style={{ paddingBottom: "env(safe-area-inset-bottom, 4px)" }}
       >
         <div className="mobile-tab-bar">
-          {/* Dynamic tabs from preferences */}
+          {/* Fixed tabs */}
           {tabRoutes.map((route) => {
             const isActive = location.pathname === route.url;
             return (
@@ -205,7 +195,7 @@ export function MobileBottomBar() {
               </div>
             </button>
 
-            {/* Profile + Customize */}
+            {/* Profile + Logout */}
             <div className="flex items-center gap-2 px-1">
               {/* Profile */}
               <button
@@ -228,17 +218,6 @@ export function MobileBottomBar() {
                 <UserPen className="size-4 text-muted-foreground shrink-0" />
               </button>
 
-              {/* Customize button */}
-              <button
-                onClick={() => {
-                  setDrawerOpen(false);
-                  setTimeout(() => setCustomizeOpen(true), 300);
-                }}
-                className="size-11 rounded-xl bg-muted/60 flex items-center justify-center shrink-0 active:bg-muted active:scale-95 transition-all"
-              >
-                <SlidersHorizontal className="size-4.5 text-muted-foreground" />
-              </button>
-
               {/* Logout button */}
               <button
                 onClick={async () => {
@@ -257,12 +236,6 @@ export function MobileBottomBar() {
           <div style={{ height: "env(safe-area-inset-bottom, 8px)", minHeight: 8 }} />
         </DrawerContent>
       </Drawer>
-
-      {/* Customize Nav Drawer */}
-      <CustomizeNavDrawer
-        open={customizeOpen}
-        onOpenChange={setCustomizeOpen}
-      />
     </>
   );
 }

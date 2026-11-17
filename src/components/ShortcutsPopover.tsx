@@ -11,7 +11,7 @@ import {
   Plus,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { useNavPreferences } from "@/hooks/useNavPreferences";
+import { APP_ROUTES } from "@/lib/routes-config";
 
 const isMac = typeof navigator !== 'undefined' && /Mac|iPhone|iPad|iPod/.test(navigator.userAgent);
 const cmdKey = isMac ? "⌘" : "Ctrl";
@@ -22,8 +22,7 @@ interface ShortcutsPopoverProps {
 }
 
 const useShortcuts = () => {
-  const { getVisibleRoutes } = useNavPreferences();
-  const visibleRoutes = getVisibleRoutes();
+  const visibleRoutes = APP_ROUTES;
 
   return useMemo(() => [
     {

@@ -20,7 +20,6 @@ import { RindoLogo } from "./RindoLogo";
 import { usePushNotifications } from "@/hooks/usePushNotifications";
 import { MobileBottomBar } from "./MobileBottomBar";
 import { useIsMobile } from "@/hooks/use-mobile";
-import { useNavPreferencesSync } from "@/hooks/useNavPreferencesSync";
 import {
   Tooltip,
   TooltipContent,
@@ -63,7 +62,6 @@ export default function Layout({ children, fit = false }: LayoutProps) {
 
   const { isSupported: pushSupported, isSubscribed: pushSubscribed, isLoading: pushLoading, subscribe: pushSubscribe, unsubscribe: pushUnsubscribe } = usePushNotifications();
   const isMobile = useIsMobile();
-  useNavPreferencesSync();
   const [commandBarOpen, setCommandBarOpen] = useState(false);
   const [showShortcutsPopover, setShowShortcutsPopover] = useState(false);
   // Initialize sound system once

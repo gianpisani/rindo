@@ -30,7 +30,7 @@ import { useSoundFX } from "@/hooks/useSoundFX";
 import { format } from "date-fns";
 import { es } from "date-fns/locale";
 import { Kbd } from "@/components/ui/kbd";
-import { useNavPreferences } from "@/hooks/useNavPreferences";
+import { APP_ROUTES } from "@/lib/routes-config";
 import { getCategoryIcon } from "@/components/TransactionsTable";
 import { cn } from "@/lib/utils";
 import { signPrefix } from "@/lib/ledger";
@@ -67,8 +67,7 @@ export function CommandBar({ open, onOpenChange, onAddTransaction, onConciliate,
   const { transactions } = useTransactions();
   const { categories } = useCategories();
   const { playSelect } = useSoundFX();
-  const { getVisibleRoutes } = useNavPreferences();
-  const navRoutes = getVisibleRoutes();
+  const navRoutes = APP_ROUTES;
 
   const searchResults = useFuzzySearch(transactions, search);
   const showTransactions = search.length >= 2;
