@@ -27,6 +27,8 @@ DROP TABLE IF EXISTS public.learning_items CASCADE;
 DROP TABLE IF EXISTS public.learning_sessions CASCADE;
 DROP TABLE IF EXISTS public.learning_goals CASCADE;
 DROP TABLE IF EXISTS public.learning_transcripts CASCADE;
+-- Respaldo manual que quedó de una purga anterior.
+DROP TABLE IF EXISTS public.learning_purge_backup_20260824 CASCADE;
 
 -- Función de trigger usada solo por las tablas learning_*.
 DROP FUNCTION IF EXISTS public.handle_learning_updated_at();
