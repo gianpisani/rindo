@@ -662,7 +662,7 @@ export function OnboardingModal({
                       background: `linear-gradient(135deg, ${customPalette.primary}, ${customPalette.ring})`,
                     }}
                   >
-                    <Paintbrush className="size-5 text-white/90 drop-shadow-md" />
+                    <Paintbrush className="size-5 text-white/90" />
                   </div>
                   <span className="text-xs font-medium text-muted-foreground">
                     Custom

@@ -10,6 +10,7 @@
     "build": "vite build",
     "build:dev": "vite build --mode development",
     "lint": "eslint .",
+    "lint:design": "node scripts/check-design-scale.mjs",
     "preview": "vite preview"
   },
   "dependencies": {

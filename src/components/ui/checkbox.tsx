@@ -11,6 +11,7 @@ const Checkbox = React.forwardRef<
   <CheckboxPrimitive.Root
     ref={ref}
     className={cn(
+      // design-scale-ok: 4px fijo; con --radius-card (Redondez) alto el check parecería un radio
       "peer h-4 w-4 shrink-0 rounded-[4px] border border-muted-foreground ring-offset-background data-[state=checked]:border-foreground data-[state=checked]:bg-foreground data-[state=checked]:text-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50",
       className,
     )}

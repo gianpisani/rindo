@@ -735,7 +735,7 @@ export function TransactionsTable({
                     className="absolute -bottom-0.5 -right-0.5 w-3.5 h-3.5 rounded-full bg-background flex items-center justify-center"
                     title="Detectado por el bot"
                   >
-                    <span className="text-[8px] leading-none">🤖</span>
+                    <span className="text-xs leading-none scale-75">🤖</span>
                   </div>
                 )}
               </div>
@@ -1165,7 +1165,7 @@ export function TransactionsTable({
           </div>
           {isBot && (
             <div className="absolute -bottom-0.5 -right-0.5 w-4 h-4 rounded-full bg-background flex items-center justify-center">
-              <span className="text-[9px] leading-none">🤖</span>
+              <span className="text-xs leading-none scale-75">🤖</span>
             </div>
           )}
         </div>
