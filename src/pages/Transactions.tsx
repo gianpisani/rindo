@@ -9,7 +9,7 @@ import { TransactionsToolbar } from "@/components/TransactionsToolbar";
 import { Button } from "@/components/ui/button";
 import { useGlobalDrawers } from "@/hooks/useGlobalDrawers";
 import { usePrivacyMode } from "@/hooks/usePrivacyMode";
-import { categoryFrequency, getCleanDetail, parseWhisper, WHISPER_TYPES } from "@/lib/whisper";
+import { categoryFrequency, getCleanDetail, WHISPER_TYPES } from "@/lib/whisper";
 import "@/components/whisper.css";
 import {
   AlertDialog,
@@ -21,7 +21,8 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { Plus, X, Trash2, Users, CheckCircle2, Check, Clock, Pencil, ChevronDown, ArrowUp } from "lucide-react";
+import { Plus, X, Trash2, Users, CheckCircle2, Check, Clock, Pencil, ChevronDown } from "lucide-react";
+import { es } from "date-fns/locale";
 import { useTransactions, Transaction } from "@/hooks/useTransactions";
 import { useSearchFocusShortcut } from "@/hooks/useSearchFocusShortcut";
 import { useCategories } from "@/hooks/useCategories";
@@ -37,7 +38,7 @@ import { cn } from "@/lib/utils";
 import type { DateRangeValue } from "@/components/DateRangeFilter";
 import { TransactionType, allowsNegativeAmount } from "@/lib/ledger";
 
-// ── Editor de movimientos: el composer del Whisper con el texto precargado ──
+// ── Editor de movimientos: corregir la categoría es un toque ──
 
 /** Colores para una categoría nueva creada desde el composer. */
 const CATEGORY_COLORS = [
@@ -56,7 +57,7 @@ const formatCurrency = (amount: number) =>
 const EMPTY_FORM = {
   // Fecha y hora como valor de datetime-local, en hora local.
   date: "",
-  // El monto nuevo; vacío deja el guardado.
+  // El monto, solo dígitos; vacío deja el guardado.
   value: "",
   category_name: "",
   type: "Gasto" as TransactionType,
@@ -189,19 +190,13 @@ export default function Transactions() {
   // editingTransaction queda puesto al cerrar, así el fade de salida no cambia de modo.
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingTransaction, setEditingTransaction] = useState<Transaction | null>(null);
-  // El composer: opciones abiertas, todas las categorías, categoría nueva en línea, error.
+  // El editor: detalles (monto, fecha, cuenta) abiertos, todas las categorías, categoría nueva en línea, error.
   const [txExpanded, setTxExpanded] = useState(false);
   const [allCategories, setAllCategories] = useState(false);
   const [newCategory, setNewCategory] = useState<{ name: string; icon: string; color: string } | null>(null);
   const [txError, setTxError] = useState("");
-  // La nota del movimiento, que al guardar pisa el detail. En null el campo
-  // está colapsado y nadie lo tocó: el detail guardado se queda como está.
-  const [note, setNote] = useState<string | null>(null);
-  const noteInputRef = useRef<HTMLInputElement>(null);
-  const txInputRef = useRef<HTMLInputElement>(null);
-  const txCategoryGroupRef = useRef<HTMLDivElement>(null);
-  const txOptionsToggleRef = useRef<HTMLButtonElement>(null);
-  const [isShared, setIsShared] = useState(false);
+  // El nombre del movimiento, editable en el título. Si no cambia, el detail guardado queda intacto.
+  const [detailText, setDetailText] = useState("");
   const [sharedDrawerOpen, setSharedDrawerOpen] = useState(false);
   const [pendingTransaction, setPendingTransaction] = useState<{ id: string; amount: number } | null>(null);
   const [confirmPaid, setConfirmPaid] = useState<{ id: string; name: string; amount: number; detail?: string } | null>(null);
@@ -225,10 +220,9 @@ export default function Transactions() {
   const [deleteId, setDeleteId] = useState<string | null>(null);
   const [deleteIds, setDeleteIds] = useState<string[]>([]);
   const [formData, setFormData] = useState(() => ({ ...EMPTY_FORM, date: toLocalInput(new Date()) }));
-  const parsedDraft = parseWhisper(formData.value);
-  // El input parte vacío: dejarlo así conserva el monto guardado.
+  // El monto: lo escrito en "Monto", o el guardado si el campo queda vacío.
   const editingMagnitude = editingTransaction ? Math.abs(editingTransaction.amount) : 0;
-  const effectiveAmount = parsedDraft?.amount ?? editingMagnitude;
+  const effectiveAmount = Number(formData.value.replace(/\D/g, "")) || editingMagnitude;
   const composerType = WHISPER_TYPES.find((t) => t.type === formData.type) ?? WHISPER_TYPES[0];
   const composerAccent = formData.type === "Rendimiento" && formData.isLoss ? LOSS_ACCENT : composerType.color;
 
@@ -295,8 +289,8 @@ export default function Transactions() {
       // addCategory ya notifica el error; quedarse en el form.
       return;
     }
-    setFormData((prev) => ({ ...prev, category_name: name }));
     setNewCategory(null);
+    await saveEdit({ category_name: name });
   };
 
   // Lo que alimenta los paneles de deudas: lo pendiente en cada dirección, y
@@ -314,18 +308,12 @@ export default function Transactions() {
     resetForm();
   };
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!editingTransaction) return;
-
-    // El input es solo el monto: el texto va en la nota. Vacío significa
-    // "deja el monto como está".
-    if (formData.value.trim() && (!parsedDraft || parsedDraft.detail)) {
-      setTxError("Acá va solo el monto. El detalle se edita en la nota.");
-      txInputRef.current?.focus();
-      return;
-    }
-    if (!formData.date || !Number.isFinite(new Date(formData.date).getTime())) {
+  /** Guarda el movimiento. `overrides` permite guardar al tocar una categoría,
+   *  y `split` abre el reparto del gasto compartido después de guardar. */
+  const saveEdit = async (overrides: Partial<typeof formData> = {}, { split = false } = {}) => {
+    if (!editingTransaction || updateTransaction.isPending) return;
+    const data = { ...formData, ...overrides };
+    if (!data.date || !Number.isFinite(new Date(data.date).getTime())) {
       setTxExpanded(true);
       setTxError("Elige una fecha válida.");
       return;
@@ -333,33 +321,36 @@ export default function Transactions() {
 
     // Un rendimiento negativo es un mes malo, no un error: el resto de los
     // tipos siempre va en positivo.
-    const parsedAmount =
-      allowsNegativeAmount(formData.type) && formData.isLoss ? -effectiveAmount : effectiveAmount;
-    // El badge del bot sobrevive a que le cambies el texto, igual que en la
-    // edición inline de la tabla.
+    const amount = allowsNegativeAmount(data.type) && data.isLoss ? -effectiveAmount : effectiveAmount;
+    // El badge del bot sobrevive a que le cambies el nombre, igual que en la
+    // edición inline de la tabla. Un nombre vacío no borra el guardado.
     const prefix = (editingTransaction.detail || "").startsWith("🤖") ? "🤖 " : "";
-    const newNote = note?.trim();
+    const newDetail = detailText.trim();
+    const detailChanged = !!newDetail && newDetail !== getCleanDetail(editingTransaction.detail);
 
     await updateTransaction.mutateAsync({
       id: editingTransaction.id,
-      category_name: formData.category_name,
-      type: formData.type,
-      card_id: formData.card_id,
-      // Sin nota escrita, el detalle guardado queda intacto. Para borrarlo
-      // está la edición inline de la columna Detalle.
-      ...(newNote ? { detail: prefix + newNote } : {}),
-      date: new Date(formData.date).toISOString(),
-      amount: parsedAmount,
+      category_name: data.category_name,
+      type: data.type,
+      card_id: data.card_id,
+      ...(detailChanged ? { detail: prefix + newDetail } : {}),
+      date: new Date(data.date).toISOString(),
+      amount,
     });
 
-    if (isShared && formData.type === "Gasto" && existingShared.length === 0) {
-      setPendingTransaction({ id: editingTransaction.id, amount: parsedAmount });
+    if (split) {
+      setPendingTransaction({ id: editingTransaction.id, amount });
       setIsDialogOpen(false);
       setSharedDrawerOpen(true);
       return;
     }
 
     closeComposer();
+  };
+
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    saveEdit();
   };
 
   const handleSharedExpenseConfirm = async (debtors: Array<{ name: string; amount: number }>) => {
@@ -406,8 +397,7 @@ export default function Transactions() {
     setAllCategories(false);
     setNewCategory(null);
     setTxError("");
-    setNote(null);
-    setIsShared(false);
+    setDetailText("");
     setPendingTransaction(null);
     setNewDebtor(null);
     setEditingDebtor(null);
@@ -431,24 +421,18 @@ export default function Transactions() {
     if (deleteId || deleteIds.length > 0) return;
     setEditingTransaction(transaction);
 
-    // El input parte vacío: el monto y el nombre del banco van en el
-    // placeholder, y escribir solo hace falta si querés cambiar el monto.
     setFormData({
       ...EMPTY_FORM,
+      value: String(Math.abs(transaction.amount)),
       date: toLocalInput(new Date(transaction.date)),
       category_name: transaction.category_name,
       type: transaction.type,
       card_id: transaction.card_id,
       isLoss: transaction.amount < 0,
     });
-    // La nota parte cerrada y vacía: el detalle guardado solo cambia si
-    // marcás la casilla y escribís algo.
-    setNote(null);
-
-    const shared = getSharedExpensesByTransaction(transaction.id);
-    setIsShared(shared.length > 0);
-    // Al editar, la fecha y la cuenta importan: las opciones parten abiertas.
-    setTxExpanded(true);
+    setDetailText(getCleanDetail(transaction.detail));
+    // Monto, fecha y cuenta casi nunca cambian: parten cerrados.
+    setTxExpanded(false);
     setTxError("");
 
     setIsDialogOpen(true);
@@ -511,20 +495,18 @@ export default function Transactions() {
                   data-scrollable
                   className="whisper-composer"
                   style={{ "--whisper-accent": composerAccent } as React.CSSProperties}
-                  onOpenAutoFocus={(event) => {
-                    event.preventDefault();
-                    txInputRef.current?.focus();
-                  }}
+                  // Sin foco automático: en el celular no abre el teclado.
+                  onOpenAutoFocus={(event) => event.preventDefault()}
                 >
                   <Dialog.Title className="sr-only">Editar movimiento</Dialog.Title>
                   <Dialog.Description className="sr-only">
-                    Escribe monto y detalle en una línea. Tab cambia el tipo; flecha abajo lleva a las categorías. En más opciones están la fecha, la cuenta y los gastos compartidos.
+                    Toca una categoría para corregirla y guardar. El nombre se edita en el título; monto, fecha y cuenta, en detalles.
                   </Dialog.Description>
                   <Dialog.Close className="whisper-close" aria-label="Cerrar">
                     <X size={16} />
                   </Dialog.Close>
 
-                  <form id="transaction-form" onSubmit={handleSubmit} className="whisper-form">
+                  <form id="transaction-form" onSubmit={handleSubmit} className="whisper-form edit-tx">
                     {/* Tipo */}
                     <div className="whisper-type">
                       <span className="whisper-dot" aria-hidden="true" />
@@ -532,10 +514,7 @@ export default function Transactions() {
                       <select
                         aria-label="Tipo de movimiento"
                         value={formData.type}
-                        onChange={(event) => {
-                          changeType(event.target.value as TransactionType);
-                          txInputRef.current?.focus();
-                        }}
+                        onChange={(event) => changeType(event.target.value as TransactionType)}
                       >
                         {WHISPER_TYPES.map((t) => (
                           <option key={t.type}>{t.type}</option>
@@ -544,63 +523,30 @@ export default function Transactions() {
                       <ChevronDown size={12} aria-hidden="true" />
                     </div>
 
-                    {/* Solo el monto: el detalle va en la nota */}
-                    <div className="whisper-entry">
+                    {/* Qué movimiento es: el nombre (editable) y una línea con monto, fecha y cuenta */}
+                    <div className="edit-tx-head">
                       <input
-                        ref={txInputRef}
-                        aria-label="Monto"
-                        aria-describedby={txError ? "tx-error tx-shortcuts" : "tx-shortcuts"}
-                        aria-invalid={!!txError}
+                        aria-label="Nombre del movimiento"
+                        className={cn("edit-tx-title", isPrivacyMode && "privacy-blur")}
                         autoComplete="off"
-                        autoCorrect="off"
-                        spellCheck={false}
-                        maxLength={1000}
-                        value={formData.value}
-                        onChange={(event) => {
-                          setFormData((prev) => ({ ...prev, value: event.target.value }));
-                          setTxError("");
-                        }}
-                        // El placeholder recuerda qué movimiento es: su monto y el nombre
-                        // que mandó el banco, que es el que no cambia aunque le pongas una nota.
-                        placeholder={[editingMagnitude, editingTransaction.bank_description || getCleanDetail(editingTransaction.detail)]
-                          .filter(Boolean)
-                          .join(" ")}
-                        // El monto vive en el placeholder: también se tapa.
-                        className={cn("whisper-input", isPrivacyMode && "privacy-blur")}
-                        onKeyDown={(event) => {
-                          if (event.nativeEvent.isComposing) {
-                            if (event.key === "Enter") event.preventDefault();
-                            return;
-                          }
-                          if (event.key === "Tab" && !event.altKey && !event.ctrlKey && !event.metaKey) {
-                            event.preventDefault();
-                            cycleType(event.shiftKey);
-                            return;
-                          }
-                          if (event.key === "ArrowDown" && !event.altKey && !event.ctrlKey && !event.metaKey && !event.shiftKey) {
-                            event.preventDefault();
-                            const selected = txCategoryGroupRef.current?.querySelector<HTMLButtonElement>('button[aria-pressed="true"]');
-                            const first = txCategoryGroupRef.current?.querySelector<HTMLButtonElement>("button");
-                            (selected ?? first ?? txOptionsToggleRef.current)?.focus();
-                            return;
-                          }
-                          if (event.altKey && ["ArrowRight", "ArrowLeft"].includes(event.key)) {
-                            event.preventDefault();
-                            cycleType(event.key === "ArrowLeft");
-                          }
-                        }}
+                        maxLength={200}
+                        value={detailText}
+                        placeholder={editingTransaction.bank_description || "Sin nombre"}
+                        onChange={(event) => setDetailText(event.target.value)}
                       />
-                      <div
-                        className={cn("whisper-preview", isPrivacyMode && effectiveAmount > 0 && "privacy-blur")}
-                        aria-hidden="true"
-                      >
-                        {effectiveAmount > 0 && (
-                          <span>
-                            {formData.type === "Rendimiento" && formData.isLoss ? "−" : ""}
-                            {formatCurrency(effectiveAmount)}
-                          </span>
+                      <p className="edit-tx-meta">
+                        <b className={cn(isPrivacyMode && "privacy-blur")}>
+                          {formData.type === "Rendimiento" && formData.isLoss ? "−" : ""}
+                          {formatCurrency(effectiveAmount)}
+                        </b>
+                        {Number.isFinite(new Date(formData.date).getTime()) && (
+                          <span>{format(new Date(formData.date), "d MMM, HH:mm", { locale: es })}</span>
                         )}
-                      </div>
+                        {(() => {
+                          const card = creditCards.find((c) => c.id === formData.card_id);
+                          return card ? <span>{card.name}{card.last_4_digits ? ` ···${card.last_4_digits}` : ""}</span> : null;
+                        })()}
+                      </p>
                     </div>
 
                     {/* Categorías */}
@@ -684,20 +630,16 @@ export default function Transactions() {
                           </div>
                         </div>
                       ) : (
-                        <div ref={txCategoryGroupRef} className="whisper-categories" role="group" aria-label="Categorías disponibles">
+                        <div className="whisper-categories" role="group" aria-label="Categoría (tocar guarda)">
                           {visibleCategories.map((category) => (
                             <button
                               key={category.id}
                               type="button"
                               className="whisper-category"
                               aria-pressed={formData.category_name === category.name}
-                              onClick={() => {
-                                setFormData((prev) => ({
-                                  ...prev,
-                                  category_name: prev.category_name === category.name ? "" : category.name,
-                                }));
-                                txInputRef.current?.focus();
-                              }}
+                              disabled={updateTransaction.isPending}
+                              // Corregir la categoría es la acción principal: un toque guarda y cierra.
+                              onClick={() => saveEdit({ category_name: category.name })}
                             >
                               <span className="whisper-category-dot" aria-hidden="true" />
                               {category.icon || getCategoryIcon(category.name)} {category.name}
@@ -711,70 +653,36 @@ export default function Transactions() {
                               aria-expanded={allCategories}
                               onClick={() => setAllCategories(!allCategories)}
                             >
-                              {allCategories ? "Menos" : `+${availableCategories.length - 5}`}
+                              {allCategories ? "Menos" : `Ver todas (${availableCategories.length})`}
                             </button>
                           )}
-                          <button
-                            type="button"
-                            className="whisper-more-categories"
-                            onClick={() => setNewCategory({ name: "", icon: "🏷️", color: CATEGORY_COLORS[0] })}
-                          >
-                            <Plus size={11} aria-hidden="true" /> Nueva
-                          </button>
+                          {(allCategories || availableCategories.length <= 5) && (
+                            <button
+                              type="button"
+                              className="whisper-more-categories"
+                              onClick={() => setNewCategory({ name: "", icon: "🏷️", color: CATEGORY_COLORS[0] })}
+                            >
+                              <Plus size={11} aria-hidden="true" /> Nueva
+                            </button>
+                          )}
                         </div>
                       )}
 
-                      <p className="whisper-caption" aria-live="polite">
-                        {formData.category_name ? `Se guardará en ${formData.category_name}` : "Elige una categoría"}
-                      </p>
                     </div>
 
-                    {/* Nota: pisa el detalle del movimiento, dejando intacto el
-                        nombre que mandó el banco. El campo aparece solo si marcás
-                        la casilla, y parte vacío para escribir de una. */}
-                    <div className="whisper-note-block">
-                      <label className="whisper-note-check">
-                        <input
-                          type="checkbox"
-                          checked={note !== null}
-                          onChange={(event) => {
-                            setNote(event.target.checked ? "" : null);
-                            if (event.target.checked) {
-                              requestAnimationFrame(() => noteInputRef.current?.focus());
-                            }
-                          }}
-                        />
-                        Agregar nota
-                      </label>
-                      {note !== null && (
-                        <input
-                          ref={noteInputRef}
-                          aria-label="Nota del movimiento"
-                          className={cn("whisper-note", isPrivacyMode && note && "privacy-blur")}
-                          autoComplete="off"
-                          maxLength={200}
-                          // El detalle actual como placeholder: ves qué vas a reemplazar.
-                          placeholder={getCleanDetail(editingTransaction.detail) || "Tu nota para este movimiento"}
-                          value={note}
-                          onChange={(event) => setNote(event.target.value)}
-                          onKeyDown={(event) => {
-                            if (event.key === "Escape") {
-                              // Cierra la nota, no el diálogo.
-                              event.stopPropagation();
-                              event.preventDefault();
-                              setNote(null);
-                              txInputRef.current?.focus();
-                            }
-                            if (event.key === "Enter") {
-                              event.preventDefault();
-                              noteInputRef.current?.blur();
-                            }
-                          }}
-                        />
-                      )}
-                    </div>
+                    {/* Gasto compartido: guarda y abre el reparto */}
+                    {formData.type === "Gasto" && existingShared.length === 0 && (
+                      <button
+                        type="button"
+                        className="whisper-more-categories edit-tx-split"
+                        disabled={updateTransaction.isPending}
+                        onClick={() => saveEdit({}, { split: true })}
+                      >
+                        <Users size={12} aria-hidden="true" /> Dividir gasto
+                      </button>
+                    )}
 
-                    {/* Más opciones: fecha, cuenta, compartido, saldar */}
+                    {/* Detalles: monto, fecha y cuenta. Casi nunca cambian, parten cerrados. */}
                     <AnimatePresence initial={false}>
                       {txExpanded && (
                         <motion.div
@@ -784,6 +692,19 @@ export default function Transactions() {
                           exit={{ height: 0, opacity: 0 }}
                           transition={{ duration: reducedMotion ? 0 : 0.18 }}
                         >
+                          <label>
+                            Monto
+                            <input
+                              inputMode="numeric"
+                              aria-label="Monto"
+                              className={cn(isPrivacyMode && "privacy-blur")}
+                              value={formData.value}
+                              onChange={(event) => {
+                                setFormData((prev) => ({ ...prev, value: event.target.value.replace(/\D/g, "") }));
+                                setTxError("");
+                              }}
+                            />
+                          </label>
                           <label>
                             Fecha y hora
                             <input
@@ -803,7 +724,7 @@ export default function Transactions() {
                                   setFormData((prev) => ({ ...prev, card_id: event.target.value || null }))
                                 }
                               >
-                                <option value="">Cuenta</option>
+                                <option value="">Sin tarjeta</option>
                                 {creditCards
                                   .filter((card) => card.is_active)
                                   .map((card) => (
@@ -813,12 +734,6 @@ export default function Transactions() {
                                     </option>
                                   ))}
                               </select>
-                            </label>
-                          )}
-                          {formData.type === "Gasto" && existingShared.length === 0 && (
-                            <label className="whisper-check">
-                              <input type="checkbox" checked={isShared} onChange={(event) => setIsShared(event.target.checked)} />
-                              Gasto compartido
                             </label>
                           )}
                           {formData.type === "Gasto" && pendingIOwe.length > 0 && (
@@ -1123,32 +1038,18 @@ export default function Transactions() {
 
                     <div className="whisper-actions">
                       <button
-                        ref={txOptionsToggleRef}
                         type="button"
                         className="whisper-options-toggle"
                         aria-expanded={txExpanded}
                         onClick={() => setTxExpanded(!txExpanded)}
                       >
-                        {txExpanded ? "Menos opciones" : "Más opciones"}
+                        {txExpanded ? "Ocultar detalles" : "Monto, fecha y cuenta"}
                         <ChevronDown size={12} className={cn(txExpanded && "rotate-180")} />
                       </button>
-                      <button
-                        type="submit"
-                        className="whisper-submit"
-                        // Se puede guardar sin tocar el monto.
-                        disabled={updateTransaction.isPending}
-                        aria-label="Guardar cambios"
-                      >
-                        Guardar cambios
-                        <span className="hidden sm:inline" aria-hidden="true">↵</span>
-                        <ArrowUp size={14} className="sm:hidden" aria-hidden="true" />
+                      <button type="submit" className="whisper-submit" disabled={updateTransaction.isPending}>
+                        Guardar
                       </button>
                     </div>
-                    <p id="tx-shortcuts" className="whisper-shortcuts">
-                      <span><kbd>Tab</kbd> tipo</span>
-                      <span><kbd>↓</kbd> categorías</span>
-                      <span><kbd>Esc</kbd> cerrar</span>
-                    </p>
                   </form>
                 </Dialog.Content>
               </Dialog.Portal>
