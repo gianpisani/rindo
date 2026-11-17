@@ -276,7 +276,7 @@ const Index = () => {
 
   // ─── Recientes ────────────────────────────────────────
   const feedList = isLoading ? (
-    <div className="space-y-3 px-[18px] py-3">
+    <div className="space-y-3 px-4 py-3">
       {Array.from({ length: 6 }).map((_, i) => (
         <div key={i} className="flex items-center gap-3">
           <Skeleton className="size-[30px] rounded-full" />

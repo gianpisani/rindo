@@ -21,7 +21,7 @@ export function LoadingScreen({
           fullScreen && "min-h-screen bg-background"
         )}
       >
-        <RindoLogo size={20} className="text-foreground/40 loading-breathe" />
+        <RindoLogo size={20} className="loading-breathe" />
         <p className="text-sm text-muted-foreground">{message}</p>
       </div>
     );
@@ -32,7 +32,7 @@ export function LoadingScreen({
   return (
     <div
       className={cn(
-        "flex flex-col items-center justify-center gap-5",
+        "flex flex-col items-center justify-center gap-4",
         fullScreen && "min-h-screen bg-background"
       )}
     >
@@ -49,7 +49,7 @@ export function LoadingScreen({
 export function LoadingSpinner({ className }: { className?: string }) {
   return (
     <div className={cn("relative", className)}>
-      <RindoLogo size={24} className="text-foreground/60 loading-breathe" />
+      <RindoLogo size={24} className="loading-breathe" />
     </div>
   );
 }

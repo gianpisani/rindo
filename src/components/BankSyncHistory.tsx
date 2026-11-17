@@ -169,9 +169,9 @@ function EntryDetail({ entry }: { entry: SyncLogEntry }) {
               </button>
             )}
           </div>
-          <div className="rounded-xl border border-border/50 divide-y divide-border/30 max-h-[180px] overflow-y-auto">
+          <div className="rounded-card border divide-y max-h-[180px] overflow-y-auto">
             {importedItems.map((item, i) => (
-              <div key={i} className="flex items-center gap-2.5 px-3 py-2 text-sm">
+              <div key={i} className="flex items-center gap-2 px-3 py-2 text-sm">
                 {item.id ? (
                   <Checkbox
                     checked={selectedImported.has(i)}
@@ -179,7 +179,7 @@ function EntryDetail({ entry }: { entry: SyncLogEntry }) {
                     className="shrink-0 cursor-pointer"
                   />
                 ) : <div className="w-4 shrink-0" />}
-                <div className={cn("flex items-center justify-center w-6 h-6 rounded-lg shrink-0",
+                <div className={cn("flex items-center justify-center w-6 h-6 rounded-full shrink-0",
                   item.type === "Ingreso" ? "bg-success/10" : "bg-muted")}>
                   {item.type === "Ingreso"
                     ? <ArrowDownCircle className="h-3.5 w-3.5 text-success" />
@@ -201,8 +201,8 @@ function EntryDetail({ entry }: { entry: SyncLogEntry }) {
               onClick={handleDelete}
               disabled={isDeleting}
               size="sm"
-              variant="outline"
-              className="w-full rounded-xl h-8 text-xs"
+              variant="ghost"
+              className="w-full h-8 text-xs"
             >
               {isDeleting ? <Loader2 className="h-3.5 w-3.5 animate-spin mr-1.5" /> : <Trash2 className="h-3.5 w-3.5 mr-1.5" />}
               Eliminar {selectedImported.size} seleccionada{selectedImported.size !== 1 ? "s" : ""}
@@ -233,11 +233,11 @@ function EntryDetail({ entry }: { entry: SyncLogEntry }) {
               </button>
             )}
           </div>
-          <div className="rounded-xl border border-border/50 divide-y divide-border/30 max-h-[180px] overflow-y-auto">
+          <div className="rounded-card border divide-y max-h-[180px] overflow-y-auto">
             {skippedItems.map((item, i) => {
               const isZero = item.reason === "zero_amount";
               return (
-                <div key={i} className={cn("flex items-center gap-2.5 px-3 py-2 text-sm", isZero && "opacity-40")}>
+                <div key={i} className={cn("flex items-center gap-2 px-3 py-2 text-sm", isZero && "opacity-40")}>
                   {!isZero ? (
                     <Checkbox
                       checked={selectedSkipped.has(i)}
@@ -245,7 +245,7 @@ function EntryDetail({ entry }: { entry: SyncLogEntry }) {
                       className="shrink-0 cursor-pointer"
                     />
                   ) : <div className="w-4 shrink-0" />}
-                  <div className={cn("flex items-center justify-center w-6 h-6 rounded-lg shrink-0",
+                  <div className={cn("flex items-center justify-center w-6 h-6 rounded-full shrink-0",
                     item.type === "Ingreso" ? "bg-success/10" : "bg-muted")}>
                     {item.type === "Ingreso"
                       ? <ArrowDownCircle className="h-3.5 w-3.5 text-success" />
@@ -255,7 +255,7 @@ function EntryDetail({ entry }: { entry: SyncLogEntry }) {
                     <p className="truncate text-xs font-medium">{item.description}</p>
                     <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
                       <span>{formatMovDate(item.date)}</span>
-                      <span className="px-1 py-0.5 rounded bg-muted text-xs">
+                      <span className="px-1 py-0.5 rounded-full bg-muted text-xs">
                         {SKIP_REASON_LABELS[item.reason] ?? "Omitida"}
                       </span>
                     </div>
@@ -273,8 +273,8 @@ function EntryDetail({ entry }: { entry: SyncLogEntry }) {
               onClick={handleImport}
               disabled={isImporting}
               size="sm"
-              variant="outline"
-              className="w-full rounded-xl h-8 text-xs"
+              variant="ghost"
+              className="w-full h-8 text-xs"
             >
               {isImporting ? <Loader2 className="h-3.5 w-3.5 animate-spin mr-1.5" /> : <Plus className="h-3.5 w-3.5 mr-1.5" />}
               Importar {selectedSkipped.size} seleccionada{selectedSkipped.size !== 1 ? "s" : ""}
@@ -314,13 +314,13 @@ function LogEntryRow({ entry }: { entry: SyncLogEntry }) {
   const timeLabel = syncDate.toLocaleTimeString("es-CL", { hour: "2-digit", minute: "2-digit" });
 
   return (
-    <div className="rounded-xl border border-border/50 bg-card overflow-hidden">
+    <div className="rounded-card border bg-card overflow-hidden">
       <button
         type="button"
         onClick={() => hasDetail && setExpanded((v) => !v)}
         className={cn(
           "w-full flex items-center gap-3 p-3 text-left",
-          hasDetail && "cursor-pointer hover:bg-accent/40 transition-colors",
+          hasDetail && "cursor-pointer transition-colors",
         )}
       >
         {bank && <BankLogo bank={bank} size="sm" />}
@@ -328,7 +328,7 @@ function LogEntryRow({ entry }: { entry: SyncLogEntry }) {
           <div className="flex items-center gap-2">
             <p className="text-sm font-medium">{bank?.label ?? entry.bank}</p>
             {entry.trigger === "cron" && (
-              <span className="text-xs px-1.5 py-0.5 rounded bg-muted text-muted-foreground">Auto</span>
+              <span className="text-xs px-1.5 py-0.5 rounded-full bg-muted text-muted-foreground">Auto</span>
             )}
           </div>
           <p className="text-xs text-muted-foreground">{dateLabel} · {timeLabel}</p>
@@ -355,7 +355,7 @@ function LogEntryRow({ entry }: { entry: SyncLogEntry }) {
       </button>
 
       {expanded && hasDetail && (
-        <div className="px-3 pb-3 border-t border-border/40">
+        <div className="px-3 pb-3 border-t">
           <EntryDetail entry={entry} />
         </div>
       )}
@@ -385,7 +385,7 @@ export function BankSyncHistory() {
 
   if (isLoading) {
     return (
-      <div className="flex items-center justify-center py-10">
+      <div className="flex items-center justify-center py-8">
         <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
       </div>
     );

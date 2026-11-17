@@ -78,7 +78,7 @@ export function PeriodSettingsDialog() {
         </div>
       }
     >
-      <div className="space-y-5">
+      <div className="space-y-4">
         <div className="flex flex-wrap gap-2">
           {QUICK.map((q) => (
             <button
@@ -127,7 +127,7 @@ export function PeriodSettingsDialog() {
           </label>
         </div>
 
-        <div className="rounded-xl bg-muted/50 p-3 text-sm">
+        <div className="rounded-card p-3 text-sm">
           <div className="mb-2 flex items-center gap-2 text-xs font-medium text-muted-foreground">
             <CalendarRange className="size-3.5" /> Así se verán tus meses
           </div>

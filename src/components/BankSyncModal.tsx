@@ -303,9 +303,8 @@ export function BankSyncModal({
       <div className="flex gap-3">
         <Button
           type="button"
-          variant="outline"
+          variant="ghost"
           onClick={() => onOpenChange(false)}
-          size="cta"
           className="flex-1"
         >
           Cancelar
@@ -314,7 +313,6 @@ export function BankSyncModal({
           type="submit"
           form={FORM_ID}
           disabled={syncStep === "submitting" || (!storedCred && (!rut || !rutValid || !password))}
-          size="cta"
           className="flex-1"
           style={{ backgroundColor: selectedBank.color, borderColor: selectedBank.color }}
         >
@@ -327,8 +325,7 @@ export function BankSyncModal({
       <Button
         variant="ghost"
         onClick={() => onOpenChange(false)}
-        size="cta"
-        className="text-xs font-normal text-muted-foreground"
+        className="w-full text-xs font-normal text-muted-foreground"
       >
         Minimizar — sigue corriendo en segundo plano
       </Button>
@@ -336,20 +333,19 @@ export function BankSyncModal({
     : activeStep === "result" && result && "error" in result ? (
       <div className="flex gap-3">
         <Button
-          variant="outline"
+          variant="ghost"
           onClick={() => onOpenChange(false)}
-          size="cta"
           className="flex-1"
         >
           Cerrar
         </Button>
-        <Button onClick={handleRetry} size="cta" className="flex-1">
+        <Button onClick={handleRetry} className="flex-1">
           Reintentar
         </Button>
       </div>
     )
     : activeStep === "result" && result ? (
-      <Button onClick={handleClose} size="cta">Listo</Button>
+      <Button onClick={handleClose} className="w-full">Listo</Button>
     )
     : undefined;
 
@@ -364,7 +360,7 @@ export function BankSyncModal({
     >
       {/* ── Tab bar (only when not syncing) ─────────────────────────────── */}
       {!isSyncing && (
-        <div className="flex gap-1 p-1 rounded-xl bg-muted/50 mb-4">
+        <div className="flex gap-1 p-1 rounded-full mb-4">
           {(
             [
               { id: "sync" as ModalTab, label: "Sincronizar" },
@@ -377,9 +373,9 @@ export function BankSyncModal({
               type="button"
               onClick={() => { setTab(id); if (id === "sync") onReset(); }}
               className={cn(
-                "flex-1 flex items-center justify-center gap-1.5 py-1.5 text-xs font-medium rounded-lg transition-all cursor-pointer",
+                "flex-1 flex items-center justify-center gap-1.5 py-1.5 text-xs font-medium rounded-full transition-all cursor-pointer",
                 tab === id
-                  ? "bg-background text-foreground shadow-sm"
+                  ? "bg-background text-foreground"
                   : "text-muted-foreground hover:text-foreground",
               )}
             >
@@ -405,7 +401,7 @@ export function BankSyncModal({
         <>
           {/* ── STEP 1: Form ───────────────────────────────────────────── */}
           {activeStep === "form" && !selectedBank && (
-            <div className="grid grid-cols-2 gap-2.5 pt-1">
+            <div className="grid grid-cols-2 gap-2 pt-1">
               {BANKS.map((b) => {
                 const isConfigured = existingCredentials?.some((c) => c.bank === b.value);
                 return (
@@ -414,11 +410,9 @@ export function BankSyncModal({
                     type="button"
                     onClick={() => setBank(b.value)}
                     className={cn(
-                      "group relative flex items-center gap-3 p-3 rounded-xl",
+                      "group relative flex items-center gap-3 p-3 rounded-card",
                       "border bg-card transition-all duration-200 cursor-pointer",
                       "focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-1",
-                      !isConfigured && "border-border/50",
-                      "hover:bg-accent/50",
                     )}
                   >
                     <BankLogo bank={b} size="sm" />
@@ -437,20 +431,22 @@ export function BankSyncModal({
           )}
 
           {activeStep === "form" && selectedBank && (
-            <form id={FORM_ID} onSubmit={handleSubmit} className="space-y-5 pt-1">
+            <form id={FORM_ID} onSubmit={handleSubmit} className="space-y-4 pt-1">
               {/* ── Dynamic bank header ─────────────────────────────────── */}
               <div
-                className="relative flex items-center gap-4 p-4 rounded-2xl overflow-hidden"
+                className="relative flex items-center gap-4 p-4 rounded-card overflow-hidden"
                 style={{ background: `linear-gradient(135deg, ${selectedBank.color}18 0%, ${selectedBank.color}08 100%)` }}
               >
                 <div className="absolute -top-8 -left-8 w-24 h-24 rounded-full blur-2xl opacity-30" style={{ backgroundColor: selectedBank.color }} />
-                <button
+                <Button
                   type="button"
+                  variant="ghost"
+                  size="icon"
                   onClick={() => setBank("")}
-                  className="relative z-10 flex items-center justify-center w-8 h-8 rounded-lg bg-background/80 backdrop-blur-sm hover:bg-background transition-colors shrink-0 cursor-pointer"
+                  className="relative z-10 size-8 shrink-0 backdrop-blur-sm hover:bg-background"
                 >
-                  <ChevronLeft className="h-4 w-4 text-muted-foreground" />
-                </button>
+                  <ChevronLeft className="text-muted-foreground" />
+                </Button>
                 <div className="relative z-10">
                   <BankLogo bank={selectedBank} size="md" />
                 </div>
@@ -470,7 +466,7 @@ export function BankSyncModal({
 
               {/* ── Stored credentials notice ────────────────────────────── */}
               {storedCred && (
-                <div className="flex items-start gap-3 p-3 rounded-xl border">
+                <div className="flex items-start gap-3 p-3 rounded-card border">
                   <Lock className="h-4 w-4 text-muted-foreground shrink-0 mt-0.5" />
                   <div className="flex-1 min-w-0">
                     <p className="text-sm font-medium">Credenciales guardadas</p>
@@ -484,10 +480,10 @@ export function BankSyncModal({
               {/* ── Credentials (only when no stored creds) ─────────────── */}
               {!storedCred && (
                 <div className="relative">
-                  <div className="absolute -inset-[1px] rounded-2xl opacity-40" style={{ background: `linear-gradient(135deg, ${selectedBank.color}50, transparent 50%, ${selectedBank.color}20)` }} />
-                  <div className="relative rounded-2xl bg-background/95 backdrop-blur-xl p-4 space-y-4">
-                    <div className="flex items-center gap-2.5">
-                      <div className="flex items-center justify-center w-7 h-7 rounded-lg" style={{ backgroundColor: `${selectedBank.color}15` }}>
+                  <div className="absolute -inset-[1px] rounded-card opacity-40" style={{ background: `linear-gradient(135deg, ${selectedBank.color}50, transparent 50%, ${selectedBank.color}20)` }} />
+                  <div className="relative rounded-card backdrop-blur-xl p-4 space-y-4">
+                    <div className="flex items-center gap-2">
+                      <div className="flex items-center justify-center w-7 h-7 rounded-full" style={{ backgroundColor: `${selectedBank.color}15` }}>
                         <Lock className="h-3.5 w-3.5" style={{ color: selectedBank.color }} />
                       </div>
                       <div>
@@ -506,7 +502,7 @@ export function BankSyncModal({
                         onBlur={() => setRutTouched(true)}
                         required
                         autoComplete="username"
-                        className={cn("rounded-xl h-10 bg-muted/30 border-border/40", showRutError && "border-destructive focus-visible:ring-destructive")}
+                        className={cn("rounded-card h-10 bg-transparent border-border", showRutError && "border-destructive focus-visible:ring-destructive")}
                       />
                       {showRutError && <p className="text-xs text-destructive">RUT inválido</p>}
                     </div>
@@ -522,7 +518,7 @@ export function BankSyncModal({
                           onChange={(e) => setPassword(e.target.value)}
                           required
                           autoComplete="current-password"
-                          className="rounded-xl pr-10 h-10 bg-muted/30 border-border/40"
+                          className="rounded-card pr-10 h-10 bg-transparent border-border"
                         />
                         <Button
                           type="button"
@@ -547,19 +543,16 @@ export function BankSyncModal({
                   <span className="text-muted-foreground font-normal">(opcional)</span>
                 </Label>
                 <div className="flex items-center gap-2">
-                  <DateTimePicker value={fromDate} onChange={(d) => setFromDate(d)} showTime={false} placeholder="Desde" className="flex-1 rounded-xl h-10" maxDate={toDate || new Date()} />
+                  <DateTimePicker value={fromDate} onChange={(d) => setFromDate(d)} showTime={false} placeholder="Desde" className="flex-1 rounded-card h-10" maxDate={toDate || new Date()} />
                   <span className="text-xs text-muted-foreground shrink-0">→</span>
-                  <DateTimePicker value={toDate} onChange={(d) => setToDate(d)} showTime={false} placeholder="Hasta" className="flex-1 rounded-xl h-10" minDate={fromDate} maxDate={new Date()} />
+                  <DateTimePicker value={toDate} onChange={(d) => setToDate(d)} showTime={false} placeholder="Hasta" className="flex-1 rounded-card h-10" minDate={fromDate} maxDate={new Date()} />
                 </div>
                 <p className="text-xs text-muted-foreground">Si no se indica, se importan todos los movimientos disponibles.</p>
               </div>
 
               {/* ── Save credentials for auto-sync ──────────────────────── */}
               {!hasCredentialsForBank && (
-                <div className={cn(
-                  "rounded-xl border p-3 space-y-3 transition-colors",
-                  !saveCredentials && "border-border/50 bg-muted/20",
-                )}>
+                <div className="rounded-card border p-3 space-y-3 transition-colors">
                   <div className="flex items-start gap-3">
                     <Checkbox
                       id="save-creds"
@@ -592,7 +585,7 @@ export function BankSyncModal({
                             }
                           }}
                         >
-                          <SelectTrigger className="h-8 text-xs rounded-lg flex-1">
+                          <SelectTrigger className="h-8 text-xs rounded-card flex-1">
                             <SelectValue />
                           </SelectTrigger>
                           <SelectContent>
@@ -608,7 +601,7 @@ export function BankSyncModal({
                             value={String(getCustomHour(syncSchedule))}
                             onValueChange={(h) => setSyncSchedule(`custom_${h.padStart(2, "0")}` as SyncScheduleId)}
                           >
-                            <SelectTrigger className="h-8 text-xs rounded-lg w-20 shrink-0">
+                            <SelectTrigger className="h-8 text-xs rounded-card w-20 shrink-0">
                               <SelectValue />
                             </SelectTrigger>
                             <SelectContent>
@@ -630,7 +623,7 @@ export function BankSyncModal({
 
           {/* ── STEP 2: Polling ─────────────────────────────────────────── */}
           {activeStep === "polling" && (
-            <div className="flex flex-col items-center justify-center py-10 space-y-6">
+            <div className="flex flex-col items-center justify-center py-8 space-y-6">
               {pollStatus === "awaiting_2fa" ? (
                 <div className="flex flex-col items-center space-y-4">
                   <div className="relative flex items-center justify-center h-20 w-20">
@@ -655,7 +648,7 @@ export function BankSyncModal({
                     <p className="text-sm font-medium">Conectando con tu banco</p>
                     <p className="text-sm text-muted-foreground">{STATUS_MESSAGES[pollStatus] ?? "Procesando..."}</p>
                   </div>
-                  <p className="text-xs text-muted-foreground/60">Esto puede tardar hasta 90 segundos</p>
+                  <p className="text-xs">Esto puede tardar hasta 90 segundos</p>
                 </div>
               )}
             </div>
@@ -665,7 +658,7 @@ export function BankSyncModal({
           {activeStep === "result" && result && (
             <div className="space-y-4">
               {"error" in result ? (
-                <div className="flex flex-col items-center py-8 space-y-5">
+                <div className="flex flex-col items-center py-8 space-y-4">
                   <XCircle className="h-14 w-14 text-destructive" />
                   <div className="text-center space-y-1">
                     <p className="text-xl font-medium">Error en la sincronización</p>
@@ -713,7 +706,7 @@ export function BankSyncModal({
 
                   {/* Auto-sync confirmation message */}
                   {credentialsSaved && syncSchedule !== "disabled" && (
-                    <div className="flex items-start gap-2.5 p-3 rounded-xl border">
+                    <div className="flex items-start gap-2 p-3 rounded-card border">
                       <CalendarClock className="h-4 w-4 text-muted-foreground shrink-0 mt-0.5" />
                       <div className="text-xs text-muted-foreground leading-relaxed">
                         <span className="font-medium text-foreground">Auto-sync activado.</span>{" "}
@@ -738,15 +731,15 @@ export function BankSyncModal({
                           </button>
                         )}
                       </div>
-                      <div className="rounded-xl border border-border/50 divide-y divide-border/30 max-h-[200px] overflow-y-auto">
+                      <div className="rounded-card border divide-y max-h-[200px] overflow-y-auto">
                         {result.importedItems.map((item, i) => (
-                          <div key={i} className="flex items-center gap-3 px-3 py-2.5 text-sm">
+                          <div key={i} className="flex items-center gap-3 px-3 py-2 text-sm">
                             {item.id ? (
                               <Checkbox checked={selectedImported.has(i)} onCheckedChange={() => toggleImported(i)} className="shrink-0 cursor-pointer" />
                             ) : (
                               <div className="w-4 shrink-0" />
                             )}
-                            <div className={cn("flex items-center justify-center w-7 h-7 rounded-lg shrink-0", item.type === "Ingreso" ? "bg-success/10" : "bg-muted")}>
+                            <div className={cn("flex items-center justify-center w-7 h-7 rounded-full shrink-0", item.type === "Ingreso" ? "bg-success/10" : "bg-muted")}>
                               {item.type === "Ingreso" ? <ArrowDownCircle className="h-4 w-4 text-success" /> : <ArrowUpCircle className="h-4 w-4 text-muted-foreground" />}
                             </div>
                             <div className="flex-1 min-w-0">
@@ -760,7 +753,7 @@ export function BankSyncModal({
                         ))}
                       </div>
                       {selectedImported.size > 0 && (
-                        <Button onClick={handleDeleteSelected} disabled={isDeleting} className="w-full rounded-xl h-10" variant="outline">
+                        <Button onClick={handleDeleteSelected} disabled={isDeleting} className="w-full h-10" variant="ghost">
                           {isDeleting ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Trash2 className="h-4 w-4 mr-2" />}
                           Eliminar {selectedImported.size} seleccionada{selectedImported.size !== 1 ? "s" : ""}
                         </Button>
@@ -786,20 +779,20 @@ export function BankSyncModal({
                           </button>
                         )}
                       </div>
-                      <div className="rounded-xl border border-border/50 divide-y divide-border/30 max-h-[200px] overflow-y-auto">
+                      <div className="rounded-card border divide-y max-h-[200px] overflow-y-auto">
                         {result.skippedItems.map((item, i) => {
                           const isZero = item.reason === "zero_amount";
                           return (
-                            <div key={i} className={cn("flex items-center gap-3 px-3 py-2.5 text-sm", isZero && "opacity-40")}>
+                            <div key={i} className={cn("flex items-center gap-3 px-3 py-2 text-sm", isZero && "opacity-40")}>
                               {!isZero ? <Checkbox checked={selectedSkipped.has(i)} onCheckedChange={() => toggleSkipped(i)} className="shrink-0 cursor-pointer" /> : <div className="w-4 shrink-0" />}
-                              <div className={cn("flex items-center justify-center w-7 h-7 rounded-lg shrink-0", item.type === "Ingreso" ? "bg-success/10" : "bg-muted")}>
+                              <div className={cn("flex items-center justify-center w-7 h-7 rounded-full shrink-0", item.type === "Ingreso" ? "bg-success/10" : "bg-muted")}>
                                 {item.type === "Ingreso" ? <ArrowDownCircle className="h-4 w-4 text-success" /> : <ArrowUpCircle className="h-4 w-4 text-muted-foreground" />}
                               </div>
                               <div className="flex-1 min-w-0">
                                 <p className="truncate font-medium text-sm">{item.description}</p>
                                 <div className="flex items-center gap-2 text-xs text-muted-foreground">
                                   <span>{formatMovDate(item.date)}</span>
-                                  <span className="px-1.5 py-0.5 rounded bg-muted text-xs font-medium">{SKIP_REASON_LABELS[item.reason ?? ""] ?? "Omitida"}</span>
+                                  <span className="px-1.5 py-0.5 rounded-full bg-muted text-xs font-medium">{SKIP_REASON_LABELS[item.reason ?? ""] ?? "Omitida"}</span>
                                 </div>
                               </div>
                               <span className={cn("text-sm font-medium tabular-nums shrink-0", item.type === "Ingreso" ? "text-success" : "text-foreground")}>
@@ -810,7 +803,7 @@ export function BankSyncModal({
                         })}
                       </div>
                       {selectedSkipped.size > 0 && (
-                        <Button onClick={handleImportSelected} disabled={isImporting} className="w-full rounded-xl h-10" variant="outline">
+                        <Button onClick={handleImportSelected} disabled={isImporting} className="w-full h-10" variant="ghost">
                           {isImporting ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Plus className="h-4 w-4 mr-2" />}
                           Importar {selectedSkipped.size} seleccionada{selectedSkipped.size !== 1 ? "s" : ""}
                         </Button>

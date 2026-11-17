@@ -16,6 +16,19 @@ export default {
   		xl: ['var(--fs-3)', { lineHeight: '1.75rem' }],
   		hero: ['var(--fs-hero)', { lineHeight: '1' }]
   	},
+  	// Dos radios: `card` para superficies (tarjetas, paneles, hojas, diálogos,
+  	// popovers, inputs) y `full` para todo lo que se toca o marca (botones,
+  	// chips, avatares, barras de progreso, puntos).
+  	borderRadius: {
+  		none: '0',
+  		card: 'var(--radius-card)',
+  		full: '9999px'
+  	},
+  	// Una sola sombra, y solo para lo que flota sobre el contenido.
+  	boxShadow: {
+  		none: 'none',
+  		float: 'var(--shadow-float)'
+  	},
   	fontWeight: {
   		normal: '400',
   		medium: '500'
@@ -130,11 +143,6 @@ export default {
 				'4': 'var(--chart-4)',
 				'5': 'var(--chart-5)'
 			}
-  		},
-  		borderRadius: {
-  			lg: 'var(--radius)',
-  			md: 'calc(var(--radius) - 2px)',
-  			sm: 'calc(var(--radius) - 4px)'
   		},
   	}
   },

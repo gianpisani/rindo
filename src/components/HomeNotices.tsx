@@ -61,7 +61,7 @@ function DismissButton({
       }}
       aria-label="Cerrar aviso"
       className={cn(
-        "shrink-0 text-muted-foreground/60 transition-colors hover:text-foreground",
+        "shrink-0 transition-colors hover:text-foreground",
         className
       )}
     >
@@ -76,7 +76,7 @@ function NoticePill({ notice }: { notice: HomeNotice }) {
   return (
     <div
       className={cn(
-        "flex h-7 items-center gap-1.5 rounded-full border pl-2.5 pr-2 transition-colors",
+        "flex h-7 items-center gap-1.5 rounded-full border pl-2 pr-2 transition-colors",
         tone.pill
       )}
     >
@@ -98,11 +98,11 @@ function NoticePill({ notice }: { notice: HomeNotice }) {
 function NoticeRow({ notice }: { notice: HomeNotice }) {
   const tone = tones[notice.tone];
   return (
-    <div className="flex items-start gap-2.5 rounded-lg px-2 py-2 transition-colors hover:bg-muted/50">
+    <div className="flex items-start gap-2 rounded-card px-2 py-2 transition-colors">
       <button
         type="button"
         onClick={notice.onClick}
-        className="flex min-w-0 flex-1 items-start gap-2.5 text-left focus-visible:outline-none"
+        className="flex min-w-0 flex-1 items-start gap-2 text-left focus-visible:outline-none"
       >
         <notice.icon className={cn("mt-0.5 h-4 w-4 shrink-0", tone.icon)} />
         <span className="min-w-0">
@@ -114,7 +114,7 @@ function NoticeRow({ notice }: { notice: HomeNotice }) {
           </span>
         </span>
         {notice.onClick && (
-          <ChevronRight className="mt-0.5 h-3.5 w-3.5 shrink-0 text-muted-foreground/50" />
+          <ChevronRight className="mt-0.5 h-3.5 w-3.5 shrink-0" />
         )}
       </button>
       {notice.onDismiss && (
@@ -141,7 +141,7 @@ function NoticeCounter({
           type="button"
           aria-label={`${notices.length} ${notices.length === 1 ? "aviso" : "avisos"}`}
           className={cn(
-            "flex h-7 items-center gap-1.5 rounded-full border px-2.5 transition-colors",
+            "flex h-7 items-center gap-1.5 rounded-full border px-2 transition-colors",
             tones[tone].pill,
             className
           )}

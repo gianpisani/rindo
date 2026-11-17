@@ -85,10 +85,10 @@ export function DateTimePicker({
     <Popover open={open} onOpenChange={setOpen}>
       <PopoverTrigger asChild>
         <Button
-          variant="outline"
+          variant="ghost"
           disabled={disabled}
           className={cn(
-            "justify-start text-left font-normal",
+            "justify-start text-left font-normal rounded-card border border-input",
             !internalDate && "text-muted-foreground",
             className
           )}
@@ -111,14 +111,14 @@ export function DateTimePicker({
             onSelect={handleDateSelect}
             locale={es}
             initialFocus
-            className="rounded-t-md border-b"
+            className="rounded-t-card border-b"
             disabled={[
               ...(maxDate ? [{ after: maxDate }] : []),
               ...(minDate ? [{ before: minDate }] : []),
             ]}
           />
           {showTime && (
-            <div className="p-3 border-t bg-muted/30">
+            <div className="p-3 border-t">
               <div className="flex items-center gap-2">
                 <Input
                   type="time"
@@ -200,8 +200,8 @@ export function InlineDateTimePicker({
         <button
           disabled={disabled}
           className={cn(
-            "inline-flex items-center gap-1.5 px-2 py-1 rounded-md text-sm font-medium",
-            "hover:bg-muted/80 transition-colors cursor-pointer",
+            "inline-flex items-center gap-1.5 px-2 py-1 rounded-full text-sm font-medium",
+            "transition-colors cursor-pointer",
             "focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-1",
             "group whitespace-nowrap"
           )}
@@ -227,10 +227,10 @@ export function InlineDateTimePicker({
             onSelect={handleDateSelect}
             locale={es}
             initialFocus
-            className="rounded-t-md"
+            className="rounded-t-card"
           />
           {showTime && (
-            <div className="p-3 border-t bg-muted/30">
+            <div className="p-3 border-t">
               <div className="flex items-center gap-2">
                 <Input
                   type="time"

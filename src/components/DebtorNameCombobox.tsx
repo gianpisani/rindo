@@ -67,7 +67,7 @@ export function DebtorNameCombobox({
               key={name}
               type="button"
               className={cn(
-                "flex w-full items-center gap-2 rounded-lg px-2.5 py-2 text-left text-sm",
+                "flex w-full items-center gap-2 rounded-card px-2 py-2 text-left text-sm",
                 "hover:bg-accent transition-colors"
               )}
               onMouseDown={(e) => e.preventDefault()}

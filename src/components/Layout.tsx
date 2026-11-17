@@ -132,7 +132,7 @@ export default function Layout({ children, fit = false }: LayoutProps) {
 
         <SidebarInset className={cn(fit && "h-svh")}>
           {/* Top Bar with Trigger and Actions */}
-          <header className="sticky top-0 z-40 flex h-14 shrink-0 items-center gap-2 border-b border-border/40 shadow-[0_1px_2px_-1px_rgba(0,0,0,0.06)] bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 px-4">
+          <header className="sticky top-0 z-40 flex h-14 shrink-0 items-center gap-2 border-b backdrop-blur px-4">
             {!isMobile && <SidebarTrigger className="-ml-1" />}
             {/* En escritorio el logo ya está arriba de la barra lateral. */}
             {isMobile && (
@@ -151,7 +151,7 @@ export default function Layout({ children, fit = false }: LayoutProps) {
                     "ml-auto rounded-full h-8 w-8 p-0 transition-all duration-200",
                     isPrivacyMode
                       ? "bg-muted text-foreground"
-                      : "bg-muted/10 text-muted-foreground hover:bg-muted hover:text-foreground"
+                      : "text-muted-foreground hover:bg-muted hover:text-foreground"
                   )}
                 >
                   {isPrivacyMode ? (

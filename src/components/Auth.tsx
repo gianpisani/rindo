@@ -195,7 +195,7 @@ function FloatingActivity() {
               top: "-50px",
             }}
           >
-            <div className="flex items-center gap-2.5 pl-2.5 pr-3.5 py-2 rounded-2xl border border-white/[0.08] bg-gradient-to-r from-white/[0.04] to-white/[0.02] backdrop-blur-md shadow-[0_4px_20px_rgba(0,0,0,0.3)]">
+            <div className="flex items-center gap-2 pl-2 pr-3 py-2 rounded-card border border-white/[0.08] bg-gradient-to-r from-white/[0.04] to-white/[0.02] backdrop-blur-md">
               <span className="text-sm leading-none shrink-0">{card.item.icon}</span>
               <div className="flex flex-col gap-0.5">
                 <span className="text-xs text-white/50 font-medium leading-none whitespace-nowrap">
@@ -273,7 +273,7 @@ function BankStrip() {
             src={`/banks/${bank.value}.png`}
             alt={bank.label}
             title={bank.label}
-            className="w-6 h-6 rounded-md object-contain opacity-40 hover:opacity-60 transition-opacity duration-300"
+            className="w-6 h-6 rounded-card object-contain opacity-40 hover:opacity-60 transition-opacity duration-300"
           />
         ))}
       </div>
@@ -372,13 +372,13 @@ export default function Auth() {
           initial={{ opacity: 0, y: -12 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.8, ease: "easeOut" }}
-          className="text-center mb-10"
+          className="text-center mb-8"
         >
           <motion.div
             initial={{ opacity: 0, scale: 0.8 }}
             animate={{ opacity: 1, scale: 1 }}
             transition={{ duration: 0.6, delay: 0.1 }}
-            className="mb-5"
+            className="mb-4"
           >
             <RindoLogo size={56} className="text-white mx-auto" />
           </motion.div>
@@ -417,7 +417,7 @@ export default function Auth() {
               exit="exit"
               transition={{ duration: 0.3, ease: "easeInOut" }}
               onSubmit={handleAuth}
-              className="space-y-5"
+              className="space-y-4"
             >
               {/* Email */}
               <div className="space-y-2">
@@ -432,7 +432,7 @@ export default function Auth() {
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
                     onKeyDown={handleEmailKeyDown}
-                    className="h-12 bg-white/[0.03] border-white/[0.08] text-white placeholder:text-white/15 rounded-xl focus-visible:ring-1 focus-visible:ring-white/20 focus-visible:border-white/15 focus-visible:bg-white/[0.05] transition-all duration-300"
+                    className="h-12 bg-white/[0.03] border-white/[0.08] text-white placeholder:text-white/15 rounded-card focus-visible:ring-1 focus-visible:ring-white/20 focus-visible:border-white/15 focus-visible:bg-white/[0.05] transition-all duration-300"
                     required
                     autoComplete="email"
                   />
@@ -455,7 +455,7 @@ export default function Auth() {
                         key={domain}
                         type="button"
                         onClick={() => handleDomainChipClick(domain)}
-                        className="px-2.5 py-1 text-xs rounded-full bg-white/[0.04] border border-white/[0.08] text-white/30 hover:bg-white/[0.08] hover:text-white/50 active:bg-white/[0.1] active:text-white/60 transition-colors"
+                        className="px-2 py-1 text-xs rounded-full bg-white/[0.04] border border-white/[0.08] text-white/30 hover:bg-white/[0.08] hover:text-white/50 active:bg-white/[0.1] active:text-white/60 transition-colors"
                       >
                         @{domain}
                       </button>
@@ -475,7 +475,7 @@ export default function Auth() {
                   placeholder="••••••••"
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
-                  className="h-12 bg-white/[0.03] border-white/[0.08] text-white placeholder:text-white/15 rounded-xl focus-visible:ring-1 focus-visible:ring-white/20 focus-visible:border-white/15 focus-visible:bg-white/[0.05] transition-all duration-300"
+                  className="h-12 bg-white/[0.03] border-white/[0.08] text-white placeholder:text-white/15 rounded-card focus-visible:ring-1 focus-visible:ring-white/20 focus-visible:border-white/15 focus-visible:bg-white/[0.05] transition-all duration-300"
                   required
                   autoComplete={isLogin ? "current-password" : "new-password"}
                   minLength={6}
@@ -489,7 +489,7 @@ export default function Auth() {
               <div className="pt-2">
                 <Button
                   type="submit"
-                  className="w-full h-12 font-medium rounded-xl transition-all duration-300 bg-white text-black hover:bg-white/90 hover:shadow-[0_0_40px_rgba(255,255,255,0.15)]"
+                  className="w-full h-12 font-medium transition-all duration-300 bg-white text-black hover:bg-white/90"
                   disabled={loading}
                 >
                   {loading
@@ -540,7 +540,7 @@ export default function Auth() {
                     transition={{ duration: 0.4, delay: 0.7 }}
                     className="pt-4 space-y-3"
                   >
-                    <div className="flex items-start gap-2 text-xs text-white/25 text-left bg-white/[0.03] border border-white/[0.06] p-3 rounded-xl">
+                    <div className="flex items-start gap-2 text-xs text-white/25 text-left bg-white/[0.03] border border-white/[0.06] p-3 rounded-card">
                       <CheckCircle className="h-4 w-4 mt-0.5 flex-shrink-0 text-white/40" />
                       <span>Revisa tu bandeja de entrada (y spam por si acaso)</span>
                     </div>
@@ -551,8 +551,8 @@ export default function Auth() {
                         setIsLogin(true);
                         setLoading(false);
                       }}
-                      variant="outline"
-                      className="w-full h-11 rounded-xl border-white/[0.08] text-white/30 hover:text-white/60 hover:border-white/15 bg-transparent"
+                      variant="ghost"
+                      className="w-full h-11 border border-white/[0.08] text-white/30 hover:text-white/60 hover:border-white/15 bg-transparent"
                     >
                       Volver al inicio de sesión
                     </Button>
@@ -586,7 +586,7 @@ export default function Auth() {
         )}
 
         {/* ── Bank logos ────────────────────────────────────────────────────── */}
-        <div className="mt-10">
+        <div className="mt-8">
           <BankStrip />
         </div>
 

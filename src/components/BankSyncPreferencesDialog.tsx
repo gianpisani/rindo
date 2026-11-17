@@ -53,14 +53,14 @@ export function BankSyncPreferencesDialog({ cred, onOpenChange }: BankSyncPrefer
 
             <div className="space-y-4 pt-2">
               <div
-                className="flex items-center justify-between gap-3 rounded-xl border p-3 transition-colors"
+                className="flex items-center justify-between gap-3 rounded-card border p-3 transition-colors"
                 style={
                   cred.is_active
                     ? { borderColor: `${bank.color}4d`, backgroundColor: `${bank.color}0d` }
                     : undefined
                 }
               >
-                <div className="flex items-center gap-2.5">
+                <div className="flex items-center gap-2">
                   <RefreshCw
                     className={cred.is_active ? "h-4 w-4 shrink-0" : "h-4 w-4 shrink-0 text-muted-foreground"}
                     style={{ color: cred.is_active ? bank.color : undefined }}
@@ -85,14 +85,14 @@ export function BankSyncPreferencesDialog({ cred, onOpenChange }: BankSyncPrefer
               </div>
 
               <div
-                className="flex items-center justify-between gap-3 rounded-xl border p-3 transition-colors"
+                className="flex items-center justify-between gap-3 rounded-card border p-3 transition-colors"
                 style={
                   cred.notify_email
                     ? { borderColor: `${bank.color}4d`, backgroundColor: `${bank.color}0d` }
                     : undefined
                 }
               >
-                <div className="flex items-center gap-2.5">
+                <div className="flex items-center gap-2">
                   <Mail
                     className={cred.notify_email ? "h-4 w-4 shrink-0" : "h-4 w-4 shrink-0 text-muted-foreground"}
                     style={{ color: cred.notify_email ? bank.color : undefined }}
@@ -110,8 +110,8 @@ export function BankSyncPreferencesDialog({ cred, onOpenChange }: BankSyncPrefer
                 />
               </div>
 
-              <div className="rounded-xl border border-border/50 p-3 space-y-2">
-                <div className="flex items-center gap-2.5">
+              <div className="rounded-card border p-3 space-y-2">
+                <div className="flex items-center gap-2">
                   <Settings2 className="h-4 w-4 text-muted-foreground shrink-0" />
                   <p className="text-sm font-medium">Horario de sync</p>
                 </div>
@@ -127,7 +127,7 @@ export function BankSyncPreferencesDialog({ cred, onOpenChange }: BankSyncPrefer
                     }}
                     disabled={!cred.is_active}
                   >
-                    <SelectTrigger className="h-8 text-xs rounded-lg flex-1">
+                    <SelectTrigger className="h-8 text-xs rounded-card flex-1">
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
@@ -149,7 +149,7 @@ export function BankSyncPreferencesDialog({ cred, onOpenChange }: BankSyncPrefer
                       }
                       disabled={!cred.is_active}
                     >
-                      <SelectTrigger className="h-8 text-xs rounded-lg w-20 shrink-0">
+                      <SelectTrigger className="h-8 text-xs rounded-card w-20 shrink-0">
                         <SelectValue />
                       </SelectTrigger>
                       <SelectContent>

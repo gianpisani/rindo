@@ -184,7 +184,7 @@ export function ReconciliationCard({ onSuccess }: ReconciliationCardProps = {}) 
           </div>
 
           {/* Diferencia */}
-          <div className={`rounded-lg p-4 mt-2 ${
+          <div className={`rounded-card p-4 mt-2 ${
             !needsReconciliation 
               ? "bg-success/10 border border-success/20" 
               : "bg-destructive/10 border border-destructive/20"
@@ -224,7 +224,7 @@ export function ReconciliationCard({ onSuccess }: ReconciliationCardProps = {}) 
               const categoryName = conciliacionCategory?.name || "Otros";
 
               return (
-                <div className="space-y-3 mt-2 rounded-lg border bg-background p-3 animate-in fade-in slide-in-from-top-2 duration-200">
+                <div className="space-y-3 mt-2 rounded-card border bg-background p-3 animate-in fade-in slide-in-from-top-2 duration-200">
                   <p className="text-xs font-medium text-muted-foreground">Preview de transacción</p>
                   <div className="space-y-1.5 text-sm">
                     <div className="flex items-center justify-between">
@@ -249,7 +249,7 @@ export function ReconciliationCard({ onSuccess }: ReconciliationCardProps = {}) 
                   </div>
                   <div className="flex gap-2 pt-1">
                     <Button
-                      variant="outline"
+                      variant="ghost"
                       size="sm"
                       onClick={() => setShowPreview(false)}
                       className="flex-1"

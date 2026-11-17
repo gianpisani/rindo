@@ -40,9 +40,9 @@ export function EmojiPicker({ value, onSelect }: EmojiPickerProps) {
           key={emoji}
           type="button"
           className={cn(
-            "h-9 w-9 rounded-xl text-xl flex items-center justify-center transition-all duration-100",
+            "h-9 w-9 rounded-card text-xl flex items-center justify-center transition-all duration-100",
             value === emoji
-              ? "bg-foreground/10 ring-2 ring-foreground/30 scale-110"
+              ? "ring-2 scale-110"
               : "hover:bg-muted"
           )}
           onClick={() => onSelect(emoji)}
@@ -84,13 +84,13 @@ export function EmojiPicker({ value, onSelect }: EmojiPickerProps) {
         )
       ) : (
         <Tabs defaultValue={EMOJI_CATEGORIES[0].id}>
-          <TabsList className="w-full h-auto flex gap-0 p-1 bg-muted rounded-xl overflow-x-auto justify-start">
+          <TabsList className="w-full h-auto flex gap-0 p-1 bg-muted rounded-full overflow-x-auto justify-start">
             {EMOJI_CATEGORIES.map((cat) => (
               <TabsTrigger
                 key={cat.id}
                 value={cat.id}
                 title={cat.label}
-                className="h-8 w-8 px-0 flex-shrink-0 rounded-lg text-sm data-[state=active]:bg-background data-[state=active]:shadow-sm"
+                className="h-8 w-8 px-0 flex-shrink-0 rounded-full text-sm data-[state=active]:bg-background"
               >
                 {cat.icon}
               </TabsTrigger>

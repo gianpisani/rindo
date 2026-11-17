@@ -159,7 +159,7 @@ export default function Overview() {
   ));
 
   const loading = isLoading && transactions.length === 0;
-  const cardSkeleton = <div className="flex-1 p-[18px]"><Skeleton className="h-full w-full rounded-xl" /></div>;
+  const cardSkeleton = <div className="flex-1 p-4"><Skeleton className="h-full w-full rounded-card" /></div>;
 
   return (
     <Layout fit>
@@ -194,7 +194,7 @@ export default function Overview() {
             </div>
             {loading ? cardSkeleton : (
               <>
-                <div className="fin-plot" style={{ marginBottom: 10 }}>
+                <div className="fin-plot" style={{ marginBottom: 8 }}>
                   <WorthChart
                     points={history.map((p) => ({ label: monthLabel(p.month), liquido: p.liquido, invertido: p.invertidoAcumulado }))}
                     onHover={setHoverWorth}
@@ -244,10 +244,10 @@ export default function Overview() {
               {loading ? cardSkeleton : (
                 <>
                   {/* En celular el encabezado va oculto: el mes activo se lee acá */}
-                  <div className={cn("px-[18px] pt-2 text-xs text-muted-foreground inicio-num sm:hidden", isPrivacyMode && "privacy-blur")}>
+                  <div className={cn("px-4 pt-2 text-xs text-muted-foreground inicio-num sm:hidden", isPrivacyMode && "privacy-blur")}>
                     {hovered ? `${format(nameOf(hovered.month), "MMM yyyy", { locale: es })} · +${clpShort(hovered.ingreso)} · −${clpShort(hovered.gasto)}` : "Toca un mes para verlo"}
                   </div>
-                  <div className="fin-plot" style={{ marginBottom: 14 }}>
+                  <div className="fin-plot" style={{ marginBottom: 12 }}>
                     <MonthBars
                       months={history.map((p) => ({
                         key: p.month.toISOString(),
@@ -264,7 +264,7 @@ export default function Overview() {
             </div>
             <div className="fin-trends-body inicio-scroll">
               {/* En celular el encabezado va oculto: aquí se dice una vez qué son los montos */}
-              <div className="px-[18px] pt-2 text-xs text-muted-foreground">promedio al mes</div>
+              <div className="px-4 pt-2 text-xs text-muted-foreground">promedio al mes</div>
               {trendRows}
             </div>
           </section>

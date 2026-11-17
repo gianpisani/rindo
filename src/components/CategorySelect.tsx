@@ -11,6 +11,7 @@ import {
 } from "@/components/ui/command";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { cn } from "@/lib/utils";
+import { Button } from "@/components/ui/button";
 
 export interface CategorySelectOption {
   value: string;
@@ -53,10 +54,10 @@ function CreateCategoryAction({
       type="button"
       onClick={() => onCreate(name)}
       className={cn(
-        "flex w-full items-center gap-2.5 border-border/60 text-left text-foreground transition-colors hover:bg-muted/60",
+        "flex w-full items-center gap-2 text-left text-foreground transition-colors",
         // En mobile va bajo el buscador (la lista no tiene scroll propio);
         // en desktop cierra el popover, bajo la lista.
-        size === "lg" ? "mt-1 gap-3 rounded-xl px-3 py-3 text-sm" : "border-t px-3 py-2.5 text-sm"
+        size === "lg" ? "mt-1 gap-3 rounded-card px-3 py-3 text-sm" : "border-t px-3 py-2 text-sm"
       )}
     >
       <Plus className={cn("shrink-0", size === "lg" ? "h-5 w-5" : "h-4 w-4")} />
@@ -104,7 +105,7 @@ export function CategorySelect({
   );
 
   const triggerClasses = cn(
-    "flex h-10 w-full items-center justify-between rounded-xl border border-input bg-background px-3 text-sm",
+    "flex h-10 w-full items-center justify-between rounded-card border border-input bg-background px-3 text-sm",
     "focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2",
     "disabled:cursor-not-allowed disabled:opacity-50",
     !selected && "text-muted-foreground",
@@ -134,7 +135,7 @@ export function CategorySelect({
         </button>
       </PopoverTrigger>
       <PopoverContent
-        className="w-[var(--radix-popover-trigger-width)] min-w-[220px] rounded-xl border-border/60 p-0 shadow-lg shadow-black/10 dark:shadow-black/30"
+        className="w-[var(--radix-popover-trigger-width)] min-w-[220px] rounded-card p-0"
         align="start"
         sideOffset={4}
       >
@@ -158,7 +159,7 @@ export function CategorySelect({
                     onChange(option.value);
                     setOpen(false);
                   }}
-                  className="flex cursor-pointer items-center gap-2.5 py-2 text-sm"
+                  className="flex cursor-pointer items-center gap-2 py-2 text-sm"
                 >
                   {option.emoji && (
                     <span className="shrink-0 text-sm leading-none">{option.emoji}</span>
@@ -235,14 +236,10 @@ export function CategoryPickerInline({
 
   return (
     <div ref={rootRef} className="pt-1">
-      <button
-        type="button"
-        onClick={onBack}
-        className="mb-2 flex items-center gap-1.5 rounded-lg px-1 py-1 text-sm text-muted-foreground transition-colors hover:text-foreground"
-      >
-        <ArrowLeft className="h-4 w-4" />
+      <Button type="button" variant="ghost" size="sm" onClick={onBack} className="mb-2 gap-2 text-muted-foreground">
+        <ArrowLeft />
         Volver
-      </button>
+      </Button>
       <Command className="bg-transparent">
         <CommandInput
           value={search}
@@ -274,7 +271,7 @@ export function CategoryPickerInline({
                 key={option.value}
                 value={option.label}
                 onSelect={() => onSelect(option.value)}
-                className="flex cursor-pointer items-center gap-3 rounded-xl px-3 py-3 text-sm"
+                className="flex cursor-pointer items-center gap-3 rounded-card px-3 py-3 text-sm"
               >
                 {option.emoji && (
                   <span className="shrink-0 text-xl leading-none">{option.emoji}</span>

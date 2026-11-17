@@ -105,18 +105,18 @@ export function AppSidebar() {
           <SidebarMenuItem>
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
-                <button className="flex items-center gap-2 w-full rounded-md px-2 py-2 text-sm hover:bg-sidebar-accent transition-colors data-[state=open]:bg-sidebar-accent group-data-[collapsible=icon]:!size-8 group-data-[collapsible=icon]:!p-0 group-data-[collapsible=icon]:justify-center">
+                <button className="flex items-center gap-2 w-full rounded-card px-2 py-2 text-sm hover:bg-sidebar-accent transition-colors data-[state=open]:bg-sidebar-accent group-data-[collapsible=icon]:!size-8 group-data-[collapsible=icon]:!p-0 group-data-[collapsible=icon]:justify-center">
                   <div className="flex aspect-square size-8 items-center justify-center shrink-0">
                     <RindoLogo size={28} className="text-foreground" />
                   </div>
                   <div className="grid flex-1 text-left text-sm leading-tight group-data-[collapsible=icon]:hidden">
                     <span className="truncate font-medium">rindo<span className="text-primary">.</span></span>
                   </div>
-                  <ChevronsUpDown className="ml-auto size-4 text-muted-foreground/50 group-data-[collapsible=icon]:hidden" />
+                  <ChevronsUpDown className="ml-auto size-4 group-data-[collapsible=icon]:hidden" />
                 </button>
               </DropdownMenuTrigger>
               <DropdownMenuContent
-                className="w-[--radix-dropdown-menu-trigger-width] min-w-56 rounded-xl"
+                className="w-[--radix-dropdown-menu-trigger-width] min-w-56 rounded-card"
                 align="start"
                 side="bottom"
                 sideOffset={4}
@@ -178,9 +178,9 @@ export function AppSidebar() {
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <button
-                  className="flex items-center gap-2 w-full rounded-md px-2 py-2 text-sm hover:bg-sidebar-accent transition-colors data-[state=open]:bg-sidebar-accent sm:mb-0 mb-4 group-data-[collapsible=icon]:!size-8 group-data-[collapsible=icon]:!p-0 group-data-[collapsible=icon]:justify-center"
+                  className="flex items-center gap-2 w-full rounded-card px-2 py-2 text-sm hover:bg-sidebar-accent transition-colors data-[state=open]:bg-sidebar-accent sm:mb-0 mb-4 group-data-[collapsible=icon]:!size-8 group-data-[collapsible=icon]:!p-0 group-data-[collapsible=icon]:justify-center"
                 >
-                  <div className="rounded-full p-[2px] bg-border shrink-0">
+                  <div className="rounded-full p-0.5 bg-border shrink-0">
                     <Avatar className="size-7">
                       {avatarUrl && <AvatarImage src={avatarUrl} className="object-cover" />}
                       <AvatarFallback className="bg-sidebar text-xs font-medium">
@@ -194,18 +194,18 @@ export function AppSidebar() {
                       {userEmail ?? "Cargando..."}
                     </span>
                   </div>
-                  <ChevronsUpDown className="ml-auto size-4 text-muted-foreground/50 group-data-[collapsible=icon]:hidden" />
+                  <ChevronsUpDown className="ml-auto size-4 group-data-[collapsible=icon]:hidden" />
                 </button>
               </DropdownMenuTrigger>
               <DropdownMenuContent
-                className="w-[--radix-dropdown-menu-trigger-width] min-w-56 rounded-xl max-h-[calc(var(--radix-dropdown-menu-content-available-height)-16px)] overflow-y-auto"
+                className="w-[--radix-dropdown-menu-trigger-width] min-w-56 rounded-card max-h-[calc(var(--radix-dropdown-menu-content-available-height)-16px)] overflow-y-auto"
                 side="top"
                 align="end"
                 sideOffset={4}
               >
                 <DropdownMenuLabel className="p-0 font-normal">
                   <div className="flex items-center gap-3 px-3 py-3">
-                    <div className="rounded-full p-[2px] bg-border shrink-0">
+                    <div className="rounded-full p-0.5 bg-border shrink-0">
                       <Avatar className="size-9">
                         {avatarUrl && <AvatarImage src={avatarUrl} className="object-cover" />}
                         <AvatarFallback className="bg-popover text-sm font-medium">
@@ -241,7 +241,7 @@ export function AppSidebar() {
                 {/* Theme picker */}
                 <div className="px-3 py-2">
                   <span className="text-xs font-medium text-muted-foreground">Tema</span>
-                  <div className="flex items-center gap-1 mt-1.5 p-1 rounded-lg bg-muted/50">
+                  <div className="flex items-center gap-1 mt-1.5 p-1 rounded-full">
                     {([
                       { value: "light", icon: Sun },
                       { value: "dark", icon: Moon },
@@ -251,9 +251,9 @@ export function AppSidebar() {
                         key={value}
                         onClick={() => setTheme(value)}
                         className={cn(
-                          "flex-1 flex items-center justify-center rounded-md py-1.5 transition-all",
+                          "flex-1 flex items-center justify-center rounded-full py-1.5 transition-all",
                           theme === value
-                            ? "bg-muted text-foreground shadow-sm"
+                            ? "bg-muted text-foreground"
                             : "text-muted-foreground hover:text-foreground hover:bg-muted"
                         )}
                       >
@@ -328,8 +328,8 @@ function NavItem({ route, isActive }: { route: RouteConfig; isActive: boolean })
   const item = (
     <div
       className={cn(
-        "relative flex items-center rounded-md text-sm transition-[background-color] duration-150",
-        isActive ? "bg-sidebar-accent text-sidebar-accent-foreground" : "hover:bg-sidebar-accent/50",
+        "relative flex items-center rounded-card text-sm transition-[background-color] duration-150",
+        isActive && "bg-sidebar-accent text-sidebar-accent-foreground",
         isCollapsed && "justify-center",
       )}
     >

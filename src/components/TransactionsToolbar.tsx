@@ -136,7 +136,7 @@ function OptionChip({
       type="button"
       onClick={onClick}
       className={cn(
-        "rounded-full border px-2.5 py-1 text-xs font-medium transition-colors",
+        "rounded-full border px-2 py-1 text-xs font-medium transition-colors",
         active
           ? "bg-muted text-foreground"
           : "border-border text-muted-foreground hover:text-foreground"
@@ -262,7 +262,7 @@ export function TransactionsToolbar({
           {chips.map((chip) => (
             <div
               key={chip.key}
-              className="flex h-7 max-w-[150px] items-center gap-1.5 rounded-full border pl-2.5 pr-2"
+              className="flex h-7 max-w-[150px] items-center gap-1.5 rounded-full border pl-2 pr-2"
             >
               {chip.emoji && (
                 <span className="shrink-0 text-xs leading-none">{chip.emoji}</span>
@@ -272,7 +272,7 @@ export function TransactionsToolbar({
                 type="button"
                 onClick={chip.clear}
                 aria-label={`Quitar filtro ${chip.label}`}
-                className="shrink-0 text-muted-foreground/60 transition-colors hover:text-foreground"
+                className="shrink-0 transition-colors hover:text-foreground"
               >
                 <X className="h-3 w-3" />
               </button>
@@ -285,9 +285,9 @@ export function TransactionsToolbar({
       <Popover>
         <PopoverTrigger asChild>
           <Button
-            variant="outline"
+            variant="ghost"
             size="sm"
-            className="h-10 shrink-0 gap-2"
+            className="h-10 shrink-0 gap-2 border border-input"
           >
             <SlidersHorizontal className="h-4 w-4" />
             <span className="hidden sm:inline">Filtros</span>
@@ -298,7 +298,7 @@ export function TransactionsToolbar({
             )}
           </Button>
         </PopoverTrigger>
-        <PopoverContent align="end" className="w-[300px] space-y-3.5 p-3">
+        <PopoverContent align="end" className="w-[300px] space-y-3 p-3">
           <FilterSection title="Fecha">
             <DateRangeFilter
               value={dateRange}
@@ -358,7 +358,7 @@ export function TransactionsToolbar({
           <FilterSection title="Categoría">
             {/* Lista con buscador: las categorías son muchas y crecen. Va
                 inline (cmdk), no en otro popover. */}
-            <Command className="rounded-lg border border-border/60">
+            <Command className="rounded-card border">
               <CommandInput placeholder="Buscar categoría..." className="h-9" />
               <CommandList className="max-h-[168px]">
                 <CommandEmpty className="py-4 text-center text-xs text-muted-foreground">
@@ -418,9 +418,9 @@ export function TransactionsToolbar({
       <DropdownMenu>
         <DropdownMenuTrigger asChild>
           <Button
-            variant="outline"
+            variant="ghost"
             size="icon"
-            className="h-10 w-10 shrink-0"
+            className="h-10 w-10 shrink-0 border border-input"
             aria-label={isSyncing ? "Más opciones (sincronizando)" : "Más opciones"}
           >
             {isSyncing ? (

@@ -14,6 +14,7 @@ import {
 import { usePeriodConfig } from "@/hooks/usePeriodConfig";
 import { periodShortLabel } from "@/lib/period";
 import { cn } from "@/lib/utils";
+import { Button } from "@/components/ui/button";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { useGlobalDrawers } from "@/hooks/useGlobalDrawers";
 import { useSoundFX } from "@/hooks/useSoundFX";
@@ -37,9 +38,9 @@ function RouteIcon({ route, className }: { route: RouteConfig; className?: strin
 
 // Todas las filas de la hoja "Más" se ven igual: ícono chico + texto.
 const rowClass =
-  "flex w-full items-center gap-3 px-3 py-2 rounded-xl text-left active:bg-muted/50 transition-colors";
+  "flex w-full items-center gap-3 px-3 py-2 rounded-card text-left transition-colors";
 const rowIconClass =
-  "size-8 rounded-full bg-muted/80 dark:bg-muted/50 grid place-items-center shrink-0 text-muted-foreground";
+  "size-8 rounded-full grid place-items-center shrink-0 text-muted-foreground";
 
 export function MobileBottomBar() {
   const isMobile = useIsMobile();
@@ -161,7 +162,7 @@ export function MobileBottomBar() {
                   to={route.url}
                   onClick={() => setDrawerOpen(false)}
                   aria-current={isActive ? "page" : undefined}
-                  className={cn(rowClass, isActive && "bg-muted/60")}
+                  className={rowClass}
                 >
                   <div className={cn(rowIconClass, isActive && "text-primary")}>
                     <RouteIcon route={route} className="size-4" />
@@ -173,7 +174,7 @@ export function MobileBottomBar() {
               );
             })}
 
-            <div className="my-2 mx-3 h-px bg-border/40" />
+            <div className="my-2 mx-3 h-px" />
 
             <button
               onClick={() => {
@@ -223,7 +224,7 @@ export function MobileBottomBar() {
               </span>
             </button>
 
-            <div className="my-2 mx-3 h-px bg-border/40" />
+            <div className="my-2 mx-3 h-px" />
 
             {/* Profile + Logout */}
             <div className="flex items-center gap-2">
@@ -235,7 +236,7 @@ export function MobileBottomBar() {
                 }}
                 className={cn(rowClass, "min-w-0")}
               >
-                <Avatar className="size-8 ring-1 ring-border/50 shrink-0">
+                <Avatar className="size-8 ring-1 shrink-0">
                   {avatarUrl && <AvatarImage src={avatarUrl} className="object-cover" />}
                   <AvatarFallback className="text-xs font-medium">
                     {userInitials}
@@ -249,17 +250,19 @@ export function MobileBottomBar() {
               </button>
 
               {/* Logout button */}
-              <button
+              <Button
+                variant="ghost"
+                size="icon"
                 onClick={async () => {
                   setDrawerOpen(false);
                   await supabase.auth.signOut();
                   toast.success("Sesión cerrada exitosamente");
                 }}
                 aria-label="Cerrar sesión"
-                className="size-11 rounded-xl bg-muted/60 flex items-center justify-center shrink-0 active:bg-destructive/10 active:scale-95 transition-all"
+                className="size-11 shrink-0 active:bg-destructive/10"
               >
-                <LogOut className="size-4.5 text-muted-foreground" />
-              </button>
+                <LogOut className="text-muted-foreground" />
+              </Button>
             </div>
           </div>
 

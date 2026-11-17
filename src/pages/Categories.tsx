@@ -116,7 +116,7 @@ export default function Categories() {
                     <span>{cat.name}</span>
                     {cat.is_active === false && <span className="text-xs text-muted-foreground">Archivada</span>}
                     {/* Hover actions */}
-                    <div className="absolute inset-0 rounded-full flex items-center justify-end pr-1.5 gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity bg-background/80 backdrop-blur-sm">
+                    <div className="absolute inset-0 rounded-full flex items-center justify-end pr-1.5 gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity backdrop-blur-sm">
                       <button
                         className="h-6 w-6 rounded-full flex items-center justify-center hover:bg-muted transition-colors"
                         aria-label={`Editar ${cat.name}`}

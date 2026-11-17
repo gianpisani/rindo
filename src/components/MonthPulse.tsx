@@ -12,6 +12,7 @@ import { computeRealFlows, type RealFlowsConfig } from "@/hooks/useRealFlows";
 import { computeMonthPace, paceVerdict, type MonthPace, type PaceVerdict } from "@/lib/month-pace";
 import { usePrivacyMode } from "@/hooks/usePrivacyMode";
 import { cn } from "@/lib/utils";
+import { Button } from "@/components/ui/button";
 
 /*
  * El pulso del mes: una sola pregunta — ¿este mes voy mejor o peor que mi
@@ -182,7 +183,7 @@ function PaceRace({ pace, verdict, privacy }: { pace: MonthPace; verdict: PaceVe
 
       {hx !== null && (
         <div
-          className="pointer-events-none absolute top-0 z-10 rounded-lg border border-border bg-popover px-2.5 py-1.5 text-xs shadow-lg"
+          className="pointer-events-none absolute top-0 z-10 rounded-card border border-border bg-popover px-2 py-1.5 text-xs shadow-float"
           style={{ left: Math.min(Math.max(x(hx) - 70, 0), W - 140), width: 140 }}
         >
           <p className="font-medium">Día {hx}</p>
@@ -371,18 +372,20 @@ export function MonthPulse({ open, onClose, initialMonth, transactions, categori
           exit={{ opacity: 0 }}
           transition={{ duration: 0.25 }}
         >
-          <div className="mx-auto flex min-h-full max-w-2xl flex-col gap-8 px-4 pb-10 pt-[max(1rem,env(safe-area-inset-top))] md:px-8 md:pt-10 lg:max-w-6xl lg:px-12 lg:pb-14">
+          <div className="mx-auto flex min-h-full max-w-2xl flex-col gap-8 px-4 pb-8 pt-[max(1rem,env(safe-area-inset-top))] md:px-8 md:pt-8 lg:max-w-6xl lg:px-12 lg:pb-12">
             {/* Barra: mes + cerrar */}
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-1">
-                <button
+                <Button
+                  variant="ghost"
+                  size="icon"
                   onClick={() => setMonth((m) => shift(m, -1))}
                   disabled={!canBack}
-                  className="grid size-9 place-items-center rounded-full hover:bg-muted disabled:opacity-30"
+                  className="size-9 disabled:opacity-30"
                   aria-label="Mes anterior"
                 >
-                  <ChevronLeft className="size-4" />
-                </button>
+                  <ChevronLeft />
+                </Button>
                 <div className="min-w-32 text-center">
                   <p className="text-sm font-medium capitalize">{format(periodNameDate(month, startDay), "MMMM yyyy", { locale: es })}</p>
                   <p className="text-xs text-muted-foreground">
@@ -390,27 +393,25 @@ export function MonthPulse({ open, onClose, initialMonth, transactions, categori
                     {pace.isLive ? `Día ${pace.asOfDay} de ${pace.daysInMonth}` : "Mes cerrado"}
                   </p>
                 </div>
-                <button
+                <Button
+                  variant="ghost"
+                  size="icon"
                   onClick={() => setMonth((m) => shift(m, 1))}
                   disabled={!canForward}
-                  className="grid size-9 place-items-center rounded-full hover:bg-muted disabled:opacity-30"
+                  className="size-9 disabled:opacity-30"
                   aria-label="Mes siguiente"
                 >
-                  <ChevronRight className="size-4" />
-                </button>
+                  <ChevronRight />
+                </Button>
               </div>
-              <button
-                onClick={onClose}
-                className="grid size-9 place-items-center rounded-full bg-muted hover:bg-muted"
-                aria-label="Cerrar"
-              >
-                <X className="size-4" />
-              </button>
+              <Button variant="ghost" size="icon" onClick={onClose} className="size-9 bg-muted" aria-label="Cerrar">
+                <X />
+              </Button>
             </div>
 
             <motion.div
               key={month.toISOString()}
-              className="flex flex-col gap-8 lg:my-auto lg:grid lg:grid-cols-[minmax(0,5fr)_minmax(0,7fr)] lg:items-start lg:gap-x-14 lg:gap-y-10"
+              className="flex flex-col gap-8 lg:my-auto lg:grid lg:grid-cols-[minmax(0,5fr)_minmax(0,7fr)] lg:items-start lg:gap-x-12 lg:gap-y-8"
               initial={{ opacity: 0, y: 8 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.3 }}
@@ -419,10 +420,10 @@ export function MonthPulse({ open, onClose, initialMonth, transactions, categori
                 <Headline pace={pace} verdict={verdict} privacy={isPrivacyMode} />
               </div>
 
-              <div className="lg:col-start-2 lg:row-span-4 lg:row-start-1 lg:rounded-3xl lg:bg-card lg:p-6 lg:shadow-sm">
+              <div className="lg:col-start-2 lg:row-span-4 lg:row-start-1 lg:rounded-card lg:bg-card lg:p-6">
                 <PaceRace pace={pace} verdict={verdict} privacy={isPrivacyMode} />
                 {pace.typical && (
-                  <div className="mt-2 flex flex-wrap gap-x-5 gap-y-1 text-xs text-muted-foreground">
+                  <div className="mt-2 flex flex-wrap gap-x-4 gap-y-1 text-xs text-muted-foreground">
                     <span className="flex items-center gap-1.5">
                       <span className="h-0.5 w-4 rounded-full" style={{ background: TONE[verdict] }} /> Tú
                     </span>
@@ -430,7 +431,7 @@ export function MonthPulse({ open, onClose, initialMonth, transactions, categori
                       <span className="w-4 border-t-[1.5px] border-dashed border-muted-foreground" /> Tu mes típico
                     </span>
                     <span className="flex items-center gap-1.5">
-                      <span className="h-2.5 w-4 rounded-sm" style={{ background: "color-mix(in oklch, var(--muted-foreground) 15%, transparent)" }} /> Tu rango normal
+                      <span className="h-2.5 w-4 rounded-full" style={{ background: "color-mix(in oklch, var(--muted-foreground) 15%, transparent)" }} /> Tu rango normal
                     </span>
                   </div>
                 )}
@@ -439,7 +440,7 @@ export function MonthPulse({ open, onClose, initialMonth, transactions, categori
               {/* Cómo aterriza */}
               {pace.typical && (
                 <div className="grid grid-cols-2 gap-3 lg:col-start-1 lg:row-start-2">
-                  <div className="rounded-2xl bg-muted p-4">
+                  <div className="rounded-card bg-muted p-4">
                     <p className="text-xs text-muted-foreground">
                       {pace.isLive ? "Cierras en" : "Gastaste"}
                     </p>
@@ -452,7 +453,7 @@ export function MonthPulse({ open, onClose, initialMonth, transactions, categori
                     </p>
                   </div>
                   {income.amount > 0 && (
-                    <div className="rounded-2xl bg-muted p-4">
+                    <div className="rounded-card bg-muted p-4">
                       <p className="text-xs text-muted-foreground">
                         {leftover >= 0 ? (pace.isLive ? "Te sobran" : "Te sobró") : pace.isLive ? "Te faltan" : "Te faltó"}
                       </p>

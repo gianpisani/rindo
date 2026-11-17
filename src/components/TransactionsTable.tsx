@@ -277,8 +277,8 @@ function EditableTextCell({ value, onSave, className, placeholder }: {
     <div
       onClick={() => setIsEditing(true)}
       className={cn(
-        "px-2 py-1 rounded-md cursor-pointer transition-all",
-        "hover:bg-muted/80 group flex items-center gap-1",
+        "px-2 py-1 rounded-card cursor-pointer transition-all",
+        "group flex items-center gap-1",
         className
       )}
     >
@@ -352,8 +352,8 @@ function EditableAmountCell({
     <div
       onClick={() => setIsEditing(true)}
       className={cn(
-        "px-2 py-1 rounded-md cursor-pointer transition-all text-right",
-        "hover:bg-muted/80 group flex items-center justify-end gap-1 font-medium font-mono tabular-nums",
+        "px-2 py-1 rounded-card cursor-pointer transition-all text-right",
+        "group flex items-center justify-end gap-1 font-medium font-mono tabular-nums",
         className
       )}
     >
@@ -365,7 +365,7 @@ function EditableAmountCell({
 
 /** Clases del botón que abre un editor inline de celda. */
 const CELL_TRIGGER =
-  "flex items-center gap-1 px-2 py-1 rounded-md transition-all hover:bg-muted/80 group cursor-pointer focus:outline-none focus-visible:bg-muted/80";
+  "flex items-center gap-1 px-2 py-1 rounded-card transition-all group cursor-pointer focus:outline-none";
 
 interface SelectableCellProps<T extends string> {
   value: T;
@@ -408,7 +408,7 @@ function SortHeader({ column, label, alignEnd }: { column: Column<Transaction>; 
   const sorted = column.getIsSorted();
   return (
     <div
-      className={cn("flex items-center cursor-pointer hover:bg-muted rounded px-2 py-1", alignEnd && "justify-end ml-auto")}
+      className={cn("flex items-center cursor-pointer hover:bg-muted rounded-card px-2 py-1", alignEnd && "justify-end ml-auto")}
       onClick={() => column.toggleSorting(sorted === "asc")}
     >
       <span className="text-xs font-medium">{label}</span>
@@ -424,9 +424,9 @@ function SortHeader({ column, label, alignEnd }: { column: Column<Transaction>; 
 function EmptyState({ hasFilters, onClear }: { hasFilters: boolean; onClear: () => void }) {
   const Icon = hasFilters ? SearchX : Inbox;
   return (
-    <div className="flex flex-col items-center gap-3 py-14 text-center">
-      <div className="flex h-12 w-12 items-center justify-center rounded-full bg-muted/60">
-        <Icon className="h-5 w-5 text-muted-foreground/70" />
+    <div className="flex flex-col items-center gap-3 py-12 text-center">
+      <div className="flex h-12 w-12 items-center justify-center rounded-full">
+        <Icon className="h-5 w-5" />
       </div>
       <div className="space-y-1">
         <p className="text-sm font-medium">
@@ -439,7 +439,7 @@ function EmptyState({ hasFilters, onClear }: { hasFilters: boolean; onClear: () 
         </p>
       </div>
       {hasFilters && (
-        <Button variant="outline" size="sm" className="h-8 rounded-full text-xs" onClick={onClear}>
+        <Button variant="ghost" size="sm" className="h-8 text-xs" onClick={onClear}>
           Limpiar filtros
         </Button>
       )}
@@ -480,8 +480,8 @@ function CategoryCombobox({ value, options, onSave, trigger, placeholder = "Busc
       }}
     >
       <PopoverTrigger asChild>{trigger}</PopoverTrigger>
-      <PopoverContent className="w-[220px] p-0 border-0 shadow-lg shadow-black/10 dark:shadow-black/30 rounded-lg overflow-hidden" align="start" side="bottom" sideOffset={4}>
-        <Command className="rounded-lg">
+      <PopoverContent className="w-[220px] p-0 border-0 rounded-card overflow-hidden" align="start" side="bottom" sideOffset={4}>
+        <Command className="rounded-card">
           <CommandInput
             value={search}
             onValueChange={setSearch}
@@ -531,7 +531,7 @@ function CategoryCombobox({ value, options, onSave, trigger, placeholder = "Busc
                 setSearch("");
                 onCreate(name);
               }}
-              className="flex w-full items-center gap-2 border-t border-border/60 px-2 py-2 text-left text-xs text-foreground transition-colors hover:bg-muted/60"
+              className="flex w-full items-center gap-2 border-t px-2 py-2 text-left text-xs text-foreground transition-colors"
             >
               <Plus className="h-3.5 w-3.5 flex-shrink-0" />
               <span className="truncate">
@@ -717,7 +717,7 @@ export function TransactionsTable({
           const avatar = categoryAvatar(row.original.category_name, categories);
 
           return (
-            <div className={cn("flex items-center gap-2.5 max-w-[300px]", isPrivacyMode && "privacy-blur")}>
+            <div className={cn("flex items-center gap-2 max-w-[300px]", isPrivacyMode && "privacy-blur")}>
               {/* Avatar */}
               <div className="relative flex-shrink-0">
                 <div
@@ -748,7 +748,7 @@ export function TransactionsTable({
                 />
                 {row.original.bank_description && row.original.bank_description !== clean && (
                   <p
-                    className="text-xs text-muted-foreground/50 truncate leading-none mt-0.5"
+                    className="text-xs truncate leading-none mt-0.5"
                     title={row.original.bank_description}
                   >
                     {row.original.bank_description}
@@ -830,7 +830,7 @@ export function TransactionsTable({
                         "focus:outline-none",
                         linkedCategory
                           ? "bg-success/15 text-success font-medium"
-                          : "bg-white/5 text-muted-foreground/40 italic hover:text-muted-foreground/60"
+                          : "bg-white/5 italic"
                       )}
                       onClick={(e) => e.stopPropagation()}
                     >
@@ -858,7 +858,7 @@ export function TransactionsTable({
         cell: ({ row }: { row: { original: Transaction } }) => {
           const type = row.original.type;
           const cardId = row.original.card_id;
-          if (INVESTMENT_TYPES.includes(type)) return <span className="text-xs text-muted-foreground/50">—</span>;
+          if (INVESTMENT_TYPES.includes(type)) return <span className="text-xs">—</span>;
 
           const selectedCard = creditCards.find(c => c.id === cardId);
 
@@ -873,7 +873,7 @@ export function TransactionsTable({
               renderValue={() => {
                 if (!selectedCard) {
                   return (
-                    <span className="text-xs text-muted-foreground/60 flex items-center gap-1">
+                    <span className="text-xs flex items-center gap-1">
                       <CreditCard className="h-3 w-3" />
                       Cuenta
                     </span>
@@ -1169,7 +1169,7 @@ export function TransactionsTable({
         <div className="flex-1 min-w-0 ml-3">
           <div className="flex items-center justify-between gap-2">
             <span className={cn("text-sm font-medium truncate", isPrivacyMode && "privacy-blur")}>
-              {clean || <span className="text-muted-foreground/50 italic font-normal">Sin detalle</span>}
+              {clean || <span className="italic font-normal">Sin detalle</span>}
             </span>
             <span className={cn(
               "text-sm font-medium tabular-nums whitespace-nowrap font-mono",
@@ -1193,7 +1193,7 @@ export function TransactionsTable({
                 </>
               )}
             </div>
-            <span className="text-xs text-muted-foreground/50 tabular-nums flex-shrink-0">
+            <span className="text-xs tabular-nums flex-shrink-0">
               {timeLabel}
             </span>
           </div>
@@ -1241,7 +1241,7 @@ export function TransactionsTable({
         data-transaction-id={row.original.id}
         data-state={row.getIsSelected() && "selected"}
         className={cn(
-          "hover:bg-muted/40 transition-colors",
+          "transition-colors",
           row.original.isPending && "pointer-events-none opacity-60",
           isMissing && "border-l-2 border-l-amber-400/70"
         )}
@@ -1274,14 +1274,14 @@ export function TransactionsTable({
           {!panelExpanded && (
             <div
               className={cn(
-                "flex flex-col items-center gap-1 py-2.5 px-1 rounded-xl",
-                "bg-background/95 backdrop-blur-xl border border-border/60",
-                "shadow-lg shadow-black/8 dark:shadow-black/25"
+                "flex flex-col items-center gap-1 py-2 px-1 rounded-card",
+                "backdrop-blur-xl border",
+                "shadow-float"
               )}
             >
               {/* Drag handle */}
               <div
-                className="cursor-grab active:cursor-grabbing p-0.5 text-muted-foreground/40 hover:text-muted-foreground/70 transition-colors"
+                className="cursor-grab active:cursor-grabbing p-0.5 transition-colors"
                 onMouseDown={handleDragStart}
               >
                 <GripVertical className="h-3.5 w-3.5" />
@@ -1290,7 +1290,7 @@ export function TransactionsTable({
               {/* Count badge */}
               <button
                 onClick={() => setPanelExpanded(true)}
-                className="w-8 h-8 rounded-lg bg-muted text-foreground flex items-center justify-center text-xs font-medium transition-colors"
+                className="w-8 h-8 rounded-full bg-muted text-foreground flex items-center justify-center text-xs font-medium transition-colors"
               >
                 {selectedIds.length}
               </button>
@@ -1298,7 +1298,7 @@ export function TransactionsTable({
               {/* Expand arrow */}
               <button
                 onClick={() => setPanelExpanded(true)}
-                className="p-0.5 text-muted-foreground/40 hover:text-muted-foreground/70 transition-colors"
+                className="p-0.5 transition-colors"
               >
                 <ChevronRight className="h-3.5 w-3.5 rotate-180" />
               </button>
@@ -1309,16 +1309,16 @@ export function TransactionsTable({
           {panelExpanded && (
             <div
               className={cn(
-                "rounded-xl overflow-hidden",
-                "bg-background/95 backdrop-blur-xl border border-border/60",
-                "shadow-xl shadow-black/10 dark:shadow-black/30",
+                "rounded-card overflow-hidden",
+                "backdrop-blur-xl border",
+                "shadow-float",
                 "animate-in slide-in-from-right-3 fade-in-0 duration-200"
               )}
             >
               {/* Header with drag handle */}
-              <div className="flex items-center gap-2 px-3 py-2 border-b border-border/40 bg-muted/30">
+              <div className="flex items-center gap-2 px-3 py-2 border-b">
                 <div
-                  className="cursor-grab active:cursor-grabbing text-muted-foreground/40 hover:text-muted-foreground/70 transition-colors"
+                  className="cursor-grab active:cursor-grabbing transition-colors"
                   onMouseDown={handleDragStart}
                 >
                   <GripVertical className="h-3.5 w-3.5" />
@@ -1332,7 +1332,7 @@ export function TransactionsTable({
                 <div className="flex-1" />
                 <button
                   onClick={() => setPanelExpanded(false)}
-                  className="p-0.5 text-muted-foreground/40 hover:text-muted-foreground/70 transition-colors"
+                  className="p-0.5 transition-colors"
                 >
                   <Minimize2 className="h-3.5 w-3.5" />
                 </button>
@@ -1342,7 +1342,7 @@ export function TransactionsTable({
               <div className="p-2 space-y-0.5">
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild>
-                    <button className="w-full flex items-center gap-2.5 px-2.5 py-1.5 rounded-lg text-sm hover:bg-muted/60 transition-colors text-left">
+                    <button className="w-full flex items-center gap-2 px-2 py-1.5 rounded-card text-sm transition-colors text-left">
                       <Tag className="h-3.5 w-3.5 text-muted-foreground" />
                       <span className="text-sm">Cambiar categoría</span>
                     </button>
@@ -1361,7 +1361,7 @@ export function TransactionsTable({
 
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild>
-                    <button className="w-full flex items-center gap-2.5 px-2.5 py-1.5 rounded-lg text-sm hover:bg-muted/60 transition-colors text-left">
+                    <button className="w-full flex items-center gap-2 px-2 py-1.5 rounded-card text-sm transition-colors text-left">
                       <ArrowRightLeft className="h-3.5 w-3.5 text-muted-foreground" />
                       <span className="text-sm">Cambiar tipo</span>
                     </button>
@@ -1380,17 +1380,17 @@ export function TransactionsTable({
 
                 <button
                   onClick={() => runBatch(onDuplicate(selectedIds))}
-                  className="w-full flex items-center gap-2.5 px-2.5 py-1.5 rounded-lg text-sm hover:bg-muted/60 transition-colors text-left"
+                  className="w-full flex items-center gap-2 px-2 py-1.5 rounded-card text-sm transition-colors text-left"
                 >
                   <Copy className="h-3.5 w-3.5 text-muted-foreground" />
                   <span className="text-sm">Duplicar</span>
                 </button>
 
-                <div className="my-1 border-t border-border/40" />
+                <div className="my-1 border-t" />
 
                 <button
                   onClick={() => runBatch(onDeleteMultiple(selectedIds))}
-                  className="w-full flex items-center gap-2.5 px-2.5 py-1.5 rounded-lg text-sm hover:bg-destructive/10 text-destructive transition-colors text-left"
+                  className="w-full flex items-center gap-2 px-2 py-1.5 rounded-card text-sm hover:bg-destructive/10 text-destructive transition-colors text-left"
                 >
                   <Trash2 className="h-3.5 w-3.5" />
                   <span className="text-sm">Eliminar</span>
@@ -1399,7 +1399,7 @@ export function TransactionsTable({
 
               {/* Quick summary */}
               {summaryStats && (
-                <div className="px-3 py-2 border-t border-border/40 bg-muted/20">
+                <div className="px-3 py-2 border-t">
                   <div className="grid grid-cols-2 gap-x-4 gap-y-1">
                     {([
                       ["Suma", summaryStats.sum, "font-medium"],
@@ -1408,7 +1408,7 @@ export function TransactionsTable({
                       ["Max", summaryStats.max, ""],
                     ] as const).map(([label, value, weight]) => (
                       <div key={label} className="flex items-center justify-between">
-                        <span className="text-xs text-muted-foreground/60">{label}</span>
+                        <span className="text-xs">{label}</span>
                         <span className={cn("text-xs font-mono tabular-nums", weight, signColor(value), isPrivacyMode && "privacy-blur")}>
                           <NumberFlow value={value} locales="es-CL" format={SIGNED_CLP} />
                         </span>
@@ -1416,7 +1416,7 @@ export function TransactionsTable({
                     ))}
                   </div>
                   {summaryStats.mixed && (
-                    <div className="flex items-center justify-between mt-1.5 pt-1.5 border-t border-border/30">
+                    <div className="flex items-center justify-between mt-1.5 pt-1.5 border-t">
                       <span className={cn("text-xs font-mono tabular-nums text-success", isPrivacyMode && "privacy-blur")}>
                         +{formatCLP(summaryStats.income)}
                       </span>
@@ -1429,10 +1429,10 @@ export function TransactionsTable({
               )}
 
               {/* Deselect */}
-              <div className="px-2 py-1.5 border-t border-border/40">
+              <div className="px-2 py-1.5 border-t">
                 <button
                   onClick={() => setRowSelection({})}
-                  className="w-full flex items-center justify-center gap-1 py-1 rounded-lg text-xs text-muted-foreground hover:bg-muted/60 transition-colors"
+                  className="w-full flex items-center justify-center gap-1 py-1 rounded-card text-xs text-muted-foreground transition-colors"
                 >
                   <X className="h-3 w-3" />
                   Deseleccionar todo
@@ -1478,10 +1478,10 @@ export function TransactionsTable({
           )}
         </div>
       ) : (
-        <div className="border border-border/50 rounded-lg overflow-hidden">
+        <div className="border rounded-card overflow-hidden">
           <div className="overflow-x-auto overflow-y-auto max-h-[calc(100vh-320px)] min-h-[300px]">
             <table className="w-full table-fixed">
-              <thead className="bg-card border-b border-border sticky top-0 z-10 shadow-sm">
+              <thead className="bg-card border-b border-border sticky top-0 z-10">
                 {table.getHeaderGroups().map((headerGroup) => (
                   <tr key={headerGroup.id}>
                     {headerGroup.headers.map((header) => (
@@ -1500,7 +1500,7 @@ export function TransactionsTable({
                   </tr>
                 ))}
               </thead>
-              <tbody ref={tbodyRef} className="divide-y divide-border/50 bg-card">
+              <tbody ref={tbodyRef} className="divide-y bg-card">
                 {table.getRowModel().rows.length === 0 ? (
                   <tr>
                     <td colSpan={columns.length}>
@@ -1513,7 +1513,7 @@ export function TransactionsTable({
                       <tr>
                         <td
                           colSpan={columns.length}
-                          className="px-4 py-1 bg-muted/30 border-t border-border/30 first:border-t-0"
+                          className="px-4 py-1 border-t first:border-t-0"
                         >
                           <span className="text-xs font-medium text-muted-foreground">
                             {formatGroupDate(group.dayKey)}

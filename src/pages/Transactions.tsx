@@ -1156,7 +1156,7 @@ export default function Transactions() {
           const tx = transactions.find(t => t.id === deleteId);
           if (!tx) return null;
           return (
-            <div className="rounded-lg border bg-muted/50 p-3 space-y-1 text-sm">
+            <div className="rounded-card border p-3 space-y-1 text-sm">
               <div className="flex items-center justify-between">
                 <span className="font-medium">{tx.detail || "Sin detalle"}</span>
                 <span className={cn(

@@ -11,9 +11,8 @@ export function GlassCard({ children, className }: GlassCardProps) {
   return (
     <Card
       className={cn(
-        "border border-border/50 bg-card",
+        "border bg-card",
         "transition-all duration-200",
-        "hover:shadow-sm",
         className
       )}
     >

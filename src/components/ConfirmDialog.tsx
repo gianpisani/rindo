@@ -65,7 +65,7 @@ export default function ConfirmDialog({
         )}
         <DialogFooter className="flex-row gap-2 sm:gap-2 px-6 pb-6">
           <Button
-            variant="outline"
+            variant="ghost"
             onClick={() => onOpenChange(false)}
             className="flex-1"
           >

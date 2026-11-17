@@ -49,7 +49,7 @@ const STEPS = [
   { icon: Palette, label: "Tema" },
 ];
 
-const DEFAULT_RADIUS = 0.65;
+const DEFAULT_RADIUS = 0.75;
 
 // ── Mini preview card for a theme palette ─────────────────────────────
 function ThemePreviewCard({
@@ -74,14 +74,14 @@ function ThemePreviewCard({
     <button
       onClick={onClick}
       className={cn(
-        "flex flex-col items-center gap-1.5 p-1.5 rounded-xl transition-all duration-200",
+        "flex flex-col items-center gap-1.5 p-1.5 rounded-card transition-all duration-200",
         selected
           ? "ring-2 ring-foreground scale-[1.02]"
-          : "hover:bg-muted/50 active:scale-[0.97]"
+          : "active:scale-[0.97]"
       )}
     >
       <div
-        className="w-full aspect-[4/3] rounded-lg overflow-hidden border"
+        className="w-full aspect-[4/3] rounded-card overflow-hidden border"
         style={{
           backgroundColor: palette.background,
           borderColor: palette.border,
@@ -108,7 +108,7 @@ function ThemePreviewCard({
               style={{ backgroundColor: palette.foreground, opacity: 0.7 }}
             />
             <div
-              className="w-full h-4 rounded"
+              className="w-full h-4 rounded-card"
               style={{
                 backgroundColor: palette.card,
                 border: `0.5px solid ${palette.border}`,
@@ -120,7 +120,7 @@ function ThemePreviewCard({
               />
             </div>
             <div
-              className="w-full h-3 rounded"
+              className="w-full h-3 rounded-card"
               style={{
                 backgroundColor: palette.card,
                 border: `0.5px solid ${palette.border}`,
@@ -218,7 +218,7 @@ function SectionLabel({
 }) {
   return (
     <div className="flex items-center gap-2 mb-2">
-      <Icon className="size-3.5 text-muted-foreground/70" />
+      <Icon className="size-3.5" />
       <span className="text-xs font-medium text-muted-foreground">
         {children}
       </span>
@@ -512,26 +512,26 @@ export function OnboardingModal({
         {step === 1 && (
           <div className="flex flex-col items-center gap-4">
             <div className="relative group">
-              <Avatar className="size-28 rounded-2xl ring-2 ring-border">
+              <Avatar className="size-28 rounded-full ring-2 ring-border">
                 {currentAvatarSrc && (
                   <AvatarImage
                     src={currentAvatarSrc}
-                    className="rounded-2xl object-cover"
+                    className="rounded-full object-cover"
                   />
                 )}
-                <AvatarFallback className="rounded-2xl text-xl font-medium">
+                <AvatarFallback className="rounded-full text-xl font-medium">
                   {displayInitials}
                 </AvatarFallback>
               </Avatar>
               {uploading && (
-                <div className="absolute inset-0 flex items-center justify-center bg-background/60 rounded-2xl">
+                <div className="absolute inset-0 flex items-center justify-center rounded-full">
                   <Loader2 className="size-6 animate-spin text-muted-foreground" />
                 </div>
               )}
             </div>
             <div className="flex gap-2">
               <Button
-                variant="outline"
+                variant="ghost"
                 size="sm"
                 onClick={() => fileInputRef.current?.click()}
                 disabled={uploading}
@@ -574,10 +574,10 @@ export function OnboardingModal({
               <button
                 onClick={() => handleToggleMode("light")}
                 className={cn(
-                  "flex items-center gap-2 px-4 py-2.5 rounded-xl border transition-all duration-200 text-sm font-medium",
+                  "flex items-center gap-2 px-4 py-2 rounded-full border transition-all duration-200 text-sm font-medium",
                   currentMode === "light"
-                    ? "text-foreground shadow-sm"
-                    : "border-border/50 text-muted-foreground hover:bg-muted active:scale-[0.97]"
+                    ? "text-foreground"
+                    : "text-muted-foreground hover:bg-muted active:scale-[0.97]"
                 )}
               >
                 <Sun className="size-4" />
@@ -586,10 +586,10 @@ export function OnboardingModal({
               <button
                 onClick={() => handleToggleMode("dark")}
                 className={cn(
-                  "flex items-center gap-2 px-4 py-2.5 rounded-xl border transition-all duration-200 text-sm font-medium",
+                  "flex items-center gap-2 px-4 py-2 rounded-full border transition-all duration-200 text-sm font-medium",
                   currentMode === "dark"
-                    ? "text-foreground shadow-sm"
-                    : "border-border/50 text-muted-foreground hover:bg-muted active:scale-[0.97]"
+                    ? "text-foreground"
+                    : "text-muted-foreground hover:bg-muted active:scale-[0.97]"
                 )}
               >
                 <Moon className="size-4" />
@@ -650,14 +650,14 @@ export function OnboardingModal({
                 <button
                   onClick={() => handleSelectTheme("custom")}
                   className={cn(
-                    "flex flex-col items-center gap-1.5 p-1.5 rounded-xl transition-all duration-200",
+                    "flex flex-col items-center gap-1.5 p-1.5 rounded-card transition-all duration-200",
                     selectedTheme === "custom"
                       ? "ring-2 ring-foreground scale-[1.02]"
-                      : "hover:bg-muted/50 active:scale-[0.97]"
+                      : "active:scale-[0.97]"
                   )}
                 >
                   <div
-                    className="w-full aspect-[4/3] rounded-lg overflow-hidden flex items-center justify-center"
+                    className="w-full aspect-[4/3] rounded-card overflow-hidden flex items-center justify-center"
                     style={{
                       background: `linear-gradient(135deg, ${customPalette.primary}, ${customPalette.ring})`,
                     }}
@@ -687,10 +687,9 @@ export function OnboardingModal({
                     key={font.id}
                     onClick={() => handleFontChange(font.id)}
                     className={cn(
-                      "relative flex flex-col items-start px-3 py-2.5 rounded-xl border transition-all duration-200 text-left",
-                      selectedFont === font.id
-                        ? "shadow-sm"
-                        : "border-border/50 hover:bg-muted/50 hover:border-border active:scale-[0.97]"
+                      "relative flex flex-col items-start px-3 py-2 rounded-card border transition-all duration-200 text-left",
+                      selectedFont !== font.id &&
+                        "hover:border-border active:scale-[0.97]"
                     )}
                   >
                     {selectedFont === font.id && (
@@ -719,7 +718,7 @@ export function OnboardingModal({
             <div>
               <div className="flex items-center justify-between mb-2">
                 <div className="flex items-center gap-2">
-                  <Circle className="size-3.5 text-muted-foreground/70" />
+                  <Circle className="size-3.5" />
                   <span className="text-xs font-medium text-muted-foreground">
                     Redondez
                   </span>
@@ -743,7 +742,7 @@ export function OnboardingModal({
                 max={1.5}
                 step={0.05}
               />
-              <div className="flex justify-between mt-1.5 text-xs text-muted-foreground/60">
+              <div className="flex justify-between mt-1.5 text-xs">
                 <span>Cuadrado</span>
                 <span>Redondeado</span>
               </div>
