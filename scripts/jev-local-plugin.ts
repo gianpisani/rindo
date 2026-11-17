@@ -4,7 +4,7 @@ import path from 'node:path'
 import { createClient } from '@supabase/supabase-js'
 import { loadEnv, type Plugin } from 'vite'
 import { createLocalCategorizer } from './jev-local-server'
-import { tryJevPoc } from '../supabase/functions/_shared/jev-poc'
+import { categorizeForSession } from '../supabase/functions/_shared/categorize'
 
 export function jevLocalPlugin(): Plugin {
   return {
@@ -19,7 +19,7 @@ export function jevLocalPlugin(): Plugin {
           global: { headers: { Authorization: authorization } },
           auth: { persistSession: false, autoRefreshToken: false },
         })
-        return tryJevPoc(client, body, {
+        return categorizeForSession(client, body, {
           apiKey: secrets.AI_GATEWAY_API_KEY || process.env.AI_GATEWAY_API_KEY || '',
           accessToken: authorization.slice('Bearer '.length),
         })

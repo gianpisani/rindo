@@ -1,4 +1,4 @@
-import { categorizeForUser } from '../_shared/jev-poc.ts'
+import { categorizeForUser } from '../_shared/categorize.ts'
 import { canCategorizeOwner } from '../_shared/category-auth.ts'
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.39.3'
 import { corsHeaders } from '../_shared/cors.ts'

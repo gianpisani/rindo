@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict'
 import { test } from 'node:test'
-import { tryJevPoc, loadCategoryContext, categorizeBatchForUser, categorizeForUser } from '../supabase/functions/_shared/jev-poc.ts'
+import { categorizeForSession, loadCategoryContext, categorizeBatchForUser, categorizeForUser } from '../supabase/functions/_shared/categorize.ts'
 
 function database({ userId = 'owner', category = '⚡ Analizando...', updated = true, metadata = false } = {}) {
   const calls: { table: string; op: string; args: unknown[] }[] = []
@@ -25,17 +25,17 @@ function database({ userId = 'owner', category = '⚡ Analizando...', updated = 
       return builder
     },
   }
-  return { client: client as unknown as Parameters<typeof tryJevPoc>[0], calls }
+  return { client: client as unknown as Parameters<typeof categorizeForSession>[0], calls }
 }
 
 test('rejects missing authentication before reading movements', async () => {
   const db = database({ userId: '' })
-  await assert.rejects(tryJevPoc(db.client, { transactionId: 'tx' }, { apiKey: '' }), /Sesión inválida/)
+  await assert.rejects(categorizeForSession(db.client, { transactionId: 'tx' }, { apiKey: '' }), /Sesión inválida/)
   assert.equal(db.calls.length, 0)
 })
 
 test('requires the persisted movement id', async () => {
-  await assert.rejects(tryJevPoc(database().client, {}, { apiKey: '' }), /Falta el movimiento/)
+  await assert.rejects(categorizeForSession(database().client, {}, { apiKey: '' }), /Falta el movimiento/)
 })
 
 test('verifies the forwarded session token explicitly on the server', async t => {
@@ -44,12 +44,12 @@ test('verifies the forwarded session token explicitly on the server', async t =>
     assert.equal(token, 'user-session')
     return { data: { user: { id: 'owner' } }, error: null }
   })
-  await tryJevPoc(db.client, { transactionId: 'tx' }, { apiKey: '', accessToken: 'user-session' })
+  await categorizeForSession(db.client, { transactionId: 'tx' }, { apiKey: '', accessToken: 'user-session' })
 })
 
 test('preserves an already assigned manual category', async () => {
   const db = database({ category: 'Mi categoría' })
-  const result = await tryJevPoc(db.client, { transactionId: 'tx' }, { apiKey: '' })
+  const result = await categorizeForSession(db.client, { transactionId: 'tx' }, { apiKey: '' })
   assert.equal(result?.applied, false)
   assert.equal(result?.category, 'Mi categoría')
   assert.ok(!db.calls.some(c => c.op === 'update'))
@@ -57,7 +57,7 @@ test('preserves an already assigned manual category', async () => {
 
 test('provider unavailable leaves uncategorized, with owner and edit guards on the update', async () => {
   const db = database()
-  const result = await tryJevPoc(db.client, { transactionId: 'tx' }, { apiKey: '' })
+  const result = await categorizeForSession(db.client, { transactionId: 'tx' }, { apiKey: '' })
   assert.equal(result?.category, 'Sin categoría')
   const write = db.calls.findIndex(c => c.op === 'update')
   const filters = db.calls.slice(write).filter(c => c.op === 'eq').map(c => c.args)
@@ -68,7 +68,7 @@ test('provider unavailable leaves uncategorized, with owner and edit guards on t
 })
 
 test('a late response reports applied=false when a concurrent edit prevents the write', async () => {
-  const result = await tryJevPoc(database({ updated: false }).client, { transactionId: 'tx' }, { apiKey: '' })
+  const result = await categorizeForSession(database({ updated: false }).client, { transactionId: 'tx' }, { apiKey: '' })
   assert.equal(result?.applied, false)
 })
 
@@ -82,7 +82,7 @@ test('uses persisted transaction data and maps a successful provider choice befo
   })
   const db = database()
   const untrustedBody = { transactionId: 'tx', detail: 'spoofed description', userId: 'another-user', existingCategories: ['Invented'] }
-  const result = await tryJevPoc(db.client, untrustedBody, { apiKey: 'test' })
+  const result = await categorizeForSession(db.client, untrustedBody, { apiKey: 'test' })
   assert.equal(result?.method, 'jev')
   assert.equal(result?.category, 'Restaurantes')
   assert.equal(result?.applied, true)
@@ -120,10 +120,10 @@ test('loads saved definitions and provenance after migration and marks only acce
     return Response.json({ answers: { category: { type: 'choice', choice: 'c0', confidence: 0.9, probabilities: { c0: 1 } } } });
   });
   const db = database({ metadata: true });
-  await tryJevPoc(db.client, { transactionId: 'tx' }, { apiKey: 'test' });
+  await categorizeForSession(db.client, { transactionId: 'tx' }, { apiKey: 'test' });
   assert.ok(db.calls.some(c => c.op === 'select' && String(c.args[0]).includes('category_source')));
   assert.deepEqual(db.calls.find(c => c.op === 'update')?.args, [{ category_name: 'Restaurantes', category_source: 'jev' }]);
   const unavailable = database({ metadata: true });
-  await tryJevPoc(unavailable.client, { transactionId: 'tx' }, { apiKey: '' });
+  await categorizeForSession(unavailable.client, { transactionId: 'tx' }, { apiKey: '' });
   assert.deepEqual(unavailable.calls.find(c => c.op === 'update')?.args, [{ category_name: 'Sin categoría', category_source: null }]);
 });

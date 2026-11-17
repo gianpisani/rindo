@@ -1,6 +1,6 @@
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.39.3'
 import { corsHeaders } from '../_shared/cors.ts'
-import { categorizeBatchForUser, tryJevPoc } from '../_shared/jev-poc.ts'
+import { categorizeBatchForUser, categorizeForSession } from '../_shared/categorize.ts'
 
 Deno.serve(async req => {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: corsHeaders })
@@ -21,7 +21,7 @@ Deno.serve(async req => {
       const results = await categorizeBatchForUser(client, [...new Set<string>(body.transactions.map((tx: { id: string }) => tx.id))], user.id, config)
       return new Response(JSON.stringify({ success: true, results }), { headers })
     }
-    const result = await tryJevPoc(client, body, config)
+    const result = await categorizeForSession(client, body, config)
     return new Response(JSON.stringify(result), { headers })
   } catch {
     return new Response(JSON.stringify({ success: false, error: 'No se pudo categorizar el movimiento' }), { status: 400, headers })
