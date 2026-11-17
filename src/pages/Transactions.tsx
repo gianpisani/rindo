@@ -1,4 +1,5 @@
 import { useState, useEffect, useMemo, useRef } from "react";
+import { useSearchParams } from "react-router-dom";
 import * as Dialog from "@radix-ui/react-dialog";
 import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
 import Layout from "@/components/Layout";
@@ -210,7 +211,9 @@ export default function Transactions() {
   const [debtsToLink, setDebtsToLink] = useState<Array<{ id: string; debtorName: string; amount: number; transactionDetail?: string }>>([]);
   const [debtsIOweToSettle, setDebtsIOweToSettle] = useState<Array<{ id: string; debtorName: string; amount: number }>>([]);
   const [settleDebtToggle, setSettleDebtToggle] = useState(false);
-  const [searchValue, setSearchValue] = useState("");
+  // Deudas enlaza aquí con ?search=<detalle> para encontrar el gasto que originó la deuda.
+  const [searchParams] = useSearchParams();
+  const [searchValue, setSearchValue] = useState(searchParams.get("search") || "");
   const searchInputRef = useRef<HTMLInputElement>(null);
   useSearchFocusShortcut(searchInputRef);
   const [typeFilter, setTypeFilter] = useState("all");

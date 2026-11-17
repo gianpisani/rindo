@@ -182,7 +182,7 @@ export default function PendingDebts() {
                           {/* La deuda lleva al movimiento que la originó, si lo tiene. */}
                           {debt.transaction_id ? (
                             <Link
-                              to={`/transactions?search=${encodeURIComponent(debt.transaction_detail ?? "")}&highlight=${debt.transaction_id}`}
+                              to={`/transactions?search=${encodeURIComponent(debt.transaction_detail ?? "")}`}
                               className="block text-sm truncate hover:underline underline-offset-2"
                             >
                               {debt.transaction_detail || "Sin detalle"}

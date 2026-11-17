@@ -1,17 +1,15 @@
 import { useEffect } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import { usePrivacyMode } from "@/hooks/usePrivacyMode";
-import { useNavPreferences } from "@/hooks/useNavPreferences";
+import { getAllRoutePaths } from "@/lib/routes-config";
+
+const routePaths = getAllRoutePaths();
+const maxShortcut = Math.min(routePaths.length, 9);
 
 export function useKeyboardShortcuts() {
   const navigate = useNavigate();
   const location = useLocation();
   const { togglePrivacyMode } = usePrivacyMode();
-  const { getVisibleRoutes } = useNavPreferences();
-
-  const visibleRoutes = getVisibleRoutes();
-  const routePaths = visibleRoutes.map((r) => r.url);
-  const maxShortcut = Math.min(routePaths.length, 9);
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -53,7 +51,7 @@ export function useKeyboardShortcuts() {
         }
 
         default:
-          // 1-9 → Navigate to section (dynamic based on visible order)
+          // 1-9 → Navigate to section (orden fijo de APP_ROUTES)
           if (e.key >= "1" && e.key <= "9") {
             const index = parseInt(e.key) - 1;
             if (index < maxShortcut && routePaths[index]) {
@@ -70,8 +68,6 @@ export function useKeyboardShortcuts() {
   }, [
     navigate,
     location.pathname,
-    routePaths,
-    maxShortcut,
     togglePrivacyMode,
   ]);
 }

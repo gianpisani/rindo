@@ -10,14 +10,11 @@ import {
   BellOff,
   Volume2,
   VolumeOff,
-  Pencil,
-  Check,
-  RotateCcw,
   UserPen,
   CalendarRange,
 } from "lucide-react";
-import { Link, useLocation, useNavigate } from "react-router-dom";
-import { useCallback, useEffect, useState } from "react";
+import { useLocation, useNavigate } from "react-router-dom";
+import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { usePrivacyMode } from "@/hooks/usePrivacyMode";
@@ -37,6 +34,7 @@ import {
   SidebarMenu,
   SidebarMenuItem,
   SidebarRail,
+  useSidebar,
 } from "@/components/ui/sidebar";
 import {
   DropdownMenu,
@@ -57,38 +55,14 @@ import { useUserProfile } from "@/hooks/useUserProfile";
 import { useGlobalDrawers } from "@/hooks/useGlobalDrawers";
 import { usePeriodConfig } from "@/hooks/usePeriodConfig";
 import { periodShortLabel } from "@/lib/period";
-import { useNavPreferences } from "@/hooks/useNavPreferences";
-import { SortableNavItem, DragOverlayItem } from "./SortableNavItem";
 import { cn } from "@/lib/utils";
-import { AnimatePresence, motion } from "framer-motion";
-import { APP_ROUTES } from "@/lib/routes-config";
-
-import {
-  DndContext,
-  closestCenter,
-  KeyboardSensor,
-  PointerSensor,
-  useSensor,
-  useSensors,
-  DragOverlay,
-  type DragStartEvent,
-  type DragOverEvent,
-  type DragEndEvent,
-} from "@dnd-kit/core";
-import {
-  SortableContext,
-  sortableKeyboardCoordinates,
-  verticalListSortingStrategy,
-  arrayMove,
-} from "@dnd-kit/sortable";
-import { restrictToVerticalAxis } from "@dnd-kit/modifiers";
+import { getMainRoutes, getToolRoutes, type RouteConfig } from "@/lib/routes-config";
 
 export function AppSidebar() {
   const location = useLocation();
-  const navigate = useNavigate();
   const { isPrivacyMode, togglePrivacyMode } = usePrivacyMode();
   const { soundEnabled, toggleSound } = useSoundPreferences();
-  const { playToggleOn, playToggleOff, playSelect } = useSoundFX();
+  const { playToggleOn, playToggleOff } = useSoundFX();
   const { isSupported, isSubscribed, isLoading, subscribe, unsubscribe } = usePushNotifications();
   const { theme, setTheme } = useTheme();
   const isMobile = useIsMobile();
@@ -97,19 +71,6 @@ export function AppSidebar() {
   const { openProfileEdit, openPeriodSettings } = useGlobalDrawers();
   const { startDay } = usePeriodConfig();
 
-  const {
-    hiddenRoutes,
-    sidebarOrder,
-    setSidebarOrder,
-    toggleRouteVisibility,
-    resetToDefaults,
-    getOrderedRoutes,
-    getVisibleRoutes,
-    getDynamicShortcut,
-  } = useNavPreferences();
-
-  const [isEditMode, setIsEditMode] = useState(false);
-  const [activeId, setActiveId] = useState<string | null>(null);
   const [userEmail, setUserEmail] = useState<string | null>(null);
 
   useEffect(() => {
@@ -123,69 +84,8 @@ export function AppSidebar() {
     .slice(0, 2)
     .toUpperCase();
 
-  // In edit mode show ALL routes (including hidden, grayed out). Otherwise only visible.
-  const orderedRoutes = getOrderedRoutes();
-  const visibleRoutes = getVisibleRoutes();
-  const displayRoutes = isEditMode ? orderedRoutes : visibleRoutes;
-
-  // Split into groups for display
-  const mainRoutes = displayRoutes.filter((r) => r.group === "main");
-  const toolRoutes = displayRoutes.filter((r) => r.group === "tools");
-
-  // DnD sensors
-  const sensors = useSensors(
-    useSensor(PointerSensor, { activationConstraint: { distance: 5 } }),
-    useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates })
-  );
-
-  const activeRoute = activeId
-    ? APP_ROUTES.find((r) => r.url === activeId) ?? null
-    : null;
-
-  const handleDragStart = useCallback((event: DragStartEvent) => {
-    setActiveId(event.active.id as string);
-  }, []);
-
-  // Live reorder as you drag over items — this is what makes it feel smooth
-  const handleDragOver = useCallback(
-    (event: DragOverEvent) => {
-      const { active, over } = event;
-      if (!over || active.id === over.id) return;
-
-      const oldIndex = sidebarOrder.indexOf(active.id as string);
-      const newIndex = sidebarOrder.indexOf(over.id as string);
-      if (oldIndex === -1 || newIndex === -1) return;
-
-      setSidebarOrder(arrayMove(sidebarOrder, oldIndex, newIndex));
-    },
-    [sidebarOrder, setSidebarOrder]
-  );
-
-  const handleDragEnd = useCallback(
-    (_event: DragEndEvent) => {
-      if (activeId) playSelect();
-      setActiveId(null);
-    },
-    [activeId, playSelect]
-  );
-
-  const handleDragCancel = useCallback(() => {
-    setActiveId(null);
-  }, []);
-
-  const handleToggleEditMode = useCallback(() => {
-    setIsEditMode((prev) => {
-      if (prev) playToggleOff();
-      else playToggleOn();
-      return !prev;
-    });
-  }, [playToggleOn, playToggleOff]);
-
-  const handleReset = useCallback(() => {
-    resetToDefaults();
-    playSelect();
-    toast.success("Navegación restaurada");
-  }, [resetToDefaults, playSelect]);
+  const mainRoutes = getMainRoutes();
+  const toolRoutes = getToolRoutes();
 
   const handleLogout = async () => {
     await supabase.auth.signOut();
@@ -203,11 +103,6 @@ export function AppSidebar() {
     if (theme === "dark") return "Modo oscuro";
     return "Sistema";
   };
-
-  const allUrls = orderedRoutes.map((r) => r.url);
-
-  // DnD modifiers
-  const modifiers = [restrictToVerticalAxis];
 
   return (
     <Sidebar collapsible="icon">
@@ -270,136 +165,39 @@ export function AppSidebar() {
       </SidebarHeader>
 
       <SidebarContent>
-        <DndContext
-          sensors={sensors}
-          collisionDetection={closestCenter}
-          onDragStart={handleDragStart}
-          onDragOver={handleDragOver}
-          onDragEnd={handleDragEnd}
-          onDragCancel={handleDragCancel}
-          modifiers={modifiers}
-        >
-          <SortableContext items={allUrls} strategy={verticalListSortingStrategy}>
-            {/* Principal */}
-            <SidebarGroup>
-              <div className="flex items-center justify-between pr-2">
-                <SidebarGroupLabel>Principal</SidebarGroupLabel>
-                <div className="flex items-center gap-0.5 group-data-[state=collapsed]:hidden">
-                  <AnimatePresence>
-                    {isEditMode && (
-                      <motion.div
-                        initial={{ opacity: 0, scale: 0.8 }}
-                        animate={{ opacity: 1, scale: 1 }}
-                        exit={{ opacity: 0, scale: 0.8 }}
-                      >
-                        <Tooltip>
-                          <TooltipTrigger asChild>
-                            <button
-                              onClick={handleReset}
-                              className="size-6 rounded-md flex items-center justify-center text-muted-foreground hover:text-foreground hover:bg-sidebar-accent transition-colors"
-                            >
-                              <RotateCcw className="size-3" />
-                            </button>
-                          </TooltipTrigger>
-                          <TooltipContent side="right">Restaurar por defecto</TooltipContent>
-                        </Tooltip>
-                      </motion.div>
-                    )}
-                  </AnimatePresence>
-                  <Tooltip>
-                    <TooltipTrigger asChild>
-                      <button
-                        onClick={handleToggleEditMode}
-                        className={cn(
-                          "size-6 rounded-md flex items-center justify-center transition-all",
-                          isEditMode
-                            ? "text-primary bg-primary/10 hover:bg-primary/20"
-                            : "text-muted-foreground hover:text-foreground hover:bg-sidebar-accent"
-                        )}
-                      >
-                        {isEditMode ? <Check className="size-3" /> : <Pencil className="size-3" />}
-                      </button>
-                    </TooltipTrigger>
-                    <TooltipContent side="right">
-                      {isEditMode ? "Listo" : "Personalizar sidebar"}
-                    </TooltipContent>
-                  </Tooltip>
-                </div>
-              </div>
-              <SidebarGroupContent>
-                <SidebarMenu>
-                  {mainRoutes.map((route) => (
-                    <SidebarMenuItem key={route.url}>
-                      <SortableNavItem
-                        route={route}
-                        isHidden={hiddenRoutes.includes(route.url)}
-                        isEditMode={isEditMode}
-                        isActive={location.pathname === route.url}
-                        shortcutNumber={getDynamicShortcut(route.url)}
-                        onToggleVisibility={() => toggleRouteVisibility(route.url)}
-                        onClick={() => navigate(route.url)}
-                        isMobile={isMobile}
-                      />
-                    </SidebarMenuItem>
-                  ))}
-                </SidebarMenu>
-              </SidebarGroupContent>
-            </SidebarGroup>
+        <SidebarGroup>
+          <SidebarGroupLabel>Principal</SidebarGroupLabel>
+          <SidebarGroupContent>
+            <SidebarMenu>
+              {mainRoutes.map((route) => (
+                <SidebarMenuItem key={route.url}>
+                  <NavItem
+                    route={route}
+                    isActive={location.pathname === route.url}
+                    showShortcut={!isMobile}
+                  />
+                </SidebarMenuItem>
+              ))}
+            </SidebarMenu>
+          </SidebarGroupContent>
+        </SidebarGroup>
 
-            {/* Herramientas */}
-            <SidebarGroup>
-              <SidebarGroupLabel>Herramientas</SidebarGroupLabel>
-              <SidebarGroupContent>
-                <SidebarMenu>
-                  {toolRoutes.map((route) => (
-                    <SidebarMenuItem key={route.url}>
-                      <SortableNavItem
-                        route={route}
-                        isHidden={hiddenRoutes.includes(route.url)}
-                        isEditMode={isEditMode}
-                        isActive={location.pathname === route.url}
-                        shortcutNumber={getDynamicShortcut(route.url)}
-                        onToggleVisibility={() => toggleRouteVisibility(route.url)}
-                        onClick={() => navigate(route.url)}
-                        isMobile={isMobile}
-                      />
-                    </SidebarMenuItem>
-                  ))}
-                </SidebarMenu>
-              </SidebarGroupContent>
-            </SidebarGroup>
-          </SortableContext>
-
-          {/* Floating drag preview */}
-          <DragOverlay dropAnimation={{
-            duration: 200,
-            easing: "cubic-bezier(0.25, 1, 0.5, 1)",
-          }}>
-            {activeRoute ? <DragOverlayItem route={activeRoute} /> : null}
-          </DragOverlay>
-        </DndContext>
-
-        {/* Empty state when all tools hidden */}
-        <AnimatePresence>
-          {!isEditMode && toolRoutes.length === 0 && (
-            <motion.div
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              className="px-4 py-6 text-center group-data-[state=collapsed]:hidden"
-            >
-              <p className="text-xs text-muted-foreground/60">
-                Tus herramientas aparecen acá
-              </p>
-              <button
-                onClick={handleToggleEditMode}
-                className="text-xs text-primary hover:underline mt-1"
-              >
-                Personalizar
-              </button>
-            </motion.div>
-          )}
-        </AnimatePresence>
+        <SidebarGroup>
+          <SidebarGroupLabel>Herramientas</SidebarGroupLabel>
+          <SidebarGroupContent>
+            <SidebarMenu>
+              {toolRoutes.map((route) => (
+                <SidebarMenuItem key={route.url}>
+                  <NavItem
+                    route={route}
+                    isActive={location.pathname === route.url}
+                    showShortcut={!isMobile}
+                  />
+                </SidebarMenuItem>
+              ))}
+            </SidebarMenu>
+          </SidebarGroupContent>
+        </SidebarGroup>
       </SidebarContent>
 
       <SidebarFooter>
@@ -544,4 +342,59 @@ export function AppSidebar() {
       <SidebarRail />
     </Sidebar>
   );
+}
+
+
+function NavItem({
+  route,
+  isActive,
+  showShortcut,
+}: {
+  route: RouteConfig;
+  isActive: boolean;
+  showShortcut: boolean;
+}) {
+  const navigate = useNavigate();
+  const { state: sidebarState, isMobile: isSidebarMobile } = useSidebar();
+  const isCollapsed = sidebarState === "collapsed" && !isSidebarMobile;
+  const Icon = route.icon;
+
+  const item = (
+    <div
+      className={cn(
+        "relative flex items-center rounded-md text-sm transition-[background-color] duration-150",
+        isActive ? "bg-sidebar-accent text-sidebar-accent-foreground" : "hover:bg-sidebar-accent/50",
+        isCollapsed && "justify-center",
+      )}
+    >
+      <button
+        onClick={() => navigate(route.url)}
+        className={cn(
+          "flex items-center gap-2 flex-1 px-2 py-1.5 min-h-[32px] text-left cursor-pointer",
+          isCollapsed && "justify-center px-0 flex-initial",
+        )}
+      >
+        <Icon className="size-4" />
+        {!isCollapsed && <span className="truncate">{route.title}</span>}
+      </button>
+      {!isCollapsed && showShortcut && route.shortcut && (
+        <span className="flex gap-0.5 opacity-60 mr-2 shrink-0 text-[10px] px-1 py-0.5 bg-muted rounded font-mono">
+          {route.shortcut}
+        </span>
+      )}
+    </div>
+  );
+
+  if (isCollapsed) {
+    return (
+      <Tooltip>
+        <TooltipTrigger asChild>{item}</TooltipTrigger>
+        <TooltipContent side="right" align="center">
+          {route.title}
+        </TooltipContent>
+      </Tooltip>
+    );
+  }
+
+  return item;
 }
