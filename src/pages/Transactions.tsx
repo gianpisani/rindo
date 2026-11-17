@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo, useRef } from "react";
+import { useState, useMemo, useRef } from "react";
 import { useSearchParams } from "react-router-dom";
 import * as Dialog from "@radix-ui/react-dialog";
 import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
@@ -185,6 +185,9 @@ export default function Transactions() {
 
   const [showFuture, setShowFuture] = useState(false);
   const [isBankSyncOpen, setIsBankSyncOpen] = useState(false);
+  // Modo selección: los checkboxes y las acciones masivas aparecen a pedido.
+  const [selecting, setSelecting] = useState(false);
+  const [pageSize, setPageSize] = useState(100);
 
   // El composer solo edita: los movimientos nuevos entran por el QuickAdd global.
   // editingTransaction queda puesto al cerrar, así el fade de salida no cambia de modo.
@@ -470,15 +473,11 @@ export default function Transactions() {
     <Layout>
       <div className="space-y-6">
         <div className="flex items-center justify-between">
-          <div>
-            <h1 className="text-2xl font-bold tracking-tight mb-1">Transacciones</h1>
-            <p className="text-sm text-muted-foreground">
-              Gestiona todas tus transacciones
-            </p>
-          </div>
-          <Button className="rounded-full h-12 w-12 p-0 md:w-auto md:px-6" onClick={() => useGlobalDrawers.getState().openQuickAdd("Gasto")} aria-label="Agregar movimiento">
-            <Plus className="h-5 w-5 md:mr-2" />
-            <span className="hidden md:inline">Agregar</span>
+          <h1 className="text-2xl font-bold tracking-tight">Movimientos</h1>
+          {/* Casi todo llega solo: anotar a mano es secundario */}
+          <Button variant="ghost" size="sm" className="gap-1.5 text-muted-foreground" onClick={() => useGlobalDrawers.getState().openQuickAdd("Gasto")} aria-label="Agregar movimiento">
+            <Plus className="h-4 w-4" />
+            <span className="hidden sm:inline">Agregar</span>
           </Button>
 
           {editingTransaction && (
@@ -1095,6 +1094,10 @@ export default function Transactions() {
           isSyncing={bankSync.isRunning}
           onSync={() => setIsBankSyncOpen(true)}
           onExport={handleExportCSV}
+          selecting={selecting}
+          onSelectingChange={setSelecting}
+          pageSize={pageSize}
+          onPageSizeChange={setPageSize}
         />
 
         <TransactionsTable
@@ -1122,6 +1125,9 @@ export default function Transactions() {
           onCardFilterChange={setCardFilter}
           dateRange={dateRange}
           onDateRangeChange={setDateRange}
+          selecting={selecting}
+          onSelectingChange={setSelecting}
+          pageSize={pageSize}
         />
       </div>
 

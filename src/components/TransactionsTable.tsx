@@ -24,13 +24,6 @@ import {
   DropdownMenuSeparator,
 } from "./ui/dropdown-menu";
 import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "./ui/select";
-import {
   ChevronDown,
   ChevronUp,
   ChevronsUpDown,
@@ -49,6 +42,7 @@ import {
   Undo2,
   ArrowLeftRight,
   GripVertical,
+  ChevronLeft,
   ChevronRight,
   Minimize2,
   SearchX,
@@ -56,8 +50,6 @@ import {
   Plus,
   ArrowDownToLine,
   LineChart,
-  ChevronsLeft,
-  ChevronsRight,
 } from "lucide-react";
 import { Transaction } from "@/hooks/useTransactions";
 import {
@@ -233,13 +225,14 @@ const formatCLP = (amount: number) =>
 const signColor = (amount: number) =>
   amount > 0 ? "text-emerald-500" : amount < 0 ? "text-rose-500" : "";
 
-// Formato para NumberFlow en las stats del resumen (dígitos animados)
+// Formato con signo: NumberFlow en el panel de selección y la suma del pie.
 const SIGNED_CLP: Format = {
   style: "currency",
   currency: "CLP",
   maximumFractionDigits: 0,
   signDisplay: "exceptZero",
 };
+const formatSignedCLP = new Intl.NumberFormat("es-CL", SIGNED_CLP).format;
 
 // ── Editable cell components ───────────────────────────────────────────────
 
@@ -437,7 +430,7 @@ function EmptyState({ hasFilters, onClear }: { hasFilters: boolean; onClear: () 
       </div>
       <div className="space-y-1">
         <p className="text-sm font-medium">
-          {hasFilters ? "Nada con estos filtros" : "Sin transacciones todavía"}
+          {hasFilters ? "Nada con estos filtros" : "Sin movimientos todavía"}
         </p>
         <p className="text-xs text-muted-foreground">
           {hasFilters
@@ -574,6 +567,10 @@ interface TransactionsTableProps {
   onCardFilterChange: (v: string) => void;
   dateRange: DateRangeValue;
   onDateRangeChange: (v: DateRangeValue) => void;
+  /** Modo selección: solo entonces se ven los checkboxes y se puede marcar filas. */
+  selecting: boolean;
+  onSelectingChange: (v: boolean) => void;
+  pageSize: number;
 }
 
 // ── Main component ─────────────────────────────────────────────────────────
@@ -597,9 +594,13 @@ export function TransactionsTable({
   onCardFilterChange,
   dateRange,
   onDateRangeChange,
+  selecting,
+  onSelectingChange,
+  pageSize,
 }: TransactionsTableProps) {
   const [sorting, setSorting] = useState<SortingState>([{ id: "date", desc: true }]);
   const [rowSelection, setRowSelection] = useState<RowSelectionState>({});
+  const [pageIndex, setPageIndex] = useState(0);
   const [panelExpanded, setPanelExpanded] = useState(false);
   const [panelY, setPanelY] = useState<number | null>(null);
   const tbodyRef = useRef<HTMLTableSectionElement>(null);
@@ -644,21 +645,24 @@ export function TransactionsTable({
     setRowSelection({});
   }, [transactions.length]);
 
+  // Salir del modo selección suelta lo marcado.
+  useEffect(() => {
+    if (!selecting) setRowSelection({});
+  }, [selecting]);
+
+  useEffect(() => {
+    setPageIndex(0);
+  }, [pageSize]);
+
   const handleInlineUpdate = useCallback(async (id: string, field: keyof Transaction, value: unknown) => {
     if (id.startsWith("pending-")) return;
     await onUpdateSilent(id, { [field]: value });
   }, [onUpdateSilent]);
 
   const columns = useMemo<ColumnDef<Transaction>[]>(() => {
-    const typeOptions = TRANSACTION_TYPES.map((value) => ({
-      value,
-      label: value,
-      icon: typeIcons[value],
-    }));
-
     return [
-      // ── Select ──────────────────────────────────────────────────────────
-      {
+      // ── Select (solo en modo selección) ─────────────────────────────────
+      ...(selecting ? [{
         id: "select",
         size: 48, minSize: 48, maxSize: 48,
         header: ({ table }) => (
@@ -680,7 +684,7 @@ export function TransactionsTable({
         ),
         enableSorting: false,
         enableHiding: false,
-      },
+      }] as ColumnDef<Transaction>[] : []),
 
       // ── Fecha ────────────────────────────────────────────────────────────
       {
@@ -893,7 +897,7 @@ export function TransactionsTable({
         },
       }] as ColumnDef<Transaction>[] : []),
 
-      // ── Monto (coloreado + tipo inline) ──────────────────────────────────
+      // ── Monto (coloreado; el tipo se cambia en el editor) ───────────────
       {
         accessorKey: "amount",
         size: 170, minSize: 150, maxSize: 180,
@@ -904,25 +908,7 @@ export function TransactionsTable({
           const amountColor = typeAmountColors[type];
 
           return (
-            <div className={cn("flex items-center justify-end gap-1", isPrivacyMode && "privacy-blur")}>
-              {/* Tipo como icono clickeable */}
-              <SelectableCell
-                value={type}
-                options={typeOptions}
-                onSave={(newType) => {
-                  handleInlineUpdate(row.original.id, "type", newType);
-                  if (!categories.some(c => c.name === row.original.category_name && c.type === newType)) {
-                    const matchingCategory = categories.find(c => c.type === newType);
-                    handleInlineUpdate(row.original.id, "category_name", matchingCategory?.name || "Sin categoría");
-                  }
-                }}
-                renderValue={(val) => {
-                  const Icon = typeIcons[val];
-                  return <Icon className={cn("h-3.5 w-3.5", typeAmountColors[val])} />;
-                }}
-                className="p-1 opacity-40 hover:opacity-100"
-              />
-              {/* Monto coloreado */}
+            <div className={cn("flex items-center justify-end", isPrivacyMode && "privacy-blur")}>
               <EditableAmountCell
                 value={amount}
                 allowNegative={allowsNegativeAmount(type)}
@@ -972,7 +958,7 @@ export function TransactionsTable({
         ),
       },
     ];
-  }, [onEdit, onDelete, onDuplicate, categories, creditCards, isPrivacyMode, handleInlineUpdate]);
+  }, [selecting, onEdit, onDelete, onDuplicate, categories, creditCards, isPrivacyMode, handleInlineUpdate]);
 
   // ── Filtering ────────────────────────────────────────────────────────────
 
@@ -1003,8 +989,9 @@ export function TransactionsTable({
     getFilteredRowModel: getFilteredRowModel(),
     onSortingChange: setSorting,
     onRowSelectionChange: setRowSelection,
-    state: { sorting, rowSelection },
-    initialState: { pagination: { pageSize: 100 } },
+    onPaginationChange: (updater) =>
+      setPageIndex((typeof updater === "function" ? updater({ pageIndex, pageSize }) : updater).pageIndex),
+    state: { sorting, rowSelection, pagination: { pageIndex, pageSize } },
     enableRowSelection: row => !row.original.isPending,
     autoResetPageIndex: false,
     getRowId: (row) => row.id,
@@ -1016,8 +1003,8 @@ export function TransactionsTable({
 
   // ── Drag-to-select (Excel-like) ─────────────────────────────────────────
   const handleRowMouseDown = (e: React.MouseEvent, startIdx: number) => {
-    // Only left-click, ignore interactive elements
-    if (e.button !== 0) return;
+    // Solo en modo selección, con click izquierdo y fuera de controles
+    if (!selecting || e.button !== 0) return;
     const target = e.target as HTMLElement;
     if (target.closest('button, input, [role="menuitem"], [role="combobox"], [role="listbox"], [data-radix-collection-item], [type="checkbox"]')) return;
 
@@ -1054,9 +1041,12 @@ export function TransactionsTable({
     window.addEventListener("mouseup", handleUp);
   };
 
-  // ── Summary stats (selected rows or current page) ────────────────────────
+  // Suma con signo de lo filtrado: Gasto/Inversión restan, Ingreso/Reembolso suman
+  const filteredSum = filteredData.reduce((sum, t) => sum + displaySign(t.type) * t.amount, 0);
+
+  // ── Stats de la selección (panel flotante) ──────────────────────────────
   const summaryStats = (() => {
-    const rows = (hasSelection ? selectedRows : table.getRowModel().rows).map(r => r.original);
+    const rows = selectedRows.map(r => r.original);
     if (rows.length === 0) return null;
     // Montos con signo: Gasto/Inversión restan, Ingreso/Reembolso suman
     const amounts = rows.map(r => displaySign(r.type) * r.amount);
@@ -1064,7 +1054,6 @@ export function TransactionsTable({
     const income = rows.reduce((a, r) => a + Math.max(0, displaySign(r.type) * r.amount), 0);
     const expense = rows.reduce((a, r) => a + Math.max(0, -displaySign(r.type) * r.amount), 0);
     return {
-      count: rows.length,
       sum,
       avg: Math.round(sum / amounts.length),
       min: Math.min(...amounts),
@@ -1152,18 +1141,14 @@ export function TransactionsTable({
           isSelected && "mobile-tx-card-selected",
           isMissing && "mobile-tx-card-missing"
         )}
-        onClick={() => guardedEdit(t)}
+        // En modo selección tocar la card la marca; si no, abre el editor.
+        onClick={() => (selecting ? row.toggleSelected(!isSelected) : guardedEdit(t))}
       >
-        {/* Selection checkbox */}
-        <div
-          className="mobile-tx-checkbox"
-          onClick={(e) => {
-            e.stopPropagation();
-            row.toggleSelected(!isSelected);
-          }}
-        >
-          <Checkbox checked={isSelected} className="h-4 w-4" tabIndex={-1} />
-        </div>
+        {selecting && (
+          <div className="mobile-tx-checkbox">
+            <Checkbox checked={isSelected} className="h-4 w-4" tabIndex={-1} />
+          </div>
+        )}
 
         {/* Avatar */}
         <div className="relative flex-shrink-0">
@@ -1459,238 +1444,134 @@ export function TransactionsTable({
         </div>
       )}
 
-      {/* ── Mobile Card List ─────────────────────────────────────────────── */}
-      {isMobile ? (
-        <>
-          <div className="mobile-tx-list">
-            {table.getRowModel().rows.length === 0 ? (
-              <EmptyState hasFilters={hasActiveFilters} onClear={clearFilters} />
-            ) : groupedRows ? (
-              groupedRows.map((group) => (
-                <React.Fragment key={group.dayKey}>
-                  <div className="mobile-tx-date-header">
-                    {formatGroupDate(group.dayKey)}
-                  </div>
-                  {group.rows.map((row) => renderMobileCard(row, format(new Date(row.original.date), "HH:mm")))}
-                </React.Fragment>
-              ))
-            ) : (
-              table.getRowModel().rows.map((row) =>
-                renderMobileCard(row, format(new Date(row.original.date), "d MMM HH:mm", { locale: es }))
-              )
-            )}
-          </div>
-
-          {/* Mobile Pagination */}
-          <div className="flex items-center justify-between pt-1">
-            <span className="text-xs text-muted-foreground">
-              {table.getFilteredRowModel().rows.length} movimientos
-            </span>
-            <div className="flex items-center gap-1">
-              <Button
-                variant="ghost" size="sm"
-                onClick={() => table.previousPage()}
-                disabled={!table.getCanPreviousPage()}
-                className="h-8 px-2 text-xs"
-              >
-                <ChevronUp className="h-4 w-4 rotate-[-90deg] mr-1" />
-                Ant
-              </Button>
-              <span className="text-xs text-muted-foreground tabular-nums px-2">
-                {table.getState().pagination.pageIndex + 1}/{table.getPageCount()}
-              </span>
-              <Button
-                variant="ghost" size="sm"
-                onClick={() => table.nextPage()}
-                disabled={!table.getCanNextPage()}
-                className="h-8 px-2 text-xs"
-              >
-                Sig
-                <ChevronDown className="h-4 w-4 rotate-[-90deg] ml-1" />
-              </Button>
-            </div>
-          </div>
-        </>
-      ) : (
-        <>
-          {/* ── Desktop Table ──────────────────────────────────────────────── */}
-          <div className="border border-border/50 rounded-lg overflow-hidden">
-            <div className="overflow-x-auto overflow-y-auto max-h-[calc(100vh-320px)] min-h-[300px]">
-              <table className="w-full table-fixed">
-                <thead className="bg-card border-b border-border sticky top-0 z-10 shadow-sm">
-                  {table.getHeaderGroups().map((headerGroup) => (
-                    <tr key={headerGroup.id}>
-                      {headerGroup.headers.map((header) => (
-                        <th
-                          key={header.id}
-                          className="px-3 py-1.5 text-left text-xs font-semibold text-foreground"
-                          style={{
-                            width: header.column.columnDef.size,
-                            minWidth: header.column.columnDef.minSize,
-                            maxWidth: header.column.columnDef.maxSize,
-                          }}
-                        >
-                          {header.isPlaceholder ? null : flexRender(header.column.columnDef.header, header.getContext())}
-                        </th>
-                      ))}
-                    </tr>
-                  ))}
-                </thead>
-                <tbody ref={tbodyRef} className="divide-y divide-border/50 bg-card">
-                  {table.getRowModel().rows.length === 0 ? (
-                    <tr>
-                      <td colSpan={columns.length}>
-                        <EmptyState hasFilters={hasActiveFilters} onClear={clearFilters} />
-                      </td>
-                    </tr>
-                  ) : groupedRows ? (
-                    groupedRows.map((group) => (
-                      <React.Fragment key={group.dayKey}>
-                        <tr>
-                          <td
-                            colSpan={columns.length}
-                            className="px-4 py-1 bg-muted/30 border-t border-border/30 first:border-t-0"
-                          >
-                            <span className="text-xs font-semibold text-muted-foreground">
-                              {formatGroupDate(group.dayKey)}
-                            </span>
-                          </td>
-                        </tr>
-                        {group.rows.map((row, i) => renderDesktopRow(row, group.start + i))}
-                      </React.Fragment>
-                    ))
-                  ) : (
-                    table.getRowModel().rows.map(renderDesktopRow)
-                  )}
-                </tbody>
-              </table>
-            </div>
-
-            {/* ── Summary Footer (Excel-style) ─────────────────────────────── */}
-            {summaryStats && (
-              <div className="border-t border-border/50 bg-muted/20 px-3 py-1.5 flex items-center justify-end gap-6">
-                {hasSelection && (
-                  <span className="text-[11px] text-muted-foreground/60 mr-auto">
-                    {summaryStats.count} seleccionada{summaryStats.count > 1 ? "s" : ""}
-                  </span>
-                )}
-                {summaryStats.mixed && (
-                  <>
-                    <div className="flex items-center gap-1">
-                      <span className="text-[11px] text-muted-foreground/60">Ingresos</span>
-                      <span className={cn("text-xs font-mono font-semibold tabular-nums text-emerald-500", isPrivacyMode && "privacy-blur")}>
-                        +{formatCLP(summaryStats.income)}
-                      </span>
-                    </div>
-                    <div className="flex items-center gap-1">
-                      <span className="text-[11px] text-muted-foreground/60">Gastos</span>
-                      <span className={cn("text-xs font-mono font-semibold tabular-nums text-rose-500", isPrivacyMode && "privacy-blur")}>
-                        −{formatCLP(summaryStats.expense)}
-                      </span>
-                    </div>
-                  </>
-                )}
-                {([
-                  ["Min", summaryStats.min, "font-semibold"],
-                  ["Max", summaryStats.max, "font-semibold"],
-                  ["Prom", summaryStats.avg, "font-semibold"],
-                  ["Suma", summaryStats.sum, "font-bold"],
-                ] as const).map(([label, value, weight]) => (
-                  <div key={label} className="flex items-center gap-1">
-                    <span className="text-[11px] text-muted-foreground/60">{label}</span>
-                    <span className={cn("text-xs font-mono tabular-nums", weight, signColor(value), isPrivacyMode && "privacy-blur")}>
-                      <NumberFlow value={value} locales="es-CL" format={SIGNED_CLP} />
-                    </span>
-                  </div>
-                ))}
-              </div>
-            )}
-          </div>
-
-          {/* Desktop Pagination */}
-          <div className="flex items-center justify-between flex-wrap gap-3">
-            <div className="text-sm text-muted-foreground">
-              {hasSelection ? (
-                <span className="mr-2 font-medium text-primary">
-                  {selectedIds.length} de {table.getFilteredRowModel().rows.length} seleccionada(s)
-                </span>
-              ) : (
-                <span>{table.getFilteredRowModel().rows.length} transacción(es)</span>
-              )}
-            </div>
-            <div className="flex items-center gap-2">
-              <Select
-                value={table.getState().pagination.pageSize.toString()}
-                onValueChange={(value) => table.setPageSize(Number(value))}
-              >
-                <SelectTrigger className="h-8 w-[100px]">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="10">10 filas</SelectItem>
-                  <SelectItem value="20">20 filas</SelectItem>
-                  <SelectItem value="50">50 filas</SelectItem>
-                  <SelectItem value="100">100 filas</SelectItem>
-                </SelectContent>
-              </Select>
-
-              <div className="flex items-center gap-1">
-                <Button
-                  variant="outline" size="sm"
-                  onClick={() => table.setPageIndex(0)}
-                  disabled={!table.getCanPreviousPage()}
-                  className="h-8 w-8 p-0"
-                >
-                  <ChevronsLeft className="h-4 w-4" />
-                </Button>
-                <Button
-                  variant="outline" size="sm"
-                  onClick={() => table.previousPage()}
-                  disabled={!table.getCanPreviousPage()}
-                  className="h-8 px-2"
-                >
-                  <ChevronUp className="h-4 w-4 rotate-[-90deg]" />
-                </Button>
-              </div>
-
-              <div className="flex items-center gap-1.5">
-                <span className="text-sm text-muted-foreground">Pág.</span>
-                <Input
-                  type="number"
-                  min={1}
-                  max={table.getPageCount()}
-                  value={table.getState().pagination.pageIndex + 1}
-                  onChange={(e) => {
-                    const page = e.target.value ? Number(e.target.value) - 1 : 0;
-                    if (page >= 0 && page < table.getPageCount()) table.setPageIndex(page);
-                  }}
-                  className="h-8 w-14 text-center"
-                />
-                <span className="text-sm text-muted-foreground">de {table.getPageCount()}</span>
-              </div>
-
-              <div className="flex items-center gap-1">
-                <Button
-                  variant="outline" size="sm"
-                  onClick={() => table.nextPage()}
-                  disabled={!table.getCanNextPage()}
-                  className="h-8 px-2"
-                >
-                  <ChevronDown className="h-4 w-4 rotate-[-90deg]" />
-                </Button>
-                <Button
-                  variant="outline" size="sm"
-                  onClick={() => table.setPageIndex(table.getPageCount() - 1)}
-                  disabled={!table.getCanNextPage()}
-                  className="h-8 w-8 p-0"
-                >
-                  <ChevronsRight className="h-4 w-4" />
-                </Button>
-              </div>
-            </div>
-          </div>
-        </>
+      {/* ── Modo selección: cuántas van y cómo salir ─────────────────────── */}
+      {selecting && (
+        <div className="flex items-center justify-between gap-2 text-sm text-muted-foreground">
+          <span>
+            {hasSelection
+              ? `${selectedIds.length} seleccionado${selectedIds.length > 1 ? "s" : ""}`
+              : "Toca los movimientos para seleccionarlos"}
+          </span>
+          <Button variant="ghost" size="sm" className="h-8" onClick={() => onSelectingChange(false)}>
+            Listo
+          </Button>
+        </div>
       )}
+
+      {/* ── Lista: cards en el celular, tabla en escritorio ──────────────── */}
+      {isMobile ? (
+        <div className="mobile-tx-list">
+          {table.getRowModel().rows.length === 0 ? (
+            <EmptyState hasFilters={hasActiveFilters} onClear={clearFilters} />
+          ) : groupedRows ? (
+            groupedRows.map((group) => (
+              <React.Fragment key={group.dayKey}>
+                <div className="mobile-tx-date-header">
+                  {formatGroupDate(group.dayKey)}
+                </div>
+                {group.rows.map((row) => renderMobileCard(row, format(new Date(row.original.date), "HH:mm")))}
+              </React.Fragment>
+            ))
+          ) : (
+            table.getRowModel().rows.map((row) =>
+              renderMobileCard(row, format(new Date(row.original.date), "d MMM HH:mm", { locale: es }))
+            )
+          )}
+        </div>
+      ) : (
+        <div className="border border-border/50 rounded-lg overflow-hidden">
+          <div className="overflow-x-auto overflow-y-auto max-h-[calc(100vh-320px)] min-h-[300px]">
+            <table className="w-full table-fixed">
+              <thead className="bg-card border-b border-border sticky top-0 z-10 shadow-sm">
+                {table.getHeaderGroups().map((headerGroup) => (
+                  <tr key={headerGroup.id}>
+                    {headerGroup.headers.map((header) => (
+                      <th
+                        key={header.id}
+                        className="px-3 py-1.5 text-left text-xs font-semibold text-foreground"
+                        style={{
+                          width: header.column.columnDef.size,
+                          minWidth: header.column.columnDef.minSize,
+                          maxWidth: header.column.columnDef.maxSize,
+                        }}
+                      >
+                        {header.isPlaceholder ? null : flexRender(header.column.columnDef.header, header.getContext())}
+                      </th>
+                    ))}
+                  </tr>
+                ))}
+              </thead>
+              <tbody ref={tbodyRef} className="divide-y divide-border/50 bg-card">
+                {table.getRowModel().rows.length === 0 ? (
+                  <tr>
+                    <td colSpan={columns.length}>
+                      <EmptyState hasFilters={hasActiveFilters} onClear={clearFilters} />
+                    </td>
+                  </tr>
+                ) : groupedRows ? (
+                  groupedRows.map((group) => (
+                    <React.Fragment key={group.dayKey}>
+                      <tr>
+                        <td
+                          colSpan={columns.length}
+                          className="px-4 py-1 bg-muted/30 border-t border-border/30 first:border-t-0"
+                        >
+                          <span className="text-xs font-semibold text-muted-foreground">
+                            {formatGroupDate(group.dayKey)}
+                          </span>
+                        </td>
+                      </tr>
+                      {group.rows.map((row, i) => renderDesktopRow(row, group.start + i))}
+                    </React.Fragment>
+                  ))
+                ) : (
+                  table.getRowModel().rows.map(renderDesktopRow)
+                )}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
+
+      {/* ── Pie: cuántos, su suma y la página ───────────────────────────── */}
+      <div className="flex items-center justify-between gap-3 text-xs text-muted-foreground">
+        <span>
+          {filteredData.length} movimiento{filteredData.length === 1 ? "" : "s"}
+          {filteredData.length > 0 && (
+            <>
+              {" · Suma "}
+              <span className={cn("font-mono tabular-nums", isPrivacyMode && "privacy-blur")}>
+                {formatSignedCLP(filteredSum)}
+              </span>
+            </>
+          )}
+        </span>
+        {table.getPageCount() > 1 && (
+          <div className="flex items-center gap-1">
+            <Button
+              variant="ghost" size="sm"
+              onClick={() => table.previousPage()}
+              disabled={!table.getCanPreviousPage()}
+              className="h-8 w-8 p-0"
+              aria-label="Página anterior"
+            >
+              <ChevronLeft className="h-4 w-4" />
+            </Button>
+            <span className="tabular-nums">
+              {pageIndex + 1} de {table.getPageCount()}
+            </span>
+            <Button
+              variant="ghost" size="sm"
+              onClick={() => table.nextPage()}
+              disabled={!table.getCanNextPage()}
+              className="h-8 w-8 p-0"
+              aria-label="Página siguiente"
+            >
+              <ChevronRight className="h-4 w-4" />
+            </Button>
+          </div>
+        )}
+      </div>
 
       {/* Crear categoría desde una celda y asignarla a esa transacción */}
       <CategoryComposer
