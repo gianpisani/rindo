@@ -45,12 +45,11 @@ import {
   ChevronLeft,
   ChevronRight,
   Minimize2,
-  SearchX,
-  Inbox,
   Plus,
   ArrowDownToLine,
   LineChart,
 } from "lucide-react";
+import { EmptyState } from "@/components/EmptyState";
 import { Transaction } from "@/hooks/useTransactions";
 import {
   TRANSACTION_TYPES,
@@ -425,29 +424,11 @@ function SortHeader({ column, label, alignEnd }: { column: Column<Transaction>; 
 
 // ── Empty state ──────────────────────────────────────────────────────────
 
-function EmptyState({ hasFilters, onClear }: { hasFilters: boolean; onClear: () => void }) {
-  const Icon = hasFilters ? SearchX : Inbox;
-  return (
-    <div className="flex flex-col items-center gap-3 py-12 text-center">
-      <div className="flex h-12 w-12 items-center justify-center rounded-full">
-        <Icon className="h-5 w-5" />
-      </div>
-      <div className="space-y-1">
-        <p className="text-sm font-medium">
-          {hasFilters ? "Nada con estos filtros" : "Sin movimientos todavía"}
-        </p>
-        <p className="text-xs text-muted-foreground">
-          {hasFilters
-            ? "Prueba ajustar la búsqueda o los filtros"
-            : "Agrega la primera con el botón + o la tecla N"}
-        </p>
-      </div>
-      {hasFilters && (
-        <Button variant="ghost" size="xs" onClick={onClear}>
-          Limpiar filtros
-        </Button>
-      )}
-    </div>
+function TableEmpty({ hasFilters, onClear }: { hasFilters: boolean; onClear: () => void }) {
+  return hasFilters ? (
+    <EmptyState action={{ label: "Limpiar filtros", onClick: onClear }}>Nada con estos filtros</EmptyState>
+  ) : (
+    <EmptyState>Sin movimientos todavía: agrega el primero con + o la tecla N</EmptyState>
   );
 }
 
@@ -493,7 +474,7 @@ function CategoryCombobox({ value, options, onSave, trigger, placeholder = "Busc
             className="h-8 text-xs border-0 ring-0 focus:ring-0"
           />
           <CommandList>
-            <CommandEmpty className="py-3 text-center text-xs text-muted-foreground">
+            <CommandEmpty className="p-4 text-center text-sm text-muted-foreground">
               Sin resultados
             </CommandEmpty>
             <CommandGroup>
@@ -1460,7 +1441,7 @@ export function TransactionsTable({
       {isMobile ? (
         <div className="mobile-tx-list">
           {table.getRowModel().rows.length === 0 ? (
-            <EmptyState hasFilters={hasActiveFilters} onClear={clearFilters} />
+            <TableEmpty hasFilters={hasActiveFilters} onClear={clearFilters} />
           ) : groupedRows ? (
             groupedRows.map((group) => (
               <React.Fragment key={group.dayKey}>
@@ -1503,7 +1484,7 @@ export function TransactionsTable({
                 {table.getRowModel().rows.length === 0 ? (
                   <tr>
                     <td colSpan={columns.length}>
-                      <EmptyState hasFilters={hasActiveFilters} onClear={clearFilters} />
+                      <TableEmpty hasFilters={hasActiveFilters} onClear={clearFilters} />
                     </td>
                   </tr>
                 ) : groupedRows ? (

@@ -131,7 +131,7 @@ export function AppSidebar() {
                   <div className="grid flex-1 text-left text-sm leading-tight group-data-[collapsible=icon]:hidden">
                     <span className="truncate font-medium">{displayName}</span>
                     <span className="truncate text-xs text-muted-foreground">
-                      {userEmail ?? "Cargando..."}
+                      {userEmail ?? ""}
                     </span>
                   </div>
                   <ChevronsUpDown className="ml-auto size-4 group-data-[collapsible=icon]:hidden" />

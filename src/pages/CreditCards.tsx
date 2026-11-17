@@ -5,6 +5,7 @@ import { ChevronLeft, ChevronRight, MoreHorizontal, Pencil, Plus, Trash2 } from 
 import Layout from "@/components/Layout";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
+import { EmptyState } from "@/components/EmptyState";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -230,7 +231,7 @@ export default function CreditCards() {
               </div>
               <div className="tj-list" data-scrollable>
                 {sortedInstallments.length === 0 ? (
-                  <p className="tj-empty">Ninguna compra en cuotas.</p>
+                  <EmptyState>Ninguna compra en cuotas</EmptyState>
                 ) : (
                   sortedInstallments.map(({ installment: inst, progress }) => (
                     <InstallmentRow
@@ -275,7 +276,7 @@ export default function CreditCards() {
               )}
               <div className="tj-list" data-scrollable>
                 {cycleTxs.txs.length === 0 ? (
-                  <p className="tj-empty">Sin movimientos en este ciclo.</p>
+                  <EmptyState>Sin movimientos en este ciclo</EmptyState>
                 ) : (
                   cycleTxs.txs.map((tx) => {
                     // Un pago (de cualquier lado) se ve como abono: no suma al total.

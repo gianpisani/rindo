@@ -7,6 +7,7 @@ import { Check, Pencil, Plus, Trash2, X } from "lucide-react";
 import Layout from "@/components/Layout";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
+import { EmptyState } from "@/components/EmptyState";
 import { CategorySelect } from "@/components/CategorySelect";
 import { getCategoryIcon } from "@/components/TransactionsTable";
 import { useTransactions } from "@/hooks/useTransactions";
@@ -427,7 +428,7 @@ export default function Meta() {
               </div>
               <div className="meta-lim-list" data-scrollable>
                 {limitRows.length === 0 && !adding && (
-                  <p className="meta-lim-empty">Ponle un techo a una categoría y acá ves cómo vas.</p>
+                  <EmptyState className="col-span-full">Ponle un techo a una categoría y acá ves cómo vas</EmptyState>
                 )}
                 {limitRows.map((row, index) => {
                   const isEditing = editingCat === row.category;

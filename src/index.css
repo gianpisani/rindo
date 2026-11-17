@@ -41,35 +41,6 @@
     saber2-breathe 4s ease-in-out 2.55s infinite both;
 }
 
-/* ── Loading Screen Animations ── */
-
-@keyframes loading-logo-enter {
-  0%   { opacity: 0; transform: scale(0.8); }
-  100% { opacity: 1; transform: scale(1); }
-}
-
-@keyframes loading-text-enter {
-  0%   { opacity: 0; }
-  100% { opacity: 1; }
-}
-
-@keyframes loading-breathe {
-  0%, 100% { opacity: 0.4; }
-  50%      { opacity: 0.7; }
-}
-
-.loading-logo-enter {
-  animation: loading-logo-enter 0.5s ease-out both;
-}
-
-.loading-text-enter {
-  animation: loading-text-enter 0.4s ease-out 0.3s both;
-}
-
-.loading-breathe {
-  animation: loading-breathe 2s ease-in-out infinite;
-}
-
 /* Smooth app entrance after loading screen */
 @keyframes app-enter {
   0%   { opacity: 0; }
@@ -638,7 +609,6 @@ Based on Indigo, Blue, Cyan palette
 .inicio-more { font-size: var(--fs-1); color: var(--muted-foreground); margin-top: auto; text-align: left; }
 .inicio-more:hover { color: var(--foreground); }
 .inicio-stack, .inicio-legend { display: none; }
-.inicio-empty { flex: 1; display: grid; place-items: center; text-align: center; font-size: var(--fs-1); color: var(--muted-foreground); padding: 12px; }
 
 /* Paneles con lista */
 .inicio-feed, .inicio-limits { display: flex; flex-direction: column; overflow: hidden; }
@@ -937,7 +907,6 @@ Based on Indigo, Blue, Cyan palette
 /* Límites por categoría: en web, tarjetas chicas a lo ancho; se tocan para editar */
 .meta-limits { padding: 16px 16px; display: flex; flex-direction: column; gap: 8px; }
 .meta-lim-list { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 8px; }
-.meta-lim-empty { grid-column: 1 / -1; font-size: var(--fs-1); color: var(--muted-foreground); }
 .meta-lim { padding: 8px 12px; display: grid; grid-template-columns: auto minmax(0, 1fr) auto; gap: 3px 8px; align-items: center; text-align: left; cursor: pointer;
   border: 1px solid var(--border); border-radius: var(--radius-card); transition: background .15s, border-color .15s; }
 .meta-lim:hover, .meta-lim:focus-visible { background: var(--meta-hover); outline: none; }
@@ -1000,7 +969,6 @@ Based on Indigo, Blue, Cyan palette
   .meta-limits { padding: 12px 0 0; gap: 6px; overflow: hidden; }
   .meta-limits .meta-card-head { padding: 0 12px; }
   .meta-lim-list { flex: 1; min-height: 0; overflow-y: auto; display: flex; flex-direction: column; gap: 0; padding-bottom: 8px; scrollbar-width: thin; scrollbar-color: var(--border) transparent; }
-  .meta-lim-empty { padding: 4px 12px 8px; }
   .meta-lim { padding: 8px 12px; border: 0; border-radius: 0; }
   .meta-lim[data-editing] { background: var(--meta-hover); }
   .meta-lim-add { margin: 4px 12px 0; }
@@ -1030,7 +998,6 @@ Based on Indigo, Blue, Cyan palette
 .fin-card-head .inicio-num { margin-left: auto; font-size: var(--fs-1); color: var(--muted-foreground); white-space: nowrap; }
 .fin-card-head .inicio-num b { font-family: var(--font-mono); color: var(--foreground); font-weight: 500; }
 .fin-plot { position: relative; flex: 1; min-height: 0; margin: 4px 16px 0; }
-.fin-empty { flex: 1; display: grid; place-items: center; font-size: var(--fs-1); color: var(--muted-foreground); padding: 16px; text-align: center; }
 
 /* Las barras crecen desde abajo */
 @keyframes fin-rise { from { transform: scaleY(0); } }
@@ -1167,7 +1134,6 @@ Based on Indigo, Blue, Cyan palette
 .tj-label { font-size: var(--fs-2); font-weight: 500; color: var(--muted-foreground); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .tj-label small { font-size: var(--fs-1); font-weight: 500; color: var(--tj-faint); }
 .tj-list { flex: 1; min-height: 0; overflow-y: auto; padding-bottom: 6px; scrollbar-width: thin; scrollbar-color: var(--border) transparent; }
-.tj-empty { padding: 12px 16px 16px; font-size: var(--fs-1); color: var(--muted-foreground); }
 
 /* Primera vez */
 .tj-setup { max-width: 420px; padding: 24px 24px; gap: 8px; align-items: flex-start; }
@@ -1269,6 +1235,6 @@ Based on Indigo, Blue, Cyan palette
   .tj-cuenta .tj-card-head { justify-content: center; }
   .tj-stepper .label { min-width: 0; flex: 1; }
   .tj-cycle { padding: 0 12px 8px; }
-  .tj-inst-main, .tj-tx, .tj-empty { padding-left: 12px; padding-right: 12px; }
+  .tj-inst-main, .tj-tx { padding-left: 12px; padding-right: 12px; }
   .tj-inst-detail { padding: 4px 12px 12px 32px; }
 }

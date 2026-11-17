@@ -13,6 +13,8 @@ import {
   Loader2,
   Trash2,
 } from "lucide-react";
+import { EmptyState } from "@/components/EmptyState";
+import { Skeleton } from "@/components/ui/skeleton";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { cn } from "@/lib/utils";
@@ -385,17 +387,17 @@ export function BankSyncHistory() {
 
   if (isLoading) {
     return (
-      <div className="flex items-center justify-center py-8">
-        <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
+      <div className="space-y-2">
+        {Array.from({ length: 3 }).map((_, i) => (
+          <Skeleton key={i} className="h-14 rounded-card" />
+        ))}
       </div>
     );
   }
 
   if (!entries || entries.length === 0) {
     return (
-      <div className="flex flex-col items-center justify-center py-8 text-center space-y-2">
-        <p className="text-sm text-muted-foreground">No hay sincronizaciones registradas aún.</p>
-      </div>
+      <EmptyState>No hay sincronizaciones registradas aún</EmptyState>
     );
   }
 

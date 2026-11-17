@@ -21,12 +21,13 @@ import {
   type RealFlowsConfig,
 } from "@/hooks/useRealFlows";
 import { summarizeCategoryPeriod } from "@/lib/category-spending";
-import { PiggyBank, Receipt, ChevronRight, RefreshCw } from "lucide-react";
+import { PiggyBank, ChevronRight, RefreshCw } from "lucide-react";
 import { BankSyncModal } from "@/components/BankSyncModal";
 import { useBankSyncContext } from "@/contexts/BankSyncContext";
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
+import { EmptyState } from "@/components/EmptyState";
 import { format, isToday, isYesterday } from "date-fns";
 import { es } from "date-fns/locale";
 import { cn } from "@/lib/utils";
@@ -246,14 +247,11 @@ const Index = () => {
   const seeAllLimits = () => navigate("/budget", { state: { tab: "limits" } });
 
   const limitsList = !hasLimits ? (
-    <button onClick={seeAllLimits} className="inicio-empty w-full">
-      <span>
-        <span className="block font-medium text-foreground">Aún no pones límites</span>
-        Ponle un techo a una categoría y aparece acá
-      </span>
-    </button>
+    <EmptyState action={{ label: "Poner un límite", onClick: seeAllLimits }}>
+      Aún no pones límites
+    </EmptyState>
   ) : overLimits.length === 0 ? (
-    <div className="inicio-empty">Vas bien en todos tus límites</div>
+    <EmptyState>Vas bien en todos tus límites</EmptyState>
   ) : (
     overLimits.map((cat, index) => {
       const limit = cat.limit as number;
@@ -289,13 +287,7 @@ const Index = () => {
       ))}
     </div>
   ) : recentTransactions.length === 0 ? (
-    <div className="inicio-empty h-full">
-      <span>
-        <Receipt className="mx-auto mb-3 size-7 text-muted-foreground" />
-        <span className="block font-medium text-foreground">No hay movimientos aún</span>
-        Sincroniza tu banco y aparecen acá
-      </span>
-    </div>
+    <EmptyState className="h-full">No hay movimientos aún: sincroniza tu banco y aparecen acá</EmptyState>
   ) : (
     sortedDateKeys.map((dateKey) => (
       <div key={dateKey}>
@@ -403,7 +395,7 @@ const Index = () => {
           <section className="inicio-card inicio-spend">
             <span className="inicio-title">Por categoría</span>
             {spendBreakdown.length === 0 ? (
-              <div className="inicio-empty">Sin gastos este mes</div>
+              <EmptyState>Sin gastos este mes</EmptyState>
             ) : (
               <>
                 {shownCategories.map((cat, index) => (
