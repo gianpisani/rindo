@@ -5,16 +5,6 @@ import { toast } from "sonner";
 import { addMonths, format } from "date-fns";
 import { es } from "date-fns/locale";
 
-export interface InstallmentScheduleItem {
-  number: number;
-  date: Date;
-  dateFormatted: string;
-  amount: number;
-  isPaid: boolean;
-  isCurrent: boolean;
-  isPastDue: boolean;
-}
-
 export interface InstallmentPurchase {
   id: string;
   user_id: string;
@@ -225,75 +215,24 @@ export function useInstallments() {
     },
   });
 
-  // Helper: Get remaining installments for a purchase
-  const getRemainingInstallments = (purchase: InstallmentPurchase) => {
-    return purchase.total_installments - purchase.paid_installments;
-  };
-
-  // Helper: Get remaining amount for a purchase
-  const getRemainingAmount = (purchase: InstallmentPurchase) => {
-    return getRemainingInstallments(purchase) * purchase.installment_amount;
-  };
-
-  // Helper: Get next installment date
-  const getNextInstallmentDate = (purchase: InstallmentPurchase) => {
-    const firstDate = new Date(purchase.first_installment_date);
-    return addMonths(firstDate, purchase.paid_installments);
-  };
-
-  // Helper: Generate installment schedule
-  const getInstallmentSchedule = (purchase: InstallmentPurchase) => {
-    const schedule: InstallmentScheduleItem[] = [];
-    const firstDate = new Date(purchase.first_installment_date);
-    const today = new Date();
-
-    for (let i = 0; i < purchase.total_installments; i++) {
-      const date = addMonths(firstDate, i);
-      const isPaid = i < purchase.paid_installments;
-      const isPastDue = !isPaid && date <= today;
-      const isCurrent = i === purchase.paid_installments && !isPastDue;
-
-      schedule.push({
-        number: i + 1,
-        date,
-        dateFormatted: format(date, "MMM yyyy", { locale: es }),
-        amount: purchase.installment_amount,
-        isPaid,
-        isCurrent,
-        isPastDue,
-      });
-    }
-
-    return schedule;
-  };
-
-  // Helper: Check if installment still has pending months
-  const isInstallmentActive = (purchase: InstallmentPurchase) => {
-    const firstDate = new Date(purchase.first_installment_date);
-    const lastInstallmentDate = addMonths(firstDate, purchase.total_installments - 1);
-    return lastInstallmentDate >= new Date();
-  };
-
-  // Totals - only count active installments for monthly payment
-  const activeInstallments = installments.filter(isInstallmentActive);
-  const totals = {
-    totalPurchases: installments.length,
-    totalAmount: installments.reduce((acc, i) => acc + i.total_amount, 0),
-    monthlyPayment: activeInstallments.reduce((acc, i) => acc + i.installment_amount, 0),
-  };
-
   return {
     installments,
     isLoading,
-    totals,
     addInstallment,
     updateInstallment,
     deleteInstallment,
-    // Helpers
-    getRemainingInstallments,
-    getRemainingAmount,
-    getNextInstallmentDate,
-    getInstallmentSchedule,
-    isInstallmentActive,
   };
+}
+
+/**
+ * Cuántas cuotas ya se facturaron (las de fecha pasada), cuántas quedan y
+ * cuándo es la última. Una compra sigue activa mientras le quede alguna.
+ */
+export function installmentProgress(purchase: InstallmentPurchase, today = new Date()) {
+  const first = new Date(purchase.first_installment_date);
+  const total = purchase.total_installments;
+  let billed = 0;
+  while (billed < total && addMonths(first, billed) <= today) billed++;
+  const last = addMonths(first, total - 1);
+  return { billed, left: total - billed, last, active: last >= today };
 }

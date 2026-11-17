@@ -1,26 +1,18 @@
 import { useMemo, useState, type CSSProperties } from "react";
-import { addMonths, format } from "date-fns";
+import { addMonths, format, startOfDay } from "date-fns";
 import { es } from "date-fns/locale";
-import {
-  ChevronLeft,
-  ChevronRight,
-  MoreHorizontal,
-  Pencil,
-  Plus,
-  Trash2,
-} from "lucide-react";
+import { ChevronLeft, ChevronRight, MoreHorizontal, Pencil, Plus, Trash2 } from "lucide-react";
 import Layout from "@/components/Layout";
 import { Skeleton } from "@/components/ui/skeleton";
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
-  DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { useCreditCards, type CreditCard, type CreditCardSummary } from "@/hooks/useCreditCards";
-import { useInstallments, type InstallmentPurchase } from "@/hooks/useInstallments";
-import { useTransactions } from "@/hooks/useTransactions";
+import { installmentProgress, useInstallments, type InstallmentPurchase } from "@/hooks/useInstallments";
+import { useTransactions, type Transaction } from "@/hooks/useTransactions";
 import { CreditCardModal } from "@/components/CreditCardModal";
 import { InstallmentModal } from "@/components/InstallmentModal";
 import ConfirmDialog from "@/components/ConfirmDialog";
@@ -28,40 +20,54 @@ import { usePrivacyMode } from "@/hooks/usePrivacyMode";
 import { cn } from "@/lib/utils";
 
 /**
- * Tarjetas: ¿cuánto cupo llevo usado y qué me toca pagar? Una pantalla
- * exacta, como Meta y Finanzas. Arriba las tarjetas dibujadas como
- * plásticos, cada una con su cupo. Abajo dos paneles: las compras en cuotas
- * y el estado de cuenta de la tarjeta elegida, ciclo por ciclo. Lo largo
- * scrollea adentro de su panel, nunca la página.
+ * Tarjetas: ¿cuánto llevo este ciclo, cuándo cierra y cuándo pago? Cada
+ * plástico lo responde de un vistazo. Abajo, las compras en cuotas (cuántas
+ * quedan) y el estado de cuenta de la tarjeta elegida, ciclo por ciclo. Lo
+ * largo scrollea adentro de su panel, nunca la página.
  */
 
 // Banco de Chile: el ciclo corre de 14:00 a 14:00 del día de cierre.
 const BILLING_CUTOFF_HOUR = 14;
-const HOT_USAGE = 80;
 
 const formatCurrency = (v: number) =>
   new Intl.NumberFormat("es-CL", { style: "currency", currency: "CLP", maximumFractionDigits: 0 }).format(v);
 
 const day = (d: Date) => format(d, "d MMM", { locale: es }).replace(".", "");
 
+/** El día `d` del mes, o el último si el mes es más corto (un 31 en febrero es el 28). */
+const dayOfMonth = (year: number, month: number, d: number, hour = 0) =>
+  new Date(year, month, Math.min(d, new Date(year, month + 1, 0).getDate()), hour);
+
 function getBillingCycle(billingDay: number, cycleOffset: number = 0) {
   const now = new Date();
-  const billingDateThisMonth = new Date(now.getFullYear(), now.getMonth(), billingDay, BILLING_CUTOFF_HOUR, 0, 0);
-
-  let cycleEndDate = now < billingDateThisMonth ? billingDateThisMonth : addMonths(billingDateThisMonth, 1);
-  cycleEndDate = addMonths(cycleEndDate, cycleOffset);
-  const cycleStartDate = addMonths(cycleEndDate, -1);
-
-  return {
-    start: cycleStartDate,
-    end: cycleEndDate,
-    isClosed: cycleEndDate <= now,
-    label: format(cycleEndDate, "MMMM yyyy", { locale: es }),
-  };
+  const billingDateThisMonth = dayOfMonth(now.getFullYear(), now.getMonth(), billingDay, BILLING_CUTOFF_HOUR);
+  const end = addMonths(now < billingDateThisMonth ? billingDateThisMonth : addMonths(billingDateThisMonth, 1), cycleOffset);
+  return { start: addMonths(end, -1), end, label: format(end, "MMMM yyyy", { locale: es }) };
 }
 
-const usageOf = (card: CreditCardSummary) =>
-  card.credit_limit > 0 ? Math.min(100, (card.total_used_credit / card.credit_limit) * 100) : 0;
+type Cycle = ReturnType<typeof getBillingCycle>;
+
+/** El primer día de pago después del cierre del ciclo. */
+const paymentDate = (cycle: Cycle, paymentDay: number) => {
+  const sameMonth = dayOfMonth(cycle.end.getFullYear(), cycle.end.getMonth(), paymentDay);
+  return sameMonth > cycle.end ? sameMonth : dayOfMonth(cycle.end.getFullYear(), cycle.end.getMonth() + 1, paymentDay);
+};
+
+/** Los movimientos de una tarjeta en un ciclo, del más nuevo al más viejo, y su total (cargos menos abonos). */
+function statement(transactions: Transaction[], cardId: string, cycle: Cycle) {
+  const txs = transactions
+    .filter((t) => {
+      if (t.card_id !== cardId) return false;
+      const at = new Date(t.date).getTime();
+      return at >= cycle.start.getTime() && at < cycle.end.getTime();
+    })
+    .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+  const total = txs.reduce(
+    (sum, t) => sum + (t.type === "Gasto" ? Number(t.amount) : t.type === "Ingreso" ? -Number(t.amount) : 0),
+    0
+  );
+  return { txs, total };
+}
 
 export default function CreditCards() {
   const { isPrivacyMode } = usePrivacyMode();
@@ -69,7 +75,6 @@ export default function CreditCards() {
     creditCards,
     cardSummaries,
     isLoading: isLoadingCards,
-    totals: cardTotals,
     addCreditCard,
     updateCreditCard,
     deleteCreditCard,
@@ -77,12 +82,9 @@ export default function CreditCards() {
   const {
     installments,
     isLoading: isLoadingInstallments,
-    totals: installmentTotals,
     addInstallment,
     updateInstallment,
     deleteInstallment,
-    getInstallmentSchedule,
-    isInstallmentActive,
   } = useInstallments();
   const { transactions } = useTransactions();
 
@@ -94,8 +96,9 @@ export default function CreditCards() {
   const [installmentModalOpen, setInstallmentModalOpen] = useState(false);
   const [editingCard, setEditingCard] = useState<CreditCard | null>(null);
   const [editingInstallment, setEditingInstallment] = useState<InstallmentPurchase | null>(null);
-  const [deleteCardId, setDeleteCardId] = useState<string | null>(null);
-  const [deleteInstallmentId, setDeleteInstallmentId] = useState<string | null>(null);
+  // Eliminar tarjeta o compra: un solo diálogo. El contenido se queda mientras se cierra.
+  const [toDelete, setToDelete] = useState<{ kind: "card" | "installment"; id: string } | null>(null);
+  const [deleteOpen, setDeleteOpen] = useState(false);
   const [openInstallment, setOpenInstallment] = useState<string | null>(null);
 
   // ── La tarjeta elegida manda el estado de cuenta ──
@@ -103,48 +106,52 @@ export default function CreditCards() {
   const [cycleOffset, setCycleOffset] = useState(0);
   const selected = cardSummaries.find((c) => c.id === selectedId) ?? cardSummaries[0];
 
+  // Lo que muestra cada plástico: este ciclo, cuándo cierra y el próximo pago.
+  const cardCycles = useMemo(() => {
+    const today = startOfDay(new Date());
+    return new Map(
+      cardSummaries.map((card) => {
+        const current = getBillingCycle(card.billing_day, 0);
+        const previous = getBillingCycle(card.billing_day, -1);
+        const billed = statement(transactions, card.id, previous).total;
+        const billedPayment = paymentDate(previous, card.payment_day);
+        // Si el estado de cuenta anterior todavía no vence, ese es el próximo pago.
+        const pending = billed > 0 && billedPayment >= today;
+        return [
+          card.id,
+          {
+            total: statement(transactions, card.id, current).total,
+            closes: current.end,
+            pay: pending ? billedPayment : paymentDate(current, card.payment_day),
+            payAmount: pending ? billed : null,
+          },
+        ] as const;
+      })
+    );
+  }, [cardSummaries, transactions]);
+
   const cycle = useMemo(
     () => (selected ? getBillingCycle(selected.billing_day, cycleOffset) : null),
     [selected, cycleOffset]
   );
-
-  const cycleTx = useMemo(() => {
-    if (!selected || !cycle) return [];
-    return transactions
-      .filter((t) => {
-        if (t.card_id !== selected.id) return false;
-        const at = new Date(t.date).getTime();
-        return at >= cycle.start.getTime() && at < cycle.end.getTime();
-      })
-      .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
-  }, [transactions, selected, cycle]);
-
-  const cycleTotals = useMemo(
-    () =>
-      cycleTx.reduce(
-        (acc, t) => {
-          if (t.type === "Gasto") acc.gastos += Number(t.amount);
-          else if (t.type === "Ingreso") acc.abonos += Number(t.amount);
-          return acc;
-        },
-        { gastos: 0, abonos: 0 }
-      ),
-    [cycleTx]
+  const cycleStatement = useMemo(
+    () => (selected && cycle ? statement(transactions, selected.id, cycle) : { txs: [], total: 0 }),
+    [transactions, selected, cycle]
   );
 
   // Cuotas: primero las que siguen corriendo, después las terminadas.
   const sortedInstallments = useMemo(() => {
-    const active = installments.filter(isInstallmentActive);
-    const done = installments.filter((i) => !isInstallmentActive(i));
-    return [...active, ...done];
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+    const rows = installments.map((installment) => ({ installment, progress: installmentProgress(installment) }));
+    return [...rows.filter((r) => r.progress.active), ...rows.filter((r) => !r.progress.active)];
   }, [installments]);
-  const activeCount = installments.filter(isInstallmentActive).length;
+  const monthlyPayment = sortedInstallments
+    .filter((r) => r.progress.active)
+    .reduce((sum, r) => sum + r.installment.installment_amount, 0);
+  const hasActiveInstallments = monthlyPayment > 0;
 
-  const totalUsage = cardTotals.totalLimit > 0 ? (cardTotals.totalUsed / cardTotals.totalLimit) * 100 : 0;
-
-  // En celular, cuotas y estado de cuenta comparten el panel.
-  const [mobileTab, setMobileTab] = useState<"cuotas" | "cuenta">("cuotas");
+  // En celular, cuotas y estado de cuenta comparten el panel. Sin cuotas activas, parte en el estado de cuenta.
+  const [mobileTab, setMobileTab] = useState<"cuotas" | "cuenta" | null>(null);
+  const tab = mobileTab ?? (hasActiveInstallments ? "cuotas" : "cuenta");
 
   const openNewCard = () => {
     setEditingCard(null);
@@ -156,9 +163,13 @@ export default function CreditCards() {
     setEditingCard(full);
     setCardModalOpen(true);
   };
-  const openNewInstallment = () => {
-    setEditingInstallment(null);
+  const openInstallmentModal = (installment: InstallmentPurchase | null) => {
+    setEditingInstallment(installment);
     setInstallmentModalOpen(true);
+  };
+  const askDelete = (kind: "card" | "installment", id: string) => {
+    setToDelete({ kind, id });
+    setDeleteOpen(true);
   };
 
   const handleSaveCard = async (card: Omit<CreditCard, "id" | "user_id" | "created_at" | "updated_at">) => {
@@ -175,17 +186,14 @@ export default function CreditCards() {
     setEditingInstallment(null);
   };
 
-  const handleDeleteCard = async () => {
-    if (!deleteCardId) return;
-    await deleteCreditCard.mutateAsync(deleteCardId);
-    if (selectedId === deleteCardId) setSelectedId(null);
-    setDeleteCardId(null);
-  };
-
-  const handleDeleteInstallment = async () => {
-    if (!deleteInstallmentId) return;
-    await deleteInstallment.mutateAsync(deleteInstallmentId);
-    setDeleteInstallmentId(null);
+  const handleDelete = async () => {
+    if (!toDelete) return;
+    if (toDelete.kind === "card") {
+      await deleteCreditCard.mutateAsync(toDelete.id);
+      if (selectedId === toDelete.id) setSelectedId(null);
+    } else {
+      await deleteInstallment.mutateAsync(toDelete.id);
+    }
   };
 
   return (
@@ -193,20 +201,6 @@ export default function CreditCards() {
       <div className="tj">
         <header className="tj-head">
           <h1 className="tj-title">Tarjetas</h1>
-          {loading ? (
-            <Skeleton className="h-5 w-64" />
-          ) : hasCards ? (
-            <p className={cn("tj-totals", isPrivacyMode && "privacy-blur")}>
-              <span>
-                usado <b data-hot={totalUsage > HOT_USAGE || undefined}>{formatCurrency(cardTotals.totalUsed)}</b> de{" "}
-                {formatCurrency(cardTotals.totalLimit)}
-              </span>
-              <span className="tj-sep" aria-hidden>·</span>
-              <span>
-                cuotas <b>{formatCurrency(installmentTotals.monthlyPayment)}</b> al mes
-              </span>
-            </p>
-          ) : null}
         </header>
 
         {loading ? (
@@ -221,19 +215,20 @@ export default function CreditCards() {
         ) : !hasCards ? (
           <section className="tj-card tj-setup">
             <h2>Tu primera tarjeta</h2>
-            <p>Con la tarjeta acá ves el cupo que llevas usado, las compras en cuotas y el estado de cuenta de cada ciclo.</p>
+            <p>Verás cuánto llevas en el ciclo, cuándo cierra y cuándo pagas.</p>
             <button className="tj-btn tj-btn-primary" onClick={openNewCard}>
               <Plus /> Agregar tarjeta
             </button>
           </section>
         ) : (
-          <div className="tj-grid" data-tab={mobileTab}>
+          <div className="tj-grid" data-tab={tab}>
             {/* Los plásticos */}
             <section className="tj-wallet" aria-label="Mis tarjetas">
               {cardSummaries.map((card) => (
                 <Plastic
                   key={card.id}
                   card={card}
+                  cycle={cardCycles.get(card.id)!}
                   selected={cardSummaries.length > 1 && card.id === selected?.id}
                   isPrivacyMode={isPrivacyMode}
                   onSelect={() => {
@@ -241,8 +236,7 @@ export default function CreditCards() {
                     setCycleOffset(0);
                   }}
                   onEdit={() => openEditCard(card.id)}
-                  onDelete={() => setDeleteCardId(card.id)}
-                  onNewInstallment={openNewInstallment}
+                  onDelete={() => askDelete("card", card.id)}
                 />
               ))}
               <button className="tj-plastic tj-plastic-new" onClick={openNewCard}>
@@ -252,10 +246,10 @@ export default function CreditCards() {
 
             {/* Solo en celular: qué panel se ve */}
             <div className="tj-tabs" role="tablist">
-              <button className="tj-tab" role="tab" aria-selected={mobileTab === "cuotas"} onClick={() => setMobileTab("cuotas")}>
+              <button className="tj-tab" role="tab" aria-selected={tab === "cuotas"} onClick={() => setMobileTab("cuotas")}>
                 Cuotas
               </button>
-              <button className="tj-tab" role="tab" aria-selected={mobileTab === "cuenta"} onClick={() => setMobileTab("cuenta")}>
+              <button className="tj-tab" role="tab" aria-selected={tab === "cuenta"} onClick={() => setMobileTab("cuenta")}>
                 Estado de cuenta
               </button>
             </div>
@@ -265,35 +259,30 @@ export default function CreditCards() {
               <div className="tj-card-head">
                 <span className="tj-label">
                   Cuotas
-                  {activeCount > 0 && (
-                    <small>
-                      {" "}· {activeCount} activa{activeCount !== 1 ? "s" : ""}
+                  {hasActiveInstallments && (
+                    <small className={cn(isPrivacyMode && "privacy-blur")}>
+                      {" "}· {formatCurrency(monthlyPayment)} al mes
                     </small>
                   )}
                 </span>
-                <button className="tj-btn" onClick={openNewInstallment}>
+                <button className="tj-btn" onClick={() => openInstallmentModal(null)}>
                   <Plus /> Compra
                 </button>
               </div>
               <div className="tj-list" data-scrollable>
                 {sortedInstallments.length === 0 ? (
-                  <p className="tj-empty">Ninguna compra en cuotas. Cuando compres algo en cuotas, anótala acá y las verás mes a mes.</p>
+                  <p className="tj-empty">Ninguna compra en cuotas.</p>
                 ) : (
-                  sortedInstallments.map((inst, index) => (
+                  sortedInstallments.map(({ installment: inst, progress }) => (
                     <InstallmentRow
                       key={inst.id}
                       installment={inst}
-                      index={index}
+                      progress={progress}
                       open={openInstallment === inst.id}
-                      done={!isInstallmentActive(inst)}
                       isPrivacyMode={isPrivacyMode}
-                      schedule={getInstallmentSchedule(inst)}
                       onToggle={() => setOpenInstallment(openInstallment === inst.id ? null : inst.id)}
-                      onEdit={() => {
-                        setEditingInstallment(inst);
-                        setInstallmentModalOpen(true);
-                      }}
-                      onDelete={() => setDeleteInstallmentId(inst.id)}
+                      onEdit={() => openInstallmentModal(inst)}
+                      onDelete={() => askDelete("installment", inst.id)}
                     />
                   ))
                 )}
@@ -317,23 +306,19 @@ export default function CreditCards() {
                   </button>
                 </span>
               </div>
-              {cycle && selected && (
+              {cycle && (
                 <div className="tj-cycle">
                   <span>
                     {day(cycle.start)} → {day(cycle.end)}
                   </span>
-                  <span className="tj-pill" data-open={!cycle.isClosed || undefined}>
-                    {cycle.isClosed ? "facturado" : "por facturar"}
-                  </span>
-                  <span className="tj-cycle-pay">pago día {selected.payment_day}</span>
-                  <b className={cn(isPrivacyMode && "privacy-blur")}>{formatCurrency(cycleTotals.gastos - cycleTotals.abonos)}</b>
+                  <b className={cn(isPrivacyMode && "privacy-blur")}>{formatCurrency(cycleStatement.total)}</b>
                 </div>
               )}
               <div className="tj-list" data-scrollable>
-                {cycleTx.length === 0 ? (
+                {cycleStatement.txs.length === 0 ? (
                   <p className="tj-empty">Sin movimientos en este ciclo.</p>
                 ) : (
-                  cycleTx.map((tx) => (
+                  cycleStatement.txs.map((tx) => (
                     <div key={tx.id} className="tj-tx" data-in={tx.type === "Ingreso" || undefined}>
                       <span className="d">{format(new Date(tx.date), "dd/MM")}</span>
                       <span className={cn("n", isPrivacyMode && "privacy-blur")}>{tx.detail || tx.category_name}</span>
@@ -345,16 +330,6 @@ export default function CreditCards() {
                   ))
                 )}
               </div>
-              {cycleTotals.abonos > 0 && (
-                <div className={cn("tj-foot", isPrivacyMode && "privacy-blur")}>
-                  <span>
-                    cargos <b>{formatCurrency(cycleTotals.gastos)}</b>
-                  </span>
-                  <span>
-                    abonos <b className="in">{formatCurrency(cycleTotals.abonos)}</b>
-                  </span>
-                </div>
-              )}
             </section>
           </div>
         )}
@@ -382,23 +357,16 @@ export default function CreditCards() {
       />
 
       <ConfirmDialog
-        open={!!deleteCardId}
-        onOpenChange={() => setDeleteCardId(null)}
-        title="¿Eliminar tarjeta?"
-        description="Se eliminarán también todas las compras en cuotas asociadas. Esta acción no se puede deshacer."
+        open={deleteOpen}
+        onOpenChange={setDeleteOpen}
+        title={toDelete?.kind === "card" ? "¿Eliminar tarjeta?" : "¿Eliminar compra?"}
+        description={
+          toDelete?.kind === "card"
+            ? "Se eliminarán también todas las compras en cuotas asociadas. Esta acción no se puede deshacer."
+            : "Se eliminará el registro y todas las cuotas en Movimientos. Esta acción no se puede deshacer."
+        }
         confirmText="Eliminar"
-        onConfirm={handleDeleteCard}
-        variant="destructive"
-      />
-
-      <ConfirmDialog
-        open={!!deleteInstallmentId}
-        onOpenChange={() => setDeleteInstallmentId(null)}
-        title="¿Eliminar compra?"
-        description="Se eliminará el registro y todas las cuotas en Movimientos. Esta acción no se puede deshacer."
-        confirmText="Eliminar"
-        onConfirm={handleDeleteInstallment}
-        variant="destructive"
+        onConfirm={handleDelete}
       />
     </Layout>
   );
@@ -407,29 +375,27 @@ export default function CreditCards() {
 // ─── El plástico ─────────────────────────────────────────────────────────
 function Plastic({
   card,
+  cycle,
   selected,
   isPrivacyMode,
   onSelect,
   onEdit,
   onDelete,
-  onNewInstallment,
 }: {
   card: CreditCardSummary;
+  cycle: { total: number; closes: Date; pay: Date; payAmount: number | null };
   selected: boolean;
   isPrivacyMode: boolean;
   onSelect: () => void;
   onEdit: () => void;
   onDelete: () => void;
-  onNewInstallment: () => void;
 }) {
-  const usage = usageOf(card);
   return (
     <div
       role="button"
       tabIndex={0}
       className="tj-plastic"
       data-selected={selected || undefined}
-      data-hot={usage > HOT_USAGE || undefined}
       style={{ "--tj-c": card.color || "var(--tj-fallback)" } as CSSProperties}
       onClick={onSelect}
       onKeyDown={(e) => {
@@ -439,10 +405,10 @@ function Plastic({
         }
       }}
       aria-pressed={selected}
-      aria-label={`${card.name}, ${Math.round(usage)}% del cupo usado`}
+      aria-label={`${card.name}, este ciclo ${formatCurrency(cycle.total)}`}
     >
       <div className="tj-pl-top">
-        <span className="tj-chip" aria-hidden />
+        <span className="tj-pl-name">{card.name}</span>
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
             <button className="tj-pl-menu" aria-label={`Opciones de ${card.name}`} onClick={(e) => e.stopPropagation()}>
@@ -454,11 +420,6 @@ function Plastic({
               <Pencil className="mr-2 h-4 w-4" />
               Editar
             </DropdownMenuItem>
-            <DropdownMenuItem onClick={onNewInstallment}>
-              <Plus className="mr-2 h-4 w-4" />
-              Nueva compra
-            </DropdownMenuItem>
-            <DropdownMenuSeparator />
             <DropdownMenuItem onClick={onDelete} className="text-destructive">
               <Trash2 className="mr-2 h-4 w-4" />
               Eliminar
@@ -468,55 +429,44 @@ function Plastic({
       </div>
 
       <div className="tj-pl-mid">
-        <span className="tj-pl-label">usado</span>
-        <span className={cn("tj-pl-big", isPrivacyMode && "privacy-blur")}>{formatCurrency(card.total_used_credit)}</span>
-        <span className={cn("tj-pl-of", isPrivacyMode && "privacy-blur")}>
-          <span>disponible {formatCurrency(card.available_credit)}</span>
-          <span className="tj-pl-pct">{Math.round(usage)}%</span>
+        <span className="tj-pl-label">este ciclo</span>
+        <span className={cn("tj-pl-big", isPrivacyMode && "privacy-blur")}>{formatCurrency(cycle.total)}</span>
+        <span className="tj-pl-of">
+          <span>cierra {day(cycle.closes)}</span>
+          <span className={cn(cycle.payAmount !== null && isPrivacyMode && "privacy-blur")}>
+            {cycle.payAmount !== null ? `pagas ${formatCurrency(cycle.payAmount)} el ${day(cycle.pay)}` : `pago ${day(cycle.pay)}`}
+          </span>
         </span>
-      </div>
-      <div className="tj-pl-track" aria-hidden>
-        <i style={{ width: `${Math.max(usage, card.total_used_credit > 0 ? 1.5 : 0)}%` }} />
       </div>
 
       <div className="tj-pl-bot">
-        <span className="tj-pl-name">{card.name}</span>
-        <span className="tj-pl-digits">{card.last_4_digits ? `···· ${card.last_4_digits}` : ""}</span>
+        <span className={cn(isPrivacyMode && "privacy-blur")}>disponible {formatCurrency(card.available_credit)}</span>
+        <span>{card.last_4_digits ? `···· ${card.last_4_digits}` : ""}</span>
       </div>
     </div>
   );
 }
 
 // ─── Una compra en cuotas ─────────────────────────────────────────────────
-type ScheduleItem = ReturnType<ReturnType<typeof useInstallments>["getInstallmentSchedule"]>[number];
-
 function InstallmentRow({
   installment,
-  index,
+  progress: { billed, left, last, active },
   open,
-  done,
   isPrivacyMode,
-  schedule,
   onToggle,
   onEdit,
   onDelete,
 }: {
   installment: InstallmentPurchase;
-  index: number;
+  progress: ReturnType<typeof installmentProgress>;
   open: boolean;
-  done: boolean;
   isPrivacyMode: boolean;
-  schedule: ScheduleItem[];
   onToggle: () => void;
   onEdit: () => void;
   onDelete: () => void;
 }) {
-  const today = new Date();
-  const billed = schedule.filter((s) => s.date <= today).length;
   const total = installment.total_installments;
-  const progress = (billed / total) * 100;
-  const remaining = (total - billed) * installment.installment_amount;
-  const next = schedule.find((s) => s.date > today);
+  const done = !active;
 
   return (
     <div className="tj-inst" data-done={done || undefined} data-open={open || undefined}>
@@ -532,29 +482,19 @@ function InstallmentRow({
         </span>
         <span className="row2">
           <span className="tj-inst-track">
-            <i style={{ width: `${progress}%`, "--i": index } as CSSProperties} />
+            <i style={{ width: `${(billed / total) * 100}%` }} />
           </span>
-          <span className={cn("k", isPrivacyMode && "privacy-blur")}>
-            {billed} de {total}
-            {!done && next && ` · ${day(next.date)}`}
-          </span>
+          <span className="k">{done ? "terminada" : `quedan ${left} de ${total}`}</span>
         </span>
       </button>
 
       {open && (
         <div className="tj-inst-detail">
           <p className={cn("tj-inst-meta", isPrivacyMode && "privacy-blur")}>
-            <span>{installment.category_name || "Sin categoría"}</span>
             <span>total {formatCurrency(installment.total_amount)}</span>
-            {done ? <span>terminada</span> : <span>quedan {formatCurrency(remaining)}</span>}
+            {!done && <span>quedan {formatCurrency(left * installment.installment_amount)}</span>}
+            <span>última {format(last, "MMM yyyy", { locale: es }).replace(".", "")}</span>
           </p>
-          <div className="tj-sched" aria-label="Calendario de cuotas">
-            {schedule.map((s) => (
-              <span key={s.number} data-billed={s.date <= today || undefined} data-next={next?.number === s.number || undefined}>
-                <b>{s.number}</b> {format(s.date, "MMM yy", { locale: es }).replace(".", "")}
-              </span>
-            ))}
-          </div>
           <div className="tj-inst-actions">
             <button className="tj-btn" onClick={onEdit}>
               <Pencil /> Editar
