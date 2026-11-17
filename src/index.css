@@ -345,7 +345,7 @@ Based on Indigo, Blue, Cyan palette
     
     /* Prevenir zoom en inputs de iOS */
     input, select, textarea {
-      font-size: 16px !important;
+      font-size: 16px !important; /* design-scale-ok: iOS hace zoom en inputs bajo 16px */
     }
   }
   
@@ -653,9 +653,9 @@ Based on Indigo, Blue, Cyan palette
 .inicio-tx { display: flex; align-items: center; gap: 12px; padding: 6px 16px; }
 .inicio-tx:hover { background: var(--inicio-hover); }
 .inicio-ico { flex: none; width: 30px; height: 30px; border-radius: 9999px; display: grid; place-items: center; font-size: var(--fs-2); line-height: 1; position: relative; }
-.inicio-bot { position: absolute; right: -3px; bottom: -3px; width: 13px; height: 13px; border-radius: 9999px; background: var(--card);
-  /* Excepción a la escala: el 🤖 tiene que caber en un círculo de 13px */
-  font-size: 7.5px; display: grid; place-items: center; }
+.inicio-bot { position: absolute; right: -3px; bottom: -3px; width: 21px; height: 21px; border-radius: 9999px; background: var(--card);
+  /* El 🤖 usa la escala (--fs-1) y el círculo entero se achica a ~13px con transform */
+  font-size: var(--fs-1); line-height: 1; display: grid; place-items: center; transform: scale(.625); transform-origin: bottom right; }
 .inicio-tx .body { flex: 1; min-width: 0; }
 .inicio-tx .d { font-size: var(--fs-2); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .inicio-tx .c { font-size: var(--fs-1); color: var(--muted-foreground); white-space: nowrap; overflow: hidden; text-overflow: ellipsis;

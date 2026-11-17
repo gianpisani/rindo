@@ -1,0 +1,28 @@
+name: CI
+on:
+  pull_request:
+  push:
+    branches: [main]
+permissions:
+  contents: read
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: npm
+      - run: npm ci
+      - run: npm run lint:design
+      - run: npx tsc -p tsconfig.app.json --noEmit
+      - run: npx eslint src
+      - run: npm run test:jev
+      # Las VITE_SUPABASE_* públicas vienen del .env versionado (las mismas que usa Vercel).
+      - run: npm run build
