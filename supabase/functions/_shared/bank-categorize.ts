@@ -1,5 +1,5 @@
 import type { SupabaseClient } from 'https://esm.sh/@supabase/supabase-js@2.39.3'
-import { categorizeBatchForUser } from './jev-poc.ts'
+import { categorizeBatchForUser } from './categorize.ts'
 import { normalizeMerchant, stopWords } from './category-history.ts'
 
 const UNCATEGORIZED = 'Sin categoría'

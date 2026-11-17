@@ -1,6 +1,7 @@
+import { canCategorizeOwner } from '../_shared/category-auth.ts'
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.39.3'
 import { corsHeaders } from '../_shared/cors.ts'
-import { sendNotificationEmail } from '../_shared/email-notification.ts'
+import { ingestTransaction } from '../_shared/ingest-transaction.ts'
 
 const walletCorsHeaders = {
   ...corsHeaders,
@@ -94,184 +95,32 @@ Deno.serve(async (req) => {
       Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
     )
 
-    // Auto-categorize: check user's history for similar details
-    let categoryName = 'Sin categoría'
-    try {
-      const searchTerm = comercio.split(/[\s(]/)[0]
-      if (searchTerm && searchTerm.length > 2) {
-        const { data: similar } = await supabase
-          .from('transactions')
-          .select('category_name')
-          .eq('user_id', usuario)
-          .neq('category_name', 'Sin categoría')
-          .neq('category_name', '⚡ Analizando...')
-          .ilike('detail', `%${searchTerm}%`)
-          .limit(5)
-
-        if (similar && similar.length > 0) {
-          const counts: Record<string, number> = {}
-          for (const tx of similar) {
-            counts[tx.category_name] = (counts[tx.category_name] || 0) + 1
-          }
-          const best = Object.entries(counts).sort((a, b) => b[1] - a[1])[0]
-          if (best) categoryName = best[0]
-        }
-      }
-    } catch (e) {
-      console.error('⚠️ Auto-categorize error:', e)
+    // These importers use a service client, so authenticate the owner explicitly.
+    if (!await canCategorizeOwner(supabase, req.headers.get('Authorization'), usuario, Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? '')) {
+      return new Response(JSON.stringify({ success: false, error: 'Se requiere una sesión válida o un importador autenticado' }),
+        { status: 401, headers: { ...walletCorsHeaders, 'Content-Type': 'application/json' } })
     }
 
-    // Match credit card by last 4 digits
-    let cardId: string | null = null
-    if (digitos) {
-      try {
-        const { data: card } = await supabase
-          .from('credit_cards')
-          .select('id')
-          .eq('user_id', usuario)
-          .eq('last_4_digits', digitos)
-          .eq('is_active', true)
-          .maybeSingle()
-
-        if (card) {
-          cardId = card.id
-          console.log(`💳 Tarjeta matched: ****${digitos} → ${card.id}`)
-        }
-      } catch (e) {
-        console.error('⚠️ Card match error:', e)
-      }
-    }
-
-    const { data, error } = await supabase
-      .from('transactions')
-      .insert({
-        user_id: usuario,
-        date: transactionDate,
-        import_source: 'wallet',
-        detail: detail,
-        bank_description: `${comercio}${divisaSuffix}`,
-        category_name: categoryName,
-        type: 'Gasto',
-        amount: parsedAmount,
-        card_id: cardId,
-      })
-      .select()
-      .single()
-
-    if (error) {
-      console.error('❌ Error al crear transacción:', error)
-      throw error
-    }
-
-    console.log('✅ Transacción creada:', data.id, detail, parsedAmount)
-
-    // Weekly stats
-    let weeklyStats = null
-    try {
-      const now = new Date(transactionDate)
-      const weekAgo = new Date(now)
-      weekAgo.setDate(weekAgo.getDate() - 6)
-      const weekAgoStr = weekAgo.toISOString().split('T')[0]
-
-      const { data: weekTxns } = await supabase
-        .from('transactions')
-        .select('date, amount, detail')
-        .eq('user_id', usuario)
-        .eq('category_name', categoryName)
-        .eq('type', 'Gasto')
-        .gte('date', weekAgoStr)
-        .order('amount', { ascending: false })
-
-      if (weekTxns && weekTxns.length > 0) {
-        const dailyTotals: { date: string; day: string; total: number }[] = []
-        const dayNames = ['Dom', 'Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb']
-        for (let i = 6; i >= 0; i--) {
-          const d = new Date(now)
-          d.setDate(d.getDate() - i)
-          const dateStr = d.toISOString().split('T')[0]
-          const dayTotal = weekTxns
-            .filter(t => t.date.startsWith(dateStr))
-            .reduce((sum, t) => sum + t.amount, 0)
-          dailyTotals.push({
-            date: dateStr,
-            day: dayNames[d.getDay()],
-            total: dayTotal,
-          })
-        }
-
-        const top3 = weekTxns.slice(0, 3).map(t => ({
-          detail: t.detail.replace(/^[🤖📱]\s*/, ''),
-          amount: t.amount,
-        }))
-
-        const weekTotal = weekTxns.reduce((sum, t) => sum + t.amount, 0)
-        weeklyStats = { dailyTotals, top3, weekTotal, count: weekTxns.length }
-      }
-    } catch (e) {
-      console.error('⚠️ Weekly stats error:', e)
-    }
-
-    // Web push notification
-    try {
-      const supabaseUrl = Deno.env.get('SUPABASE_URL')!
-      const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
-      const formatted = new Intl.NumberFormat('es-CL', {
-        style: 'currency',
-        currency: 'CLP',
-        minimumFractionDigits: 0,
-      }).format(parsedAmount)
-
-      await fetch(`${supabaseUrl}/functions/v1/send-push-notification`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${supabaseKey}`,
-        },
-        body: JSON.stringify({
-          userId: usuario,
-          notification: {
-            title: `💳 Gasto: ${formatted}`,
-            body: detail,
-            tag: 'wallet-transaction',
-            requireInteraction: true,
-          },
-        }),
-      })
-    } catch (pushError) {
-      console.error('⚠️ Push notification error:', pushError)
-    }
-
-    // Email notification via Resend
-    try {
-      const { data: userData } = await supabase.auth.admin.getUserById(usuario)
-      const userEmail = userData?.user?.email
-      if (userEmail) {
-        await sendNotificationEmail({
-          to: userEmail,
-          amount: parsedAmount,
-          detail: detail,
-          category: categoryName,
-          bank: bankName,
-          type: 'Gasto',
-          weeklyStats,
-        })
-      } else {
-        console.warn('⚠️ No email found for user', usuario)
-      }
-    } catch (emailError) {
-      console.error('⚠️ Email notification error:', emailError)
-    }
+    const { id, category, weeklyStats } = await ingestTransaction(supabase, {
+      user_id: usuario,
+      date: transactionDate,
+      import_source: 'wallet',
+      detail,
+      bank_description: `${comercio}${divisaSuffix}`,
+      type: 'Gasto',
+      amount: parsedAmount,
+    }, { bank: bankName, pushTag: 'wallet-transaction', cardLastFour: digitos })
 
     return new Response(
       JSON.stringify({
         success: true,
-        transaction_id: data.id,
+        transaction_id: id,
         parsed: {
           amount: parsedAmount,
           type: 'Gasto',
           bank: bankName,
-          detail: detail,
-          category: categoryName,
+          detail,
+          category,
           weeklyStats,
         },
       }),

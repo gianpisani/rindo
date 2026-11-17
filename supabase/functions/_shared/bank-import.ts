@@ -1,8 +1,12 @@
 import { categorizeBankImport, type BankCategorizeItem } from './bank-categorize.ts'
-import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.39.3'
+import { createClient, type SupabaseClient } from 'https://esm.sh/@supabase/supabase-js@2.39.3'
 import { sendBatchNotificationEmail } from './email-notification.ts'
 
 // ── Types ─────────────────────────────────────────────────────────────────────
+
+// Sin tipos generados de la base: cualquier cliente (de usuario o service role) sirve.
+// deno-lint-ignore no-explicit-any
+type Client = SupabaseClient<any, any, any>
 
 interface Movement {
   date: string
@@ -36,6 +40,7 @@ export interface ScrapeResult {
 }
 
 export interface ImportedItem {
+  id?: string
   date: string
   description: string
   amount: number
@@ -115,12 +120,68 @@ function nameTokensMatch(a: Set<string>, b: Set<string>): boolean {
   return true
 }
 
-function convertDate(dateStr: string, fallbackDate: string): string {
+export function convertDate(dateStr: string, fallbackDate: string): string {
   if (dateStr.toLowerCase() === 'pendiente') return fallbackDate
   const parts = dateStr.split('-')
   if (parts[0].length === 4) return dateStr
   const [dd, mm, yyyy] = parts
   return `${yyyy}-${mm}-${dd}`
+}
+
+/**
+ * Inserta un movimiento bancario como transacción 'Sin categoría', asociando la
+ * tarjeta por sus últimos 4 dígitos. No categoriza: eso se hace en lote después.
+ */
+export async function insertBankMovement(
+  supabaseClient: Client,
+  userId: string,
+  m: { isoDate: string; description: string; type: string; amount: number; card?: string },
+): Promise<{ id: string | null; error: unknown }> {
+  let cardId: string | null = null
+  if (m.card) {
+    const lastFour = m.card.replace(/\*/g, '')
+    const { data: card } = await supabaseClient
+      .from('credit_cards')
+      .select('id')
+      .eq('user_id', userId)
+      .eq('last_4_digits', lastFour)
+      .eq('is_active', true)
+      .maybeSingle()
+    if (card) cardId = card.id
+  }
+
+  const insertDate = `${m.isoDate}T${new Date().toISOString().slice(11, 19)}`
+  const { data: inserted, error } = await supabaseClient
+    .from('transactions')
+    .insert({
+      user_id: userId,
+      date: insertDate,
+      import_source: 'bank-sync',
+      detail: `🤖 ${m.description}`,
+      bank_description: m.description,
+      type: m.type,
+      amount: m.amount,
+      category_name: 'Sin categoría',
+      card_id: cardId,
+      installment_id: null,
+      reimbursement_for_category: null,
+    })
+    .select('id')
+    .single()
+  return { id: inserted?.id ?? null, error }
+}
+
+/** Manda el resumen de movimientos importados al email del usuario. Lanza si falla. */
+export async function emailBatchToUser(userId: string, bank: string, transactions: ImportedItem[]) {
+  const serviceRoleClient = createClient(
+    Deno.env.get('SUPABASE_URL')!,
+    Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!,
+  )
+  const { data: userData } = await serviceRoleClient.auth.admin.getUserById(userId)
+  const userEmail = userData?.user?.email
+  if (userEmail) {
+    await sendBatchNotificationEmail({ to: userEmail, bank, transactions })
+  }
 }
 
 // ── Main import function ──────────────────────────────────────────────────────
@@ -132,7 +193,7 @@ function convertDate(dateStr: string, fallbackDate: string): string {
  * Works with both user-scoped clients (on-demand sync) and service-role clients (cron sync).
  */
 export async function importBankMovements(params: {
-  supabaseClient: ReturnType<typeof createClient>
+  supabaseClient: Client
   userId: string
   result: ScrapeResult
   trigger: 'manual' | 'cron'
@@ -171,8 +232,6 @@ export async function importBankMovements(params: {
     }
 
     const isoDate = convertDate(movement.date, syncDate)
-    const now = new Date()
-    const insertDate = `${isoDate}T${now.toISOString().slice(11, 19)}`
     const nextDay = new Date(isoDate)
     nextDay.setDate(nextDay.getDate() + 1)
     const nextDayStr = nextDay.toISOString().split('T')[0]
@@ -236,44 +295,16 @@ export async function importBankMovements(params: {
       continue
     }
 
-    // Match credit card by last 4 digits
-    let cardId: string | null = null
-    if (movement.card) {
-      const lastFour = movement.card.replace(/\*/g, '')
-      const { data: card } = await supabaseClient
-        .from('credit_cards')
-        .select('id')
-        .eq('user_id', userId)
-        .eq('last_4_digits', lastFour)
-        .eq('is_active', true)
-        .maybeSingle()
-      if (card) cardId = card.id
-    }
-
-    const { data: inserted, error: insertError } = await supabaseClient
-      .from('transactions')
-      .insert({
-        user_id: userId,
-        date: insertDate,
-        import_source: 'bank-sync',
-        detail: `🤖 ${description}`,
-        bank_description: description,
-        type,
-        amount: absAmount,
-        category_name: 'Sin categoría',
-        card_id: cardId,
-        installment_id: null,
-        reimbursement_for_category: null,
-      })
-      .select('id')
-      .single()
+    const { id: insertedId, error: insertError } = await insertBankMovement(supabaseClient, userId, {
+      isoDate, description, type, amount: absAmount, card: movement.card,
+    })
 
     if (insertError) {
       console.error('Insert error for movement:', movement.date, movement.description, insertError)
     } else {
       imported++
-      importedItems.push({ id: inserted.id, date: movement.date, description, amount: absAmount, type })
-      toAutoCategorize.push({ id: inserted.id, detail: description, type })
+      importedItems.push({ id: insertedId!, date: movement.date, description, amount: absAmount, type })
+      toAutoCategorize.push({ id: insertedId!, detail: description, type })
     }
   }
 
@@ -284,19 +315,7 @@ export async function importBankMovements(params: {
   // Email notification
   if (sendEmail && imported > 0) {
     try {
-      const serviceRoleClient = createClient(
-        Deno.env.get('SUPABASE_URL')!,
-        Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!,
-      )
-      const { data: userData } = await serviceRoleClient.auth.admin.getUserById(userId)
-      const userEmail = userData?.user?.email
-      if (userEmail) {
-        await sendBatchNotificationEmail({
-          to: userEmail,
-          bank: result.bank ?? 'Banco',
-          transactions: importedItems,
-        })
-      }
+      await emailBatchToUser(userId, result.bank ?? 'Banco', importedItems)
     } catch (emailError) {
       console.error('⚠️ Email notification error:', emailError)
     }

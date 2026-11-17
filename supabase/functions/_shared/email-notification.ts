@@ -18,7 +18,7 @@ interface EmailParams {
 function buildNotificationHtml(params: Omit<EmailParams, 'to'>): string {
   const { amount, detail, category, bank, type, weeklyStats } = params
   const amountStr = '$' + Number(amount).toLocaleString('es-CL')
-  const cleanDetail = detail.replace(/^[🤖📱]\s*/, '')
+  const cleanDetail = detail.replace(/^[🤖📱]\s*/u, '')
   const typeColor = type === 'Ingreso' ? '#22c55e' : '#e11d48'
   const stats = weeklyStats
 
@@ -148,7 +148,7 @@ export async function sendNotificationEmail(params: EmailParams): Promise<void> 
   }
 
   const { to, amount, detail, type } = params
-  const cleanDetail = detail.replace(/^[🤖📱]\s*/, '')
+  const cleanDetail = detail.replace(/^[🤖📱]\s*/u, '')
   const amountStr = '$' + Number(amount).toLocaleString('es-CL')
   const subject = `rindo. | ${type}: ${amountStr} — ${cleanDetail}`
 
