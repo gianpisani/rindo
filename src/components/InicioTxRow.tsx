@@ -1,23 +1,16 @@
 import { useEffect, useLayoutEffect, useRef, useState, type ChangeEvent, type HTMLAttributes, type KeyboardEvent, type ReactNode } from "react";
 import { Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { QuickCategoryPicker, type QuickCategoryOption } from "@/components/QuickCategoryPicker";
 import { cn } from "@/lib/utils";
-import { tint } from "@/lib/category-color";
 
 /**
  * Una fila de Recientes que se edita donde está: solo lo que ya se ve.
  * Detalle y monto se vuelven un campo con la misma tipografía (Enter o
- * salir guarda, Esc cancela); la categoría abre un selector chico; el
+ * salir guarda, Esc cancela); tocar el ícono cambia la categoría; el
  * basurero aparece al pasar el mouse (en táctil, mientras editas la fila).
  * Quien la usa decide cómo guardar: acá no hay red, solo la interacción.
  */
-export interface InicioCategoryOption {
-  name: string;
-  icon: string;
-  color?: string | null;
-}
-
 interface Props extends HTMLAttributes<HTMLDivElement> {
   detail: string;
   amount: number;
@@ -27,7 +20,7 @@ interface Props extends HTMLAttributes<HTMLDivElement> {
   meta: ReactNode;
   /** Categoría actual; sin ella (reembolsos, pendientes) no se ofrece cambiarla. */
   category?: string;
-  categoryOptions: InicioCategoryOption[];
+  categoryOptions: QuickCategoryOption[];
   editable: boolean;
   privacy: boolean;
   formatAmount: (value: number) => string;
@@ -106,7 +99,21 @@ export function InicioTxRow({
 
   return (
     <div className={cn("inicio-tx", editable && "is-editable", (field || picking) && "is-editing", className)} {...rest}>
-      {icon}
+      {category && editable ? (
+        <QuickCategoryPicker
+          value={category}
+          options={categoryOptions}
+          title={detail}
+          onOpenChange={setPicking}
+          onPick={(name) => onSave({ category_name: name })}
+        >
+          <button className="flex-none rounded-full focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring" aria-label={`Cambiar categoría (${category})`}>
+            {icon}
+          </button>
+        </QuickCategoryPicker>
+      ) : (
+        icon
+      )}
       <div className={cn("body", privacy && "privacy-blur")}>
         {field === "detail" ? (
           <input
@@ -125,39 +132,7 @@ export function InicioTxRow({
           </button>
         )}
         <div className="c">
-          {category && editable ? (
-            <Popover open={picking} onOpenChange={setPicking}>
-              <PopoverTrigger asChild>
-                <button className="inicio-editable" aria-label="Cambiar categoría">{category}</button>
-              </PopoverTrigger>
-              <PopoverContent
-                align="start"
-                sideOffset={6}
-                className="inicio-picker"
-                // Se abre parado sobre la categoría actual, no sobre la primera.
-                onOpenAutoFocus={(e) => {
-                  e.preventDefault();
-                  (e.currentTarget as HTMLElement).querySelector<HTMLElement>('[aria-pressed="true"]')?.focus();
-                }}
-              >
-                {categoryOptions.map((option) => (
-                  <button
-                    key={option.name}
-                    aria-pressed={option.name === category}
-                    onClick={() => {
-                      setPicking(false);
-                      if (option.name !== category) onSave({ category_name: option.name });
-                    }}
-                  >
-                    <span className="inicio-ico" style={tint(option.color)}>
-                      {option.icon}
-                    </span>
-                    {option.name}
-                  </button>
-                ))}
-              </PopoverContent>
-            </Popover>
-          ) : null}
+          {category}
           {meta}
         </div>
       </div>
@@ -194,7 +169,7 @@ export function InicioTxRow({
         <Button
           variant="ghost"
           size="icon"
-          className="inicio-delete size-7 text-muted-foreground hover:bg-destructive/10 hover:text-destructive"
+          className="inicio-delete size-9 text-muted-foreground hover:bg-destructive/10 hover:text-destructive"
           aria-label="Borrar movimiento"
           // Que el blur del campo no se coma el toque: borrar gana.
           onPointerDown={(e) => e.preventDefault()}

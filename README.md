@@ -50,6 +50,17 @@ npm run dev
 - Click on "New codespace" to launch a new Codespace environment.
 - Edit files directly within the Codespace and commit and push your changes once you're done.
 
+## Escala de diseño
+
+La UI usa una escala cerrada (valores en `tailwind.config.ts` y los tokens de `src/index.css`):
+
+- **Texto:** `text-xs`, `text-sm`, `text-xl`, `text-hero` (en CSS: `var(--fs-1|2|3|hero)`), nunca `text-[Npx]`.
+- **Grosor:** `font-normal`, `font-medium`; `font-semibold` solo para el número protagonista.
+- **Radio:** `rounded-card` (superficies) y `rounded-full` (lo que se toca), más `rounded-none` y sus direccionales (`rounded-t-card`).
+- **Sombra:** `shadow-float` (solo lo que flota) o ninguna; sin `drop-shadow`.
+
+`npm run lint:design` lo revisa (también corre en CI). Una excepción real se justifica con un comentario `design-scale-ok: motivo` en la misma línea o la anterior.
+
 ## What technologies are used for this project?
 
 This project is built with:

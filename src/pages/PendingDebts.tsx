@@ -1,5 +1,5 @@
 import { useMemo, useRef, useState } from "react";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import * as Dialog from "@radix-ui/react-dialog";
 import Layout from "@/components/Layout";
 import { GlassCard } from "@/components/GlassCard";
@@ -14,7 +14,8 @@ import { usePrivacyMode } from "@/hooks/usePrivacyMode";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { CheckCircle2, Trash2, ChevronDown, HandCoins, X } from "lucide-react";
-import { LoadingScreen } from "@/components/LoadingScreen";
+import { Skeleton } from "@/components/ui/skeleton";
+import { EmptyState } from "@/components/EmptyState";
 import "@/components/whisper.css";
 
 const fmt = (n: number) => `$${new Intl.NumberFormat("es-CL").format(n)}`;
@@ -34,6 +35,7 @@ const directions: { value: SharedExpenseDirection; label: string; amountClass: s
 ];
 
 export default function PendingDebts() {
+  const navigate = useNavigate();
   const {
     sharedExpensesWithTransaction,
     markAsPaid,
@@ -128,7 +130,17 @@ export default function PendingDebts() {
   if (isLoading) {
     return (
       <Layout>
-        <LoadingScreen fullScreen={false} size="md" />
+        <div className="space-y-6">
+          <h1 className="text-xl font-medium">Deudas</h1>
+          <div className="space-y-3">
+            <div className="flex items-baseline justify-between">
+              <Skeleton className="h-4 w-24" />
+              <Skeleton className="h-6 w-28" />
+            </div>
+            <Skeleton className="h-24 rounded-card" />
+            <Skeleton className="h-24 rounded-card" />
+          </div>
+        </div>
       </Layout>
     );
   }
@@ -139,16 +151,9 @@ export default function PendingDebts() {
         <h1 className="text-xl font-medium">Deudas</h1>
 
         {sections.length === 0 ? (
-          <div className="py-12 text-center">
-            <p className="text-sm font-medium text-muted-foreground mb-1">Nadie te debe y no le debes a nadie</p>
-            <p className="text-sm">
-              Para crear una deuda, divide un gasto desde{" "}
-              <Link to="/transactions" className="underline underline-offset-2 hover:text-foreground">
-                Movimientos
-              </Link>
-              .
-            </p>
-          </div>
+          <EmptyState action={{ label: "Dividir un gasto en Movimientos", onClick: () => navigate("/transactions") }}>
+            Nadie te debe y no le debes a nadie
+          </EmptyState>
         ) : (
           sections.map((section) => (
             <section key={section.value} className="space-y-3">

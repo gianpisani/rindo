@@ -148,7 +148,7 @@ export default function Layout({ children, fit = false }: LayoutProps) {
                   size="sm"
                   aria-label={isPrivacyMode ? "Desactivar modo privado" : "Activar modo privado"}
                   className={cn(
-                    "ml-auto rounded-full h-8 w-8 p-0 transition-all duration-200",
+                    "ml-auto rounded-full size-9 p-0 transition-all duration-200",
                     isPrivacyMode
                       ? "bg-muted text-foreground"
                       : "text-muted-foreground hover:bg-muted hover:text-foreground"

@@ -1,9 +1,6 @@
 import {
   ChevronsUpDown,
   LogOut,
-  Moon,
-  Sun,
-  Monitor,
   Bell,
   BellOff,
   Volume2,
@@ -18,7 +15,6 @@ import { toast } from "sonner";
 import { useSoundPreferences } from "@/hooks/useSoundPreferences";
 import { useSoundFX } from "@/hooks/useSoundFX";
 import { usePushNotifications } from "@/hooks/usePushNotifications";
-import { useTheme } from "next-themes";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import {
   Sidebar,
@@ -58,7 +54,6 @@ export function AppSidebar() {
   const { soundEnabled, toggleSound } = useSoundPreferences();
   const { playToggleOn, playToggleOff } = useSoundFX();
   const { isSupported, isSubscribed, isLoading, subscribe, unsubscribe } = usePushNotifications();
-  const { theme, setTheme } = useTheme();
 
   const { profile, avatarUrl } = useUserProfile();
   const { openProfileEdit, openPeriodSettings } = useGlobalDrawers();
@@ -123,11 +118,12 @@ export function AppSidebar() {
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <button
+                  aria-label={`Cuenta de ${displayName}`}
                   className="flex items-center gap-2 w-full rounded-card px-2 py-2 text-sm hover:bg-sidebar-accent transition-colors data-[state=open]:bg-sidebar-accent sm:mb-0 mb-4 group-data-[collapsible=icon]:!size-8 group-data-[collapsible=icon]:!p-0 group-data-[collapsible=icon]:justify-center"
                 >
                   <div className="rounded-full p-0.5 bg-border shrink-0">
                     <Avatar className="size-7">
-                      {avatarUrl && <AvatarImage src={avatarUrl} className="object-cover" />}
+                      {avatarUrl && <AvatarImage src={avatarUrl} alt="" className="object-cover" />}
                       <AvatarFallback className="bg-sidebar text-xs font-medium">
                         {userInitials}
                       </AvatarFallback>
@@ -136,7 +132,7 @@ export function AppSidebar() {
                   <div className="grid flex-1 text-left text-sm leading-tight group-data-[collapsible=icon]:hidden">
                     <span className="truncate font-medium">{displayName}</span>
                     <span className="truncate text-xs text-muted-foreground">
-                      {userEmail ?? "Cargando..."}
+                      {userEmail ?? ""}
                     </span>
                   </div>
                   <ChevronsUpDown className="ml-auto size-4 group-data-[collapsible=icon]:hidden" />
@@ -152,7 +148,7 @@ export function AppSidebar() {
                   <div className="flex items-center gap-3 px-3 py-3">
                     <div className="rounded-full p-0.5 bg-border shrink-0">
                       <Avatar className="size-9">
-                        {avatarUrl && <AvatarImage src={avatarUrl} className="object-cover" />}
+                        {avatarUrl && <AvatarImage src={avatarUrl} alt="" className="object-cover" />}
                         <AvatarFallback className="bg-popover text-sm font-medium">
                           {userInitials}
                         </AvatarFallback>
@@ -182,31 +178,6 @@ export function AppSidebar() {
                   <span className="flex-1">Mes financiero</span>
                   <span className="text-xs text-muted-foreground">{periodShortLabel(startDay)}</span>
                 </DropdownMenuItem>
-                <DropdownMenuSeparator />
-                {/* Theme picker */}
-                <div className="px-3 py-2">
-                  <span className="text-xs font-medium text-muted-foreground">Tema</span>
-                  <div className="flex items-center gap-1 mt-1.5 p-1 rounded-full">
-                    {([
-                      { value: "light", icon: Sun },
-                      { value: "dark", icon: Moon },
-                      { value: "system", icon: Monitor },
-                    ] as const).map(({ value, icon: Icon }) => (
-                      <button
-                        key={value}
-                        onClick={() => setTheme(value)}
-                        className={cn(
-                          "flex-1 flex items-center justify-center rounded-full py-1.5 transition-all",
-                          theme === value
-                            ? "bg-muted text-foreground"
-                            : "text-muted-foreground hover:text-foreground hover:bg-muted"
-                        )}
-                      >
-                        <Icon className="size-4" />
-                      </button>
-                    ))}
-                  </div>
-                </div>
                 <DropdownMenuSeparator />
                 <DropdownMenuItem
                   onSelect={(e) => e.preventDefault()}

@@ -237,7 +237,7 @@ export function MobileBottomBar() {
                 className={cn(rowClass, "min-w-0")}
               >
                 <Avatar className="size-8 ring-1 shrink-0">
-                  {avatarUrl && <AvatarImage src={avatarUrl} className="object-cover" />}
+                  {avatarUrl && <AvatarImage src={avatarUrl} alt="" className="object-cover" />}
                   <AvatarFallback className="text-xs font-medium">
                     {userInitials}
                   </AvatarFallback>

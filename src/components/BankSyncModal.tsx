@@ -443,7 +443,8 @@ export function BankSyncModal({
                   variant="ghost"
                   size="icon"
                   onClick={() => setBank("")}
-                  className="relative z-10 size-8 shrink-0 backdrop-blur-sm hover:bg-background"
+                  className="relative z-10 size-9 shrink-0 backdrop-blur-sm hover:bg-background"
+                  aria-label="Elegir otro banco"
                 >
                   <ChevronLeft className="text-muted-foreground" />
                 </Button>
@@ -527,6 +528,7 @@ export function BankSyncModal({
                           className="absolute right-0 top-0 h-full px-3 hover:bg-transparent cursor-pointer"
                           onClick={() => setShowPassword((v) => !v)}
                           tabIndex={-1}
+                          aria-label={showPassword ? "Ocultar contraseña" : "Mostrar contraseña"}
                         >
                           {showPassword ? <EyeOff className="h-4 w-4 text-muted-foreground" /> : <Eye className="h-4 w-4 text-muted-foreground" />}
                         </Button>

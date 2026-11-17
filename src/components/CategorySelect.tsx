@@ -147,7 +147,7 @@ export function CategorySelect({
             className="h-9 text-sm"
           />
           <CommandList className="max-h-[280px] overscroll-contain">
-            <CommandEmpty className="py-6 text-center text-sm text-muted-foreground">
+            <CommandEmpty className="p-4 text-center text-sm text-muted-foreground">
               Sin resultados
             </CommandEmpty>
             <CommandGroup>
@@ -262,7 +262,7 @@ export function CategoryPickerInline({
             versión de tailwind-merge del proyecto NO resuelve el
             conflicto max-h-[300px] vs max-h-none, por eso max-h-full. */}
         <CommandList className="max-h-full pt-1">
-          <CommandEmpty className="py-8 text-center text-sm text-muted-foreground">
+          <CommandEmpty className="p-4 text-center text-sm text-muted-foreground">
             Sin resultados
           </CommandEmpty>
           <CommandGroup>

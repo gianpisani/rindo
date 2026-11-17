@@ -45,12 +45,10 @@ import {
   ChevronLeft,
   ChevronRight,
   Minimize2,
-  SearchX,
-  Inbox,
-  Plus,
   ArrowDownToLine,
   LineChart,
 } from "lucide-react";
+import { EmptyState } from "@/components/EmptyState";
 import { Transaction } from "@/hooks/useTransactions";
 import {
   TRANSACTION_TYPES,
@@ -76,6 +74,9 @@ import { AnalyzingBadge } from "./AnalyzingBadge";
 import { InlineDateTimePicker } from "./ui/date-time-picker";
 import { useCategories } from "@/hooks/useCategories";
 import { CategoryComposer } from "./CategoryComposer";
+import { QuickCategoryPicker } from "./QuickCategoryPicker";
+import { useInlineEdit } from "@/hooks/useInlineEdit";
+import { ANALYZING_CATEGORY } from "@/lib/auto-category-policy";
 import { Popover, PopoverContent, PopoverTrigger } from "./ui/popover";
 import { Command, CommandInput, CommandList, CommandEmpty, CommandGroup, CommandItem } from "./ui/command";
 import type { DateRangeValue } from "./DateRangeFilter";
@@ -217,9 +218,10 @@ const typeIcons: Record<TransactionType, typeof TrendingUp> = {
 export const typeAmountColors: Record<TransactionType, string> = {
   Ingreso: "text-success",
   Gasto: "text-foreground",
-  Inversión: "text-blue-500",
-  Rescate: "text-cyan-500",
-  Rendimiento: "text-violet-500",
+  // Montos como texto: un tono más oscuro en claro para llegar a 4.5:1.
+  Inversión: "text-blue-600 dark:text-blue-500",
+  Rescate: "text-cyan-700 dark:text-cyan-500",
+  Rendimiento: "text-violet-600 dark:text-violet-500",
   Reembolso: "text-success",
 };
 
@@ -369,7 +371,7 @@ function EditableAmountCell({
 
 /** Clases del botón que abre un editor inline de celda. */
 const CELL_TRIGGER =
-  "flex items-center gap-1 px-2 py-1 rounded-card transition-all group cursor-pointer focus:outline-none";
+  "flex items-center gap-1 px-2 py-1 rounded-card transition-all group cursor-pointer";
 
 interface SelectableCellProps<T extends string> {
   value: T;
@@ -425,33 +427,15 @@ function SortHeader({ column, label, alignEnd }: { column: Column<Transaction>; 
 
 // ── Empty state ──────────────────────────────────────────────────────────
 
-function EmptyState({ hasFilters, onClear }: { hasFilters: boolean; onClear: () => void }) {
-  const Icon = hasFilters ? SearchX : Inbox;
-  return (
-    <div className="flex flex-col items-center gap-3 py-12 text-center">
-      <div className="flex h-12 w-12 items-center justify-center rounded-full">
-        <Icon className="h-5 w-5" />
-      </div>
-      <div className="space-y-1">
-        <p className="text-sm font-medium">
-          {hasFilters ? "Nada con estos filtros" : "Sin movimientos todavía"}
-        </p>
-        <p className="text-xs text-muted-foreground">
-          {hasFilters
-            ? "Prueba ajustar la búsqueda o los filtros"
-            : "Agrega la primera con el botón + o la tecla N"}
-        </p>
-      </div>
-      {hasFilters && (
-        <Button variant="ghost" size="xs" onClick={onClear}>
-          Limpiar filtros
-        </Button>
-      )}
-    </div>
+function TableEmpty({ hasFilters, onClear }: { hasFilters: boolean; onClear: () => void }) {
+  return hasFilters ? (
+    <EmptyState action={{ label: "Limpiar filtros", onClick: onClear }}>Nada con estos filtros</EmptyState>
+  ) : (
+    <EmptyState>Sin movimientos todavía: agrega el primero con + o la tecla N</EmptyState>
   );
 }
 
-// ── Category Combobox (searchable, scrollable, with emojis) ─────────────
+// ── Category Combobox: a qué gasto devuelve un reembolso ─────────────
 
 interface CategoryComboboxOption {
   value: string;
@@ -467,11 +451,9 @@ interface CategoryComboboxProps {
   /** El botón que abre la lista. */
   trigger: React.ReactNode;
   placeholder?: string;
-  /** Si se entrega, muestra la acción de crear categoría con el texto buscado. */
-  onCreate?: (name: string) => void;
 }
 
-function CategoryCombobox({ value, options, onSave, trigger, placeholder = "Buscar categoría...", onCreate }: CategoryComboboxProps) {
+function CategoryCombobox({ value, options, onSave, trigger, placeholder = "Buscar categoría..." }: CategoryComboboxProps) {
   const [open, setOpen] = useState(false);
   const [search, setSearch] = useState("");
 
@@ -493,7 +475,7 @@ function CategoryCombobox({ value, options, onSave, trigger, placeholder = "Busc
             className="h-8 text-xs border-0 ring-0 focus:ring-0"
           />
           <CommandList>
-            <CommandEmpty className="py-3 text-center text-xs text-muted-foreground">
+            <CommandEmpty className="p-4 text-center text-sm text-muted-foreground">
               Sin resultados
             </CommandEmpty>
             <CommandGroup>
@@ -524,25 +506,6 @@ function CategoryCombobox({ value, options, onSave, trigger, placeholder = "Busc
               ))}
             </CommandGroup>
           </CommandList>
-          {/* Fuera de CommandList a propósito: dentro, el filtro de cmdk la
-              escondería justo cuando la búsqueda no tiene resultados. */}
-          {onCreate && (
-            <button
-              type="button"
-              onClick={() => {
-                const name = search.trim();
-                setOpen(false);
-                setSearch("");
-                onCreate(name);
-              }}
-              className="flex w-full items-center gap-2 border-t px-2 py-2 text-left text-xs text-foreground transition-colors"
-            >
-              <Plus className="h-3.5 w-3.5 flex-shrink-0" />
-              <span className="truncate">
-                {search.trim() ? `Crear “${search.trim()}”` : "Crear categoría"}
-              </span>
-            </button>
-          )}
         </Command>
       </PopoverContent>
     </Popover>
@@ -663,6 +626,24 @@ export function TransactionsTable({
     await onUpdateSilent(id, { [field]: value });
   }, [onUpdateSilent]);
 
+  // Cambiar la categoría es el mismo selector que en el inicio, y optimista:
+  // la fila cambia al tocar y la red va detrás.
+  const { save: saveInline, categoryOptions } = useInlineEdit();
+  const withCategoryPicker = useCallback((t: Transaction, trigger: React.ReactElement) =>
+    t.isPending || t.category_name === ANALYZING_CATEGORY ? trigger : (
+      <QuickCategoryPicker
+        value={t.category_name}
+        options={categoryOptions(t.type)}
+        title={getCleanDetail(t.detail) || undefined}
+        onPick={(name) => saveInline(t, { category_name: name })}
+        onCreate={(name) => setCategoryDraft({ transactionId: t.id, type: t.type, name })}
+        // Mismo resguardo que los menús: el toque que cierra no abre la card de abajo.
+        onOpenChange={(open) => { if (!open) lastMenuCloseRef.current = Date.now(); }}
+      >
+        {trigger}
+      </QuickCategoryPicker>
+    ), [categoryOptions, saveInline]);
+
   const columns = useMemo<ColumnDef<Transaction>[]>(() => {
     return [
       // ── Select (solo en modo selección) ─────────────────────────────────
@@ -722,20 +703,24 @@ export function TransactionsTable({
 
           return (
             <div className={cn("flex items-center gap-2 max-w-[300px]", isPrivacyMode && "privacy-blur")}>
-              {/* Avatar */}
+              {/* Avatar: tocarlo cambia la categoría */}
               <div className="relative flex-shrink-0">
-                <div
-                  className="w-7 h-7 rounded-full flex items-center justify-center text-sm leading-none select-none"
-                  style={avatar.style}
-                >
-                  {avatar.emoji}
-                </div>
+                {withCategoryPicker(row.original, (
+                  <button
+                    type="button"
+                    className="w-7 h-7 rounded-full flex items-center justify-center text-sm leading-none select-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                    style={avatar.style}
+                    aria-label={`Cambiar categoría (${row.original.category_name})`}
+                  >
+                    {avatar.emoji}
+                  </button>
+                ))}
                 {isBot && (
                   <div
                     className="absolute -bottom-0.5 -right-0.5 w-3.5 h-3.5 rounded-full bg-background flex items-center justify-center"
                     title="Detectado por el bot"
                   >
-                    <span className="text-[8px] leading-none">🤖</span>
+                    <span className="text-xs leading-none scale-75">🤖</span>
                   </div>
                 )}
               </div>
@@ -789,14 +774,7 @@ export function TransactionsTable({
 
           return (
             <div className={cn("flex items-center gap-1 overflow-hidden", isPrivacyMode && "privacy-blur")}>
-              <CategoryCombobox
-                value={categoryName}
-                options={optionsOfType(type)}
-                onSave={(newCategory) => handleInlineUpdate(row.original.id, "category_name", newCategory)}
-                onCreate={(name) =>
-                  setCategoryDraft({ transactionId: row.original.id, type, name })
-                }
-                trigger={
+              {withCategoryPicker(row.original, (
                   <button className={cn(CELL_TRIGGER, "max-w-full overflow-hidden")}>
                     <div className="flex items-center gap-1.5 min-w-0">
                       {dotColor && (
@@ -817,8 +795,7 @@ export function TransactionsTable({
                     </div>
                     <ChevronDown className="h-3 w-3 opacity-0 group-hover:opacity-50 transition-opacity" />
                   </button>
-                }
-              />
+              ))}
               {/* Reembolso: a qué categoría de gasto devuelve, en una píldora con su propio popover */}
               {isReimbursement && (
                 <CategoryCombobox
@@ -831,7 +808,6 @@ export function TransactionsTable({
                       className={cn(
                         "inline-flex items-center gap-1 rounded-full px-1.5 py-0.5 text-xs leading-none flex-shrink-0",
                         "cursor-pointer transition-all hover:brightness-125",
-                        "focus:outline-none",
                         linkedCategory
                           ? "bg-success/15 text-success font-medium"
                           : "bg-white/5 italic"
@@ -934,8 +910,9 @@ export function TransactionsTable({
               <Button
                 variant="ghost"
                 size="icon"
-                className="size-8 opacity-40 hover:opacity-100"
+                className="size-9 opacity-40 hover:opacity-100"
                 onClick={(e) => e.stopPropagation()}
+                aria-label="Opciones del movimiento"
               >
                 <MoreHorizontal className="h-4 w-4" />
               </Button>
@@ -962,7 +939,7 @@ export function TransactionsTable({
         ),
       },
     ];
-  }, [selecting, onEdit, onDelete, onDuplicate, categories, creditCards, isPrivacyMode, handleInlineUpdate]);
+  }, [selecting, onEdit, onDelete, onDuplicate, categories, creditCards, isPrivacyMode, handleInlineUpdate, withCategoryPicker]);
 
   // ── Filtering ────────────────────────────────────────────────────────────
 
@@ -1136,6 +1113,17 @@ export function TransactionsTable({
     const catData = categories.find(c => c.name === t.category_name);
     const isMissing = t.category_name === "Sin categoría";
     const isSelected = row.getIsSelected();
+    const avatarButton = (
+      <button
+        type="button"
+        className="w-10 h-10 rounded-full flex items-center justify-center text-xl leading-none select-none"
+        style={avatar.style}
+        aria-label={`Cambiar categoría (${t.category_name})`}
+        tabIndex={selecting ? -1 : undefined}
+      >
+        {avatar.emoji}
+      </button>
+    );
 
     return (
       <div
@@ -1155,17 +1143,12 @@ export function TransactionsTable({
           </div>
         )}
 
-        {/* Avatar */}
+        {/* Avatar: tocarlo cambia la categoría (fuera del modo selección) */}
         <div className="relative flex-shrink-0">
-          <div
-            className="w-10 h-10 rounded-full flex items-center justify-center text-xl leading-none select-none"
-            style={avatar.style}
-          >
-            {avatar.emoji}
-          </div>
+          {selecting ? avatarButton : withCategoryPicker(t, avatarButton)}
           {isBot && (
             <div className="absolute -bottom-0.5 -right-0.5 w-4 h-4 rounded-full bg-background flex items-center justify-center">
-              <span className="text-[9px] leading-none">🤖</span>
+              <span className="text-xs leading-none scale-75">🤖</span>
             </div>
           )}
         </div>
@@ -1208,7 +1191,7 @@ export function TransactionsTable({
         <div className="flex-shrink-0 ml-1">
           <DropdownMenu onOpenChange={trackMenuClose}>
             <DropdownMenuTrigger asChild>
-              <button className="mobile-tx-actions-btn" onClick={(e) => e.stopPropagation()}>
+              <button className="mobile-tx-actions-btn" onClick={(e) => e.stopPropagation()} aria-label="Opciones del movimiento">
                 <MoreHorizontal className="h-4 w-4" />
               </button>
             </DropdownMenuTrigger>
@@ -1295,7 +1278,7 @@ export function TransactionsTable({
               {/* Count badge */}
               <button
                 onClick={() => setPanelExpanded(true)}
-                className="w-8 h-8 rounded-full bg-muted text-foreground flex items-center justify-center text-xs font-medium transition-colors"
+                className="size-9 rounded-full bg-muted text-foreground flex items-center justify-center text-xs font-medium transition-colors"
               >
                 {selectedIds.length}
               </button>
@@ -1303,7 +1286,8 @@ export function TransactionsTable({
               {/* Expand arrow */}
               <button
                 onClick={() => setPanelExpanded(true)}
-                className="p-0.5 transition-colors"
+                className="size-9 grid place-items-center"
+                aria-label="Expandir acciones"
               >
                 <ChevronRight className="h-3.5 w-3.5 rotate-180" />
               </button>
@@ -1335,7 +1319,7 @@ export function TransactionsTable({
                   seleccionada{selectedIds.length > 1 ? "s" : ""}
                 </span>
                 <div className="flex-1" />
-                <Button variant="ghost" size="icon" className="size-7" aria-label="Minimizar" onClick={() => setPanelExpanded(false)}>
+                <Button variant="ghost" size="icon" className="size-9" aria-label="Minimizar" onClick={() => setPanelExpanded(false)}>
                   <Minimize2 />
                 </Button>
               </div>
@@ -1460,7 +1444,7 @@ export function TransactionsTable({
       {isMobile ? (
         <div className="mobile-tx-list">
           {table.getRowModel().rows.length === 0 ? (
-            <EmptyState hasFilters={hasActiveFilters} onClear={clearFilters} />
+            <TableEmpty hasFilters={hasActiveFilters} onClear={clearFilters} />
           ) : groupedRows ? (
             groupedRows.map((group) => (
               <React.Fragment key={group.dayKey}>
@@ -1503,7 +1487,7 @@ export function TransactionsTable({
                 {table.getRowModel().rows.length === 0 ? (
                   <tr>
                     <td colSpan={columns.length}>
-                      <EmptyState hasFilters={hasActiveFilters} onClear={clearFilters} />
+                      <TableEmpty hasFilters={hasActiveFilters} onClear={clearFilters} />
                     </td>
                   </tr>
                 ) : groupedRows ? (
@@ -1550,7 +1534,7 @@ export function TransactionsTable({
               variant="ghost" size="icon"
               onClick={() => table.previousPage()}
               disabled={!table.getCanPreviousPage()}
-              className="size-8"
+              className="size-9"
               aria-label="Página anterior"
             >
               <ChevronLeft className="h-4 w-4" />
@@ -1562,7 +1546,7 @@ export function TransactionsTable({
               variant="ghost" size="icon"
               onClick={() => table.nextPage()}
               disabled={!table.getCanNextPage()}
-              className="size-8"
+              className="size-9"
               aria-label="Página siguiente"
             >
               <ChevronRight className="h-4 w-4" />

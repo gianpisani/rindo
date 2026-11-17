@@ -10,15 +10,18 @@ export const tintColor = (color?: string | null, amount = 22) =>
 export const tint = (color?: string | null) => ({ background: tintColor(color) });
 
 /**
- * Tinta legible sobre un color plano (el plástico de una tarjeta): oscura
- * sobre los colores claros (amarillo, verde, cian), blanca sobre el resto.
+ * Tinta legible sobre un color plano (el plástico de una tarjeta): negra o
+ * blanca, la que tenga más contraste WCAG con ese color (luminancia relativa
+ * real, no un umbral a ojo). Sin un hex válido, undefined y decide el CSS.
  */
 export const inkOn = (hex?: string | null) => {
   const m = hex?.match(/^#([0-9a-f]{6})$/i);
   if (!m) return undefined;
   const [r, g, b] = [0, 2, 4].map((i) => {
     const c = parseInt(m[1].slice(i, i + 2), 16) / 255;
-    return c <= 0.03928 ? c / 12.92 : ((c + 0.055) / 1.055) ** 2.4;
+    return c <= 0.04045 ? c / 12.92 : ((c + 0.055) / 1.055) ** 2.4;
   });
-  return 0.2126 * r + 0.7152 * g + 0.0722 * b > 0.35 ? "#0a0a0a" : undefined;
+  const y = 0.2126 * r + 0.7152 * g + 0.0722 * b;
+  // Contraste con negro: (y + .05) / .05; con blanco: 1.05 / (y + .05).
+  return (y + 0.05) / 0.05 >= 1.05 / (y + 0.05) ? "#000" : "#fff";
 };

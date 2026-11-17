@@ -1,4 +1,5 @@
 import type { ReactNode } from "react";
+import { EmptyState } from "@/components/EmptyState";
 import { format } from "date-fns";
 import { es } from "date-fns/locale";
 import { Sheet, SheetContent, SheetDescription, SheetTitle } from "@/components/ui/sheet";
@@ -67,7 +68,7 @@ export function TxSheet({ data, edit, onClose }: { data: TxSheetData | null; edi
             {data.chart}
             <div className="inicio-scroll">
               {sorted.length === 0 ? (
-                <div className="fin-empty">Sin movimientos</div>
+                <EmptyState>Sin movimientos</EmptyState>
               ) : (
                 [...groups].map(([key, rows]) => (
                   <div key={key}>
