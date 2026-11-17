@@ -120,7 +120,7 @@ export default function Categories() {
                       <Button
                         variant="ghost"
                         size="icon"
-                        className="size-6 text-muted-foreground"
+                        className="size-9 text-muted-foreground"
                         aria-label={`Editar ${cat.name}`}
                         onClick={() => handleEdit(cat)}
                       >
@@ -129,7 +129,7 @@ export default function Categories() {
                       <Button
                         variant="ghost"
                         size="icon"
-                        className="size-6 text-destructive hover:bg-destructive/10 hover:text-destructive"
+                        className="size-9 text-destructive hover:bg-destructive/10 hover:text-destructive"
                         aria-label={`Eliminar ${cat.name}`}
                         onClick={() => handleDelete(cat.id)}
                       >

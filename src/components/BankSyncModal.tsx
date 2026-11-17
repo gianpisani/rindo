@@ -443,7 +443,7 @@ export function BankSyncModal({
                   variant="ghost"
                   size="icon"
                   onClick={() => setBank("")}
-                  className="relative z-10 size-8 shrink-0 backdrop-blur-sm hover:bg-background"
+                  className="relative z-10 size-9 shrink-0 backdrop-blur-sm hover:bg-background"
                 >
                   <ChevronLeft className="text-muted-foreground" />
                 </Button>

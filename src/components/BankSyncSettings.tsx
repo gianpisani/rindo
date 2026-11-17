@@ -115,7 +115,7 @@ function CredentialRow({
           variant="ghost"
           size="icon"
           onClick={() => onOpenPreferences(cred)}
-          className="size-8 shrink-0 text-muted-foreground"
+          className="size-9 shrink-0 text-muted-foreground"
           aria-label="Configurar auto-sync"
           title="Configurar auto-sync"
         >
@@ -157,7 +157,7 @@ function CredentialRow({
           <Button
             size="icon"
             variant="ghost"
-            className="size-8 shrink-0 text-muted-foreground hover:bg-destructive/10 hover:text-destructive"
+            className="size-9 shrink-0 text-muted-foreground hover:bg-destructive/10 hover:text-destructive"
             aria-label={`Quitar ${bank.label}`}
             onClick={() => setConfirmDelete(true)}
           >

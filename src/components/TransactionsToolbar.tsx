@@ -246,7 +246,7 @@ export function TransactionsToolbar({
           <Button
             variant="ghost"
             size="icon"
-            className="absolute right-1 top-1/2 size-7 -translate-y-1/2"
+            className="absolute right-0.5 top-1/2 size-9 -translate-y-1/2"
             aria-label="Limpiar búsqueda"
             onClick={() => onSearchChange("")}
           >

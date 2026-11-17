@@ -90,7 +90,7 @@ export function EmojiPicker({ value, onSelect }: EmojiPickerProps) {
                 key={cat.id}
                 value={cat.id}
                 title={cat.label}
-                className="h-8 w-8 px-0 flex-shrink-0 rounded-full text-sm data-[state=active]:bg-background"
+                className="size-9 px-0 flex-shrink-0 rounded-full text-sm data-[state=active]:bg-background"
               >
                 {cat.icon}
               </TabsTrigger>

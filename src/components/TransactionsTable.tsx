@@ -934,7 +934,7 @@ export function TransactionsTable({
               <Button
                 variant="ghost"
                 size="icon"
-                className="size-8 opacity-40 hover:opacity-100"
+                className="size-9 opacity-40 hover:opacity-100"
                 onClick={(e) => e.stopPropagation()}
               >
                 <MoreHorizontal className="h-4 w-4" />
@@ -1295,7 +1295,7 @@ export function TransactionsTable({
               {/* Count badge */}
               <button
                 onClick={() => setPanelExpanded(true)}
-                className="w-8 h-8 rounded-full bg-muted text-foreground flex items-center justify-center text-xs font-medium transition-colors"
+                className="size-9 rounded-full bg-muted text-foreground flex items-center justify-center text-xs font-medium transition-colors"
               >
                 {selectedIds.length}
               </button>
@@ -1303,7 +1303,7 @@ export function TransactionsTable({
               {/* Expand arrow */}
               <button
                 onClick={() => setPanelExpanded(true)}
-                className="p-0.5 transition-colors"
+                className="size-9 grid place-items-center"
               >
                 <ChevronRight className="h-3.5 w-3.5 rotate-180" />
               </button>
@@ -1335,7 +1335,7 @@ export function TransactionsTable({
                   seleccionada{selectedIds.length > 1 ? "s" : ""}
                 </span>
                 <div className="flex-1" />
-                <Button variant="ghost" size="icon" className="size-7" aria-label="Minimizar" onClick={() => setPanelExpanded(false)}>
+                <Button variant="ghost" size="icon" className="size-9" aria-label="Minimizar" onClick={() => setPanelExpanded(false)}>
                   <Minimize2 />
                 </Button>
               </div>
@@ -1550,7 +1550,7 @@ export function TransactionsTable({
               variant="ghost" size="icon"
               onClick={() => table.previousPage()}
               disabled={!table.getCanPreviousPage()}
-              className="size-8"
+              className="size-9"
               aria-label="Página anterior"
             >
               <ChevronLeft className="h-4 w-4" />
@@ -1562,7 +1562,7 @@ export function TransactionsTable({
               variant="ghost" size="icon"
               onClick={() => table.nextPage()}
               disabled={!table.getCanNextPage()}
-              className="size-8"
+              className="size-9"
               aria-label="Página siguiente"
             >
               <ChevronRight className="h-4 w-4" />

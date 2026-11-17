@@ -511,8 +511,8 @@ Based on Indigo, Blue, Cyan palette
     display: flex;
     align-items: center;
     justify-content: center;
-    width: 32px;
-    height: 32px;
+    width: 36px;
+    height: 36px;
     border-radius: 9999px;
     color: color-mix(in oklch, var(--muted-foreground) 40%, transparent);
     transition: all 0.15s ease;
@@ -767,7 +767,7 @@ Based on Indigo, Blue, Cyan palette
 
 /* Borrar: aparece al pasar por la fila y el monto le hace espacio */
 .inicio-tx .m { transition: transform .18s cubic-bezier(.2, .8, .2, 1); }
-.inicio-delete { position: absolute; right: 12px; top: 50%; margin-top: -14px;
+.inicio-delete { position: absolute; right: 8px; top: 50%; margin-top: -18px;
   opacity: 0; transform: scale(.85); pointer-events: none; transition: opacity .16s, transform .16s, color .15s, background .15s; }
 @media (hover: hover) {
   .inicio-tx.is-editable:hover .inicio-delete { opacity: 1; transform: none; pointer-events: auto; }

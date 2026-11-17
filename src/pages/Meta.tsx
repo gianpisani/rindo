@@ -163,11 +163,11 @@ export default function Meta() {
         autoFocus={autoFocus}
         label="Meta de ahorro mensual"
       />
-      <Button variant="ghost" size="icon" className="size-8" onClick={saveGoal} disabled={parseAmount(draft) <= 0} aria-label="Guardar meta">
+      <Button variant="ghost" size="icon" className="size-9" onClick={saveGoal} disabled={parseAmount(draft) <= 0} aria-label="Guardar meta">
         <Check />
       </Button>
       {hasGoal && (
-        <Button variant="ghost" size="icon" className="size-8" onClick={() => setEditing(false)} aria-label="Cancelar">
+        <Button variant="ghost" size="icon" className="size-9" onClick={() => setEditing(false)} aria-label="Cancelar">
           <X />
         </Button>
       )}
@@ -485,16 +485,16 @@ export default function Meta() {
                             placeholder="100.000"
                             label={`Límite mensual de ${row.category}`}
                           />
-                          <Button variant="ghost" size="icon" className="size-7" onClick={saveLimit} disabled={parseAmount(limitDraft) <= 0} aria-label="Guardar límite">
+                          <Button variant="ghost" size="icon" className="size-9" onClick={saveLimit} disabled={parseAmount(limitDraft) <= 0} aria-label="Guardar límite">
                             <Check />
                           </Button>
-                          <Button variant="ghost" size="icon" className="size-7" onClick={() => setEditingCat(null)} aria-label="Cancelar">
+                          <Button variant="ghost" size="icon" className="size-9" onClick={() => setEditingCat(null)} aria-label="Cancelar">
                             <X />
                           </Button>
                           <Button
                             variant="ghost"
                             size="icon"
-                            className="ml-auto size-7 text-destructive hover:bg-destructive/10 hover:text-destructive"
+                            className="ml-auto size-9 text-destructive hover:bg-destructive/10 hover:text-destructive"
                             onClick={() => removeLimit(row.category)}
                             aria-label="Quitar límite"
                           >
@@ -532,10 +532,10 @@ export default function Meta() {
                       placeholder="100.000"
                       label="Límite mensual"
                     />
-                    <Button variant="ghost" size="icon" className="size-7" onClick={saveAdd} disabled={!addCat || parseAmount(addDraft) <= 0} aria-label="Guardar límite">
+                    <Button variant="ghost" size="icon" className="size-9" onClick={saveAdd} disabled={!addCat || parseAmount(addDraft) <= 0} aria-label="Guardar límite">
                       <Check />
                     </Button>
-                    <Button variant="ghost" size="icon" className="size-7" onClick={() => setAdding(false)} aria-label="Cancelar">
+                    <Button variant="ghost" size="icon" className="size-9" onClick={() => setAdding(false)} aria-label="Cancelar">
                       <X />
                     </Button>
                   </div>
