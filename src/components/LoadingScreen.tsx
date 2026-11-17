@@ -22,7 +22,7 @@ export function LoadingScreen({
         )}
       >
         <RindoLogo size={20} className="text-foreground/40 loading-breathe" />
-        <p className="text-sm text-muted-foreground font-mono">{message}</p>
+        <p className="text-sm text-muted-foreground">{message}</p>
       </div>
     );
   }
@@ -39,7 +39,7 @@ export function LoadingScreen({
       <div className="loading-logo-enter">
         <RindoLogo size={logoSize} animate className="text-foreground" />
       </div>
-      <span className="text-xs font-bold tracking-tight text-foreground loading-text-enter">
+      <span className="text-xs font-medium text-foreground loading-text-enter">
         rindo<span className="text-primary">.</span>
       </span>
     </div>

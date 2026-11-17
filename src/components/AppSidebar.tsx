@@ -110,7 +110,7 @@ export function AppSidebar() {
                     <RindoLogo size={28} className="text-foreground" />
                   </div>
                   <div className="grid flex-1 text-left text-sm leading-tight group-data-[collapsible=icon]:hidden">
-                    <span className="truncate font-semibold">rindo<span className="text-primary">.</span></span>
+                    <span className="truncate font-medium">rindo<span className="text-primary">.</span></span>
                   </div>
                   <ChevronsUpDown className="ml-auto size-4 text-muted-foreground/50 group-data-[collapsible=icon]:hidden" />
                 </button>
@@ -183,13 +183,13 @@ export function AppSidebar() {
                   <div className="rounded-full p-[2px] bg-border shrink-0">
                     <Avatar className="size-7">
                       {avatarUrl && <AvatarImage src={avatarUrl} className="object-cover" />}
-                      <AvatarFallback className="bg-sidebar text-[10px] font-semibold">
+                      <AvatarFallback className="bg-sidebar text-xs font-medium">
                         {userInitials}
                       </AvatarFallback>
                     </Avatar>
                   </div>
                   <div className="grid flex-1 text-left text-sm leading-tight group-data-[collapsible=icon]:hidden">
-                    <span className="truncate font-semibold">{displayName}</span>
+                    <span className="truncate font-medium">{displayName}</span>
                     <span className="truncate text-xs text-muted-foreground">
                       {userEmail ?? "Cargando..."}
                     </span>
@@ -208,13 +208,13 @@ export function AppSidebar() {
                     <div className="rounded-full p-[2px] bg-border shrink-0">
                       <Avatar className="size-9">
                         {avatarUrl && <AvatarImage src={avatarUrl} className="object-cover" />}
-                        <AvatarFallback className="bg-popover text-sm font-semibold">
+                        <AvatarFallback className="bg-popover text-sm font-medium">
                           {userInitials}
                         </AvatarFallback>
                       </Avatar>
                     </div>
                     <div className="grid flex-1 text-left text-sm leading-tight">
-                      <span className="truncate font-semibold">{displayName}</span>
+                      <span className="truncate font-medium">{displayName}</span>
                       <span className="truncate text-xs text-muted-foreground">
                         {userEmail ?? ""}
                       </span>

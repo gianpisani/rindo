@@ -336,7 +336,7 @@ const Index = () => {
               <button onClick={() => openProfileEdit()} className="inicio-avatar" aria-label="Editar perfil">
                 <Avatar className="size-full">
                   {avatarUrl && <AvatarImage src={avatarUrl} className="object-cover" />}
-                  <AvatarFallback className="text-xs font-semibold">
+                  <AvatarFallback className="text-xs font-medium">
                     {greetingInitials}
                   </AvatarFallback>
                 </Avatar>
@@ -383,12 +383,12 @@ const Index = () => {
             )}
             <div className={cn("inicio-flows", isPrivacyMode && "privacy-blur")}>
               <span className="inicio-flow text-success">
-                <NumberFlow value={currentFlows.ingresoReal} prefix="+" format={{ style: "currency", currency: "CLP", maximumFractionDigits: 0 }} locales="es-CL" />
+                <NumberFlow className="font-mono" value={currentFlows.ingresoReal} prefix="+" format={{ style: "currency", currency: "CLP", maximumFractionDigits: 0 }} locales="es-CL" />
                 <small>entró</small>
               </span>
               {currentFlows.invertido > 0 && (
                 <span className="inicio-flow" style={{ color: "var(--inicio-blue)" }}>
-                  <NumberFlow value={currentFlows.invertido} format={{ style: "currency", currency: "CLP", maximumFractionDigits: 0 }} locales="es-CL" />
+                  <NumberFlow className="font-mono" value={currentFlows.invertido} format={{ style: "currency", currency: "CLP", maximumFractionDigits: 0 }} locales="es-CL" />
                   <small>invertido</small>
                 </span>
               )}

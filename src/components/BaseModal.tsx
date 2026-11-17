@@ -100,7 +100,7 @@ export function BaseModal({
           styles.header
         )}>
           <DialogTitle className={cn(
-            "text-2xl text-center font-bold",
+            "text-xl text-center font-medium",
             styles.accent
           )}>
             {title}

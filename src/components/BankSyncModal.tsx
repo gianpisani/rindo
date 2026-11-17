@@ -425,7 +425,7 @@ export function BankSyncModal({
                     <div className="flex-1 text-left min-w-0">
                       <span className="text-sm font-medium">{b.label}</span>
                       {isConfigured && (
-                        <p className="text-[10px] text-success font-medium flex items-center gap-1 mt-0.5">
+                        <p className="text-xs text-success font-medium flex items-center gap-1 mt-0.5">
                           <CalendarClock className="h-2.5 w-2.5" /> Auto-sync activo
                         </p>
                       )}
@@ -455,7 +455,7 @@ export function BankSyncModal({
                   <BankLogo bank={selectedBank} size="md" />
                 </div>
                 <div className="relative z-10 flex-1 min-w-0">
-                  <p className="font-semibold text-base">{selectedBank.label}</p>
+                  <p className="font-medium text-sm">{selectedBank.label}</p>
                   <p className="text-xs text-muted-foreground">
                     {storedCred ? "Auto-sync configurado · Credenciales guardadas" : "Conexión segura · Encriptación de extremo a extremo"}
                   </p>
@@ -492,7 +492,7 @@ export function BankSyncModal({
                       </div>
                       <div>
                         <p className="text-sm font-medium">Credenciales de acceso</p>
-                        <p className="text-[11px] text-muted-foreground">Encriptadas de extremo a extremo</p>
+                        <p className="text-xs text-muted-foreground">Encriptadas de extremo a extremo</p>
                       </div>
                     </div>
 
@@ -571,7 +571,7 @@ export function BankSyncModal({
                       <Label htmlFor="save-creds" className="text-sm font-medium cursor-pointer">
                         Guardar para auto-sync
                       </Label>
-                      <p className="text-[11px] text-muted-foreground mt-0.5">
+                      <p className="text-xs text-muted-foreground mt-0.5">
                         Contraseña encriptada. Sincronización automática diaria.
                       </p>
                     </div>
@@ -638,7 +638,7 @@ export function BankSyncModal({
                     <Smartphone className="relative z-10 h-12 w-12 text-blue-500" />
                   </div>
                   <div className="text-center space-y-1">
-                    <p className="text-lg font-semibold">Aprobación requerida</p>
+                    <p className="text-xl font-medium">Aprobación requerida</p>
                     <p className="text-sm text-muted-foreground">Abre tu app del banco y aprueba la solicitud de acceso</p>
                   </div>
                   <div className="flex items-center gap-2 text-xs text-muted-foreground">
@@ -652,7 +652,7 @@ export function BankSyncModal({
                     <RefreshCw className="relative z-10 h-12 w-12 text-muted-foreground animate-spin [animation-duration:2s]" />
                   </div>
                   <div className="text-center space-y-1">
-                    <p className="text-base font-semibold">Conectando con tu banco</p>
+                    <p className="text-sm font-medium">Conectando con tu banco</p>
                     <p className="text-sm text-muted-foreground">{STATUS_MESSAGES[pollStatus] ?? "Procesando..."}</p>
                   </div>
                   <p className="text-xs text-muted-foreground/60">Esto puede tardar hasta 90 segundos</p>
@@ -668,7 +668,7 @@ export function BankSyncModal({
                 <div className="flex flex-col items-center py-8 space-y-5">
                   <XCircle className="h-14 w-14 text-destructive" />
                   <div className="text-center space-y-1">
-                    <p className="text-lg font-semibold">Error en la sincronización</p>
+                    <p className="text-xl font-medium">Error en la sincronización</p>
                     <p className="text-sm text-muted-foreground">{result.error}</p>
                   </div>
                 </div>
@@ -680,7 +680,7 @@ export function BankSyncModal({
                       <CheckCircle2 className="h-5 w-5 text-success" />
                     </div>
                     <div className="flex-1 min-w-0">
-                      <p className="font-semibold">Sincronización completada</p>
+                      <p className="font-medium">Sincronización completada</p>
                       <p className="text-sm text-muted-foreground">
                         {result.imported + result.skipped} movimiento{(result.imported + result.skipped) !== 1 ? "s" : ""} procesado{(result.imported + result.skipped) !== 1 ? "s" : ""}
                       </p>
@@ -753,7 +753,7 @@ export function BankSyncModal({
                               <p className="truncate font-medium text-sm">{item.description}</p>
                               <p className="text-xs text-muted-foreground">{formatMovDate(item.date)}</p>
                             </div>
-                            <span className={cn("text-sm font-semibold tabular-nums shrink-0", item.type === "Ingreso" ? "text-success" : "text-foreground")}>
+                            <span className={cn("text-sm font-medium tabular-nums shrink-0", item.type === "Ingreso" ? "text-success" : "text-foreground")}>
                               {item.type === "Ingreso" ? "+" : "-"}{formatAmount(item.amount)}
                             </span>
                           </div>
@@ -799,10 +799,10 @@ export function BankSyncModal({
                                 <p className="truncate font-medium text-sm">{item.description}</p>
                                 <div className="flex items-center gap-2 text-xs text-muted-foreground">
                                   <span>{formatMovDate(item.date)}</span>
-                                  <span className="px-1.5 py-0.5 rounded bg-muted text-[10px] font-medium">{SKIP_REASON_LABELS[item.reason ?? ""] ?? "Omitida"}</span>
+                                  <span className="px-1.5 py-0.5 rounded bg-muted text-xs font-medium">{SKIP_REASON_LABELS[item.reason ?? ""] ?? "Omitida"}</span>
                                 </div>
                               </div>
-                              <span className={cn("text-sm font-semibold tabular-nums shrink-0", item.type === "Ingreso" ? "text-success" : "text-foreground")}>
+                              <span className={cn("text-sm font-medium tabular-nums shrink-0", item.type === "Ingreso" ? "text-success" : "text-foreground")}>
                                 {item.type === "Ingreso" ? "+" : "-"}{formatAmount(item.amount)}
                               </span>
                             </div>

@@ -97,7 +97,7 @@ function PaceRace({ pace, verdict, privacy }: { pace: MonthPace; verdict: PaceVe
         {/* Grid recesivo: solo la línea base */}
         <line x1={pad.l} x2={W - pad.r} y1={H - pad.b} y2={H - pad.b} stroke="var(--border)" />
         {ticks.map((d) => (
-          <text key={d} x={x(d)} y={H - 8} textAnchor="middle" className="fill-muted-foreground text-[10px] tabular-nums">
+          <text key={d} x={x(d)} y={H - 8} textAnchor="middle" className="fill-muted-foreground text-xs tabular-nums">
             {d}
           </text>
         ))}
@@ -148,7 +148,7 @@ function PaceRace({ pace, verdict, privacy }: { pace: MonthPace; verdict: PaceVe
             />
           )}
           <circle r={5} fill={tone} stroke="var(--background)" strokeWidth={2} />
-          <text y={-12} textAnchor="middle" className="fill-foreground text-[11px] font-semibold">
+          <text y={-12} textAnchor="middle" className="fill-foreground text-xs font-medium">
             {pace.isLive ? "hoy" : "cierre"}
           </text>
         </g>
@@ -156,20 +156,20 @@ function PaceRace({ pace, verdict, privacy }: { pace: MonthPace; verdict: PaceVe
         {/* Etiquetas directas al final */}
         {typical && (
           <g className={cn(privacy && "privacy-blur")}>
-            <text x={x(days) + 8} y={y(typical.median[days]) + 4} className="fill-muted-foreground text-[10px]">
+            <text x={x(days) + 8} y={y(typical.median[days]) + 4} className="fill-muted-foreground text-xs">
               típico
             </text>
-            <text x={x(days) + 8} y={y(typical.median[days]) + 16} className="fill-muted-foreground text-[10px] tabular-nums">
+            <text x={x(days) + 8} y={y(typical.median[days]) + 16} className="fill-muted-foreground text-xs tabular-nums">
               {clpShort(typical.median[days])}
             </text>
           </g>
         )}
         {pace.isLive && typical && asOfDay < days && Math.abs(y(pace.projectedTotal) - y(typical.median[days])) > 24 && (
           <g className={cn(privacy && "privacy-blur")}>
-            <text x={x(days) + 8} y={y(pace.projectedTotal) + 4} className="text-[10px] font-semibold" fill={tone}>
+            <text x={x(days) + 8} y={y(pace.projectedTotal) + 4} className="text-xs font-medium" fill={tone}>
               tú
             </text>
-            <text x={x(days) + 8} y={y(pace.projectedTotal) + 16} className="text-[10px] tabular-nums" fill={tone}>
+            <text x={x(days) + 8} y={y(pace.projectedTotal) + 16} className="text-xs tabular-nums" fill={tone}>
               ~{clpShort(pace.projectedTotal)}
             </text>
           </g>
@@ -182,10 +182,10 @@ function PaceRace({ pace, verdict, privacy }: { pace: MonthPace; verdict: PaceVe
 
       {hx !== null && (
         <div
-          className="pointer-events-none absolute top-0 z-10 rounded-lg border border-border bg-popover px-2.5 py-1.5 text-[11px] shadow-lg"
+          className="pointer-events-none absolute top-0 z-10 rounded-lg border border-border bg-popover px-2.5 py-1.5 text-xs shadow-lg"
           style={{ left: Math.min(Math.max(x(hx) - 70, 0), W - 140), width: 140 }}
         >
-          <p className="font-semibold">Día {hx}</p>
+          <p className="font-medium">Día {hx}</p>
           <div className={cn("mt-0.5 space-y-0.5 tabular-nums", privacy && "privacy-blur")}>
             {hx <= asOfDay && (
               <p className="flex justify-between"><span className="text-muted-foreground">Tú</span>{clp(me[hx])}</p>
@@ -209,7 +209,7 @@ function Drivers({ pace, colors, privacy }: { pace: MonthPace; colors: Map<strin
 
   return (
     <div className="space-y-3">
-      <p className="text-[11px] text-muted-foreground">Lo que explica la diferencia</p>
+      <p className="text-xs text-muted-foreground">Lo que explica la diferencia</p>
       {rows.map((r, i) => {
         const over = r.delta > 0;
         const w = (Math.abs(r.delta) / max) * 50;
@@ -253,7 +253,7 @@ function Headline({ pace, verdict, privacy }: { pace: MonthPace; verdict: PaceVe
   if (!pace.typical) {
     return (
       <div>
-        <p className="text-5xl font-bold tracking-tight tabular-nums md:text-6xl xl:text-7xl">
+        <p className="text-hero font-medium tracking-tight tabular-nums">
           <span className={cn(privacy && "privacy-blur")}>{clp(pace.spentSoFar)}</span>
         </p>
         <p className="mt-2 text-sm text-muted-foreground">
@@ -269,13 +269,13 @@ function Headline({ pace, verdict, privacy }: { pace: MonthPace; verdict: PaceVe
   return (
     <div>
       {verdict === "even" ? (
-        <p className="text-5xl font-bold tracking-tight md:text-6xl xl:text-7xl">Justo {phrase}</p>
+        <p className="text-hero font-medium tracking-tight">Justo {phrase}</p>
       ) : (
-        <p className="text-5xl font-bold tracking-tight md:text-6xl xl:text-7xl">
+        <p className="text-hero font-medium tracking-tight">
           <span className={cn("tabular-nums", privacy && "privacy-blur")} style={{ color: tone }}>
             $<NumberFlow value={Math.round(Math.abs(pace.delta))} locales="es-CL" format={{ maximumFractionDigits: 0 }} />
           </span>
-          <span className="block text-2xl font-semibold text-muted-foreground md:text-3xl lg:mt-1">{phrase}</span>
+          <span className="block text-xl font-medium text-muted-foreground lg:mt-1">{phrase}</span>
         </p>
       )}
       <p className={cn("mt-3 text-sm text-muted-foreground", privacy && "privacy-blur")}>
@@ -384,8 +384,8 @@ export function MonthPulse({ open, onClose, initialMonth, transactions, categori
                   <ChevronLeft className="size-4" />
                 </button>
                 <div className="min-w-32 text-center">
-                  <p className="text-sm font-semibold capitalize">{format(periodNameDate(month, startDay), "MMMM yyyy", { locale: es })}</p>
-                  <p className="text-[11px] text-muted-foreground">
+                  <p className="text-sm font-medium capitalize">{format(periodNameDate(month, startDay), "MMMM yyyy", { locale: es })}</p>
+                  <p className="text-xs text-muted-foreground">
                     {!period.isCalendar && <>{period.rangeLabel(month)} · </>}
                     {pace.isLive ? `Día ${pace.asOfDay} de ${pace.daysInMonth}` : "Mes cerrado"}
                   </p>
@@ -422,7 +422,7 @@ export function MonthPulse({ open, onClose, initialMonth, transactions, categori
               <div className="lg:col-start-2 lg:row-span-4 lg:row-start-1 lg:rounded-3xl lg:bg-card lg:p-6 lg:shadow-sm">
                 <PaceRace pace={pace} verdict={verdict} privacy={isPrivacyMode} />
                 {pace.typical && (
-                  <div className="mt-2 flex flex-wrap gap-x-5 gap-y-1 text-[11px] text-muted-foreground">
+                  <div className="mt-2 flex flex-wrap gap-x-5 gap-y-1 text-xs text-muted-foreground">
                     <span className="flex items-center gap-1.5">
                       <span className="h-0.5 w-4 rounded-full" style={{ background: TONE[verdict] }} /> Tú
                     </span>
@@ -440,30 +440,30 @@ export function MonthPulse({ open, onClose, initialMonth, transactions, categori
               {pace.typical && (
                 <div className="grid grid-cols-2 gap-3 lg:col-start-1 lg:row-start-2">
                   <div className="rounded-2xl bg-muted p-4">
-                    <p className="text-[11px] text-muted-foreground">
+                    <p className="text-xs text-muted-foreground">
                       {pace.isLive ? "Cierras en" : "Gastaste"}
                     </p>
-                    <p className={cn("mt-1 text-xl font-bold tabular-nums", isPrivacyMode && "privacy-blur")}>
+                    <p className={cn("mt-1 text-xl font-medium tabular-nums", isPrivacyMode && "privacy-blur")}>
                       {pace.isLive ? "~" : ""}
                       {clpShort(pace.projectedTotal)}
                     </p>
-                    <p className={cn("text-[11px] text-muted-foreground", isPrivacyMode && "privacy-blur")}>
+                    <p className={cn("text-xs text-muted-foreground", isPrivacyMode && "privacy-blur")}>
                       típico {clpShort(pace.typicalTotal)}
                     </p>
                   </div>
                   {income.amount > 0 && (
                     <div className="rounded-2xl bg-muted p-4">
-                      <p className="text-[11px] text-muted-foreground">
+                      <p className="text-xs text-muted-foreground">
                         {leftover >= 0 ? (pace.isLive ? "Te sobran" : "Te sobró") : pace.isLive ? "Te faltan" : "Te faltó"}
                       </p>
                       <p
-                        className={cn("mt-1 text-xl font-bold tabular-nums", isPrivacyMode && "privacy-blur")}
+                        className={cn("mt-1 text-xl font-medium tabular-nums", isPrivacyMode && "privacy-blur")}
                         style={{ color: leftover >= 0 ? TONE.under : TONE.over }}
                       >
                         {pace.isLive ? "~" : ""}
                         {clpShort(Math.abs(leftover))}
                       </p>
-                      <p className={cn("text-[11px] text-muted-foreground", isPrivacyMode && "privacy-blur")}>
+                      <p className={cn("text-xs text-muted-foreground", isPrivacyMode && "privacy-blur")}>
                         de {clpShort(income.amount)} {income.estimated ? "que suelen entrar" : "que entraron"}
                       </p>
                     </div>
@@ -476,7 +476,7 @@ export function MonthPulse({ open, onClose, initialMonth, transactions, categori
               </div>
 
               {pace.typical && (
-                <p className="text-[11px] text-muted-foreground lg:col-start-1 lg:row-start-4">
+                <p className="text-xs text-muted-foreground lg:col-start-1 lg:row-start-4">
                   Tu mes típico es la mediana de tus últimos {pace.typicalMonths}{" "}
                   {pace.typicalMonths === 1 ? "mes" : "meses"} al mismo día. Gasto neto de reembolsos, sin
                   plata en tránsito.

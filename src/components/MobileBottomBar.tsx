@@ -110,7 +110,7 @@ export function MobileBottomBar() {
                 </div>
                 <span
                   className={cn(
-                    "text-[11px] font-medium tracking-wide transition-all duration-300 mt-0.5",
+                    "text-xs font-medium transition-all duration-300 mt-0.5",
                     isActive
                       ? "text-primary"
                       : "text-muted-foreground"
@@ -132,7 +132,7 @@ export function MobileBottomBar() {
                 className="h-[22px] w-[22px] text-muted-foreground transition-all duration-300"
               />
             </div>
-            <span className="text-[11px] font-medium tracking-wide text-muted-foreground mt-0.5">
+            <span className="text-xs font-medium text-muted-foreground mt-0.5">
               Más
             </span>
           </button>
@@ -186,7 +186,7 @@ export function MobileBottomBar() {
                 <CalendarRange className="size-4" />
               </div>
               <span className="flex-1 text-sm font-medium">Mes financiero</span>
-              <span className="text-[11px] text-muted-foreground">{periodShortLabel(startDay)}</span>
+              <span className="text-xs text-muted-foreground">{periodShortLabel(startDay)}</span>
             </button>
 
             {pushSupported && (
@@ -201,7 +201,7 @@ export function MobileBottomBar() {
                   {pushSubscribed ? <Bell className="size-4" /> : <BellOff className="size-4" />}
                 </div>
                 <span className="flex-1 text-sm font-medium">Notificaciones</span>
-                <span className="text-[11px] text-muted-foreground">
+                <span className="text-xs text-muted-foreground">
                   {pushLoading ? "..." : pushSubscribed ? "Activadas" : "Desactivadas"}
                 </span>
               </button>
@@ -218,7 +218,7 @@ export function MobileBottomBar() {
                 {soundEnabled ? <Volume2 className="size-4" /> : <VolumeOff className="size-4" />}
               </div>
               <span className="flex-1 text-sm font-medium">Sonidos</span>
-              <span className="text-[11px] text-muted-foreground">
+              <span className="text-xs text-muted-foreground">
                 {soundEnabled ? "Activados" : "Desactivados"}
               </span>
             </button>
@@ -237,13 +237,13 @@ export function MobileBottomBar() {
               >
                 <Avatar className="size-8 ring-1 ring-border/50 shrink-0">
                   {avatarUrl && <AvatarImage src={avatarUrl} className="object-cover" />}
-                  <AvatarFallback className="text-xs font-semibold">
+                  <AvatarFallback className="text-xs font-medium">
                     {userInitials}
                   </AvatarFallback>
                 </Avatar>
                 <div className="flex-1 min-w-0">
                   <p className="text-sm font-medium truncate">{displayName || "Mi perfil"}</p>
-                  <p className="text-[11px] text-muted-foreground">Editar perfil</p>
+                  <p className="text-xs text-muted-foreground">Editar perfil</p>
                 </div>
                 <UserPen className="size-4 text-muted-foreground shrink-0" />
               </button>

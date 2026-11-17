@@ -28,7 +28,7 @@ const buttonVariants = cva(
          * Para un par (Cancelar / Confirmar), `size="cta" className="flex-1"`:
          * el flex-basis gana sobre el w-full y quedan dos mitades.
          */
-        cta: "h-12 w-full rounded-xl px-4 text-base font-semibold",
+        cta: "h-12 w-full rounded-xl px-4 text-sm font-medium",
       },
     },
     defaultVariants: {

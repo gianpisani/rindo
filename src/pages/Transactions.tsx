@@ -473,7 +473,7 @@ export default function Transactions() {
     <Layout>
       <div className="space-y-6">
         <div className="flex items-center justify-between">
-          <h1 className="text-2xl font-bold tracking-tight">Movimientos</h1>
+          <h1 className="text-xl font-medium">Movimientos</h1>
           {/* Casi todo llega solo: anotar a mano es secundario */}
           <Button variant="ghost" size="sm" className="gap-1.5 text-muted-foreground" onClick={() => useGlobalDrawers.getState().openQuickAdd("Gasto")} aria-label="Agregar movimiento">
             <Plus className="h-4 w-4" />
@@ -1160,7 +1160,7 @@ export default function Transactions() {
               <div className="flex items-center justify-between">
                 <span className="font-medium">{tx.detail || "Sin detalle"}</span>
                 <span className={cn(
-                  "font-bold font-mono tabular-nums",
+                  "font-medium font-mono tabular-nums",
                   typeAmountColors[tx.type]
                 )}>
                   {formatCurrency(tx.amount)}
@@ -1202,10 +1202,10 @@ export default function Transactions() {
             <AlertDialogTitle>¿Confirmar pago?</AlertDialogTitle>
             <AlertDialogDescription>
               Se creará automáticamente un reembolso de{" "}
-              <span className="font-bold">
+              <span className="font-medium">
                 ${confirmPaid && new Intl.NumberFormat("es-CL").format(confirmPaid.amount)}
               </span>{" "}
-              por el pago de <span className="font-bold">{confirmPaid?.name}</span>.
+              por el pago de <span className="font-medium">{confirmPaid?.name}</span>.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>

@@ -136,7 +136,7 @@ export default function Layout({ children, fit = false }: LayoutProps) {
             {!isMobile && <SidebarTrigger className="-ml-1" />}
             {/* En escritorio el logo ya está arriba de la barra lateral. */}
             {isMobile && (
-              <span className="text-lg font-bold tracking-tight">
+              <span className="text-xl font-medium">
                 rindo<span className="text-primary">.</span>
               </span>
             )}

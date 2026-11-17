@@ -8,6 +8,18 @@ export default {
   content: ["./pages/**/*.{ts,tsx}", "./components/**/*.{ts,tsx}", "./app/**/*.{ts,tsx}", "./src/**/*.{ts,tsx}"],
   prefix: "",
   theme: {
+  	// La escala tipográfica es cerrada: cuatro tamaños y dos grosores. Los
+  	// valores viven en src/index.css (--fs-*), compartidos con el CSS propio.
+  	fontSize: {
+  		xs: ['var(--fs-1)', { lineHeight: '1rem' }],
+  		sm: ['var(--fs-2)', { lineHeight: '1.25rem' }],
+  		xl: ['var(--fs-3)', { lineHeight: '1.75rem' }],
+  		hero: ['var(--fs-hero)', { lineHeight: '1' }]
+  	},
+  	fontWeight: {
+  		normal: '400',
+  		medium: '500'
+  	},
   	container: {
   		center: true,
   		padding: '2rem',
@@ -21,10 +33,7 @@ export default {
   				'Plus Jakarta Sans',
   				'sans-serif'
   			],
-  			mono: [
-  				'JetBrains Mono',
-  				'monospace'
-  			]
+  			mono: ['var(--font-mono)']
   		},
 		colors: {
 			blue: {

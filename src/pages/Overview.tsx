@@ -217,7 +217,7 @@ export default function Overview() {
                     <span>Entra al mes <b style={{ color: "oklch(var(--success))" }}>{clp(averages.ingreso)}</b></span>
                     <span>Sale <b>{clp(averages.gasto)}</b></span>
                     {averages.ahorro !== null && <span>Ahorras <b>{Math.round(averages.ahorro * 100)}%</b></span>}
-                    <span className="text-[11px]">promedio de {averages.months} mes{averages.months === 1 ? "" : "es"} cerrado{averages.months === 1 ? "" : "s"}</span>
+                    <span className="text-xs">promedio de {averages.months} mes{averages.months === 1 ? "" : "es"} cerrado{averages.months === 1 ? "" : "s"}</span>
                   </div>
                 )}
               </>
@@ -244,7 +244,7 @@ export default function Overview() {
               {loading ? cardSkeleton : (
                 <>
                   {/* En celular el encabezado va oculto: el mes activo se lee acá */}
-                  <div className={cn("px-[18px] pt-2 text-[11.5px] text-muted-foreground inicio-num sm:hidden", isPrivacyMode && "privacy-blur")}>
+                  <div className={cn("px-[18px] pt-2 text-xs text-muted-foreground inicio-num sm:hidden", isPrivacyMode && "privacy-blur")}>
                     {hovered ? `${format(nameOf(hovered.month), "MMM yyyy", { locale: es })} · +${clpShort(hovered.ingreso)} · −${clpShort(hovered.gasto)}` : "Toca un mes para verlo"}
                   </div>
                   <div className="fin-plot" style={{ marginBottom: 14 }}>
@@ -264,7 +264,7 @@ export default function Overview() {
             </div>
             <div className="fin-trends-body inicio-scroll">
               {/* En celular el encabezado va oculto: aquí se dice una vez qué son los montos */}
-              <div className="px-[18px] pt-2 text-[11.5px] text-muted-foreground">promedio al mes</div>
+              <div className="px-[18px] pt-2 text-xs text-muted-foreground">promedio al mes</div>
               {trendRows}
             </div>
           </section>

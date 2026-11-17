@@ -172,13 +172,13 @@ export function ReconciliationCard({ onSuccess }: ReconciliationCardProps = {}) 
         <div className="space-y-3 pt-4 border-t">
           <div className="flex justify-between items-center">
             <span className="text-sm text-muted-foreground">Balance Real</span>
-            <span className={`text-lg font-semibold font-mono tabular-nums ${balanceReal >= 0 ? "text-success" : "text-destructive"}`}>
+            <span className={`text-xl font-medium font-mono tabular-nums ${balanceReal >= 0 ? "text-success" : "text-destructive"}`}>
               {formatCurrency(balanceReal)}
             </span>
           </div>
           <div className="flex justify-between items-center">
             <span className="text-sm text-muted-foreground">Balance App</span>
-            <span className={`text-lg font-semibold font-mono tabular-nums ${balanceApp >= 0 ? "text-success" : "text-destructive"}`}>
+            <span className={`text-xl font-medium font-mono tabular-nums ${balanceApp >= 0 ? "text-success" : "text-destructive"}`}>
               {formatCurrency(balanceApp)}
             </span>
           </div>
@@ -200,7 +200,7 @@ export function ReconciliationCard({ onSuccess }: ReconciliationCardProps = {}) 
                   {!needsReconciliation ? "Balances conciliados ✓" : "Diferencia detectada"}
                 </span>
               </div>
-              <span className={`text-xl font-bold font-mono tabular-nums ${diferenciaColor}`}>
+              <span className={`text-xl font-medium font-mono tabular-nums ${diferenciaColor}`}>
                 {formatCurrency(Math.abs(diferencia))}
               </span>
             </div>
@@ -225,7 +225,7 @@ export function ReconciliationCard({ onSuccess }: ReconciliationCardProps = {}) 
 
               return (
                 <div className="space-y-3 mt-2 rounded-lg border bg-background p-3 animate-in fade-in slide-in-from-top-2 duration-200">
-                  <p className="text-xs font-semibold text-muted-foreground">Preview de transacción</p>
+                  <p className="text-xs font-medium text-muted-foreground">Preview de transacción</p>
                   <div className="space-y-1.5 text-sm">
                     <div className="flex items-center justify-between">
                       <span className="text-muted-foreground">Tipo</span>
@@ -236,7 +236,7 @@ export function ReconciliationCard({ onSuccess }: ReconciliationCardProps = {}) 
                     </div>
                     <div className="flex items-center justify-between">
                       <span className="text-muted-foreground">Monto</span>
-                      <span className="font-bold font-mono tabular-nums">{formatCurrency(Math.abs(diferencia))}</span>
+                      <span className="font-medium font-mono tabular-nums">{formatCurrency(Math.abs(diferencia))}</span>
                     </div>
                     <div className="flex items-center justify-between">
                       <span className="text-muted-foreground">Categoría</span>

@@ -67,7 +67,7 @@ function RotatingText() {
           animate={{ opacity: 1, y: 0, filter: "blur(0px)" }}
           exit={{ opacity: 0, y: -16, filter: "blur(4px)" }}
           transition={{ duration: 0.5, ease: "easeInOut" }}
-          className="text-sm text-white/30 font-light tracking-wide absolute inset-0 text-center"
+          className="text-sm text-white/30 absolute inset-0 text-center"
         >
           {ROTATING_WORDS[index]}
         </motion.p>
@@ -196,13 +196,13 @@ function FloatingActivity() {
             }}
           >
             <div className="flex items-center gap-2.5 pl-2.5 pr-3.5 py-2 rounded-2xl border border-white/[0.08] bg-gradient-to-r from-white/[0.04] to-white/[0.02] backdrop-blur-md shadow-[0_4px_20px_rgba(0,0,0,0.3)]">
-              <span className="text-base leading-none shrink-0">{card.item.icon}</span>
+              <span className="text-sm leading-none shrink-0">{card.item.icon}</span>
               <div className="flex flex-col gap-0.5">
-                <span className="text-[11px] text-white/50 font-medium leading-none whitespace-nowrap tracking-wide">
+                <span className="text-xs text-white/50 font-medium leading-none whitespace-nowrap">
                   {card.item.text}
                 </span>
                 {card.item.detail && (
-                  <span className={`text-[10px] leading-none whitespace-nowrap font-mono ${card.item.color} opacity-50`}>
+                  <span className={`text-xs leading-none whitespace-nowrap ${card.item.color} opacity-50`}>
                     {card.item.detail}
                   </span>
                 )}
@@ -263,7 +263,7 @@ function BankStrip() {
       transition={{ delay: 1.5, duration: 1 }}
       className="flex flex-col items-center gap-3"
     >
-      <p className="text-[10px] text-white/15 font-medium">
+      <p className="text-xs text-white/15 font-medium">
         Sincroniza con tu banco
       </p>
       <div className="flex items-center gap-1 justify-center">
@@ -383,7 +383,7 @@ export default function Auth() {
             <RindoLogo size={56} className="text-white mx-auto" />
           </motion.div>
 
-          <h1 className="text-3xl font-bold text-white tracking-tight">
+          <h1 className="text-hero font-medium text-white">
             rindo<span className="text-primary">.</span>
           </h1>
 
@@ -421,7 +421,7 @@ export default function Auth() {
             >
               {/* Email */}
               <div className="space-y-2">
-                <Label htmlFor="email" className="text-[10px] font-medium text-white/25">
+                <Label htmlFor="email" className="text-xs font-medium text-white/25">
                   Correo
                 </Label>
                 <div className="relative group">
@@ -444,7 +444,7 @@ export default function Auth() {
                   )}
                 </div>
                 {showDomainUI && ghostText && (
-                  <p className="hidden lg:block text-[10px] text-white/15 ml-1">
+                  <p className="hidden lg:block text-xs text-white/15 ml-1">
                     Tab para completar
                   </p>
                 )}
@@ -455,7 +455,7 @@ export default function Auth() {
                         key={domain}
                         type="button"
                         onClick={() => handleDomainChipClick(domain)}
-                        className="px-2.5 py-1 text-[11px] rounded-full bg-white/[0.04] border border-white/[0.08] text-white/30 hover:bg-white/[0.08] hover:text-white/50 active:bg-white/[0.1] active:text-white/60 transition-colors"
+                        className="px-2.5 py-1 text-xs rounded-full bg-white/[0.04] border border-white/[0.08] text-white/30 hover:bg-white/[0.08] hover:text-white/50 active:bg-white/[0.1] active:text-white/60 transition-colors"
                       >
                         @{domain}
                       </button>
@@ -466,7 +466,7 @@ export default function Auth() {
 
               {/* Password */}
               <div className="space-y-2">
-                <Label htmlFor="password" className="text-[10px] font-medium text-white/25">
+                <Label htmlFor="password" className="text-xs font-medium text-white/25">
                   Contraseña
                 </Label>
                 <Input
@@ -481,7 +481,7 @@ export default function Auth() {
                   minLength={6}
                 />
                 {!isLogin && (
-                  <p className="text-[10px] text-white/15 ml-1">Mínimo 6 caracteres</p>
+                  <p className="text-xs text-white/15 ml-1">Mínimo 6 caracteres</p>
                 )}
               </div>
 
@@ -522,7 +522,7 @@ export default function Auth() {
                     initial={{ opacity: 0, y: 8 }}
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ duration: 0.4, delay: 0.4 }}
-                    className="text-xl font-bold text-white"
+                    className="text-xl font-medium text-white"
                   >
                     Revisa tu correo
                   </motion.h3>
@@ -595,7 +595,7 @@ export default function Auth() {
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           transition={{ delay: 1.8, duration: 1 }}
-          className="text-center text-[10px] text-white/10 mt-6 font-light tracking-wider"
+          className="text-center text-xs text-white/10 mt-6"
         >
           Tu banco no te juzga. Yo sí.
         </motion.p>

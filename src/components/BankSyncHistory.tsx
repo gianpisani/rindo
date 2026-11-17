@@ -156,14 +156,14 @@ function EntryDetail({ entry }: { entry: SyncLogEntry }) {
       {importedItems.length > 0 && deletedCount === 0 && (
         <div className="space-y-1.5">
           <div className="flex items-center justify-between">
-            <p className="text-[11px] font-medium text-muted-foreground">
+            <p className="text-xs font-medium text-muted-foreground">
               Importadas ({importedItems.length})
             </p>
             {importedItems.some((item) => item.id) && (
               <button
                 type="button"
                 onClick={toggleAllImported}
-                className="text-[11px] text-foreground hover:underline cursor-pointer"
+                className="text-xs text-foreground hover:underline cursor-pointer"
               >
                 {importedItems.every((_, i) => selectedImported.has(i)) ? "Deseleccionar todo" : "Seleccionar todo"}
               </button>
@@ -187,9 +187,9 @@ function EntryDetail({ entry }: { entry: SyncLogEntry }) {
                 </div>
                 <div className="flex-1 min-w-0">
                   <p className="truncate text-xs font-medium">{item.description}</p>
-                  <p className="text-[10px] text-muted-foreground">{formatMovDate(item.date)}</p>
+                  <p className="text-xs text-muted-foreground">{formatMovDate(item.date)}</p>
                 </div>
-                <span className={cn("text-xs font-semibold tabular-nums shrink-0",
+                <span className={cn("text-xs font-medium tabular-nums shrink-0",
                   item.type === "Ingreso" ? "text-success" : "")}>
                   {item.type === "Ingreso" ? "+" : "-"}{formatAmount(item.amount)}
                 </span>
@@ -220,14 +220,14 @@ function EntryDetail({ entry }: { entry: SyncLogEntry }) {
       {skippedItems.length > 0 && importedCount === 0 && (
         <div className="space-y-1.5">
           <div className="flex items-center justify-between">
-            <p className="text-[11px] font-medium text-muted-foreground">
+            <p className="text-xs font-medium text-muted-foreground">
               Ignoradas ({skippedItems.length})
             </p>
             {creatableIndexes.length > 0 && (
               <button
                 type="button"
                 onClick={toggleAll}
-                className="text-[11px] text-foreground hover:underline cursor-pointer"
+                className="text-xs text-foreground hover:underline cursor-pointer"
               >
                 {creatableIndexes.every((i) => selectedSkipped.has(i)) ? "Deseleccionar todo" : "Seleccionar todo"}
               </button>
@@ -253,14 +253,14 @@ function EntryDetail({ entry }: { entry: SyncLogEntry }) {
                   </div>
                   <div className="flex-1 min-w-0">
                     <p className="truncate text-xs font-medium">{item.description}</p>
-                    <div className="flex items-center gap-1.5 text-[10px] text-muted-foreground">
+                    <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
                       <span>{formatMovDate(item.date)}</span>
-                      <span className="px-1 py-0.5 rounded bg-muted text-[9px]">
+                      <span className="px-1 py-0.5 rounded bg-muted text-xs">
                         {SKIP_REASON_LABELS[item.reason] ?? "Omitida"}
                       </span>
                     </div>
                   </div>
-                  <span className={cn("text-xs font-semibold tabular-nums shrink-0",
+                  <span className={cn("text-xs font-medium tabular-nums shrink-0",
                     item.type === "Ingreso" ? "text-success" : "")}>
                     {item.type === "Ingreso" ? "+" : "-"}{formatAmount(item.amount)}
                   </span>
@@ -328,7 +328,7 @@ function LogEntryRow({ entry }: { entry: SyncLogEntry }) {
           <div className="flex items-center gap-2">
             <p className="text-sm font-medium">{bank?.label ?? entry.bank}</p>
             {entry.trigger === "cron" && (
-              <span className="text-[10px] px-1.5 py-0.5 rounded bg-muted text-muted-foreground">Auto</span>
+              <span className="text-xs px-1.5 py-0.5 rounded bg-muted text-muted-foreground">Auto</span>
             )}
           </div>
           <p className="text-xs text-muted-foreground">{dateLabel} · {timeLabel}</p>

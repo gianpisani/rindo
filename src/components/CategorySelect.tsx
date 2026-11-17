@@ -56,7 +56,7 @@ function CreateCategoryAction({
         "flex w-full items-center gap-2.5 border-border/60 text-left text-foreground transition-colors hover:bg-muted/60",
         // En mobile va bajo el buscador (la lista no tiene scroll propio);
         // en desktop cierra el popover, bajo la lista.
-        size === "lg" ? "mt-1 gap-3 rounded-xl px-3 py-3 text-base" : "border-t px-3 py-2.5 text-sm"
+        size === "lg" ? "mt-1 gap-3 rounded-xl px-3 py-3 text-sm" : "border-t px-3 py-2.5 text-sm"
       )}
     >
       <Plus className={cn("shrink-0", size === "lg" ? "h-5 w-5" : "h-4 w-4")} />
@@ -161,7 +161,7 @@ export function CategorySelect({
                   className="flex cursor-pointer items-center gap-2.5 py-2 text-sm"
                 >
                   {option.emoji && (
-                    <span className="shrink-0 text-base leading-none">{option.emoji}</span>
+                    <span className="shrink-0 text-sm leading-none">{option.emoji}</span>
                   )}
                   <span className="truncate">{option.label}</span>
                   {option.value === value && (
@@ -248,7 +248,7 @@ export function CategoryPickerInline({
           value={search}
           onValueChange={setSearch}
           placeholder={searchPlaceholder}
-          className="h-11 text-base"
+          className="h-11 text-sm"
         />
         {onCreate && (
           <CreateCategoryAction
@@ -274,7 +274,7 @@ export function CategoryPickerInline({
                 key={option.value}
                 value={option.label}
                 onSelect={() => onSelect(option.value)}
-                className="flex cursor-pointer items-center gap-3 rounded-xl px-3 py-3 text-base"
+                className="flex cursor-pointer items-center gap-3 rounded-xl px-3 py-3 text-sm"
               >
                 {option.emoji && (
                   <span className="shrink-0 text-xl leading-none">{option.emoji}</span>

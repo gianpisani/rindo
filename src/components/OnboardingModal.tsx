@@ -129,7 +129,7 @@ function ThemePreviewCard({
           </div>
         </div>
       </div>
-      <span className="text-[10px] font-medium text-muted-foreground">{name}</span>
+      <span className="text-xs font-medium text-muted-foreground">{name}</span>
     </button>
   );
 }
@@ -519,7 +519,7 @@ export function OnboardingModal({
                     className="rounded-2xl object-cover"
                   />
                 )}
-                <AvatarFallback className="rounded-2xl text-2xl font-bold">
+                <AvatarFallback className="rounded-2xl text-xl font-medium">
                   {displayInitials}
                 </AvatarFallback>
               </Avatar>
@@ -664,7 +664,7 @@ export function OnboardingModal({
                   >
                     <Paintbrush className="size-5 text-white/90 drop-shadow-md" />
                   </div>
-                  <span className="text-[10px] font-medium text-muted-foreground">
+                  <span className="text-xs font-medium text-muted-foreground">
                     Custom
                   </span>
                 </button>
@@ -699,13 +699,13 @@ export function OnboardingModal({
                       </div>
                     )}
                     <span
-                      className="text-sm font-semibold leading-tight"
+                      className="text-sm font-medium leading-tight"
                       style={{ fontFamily: font.family }}
                     >
                       {font.name}
                     </span>
                     <span
-                      className="text-[10px] text-muted-foreground mt-0.5"
+                      className="text-xs text-muted-foreground mt-0.5"
                       style={{ fontFamily: font.family }}
                     >
                       Hola mundo $1.234
@@ -743,7 +743,7 @@ export function OnboardingModal({
                 max={1.5}
                 step={0.05}
               />
-              <div className="flex justify-between mt-1.5 text-[10px] text-muted-foreground/60">
+              <div className="flex justify-between mt-1.5 text-xs text-muted-foreground/60">
                 <span>Cuadrado</span>
                 <span>Redondeado</span>
               </div>

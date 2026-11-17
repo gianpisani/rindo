@@ -108,7 +108,7 @@ function CredentialRow({
       <div className="flex items-center gap-3">
         <BankLogo bank={bank} size="sm" />
         <div className="flex-1 min-w-0">
-          <p className="text-sm font-semibold">{bank.label}</p>
+          <p className="text-sm font-medium">{bank.label}</p>
           <p className="text-xs text-muted-foreground">{cred.rut}</p>
         </div>
         <button
@@ -167,7 +167,7 @@ function CredentialRow({
 
       {/* Error message */}
       {cred.last_error && (cred.last_sync_status === "failed" || cred.last_sync_status === "invalid_credentials") && (
-        <p className="text-[11px] text-destructive/80 bg-destructive/5 rounded-lg px-2.5 py-1.5">
+        <p className="text-xs text-destructive/80 bg-destructive/5 rounded-lg px-2.5 py-1.5">
           {getFriendlyError(cred.last_sync_status)}
         </p>
       )}
@@ -198,7 +198,7 @@ export function BankSyncSettings({ onAddBank }: BankSyncSettingsProps) {
     <div className="space-y-4">
       <div className="flex items-center justify-between">
         <div>
-          <p className="text-sm font-semibold">Bancos configurados</p>
+          <p className="text-sm font-medium">Bancos configurados</p>
           <p className="text-xs text-muted-foreground">
             {credentials && credentials.length > 0
               ? `${credentials.filter((c) => c.is_active).length} activo${credentials.filter((c) => c.is_active).length !== 1 ? "s" : ""}`

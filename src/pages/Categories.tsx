@@ -91,7 +91,7 @@ export default function Categories() {
   return (
     <Layout>
       <div className="space-y-8">
-        <h1 className="text-2xl font-bold tracking-tight">Categorías</h1>
+        <h1 className="text-xl font-medium">Categorías</h1>
 
         {categories.length === 0 && newChip()}
 
@@ -102,7 +102,7 @@ export default function Categories() {
             <div key={type}>
               <div className="flex items-center gap-2 mb-3">
                 <Icon className={cn("h-4 w-4", color)} />
-                <span className="text-sm font-semibold">{label}</span>
+                <span className="text-sm font-medium">{label}</span>
                 <span className="text-xs text-muted-foreground tabular-nums">({cats.length})</span>
               </div>
 
@@ -112,9 +112,9 @@ export default function Categories() {
                     key={cat.id}
                     className="group relative inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-secondary text-sm font-medium"
                   >
-                    <span className="text-base leading-none">{cat.icon || "🏷️"}</span>
+                    <span className="text-sm leading-none">{cat.icon || "🏷️"}</span>
                     <span>{cat.name}</span>
-                    {cat.is_active === false && <span className="text-[10px] text-muted-foreground">Archivada</span>}
+                    {cat.is_active === false && <span className="text-xs text-muted-foreground">Archivada</span>}
                     {/* Hover actions */}
                     <div className="absolute inset-0 rounded-full flex items-center justify-end pr-1.5 gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity bg-background/80 backdrop-blur-sm">
                       <button

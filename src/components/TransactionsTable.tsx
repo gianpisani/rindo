@@ -353,7 +353,7 @@ function EditableAmountCell({
       onClick={() => setIsEditing(true)}
       className={cn(
         "px-2 py-1 rounded-md cursor-pointer transition-all text-right",
-        "hover:bg-muted/80 group flex items-center justify-end gap-1 font-semibold font-mono tabular-nums",
+        "hover:bg-muted/80 group flex items-center justify-end gap-1 font-medium font-mono tabular-nums",
         className
       )}
     >
@@ -411,7 +411,7 @@ function SortHeader({ column, label, alignEnd }: { column: Column<Transaction>; 
       className={cn("flex items-center cursor-pointer hover:bg-muted rounded px-2 py-1", alignEnd && "justify-end ml-auto")}
       onClick={() => column.toggleSorting(sorted === "asc")}
     >
-      <span className="text-xs font-semibold">{label}</span>
+      <span className="text-xs font-medium">{label}</span>
       {sorted === "asc" ? <ChevronUp className="ml-2 h-4 w-4" /> :
         sorted === "desc" ? <ChevronDown className="ml-2 h-4 w-4" /> :
           <ChevronsUpDown className="ml-2 h-4 w-4 opacity-50" />}
@@ -504,7 +504,7 @@ function CategoryCombobox({ value, options, onSave, trigger, placeholder = "Busc
                   className="flex items-center gap-2 cursor-pointer"
                 >
                   {option.emoji && (
-                    <span className="text-base leading-none flex-shrink-0">{option.emoji}</span>
+                    <span className="text-sm leading-none flex-shrink-0">{option.emoji}</span>
                   )}
                   {option.color && (
                     <div
@@ -748,7 +748,7 @@ export function TransactionsTable({
                 />
                 {row.original.bank_description && row.original.bank_description !== clean && (
                   <p
-                    className="text-[10px] text-muted-foreground/50 truncate leading-none mt-0.5"
+                    className="text-xs text-muted-foreground/50 truncate leading-none mt-0.5"
                     title={row.original.bank_description}
                   >
                     {row.original.bank_description}
@@ -825,7 +825,7 @@ export function TransactionsTable({
                   trigger={
                     <button
                       className={cn(
-                        "inline-flex items-center gap-1 rounded-full px-1.5 py-0.5 text-[10px] leading-none flex-shrink-0",
+                        "inline-flex items-center gap-1 rounded-full px-1.5 py-0.5 text-xs leading-none flex-shrink-0",
                         "cursor-pointer transition-all hover:brightness-125",
                         "focus:outline-none",
                         linkedCategory
@@ -850,7 +850,7 @@ export function TransactionsTable({
         id: "card",
         size: 90, minSize: 80, maxSize: 110,
         header: () => (
-          <div className="flex items-center gap-1 text-xs font-semibold">
+          <div className="flex items-center gap-1 text-xs font-medium">
             <CreditCard className="h-3.5 w-3.5" />
             Tarjeta
           </div>
@@ -886,7 +886,7 @@ export function TransactionsTable({
                       className="w-2 h-2 rounded-full flex-shrink-0"
                       style={{ backgroundColor: selectedCard.color || "#6366f1" }}
                     />
-                    <span className="text-xs font-mono font-medium">
+                    <span className="text-xs font-medium">
                       {digits ? `****${digits}` : selectedCard.name}
                     </span>
                   </div>
@@ -913,7 +913,7 @@ export function TransactionsTable({
                 value={amount}
                 allowNegative={allowsNegativeAmount(type)}
                 onSave={(newAmount) => handleInlineUpdate(row.original.id, "amount", newAmount)}
-                className={cn("text-sm font-semibold", amountColor)}
+                className={cn("text-sm font-medium", amountColor)}
               />
             </div>
           );
@@ -1153,7 +1153,7 @@ export function TransactionsTable({
         {/* Avatar */}
         <div className="relative flex-shrink-0">
           <div
-            className="w-10 h-10 rounded-full flex items-center justify-center text-lg leading-none select-none"
+            className="w-10 h-10 rounded-full flex items-center justify-center text-xl leading-none select-none"
             style={avatar.style}
           >
             {avatar.emoji}
@@ -1168,11 +1168,11 @@ export function TransactionsTable({
         {/* Content */}
         <div className="flex-1 min-w-0 ml-3">
           <div className="flex items-center justify-between gap-2">
-            <span className={cn("text-sm font-semibold truncate", isPrivacyMode && "privacy-blur")}>
+            <span className={cn("text-sm font-medium truncate", isPrivacyMode && "privacy-blur")}>
               {clean || <span className="text-muted-foreground/50 italic font-normal">Sin detalle</span>}
             </span>
             <span className={cn(
-              "text-sm font-bold tabular-nums whitespace-nowrap font-mono",
+              "text-sm font-medium tabular-nums whitespace-nowrap font-mono",
               typeAmountColors[t.type],
               isPrivacyMode && "privacy-blur"
             )}>
@@ -1193,7 +1193,7 @@ export function TransactionsTable({
                 </>
               )}
             </div>
-            <span className="text-[11px] text-muted-foreground/50 tabular-nums flex-shrink-0">
+            <span className="text-xs text-muted-foreground/50 tabular-nums flex-shrink-0">
               {timeLabel}
             </span>
           </div>
@@ -1290,7 +1290,7 @@ export function TransactionsTable({
               {/* Count badge */}
               <button
                 onClick={() => setPanelExpanded(true)}
-                className="w-8 h-8 rounded-lg bg-muted text-foreground flex items-center justify-center text-xs font-bold transition-colors"
+                className="w-8 h-8 rounded-lg bg-muted text-foreground flex items-center justify-center text-xs font-medium transition-colors"
               >
                 {selectedIds.length}
               </button>
@@ -1323,10 +1323,10 @@ export function TransactionsTable({
                 >
                   <GripVertical className="h-3.5 w-3.5" />
                 </div>
-                <Badge variant="secondary" className="font-semibold text-[11px] h-5 px-1.5">
+                <Badge variant="secondary" className="font-medium text-xs h-5 px-1.5">
                   {selectedIds.length}
                 </Badge>
-                <span className="text-[11px] text-muted-foreground">
+                <span className="text-xs text-muted-foreground">
                   seleccionada{selectedIds.length > 1 ? "s" : ""}
                 </span>
                 <div className="flex-1" />
@@ -1344,7 +1344,7 @@ export function TransactionsTable({
                   <DropdownMenuTrigger asChild>
                     <button className="w-full flex items-center gap-2.5 px-2.5 py-1.5 rounded-lg text-sm hover:bg-muted/60 transition-colors text-left">
                       <Tag className="h-3.5 w-3.5 text-muted-foreground" />
-                      <span className="text-[13px]">Cambiar categoría</span>
+                      <span className="text-sm">Cambiar categoría</span>
                     </button>
                   </DropdownMenuTrigger>
                   <DropdownMenuContent align="end" side="left" className="max-h-[300px] overflow-auto">
@@ -1363,7 +1363,7 @@ export function TransactionsTable({
                   <DropdownMenuTrigger asChild>
                     <button className="w-full flex items-center gap-2.5 px-2.5 py-1.5 rounded-lg text-sm hover:bg-muted/60 transition-colors text-left">
                       <ArrowRightLeft className="h-3.5 w-3.5 text-muted-foreground" />
-                      <span className="text-[13px]">Cambiar tipo</span>
+                      <span className="text-sm">Cambiar tipo</span>
                     </button>
                   </DropdownMenuTrigger>
                   <DropdownMenuContent align="end" side="left">
@@ -1383,7 +1383,7 @@ export function TransactionsTable({
                   className="w-full flex items-center gap-2.5 px-2.5 py-1.5 rounded-lg text-sm hover:bg-muted/60 transition-colors text-left"
                 >
                   <Copy className="h-3.5 w-3.5 text-muted-foreground" />
-                  <span className="text-[13px]">Duplicar</span>
+                  <span className="text-sm">Duplicar</span>
                 </button>
 
                 <div className="my-1 border-t border-border/40" />
@@ -1393,7 +1393,7 @@ export function TransactionsTable({
                   className="w-full flex items-center gap-2.5 px-2.5 py-1.5 rounded-lg text-sm hover:bg-destructive/10 text-destructive transition-colors text-left"
                 >
                   <Trash2 className="h-3.5 w-3.5" />
-                  <span className="text-[13px]">Eliminar</span>
+                  <span className="text-sm">Eliminar</span>
                 </button>
               </div>
 
@@ -1402,14 +1402,14 @@ export function TransactionsTable({
                 <div className="px-3 py-2 border-t border-border/40 bg-muted/20">
                   <div className="grid grid-cols-2 gap-x-4 gap-y-1">
                     {([
-                      ["Suma", summaryStats.sum, "font-bold"],
-                      ["Prom", summaryStats.avg, "font-semibold"],
+                      ["Suma", summaryStats.sum, "font-medium"],
+                      ["Prom", summaryStats.avg, "font-medium"],
                       ["Min", summaryStats.min, ""],
                       ["Max", summaryStats.max, ""],
                     ] as const).map(([label, value, weight]) => (
                       <div key={label} className="flex items-center justify-between">
-                        <span className="text-[10px] text-muted-foreground/60">{label}</span>
-                        <span className={cn("text-[11px] font-mono tabular-nums", weight, signColor(value), isPrivacyMode && "privacy-blur")}>
+                        <span className="text-xs text-muted-foreground/60">{label}</span>
+                        <span className={cn("text-xs font-mono tabular-nums", weight, signColor(value), isPrivacyMode && "privacy-blur")}>
                           <NumberFlow value={value} locales="es-CL" format={SIGNED_CLP} />
                         </span>
                       </div>
@@ -1417,10 +1417,10 @@ export function TransactionsTable({
                   </div>
                   {summaryStats.mixed && (
                     <div className="flex items-center justify-between mt-1.5 pt-1.5 border-t border-border/30">
-                      <span className={cn("text-[10px] font-mono tabular-nums text-success", isPrivacyMode && "privacy-blur")}>
+                      <span className={cn("text-xs font-mono tabular-nums text-success", isPrivacyMode && "privacy-blur")}>
                         +{formatCLP(summaryStats.income)}
                       </span>
-                      <span className={cn("text-[10px] font-mono tabular-nums", isPrivacyMode && "privacy-blur")}>
+                      <span className={cn("text-xs font-mono tabular-nums", isPrivacyMode && "privacy-blur")}>
                         −{formatCLP(summaryStats.expense)}
                       </span>
                     </div>
@@ -1432,7 +1432,7 @@ export function TransactionsTable({
               <div className="px-2 py-1.5 border-t border-border/40">
                 <button
                   onClick={() => setRowSelection({})}
-                  className="w-full flex items-center justify-center gap-1 py-1 rounded-lg text-[11px] text-muted-foreground hover:bg-muted/60 transition-colors"
+                  className="w-full flex items-center justify-center gap-1 py-1 rounded-lg text-xs text-muted-foreground hover:bg-muted/60 transition-colors"
                 >
                   <X className="h-3 w-3" />
                   Deseleccionar todo
@@ -1487,7 +1487,7 @@ export function TransactionsTable({
                     {headerGroup.headers.map((header) => (
                       <th
                         key={header.id}
-                        className="px-3 py-1.5 text-left text-xs font-semibold text-foreground"
+                        className="px-3 py-1.5 text-left text-xs font-medium text-foreground"
                         style={{
                           width: header.column.columnDef.size,
                           minWidth: header.column.columnDef.minSize,
@@ -1515,7 +1515,7 @@ export function TransactionsTable({
                           colSpan={columns.length}
                           className="px-4 py-1 bg-muted/30 border-t border-border/30 first:border-t-0"
                         >
-                          <span className="text-xs font-semibold text-muted-foreground">
+                          <span className="text-xs font-medium text-muted-foreground">
                             {formatGroupDate(group.dayKey)}
                           </span>
                         </td>

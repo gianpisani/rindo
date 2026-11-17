@@ -87,7 +87,7 @@ function NoticePill({ notice }: { notice: HomeNotice }) {
         className="flex min-w-0 items-center gap-1.5 focus-visible:outline-none"
       >
         <notice.icon className={cn("h-3.5 w-3.5 shrink-0", tone.icon)} />
-        <span className="truncate text-[11px] font-medium">{notice.label}</span>
+        <span className="truncate text-xs font-medium">{notice.label}</span>
       </button>
       {notice.onDismiss && <DismissButton onDismiss={notice.onDismiss} />}
     </div>
@@ -106,10 +106,10 @@ function NoticeRow({ notice }: { notice: HomeNotice }) {
       >
         <notice.icon className={cn("mt-0.5 h-4 w-4 shrink-0", tone.icon)} />
         <span className="min-w-0">
-          <span className="block text-[13px] font-semibold leading-snug">
+          <span className="block text-sm font-medium leading-snug">
             {notice.label}
           </span>
-          <span className="block text-[11px] leading-snug text-muted-foreground">
+          <span className="block text-xs leading-snug text-muted-foreground">
             {notice.detail}
           </span>
         </span>
@@ -147,7 +147,7 @@ function NoticeCounter({
           )}
         >
           <AlertCircle className={cn("h-3.5 w-3.5", tones[tone].icon)} />
-          <span className="font-mono text-[11px] font-semibold tabular-nums">
+          <span className="text-xs font-medium tabular-nums">
             {notices.length}
           </span>
         </button>

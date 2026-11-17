@@ -135,11 +135,11 @@ export default function PendingDebts() {
   return (
     <Layout>
       <div className="space-y-6">
-        <h1 className="text-2xl font-bold tracking-tight">Deudas</h1>
+        <h1 className="text-xl font-medium">Deudas</h1>
 
         {sections.length === 0 ? (
           <div className="py-16 text-center">
-            <p className="text-base font-medium text-muted-foreground mb-1">Nadie te debe y no le debes a nadie</p>
+            <p className="text-sm font-medium text-muted-foreground mb-1">Nadie te debe y no le debes a nadie</p>
             <p className="text-sm text-muted-foreground/70">
               Para crear una deuda, divide un gasto desde{" "}
               <Link to="/transactions" className="underline underline-offset-2 hover:text-foreground">
@@ -154,7 +154,7 @@ export default function PendingDebts() {
               <div className="flex items-baseline justify-between">
                 <h2 className="text-sm font-medium text-muted-foreground">{section.label}</h2>
                 <span
-                  className={cn("text-lg font-bold tabular-nums", section.amountClass, isPrivacyMode && "privacy-blur")}
+                  className={cn("text-xl font-medium tabular-nums", section.amountClass, isPrivacyMode && "privacy-blur")}
                 >
                   {fmt(section.total)}
                 </span>
@@ -163,8 +163,8 @@ export default function PendingDebts() {
               {section.people.map((person) => (
                 <GlassCard key={person.name}>
                   <div className="flex items-center justify-between gap-3 px-4 py-3">
-                    <p className="font-semibold text-sm truncate">{person.name}</p>
-                    <span className={cn("text-base font-bold tabular-nums", isPrivacyMode && "privacy-blur")}>
+                    <p className="font-medium text-sm truncate">{person.name}</p>
+                    <span className={cn("text-sm font-medium tabular-nums", isPrivacyMode && "privacy-blur")}>
                       {fmt(person.total)}
                     </span>
                   </div>
