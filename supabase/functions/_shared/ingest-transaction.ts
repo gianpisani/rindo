@@ -1,10 +1,9 @@
-// Ingesta de un movimiento individual: insertarlo, categorizarlo con Jev y
+// Ingesta de un movimiento individual: insertarlo, categorizarlo por historial y
 // avisar al usuario (push + email con el resumen semanal).
 // Lo usan process-email-v2 y process-ios-wallet-push-notification: cada función
 // solo parsea su entrada y arma la fila.
 
 import type { SupabaseClient } from 'https://esm.sh/@supabase/supabase-js@2.39.3'
-import { categorizeForUser } from './categorize.ts'
 import { sendNotificationEmail } from './email-notification.ts'
 
 // deno-lint-ignore no-explicit-any
@@ -30,7 +29,7 @@ export interface WeeklyStats {
 }
 
 /**
- * Inserta el movimiento como 'Sin categoría', lo categoriza y avisa por push y email.
+ * Categoriza el movimiento por historial, lo inserta y avisa por push y email.
  * Lanza el error de Supabase si el insert falla; categorizar y avisar nunca lanzan.
  */
 export async function ingestTransaction(client: Client, row: TransactionRow, options: {
@@ -65,9 +64,11 @@ export async function ingestTransaction(client: Client, row: TransactionRow, opt
     }
   }
 
+  const category = await categoryFromHistory(client, userId, row.detail)
+
   const { data: transaction, error } = await client
     .from('transactions')
-    .insert({ ...row, category_name: 'Sin categoría', card_id: cardId })
+    .insert({ ...row, category_name: category, card_id: cardId })
     .select()
     .single()
 
@@ -78,17 +79,39 @@ export async function ingestTransaction(client: Client, row: TransactionRow, opt
 
   console.log('✅ Transacción creada:', transaction.id, row.detail, row.amount)
 
-  let category = 'Sin categoría'
-  try {
-    const result = await categorizeForUser(client, transaction.id, userId, { apiKey: Deno.env.get('AI_GATEWAY_API_KEY') ?? '' })
-    category = result.category
-  } catch { console.error('No se pudo categorizar el movimiento importado') }
-
   const weeklyStats = await weeklyCategoryStats(client, row, category)
   await sendPush(row, options.pushTag)
   await sendEmail(client, row, category, options.bank, weeklyStats)
 
   return { id: transaction.id as string, category, weeklyStats }
+}
+
+/**
+ * Categoría por historial: la más repetida entre los últimos movimientos del
+ * usuario cuyo detalle contiene la primera palabra de este. Igual que en
+ * producción hoy; no usa Jev (eso queda para cuando estos importadores tengan auth).
+ */
+async function categoryFromHistory(client: Client, userId: string, detail: string): Promise<string> {
+  try {
+    const searchTerm = detail.replace(/^[🤖📱]\s*/u, '').split(/[\s(]/)[0]
+    if (!searchTerm || searchTerm.length <= 2 || /^transferencia$/i.test(searchTerm)) return 'Sin categoría'
+
+    const { data: similar } = await client
+      .from('transactions')
+      .select('category_name')
+      .eq('user_id', userId)
+      .neq('category_name', 'Sin categoría')
+      .neq('category_name', '⚡ Analizando...')
+      .ilike('detail', `%${searchTerm}%`)
+      .limit(5)
+
+    const counts: Record<string, number> = {}
+    for (const tx of similar ?? []) counts[tx.category_name] = (counts[tx.category_name] || 0) + 1
+    return Object.entries(counts).sort((a, b) => b[1] - a[1])[0]?.[0] ?? 'Sin categoría'
+  } catch (e) {
+    console.error('⚠️ Auto-categorize error:', e)
+    return 'Sin categoría'
+  }
 }
 
 // ── Notificaciones ──────────────────────────────────────────────────
