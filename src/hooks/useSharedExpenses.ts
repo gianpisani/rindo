@@ -28,18 +28,6 @@ export interface SharedExpenseWithTransaction extends SharedExpense {
   transaction_category: string | null;
 }
 
-export interface DebtorSummary {
-  debtor_name: string;
-  total_owed: number;
-  count_expenses: number;
-}
-
-export interface CreditorSummary {
-  creditor_name: string;
-  total_owed: number;
-  count_expenses: number;
-}
-
 export function useSharedExpenses() {
   const queryClient = useQueryClient();
 
@@ -80,38 +68,6 @@ export function useSharedExpenses() {
     },
   });
 
-  // Obtener resumen por deudor (solo pendientes, dirección "me deben")
-  const { data: pendingByDebtor = [] } = useQuery({
-    queryKey: ["pending_by_debtor"],
-    queryFn: async () => {
-      const { data: userData } = await supabase.auth.getUser();
-      if (!userData.user) throw new Error("No user found");
-
-      const { data, error } = await supabase.rpc("get_pending_by_debtor", {
-        p_user_id: userData.user.id,
-      });
-
-      if (error) throw error;
-      return (data || []) as DebtorSummary[];
-    },
-  });
-
-  // Obtener resumen por acreedor (solo pendientes, dirección "yo debo")
-  const { data: pendingByCreditor = [] } = useQuery({
-    queryKey: ["pending_by_creditor"],
-    queryFn: async () => {
-      const { data: userData } = await supabase.auth.getUser();
-      if (!userData.user) throw new Error("No user found");
-
-      const { data, error } = await supabase.rpc("get_pending_by_creditor", {
-        p_user_id: userData.user.id,
-      });
-
-      if (error) throw error;
-      return (data || []) as CreditorSummary[];
-    },
-  });
-
   // Agregar gastos compartidos (batch) — siempre dirección "me deben"
   const addSharedExpenses = useMutation({
     mutationFn: async (expenses: Array<Omit<SharedExpense, "id" | "user_id" | "created_at" | "paid" | "paid_at" | "paid_transaction_id" | "direction">>) => {
@@ -135,7 +91,6 @@ export function useSharedExpenses() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["shared_expenses"] });
       queryClient.invalidateQueries({ queryKey: ["shared_expenses_with_transaction"] });
-      queryClient.invalidateQueries({ queryKey: ["pending_by_debtor"] });
     },
   });
 
@@ -224,7 +179,6 @@ export function useSharedExpenses() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["shared_expenses"] });
       queryClient.invalidateQueries({ queryKey: ["shared_expenses_with_transaction"] });
-      queryClient.invalidateQueries({ queryKey: ["pending_by_debtor"] });
       queryClient.invalidateQueries({ queryKey: ["transactions"] });
 
       toast.success("Pago registrado. Se ha creado el ingreso automáticamente");
@@ -246,7 +200,6 @@ export function useSharedExpenses() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["shared_expenses"] });
       queryClient.invalidateQueries({ queryKey: ["shared_expenses_with_transaction"] });
-      queryClient.invalidateQueries({ queryKey: ["pending_by_debtor"] });
     },
   });
 
@@ -321,7 +274,6 @@ export function useSharedExpenses() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["shared_expenses"] });
       queryClient.invalidateQueries({ queryKey: ["shared_expenses_with_transaction"] });
-      queryClient.invalidateQueries({ queryKey: ["pending_by_debtor"] });
       queryClient.invalidateQueries({ queryKey: ["transactions"] });
       toast.success("Deuda vinculada a transacción existente");
     },
@@ -404,7 +356,6 @@ export function useSharedExpenses() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["shared_expenses"] });
       queryClient.invalidateQueries({ queryKey: ["shared_expenses_with_transaction"] });
-      queryClient.invalidateQueries({ queryKey: ["pending_by_debtor"] });
       queryClient.invalidateQueries({ queryKey: ["transactions"] });
       toast.success("Deudas vinculadas a la transacción");
     },
@@ -422,8 +373,6 @@ export function useSharedExpenses() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["shared_expenses"] });
       queryClient.invalidateQueries({ queryKey: ["shared_expenses_with_transaction"] });
-      queryClient.invalidateQueries({ queryKey: ["pending_by_debtor"] });
-      queryClient.invalidateQueries({ queryKey: ["pending_by_creditor"] });
     },
   });
 
@@ -475,7 +424,6 @@ export function useSharedExpenses() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["shared_expenses"] });
       queryClient.invalidateQueries({ queryKey: ["shared_expenses_with_transaction"] });
-      queryClient.invalidateQueries({ queryKey: ["pending_by_debtor"] });
       queryClient.invalidateQueries({ queryKey: ["transactions"] });
       toast.success("Deuda creada");
     },
@@ -517,7 +465,6 @@ export function useSharedExpenses() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["shared_expenses"] });
       queryClient.invalidateQueries({ queryKey: ["shared_expenses_with_transaction"] });
-      queryClient.invalidateQueries({ queryKey: ["pending_by_creditor"] });
       toast.success("Deuda registrada");
     },
     onError: (error: Error) => {
@@ -558,7 +505,6 @@ export function useSharedExpenses() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["shared_expenses"] });
       queryClient.invalidateQueries({ queryKey: ["shared_expenses_with_transaction"] });
-      queryClient.invalidateQueries({ queryKey: ["pending_by_creditor"] });
       queryClient.invalidateQueries({ queryKey: ["transactions"] });
       toast.success("Deuda saldada");
     },
@@ -570,8 +516,6 @@ export function useSharedExpenses() {
   return {
     sharedExpenses,
     sharedExpensesWithTransaction,
-    pendingByDebtor,
-    pendingByCreditor,
     isLoading,
     addSharedExpenses,
     addQuickDebt,
