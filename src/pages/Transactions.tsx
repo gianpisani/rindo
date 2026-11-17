@@ -530,7 +530,7 @@ export default function Transactions() {
           const { data: userData } = await supabase.auth.getUser();
           if (!userData.user) throw new Error("No user found");
 
-          const rows = results.data as any[];
+          const rows = results.data as Record<string, string>[];
           
           if (rows.length === 0) {
             throw new Error("El archivo CSV está vacío");
@@ -635,8 +635,8 @@ export default function Transactions() {
 
           setIsImportDialogOpen(false);
           window.location.reload();
-        } catch (error: any) {
-          toast.error(`Error en la importación: ${error.message}`);
+        } catch (error) {
+          toast.error(`Error en la importación: ${(error as Error).message}`);
         } finally {
           setIsImporting(false);
         }
@@ -1062,7 +1062,7 @@ export default function Transactions() {
                               <span className="name">
                                 <span>{debt.debtor_name}</span>
                                 <small>
-                                  {debt.transaction_detail || "Sin detalle"} · {new Date(debt.transaction_date).toLocaleDateString("es-CL", { day: "numeric", month: "short" })}
+                                  {debt.transaction_detail || "Sin detalle"}{debt.transaction_date && ` · ${new Date(debt.transaction_date).toLocaleDateString("es-CL", { day: "numeric", month: "short" })}`}
                                   {debtsToLink.length <= 1 && amountMismatch && " · monto distinto a la deuda"}
                                 </small>
                               </span>

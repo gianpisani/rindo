@@ -442,7 +442,9 @@ export function useCustomTheme() {
       const settingsJson = profile?.accent_color_2;
       if (settingsJson) localStorage.setItem(CUSTOM_SETTINGS_CACHE_KEY, settingsJson);
       else localStorage.removeItem(CUSTOM_SETTINGS_CACHE_KEY);
-    } catch {}
+    } catch {
+      // localStorage no disponible (modo privado); se ignora el caché
+    }
 
     // Apply color theme
     if (themeId === "custom" && customSettings.hue != null) {

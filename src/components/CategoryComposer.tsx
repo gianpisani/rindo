@@ -28,7 +28,7 @@ interface CategoryComposerProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   /** Categoría que se edita; sin ella, se crea una nueva. */
-  category?: Partial<CategoryValues> | null;
+  category?: { [K in keyof CategoryValues]?: CategoryValues[K] | null } | null;
   /** Nombre con el que abre al crear (lo que se tecleó buscando). */
   initialName?: string;
   /** Con tipo fijo la categoría nace de ese tipo y no se ofrece cambiarlo. */

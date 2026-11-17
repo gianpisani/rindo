@@ -378,7 +378,7 @@ export function BankSyncHistory() {
         .order("sync_date", { ascending: false })
         .limit(10);
       if (error) throw error;
-      return data ?? [];
+      return (data ?? []) as unknown as SyncLogEntry[];
     },
     staleTime: 30_000,
   });

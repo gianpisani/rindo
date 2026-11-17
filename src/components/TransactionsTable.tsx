@@ -55,6 +55,8 @@ import {
   Plus,
   ArrowDownToLine,
   LineChart,
+  ChevronsLeft,
+  ChevronsRight,
 } from "lucide-react";
 import { Transaction } from "@/hooks/useTransactions";
 import {
@@ -77,7 +79,6 @@ import { usePrivacyMode } from "@/hooks/usePrivacyMode";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { AnalyzingBadge } from "./AnalyzingBadge";
 import { InlineDateTimePicker } from "./ui/date-time-picker";
-import { ChevronDoubleLeftIcon, ChevronDoubleRightIcon } from "@heroicons/react/24/outline";
 import { useCategories } from "@/hooks/useCategories";
 import { CategoryComposer } from "./CategoryComposer";
 import { Popover, PopoverContent, PopoverTrigger } from "./ui/popover";
@@ -2098,7 +2099,7 @@ export function TransactionsTable({
                   disabled={!table.getCanPreviousPage()}
                   className="h-8 w-8 p-0"
                 >
-                  <ChevronDoubleLeftIcon className="h-4 w-4" />
+                  <ChevronsLeft className="h-4 w-4" />
                 </Button>
                 <Button
                   variant="outline" size="sm"
@@ -2141,7 +2142,7 @@ export function TransactionsTable({
                   disabled={!table.getCanNextPage()}
                   className="h-8 w-8 p-0"
                 >
-                  <ChevronDoubleRightIcon className="h-4 w-4" />
+                  <ChevronsRight className="h-4 w-4" />
                 </Button>
               </div>
             </div>
