@@ -26,6 +26,7 @@ import {
   ChevronLeft,
   Sun,
   Moon,
+  Monitor,
   Save,
   User,
   Palette,
@@ -239,7 +240,7 @@ export function OnboardingModal({
 }: OnboardingModalProps) {
   const { profile, updateProfile, uploadAvatar, removeAvatar, avatarUrl } =
     useUserProfile();
-  const { setTheme, resolvedTheme } = useTheme();
+  const { theme, setTheme, resolvedTheme } = useTheme();
 
   const [step, setStep] = useState(0);
   const [slideDirection, setSlideDirection] = useState<"left" | "right">("right");
@@ -342,8 +343,12 @@ export function OnboardingModal({
   }, []);
 
   const handleToggleMode = useCallback(
-    (newMode: "light" | "dark") => {
-      setTheme(newMode);
+    (value: "light" | "dark" | "system") => {
+      setTheme(value);
+      const newMode =
+        value === "system"
+          ? window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light"
+          : value;
       setTimeout(() => {
         applyThemePreview(selectedTheme, newMode, { hue: customHue });
       }, 50);
@@ -576,32 +581,27 @@ export function OnboardingModal({
         {/* Step 2: Full theme customization */}
         {step === 2 && (
           <div className="space-y-6 max-h-[55vh] overflow-y-auto overscroll-contain pr-1 -mr-1 scrollbar-thin scrollbar-thumb-muted scrollbar-track-transparent">
-            {/* ── Light / Dark ────────────────────────────────── */}
-            <div className="grid grid-cols-2 gap-3">
-              <button
-                onClick={() => handleToggleMode("light")}
-                className={cn(
-                  "flex items-center gap-2 px-4 py-2 rounded-full border transition-all duration-200 text-sm font-medium",
-                  currentMode === "light"
-                    ? "text-foreground"
-                    : "text-muted-foreground hover:bg-muted active:scale-[0.97]"
-                )}
-              >
-                <Sun className="size-4" />
-                Light
-              </button>
-              <button
-                onClick={() => handleToggleMode("dark")}
-                className={cn(
-                  "flex items-center gap-2 px-4 py-2 rounded-full border transition-all duration-200 text-sm font-medium",
-                  currentMode === "dark"
-                    ? "text-foreground"
-                    : "text-muted-foreground hover:bg-muted active:scale-[0.97]"
-                )}
-              >
-                <Moon className="size-4" />
-                Dark
-              </button>
+            {/* ── Claro / Oscuro / Sistema: el único lugar donde se elige ── */}
+            <div className="grid grid-cols-3 gap-1 p-1 rounded-full bg-muted">
+              {([
+                { value: "light", label: "Claro", icon: Sun },
+                { value: "dark", label: "Oscuro", icon: Moon },
+                { value: "system", label: "Sistema", icon: Monitor },
+              ] as const).map(({ value, label, icon: Icon }) => (
+                <button
+                  key={value}
+                  onClick={() => handleToggleMode(value)}
+                  className={cn(
+                    "flex h-9 items-center justify-center gap-2 rounded-full text-sm font-medium transition-colors",
+                    (theme ?? "system") === value
+                      ? "bg-card text-foreground"
+                      : "text-muted-foreground hover:text-foreground"
+                  )}
+                >
+                  <Icon className="size-4" />
+                  {label}
+                </button>
+              ))}
             </div>
 
             {/* ── Color ───────────────────────────────────────── */}

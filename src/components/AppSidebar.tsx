@@ -1,9 +1,6 @@
 import {
   ChevronsUpDown,
   LogOut,
-  Moon,
-  Sun,
-  Monitor,
   Bell,
   BellOff,
   Volume2,
@@ -18,7 +15,6 @@ import { toast } from "sonner";
 import { useSoundPreferences } from "@/hooks/useSoundPreferences";
 import { useSoundFX } from "@/hooks/useSoundFX";
 import { usePushNotifications } from "@/hooks/usePushNotifications";
-import { useTheme } from "next-themes";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import {
   Sidebar,
@@ -58,7 +54,6 @@ export function AppSidebar() {
   const { soundEnabled, toggleSound } = useSoundPreferences();
   const { playToggleOn, playToggleOff } = useSoundFX();
   const { isSupported, isSubscribed, isLoading, subscribe, unsubscribe } = usePushNotifications();
-  const { theme, setTheme } = useTheme();
 
   const { profile, avatarUrl } = useUserProfile();
   const { openProfileEdit, openPeriodSettings } = useGlobalDrawers();
@@ -182,31 +177,6 @@ export function AppSidebar() {
                   <span className="flex-1">Mes financiero</span>
                   <span className="text-xs text-muted-foreground">{periodShortLabel(startDay)}</span>
                 </DropdownMenuItem>
-                <DropdownMenuSeparator />
-                {/* Theme picker */}
-                <div className="px-3 py-2">
-                  <span className="text-xs font-medium text-muted-foreground">Tema</span>
-                  <div className="flex items-center gap-1 mt-1.5 p-1 rounded-full">
-                    {([
-                      { value: "light", icon: Sun },
-                      { value: "dark", icon: Moon },
-                      { value: "system", icon: Monitor },
-                    ] as const).map(({ value, icon: Icon }) => (
-                      <button
-                        key={value}
-                        onClick={() => setTheme(value)}
-                        className={cn(
-                          "flex-1 flex items-center justify-center rounded-full py-1.5 transition-all",
-                          theme === value
-                            ? "bg-muted text-foreground"
-                            : "text-muted-foreground hover:text-foreground hover:bg-muted"
-                        )}
-                      >
-                        <Icon className="size-4" />
-                      </button>
-                    ))}
-                  </div>
-                </div>
                 <DropdownMenuSeparator />
                 <DropdownMenuItem
                   onSelect={(e) => e.preventDefault()}
