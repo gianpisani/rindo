@@ -152,16 +152,17 @@ export function Spark({ values }: { values: number[] }) {
  * bordes para no salirse de la tarjeta.
  */
 function AxisLabels({ labels, at }: { labels: string[]; at: (index: number) => number }) {
+  const last = labels.length - 1;
   const every = Math.max(1, Math.ceil(labels.length / 6));
-  const shown = labels.map((_, i) => i).filter((i) => i % every === 0 || i === labels.length - 1)
-    // Si la última queda pegada a la anterior, se va la anterior.
-    .filter((i, k, list) => !(k === list.length - 2 && labels.length - 1 - i < every / 2));
+  // Se cuenta hacia atrás desde el último mes: siempre aparece y el paso es
+  // parejo, así ninguna etiqueta se pisa con la de al lado.
+  const shown = labels.map((_, i) => i).filter((i) => (last - i) % every === 0);
   return (
     <div className="fin-axis-abs" aria-hidden="true">
       {shown.map((i) => (
         <span
           key={i}
-          style={{ left: `${at(i)}%`, transform: i === 0 ? "none" : i === labels.length - 1 ? "translateX(-100%)" : "translateX(-50%)" }}
+          style={{ left: `${at(i)}%`, transform: i === 0 ? "none" : i === last ? "translateX(-100%)" : "translateX(-50%)" }}
         >
           {labels[i]}
         </span>

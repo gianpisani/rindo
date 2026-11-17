@@ -220,7 +220,7 @@ export const typeAmountColors: Record<TransactionType, string> = {
   Inversión: "text-blue-500",
   Rescate: "text-cyan-500",
   Rendimiento: "text-violet-500",
-  Reembolso: "text-amber-500",
+  Reembolso: "text-success",
 };
 
 const formatCLP = (amount: number) =>

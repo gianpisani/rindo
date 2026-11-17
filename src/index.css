@@ -1072,8 +1072,15 @@ Based on Indigo, Blue, Cyan palette
 .fin-legend button:hover { background: color-mix(in oklch, var(--inicio-blue) 12%, transparent); }
 .fin-legend button.is-liquid:hover { background: oklch(var(--success) / .12); }
 .fin-legend b { font-family: var(--font-mono); font-weight: 500; color: var(--foreground); }
-.fin-stats { display: flex; gap: 24px; flex-wrap: wrap; padding: 8px 16px 12px; border-top: 1px solid var(--border); font-size: var(--fs-1); color: var(--muted-foreground); }
-.fin-stats span { display: flex; align-items: baseline; gap: 6px; white-space: nowrap; }
+.fin-stats { padding: 8px 16px 12px; border-top: 1px solid var(--border); font-size: var(--fs-1); color: var(--muted-foreground); }
+.fin-stats-row { display: flex; flex-wrap: wrap; gap: 4px 24px; }
+.fin-stats-row span { display: flex; align-items: baseline; gap: 6px; white-space: nowrap; }
+.fin-stats p { margin-top: 4px; color: var(--inicio-faint); }
+/* En angosto cada dato va con su etiqueta arriba: los tres caben en una fila */
+@media (max-width: 767px) {
+  .fin-stats-row { flex-wrap: nowrap; justify-content: space-between; gap: 12px; }
+  .fin-stats-row span { flex-direction: column; align-items: flex-start; gap: 2px; }
+}
 .fin-stats b { font-family: var(--font-mono); font-size: var(--fs-2); font-weight: 500; color: var(--foreground); }
 
 /* Mes a mes */

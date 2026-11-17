@@ -214,10 +214,12 @@ export default function Overview() {
                 )}
                 {averages.months > 0 && (
                   <div className={cn("fin-stats", isPrivacyMode && "privacy-blur")}>
-                    <span>Entra al mes <b style={{ color: "oklch(var(--success))" }}>{clp(averages.ingreso)}</b></span>
-                    <span>Sale <b>{clp(averages.gasto)}</b></span>
-                    {averages.ahorro !== null && <span>Ahorras <b>{Math.round(averages.ahorro * 100)}%</b></span>}
-                    <span className="text-xs">promedio de {averages.months} mes{averages.months === 1 ? "" : "es"} cerrado{averages.months === 1 ? "" : "s"}</span>
+                    <div className="fin-stats-row">
+                      <span>Entra al mes <b style={{ color: "oklch(var(--success))" }}>{clp(averages.ingreso)}</b></span>
+                      <span>Sale <b>{clp(averages.gasto)}</b></span>
+                      {averages.ahorro !== null && <span>Ahorras <b>{Math.round(averages.ahorro * 100)}%</b></span>}
+                    </div>
+                    <p>promedio de {averages.months} mes{averages.months === 1 ? "" : "es"} cerrado{averages.months === 1 ? "" : "s"}</p>
                   </div>
                 )}
               </>

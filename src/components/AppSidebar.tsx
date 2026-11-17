@@ -1,8 +1,6 @@
 import {
   ChevronsUpDown,
   LogOut,
-  Eye,
-  EyeOff,
   Moon,
   Sun,
   Monitor,
@@ -13,11 +11,10 @@ import {
   UserPen,
   CalendarRange,
 } from "lucide-react";
-import { useLocation, useNavigate } from "react-router-dom";
+import { Link, useLocation, useNavigate } from "react-router-dom";
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
-import { usePrivacyMode } from "@/hooks/usePrivacyMode";
 import { useSoundPreferences } from "@/hooks/useSoundPreferences";
 import { useSoundFX } from "@/hooks/useSoundFX";
 import { usePushNotifications } from "@/hooks/usePushNotifications";
@@ -58,7 +55,6 @@ import { APP_ROUTES, type RouteConfig } from "@/lib/routes-config";
 
 export function AppSidebar() {
   const location = useLocation();
-  const { isPrivacyMode, togglePrivacyMode } = usePrivacyMode();
   const { soundEnabled, toggleSound } = useSoundPreferences();
   const { playToggleOn, playToggleOff } = useSoundFX();
   const { isSupported, isSubscribed, isLoading, subscribe, unsubscribe } = usePushNotifications();
@@ -86,74 +82,23 @@ export function AppSidebar() {
     toast.success("Sesión cerrada exitosamente");
   };
 
-  const getThemeIcon = () => {
-    if (theme === "light") return <Sun className="size-4" />;
-    if (theme === "dark") return <Moon className="size-4" />;
-    return <Monitor className="size-4" />;
-  };
-
-  const getThemeLabel = () => {
-    if (theme === "light") return "Modo claro";
-    if (theme === "dark") return "Modo oscuro";
-    return "Sistema";
-  };
-
   return (
     <Sidebar collapsible="icon">
       <SidebarHeader>
         <SidebarMenu>
           <SidebarMenuItem>
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <button className="flex items-center gap-2 w-full rounded-card px-2 py-2 text-sm hover:bg-sidebar-accent transition-colors data-[state=open]:bg-sidebar-accent group-data-[collapsible=icon]:!size-8 group-data-[collapsible=icon]:!p-0 group-data-[collapsible=icon]:justify-center">
-                  <div className="flex aspect-square size-8 items-center justify-center shrink-0">
-                    <RindoLogo size={28} className="text-foreground" />
-                  </div>
-                  <div className="grid flex-1 text-left text-sm leading-tight group-data-[collapsible=icon]:hidden">
-                    <span className="truncate font-medium">rindo<span className="text-primary">.</span></span>
-                  </div>
-                  <ChevronsUpDown className="ml-auto size-4 group-data-[collapsible=icon]:hidden" />
-                </button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent
-                className="w-[--radix-dropdown-menu-trigger-width] min-w-56 rounded-card"
-                align="start"
-                side="bottom"
-                sideOffset={4}
-              >
-                <DropdownMenuItem
-                  onSelect={(e) => e.preventDefault()}
-                  onClick={togglePrivacyMode}
-                  className="gap-2 p-2 cursor-pointer"
-                >
-                  {isPrivacyMode ? <Eye className="size-4" /> : <EyeOff className="size-4" />}
-                  <div className="font-medium">
-                    {isPrivacyMode ? "Desactivar" : "Activar"} privacidad
-                  </div>
-                </DropdownMenuItem>
-                <DropdownMenuItem
-                  onSelect={(e) => e.preventDefault()}
-                  onClick={() => setTheme(theme === "light" ? "dark" : theme === "dark" ? "system" : "light")}
-                  className="gap-2 p-2 cursor-pointer"
-                >
-                  {getThemeIcon()}
-                  <div className="font-medium flex-1">{getThemeLabel()}</div>
-                </DropdownMenuItem>
-                <DropdownMenuItem
-                  onSelect={(e) => e.preventDefault()}
-                  onClick={() => {
-                    toggleSound();
-                    if (soundEnabled) playToggleOff(); else playToggleOn();
-                  }}
-                  className="gap-2 p-2 cursor-pointer"
-                >
-                  {soundEnabled ? <Volume2 className="size-4" /> : <VolumeOff className="size-4" />}
-                  <div className="font-medium">
-                    {soundEnabled ? "Desactivar" : "Activar"} sonidos
-                  </div>
-                </DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenu>
+            <Link
+              to="/"
+              aria-label="Rindo, ir a Inicio"
+              className="flex items-center gap-2 w-full px-2 py-2 text-sm group-data-[collapsible=icon]:!size-8 group-data-[collapsible=icon]:!p-0 group-data-[collapsible=icon]:justify-center"
+            >
+              <div className="flex aspect-square size-8 items-center justify-center shrink-0">
+                <RindoLogo size={28} className="text-foreground" />
+              </div>
+              <span className="truncate font-medium group-data-[collapsible=icon]:hidden">
+                rindo<span className="text-primary">.</span>
+              </span>
+            </Link>
           </SidebarMenuItem>
         </SidebarMenu>
       </SidebarHeader>
@@ -263,14 +208,6 @@ export function AppSidebar() {
                   </div>
                 </div>
                 <DropdownMenuSeparator />
-                <DropdownMenuItem
-                  onSelect={(e) => e.preventDefault()}
-                  onClick={togglePrivacyMode}
-                  className="gap-2 px-3 py-2 cursor-pointer"
-                >
-                  {isPrivacyMode ? <Eye className="size-4 text-muted-foreground" /> : <EyeOff className="size-4 text-muted-foreground" />}
-                  {isPrivacyMode ? "Desactivar" : "Activar"} privacidad
-                </DropdownMenuItem>
                 <DropdownMenuItem
                   onSelect={(e) => e.preventDefault()}
                   onClick={() => {

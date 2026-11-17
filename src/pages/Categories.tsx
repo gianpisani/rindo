@@ -16,7 +16,7 @@ const typeConfig: Record<
   Inversión: { icon: PiggyBank, label: "Inversiones", color: "text-info" },
   Rescate: { icon: ArrowDownToLine, label: "Rescates", color: "text-cyan-500" },
   Rendimiento: { icon: LineChart, label: "Rendimientos", color: "text-violet-500" },
-  Reembolso: { icon: ArrowLeftRight, label: "Reembolsos", color: "text-amber-500" },
+  Reembolso: { icon: ArrowLeftRight, label: "Reembolsos", color: "text-success" },
 };
 
 interface Category {

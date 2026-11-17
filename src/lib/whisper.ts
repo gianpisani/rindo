@@ -39,5 +39,5 @@ export const WHISPER_TYPES: { type: TransactionType; color: string; placeholder:
   { type: 'Inversión', color: '#60a5fa', placeholder: '200000 fintual' },
   { type: 'Rescate', color: '#22d3ee', placeholder: '200000 retiro del fondo' },
   { type: 'Rendimiento', color: '#a78bfa', placeholder: '25000 rendimiento del mes' },
-  { type: 'Reembolso', color: '#fbbf24', placeholder: '12000 devolución almuerzo' },
+  { type: 'Reembolso', color: 'oklch(var(--success))', placeholder: '12000 devolución almuerzo' },
 ];
