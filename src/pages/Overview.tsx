@@ -10,6 +10,7 @@ import { useTransactions, type Transaction } from "@/hooks/useTransactions";
 import { useCategories } from "@/hooks/useCategories";
 import { usePrivacyMode } from "@/hooks/usePrivacyMode";
 import { useInlineEdit } from "@/hooks/useInlineEdit";
+import { useGlobalDrawers } from "@/hooks/useGlobalDrawers";
 import { computeLedger, computeRealFlows, DEFAULT_TRANSIT_CATEGORIES } from "@/hooks/useRealFlows";
 import { summarizeCategoryPeriod } from "@/lib/category-spending";
 import {
@@ -38,8 +39,10 @@ const RANGE_KEY = "finanzas-meses";
 const RANGES = [12, 6, 3] as const;
 type Range = (typeof RANGES)[number];
 
+/** "−$1.338.641": el signo va antes del peso, no "$-1.338.641" como lo deja es-CL. */
 const clp = (value: number) =>
-  new Intl.NumberFormat("es-CL", { style: "currency", currency: "CLP", minimumFractionDigits: 0 }).format(value);
+  (value < 0 ? "−" : "") +
+  new Intl.NumberFormat("es-CL", { style: "currency", currency: "CLP", minimumFractionDigits: 0 }).format(Math.abs(value));
 const tint = (color?: string | null) => ({
   background: `color-mix(in oklch, ${color || "var(--muted-foreground)"} 22%, transparent)`,
 });
@@ -58,6 +61,7 @@ export default function Overview() {
   const { categories } = useCategories();
   const { isPrivacyMode } = usePrivacyMode();
   const edit = useInlineEdit();
+  const { openReconciliation } = useGlobalDrawers();
   const { startDay } = usePeriodConfig();
   const flowConfig = useMemo(() => ({ periodStartDay: startDay }), [startDay]);
 
@@ -199,7 +203,10 @@ export default function Overview() {
                 </div>
                 {worthNow && (
                   <div className={cn("fin-legend", isPrivacyMode && "privacy-blur")}>
-                    <span><i style={{ background: "var(--inicio-emerald)" }} />Líquido <b>{clp(worthNow.liquido)}</b></span>
+                    {/* Rindo no conoce el saldo inicial: si no calza con el banco, tocarlo concilia */}
+                    <button className="is-liquid" onClick={() => openReconciliation()} title="Conciliar con tu banco">
+                      <i style={{ background: "var(--inicio-emerald)" }} />Líquido <b>{clp(worthNow.liquido)}</b>
+                    </button>
                     {/* Tocar lo invertido abre el rescate y el valor de hoy de las inversiones */}
                     <button onClick={() => setInvestmentMoveOpen(true)} title="Rescatar o actualizar inversiones">
                       <i style={{ background: "var(--inicio-blue)" }} />Invertido <b>{clp(worthNow.invertidoAcumulado)}</b>
