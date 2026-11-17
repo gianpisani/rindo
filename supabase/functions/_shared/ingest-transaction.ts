@@ -5,6 +5,7 @@
 
 import type { SupabaseClient } from 'https://esm.sh/@supabase/supabase-js@2.39.3'
 import { sendNotificationEmail } from './email-notification.ts'
+import { CARD_PAYMENT_CATEGORY, isCardPaymentText, lastFourIn, paymentCardFor } from './card-payment.ts'
 
 // deno-lint-ignore no-explicit-any
 type Client = SupabaseClient<any, any, any>
@@ -29,7 +30,8 @@ export interface WeeklyStats {
 }
 
 /**
- * Categoriza el movimiento por historial, lo inserta y avisa por push y email.
+ * Un pago de tarjeta no se categoriza: va directo a "Pago de tarjeta" y queda
+ * vinculado a su tarjeta. El resto se categoriza por historial, lo inserta y avisa por push y email.
  * Lanza el error de Supabase si el insert falla; categorizar y avisar nunca lanzan.
  */
 export async function ingestTransaction(client: Client, row: TransactionRow, options: {
@@ -43,9 +45,14 @@ export async function ingestTransaction(client: Client, row: TransactionRow, opt
   const userId = row.user_id
   const { cardLastFour } = options
 
-  // Match credit card by last 4 digits
+  // El pago de la tarjeta no es gasto: se reconoce antes de categorizar.
+  const isCardPayment = isCardPaymentText(row.type, row.detail, row.bank_description)
+
   let cardId: string | null = null
-  if (cardLastFour) {
+  if (isCardPayment) {
+    cardId = await paymentCardFor(client, userId, cardLastFour || lastFourIn(row.detail, row.bank_description))
+  } else if (cardLastFour) {
+    // Match credit card by last 4 digits
     try {
       const { data: card } = await client
         .from('credit_cards')
@@ -64,7 +71,9 @@ export async function ingestTransaction(client: Client, row: TransactionRow, opt
     }
   }
 
-  const category = await categoryFromHistory(client, userId, row.detail)
+  const category = isCardPayment
+    ? CARD_PAYMENT_CATEGORY
+    : await categoryFromHistory(client, userId, row.detail)
 
   const { data: transaction, error } = await client
     .from('transactions')
