@@ -8,8 +8,6 @@ import {
   Coins,
   TrendingUp,
   CreditCard,
-  GraduationCap,
-  Languages,
 } from "lucide-react";
 import { ComponentType } from "react";
 
@@ -74,18 +72,6 @@ export const APP_ROUTES: RouteConfig[] = [
     url: "/budget",
     icon: Target,
     shortcut: "7",
-    group: "tools",
-  },
-  {
-    title: "Clases",
-    url: "/tutoring",
-    icon: GraduationCap,
-    group: "tools",
-  },
-  {
-    title: "Aprendizaje",
-    url: "/learning",
-    icon: Languages,
     group: "tools",
   },
 ];
