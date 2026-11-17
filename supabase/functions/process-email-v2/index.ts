@@ -457,7 +457,7 @@ Deno.serve(async (req) => {
       bank_description: bankDescription,
       type: parsed.type,
       amount: parsed.amount,
-    }, { bank: parsed.bank, pushTag: 'email-transaction', cardLastFour: parsed.cardLastFour })
+    }, { bank: parsed.bank, cardLastFour: parsed.cardLastFour })
 
     return new Response(
       JSON.stringify({

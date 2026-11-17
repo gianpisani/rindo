@@ -27,7 +27,7 @@ npm run dev -- --host 127.0.0.1
 - Se respetan las categorías elegidas manualmente y las ediciones hechas mientras el proveedor responde. Rescate, rendimiento y reembolso conservan su tratamiento específico.
 - No se recategorizó el historial. Tras aplicar la migración de contexto, las nuevas elecciones manuales y predicciones se guardan como `manual` y `jev`. El historial previo mantiene origen desconocido: no se presenta como confirmado ni se reescribe.
 
-La sincronización bancaria (manual y programada) utiliza el mismo categorizador. Los cambios locales de correo y Wallet todavía no están publicados: requieren verificar la autenticación de sus clientes. Las importaciones toman una sola copia del historial y tienen cuatro llamadas simultáneas como máximo: las predicciones del propio lote no se usan como ejemplos dentro de ese lote.
+La sincronización bancaria (manual y programada) utiliza el mismo categorizador. Los cambios locales de correo todavía no están publicados: requieren verificar la autenticación de sus clientes. Las importaciones toman una sola copia del historial y tienen cuatro llamadas simultáneas como máximo: las predicciones del propio lote no se usan como ejemplos dentro de ese lote.
 
 ## Alimentación y entornos
 
@@ -48,7 +48,7 @@ El despliegue usa los accesos existentes de GitHub Actions para Supabase y la in
 2. **Deploy Supabase Functions** publica el backend al cambiar sus archivos en `main`.
 3. Vercel publica el frontend desde `main`; verificar el estado Ready y la aplicación pública antes de darlo por terminado.
 
-Antes de publicar los importadores de correo y Wallet, hay que comprobar la autenticación de sus clientes. Sus cambios locales exigen una sesión válida del dueño o una llamada desde un servicio confiable con la credencial del servidor. Un ID de usuario o la clave pública anónima no bastan. No se debe poner `service_role` en el navegador ni en atajos personales. Un cliente antiguo sin sesión recibirá 401. Estos cambios quedan fuera de esta publicación; se conserva el comportamiento anterior de esos importadores. El script de correo del repositorio apunta al proyecto de producción, pero falta confirmar si es el cliente activo.
+Antes de publicar los importadores de correo, hay que comprobar la autenticación de sus clientes. Sus cambios locales exigen una sesión válida del dueño o una llamada desde un servicio confiable con la credencial del servidor. Un ID de usuario o la clave pública anónima no bastan. No se debe poner `service_role` en el navegador ni en atajos personales. Un cliente antiguo sin sesión recibirá 401. Estos cambios quedan fuera de esta publicación; se conserva el comportamiento anterior de esos importadores. El script de correo del repositorio apunta al proyecto de producción, pero falta confirmar si es el cliente activo.
 
 La configuración del entorno local no se modifica al publicar. La clave de Gateway nunca debe llevar el prefijo `VITE_`.
 
