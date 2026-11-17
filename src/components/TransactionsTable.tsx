@@ -47,7 +47,6 @@ import {
   Minimize2,
   SearchX,
   Inbox,
-  Plus,
   ArrowDownToLine,
   LineChart,
 } from "lucide-react";
@@ -76,6 +75,9 @@ import { AnalyzingBadge } from "./AnalyzingBadge";
 import { InlineDateTimePicker } from "./ui/date-time-picker";
 import { useCategories } from "@/hooks/useCategories";
 import { CategoryComposer } from "./CategoryComposer";
+import { QuickCategoryPicker } from "./QuickCategoryPicker";
+import { useInlineEdit } from "@/hooks/useInlineEdit";
+import { ANALYZING_CATEGORY } from "@/lib/auto-category-policy";
 import { Popover, PopoverContent, PopoverTrigger } from "./ui/popover";
 import { Command, CommandInput, CommandList, CommandEmpty, CommandGroup, CommandItem } from "./ui/command";
 import type { DateRangeValue } from "./DateRangeFilter";
@@ -451,7 +453,7 @@ function EmptyState({ hasFilters, onClear }: { hasFilters: boolean; onClear: () 
   );
 }
 
-// ── Category Combobox (searchable, scrollable, with emojis) ─────────────
+// ── Category Combobox: a qué gasto devuelve un reembolso ─────────────
 
 interface CategoryComboboxOption {
   value: string;
@@ -467,11 +469,9 @@ interface CategoryComboboxProps {
   /** El botón que abre la lista. */
   trigger: React.ReactNode;
   placeholder?: string;
-  /** Si se entrega, muestra la acción de crear categoría con el texto buscado. */
-  onCreate?: (name: string) => void;
 }
 
-function CategoryCombobox({ value, options, onSave, trigger, placeholder = "Buscar categoría...", onCreate }: CategoryComboboxProps) {
+function CategoryCombobox({ value, options, onSave, trigger, placeholder = "Buscar categoría..." }: CategoryComboboxProps) {
   const [open, setOpen] = useState(false);
   const [search, setSearch] = useState("");
 
@@ -524,25 +524,6 @@ function CategoryCombobox({ value, options, onSave, trigger, placeholder = "Busc
               ))}
             </CommandGroup>
           </CommandList>
-          {/* Fuera de CommandList a propósito: dentro, el filtro de cmdk la
-              escondería justo cuando la búsqueda no tiene resultados. */}
-          {onCreate && (
-            <button
-              type="button"
-              onClick={() => {
-                const name = search.trim();
-                setOpen(false);
-                setSearch("");
-                onCreate(name);
-              }}
-              className="flex w-full items-center gap-2 border-t px-2 py-2 text-left text-xs text-foreground transition-colors"
-            >
-              <Plus className="h-3.5 w-3.5 flex-shrink-0" />
-              <span className="truncate">
-                {search.trim() ? `Crear “${search.trim()}”` : "Crear categoría"}
-              </span>
-            </button>
-          )}
         </Command>
       </PopoverContent>
     </Popover>
@@ -663,6 +644,24 @@ export function TransactionsTable({
     await onUpdateSilent(id, { [field]: value });
   }, [onUpdateSilent]);
 
+  // Cambiar la categoría es el mismo selector que en el inicio, y optimista:
+  // la fila cambia al tocar y la red va detrás.
+  const { save: saveInline, categoryOptions } = useInlineEdit();
+  const withCategoryPicker = useCallback((t: Transaction, trigger: React.ReactElement) =>
+    t.isPending || t.category_name === ANALYZING_CATEGORY ? trigger : (
+      <QuickCategoryPicker
+        value={t.category_name}
+        options={categoryOptions(t.type)}
+        title={getCleanDetail(t.detail) || undefined}
+        onPick={(name) => saveInline(t, { category_name: name })}
+        onCreate={(name) => setCategoryDraft({ transactionId: t.id, type: t.type, name })}
+        // Mismo resguardo que los menús: el toque que cierra no abre la card de abajo.
+        onOpenChange={(open) => { if (!open) lastMenuCloseRef.current = Date.now(); }}
+      >
+        {trigger}
+      </QuickCategoryPicker>
+    ), [categoryOptions, saveInline]);
+
   const columns = useMemo<ColumnDef<Transaction>[]>(() => {
     return [
       // ── Select (solo en modo selección) ─────────────────────────────────
@@ -722,14 +721,18 @@ export function TransactionsTable({
 
           return (
             <div className={cn("flex items-center gap-2 max-w-[300px]", isPrivacyMode && "privacy-blur")}>
-              {/* Avatar */}
+              {/* Avatar: tocarlo cambia la categoría */}
               <div className="relative flex-shrink-0">
-                <div
-                  className="w-7 h-7 rounded-full flex items-center justify-center text-sm leading-none select-none"
-                  style={avatar.style}
-                >
-                  {avatar.emoji}
-                </div>
+                {withCategoryPicker(row.original, (
+                  <button
+                    type="button"
+                    className="w-7 h-7 rounded-full flex items-center justify-center text-sm leading-none select-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                    style={avatar.style}
+                    aria-label={`Cambiar categoría (${row.original.category_name})`}
+                  >
+                    {avatar.emoji}
+                  </button>
+                ))}
                 {isBot && (
                   <div
                     className="absolute -bottom-0.5 -right-0.5 w-3.5 h-3.5 rounded-full bg-background flex items-center justify-center"
@@ -789,14 +792,7 @@ export function TransactionsTable({
 
           return (
             <div className={cn("flex items-center gap-1 overflow-hidden", isPrivacyMode && "privacy-blur")}>
-              <CategoryCombobox
-                value={categoryName}
-                options={optionsOfType(type)}
-                onSave={(newCategory) => handleInlineUpdate(row.original.id, "category_name", newCategory)}
-                onCreate={(name) =>
-                  setCategoryDraft({ transactionId: row.original.id, type, name })
-                }
-                trigger={
+              {withCategoryPicker(row.original, (
                   <button className={cn(CELL_TRIGGER, "max-w-full overflow-hidden")}>
                     <div className="flex items-center gap-1.5 min-w-0">
                       {dotColor && (
@@ -817,8 +813,7 @@ export function TransactionsTable({
                     </div>
                     <ChevronDown className="h-3 w-3 opacity-0 group-hover:opacity-50 transition-opacity" />
                   </button>
-                }
-              />
+              ))}
               {/* Reembolso: a qué categoría de gasto devuelve, en una píldora con su propio popover */}
               {isReimbursement && (
                 <CategoryCombobox
@@ -962,7 +957,7 @@ export function TransactionsTable({
         ),
       },
     ];
-  }, [selecting, onEdit, onDelete, onDuplicate, categories, creditCards, isPrivacyMode, handleInlineUpdate]);
+  }, [selecting, onEdit, onDelete, onDuplicate, categories, creditCards, isPrivacyMode, handleInlineUpdate, withCategoryPicker]);
 
   // ── Filtering ────────────────────────────────────────────────────────────
 
@@ -1136,6 +1131,17 @@ export function TransactionsTable({
     const catData = categories.find(c => c.name === t.category_name);
     const isMissing = t.category_name === "Sin categoría";
     const isSelected = row.getIsSelected();
+    const avatarButton = (
+      <button
+        type="button"
+        className="w-10 h-10 rounded-full flex items-center justify-center text-xl leading-none select-none"
+        style={avatar.style}
+        aria-label={`Cambiar categoría (${t.category_name})`}
+        tabIndex={selecting ? -1 : undefined}
+      >
+        {avatar.emoji}
+      </button>
+    );
 
     return (
       <div
@@ -1155,14 +1161,9 @@ export function TransactionsTable({
           </div>
         )}
 
-        {/* Avatar */}
+        {/* Avatar: tocarlo cambia la categoría (fuera del modo selección) */}
         <div className="relative flex-shrink-0">
-          <div
-            className="w-10 h-10 rounded-full flex items-center justify-center text-xl leading-none select-none"
-            style={avatar.style}
-          >
-            {avatar.emoji}
-          </div>
+          {selecting ? avatarButton : withCategoryPicker(t, avatarButton)}
           {isBot && (
             <div className="absolute -bottom-0.5 -right-0.5 w-4 h-4 rounded-full bg-background flex items-center justify-center">
               <span className="text-xs leading-none scale-75">🤖</span>

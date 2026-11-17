@@ -18,3 +18,10 @@ export const AMOUNT_TONE: Record<TransactionType, string> = {
 
 /** Guardándose o esperando a que Jev lo categorice. */
 export const isAnalyzing = (t: Transaction) => Boolean(t.isPending) || t.category_name === ANALYZING_CATEGORY;
+
+/**
+ * Por revisar: lo que quedó "Sin categoría". Es la única marca confiable que
+ * existe: el banco y el correo lo traen así, y Jev lo deja así cuando no está
+ * seguro (lo que sí categoriza con confianza ya no está "Sin categoría").
+ */
+export const needsReview = (t: Transaction) => !t.isPending && t.category_name === "Sin categoría";

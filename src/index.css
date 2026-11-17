@@ -679,6 +679,10 @@ Based on Indigo, Blue, Cyan palette
 .inicio-lim .inicio-track { grid-column: 2 / -1; height: 4px; margin-top: 2px; }
 .inicio-lim .pct, .inicio-lim .extra { color: oklch(var(--destructive)); }
 .inicio-see-all { display: block; padding: 8px 16px; }
+/* "N por revisar": una línea callada sobre Recientes, solo si hay */
+.inicio-review { display: block; width: 100%; padding: 8px 16px; text-align: left; font-size: var(--fs-1); color: var(--muted-foreground); }
+.inicio-review b { font-weight: 500; color: var(--foreground); }
+.inicio-review:hover { color: var(--foreground); }
 .inicio-tabs { display: none; }
 .inicio-list-limits { display: none; }
 
@@ -786,13 +790,15 @@ Based on Indigo, Blue, Cyan palette
 }
 .inicio-tx.is-leaving { overflow: hidden; pointer-events: none; animation: inicio-row-out .26s cubic-bezier(.4, 0, .2, 1) forwards; }
 
-/* Selector de categoría (vive en un portal, fuera de .inicio) */
-.inicio-picker { --inicio-hover: color-mix(in oklch, var(--foreground) 6%, transparent);
-  width: 232px; max-height: 300px; overflow-y: auto; padding: 6px; border-radius: var(--radius-card); display: grid; gap: 1px; }
-.inicio-picker button { display: flex; align-items: center; gap: 8px; width: 100%; padding: 6px 8px; border-radius: var(--radius-card); font-size: var(--fs-2); text-align: left; color: var(--foreground); }
-.inicio-picker button:hover, .inicio-picker button:focus-visible { background: var(--inicio-hover); outline: none; }
-.inicio-picker button[aria-pressed="true"] { background: var(--inicio-hover); font-weight: 500; }
-.inicio-picker .inicio-ico { width: 24px; height: 24px; font-size: var(--fs-1); }
+/* El selector de categoría (QuickCategoryPicker) sube suave junto al ícono.
+   Va fuera de @layer: así gana a la animación por defecto del popover. */
+@keyframes quick-rise { from { opacity: 0; transform: translateY(6px); } }
+@keyframes quick-sink { to { opacity: 0; transform: translateY(4px); } }
+.quick-picker[data-state="open"] { animation: quick-rise .18s cubic-bezier(.2, .8, .2, 1); }
+.quick-picker[data-state="closed"] { animation: quick-sink .12s ease-in forwards; }
+@media (prefers-reduced-motion: reduce) {
+  .quick-picker[data-state] { animation: none; }
+}
 
 /* La navbar flotante del celular (MobileBottomBar, visible bajo 768px) mide
    60px + 8 de margen sobre el safe-area, que <main> ya reserva con pb-safe.

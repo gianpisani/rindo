@@ -7,7 +7,7 @@ import { categoryFrequency } from "@/lib/whisper";
 import { getCategoryIcon } from "@/components/TransactionsTable";
 import { ANALYZING_CATEGORY } from "@/lib/auto-category-policy";
 import type { TransactionType } from "@/lib/ledger";
-import type { InicioCategoryOption } from "@/components/InicioTxRow";
+import type { QuickCategoryOption } from "@/components/QuickCategoryPicker";
 
 export type InlineChanges = Partial<Pick<Transaction, "detail" | "amount" | "category_name">>;
 
@@ -26,7 +26,11 @@ export function useInlineEdit() {
   const [leaving, setLeaving] = useState<ReadonlySet<string>>(new Set());
 
   const save = useCallback((t: Transaction, changes: InlineChanges) => {
-    const previous = queryClient.getQueryData<Transaction[]>(["transactions"]);
+    // Lo que tenía la fila en los campos que cambian: si falla, vuelve solo
+    // eso, sin pisar otra edición que haya llegado entremedio.
+    const before = Object.fromEntries(Object.keys(changes).map((key) => [key, t[key as keyof InlineChanges]]));
+    // Un refetch en vuelo traería la fila vieja encima del cambio.
+    void queryClient.cancelQueries({ queryKey: ["transactions"] });
     queryClient.setQueryData<Transaction[]>(["transactions"], (list) =>
       list?.map((row) => (row.id === t.id ? { ...row, ...changes } : row)));
     if (changes.category_name) {
@@ -34,7 +38,9 @@ export function useInlineEdit() {
       window.setTimeout(() => setChanged((prev) => new Set([...prev].filter((id) => id !== t.id))), 1000);
     }
     updateTransactionSilent.mutate({ id: t.id, ...changes }, {
-      onError: () => queryClient.setQueryData(["transactions"], previous),
+      // El toast del error lo da la mutación.
+      onError: () => queryClient.setQueryData<Transaction[]>(["transactions"], (list) =>
+        list?.map((row) => (row.id === t.id ? { ...row, ...before } : row))),
     });
   }, [queryClient, updateTransactionSilent]);
 
@@ -56,7 +62,7 @@ export function useInlineEdit() {
 
   // Las categorías del mismo tipo, las más usadas primero.
   const optionsByType = useMemo(() => {
-    const map = new Map<string, InicioCategoryOption[]>();
+    const map = new Map<string, QuickCategoryOption[]>();
     for (const type of new Set(categories.map((c) => c.type))) {
       const frequency = categoryFrequency(transactions, type);
       map.set(type, categories
