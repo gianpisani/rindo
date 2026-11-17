@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState, type CSSProperties } from "react";
 import { format } from "date-fns";
 import { es } from "date-fns/locale";
+import { useLocation } from "react-router-dom";
 import NumberFlow from "@number-flow/react";
 import { Check, Pencil, Plus, Trash2, X } from "lucide-react";
 import Layout from "@/components/Layout";
@@ -13,7 +14,7 @@ import { useCategories } from "@/hooks/useCategories";
 import { useCategoryLimits } from "@/hooks/useCategoryLimits";
 import { useCategoryInsights } from "@/hooks/useCategoryInsights";
 import { usePeriodConfig } from "@/hooks/usePeriodConfig";
-import { dayOfPeriod, periodNameDate, shiftPeriod } from "@/lib/period";
+import { dayOfPeriod, periodIndex, periodNameDate, periodStartOf, shiftPeriod } from "@/lib/period";
 import { usePrivacyMode } from "@/hooks/usePrivacyMode";
 import { cn } from "@/lib/utils";
 import {
@@ -37,14 +38,6 @@ const DEFAULT_ALERT_AT = 80;
 
 const formatCurrency = (v: number) =>
   new Intl.NumberFormat("es-CL", { style: "currency", currency: "CLP", maximumFractionDigits: 0 }).format(v);
-
-/** "917k", "1,8M", "1M", "0": lo justo para caber sobre una barra. */
-const short = (v: number) => {
-  if (v <= 0) return "0";
-  if (v < 1_000_000) return `${Math.round(v / 1000)}k`;
-  const m = v / 1_000_000;
-  return `${(Math.round(m * 10) / 10).toLocaleString("es-CL", { maximumFractionDigits: 1 })}M`;
-};
 
 const day = (d: Date) => format(d, "d MMM", { locale: es }).replace(".", "");
 
@@ -231,6 +224,32 @@ export default function Meta() {
   );
   const limitsTotal = limitRows.reduce((s, r) => s + r.limit, 0);
 
+  // Cómo voy: dónde cierro el mes si lo que queda se parece a los mismos
+  // días de los últimos 3 meses. No extrapola un ritmo: un cargo fijo que ya
+  // pasó (arriendo, suscripciones) no suma nada, y lo que suele caer a fin
+  // de mes sí.
+  const remainingTypical = useMemo(() => {
+    const sums = new Map<string, number>();
+    for (const t of transactions) {
+      if (t.type !== "Gasto" && !t.reimbursement_for_category) continue;
+      const d = new Date(t.date);
+      const start = periodStartOf(d, startDay);
+      const monthsAgo = periodIndex(thisPeriod) - periodIndex(start);
+      if (monthsAgo < 1 || monthsAgo > 3 || dayOfPeriod(d, start) <= todayInPeriod) continue;
+      const category = t.type === "Gasto" ? t.category_name : (t.reimbursement_for_category as string);
+      const signed = t.type === "Gasto" ? Number(t.amount) : -Number(t.amount);
+      sums.set(category, (sums.get(category) ?? 0) + signed);
+    }
+    return new Map([...sums].map(([category, sum]) => [category, Math.max(0, sum / 3)]));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [transactions, thisPeriod.getTime(), todayInPeriod, startDay]);
+
+  const projectionOf = (row: (typeof limitRows)[number]) => {
+    const rest = remainingTypical.get(row.category) ?? 0;
+    if (row.state === "over" || rest <= 0) return null;
+    return ((row.spent + rest) / row.limit) * 100;
+  };
+
   const catOf = (name: string) => categories.find((c) => c.name === name);
   const emojiOf = (name: string) => catOf(name)?.icon || getCategoryIcon(name);
   const colorOf = (name: string) => catOf(name)?.color ?? null;
@@ -281,8 +300,12 @@ export default function Meta() {
     setAdding(false);
   };
 
-  // En celular, los meses y los límites comparten la tarjeta.
-  const [mobileTab, setMobileTab] = useState<"months" | "limits">("months");
+  // En celular, los meses y los límites comparten la tarjeta. "Ver todos" de
+  // los límites en el Inicio llega directo a la pestaña de límites.
+  const location = useLocation();
+  const [mobileTab, setMobileTab] = useState<"months" | "limits">(
+    (location.state as { tab?: string } | null)?.tab === "limits" ? "limits" : "months"
+  );
 
   const loading = isLoading || budgetLoading;
 
@@ -319,12 +342,9 @@ export default function Meta() {
           <div className="meta-grid" data-tab={mobileTab}>
             {/* El mes en curso */}
             <section className="meta-card meta-now" data-tone={currentTone}>
-              <div className="meta-now-top">
-                <span className="meta-month">
-                  {period.isCalendar ? format(today, "MMMM yyyy", { locale: es }) : period.rangeLabel(thisPeriod)}
-                </span>
-                <span className="meta-pct">{pct}%</span>
-              </div>
+              <span className="meta-month">
+                {period.isCalendar ? format(today, "MMMM yyyy", { locale: es }) : period.rangeLabel(thisPeriod)}
+              </span>
               <div className={cn("meta-big", isPrivacyMode && "privacy-blur")}>
                 $<NumberFlow
                   value={current.saved}
@@ -363,7 +383,7 @@ export default function Meta() {
               <div className="meta-chart" role="listbox" aria-label="Ahorro por mes">
                 <i
                   className="meta-goal-line"
-                  style={{ bottom: `calc(var(--meta-mon) + (100% - var(--meta-amt) - var(--meta-mon)) * ${goalFrac})` }}
+                  style={{ bottom: `calc(var(--meta-mon) + (100% - var(--meta-mon)) * ${goalFrac})` }}
                   aria-hidden
                 />
                 {months.map((m, i) => {
@@ -380,10 +400,6 @@ export default function Meta() {
                       onClick={() => setSelectedKey(m.key)}
                       style={{ "--i": i } as CSSProperties}
                     >
-                      <span className={cn("meta-amt", isPrivacyMode && "privacy-blur")}>
-                        {m.met && <span className="meta-check">✓</span>}
-                        <span className="meta-amt-num">{short(m.saved)}</span>
-                      </span>
                       <span className="meta-bar">
                         <i style={{ height }} />
                       </span>
@@ -414,6 +430,8 @@ export default function Meta() {
                 )}
                 {limitRows.map((row, index) => {
                   const isEditing = editingCat === row.category;
+                  const projection = projectionOf(row);
+                  const willPass = projection !== null && projection > 100;
                   const color =
                     row.state === "over" ? "var(--meta-rose)" : row.state === "near" ? "var(--meta-amber)" : colorOf(row.category) || "var(--muted-foreground)";
                   return (
@@ -434,10 +452,26 @@ export default function Meta() {
                     >
                       <span className="meta-ico" style={tint(colorOf(row.category))}>{emojiOf(row.category)}</span>
                       <span className="n">{row.category}</span>
-                      <span className="pct">{Math.round(row.usage)}%</span>
-                      <span className="meta-lim-track">
+                      <span className="pct">
+                        {/* Cómo voy: si a este ritmo me paso, adónde llego */}
+                        {willPass && <small className="proj">→ {Math.round(projection as number)}%</small>}
+                        {Math.round(row.usage)}%
+                      </span>
+                      <span className="meta-lim-track" title={projection !== null ? `A este ritmo cierras el mes en ${Math.round(projection)}%` : undefined}>
                         {/* Un 1% tiene que dejar marca: si no, la fila miente. */}
                         <i style={{ width: row.usage > 0 ? `max(3px, ${Math.min(row.usage, 100)}%)` : "0%", background: color, "--i": index } as CSSProperties} />
+                        {/* La estela: desde donde vas hasta donde cierras a este ritmo */}
+                        {projection !== null && projection > row.usage && (
+                          <i
+                            className="meta-ghost"
+                            style={{
+                              left: `${row.usage}%`,
+                              width: `${Math.min(projection, 100) - Math.min(row.usage, 100)}%`,
+                              background: willPass ? "var(--meta-amber)" : color,
+                              "--i": index,
+                            } as CSSProperties}
+                          />
+                        )}
                       </span>
                       {isEditing ? (
                         <span className="meta-lim-edit" onClick={(e) => e.stopPropagation()}>

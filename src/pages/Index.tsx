@@ -12,7 +12,7 @@ import { useCategoryInsights } from "@/hooks/useCategoryInsights";
 import { useGlobalDrawers } from "@/hooks/useGlobalDrawers";
 import { useMonthlyBudget } from "@/hooks/useMonthlyBudget";
 import { usePeriodConfig } from "@/hooks/usePeriodConfig";
-import { dayOfPeriod, periodEndOf, periodIndex, periodNameDate, periodStartOf, shiftPeriod } from "@/lib/period";
+import { dayOfPeriod, periodEndOf, periodNameDate, shiftPeriod } from "@/lib/period";
 import {
   useRealFlows,
   computeRealFlows,
@@ -21,7 +21,7 @@ import {
   type RealFlowsConfig,
 } from "@/hooks/useRealFlows";
 import { summarizeCategoryPeriod } from "@/lib/category-spending";
-import { PiggyBank, Receipt, ChevronRight } from "lucide-react";
+import { PiggyBank, Receipt, ChevronRight, RefreshCw } from "lucide-react";
 import { BankSyncModal } from "@/components/BankSyncModal";
 import { useBankSyncContext } from "@/contexts/BankSyncContext";
 import { useNavigate } from "react-router-dom";
@@ -41,12 +41,11 @@ import { ANALYZING_CATEGORY } from "@/lib/auto-category-policy";
 
 /*
  * Inicio: ¿cómo voy este mes? Lo gastado y el ritmo, en qué se va la plata,
- * los límites y lo que va llegando. Cada categoría abre sus movimientos para
+ * los límites pasados y lo que va llegando. Cada categoría abre sus movimientos para
  * corregirlos ahí mismo. La historia (patrimonio, el líquido, mes a mes,
  * tendencias) vive en Finanzas, y anotar a mano, en Movimientos.
  */
 
-const BANK_LOGOS = ["/banks/bchile.png", "/banks/santander.png", "/banks/bci.png", "/banks/bestado.png", "/banks/itau.png"];
 const transit = new Set(DEFAULT_TRANSIT_CATEGORIES);
 /** Las categorías de gasto que se ven sin tocar "más". */
 const TOP_CATEGORIES = 5;
@@ -238,116 +237,42 @@ const Index = () => {
   };
 
   // ─── Límites ──────────────────────────────────────────
-  // Una categoría es una fila: cuánto va de cuánto y el avance. Arriba, en
-  // vez de una alerta roja, el conteo por estado.
-  const budgetRows = categorySpending
-    .filter((c) => c.limit && c.limit > 0)
-    .map((c) => {
-      const usage = (c.effectiveAmount / (c.limit as number)) * 100;
-      const state: "over" | "near" | "ok" =
-        usage > 100 ? "over" : usage >= (c.alertPercentage || 80) ? "near" : "ok";
-      return { ...c, usage, state };
-    })
+  // En Inicio, solo los que ya se pasaron: el resto vive completo en Meta.
+  const overLimits = categorySpending
+    .filter((c) => c.limit && c.limit > 0 && c.effectiveAmount > c.limit)
+    .map((c) => ({ ...c, usage: (c.effectiveAmount / (c.limit as number)) * 100 }))
     .sort((a, b) => b.usage - a.usage);
+  const hasLimits = categorySpending.some((c) => c.limit && c.limit > 0);
+  const seeAllLimits = () => navigate("/budget", { state: { tab: "limits" } });
 
-  const budgetSpent = budgetRows.reduce((s, c) => s + c.effectiveAmount, 0);
-  const budgetTotal = budgetRows.reduce((s, c) => s + (c.limit as number), 0);
-  const budgetCounts = budgetRows.reduce(
-    (acc, c) => ({ ...acc, [c.state]: acc[c.state] + 1 }),
-    { over: 0, near: 0, ok: 0 }
+  const limitsList = !hasLimits ? (
+    <button onClick={seeAllLimits} className="inicio-empty w-full">
+      <span>
+        <span className="block font-medium text-foreground">Aún no pones límites</span>
+        Ponle un techo a una categoría y aparece acá
+      </span>
+    </button>
+  ) : overLimits.length === 0 ? (
+    <div className="inicio-empty">Vas bien en todos tus límites</div>
+  ) : (
+    overLimits.map((cat, index) => {
+      const limit = cat.limit as number;
+      return (
+        <button key={cat.category} onClick={() => openCategory(cat.category)} className="inicio-lim">
+          <span className="inicio-ico" style={tint(colorOf(cat.category))}>{emojiOf(cat.category)}</span>
+          <span className="n">{cat.category}</span>
+          <span className="pct">{Math.round(cat.usage)}%</span>
+          <span className="inicio-track">
+            <i style={{ width: "100%", background: "var(--inicio-rose)", "--i": index } as CSSProperties} />
+          </span>
+          <span className={cn("of", isPrivacyMode && "privacy-blur")}>
+            <span>{formatCurrency(cat.effectiveAmount)} de {formatCurrency(limit)}</span>
+            <span className="extra">+{formatCurrency(cat.effectiveAmount - limit)}</span>
+          </span>
+        </button>
+      );
+    })
   );
-
-  // Cómo voy: dónde cierro el mes si lo que queda se parece a los mismos
-  // días de los últimos 3 meses. No extrapola un ritmo: un cargo fijo que ya
-  // pasó (arriendo, suscripciones) no suma nada, y lo que suele caer a fin
-  // de mes sí.
-  const remainingTypical = useMemo(() => {
-    const today = dayOfPeriod(now, thisPeriod);
-    const sums = new Map<string, number>();
-    for (const t of transactions) {
-      if (t.type !== "Gasto" && !t.reimbursement_for_category) continue;
-      const d = new Date(t.date);
-      const start = periodStartOf(d, startDay);
-      const monthsAgo = periodIndex(thisPeriod) - periodIndex(start);
-      if (monthsAgo < 1 || monthsAgo > 3 || dayOfPeriod(d, start) <= today) continue;
-      const category = t.type === "Gasto" ? t.category_name : (t.reimbursement_for_category as string);
-      const signed = t.type === "Gasto" ? Number(t.amount) : -Number(t.amount);
-      sums.set(category, (sums.get(category) ?? 0) + signed);
-    }
-    return new Map([...sums].map(([category, sum]) => [category, Math.max(0, sum / 3)]));
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [transactions, now.getFullYear(), now.getMonth(), now.getDate(), startDay]);
-
-  const projectionOf = (c: (typeof budgetRows)[number]) => {
-    const rest = remainingTypical.get(c.category) ?? 0;
-    if (c.state === "over" || rest <= 0) return null;
-    return ((c.effectiveAmount + rest) / (c.limit as number)) * 100;
-  };
-
-  const limitsSummary = budgetRows.length > 0 && (
-    <div className="inicio-limits-summary">
-      {budgetCounts.over > 0 && <span className="inicio-pill" data-state="over">{budgetCounts.over} pasado{budgetCounts.over === 1 ? "" : "s"}</span>}
-      {budgetCounts.near > 0 && <span className="inicio-pill" data-state="near">{budgetCounts.near} cerca</span>}
-      {budgetCounts.ok > 0 && <span className="inicio-pill" data-state="ok">{budgetCounts.ok} bien</span>}
-    </div>
-  );
-
-  const limitsList =
-    budgetRows.length === 0 ? (
-      <button onClick={() => navigate("/budget")} className="inicio-empty w-full">
-        <span>
-          <span className="block font-medium text-foreground">Aún no pones límites</span>
-          Ponle un techo a una categoría y aparece acá
-        </span>
-      </button>
-    ) : (
-      budgetRows.map((cat, index) => {
-        const limit = cat.limit as number;
-        const projection = projectionOf(cat);
-        const willPass = projection !== null && projection > 100;
-        const color = cat.state === "over" ? "var(--inicio-rose)" : cat.state === "near" ? "var(--inicio-amber)" : colorOf(cat.category) || "var(--muted-foreground)";
-        return (
-          <button
-            key={cat.category}
-            onClick={() => openCategory(cat.category)}
-            className="inicio-lim"
-            data-state={cat.state}
-          >
-            <span className="inicio-ico" style={tint(colorOf(cat.category))}>{emojiOf(cat.category)}</span>
-            <span className="n">{cat.category}</span>
-            <span className="pct">
-              {/* Cómo voy: si a este ritmo me paso, adónde llego */}
-              {willPass && <small className="proj">→ {Math.round(projection as number)}%</small>}
-              {Math.round(cat.usage)}%
-            </span>
-            <span className="inicio-track" title={projection !== null ? `A este ritmo cierras el mes en ${Math.round(projection)}%` : undefined}>
-              {/* Un 1% tiene que dejar marca: si no, la fila miente. */}
-              <i style={{ width: cat.usage > 0 ? `max(3px, ${Math.min(cat.usage, 100)}%)` : "0%", background: color, "--i": index } as CSSProperties} />
-              {/* La estela: desde donde vas hasta donde cierras a este ritmo */}
-              {projection !== null && projection > cat.usage && (
-                <i
-                  className="inicio-ghost"
-                  style={{
-                    left: `${cat.usage}%`,
-                    width: `${Math.min(projection, 100) - Math.min(cat.usage, 100)}%`,
-                    background: willPass ? "var(--inicio-amber)" : color,
-                    "--i": index,
-                  } as CSSProperties}
-                />
-              )}
-            </span>
-            <span className={cn("of", isPrivacyMode && "privacy-blur")}>
-              <span>{formatCurrency(cat.effectiveAmount)} de {formatCurrency(limit)}</span>
-              {cat.state === "over" ? (
-                <span className="extra">+{formatCurrency(cat.effectiveAmount - limit)}</span>
-              ) : (
-                <span>quedan {formatCurrency(limit - cat.effectiveAmount)}</span>
-              )}
-            </span>
-          </button>
-        );
-      })
-    );
 
   // ─── Recientes ────────────────────────────────────────
   const feedList = isLoading ? (
@@ -418,7 +343,7 @@ const Index = () => {
               </button>
             )}
             <h1 className="inicio-hello">
-              {getGreeting()}{displayName ? <>, <em>{displayName}</em></> : ""}
+              {getGreeting()}{displayName ? `, ${displayName}` : ""}
             </h1>
             <div className="inicio-head-end">
               <HomeNotices notices={notices} className="shrink-0" />
@@ -426,13 +351,10 @@ const Index = () => {
                 className="inicio-act"
                 onClick={() => setIsBankSyncOpen(true)}
                 aria-label={lastSync ? `Sincronizar bancos, última vez ${sinceLabel(lastSync)}` : "Sincronizar bancos"}
+                title="Sincronizar bancos"
               >
-                <span className="inicio-banks">
-                  {BANK_LOGOS.map((logo, i) => <img key={logo} src={logo} alt="" style={{ zIndex: 5 - i }} />)}
-                </span>
-                <span className="long">
-                  Sincronizar{lastSync && <small className="inicio-since">{sinceLabel(lastSync)}</small>}
-                </span>
+                {lastSync && <small>{sinceLabel(lastSync)}</small>}
+                <RefreshCw aria-hidden />
               </button>
             </div>
           </header>
@@ -537,7 +459,7 @@ const Index = () => {
                 Recientes{recentTransactions.length > 0 && <span className="inicio-count">{recentTransactions.length}</span>}
               </button>
               <button className="inicio-tab" role="tab" aria-selected={mobileTab === "limits"} onClick={() => setMobileTab("limits")}>
-                Límites{budgetCounts.over > 0 && <span className="inicio-pill" data-state="over">{budgetCounts.over}</span>}
+                Límites{overLimits.length > 0 && <span className="inicio-pill">{overLimits.length}</span>}
               </button>
             </div>
             <div className="inicio-panel-head">
@@ -547,22 +469,18 @@ const Index = () => {
               <button onClick={() => navigate("/transactions")}>Ver todo →</button>
             </div>
             <div className="inicio-scroll inicio-list-feed">{feedList}</div>
-            <div className="inicio-scroll inicio-list-limits">{limitsSummary}{limitsList}</div>
+            <div className="inicio-scroll inicio-list-limits">
+              {limitsList}
+              {hasLimits && <button className="inicio-more inicio-see-all" onClick={seeAllLimits}>Ver todos →</button>}
+            </div>
           </section>
 
-          {/* Límites a toda la altura */}
+          {/* Límites pasados; todos, en Meta */}
           <aside className="inicio-card inicio-limits">
             <div className="inicio-panel-head">
-              <span className="inicio-title">
-                Límites{budgetRows.length > 0 && <span className="inicio-count">{budgetRows.length}</span>}
-              </span>
-              {budgetTotal > 0 && (
-                <span className={cn("inicio-num text-[11px] text-muted-foreground", isPrivacyMode && "privacy-blur")}>
-                  {formatCurrency(budgetSpent)} de {formatCurrency(budgetTotal)}
-                </span>
-              )}
+              <span className="inicio-title">Límites pasados</span>
+              {hasLimits && <button onClick={seeAllLimits}>Ver todos →</button>}
             </div>
-            {limitsSummary}
             <div className="inicio-scroll">{limitsList}</div>
           </aside>
         </div>
