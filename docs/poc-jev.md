@@ -27,7 +27,7 @@ npm run dev -- --host 127.0.0.1
 - Se respetan las categorías elegidas manualmente y las ediciones hechas mientras el proveedor responde. Rescate, rendimiento y reembolso conservan su tratamiento específico.
 - No se recategorizó el historial. Tras aplicar la migración de contexto, las nuevas elecciones manuales y predicciones se guardan como `manual` y `jev`. El historial previo mantiene origen desconocido: no se presenta como confirmado ni se reescribe.
 
-Quick-add y sincronización bancaria (manual y programada) utilizan el mismo categorizador. Los cambios locales de correo y Wallet todavía no están publicados: requieren verificar la autenticación de sus clientes. Las importaciones toman una sola copia del historial y tienen cuatro llamadas simultáneas como máximo: las predicciones del propio lote no se usan como ejemplos dentro de ese lote.
+La sincronización bancaria (manual y programada) utiliza el mismo categorizador. Los cambios locales de correo y Wallet todavía no están publicados: requieren verificar la autenticación de sus clientes. Las importaciones toman una sola copia del historial y tienen cuatro llamadas simultáneas como máximo: las predicciones del propio lote no se usan como ejemplos dentro de ese lote.
 
 ## Alimentación y entornos
 
