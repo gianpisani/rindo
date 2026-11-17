@@ -89,19 +89,19 @@ interface ActivityItem {
 const ACTIVITY_ITEMS: ActivityItem[] = [
   // ── Sync con bancos ──
   { icon: "🏦", text: "Sync Banco de Chile", detail: "12 movimientos importados", color: "text-blue-400", side: "left" },
-  { icon: "🏦", text: "Sync Santander", detail: "8 movimientos importados", color: "text-red-400", side: "right" },
+  { icon: "🏦", text: "Sync Santander", detail: "8 movimientos importados", color: "text-white", side: "right" },
   { icon: "🏦", text: "Sync BancoEstado", detail: "5 movimientos importados", color: "text-orange-400", side: "left" },
   // ── IA y automatización ──
   { icon: "🤖", text: "IA categorizó 8 gastos", detail: "Comida, Transporte, Hogar...", color: "text-purple-400", side: "right" },
-  { icon: "📈", text: "Proyección 12 meses", detail: "Tendrás ahorrado $15.820.000", color: "text-emerald-400", side: "left" },
-  { icon: "⚠️", text: "Presupuesto excedido", detail: "Transporte +$15k", color: "text-red-400", side: "right" },
+  { icon: "📈", text: "Proyección 12 meses", detail: "Tendrás ahorrado $15.820.000", color: "text-success", side: "left" },
+  { icon: "⚠️", text: "Presupuesto excedido", detail: "Transporte +$15k", color: "text-destructive", side: "right" },
   { icon: "📱", text: "Categorizado con IA", detail: "Spotify → Suscripciones", color: "text-purple-400", side: "left" },
   { icon: "🔔", text: "Cuota 3/12 detectada", detail: "Bicicleta · −$133.250", color: "text-orange-400", side: "right" },
   { icon: "📊", text: "Presupuesto comida", detail: "78% usado · quedan 11 días", color: "text-amber-400", side: "left" },
   // ── Movimientos del día ──
-  { icon: "🍔", text: "Pago Uber Eats", detail: "−$12.500 · Comida", color: "text-red-400", side: "right" },
-  { icon: "💰", text: "Ingreso sueldo", detail: "+$1.850.000", color: "text-emerald-400", side: "left" },
-  { icon: "🏠", text: "Pago arriendo", detail: "−$450.000 · Hogar", color: "text-red-400", side: "left" },
+  { icon: "🍔", text: "Pago Uber Eats", detail: "−$12.500 · Comida", color: "text-white", side: "right" },
+  { icon: "💰", text: "Ingreso sueldo", detail: "+$1.850.000", color: "text-success", side: "left" },
+  { icon: "🏠", text: "Pago arriendo", detail: "−$450.000 · Hogar", color: "text-white", side: "left" },
   { icon: "📋", text: "Conciliación rápida", detail: "3 pendientes", color: "text-blue-400", side: "right" },
 ];
 

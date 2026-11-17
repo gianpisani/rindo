@@ -12,7 +12,7 @@ const typeConfig: Record<
   { icon: typeof TrendingUp; label: string; color: string }
 > = {
   Ingreso: { icon: TrendingUp, label: "Ingresos", color: "text-success" },
-  Gasto: { icon: TrendingDown, label: "Gastos", color: "text-destructive" },
+  Gasto: { icon: TrendingDown, label: "Gastos", color: "text-foreground" },
   Inversión: { icon: PiggyBank, label: "Inversiones", color: "text-info" },
   Rescate: { icon: ArrowDownToLine, label: "Rescates", color: "text-cyan-500" },
   Rendimiento: { icon: LineChart, label: "Rendimientos", color: "text-violet-500" },

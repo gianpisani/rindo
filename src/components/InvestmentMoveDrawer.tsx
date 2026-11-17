@@ -33,7 +33,7 @@ const MOVES: { key: Move; label: string; color: string; placeholder: string }[] 
   { key: "rescate", label: "Rescate", color: "#22d3ee", placeholder: "200000 retiro del fondo" },
   { key: "valor", label: "Rendimiento", color: "#a78bfa", placeholder: "12500000" },
 ];
-const LOSS_COLOR = "#f87171";
+const LOSS_COLOR = "oklch(var(--destructive))";
 
 function formatCurrency(value: number) {
   return new Intl.NumberFormat("es-CL", {

@@ -150,7 +150,7 @@ export default function Layout({ children, fit = false }: LayoutProps) {
                   className={cn(
                     "ml-auto rounded-full h-8 w-8 p-0 transition-all duration-200",
                     isPrivacyMode
-                      ? "bg-primary/20 text-primary hover:bg-primary/30"
+                      ? "bg-muted text-foreground"
                       : "bg-muted/10 text-muted-foreground hover:bg-muted hover:text-foreground"
                   )}
                 >

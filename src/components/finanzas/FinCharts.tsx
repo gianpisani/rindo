@@ -39,9 +39,9 @@ export function WorthChart({ points, onHover }: { points: WorthPoint[]; onHover:
     <div ref={box} className="absolute inset-0" onPointerMove={move} onPointerLeave={() => { setActive(null); onHover(null); }}>
       <svg viewBox={`0 0 ${W} ${H}`} preserveAspectRatio="none" style={{ bottom: 18, height: "calc(100% - 18px)" }}>
         <path className="area" d={area(invested, zeros)} fill="color-mix(in oklch, var(--inicio-blue) 30%, transparent)" />
-        <path className="area" d={area(totals, invested)} fill="color-mix(in oklch, var(--inicio-emerald) 16%, transparent)" />
+        <path className="area" d={area(totals, invested)} fill="oklch(var(--success) / .16)" />
         <path d={line(invested)} fill="none" stroke="var(--inicio-blue)" strokeWidth={1.5} vectorEffect="non-scaling-stroke" opacity={0.8} />
-        <path d={line(totals)} fill="none" stroke="var(--inicio-emerald)" strokeWidth={2.25} vectorEffect="non-scaling-stroke" strokeLinejoin="round" />
+        <path d={line(totals)} fill="none" stroke="oklch(var(--success))" strokeWidth={2.25} vectorEffect="non-scaling-stroke" strokeLinejoin="round" />
       </svg>
       {active !== null && <span className="fin-scrub" style={{ left: `${(x(active) / W) * 100}%` }} />}
       <AxisLabels labels={points.map((p) => p.label)} at={(i) => (x(i) / W) * 100} />

@@ -163,7 +163,7 @@ function EntryDetail({ entry }: { entry: SyncLogEntry }) {
               <button
                 type="button"
                 onClick={toggleAllImported}
-                className="text-[11px] text-primary hover:underline cursor-pointer"
+                className="text-[11px] text-foreground hover:underline cursor-pointer"
               >
                 {importedItems.every((_, i) => selectedImported.has(i)) ? "Deseleccionar todo" : "Seleccionar todo"}
               </button>
@@ -180,17 +180,17 @@ function EntryDetail({ entry }: { entry: SyncLogEntry }) {
                   />
                 ) : <div className="w-4 shrink-0" />}
                 <div className={cn("flex items-center justify-center w-6 h-6 rounded-lg shrink-0",
-                  item.type === "Ingreso" ? "bg-green-500/10" : "bg-red-500/10")}>
+                  item.type === "Ingreso" ? "bg-success/10" : "bg-muted")}>
                   {item.type === "Ingreso"
-                    ? <ArrowDownCircle className="h-3.5 w-3.5 text-green-500" />
-                    : <ArrowUpCircle className="h-3.5 w-3.5 text-red-500" />}
+                    ? <ArrowDownCircle className="h-3.5 w-3.5 text-success" />
+                    : <ArrowUpCircle className="h-3.5 w-3.5 text-muted-foreground" />}
                 </div>
                 <div className="flex-1 min-w-0">
                   <p className="truncate text-xs font-medium">{item.description}</p>
                   <p className="text-[10px] text-muted-foreground">{formatMovDate(item.date)}</p>
                 </div>
                 <span className={cn("text-xs font-semibold tabular-nums shrink-0",
-                  item.type === "Ingreso" ? "text-green-600 dark:text-green-400" : "")}>
+                  item.type === "Ingreso" ? "text-success" : "")}>
                   {item.type === "Ingreso" ? "+" : "-"}{formatAmount(item.amount)}
                 </span>
               </div>
@@ -211,7 +211,7 @@ function EntryDetail({ entry }: { entry: SyncLogEntry }) {
         </div>
       )}
       {deletedCount > 0 && (
-        <p className="text-xs text-red-600 dark:text-red-400 text-center">
+        <p className="text-xs text-muted-foreground text-center">
           {deletedCount} transacción{deletedCount !== 1 ? "es" : ""} eliminada{deletedCount !== 1 ? "s" : ""} correctamente.
         </p>
       )}
@@ -227,7 +227,7 @@ function EntryDetail({ entry }: { entry: SyncLogEntry }) {
               <button
                 type="button"
                 onClick={toggleAll}
-                className="text-[11px] text-primary hover:underline cursor-pointer"
+                className="text-[11px] text-foreground hover:underline cursor-pointer"
               >
                 {creatableIndexes.every((i) => selectedSkipped.has(i)) ? "Deseleccionar todo" : "Seleccionar todo"}
               </button>
@@ -246,10 +246,10 @@ function EntryDetail({ entry }: { entry: SyncLogEntry }) {
                     />
                   ) : <div className="w-4 shrink-0" />}
                   <div className={cn("flex items-center justify-center w-6 h-6 rounded-lg shrink-0",
-                    item.type === "Ingreso" ? "bg-green-500/10" : "bg-red-500/10")}>
+                    item.type === "Ingreso" ? "bg-success/10" : "bg-muted")}>
                     {item.type === "Ingreso"
-                      ? <ArrowDownCircle className="h-3.5 w-3.5 text-green-500" />
-                      : <ArrowUpCircle className="h-3.5 w-3.5 text-red-500" />}
+                      ? <ArrowDownCircle className="h-3.5 w-3.5 text-success" />
+                      : <ArrowUpCircle className="h-3.5 w-3.5 text-muted-foreground" />}
                   </div>
                   <div className="flex-1 min-w-0">
                     <p className="truncate text-xs font-medium">{item.description}</p>
@@ -261,7 +261,7 @@ function EntryDetail({ entry }: { entry: SyncLogEntry }) {
                     </div>
                   </div>
                   <span className={cn("text-xs font-semibold tabular-nums shrink-0",
-                    item.type === "Ingreso" ? "text-green-600 dark:text-green-400" : "")}>
+                    item.type === "Ingreso" ? "text-success" : "")}>
                     {item.type === "Ingreso" ? "+" : "-"}{formatAmount(item.amount)}
                   </span>
                 </div>
@@ -284,7 +284,7 @@ function EntryDetail({ entry }: { entry: SyncLogEntry }) {
       )}
 
       {importedCount > 0 && (
-        <p className="text-xs text-green-600 dark:text-green-400 text-center">
+        <p className="text-xs text-success text-center">
           {importedCount} transacción{importedCount !== 1 ? "es" : ""} importada{importedCount !== 1 ? "s" : ""} correctamente.
         </p>
       )}
@@ -299,7 +299,7 @@ function LogEntryRow({ entry }: { entry: SyncLogEntry }) {
   const bank = getBankById(entry.bank);
 
   const statusConfig = {
-    success: { icon: CheckCircle2, color: "text-green-500" },
+    success: { icon: CheckCircle2, color: "text-success" },
     failed: { icon: XCircle, color: "text-destructive" },
     "2fa_blocked": { icon: AlertTriangle, color: "text-amber-500" },
     invalid_credentials: { icon: XCircle, color: "text-destructive" },
@@ -338,7 +338,7 @@ function LogEntryRow({ entry }: { entry: SyncLogEntry }) {
           {entry.status === "success" && (
             <div className="flex gap-1.5 text-xs">
               {entry.imported > 0 && (
-                <span className="flex items-center gap-0.5 text-green-600 dark:text-green-400 font-medium">
+                <span className="flex items-center gap-0.5 text-success font-medium">
                   <CheckCircle2 className="h-3 w-3" />{entry.imported}
                 </span>
               )}

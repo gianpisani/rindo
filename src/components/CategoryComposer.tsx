@@ -5,6 +5,7 @@ import { ArrowUp, Check, ChevronDown, X } from "lucide-react";
 import { EmojiPicker } from "@/components/EmojiPicker";
 import { TRANSACTION_TYPES, type TransactionType } from "@/lib/ledger";
 import { cn } from "@/lib/utils";
+import { WHISPER_TYPES } from "@/lib/whisper";
 import "./whisper.css";
 
 /**
@@ -43,14 +44,7 @@ interface CategoryComposerProps {
 }
 
 // Los mismos colores que el Whisper le da a cada tipo.
-const TYPE_ACCENT: Record<TransactionType, string> = {
-  Gasto: "#f87171",
-  Ingreso: "#4ade80",
-  Inversión: "#60a5fa",
-  Rescate: "#22d3ee",
-  Rendimiento: "#a78bfa",
-  Reembolso: "#fbbf24",
-};
+const TYPE_ACCENT = Object.fromEntries(WHISPER_TYPES.map((t) => [t.type, t.color])) as Record<TransactionType, string>;
 
 const DEFAULT_COLORS = [
   "#10b981", "#059669", "#34d399", "#6ee7b7",

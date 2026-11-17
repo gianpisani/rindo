@@ -417,16 +417,15 @@ export function BankSyncModal({
                       "group relative flex items-center gap-3 p-3 rounded-xl",
                       "border bg-card transition-all duration-200 cursor-pointer",
                       "focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-1",
-                      isConfigured
-                        ? "border-primary/30 hover:border-primary/60 hover:bg-accent/50"
-                        : "border-border/50 hover:border-primary/40 hover:bg-accent/50",
+                      !isConfigured && "border-border/50",
+                      "hover:bg-accent/50",
                     )}
                   >
                     <BankLogo bank={b} size="sm" />
                     <div className="flex-1 text-left min-w-0">
                       <span className="text-sm font-medium">{b.label}</span>
                       {isConfigured && (
-                        <p className="text-[10px] text-primary font-medium flex items-center gap-1 mt-0.5">
+                        <p className="text-[10px] text-success font-medium flex items-center gap-1 mt-0.5">
                           <CalendarClock className="h-2.5 w-2.5" /> Auto-sync activo
                         </p>
                       )}
@@ -462,8 +461,8 @@ export function BankSyncModal({
                   </p>
                 </div>
                 {storedCred && (
-                  <div className="relative z-10 flex items-center justify-center w-7 h-7 rounded-full bg-primary/10 shrink-0">
-                    <CheckCircle2 className="h-4 w-4 text-primary" />
+                  <div className="relative z-10 flex items-center justify-center w-7 h-7 rounded-full shrink-0">
+                    <CheckCircle2 className="h-4 w-4 text-foreground" />
                   </div>
                 )}
                 <div className="absolute bottom-0 left-0 right-0 h-[2px]" style={{ background: `linear-gradient(90deg, ${selectedBank.color}60, ${selectedBank.color}10)` }} />
@@ -471,8 +470,8 @@ export function BankSyncModal({
 
               {/* ── Stored credentials notice ────────────────────────────── */}
               {storedCred && (
-                <div className="flex items-start gap-3 p-3 rounded-xl bg-primary/5 border border-primary/20">
-                  <Lock className="h-4 w-4 text-primary shrink-0 mt-0.5" />
+                <div className="flex items-start gap-3 p-3 rounded-xl border">
+                  <Lock className="h-4 w-4 text-muted-foreground shrink-0 mt-0.5" />
                   <div className="flex-1 min-w-0">
                     <p className="text-sm font-medium">Credenciales guardadas</p>
                     <p className="text-xs text-muted-foreground mt-0.5">
@@ -559,7 +558,7 @@ export function BankSyncModal({
               {!hasCredentialsForBank && (
                 <div className={cn(
                   "rounded-xl border p-3 space-y-3 transition-colors",
-                  saveCredentials ? "border-primary/30 bg-primary/5" : "border-border/50 bg-muted/20",
+                  !saveCredentials && "border-border/50 bg-muted/20",
                 )}>
                   <div className="flex items-start gap-3">
                     <Checkbox
@@ -650,8 +649,7 @@ export function BankSyncModal({
               ) : (
                 <div className="flex flex-col items-center space-y-4">
                   <div className="relative flex items-center justify-center h-20 w-20">
-                    <div className="absolute inset-0 rounded-full bg-primary/10 blur-xl animate-pulse" />
-                    <RefreshCw className="relative z-10 h-12 w-12 text-primary animate-spin [animation-duration:2s]" />
+                    <RefreshCw className="relative z-10 h-12 w-12 text-muted-foreground animate-spin [animation-duration:2s]" />
                   </div>
                   <div className="text-center space-y-1">
                     <p className="text-base font-semibold">Conectando con tu banco</p>
@@ -678,8 +676,8 @@ export function BankSyncModal({
                 <>
                   {/* Summary header */}
                   <div className="flex items-center gap-3 py-3">
-                    <div className="flex items-center justify-center h-10 w-10 rounded-full bg-green-500/10">
-                      <CheckCircle2 className="h-5 w-5 text-green-500" />
+                    <div className="flex items-center justify-center h-10 w-10 rounded-full bg-success/10">
+                      <CheckCircle2 className="h-5 w-5 text-success" />
                     </div>
                     <div className="flex-1 min-w-0">
                       <p className="font-semibold">Sincronización completada</p>
@@ -692,7 +690,7 @@ export function BankSyncModal({
                   {/* Stats pills */}
                   <div className="flex gap-2 flex-wrap">
                     {result.imported > 0 && (
-                      <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-green-500/10 text-green-600 dark:text-green-400 text-sm font-medium">
+                      <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-success/10 text-success text-sm font-medium">
                         <CheckCircle2 className="h-3.5 w-3.5" />{result.imported} importada{result.imported !== 1 ? "s" : ""}
                       </div>
                     )}
@@ -707,7 +705,7 @@ export function BankSyncModal({
                       </div>
                     )}
                     {deletedImportedCount > 0 && (
-                      <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-red-500/10 text-red-600 dark:text-red-400 text-sm font-medium">
+                      <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-muted text-muted-foreground text-sm font-medium">
                         <Trash2 className="h-3.5 w-3.5" />{deletedImportedCount} eliminada{deletedImportedCount !== 1 ? "s" : ""}
                       </div>
                     )}
@@ -715,8 +713,8 @@ export function BankSyncModal({
 
                   {/* Auto-sync confirmation message */}
                   {credentialsSaved && syncSchedule !== "disabled" && (
-                    <div className="flex items-start gap-2.5 p-3 rounded-xl bg-primary/5 border border-primary/20">
-                      <CalendarClock className="h-4 w-4 text-primary shrink-0 mt-0.5" />
+                    <div className="flex items-start gap-2.5 p-3 rounded-xl border">
+                      <CalendarClock className="h-4 w-4 text-muted-foreground shrink-0 mt-0.5" />
                       <div className="text-xs text-muted-foreground leading-relaxed">
                         <span className="font-medium text-foreground">Auto-sync activado.</span>{" "}
                         Tus movimientos se sincronizarán automáticamente a {getScheduleTimeLabel(syncSchedule)}.
@@ -734,7 +732,7 @@ export function BankSyncModal({
                           <button
                             type="button"
                             onClick={() => toggleAllImported(result.importedItems)}
-                            className="text-xs text-primary hover:underline cursor-pointer"
+                            className="text-xs text-foreground hover:underline cursor-pointer"
                           >
                             {result.importedItems.every((_, i) => selectedImported.has(i)) ? "Deseleccionar todo" : "Seleccionar todo"}
                           </button>
@@ -748,14 +746,14 @@ export function BankSyncModal({
                             ) : (
                               <div className="w-4 shrink-0" />
                             )}
-                            <div className={cn("flex items-center justify-center w-7 h-7 rounded-lg shrink-0", item.type === "Ingreso" ? "bg-green-500/10" : "bg-red-500/10")}>
-                              {item.type === "Ingreso" ? <ArrowDownCircle className="h-4 w-4 text-green-500" /> : <ArrowUpCircle className="h-4 w-4 text-red-500" />}
+                            <div className={cn("flex items-center justify-center w-7 h-7 rounded-lg shrink-0", item.type === "Ingreso" ? "bg-success/10" : "bg-muted")}>
+                              {item.type === "Ingreso" ? <ArrowDownCircle className="h-4 w-4 text-success" /> : <ArrowUpCircle className="h-4 w-4 text-muted-foreground" />}
                             </div>
                             <div className="flex-1 min-w-0">
                               <p className="truncate font-medium text-sm">{item.description}</p>
                               <p className="text-xs text-muted-foreground">{formatMovDate(item.date)}</p>
                             </div>
-                            <span className={cn("text-sm font-semibold tabular-nums shrink-0", item.type === "Ingreso" ? "text-green-600 dark:text-green-400" : "text-foreground")}>
+                            <span className={cn("text-sm font-semibold tabular-nums shrink-0", item.type === "Ingreso" ? "text-success" : "text-foreground")}>
                               {item.type === "Ingreso" ? "+" : "-"}{formatAmount(item.amount)}
                             </span>
                           </div>
@@ -779,7 +777,7 @@ export function BankSyncModal({
                           <button
                             type="button"
                             onClick={() => toggleAllSkipped(result.skippedItems)}
-                            className="text-xs text-primary hover:underline cursor-pointer"
+                            className="text-xs text-foreground hover:underline cursor-pointer"
                           >
                             {(() => {
                               const creatableIndexes = result.skippedItems.map((s, i) => (s.reason !== "zero_amount" ? i : -1)).filter((i) => i !== -1);
@@ -794,8 +792,8 @@ export function BankSyncModal({
                           return (
                             <div key={i} className={cn("flex items-center gap-3 px-3 py-2.5 text-sm", isZero && "opacity-40")}>
                               {!isZero ? <Checkbox checked={selectedSkipped.has(i)} onCheckedChange={() => toggleSkipped(i)} className="shrink-0 cursor-pointer" /> : <div className="w-4 shrink-0" />}
-                              <div className={cn("flex items-center justify-center w-7 h-7 rounded-lg shrink-0", item.type === "Ingreso" ? "bg-green-500/10" : "bg-red-500/10")}>
-                                {item.type === "Ingreso" ? <ArrowDownCircle className="h-4 w-4 text-green-500" /> : <ArrowUpCircle className="h-4 w-4 text-red-500" />}
+                              <div className={cn("flex items-center justify-center w-7 h-7 rounded-lg shrink-0", item.type === "Ingreso" ? "bg-success/10" : "bg-muted")}>
+                                {item.type === "Ingreso" ? <ArrowDownCircle className="h-4 w-4 text-success" /> : <ArrowUpCircle className="h-4 w-4 text-muted-foreground" />}
                               </div>
                               <div className="flex-1 min-w-0">
                                 <p className="truncate font-medium text-sm">{item.description}</p>
@@ -804,7 +802,7 @@ export function BankSyncModal({
                                   <span className="px-1.5 py-0.5 rounded bg-muted text-[10px] font-medium">{SKIP_REASON_LABELS[item.reason ?? ""] ?? "Omitida"}</span>
                                 </div>
                               </div>
-                              <span className={cn("text-sm font-semibold tabular-nums shrink-0", item.type === "Ingreso" ? "text-green-600 dark:text-green-400" : "text-foreground")}>
+                              <span className={cn("text-sm font-semibold tabular-nums shrink-0", item.type === "Ingreso" ? "text-success" : "text-foreground")}>
                                 {item.type === "Ingreso" ? "+" : "-"}{formatAmount(item.amount)}
                               </span>
                             </div>

@@ -29,7 +29,7 @@ type Debt = SharedExpenseWithTransaction;
  */
 const directions: { value: SharedExpenseDirection; label: string; amountClass: string }[] = [
   { value: "they_owe_me", label: "Me deben", amountClass: "text-amber-500" },
-  { value: "i_owe_them", label: "Yo debo", amountClass: "text-destructive" },
+  { value: "i_owe_them", label: "Yo debo", amountClass: "text-foreground" },
 ];
 
 export default function PendingDebts() {
@@ -271,7 +271,6 @@ export default function PendingDebts() {
           <Dialog.Content
             data-scrollable
             className="whisper-composer"
-            style={{ "--whisper-accent": "#f87171" } as React.CSSProperties}
             onOpenAutoFocus={(event) => {
               event.preventDefault();
               settleInputRef.current?.focus();

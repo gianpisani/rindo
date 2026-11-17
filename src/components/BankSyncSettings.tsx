@@ -31,7 +31,7 @@ function StatusBadge({ status }: { status: BankCredential["last_sync_status"] })
   }
 
   const configs = {
-    success: { icon: CheckCircle2, label: "Exitosa", className: "text-green-500" },
+    success: { icon: CheckCircle2, label: "Exitosa", className: "text-success" },
     failed: { icon: XCircle, label: "Error", className: "text-destructive" },
     "2fa_blocked": { icon: AlertTriangle, label: "2FA bloqueado", className: "text-amber-500" },
     invalid_credentials: { icon: XCircle, label: "Credenciales inválidas", className: "text-destructive" },

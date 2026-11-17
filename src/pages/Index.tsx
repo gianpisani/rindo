@@ -263,7 +263,7 @@ const Index = () => {
           <span className="n">{cat.category}</span>
           <span className="pct">{Math.round(cat.usage)}%</span>
           <span className="inicio-track">
-            <i style={{ width: "100%", background: "var(--inicio-rose)", "--i": index } as CSSProperties} />
+            <i style={{ width: "100%", background: "oklch(var(--destructive))", "--i": index } as CSSProperties} />
           </span>
           <span className={cn("of", isPrivacyMode && "privacy-blur")}>
             <span>{formatCurrency(cat.effectiveAmount)} de {formatCurrency(limit)}</span>
@@ -336,7 +336,7 @@ const Index = () => {
               <button onClick={() => openProfileEdit()} className="inicio-avatar" aria-label="Editar perfil">
                 <Avatar className="size-full">
                   {avatarUrl && <AvatarImage src={avatarUrl} className="object-cover" />}
-                  <AvatarFallback className="text-xs font-semibold text-primary" style={{ background: "color-mix(in oklch, var(--primary) 12%, var(--card))" }}>
+                  <AvatarFallback className="text-xs font-semibold">
                     {greetingInitials}
                   </AvatarFallback>
                 </Avatar>
@@ -382,7 +382,7 @@ const Index = () => {
               </button>
             )}
             <div className={cn("inicio-flows", isPrivacyMode && "privacy-blur")}>
-              <span className="inicio-flow" style={{ color: "var(--inicio-emerald)" }}>
+              <span className="inicio-flow text-success">
                 <NumberFlow value={currentFlows.ingresoReal} prefix="+" format={{ style: "currency", currency: "CLP", maximumFractionDigits: 0 }} locales="es-CL" />
                 <small>entró</small>
               </span>

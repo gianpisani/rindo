@@ -3,18 +3,17 @@ import { ANALYZING_CATEGORY } from "@/lib/auto-category-policy";
 import type { TransactionType } from "@/lib/ledger";
 
 /**
- * El color del monto por tipo, el mismo que usa el resto de la app (el gasto
- * en rosa, como en la tabla y el buscador). Un mapa en vez de ternarios: un
- * tipo nuevo no se cuela mal pintado. Los valores son variables de `.inicio`
- * (index.css).
+ * El color del monto por tipo, el mismo que usa el resto de la app. El gasto
+ * va en el color del texto: el rojo queda solo para lo que avisa. Un mapa en
+ * vez de ternarios: un tipo nuevo no se cuela mal pintado.
  */
 export const AMOUNT_TONE: Record<TransactionType, string> = {
-  Ingreso: "var(--inicio-emerald)",
-  Gasto: "var(--inicio-rose)",
+  Ingreso: "oklch(var(--success))",
+  Gasto: "var(--foreground)",
   Inversión: "var(--inicio-blue)",
   Rescate: "var(--inicio-cyan)",
   Rendimiento: "var(--inicio-violet)",
-  Reembolso: "var(--inicio-emerald)",
+  Reembolso: "oklch(var(--success))",
 };
 
 /** Guardándose o esperando a que Jev lo categorice. */

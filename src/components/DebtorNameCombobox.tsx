@@ -78,7 +78,7 @@ export function DebtorNameCombobox({
             >
               <span className="truncate">{name}</span>
               {name.toLowerCase() === value.trim().toLowerCase() && (
-                <Check className="ml-auto h-3.5 w-3.5 shrink-0 text-primary" />
+                <Check className="ml-auto h-3.5 w-3.5 shrink-0 text-foreground" />
               )}
             </button>
           ))}

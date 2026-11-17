@@ -211,8 +211,8 @@ const typeIcons: Record<TransactionType, typeof TrendingUp> = {
 };
 
 export const typeAmountColors: Record<TransactionType, string> = {
-  Ingreso: "text-emerald-500",
-  Gasto: "text-rose-500",
+  Ingreso: "text-success",
+  Gasto: "text-foreground",
   Inversión: "text-blue-500",
   Rescate: "text-cyan-500",
   Rendimiento: "text-violet-500",
@@ -223,7 +223,7 @@ const formatCLP = (amount: number) =>
   new Intl.NumberFormat("es-CL", { style: "currency", currency: "CLP", minimumFractionDigits: 0 }).format(amount);
 
 const signColor = (amount: number) =>
-  amount > 0 ? "text-emerald-500" : amount < 0 ? "text-rose-500" : "";
+  amount > 0 ? "text-success" : "";
 
 // Formato con signo: NumberFlow en el panel de selección y la suma del pie.
 const SIGNED_CLP: Format = {
@@ -514,7 +514,7 @@ function CategoryCombobox({ value, options, onSave, trigger, placeholder = "Busc
                   )}
                   <span className="truncate text-sm">{option.label}</span>
                   {option.value === value && (
-                    <Check className="h-3.5 w-3.5 ml-auto flex-shrink-0 text-primary" />
+                    <Check className="h-3.5 w-3.5 ml-auto flex-shrink-0 text-foreground" />
                   )}
                 </CommandItem>
               ))}
@@ -531,7 +531,7 @@ function CategoryCombobox({ value, options, onSave, trigger, placeholder = "Busc
                 setSearch("");
                 onCreate(name);
               }}
-              className="flex w-full items-center gap-2 border-t border-border/60 px-2 py-2 text-left text-xs text-primary transition-colors hover:bg-muted/60"
+              className="flex w-full items-center gap-2 border-t border-border/60 px-2 py-2 text-left text-xs text-foreground transition-colors hover:bg-muted/60"
             >
               <Plus className="h-3.5 w-3.5 flex-shrink-0" />
               <span className="truncate">
@@ -829,7 +829,7 @@ export function TransactionsTable({
                         "cursor-pointer transition-all hover:brightness-125",
                         "focus:outline-none",
                         linkedCategory
-                          ? "bg-emerald-500/15 text-emerald-400 font-medium"
+                          ? "bg-success/15 text-success font-medium"
                           : "bg-white/5 text-muted-foreground/40 italic hover:text-muted-foreground/60"
                       )}
                       onClick={(e) => e.stopPropagation()}
@@ -1243,7 +1243,6 @@ export function TransactionsTable({
         className={cn(
           "hover:bg-muted/40 transition-colors",
           row.original.isPending && "pointer-events-none opacity-60",
-          row.getIsSelected() && "bg-primary/5 hover:bg-primary/10",
           isMissing && "border-l-2 border-l-amber-400/70"
         )}
         onMouseDown={(e) => handleRowMouseDown(e, index)}
@@ -1291,7 +1290,7 @@ export function TransactionsTable({
               {/* Count badge */}
               <button
                 onClick={() => setPanelExpanded(true)}
-                className="w-8 h-8 rounded-lg bg-primary/10 text-primary flex items-center justify-center text-xs font-bold hover:bg-primary/20 transition-colors"
+                className="w-8 h-8 rounded-lg bg-muted text-foreground flex items-center justify-center text-xs font-bold transition-colors"
               >
                 {selectedIds.length}
               </button>
@@ -1418,10 +1417,10 @@ export function TransactionsTable({
                   </div>
                   {summaryStats.mixed && (
                     <div className="flex items-center justify-between mt-1.5 pt-1.5 border-t border-border/30">
-                      <span className={cn("text-[10px] font-mono tabular-nums text-emerald-500", isPrivacyMode && "privacy-blur")}>
+                      <span className={cn("text-[10px] font-mono tabular-nums text-success", isPrivacyMode && "privacy-blur")}>
                         +{formatCLP(summaryStats.income)}
                       </span>
-                      <span className={cn("text-[10px] font-mono tabular-nums text-rose-500", isPrivacyMode && "privacy-blur")}>
+                      <span className={cn("text-[10px] font-mono tabular-nums", isPrivacyMode && "privacy-blur")}>
                         −{formatCLP(summaryStats.expense)}
                       </span>
                     </div>

@@ -88,7 +88,7 @@ export function PeriodSettingsDialog() {
               className={cn(
                 "rounded-full border px-3 py-1 text-xs transition-colors",
                 startDay === q.day
-                  ? "border-primary/40 bg-primary/10 text-primary"
+                  ? "bg-muted text-foreground"
                   : "border-border text-muted-foreground hover:text-foreground"
               )}
             >

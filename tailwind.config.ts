@@ -79,10 +79,7 @@ export default {
 				DEFAULT: 'oklch(var(--destructive) / <alpha-value>)',
 				foreground: 'var(--destructive-foreground)'
 			},
-			success: {
-				DEFAULT: 'hsl(var(--success))',
-				foreground: 'hsl(var(--success-foreground))'
-			},
+			success: 'oklch(var(--success) / <alpha-value>)',
 			warning: {
 				DEFAULT: 'hsl(var(--warning))',
 				foreground: 'hsl(var(--warning-foreground))'

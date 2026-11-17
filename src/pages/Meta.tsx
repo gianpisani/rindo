@@ -433,7 +433,7 @@ export default function Meta() {
                   const projection = projectionOf(row);
                   const willPass = projection !== null && projection > 100;
                   const color =
-                    row.state === "over" ? "var(--meta-rose)" : row.state === "near" ? "var(--meta-amber)" : colorOf(row.category) || "var(--muted-foreground)";
+                    row.state === "over" ? "oklch(var(--destructive))" : row.state === "near" ? "var(--meta-amber)" : colorOf(row.category) || "var(--muted-foreground)";
                   return (
                     <div
                       key={row.category}

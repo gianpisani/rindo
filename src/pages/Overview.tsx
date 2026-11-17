@@ -184,7 +184,7 @@ export default function Overview() {
                     <><span className="capitalize">{format(nameOf(worthNow.month), "MMMM yyyy", { locale: es })}</span> · <b>{clp(worthNow.patrimonio)}</b></>
                   ) : (
                     <><b>{clp(worthNow.patrimonio)}</b>{worthChange !== 0 && (
-                      <span style={{ color: worthChange > 0 ? "var(--inicio-emerald)" : "var(--inicio-rose)" }}>
+                      <span className={worthChange > 0 ? "text-success" : "text-destructive"}>
                         {" "}{worthChange > 0 ? "+" : "−"}{clpShort(Math.abs(worthChange))} en {history.length - 1} mes{history.length === 2 ? "" : "es"}
                       </span>
                     )}</>
@@ -204,7 +204,7 @@ export default function Overview() {
                   <div className={cn("fin-legend", isPrivacyMode && "privacy-blur")}>
                     {/* Rindo no conoce el saldo inicial: si no calza con el banco, tocarlo concilia */}
                     <button className="is-liquid" onClick={() => openReconciliation()} title="Conciliar con tu banco">
-                      <i style={{ background: "var(--inicio-emerald)" }} />Líquido <b>{clp(worthNow.liquido)}</b>
+                      <i className="bg-success" />Líquido <b>{clp(worthNow.liquido)}</b>
                     </button>
                     {/* Tocar lo invertido abre el rescate y el valor de hoy de las inversiones */}
                     <button onClick={() => setInvestmentMoveOpen(true)} title="Rescatar o actualizar inversiones">
@@ -214,7 +214,7 @@ export default function Overview() {
                 )}
                 {averages.months > 0 && (
                   <div className={cn("fin-stats", isPrivacyMode && "privacy-blur")}>
-                    <span>Entra al mes <b style={{ color: "var(--inicio-emerald)" }}>{clp(averages.ingreso)}</b></span>
+                    <span>Entra al mes <b style={{ color: "oklch(var(--success))" }}>{clp(averages.ingreso)}</b></span>
                     <span>Sale <b>{clp(averages.gasto)}</b></span>
                     {averages.ahorro !== null && <span>Ahorras <b>{Math.round(averages.ahorro * 100)}%</b></span>}
                     <span className="text-[11px]">promedio de {averages.months} mes{averages.months === 1 ? "" : "es"} cerrado{averages.months === 1 ? "" : "s"}</span>
@@ -234,9 +234,9 @@ export default function Overview() {
               <span className="inicio-title">Mes a mes</span>
               <span className={cn("inicio-num", isPrivacyMode && "privacy-blur")}>
                 {hovered ? (
-                  <><span className="capitalize">{format(nameOf(hovered.month), "MMM yyyy", { locale: es })}</span> · <b style={{ color: "var(--inicio-emerald)" }}>+{clpShort(hovered.ingreso)}</b> · <b>−{clpShort(hovered.gasto)}</b></>
+                  <><span className="capitalize">{format(nameOf(hovered.month), "MMM yyyy", { locale: es })}</span> · <b style={{ color: "oklch(var(--success))" }}>+{clpShort(hovered.ingreso)}</b> · <b>−{clpShort(hovered.gasto)}</b></>
                 ) : (
-                  <><span style={{ color: "var(--inicio-emerald)" }}>entró</span> vs salió</>
+                  <><span className="text-success">entró</span> vs salió</>
                 )}
               </span>
             </div>

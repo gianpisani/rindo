@@ -46,7 +46,7 @@ const CATEGORY_COLORS = [
   "#3b82f6", "#6366f1", "#8b5cf6", "#a855f7", "#ec4899", "#64748b",
 ];
 
-const LOSS_ACCENT = "#f87171";
+const LOSS_ACCENT = "oklch(var(--destructive))";
 
 /** Un instante como valor de <input type="datetime-local">, en hora local. */
 const toLocalInput = (d: Date) => new Date(d.getTime() - d.getTimezoneOffset() * 60000).toISOString().slice(0, 16);
@@ -1161,7 +1161,7 @@ export default function Transactions() {
                 <span className="font-medium">{tx.detail || "Sin detalle"}</span>
                 <span className={cn(
                   "font-bold font-mono tabular-nums",
-                  typeAmountColors[tx.type] ?? "text-rose-500"
+                  typeAmountColors[tx.type]
                 )}>
                   {formatCurrency(tx.amount)}
                 </span>

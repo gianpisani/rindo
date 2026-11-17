@@ -138,7 +138,7 @@ function OptionChip({
       className={cn(
         "rounded-full border px-2.5 py-1 text-[11px] font-medium transition-colors",
         active
-          ? "border-primary/40 bg-primary/10 text-primary"
+          ? "bg-muted text-foreground"
           : "border-border text-muted-foreground hover:text-foreground"
       )}
     >
@@ -262,7 +262,7 @@ export function TransactionsToolbar({
           {chips.map((chip) => (
             <div
               key={chip.key}
-              className="flex h-7 max-w-[150px] items-center gap-1.5 rounded-full border border-primary/30 bg-primary/[0.07] pl-2.5 pr-2"
+              className="flex h-7 max-w-[150px] items-center gap-1.5 rounded-full border pl-2.5 pr-2"
             >
               {chip.emoji && (
                 <span className="shrink-0 text-[11px] leading-none">{chip.emoji}</span>
@@ -287,15 +287,12 @@ export function TransactionsToolbar({
           <Button
             variant="outline"
             size="sm"
-            className={cn(
-              "h-10 shrink-0 gap-2",
-              active.length > 0 && "border-primary/40 text-primary"
-            )}
+            className="h-10 shrink-0 gap-2"
           >
             <SlidersHorizontal className="h-4 w-4" />
             <span className="hidden sm:inline">Filtros</span>
             {active.length > 0 && (
-              <span className="flex h-4 min-w-4 items-center justify-center rounded-full bg-primary px-1 font-mono text-[10px] font-semibold tabular-nums text-primary-foreground">
+              <span className="flex h-4 min-w-4 items-center justify-center rounded-full bg-foreground px-1 font-mono text-[10px] font-semibold tabular-nums text-background">
                 {active.length}
               </span>
             )}
@@ -375,7 +372,7 @@ export function TransactionsToolbar({
                   <span
                     className={cn(
                       "truncate",
-                      categoryFilter === ALL && "font-semibold text-primary"
+                      categoryFilter === ALL && "font-semibold text-foreground"
                     )}
                   >
                     Todas las categorías
@@ -393,7 +390,7 @@ export function TransactionsToolbar({
                       className={cn(
                         "truncate",
                         categoryFilter === category.name &&
-                          "font-semibold text-primary"
+                          "font-semibold text-foreground"
                       )}
                     >
                       {category.name}

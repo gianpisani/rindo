@@ -53,7 +53,7 @@ function CreateCategoryAction({
       type="button"
       onClick={() => onCreate(name)}
       className={cn(
-        "flex w-full items-center gap-2.5 border-border/60 text-left text-primary transition-colors hover:bg-muted/60",
+        "flex w-full items-center gap-2.5 border-border/60 text-left text-foreground transition-colors hover:bg-muted/60",
         // En mobile va bajo el buscador (la lista no tiene scroll propio);
         // en desktop cierra el popover, bajo la lista.
         size === "lg" ? "mt-1 gap-3 rounded-xl px-3 py-3 text-base" : "border-t px-3 py-2.5 text-sm"
@@ -165,7 +165,7 @@ export function CategorySelect({
                   )}
                   <span className="truncate">{option.label}</span>
                   {option.value === value && (
-                    <Check className="ml-auto h-4 w-4 shrink-0 text-primary" />
+                    <Check className="ml-auto h-4 w-4 shrink-0 text-foreground" />
                   )}
                 </CommandItem>
               ))}
@@ -281,7 +281,7 @@ export function CategoryPickerInline({
                 )}
                 <span className="truncate">{option.label}</span>
                 {option.value === value && (
-                  <Check className="ml-auto h-4 w-4 shrink-0 text-primary" />
+                  <Check className="ml-auto h-4 w-4 shrink-0 text-foreground" />
                 )}
               </CommandItem>
             ))}

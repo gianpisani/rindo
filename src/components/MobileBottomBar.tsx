@@ -237,7 +237,7 @@ export function MobileBottomBar() {
               >
                 <Avatar className="size-8 ring-1 ring-border/50 shrink-0">
                   {avatarUrl && <AvatarImage src={avatarUrl} className="object-cover" />}
-                  <AvatarFallback className="bg-primary/10 text-primary text-xs font-semibold">
+                  <AvatarFallback className="text-xs font-semibold">
                     {userInitials}
                   </AvatarFallback>
                 </Avatar>

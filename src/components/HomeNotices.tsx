@@ -36,8 +36,8 @@ const MAX_PILLS = 2;
 
 const tones = {
   primary: {
-    pill: "border-primary/25 bg-primary/[0.06] hover:bg-primary/10",
-    icon: "text-primary",
+    pill: "",
+    icon: "text-muted-foreground",
   },
   warning: {
     pill: "border-amber-500/30 bg-amber-500/[0.06] hover:bg-amber-500/10",

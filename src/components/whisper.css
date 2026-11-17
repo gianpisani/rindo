@@ -4,7 +4,7 @@
   animation: whisper-fade .2s ease-out;
 }
 .whisper-composer {
-  --whisper-accent: #f87171;
+  --whisper-accent: #fafafa;
   position: fixed; z-index: 71; left: 50%; top: 48%;
   transform: translate(-50%, -50%);
   width: min(560px, calc(100vw - 40px)); max-height: 85dvh;
@@ -101,7 +101,7 @@
 .whisper-options label.whisper-check { display: flex; align-items: center; gap: 8px; min-height: 32px; }
 .whisper-check input { accent-color: var(--whisper-accent); }
 .whisper-composer option { background: #171717; color: #fafafa; }
-.whisper-error { font-size: 12px; color: #fca5a5; text-align: center; }
+.whisper-error { font-size: 12px; color: oklch(var(--destructive)); text-align: center; }
 .whisper-composer button:focus-visible, .whisper-type:has(select:focus-visible), .whisper-options select:focus-visible, .whisper-options input:focus-visible, .edit-tx-title:focus-visible { outline: 2px solid var(--whisper-accent); outline-offset: 4px; }
 .whisper-backdrop[data-state=closed], .whisper-composer[data-state=closed] { animation: whisper-fade-out .15s ease-in; }
 @keyframes whisper-fade { from { opacity: 0; } to { opacity: 1; } }
@@ -229,7 +229,7 @@
 .whisper-tx-check { display: grid; place-items: center; width: 15px; height: 15px; flex-shrink: 0; border-radius: 4px; border: 1px solid rgb(255 255 255 / .25); color: #0a0a0a; transition: background .2s, border-color .2s; }
 .whisper-tx-row[aria-checked=true] .whisper-tx-check { background: var(--whisper-accent); border-color: var(--whisper-accent); }
 .whisper-tx-status { flex-shrink: 0; color: rgb(255 255 255 / .45); }
-.whisper-tx-status.paid { color: #4ade80; }
+.whisper-tx-status.paid { color: oklch(var(--success)); }
 .whisper-tx-row .name { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 1px; color: #fafafa; }
 .whisper-tx-row .name > span, .whisper-tx-row .name small { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .whisper-tx-row .name small { font-size: 10.5px; color: rgb(255 255 255 / .45); }
@@ -238,7 +238,7 @@
 .whisper-tx-row-actions { display: flex; align-items: center; gap: 2px; flex-shrink: 0; }
 .whisper-tx-icon-btn { display: grid; place-items: center; width: 26px; height: 26px; flex-shrink: 0; border-radius: 8px; color: rgb(255 255 255 / .5); transition: color .2s, background .2s; }
 .whisper-tx-icon-btn:hover:enabled { color: #fafafa; background: rgb(255 255 255 / .08); }
-.whisper-tx-icon-btn.danger:hover:enabled { color: #fca5a5; }
+.whisper-tx-icon-btn.danger:hover:enabled { color: oklch(var(--destructive)); }
 .whisper-tx-icon-btn:disabled { opacity: .3; cursor: default; }
 .whisper-tx-mini { display: inline-flex; align-items: center; gap: 5px; min-height: 26px; padding: 4px 10px; border-radius: 99px; font-size: 11px; font-weight: 500; white-space: nowrap;
   border: 1px solid rgb(255 255 255 / .1); color: rgb(255 255 255 / .7); background: rgb(255 255 255 / .03); transition: color .2s, background .2s, border-color .2s; }
@@ -257,7 +257,7 @@
 .whisper-tx-inline input::placeholder { color: rgb(255 255 255 / .35); }
 .whisper-tx-inline input.grow { flex: 1 1 140px; }
 .whisper-tx-inline input.amt { width: 104px; font-variant-numeric: tabular-nums; }
-.whisper-tx-inline input.invalid { border-color: #f87171; }
+.whisper-tx-inline input.invalid { border-color: oklch(var(--destructive)); }
 .whisper-tx-inline input:focus-visible { outline: 2px solid var(--whisper-accent); outline-offset: 2px; }
 /* Categoría nueva sin salir del composer */
 .whisper-tx-newcat { width: min(100%, 390px); margin: 0 auto; display: flex; flex-direction: column; align-items: center; gap: 10px; }

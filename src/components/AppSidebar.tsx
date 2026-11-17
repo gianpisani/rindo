@@ -180,10 +180,10 @@ export function AppSidebar() {
                 <button
                   className="flex items-center gap-2 w-full rounded-md px-2 py-2 text-sm hover:bg-sidebar-accent transition-colors data-[state=open]:bg-sidebar-accent sm:mb-0 mb-4 group-data-[collapsible=icon]:!size-8 group-data-[collapsible=icon]:!p-0 group-data-[collapsible=icon]:justify-center"
                 >
-                  <div className="rounded-full p-[2px] accent-gradient-bg shrink-0">
+                  <div className="rounded-full p-[2px] bg-border shrink-0">
                     <Avatar className="size-7">
                       {avatarUrl && <AvatarImage src={avatarUrl} className="object-cover" />}
-                      <AvatarFallback className="bg-sidebar text-primary text-[10px] font-semibold">
+                      <AvatarFallback className="bg-sidebar text-[10px] font-semibold">
                         {userInitials}
                       </AvatarFallback>
                     </Avatar>
@@ -205,10 +205,10 @@ export function AppSidebar() {
               >
                 <DropdownMenuLabel className="p-0 font-normal">
                   <div className="flex items-center gap-3 px-3 py-3">
-                    <div className="rounded-full p-[2px] accent-gradient-bg shrink-0">
+                    <div className="rounded-full p-[2px] bg-border shrink-0">
                       <Avatar className="size-9">
                         {avatarUrl && <AvatarImage src={avatarUrl} className="object-cover" />}
-                        <AvatarFallback className="bg-popover text-primary text-sm font-semibold">
+                        <AvatarFallback className="bg-popover text-sm font-semibold">
                           {userInitials}
                         </AvatarFallback>
                       </Avatar>
@@ -253,7 +253,7 @@ export function AppSidebar() {
                         className={cn(
                           "flex-1 flex items-center justify-center rounded-md py-1.5 transition-all",
                           theme === value
-                            ? "bg-primary/15 text-primary shadow-sm ring-1 ring-primary/30"
+                            ? "bg-muted text-foreground shadow-sm"
                             : "text-muted-foreground hover:text-foreground hover:bg-muted"
                         )}
                       >

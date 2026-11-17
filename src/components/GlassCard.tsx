@@ -13,7 +13,7 @@ export function GlassCard({ children, className }: GlassCardProps) {
       className={cn(
         "border border-border/50 bg-card",
         "transition-all duration-200",
-        "hover:border-primary/20 hover:shadow-sm",
+        "hover:shadow-sm",
         className
       )}
     >

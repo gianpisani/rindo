@@ -150,7 +150,7 @@ export function ReconciliationCard({ onSuccess }: ReconciliationCardProps = {}) 
 
         <div className="space-y-2">
           <Label htmlFor="tarjeta-credito" className="flex items-center gap-2 text-sm font-medium">
-            <CreditCard className="h-4 w-4 text-destructive" />
+            <CreditCard className="h-4 w-4 text-muted-foreground" />
             Tarjeta de Crédito (Deuda)
           </Label>
           <div className="relative">
@@ -230,7 +230,7 @@ export function ReconciliationCard({ onSuccess }: ReconciliationCardProps = {}) 
                     <div className="flex items-center justify-between">
                       <span className="text-muted-foreground">Tipo</span>
                       <span className="flex items-center gap-1.5 font-medium">
-                        {type === "Ingreso" ? <TrendingUp className="h-3.5 w-3.5 text-success" /> : <TrendingDown className="h-3.5 w-3.5 text-destructive" />}
+                        {type === "Ingreso" ? <TrendingUp className="h-3.5 w-3.5 text-success" /> : <TrendingDown className="h-3.5 w-3.5 text-muted-foreground" />}
                         {type}
                       </span>
                     </div>

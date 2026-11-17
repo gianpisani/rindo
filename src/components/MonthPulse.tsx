@@ -21,8 +21,8 @@ import { cn } from "@/lib/utils";
  */
 
 const TONE: Record<PaceVerdict, string> = {
-  under: "oklch(var(--accent-emerald))",
-  over: "oklch(var(--accent-rose))",
+  under: "oklch(var(--success))",
+  over: "oklch(var(--destructive))",
   even: "var(--foreground)",
 };
 const MUTED = "var(--muted-foreground)";

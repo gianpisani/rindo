@@ -76,7 +76,7 @@ function ThemePreviewCard({
       className={cn(
         "flex flex-col items-center gap-1.5 p-1.5 rounded-xl transition-all duration-200",
         selected
-          ? "ring-2 ring-primary/40 bg-primary/5 scale-[1.02]"
+          ? "ring-2 ring-foreground scale-[1.02]"
           : "hover:bg-muted/50 active:scale-[0.97]"
       )}
     >
@@ -461,11 +461,7 @@ export function OnboardingModal({
               onClick={() => goToStep(i)}
               className={cn(
                 "flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium transition-all duration-200",
-                i === step
-                  ? "bg-primary/10 text-primary"
-                  : i < step
-                    ? "text-primary/60"
-                    : "text-muted-foreground"
+                i > step && "text-muted-foreground"
               )}
             >
               {i < step ? <Check className="size-3.5" /> : <Icon className="size-3.5" />}
@@ -516,20 +512,20 @@ export function OnboardingModal({
         {step === 1 && (
           <div className="flex flex-col items-center gap-4">
             <div className="relative group">
-              <Avatar className="size-28 rounded-2xl ring-2 ring-primary/20">
+              <Avatar className="size-28 rounded-2xl ring-2 ring-border">
                 {currentAvatarSrc && (
                   <AvatarImage
                     src={currentAvatarSrc}
                     className="rounded-2xl object-cover"
                   />
                 )}
-                <AvatarFallback className="rounded-2xl bg-primary/10 text-primary text-2xl font-bold">
+                <AvatarFallback className="rounded-2xl text-2xl font-bold">
                   {displayInitials}
                 </AvatarFallback>
               </Avatar>
               {uploading && (
                 <div className="absolute inset-0 flex items-center justify-center bg-background/60 rounded-2xl">
-                  <Loader2 className="size-6 animate-spin text-primary" />
+                  <Loader2 className="size-6 animate-spin text-muted-foreground" />
                 </div>
               )}
             </div>
@@ -580,7 +576,7 @@ export function OnboardingModal({
                 className={cn(
                   "flex items-center gap-2 px-4 py-2.5 rounded-xl border transition-all duration-200 text-sm font-medium",
                   currentMode === "light"
-                    ? "border-primary/30 bg-primary/5 text-foreground shadow-sm"
+                    ? "text-foreground shadow-sm"
                     : "border-border/50 text-muted-foreground hover:bg-muted active:scale-[0.97]"
                 )}
               >
@@ -592,7 +588,7 @@ export function OnboardingModal({
                 className={cn(
                   "flex items-center gap-2 px-4 py-2.5 rounded-xl border transition-all duration-200 text-sm font-medium",
                   currentMode === "dark"
-                    ? "border-primary/30 bg-primary/5 text-foreground shadow-sm"
+                    ? "text-foreground shadow-sm"
                     : "border-border/50 text-muted-foreground hover:bg-muted active:scale-[0.97]"
                 )}
               >
@@ -656,7 +652,7 @@ export function OnboardingModal({
                   className={cn(
                     "flex flex-col items-center gap-1.5 p-1.5 rounded-xl transition-all duration-200",
                     selectedTheme === "custom"
-                      ? "ring-2 ring-primary/40 bg-primary/5 scale-[1.02]"
+                      ? "ring-2 ring-foreground scale-[1.02]"
                       : "hover:bg-muted/50 active:scale-[0.97]"
                   )}
                 >
@@ -693,13 +689,13 @@ export function OnboardingModal({
                     className={cn(
                       "relative flex flex-col items-start px-3 py-2.5 rounded-xl border transition-all duration-200 text-left",
                       selectedFont === font.id
-                        ? "border-primary/40 bg-primary/5 shadow-sm"
+                        ? "shadow-sm"
                         : "border-border/50 hover:bg-muted/50 hover:border-border active:scale-[0.97]"
                     )}
                   >
                     {selectedFont === font.id && (
-                      <div className="absolute top-2 right-2 size-4 rounded-full bg-primary/10 flex items-center justify-center">
-                        <Check className="size-2.5 text-primary" />
+                      <div className="absolute top-2 right-2 size-4 rounded-full flex items-center justify-center">
+                        <Check className="size-2.5 text-foreground" />
                       </div>
                     )}
                     <span
@@ -731,11 +727,11 @@ export function OnboardingModal({
                 {/* Live mini preview */}
                 <div className="flex items-center gap-1.5">
                   <div
-                    className="w-7 h-5 border-2 border-primary/30 bg-primary/8 transition-all duration-150"
+                    className="w-7 h-5 border-2 transition-all duration-150"
                     style={{ borderRadius: `${customRadius * 0.6}rem` }}
                   />
                   <div
-                    className="w-10 h-5 border-2 border-primary/30 bg-primary/8 transition-all duration-150"
+                    className="w-10 h-5 border-2 transition-all duration-150"
                     style={{ borderRadius: `${customRadius}rem` }}
                   />
                 </div>
