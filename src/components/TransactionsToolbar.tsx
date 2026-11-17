@@ -2,13 +2,17 @@ import { type RefObject } from "react";
 import {
   Building2,
   CalendarClock,
+  CheckSquare,
   Download,
   MoreHorizontal,
   RefreshCw,
+  Rows3,
   Search,
   SlidersHorizontal,
   X,
 } from "lucide-react";
+import { format } from "date-fns";
+import { es } from "date-fns/locale";
 import { Button } from "./ui/button";
 import { Input } from "./ui/input";
 import { Popover, PopoverContent, PopoverTrigger } from "./ui/popover";
@@ -16,6 +20,12 @@ import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
+  DropdownMenuRadioGroup,
+  DropdownMenuRadioItem,
+  DropdownMenuSeparator,
+  DropdownMenuSub,
+  DropdownMenuSubContent,
+  DropdownMenuSubTrigger,
   DropdownMenuTrigger,
 } from "./ui/dropdown-menu";
 import {
@@ -30,29 +40,33 @@ import { TRANSACTION_TYPES } from "@/lib/ledger";
 import { cn } from "@/lib/utils";
 
 /**
- * La barra de Transacciones: una línea, y una sola siempre.
+ * La barra de Movimientos: una línea, y una sola siempre, también en el celular.
  *
- * La versión anterior ponía nueve controles en fila, cuatro de ellos selects
- * que decían "Todas las X": el 60% del ancho para informar que no estaban
- * filtrando nada. Una fila de N controles siempre visibles es una promesa que
- * no se puede cumplir —el quinto filtro la parte en dos— así que acá la barra
- * muestra **estado**, no controles:
+ *   [buscador ───] [chips de lo activo] [Filtros ·2] [⋯]
  *
- *   [buscador ───] [chips de lo activo] [Fecha] [Filtros ·2] │ [acciones]
+ * Buscar es lo que se usa; Filtros guarda tipo, tarjeta, categoría y fecha (y
+ * su contador dice cuántos hay activos); lo que se toca una vez al mes —sync
+ * del banco, cuotas futuras, seleccionar, filas por página, exportar— vive en
+ * el menú "⋯".
  *
- * El único elemento elástico es el buscador (con piso). Los chips tienen
- * techo: del tercero en adelante colapsan en uno que dice cuántos hay, misma
- * regla que los avisos del inicio. Así la cantidad de casilleros de la línea
- * es fija pase lo que pase.
- *
- * `Fecha` queda suelto a propósito: su panel es un popover con presets y
- * calendario, y meterlo dentro del de Filtros sería anidar overlays.
+ * El único elemento elástico es el buscador. Los chips tienen techo: del
+ * tercero en adelante colapsan en uno que dice cuántos hay, misma regla que
+ * los avisos del inicio.
  */
 
 /** Chips visibles antes de colapsar al contador. Igual que HomeNotices. */
 const MAX_CHIPS = 2;
 
 const ALL = "all";
+
+const PAGE_SIZES = [10, 20, 50, 100];
+
+/** "3 nov – 9 nov", "Desde 3 nov", "Hasta 9 nov". */
+const dateLabel = ({ from, to }: DateRangeValue) => {
+  const d = (date: Date) => format(date, "d MMM", { locale: es });
+  if (from && to) return from.toDateString() === to.toDateString() ? d(from) : `${d(from)} – ${d(to)}`;
+  return from ? `Desde ${d(from)}` : `Hasta ${d(to!)}`;
+};
 
 export interface ToolbarCategory {
   name: string;
@@ -91,6 +105,12 @@ interface TransactionsToolbarProps {
   isSyncing: boolean;
   onSync: () => void;
   onExport: () => void;
+
+  selecting: boolean;
+  onSelectingChange: (value: boolean) => void;
+
+  pageSize: number;
+  onPageSizeChange: (value: number) => void;
 }
 
 /** Un filtro activo, con su forma de apagarse. */
@@ -165,10 +185,16 @@ export function TransactionsToolbar({
   isSyncing,
   onSync,
   onExport,
+  selecting,
+  onSelectingChange,
+  pageSize,
+  onPageSizeChange,
 }: TransactionsToolbarProps) {
-  // Los tres filtros que viven dentro del botón. La fecha no entra: se
-  // muestra suelta y trae su propio botón de limpiar.
+  // Los filtros que viven dentro del botón, fecha incluida.
   const active: ActiveFilter[] = [];
+  if (dateRange.from || dateRange.to) {
+    active.push({ key: "date", label: dateLabel(dateRange), clear: () => onDateRangeChange({}) });
+  }
   if (typeFilter !== ALL) {
     active.push({ key: "type", label: typeFilter, clear: () => onTypeFilterChange(ALL) });
   }
@@ -192,6 +218,7 @@ export function TransactionsToolbar({
   }
 
   const clearAll = () => {
+    onDateRangeChange({});
     onTypeFilterChange(ALL);
     onCardFilterChange(ALL);
     onCategoryFilterChange(ALL);
@@ -201,9 +228,9 @@ export function TransactionsToolbar({
     active.length > MAX_CHIPS ? [{ key: "all", label: `${active.length} filtros`, clear: clearAll }] : active;
 
   return (
-    <div className="flex flex-wrap items-center gap-2 sm:flex-nowrap">
-      {/* Buscar — el único elástico, con piso */}
-      <div className="relative min-w-[150px] flex-1">
+    <div className="flex items-center gap-2">
+      {/* Buscar — el único elástico */}
+      <div className="relative min-w-0 flex-1">
         <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
         <Input
           ref={searchRef}
@@ -254,14 +281,7 @@ export function TransactionsToolbar({
         </div>
       )}
 
-      {/* Fecha — suelto: su panel ya es un popover con presets y calendario */}
-      <DateRangeFilter
-        value={dateRange}
-        onChange={onDateRangeChange}
-        className="h-10 w-auto shrink-0 sm:w-[190px]"
-      />
-
-      {/* Filtros — tipo, tarjeta y categoría */}
+      {/* Filtros — fecha, tipo, tarjeta y categoría */}
       <Popover>
         <PopoverTrigger asChild>
           <Button
@@ -282,6 +302,14 @@ export function TransactionsToolbar({
           </Button>
         </PopoverTrigger>
         <PopoverContent align="end" className="w-[300px] space-y-3.5 p-3">
+          <FilterSection title="Fecha">
+            <DateRangeFilter
+              value={dateRange}
+              onChange={onDateRangeChange}
+              className="h-9 w-full sm:w-full"
+            />
+          </FilterSection>
+
           <FilterSection title="Tipo">
             <div className="flex flex-wrap gap-1.5">
               <OptionChip
@@ -389,49 +417,60 @@ export function TransactionsToolbar({
         </PopoverContent>
       </Popover>
 
-      <div className="mx-0.5 hidden h-6 w-px shrink-0 bg-border/60 sm:block" />
-
-      {/* Acciones */}
-      <Button
-        variant="outline"
-        size="sm"
-        className="h-10 shrink-0 gap-2"
-        onClick={onSync}
-      >
-        {isSyncing ? (
-          <RefreshCw className="h-4 w-4 animate-spin" />
-        ) : (
-          <Building2 className="h-4 w-4" />
-        )}
-        <span className="hidden xl:inline">
-          {isSyncing ? "Sincronizando..." : "Sync Banco"}
-        </span>
-      </Button>
-
-      {futureCount > 0 && (
-        <Button
-          variant={showFuture ? "secondary" : "outline"}
-          size="sm"
-          onClick={onToggleFuture}
-          className="h-10 shrink-0 gap-2"
-          title={`${futureCount} cuota${futureCount > 1 ? "s" : ""} futura${futureCount > 1 ? "s" : ""}`}
-        >
-          <CalendarClock className="h-4 w-4" />
-          <span className="font-mono text-xs tabular-nums">{futureCount}</span>
-          <span className="hidden xl:inline text-xs">
-            cuota{futureCount > 1 ? "s" : ""} futura{futureCount > 1 ? "s" : ""}
-          </span>
-        </Button>
-      )}
-
       {/* Lo que se toca una vez al mes */}
       <DropdownMenu>
         <DropdownMenuTrigger asChild>
-          <Button variant="outline" size="icon" className="h-10 w-10 shrink-0">
-            <MoreHorizontal className="h-4 w-4" />
+          <Button
+            variant="outline"
+            size="icon"
+            className="h-10 w-10 shrink-0"
+            aria-label={isSyncing ? "Más opciones (sincronizando)" : "Más opciones"}
+          >
+            {isSyncing ? (
+              <RefreshCw className="h-4 w-4 animate-spin" />
+            ) : (
+              <MoreHorizontal className="h-4 w-4" />
+            )}
           </Button>
         </DropdownMenuTrigger>
-        <DropdownMenuContent align="end">
+        <DropdownMenuContent align="end" className="min-w-[200px]">
+          <DropdownMenuItem onClick={() => onSelectingChange(!selecting)}>
+            <CheckSquare className="mr-2 h-4 w-4" />
+            {selecting ? "Terminar selección" : "Seleccionar"}
+          </DropdownMenuItem>
+          <DropdownMenuItem onClick={onSync}>
+            {isSyncing ? (
+              <RefreshCw className="mr-2 h-4 w-4 animate-spin" />
+            ) : (
+              <Building2 className="mr-2 h-4 w-4" />
+            )}
+            {isSyncing ? "Sincronizando..." : "Sync Banco"}
+          </DropdownMenuItem>
+          {futureCount > 0 && (
+            <DropdownMenuItem onClick={onToggleFuture}>
+              <CalendarClock className="mr-2 h-4 w-4" />
+              {showFuture ? "Ocultar" : "Ver"} {futureCount} cuota{futureCount > 1 ? "s" : ""} futura{futureCount > 1 ? "s" : ""}
+            </DropdownMenuItem>
+          )}
+          <DropdownMenuSeparator />
+          <DropdownMenuSub>
+            <DropdownMenuSubTrigger>
+              <Rows3 className="mr-2 h-4 w-4" />
+              {pageSize} por página
+            </DropdownMenuSubTrigger>
+            <DropdownMenuSubContent>
+              <DropdownMenuRadioGroup
+                value={String(pageSize)}
+                onValueChange={(value) => onPageSizeChange(Number(value))}
+              >
+                {PAGE_SIZES.map((size) => (
+                  <DropdownMenuRadioItem key={size} value={String(size)}>
+                    {size} filas
+                  </DropdownMenuRadioItem>
+                ))}
+              </DropdownMenuRadioGroup>
+            </DropdownMenuSubContent>
+          </DropdownMenuSub>
           <DropdownMenuItem onClick={onExport}>
             <Download className="mr-2 h-4 w-4" />
             Exportar CSV
