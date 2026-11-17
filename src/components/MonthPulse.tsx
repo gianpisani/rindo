@@ -490,52 +490,52 @@ export function MonthPulse({ open, onClose, initialMonth, transactions, categori
   );
 }
 
-// ─── Tarjeta de entrada (inicio) ─────────────────────────
-export function MonthPulseCard({ pace, onOpen, className }: { pace: MonthPace; onOpen: () => void; className?: string }) {
-  const { isPrivacyMode } = usePrivacyMode();
+// ─── El ritmo en la tarjeta del mes (inicio) ─────────────
+/** La frase del ritmo, en su color. Sin mes típico todavía, no hay frase. */
+export function PaceText({ pace, className }: { pace: MonthPace; className?: string }) {
+  if (!pace.typical) return null;
   const verdict = paceVerdict(pace);
-  const tone = TONE[verdict];
-  const W = 84;
-  const H = 32;
+  return (
+    <b className={className} style={{ color: verdict === "even" ? undefined : TONE[verdict] }}>
+      {verdict === "even"
+        ? "Justo en tu ritmo"
+        : `${clpShort(Math.abs(pace.delta))} ${verdict === "under" ? "bajo" : "sobre"} tu ritmo`}
+    </b>
+  );
+}
+
+/**
+ * El mini gráfico: tu gasto acumulado contra tu mes típico. Se estira al
+ * alto y ancho que le dé su caja (el trazo no se deforma); el punto de hoy
+ * va aparte para que siga redondo.
+ */
+export function PaceSpark({ pace, className }: { pace: MonthPace; className?: string }) {
+  const tone = TONE[paceVerdict(pace)];
+  const W = 100;
+  const H = 100;
   const maxV = Math.max(1, ...pace.me, ...(pace.typical?.median ?? []));
   const px = (d: number) => (d / pace.daysInMonth) * W;
-  const py = (v: number) => H - 2 - (v / maxV) * (H - 4);
+  const py = (v: number) => H - 4 - (v / maxV) * (H - 8);
   const days = (to: number) => Array.from({ length: to + 1 }, (_, d) => d);
 
-  const label = !pace.typical
-    ? `${clpShort(pace.spentSoFar)} gastados`
-    : verdict === "even"
-      ? "Justo en tu ritmo"
-      : `${clpShort(Math.abs(pace.delta))} ${verdict === "under" ? "bajo" : "sobre"} tu ritmo`;
-
   return (
-    <button
-      onClick={onOpen}
-      className={cn(
-        "group flex w-full items-center gap-3 rounded-xl border border-border px-4 py-3 text-left transition-all hover:bg-muted",
-        className
-      )}
-    >
-      <svg width={W} height={H} className="shrink-0 overflow-visible">
+    <span className={cn("relative block", className)} aria-hidden>
+      <svg viewBox={`0 0 ${W} ${H}`} preserveAspectRatio="none" className="absolute inset-0 size-full overflow-visible">
         {pace.typical && (
           <path
             d={linePath(days(pace.daysInMonth).map((d) => [px(d), py(pace.typical!.median[d])]))}
-            fill="none" stroke={MUTED} strokeWidth={1.25} strokeDasharray="3 3" opacity={0.6}
+            fill="none" stroke={MUTED} strokeWidth={1.25} strokeDasharray="3 3" opacity={0.6} vectorEffect="non-scaling-stroke"
           />
         )}
         <path
           d={linePath(days(pace.asOfDay).map((d) => [px(d), py(pace.me[d])]))}
-          fill="none" stroke={tone} strokeWidth={2} strokeLinecap="round" strokeLinejoin="round"
+          fill="none" stroke={tone} strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" vectorEffect="non-scaling-stroke"
         />
-        <circle cx={px(pace.asOfDay)} cy={py(pace.me[pace.asOfDay])} r={3} fill={tone} />
       </svg>
-      <div className="min-w-0 flex-1">
-        <p className="text-[13px] font-semibold text-muted-foreground leading-none">Tu mes</p>
-        <p className={cn("mt-1 text-sm font-bold leading-tight", isPrivacyMode && "privacy-blur")} style={{ color: verdict === "even" ? undefined : tone }}>
-          {label}
-        </p>
-      </div>
-      <ChevronRight className="size-4 shrink-0 text-muted-foreground transition-transform group-hover:translate-x-0.5" />
-    </button>
+      <i
+        className="absolute size-1.5 -translate-x-1/2 -translate-y-1/2 rounded-full"
+        style={{ left: `${px(pace.asOfDay)}%`, top: `${py(pace.me[pace.asOfDay])}%`, background: tone }}
+      />
+    </span>
   );
 }

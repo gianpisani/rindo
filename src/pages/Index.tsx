@@ -16,13 +16,12 @@ import { dayOfPeriod, periodEndOf, periodIndex, periodNameDate, periodStartOf, s
 import {
   useRealFlows,
   computeRealFlows,
-  computeLedger,
   DEFAULT_TRANSIT_CATEGORIES,
   SWEEP_ALERT_THRESHOLD,
   type RealFlowsConfig,
 } from "@/hooks/useRealFlows";
 import { summarizeCategoryPeriod } from "@/lib/category-spending";
-import { PiggyBank, Receipt, Play } from "lucide-react";
+import { PiggyBank, Receipt, ChevronRight } from "lucide-react";
 import { BankSyncModal } from "@/components/BankSyncModal";
 import { useBankSyncContext } from "@/contexts/BankSyncContext";
 import { useNavigate } from "react-router-dom";
@@ -32,7 +31,7 @@ import { es } from "date-fns/locale";
 import { cn } from "@/lib/utils";
 import NumberFlow from "@number-flow/react";
 import { usePrivacyMode } from "@/hooks/usePrivacyMode";
-import { MonthPulse, MonthPulseCard } from "@/components/MonthPulse";
+import { MonthPulse, PaceSpark, PaceText } from "@/components/MonthPulse";
 import { TxSheet, type TxSheetData } from "@/components/finanzas/TxSheet";
 import { computeMonthPace } from "@/lib/month-pace";
 import { HomeNotices, type HomeNotice } from "@/components/HomeNotices";
@@ -41,10 +40,10 @@ import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import { ANALYZING_CATEGORY } from "@/lib/auto-category-policy";
 
 /*
- * Inicio: ¿cómo voy este mes? Lo líquido, en qué se va la plata, los límites
- * y lo que va llegando. Cada categoría abre sus movimientos para corregirlos
- * ahí mismo. La historia (patrimonio, mes a mes, tendencias) vive en Finanzas,
- * y anotar a mano, en Movimientos.
+ * Inicio: ¿cómo voy este mes? Lo gastado y el ritmo, en qué se va la plata,
+ * los límites y lo que va llegando. Cada categoría abre sus movimientos para
+ * corregirlos ahí mismo. La historia (patrimonio, el líquido, mes a mes,
+ * tendencias) vive en Finanzas, y anotar a mano, en Movimientos.
  */
 
 const BANK_LOGOS = ["/banks/bchile.png", "/banks/santander.png", "/banks/bci.png", "/banks/bestado.png", "/banks/itau.png"];
@@ -78,7 +77,7 @@ const Index = () => {
   const { categories } = useCategories();
   const { limits } = useCategoryLimits();
   const navigate = useNavigate();
-  const { openProfileEdit, openPeriodSettings, openReconciliation } = useGlobalDrawers();
+  const { openProfileEdit, openPeriodSettings } = useGlobalDrawers();
   const { isPrivacyMode } = usePrivacyMode();
   const [storyOpen, setStoryOpen] = useState(false);
   const [isBankSyncOpen, setIsBankSyncOpen] = useState(false);
@@ -125,9 +124,6 @@ const Index = () => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
     [transactions, lastMonth.getTime(), flowConfig]
   );
-
-  // Lo líquido: lo que puedo gastar hoy. Excluye tránsito y su devolución.
-  const { liquido } = useMemo(() => computeLedger(transactions), [transactions]);
 
   // Detector de sweep: mes cerrado con ahorro sin invertir, visible los
   // primeros días del mes (solo si el usuario ya opera con meta de ahorro)
@@ -438,35 +434,31 @@ const Index = () => {
                   Sincronizar{lastSync && <small className="inicio-since">{sinceLabel(lastSync)}</small>}
                 </span>
               </button>
-              {hasPace && (
-                <button className="inicio-pulse-pill" onClick={() => setStoryOpen(true)}>
-                  <Play size={10} strokeWidth={2.5} fill="currentColor" aria-hidden />Tu mes
-                </button>
-              )}
             </div>
           </header>
 
-          {/* Líquido: el número con el que se decide si se puede gastar. El
-              patrimonio y lo invertido son historia: viven en Finanzas. */}
+          {/* El mes: lo gastado y cómo va contra tu mes típico. Es el mismo
+              total que reparte "Por categoría". Lo que entró y lo invertido,
+              chico. El líquido es historia: vive en Finanzas. */}
           <section className="inicio-card inicio-money">
             <div className="inicio-money-top">
-              <span className="inicio-title">Líquido</span>
+              <span className="inicio-title">Gastado</span>
               <button className="inicio-month" onClick={() => openPeriodSettings()} title="Configurar mes financiero">
                 {period.isCalendar ? format(now, "MMMM yyyy", { locale: es }) : period.rangeLabel(thisPeriod)}
               </button>
             </div>
-            {/* Si no calza con el banco, tocarlo concilia */}
-            <button
-              className={cn("inicio-big", isPrivacyMode && "privacy-blur")}
-              onClick={() => openReconciliation()}
-              title="Conciliar con tu banco"
-            >
-              $<NumberFlow
-                value={liquido}
-                format={{ style: "decimal", minimumFractionDigits: 0, maximumFractionDigits: 0 }}
-                locales="es-CL"
-              />
-            </button>
+            <span className={cn("inicio-big", isPrivacyMode && "privacy-blur")}>
+              <NumberFlow value={monthExpenses} format={{ style: "currency", currency: "CLP", maximumFractionDigits: 0 }} locales="es-CL" />
+            </span>
+            {hasPace && (
+              <button className="inicio-pace" onClick={() => setStoryOpen(true)}>
+                <span className="inicio-pace-text">
+                  <PaceText pace={monthPace} className={cn(isPrivacyMode && "privacy-blur")} />
+                  <small>Tu mes<ChevronRight aria-hidden /></small>
+                </span>
+                <PaceSpark pace={monthPace} className="inicio-spark" />
+              </button>
+            )}
             <div className={cn("inicio-flows", isPrivacyMode && "privacy-blur")}>
               <span className="inicio-flow" style={{ color: "var(--inicio-emerald)" }}>
                 <NumberFlow value={currentFlows.ingresoReal} prefix="+" format={{ style: "currency", currency: "CLP", maximumFractionDigits: 0 }} locales="es-CL" />
@@ -481,16 +473,11 @@ const Index = () => {
             </div>
           </section>
 
-          {/* Gastos del mes: una barra fina en el color de cada categoría.
-              En celular, una sola barra apilada con su leyenda. Tocar una
-              categoría abre sus movimientos. */}
+          {/* Por categoría: el total ya está en la tarjeta del mes. Una barra
+              fina en el color de cada categoría; en celular, una sola barra
+              apilada con su leyenda. Tocar una categoría abre sus movimientos. */}
           <section className="inicio-card inicio-spend">
-            <div className="inicio-spend-head">
-              <span className="inicio-title">Gastos del mes</span>
-              <span className={cn("inicio-num", isPrivacyMode && "privacy-blur")}>
-                <NumberFlow value={monthExpenses} format={{ style: "currency", currency: "CLP", maximumFractionDigits: 0 }} locales="es-CL" />
-              </span>
-            </div>
+            <span className="inicio-title">Por categoría</span>
             {spendBreakdown.length === 0 ? (
               <div className="inicio-empty">Sin gastos este mes</div>
             ) : (
@@ -563,7 +550,7 @@ const Index = () => {
             <div className="inicio-scroll inicio-list-limits">{limitsSummary}{limitsList}</div>
           </section>
 
-          {/* Límites a toda la altura, con el pulso del mes al pie */}
+          {/* Límites a toda la altura */}
           <aside className="inicio-card inicio-limits">
             <div className="inicio-panel-head">
               <span className="inicio-title">
@@ -577,13 +564,6 @@ const Index = () => {
             </div>
             {limitsSummary}
             <div className="inicio-scroll">{limitsList}</div>
-            {hasPace && (
-              <MonthPulseCard
-                pace={monthPace}
-                onOpen={() => setStoryOpen(true)}
-                className="shrink-0 rounded-none border-0 border-t px-[18px]"
-              />
-            )}
           </aside>
         </div>
 
