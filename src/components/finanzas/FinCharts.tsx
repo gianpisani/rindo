@@ -136,11 +136,12 @@ export function CategoryHistory({ points, color, privacy }: {
   );
 }
 
-export function Spark({ values, color }: { values: number[]; color: string }) {
+/** La tendencia de una categoría: un solo tono neutro, el mes en curso más marcado. */
+export function Spark({ values }: { values: number[] }) {
   const max = Math.max(1, ...values);
   return (
     <span className="fin-spark" aria-hidden="true">
-      {values.map((v, i) => <i key={i} style={{ height: `max(1px, ${(v / max) * 100}%)`, background: color, animationDelay: `${i * 18}ms` }} />)}
+      {values.map((v, i) => <i key={i} style={{ height: `max(1px, ${(v / max) * 100}%)`, animationDelay: `${i * 18}ms` }} />)}
     </span>
   );
 }

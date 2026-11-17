@@ -33,6 +33,8 @@ interface CategoryComposerProps {
   initialName?: string;
   /** Con tipo fijo la categoría nace de ese tipo y no se ofrece cambiarlo. */
   fixedType?: TransactionType;
+  /** Tipo con el que abre al crear; a diferencia de fixedType, se puede cambiar. */
+  initialType?: TransactionType;
   /** Muestra "Qué incluye" y "En uso" (solo si el perfil ya usa ese contexto). */
   withContext?: boolean;
   pending?: boolean;
@@ -65,6 +67,7 @@ export function CategoryComposer({
   category,
   initialName = "",
   fixedType,
+  initialType,
   withContext = false,
   pending = false,
   onSave,
@@ -89,7 +92,7 @@ export function CategoryComposer({
   useEffect(() => {
     if (!open) return;
     setName(category?.name ?? initialName);
-    setType(fixedType ?? category?.type ?? "Gasto");
+    setType(fixedType ?? category?.type ?? initialType ?? "Gasto");
     setColor(category?.color || DEFAULT_COLOR);
     setIcon(category?.icon || DEFAULT_ICON);
     setDescription(category?.description ?? "");
@@ -97,7 +100,7 @@ export function CategoryComposer({
     setEmojiOpen(false);
     setExpanded(false);
     setError("");
-  }, [open, category, initialName, fixedType]);
+  }, [open, category, initialName, fixedType, initialType]);
 
   const submit = async (event: React.FormEvent) => {
     event.preventDefault();
