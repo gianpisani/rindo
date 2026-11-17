@@ -3,7 +3,7 @@ import { useTheme } from "next-themes";
 import { useUserProfile } from "./useUserProfile";
 
 // ── Full palette definition ─────────────────────────────────────────
-interface PaletteVars {
+export interface PaletteVars {
   background: string;
   foreground: string;
   card: string;
@@ -13,7 +13,6 @@ interface PaletteVars {
   mutedForeground: string;
   border: string;
   input: string;
-  ring: string;
   sidebar: string;
   sidebarBorder: string;
   /** Tono OKLCH del acento — de acá salen los colores de los gráficos. */
@@ -47,61 +46,13 @@ export const FONT_OPTIONS = [
   { id: "bricolage", name: "Bricolage", family: "'Bricolage Grotesque', sans-serif" },
 ];
 
-// ── El punto más vivo de cada tono ──────────────────────────────────
-// Un tema apagado casi nunca es culpa del tono: es culpa de la
-// luminosidad. En OKLCH cada tono alcanza su chroma máximo dentro de sRGB
-// a una L distinta — el rosa cerca de 0.63, el amarillo cerca de 0.97, el
-// azul recién en 0.45. Fijar la misma L para todos (lo que hacía la
-// versión anterior con 0.7) condena al azul y al violeta a un chroma que
-// la pantalla ni se molesta en mostrar. Así que primero buscamos ese
-// punto — el "cusp" del tono — y recién después elegimos la L final.
+// ── Color en OKLCH ──────────────────────────────────────────────────
+// Un tema es un tono repartido en dos dosis: un susurro en los neutros
+// (fondo, tarjetas, bordes, texto) para que la app entera se sienta de
+// ese color sin volverse caramelo, y un acento firme —no chillón— para
+// la navegación activa y los gráficos.
 
 const RAD = Math.PI / 180;
-
-function srgbToLinear(c: number): number {
-  return c <= 0.04045 ? c / 12.92 : Math.pow((c + 0.055) / 1.055, 2.4);
-}
-
-/** sRGB (0–1, con gamma) → OKLCH. Matrices de Oklab (Ottosson). */
-function rgbToOklch(r: number, g: number, b: number) {
-  const lr = srgbToLinear(r), lg = srgbToLinear(g), lb = srgbToLinear(b);
-  const l = Math.cbrt(0.4122214708 * lr + 0.5363325363 * lg + 0.0514459929 * lb);
-  const m = Math.cbrt(0.2119034982 * lr + 0.6806995451 * lg + 0.1073969566 * lb);
-  const s = Math.cbrt(0.0883024619 * lr + 0.2817188376 * lg + 0.6299787005 * lb);
-  const L = 0.2104542553 * l + 0.793617785 * m - 0.0040720468 * s;
-  const A = 1.9779984951 * l - 2.428592205 * m + 0.4505937099 * s;
-  const B = 0.0259040371 * l + 0.7827717662 * m - 0.808675766 * s;
-  return { L, C: Math.hypot(A, B), h: ((Math.atan2(B, A) / RAD) % 360 + 360) % 360 };
-}
-
-/** hsl(h 100% 50%) → sRGB: la arista más saturada del cubo para ese tono. */
-function pureHue(h: number): [number, number, number] {
-  const k = (n: number) => (n + h / 30) % 12;
-  const f = (n: number) => 0.5 - 0.5 * Math.max(-1, Math.min(k(n) - 3, 9 - k(n), 1));
-  return [f(0), f(8), f(4)];
-}
-
-/** Diferencia angular más corta, en (-180, 180]. */
-function hueDelta(a: number, b: number): number {
-  return ((a - b + 540) % 360) - 180;
-}
-
-/**
- * Luminosidad del cusp: la L a la que el tono alcanza su chroma máximo en
- * sRGB. El tono de HSL y el de OKLCH no coinciden (hsl 240 no es oklch
- * 240), así que iteramos sobre la diferencia hasta caer en el tono pedido
- * — tres pasos dejan el error muy por debajo del grado.
- */
-function cuspLightness(hueTarget: number): number {
-  const h = ((hueTarget % 360) + 360) % 360;
-  let hHsl = h;
-  let c = rgbToOklch(...pureHue(hHsl));
-  for (let i = 0; i < 3; i++) {
-    hHsl = (hHsl + hueDelta(h, c.h) + 360) % 360;
-    c = rgbToOklch(...pureHue(hHsl));
-  }
-  return c.L;
-}
 
 /** OKLCH → sRGB lineal, sin gamma: alcanza para saber si el color entra. */
 function oklchToLinearRgb(L: number, C: number, h: number): [number, number, number] {
@@ -116,12 +67,7 @@ function oklchToLinearRgb(L: number, C: number, h: number): [number, number, num
   ];
 }
 
-/**
- * Chroma máximo que entra en sRGB a esa luminosidad y ese tono. Búsqueda
- * binaria sobre el borde real del gamut: aproximarlo por un triángulo se
- * pasa justo en los tonos que más nos importan (verde, magenta) y termina
- * dejando que el navegador recorte por su cuenta.
- */
+/** Chroma máximo que entra en sRGB a esa luminosidad y ese tono. */
 function maxChroma(L: number, h: number): number {
   let lo = 0, hi = 0.45;
   for (let i = 0; i < 18; i++) {
@@ -132,18 +78,9 @@ function maxChroma(L: number, h: number): number {
   return +lo.toFixed(4);
 }
 
-const clamp = (v: number, min: number, max: number) => Math.min(max, Math.max(min, v));
-
-/** El acento del tono h, tan saturado como se pueda dentro de la banda de L legible. */
-function vividAccent(h: number, minL: number, maxL: number) {
-  const L = +clamp(cuspLightness(h), minL, maxL).toFixed(3);
-  const C = maxChroma(L, h);
-  return { L, C, css: `oklch(${L} ${C} ${+h.toFixed(1)})` };
-}
-
 /** Luminancia relativa (WCAG) de un color OKLCH. */
 function relLuminance(L: number, C: number, h: number): number {
-  const [r, g, b] = oklchToLinearRgb(L, C, h).map((v) => clamp(v, 0, 1));
+  const [r, g, b] = oklchToLinearRgb(L, C, h).map((v) => Math.min(1, Math.max(0, v)));
   return 0.2126 * r + 0.7152 * g + 0.0722 * b;
 }
 
@@ -152,100 +89,115 @@ function contrast(a: number, b: number): number {
   return (hi + 0.05) / (lo + 0.05);
 }
 
-// El acento vive en una banda de luminosidad angosta: sobre negro puede
-// irse más arriba que sobre blanco sin dejar de contrastar con el fondo.
-const DARK_ACCENT_BAND: [number, number] = [0.62, 0.82];
-const LIGHT_ACCENT_BAND: [number, number] = [0.48, 0.72];
-// El texto sobre el acento sigue la regla de Rindo — casi blanco, como en
-// el rosa original, que apenas pasa de 3:1. Solo se da vuelta a negro
-// cuando el tono es tan luminoso que el blanco directamente no se lee.
-const MIN_ON_ACCENT_CONTRAST = 3.1;
+const ok = (L: number, C: number, h: number) => `oklch(${L} ${C} ${h})`;
 
 /**
- * Genera la paleta completa de un tono.
- *
- * La forma es la de Rindo y no se negocia: superficies casi neutras —
- * negro real en oscuro, blanco real en claro, apenas teñidas del tono
- * para que el tema se sienta— y UN acento a chroma máximo. El contraste
- * brutal entre esas dos cosas es lo que hace que el rosa se vea vivo, y
- * es lo que cada tono hereda acá.
+ * Luz y tono de cada superficie, iguales para todos los temas: ningún
+ * tema queda más oscuro ni con menos contraste que otro. El segundo
+ * número es cuánto tono lleva: un susurro en el fondo, casi nada en las
+ * tarjetas (se levantan del fondo por luz, no por color) y algo más en
+ * el texto secundario para que no sea gris sobre gris. Medido: texto y
+ * texto secundario pasan 4.5:1 sobre fondo, tarjeta y muted en ambos modos.
+ */
+const SURFACES = {
+  light: {
+    background: [0.962, 0.012],
+    card: [0.993, 0.004],
+    sidebar: [0.948, 0.014],
+    muted: [0.928, 0.016],
+    border: [0.878, 0.018],
+    foreground: [0.22, 0.022],
+    mutedForeground: [0.475, 0.035],
+    accentL: 0.54,
+    accentMaxC: 0.15,
+  },
+  dark: {
+    background: [0.185, 0.016],
+    card: [0.225, 0.018],
+    sidebar: [0.165, 0.016],
+    muted: [0.275, 0.02],
+    border: [0.32, 0.022],
+    foreground: [0.955, 0.008],
+    mutedForeground: [0.735, 0.03],
+    accentL: 0.74,
+    accentMaxC: 0.14,
+  },
+} as const;
+
+/**
+ * La paleta completa de un tono. `accentHue` deja que un tema tenga
+ * neutros de un tono y acento de un vecino (arena con acento ocre);
+ * por defecto son el mismo.
  */
 export function generatePaletteFromHue(
   hue: number,
-  mode: "light" | "dark"
+  mode: "light" | "dark",
+  accentHue: number = hue
 ): PaletteVars {
   const h = +(((hue % 360) + 360) % 360).toFixed(1);
-  // El ring corre el tono unos grados: el gradiente de la muestra vive
-  // entre el primary y el ring, y ese corrimiento es lo que lo hace brillar.
-  const hRing = (h + 26) % 360;
-  const band = mode === "dark" ? DARK_ACCENT_BAND : LIGHT_ACCENT_BAND;
-  const primary = vividAccent(h, band[0], band[1]);
-  const ring = vividAccent(hRing, band[0], band[1]);
-  const onAccent =
-    contrast(relLuminance(primary.L, primary.C, h), relLuminance(0.98, 0.015, h)) <
-    MIN_ON_ACCENT_CONTRAST
-      ? `oklch(0.16 0.04 ${h})`
-      : `oklch(0.98 0.015 ${h})`;
+  const ah = +(((accentHue % 360) + 360) % 360).toFixed(1);
+  const s = SURFACES[mode];
+  const surface = ([L, C]: readonly [number, number]) => ok(L, C, h);
 
-  if (mode === "light") {
-    return {
-      background: `oklch(0.965 0.004 ${h})`,
-      foreground: `oklch(0.13 0.012 ${h})`,
-      card: `oklch(0.995 0.002 ${h})`,
-      primary: primary.css,
-      primaryForeground: onAccent,
-      muted: `oklch(0.935 0.008 ${h})`,
-      mutedForeground: `oklch(0.42 0.02 ${h})`,
-      border: `oklch(0.855 0.012 ${h})`,
-      input: `oklch(0.855 0.012 ${h})`,
-      ring: ring.css,
-      sidebar: `oklch(0.955 0.006 ${h})`,
-      sidebarBorder: `oklch(0.855 0.012 ${h})`,
-      hue: h,
-    };
-  }
+  const accentC = Math.min(s.accentMaxC, maxChroma(s.accentL, ah));
+  const accentY = relLuminance(s.accentL, accentC, ah);
+  // Texto sobre el acento: claro u oscuro, el que más contraste.
+  const light = ok(0.985, 0.01, ah);
+  const dark = ok(0.2, 0.03, ah);
+  const onAccent =
+    contrast(accentY, relLuminance(0.985, 0.01, ah)) >=
+    contrast(accentY, relLuminance(0.2, 0.03, ah))
+      ? light
+      : dark;
+
   return {
-    background: `oklch(0.098 0.008 ${h})`,
-    foreground: `oklch(0.985 0.004 ${h})`,
-    card: `oklch(0.141 0.011 ${h})`,
-    primary: primary.css,
+    background: surface(s.background),
+    foreground: surface(s.foreground),
+    card: surface(s.card),
+    primary: ok(s.accentL, accentC, ah),
     primaryForeground: onAccent,
-    muted: `oklch(0.21 0.014 ${h})`,
-    mutedForeground: `oklch(0.705 0.024 ${h})`,
-    border: `oklch(0.28 0.016 ${h})`,
-    input: `oklch(0.25 0.016 ${h})`,
-    ring: ring.css,
-    sidebar: `oklch(0.12 0.011 ${h})`,
-    sidebarBorder: `oklch(0.25 0.016 ${h})`,
-    hue: h,
+    muted: surface(s.muted),
+    mutedForeground: surface(s.mutedForeground),
+    border: surface(s.border),
+    input: surface(s.border),
+    sidebar: surface(s.sidebar),
+    sidebarBorder: surface(s.border),
+    hue: ah,
   };
 }
 
 // ── Theme presets ───────────────────────────────────────────────────
-// Un preset ya no es una paleta escrita a mano: es un tono. Todo lo demás
-// —el negro de las superficies, la saturación del acento, el gradiente—
-// sale de la misma fórmula que el slider custom, así que ningún tema
-// puede quedarse a medio camino. Los tonos están repartidos por la rueda
-// para que ninguno se confunda con el vecino ni con el rosa de Rindo.
+// Seis tonos repartidos por la rueda. Los ids retirados apuntan al
+// vecino más parecido, así nadie pierde el tema que tenía guardado.
 
-const PRESET_HUES: { id: string; name: string; hue: number }[] = [
-  { id: "atardecer", name: "Atardecer", hue: 45 },
-  { id: "arena", name: "Arena", hue: 85 },
-  { id: "bosque", name: "Bosque", hue: 148 },
-  { id: "artico", name: "Ártico", hue: 196 },
-  { id: "oceano", name: "Océano", hue: 240 },
-  { id: "medianoche", name: "Medianoche", hue: 275 },
+const PRESETS: { id: string; name: string; hue: number; accentHue?: number }[] = [
+  { id: "atardecer", name: "Atardecer", hue: 45, accentHue: 38 },
+  { id: "arena", name: "Arena", hue: 80, accentHue: 65 },
+  { id: "bosque", name: "Bosque", hue: 150 },
+  { id: "artico", name: "Ártico", hue: 205 },
+  { id: "oceano", name: "Océano", hue: 255 },
   { id: "lavanda", name: "Lavanda", hue: 305 },
-  { id: "cereza", name: "Cereza", hue: 340 },
 ];
 
-export const THEME_PRESETS: ThemePreset[] = PRESET_HUES.map(({ id, name, hue }) => ({
+const RETIRED_PRESETS: Record<string, string> = {
+  medianoche: "oceano",
+  cereza: "lavanda",
+};
+
+export const THEME_PRESETS: ThemePreset[] = PRESETS.map(({ id, name, hue, accentHue }) => ({
   id,
   name,
   hue,
-  light: generatePaletteFromHue(hue, "light"),
-  dark: generatePaletteFromHue(hue, "dark"),
+  light: generatePaletteFromHue(hue, "light", accentHue),
+  dark: generatePaletteFromHue(hue, "dark", accentHue),
 }));
+
+/** El preset de un id guardado, incluidos los retirados. */
+export function findPreset(id: string | null | undefined): ThemePreset | undefined {
+  if (!id) return undefined;
+  const resolved = RETIRED_PRESETS[id] ?? id;
+  return THEME_PRESETS.find((t) => t.id === resolved);
+}
 
 // ── CSS variable names to override ──────────────────────────────────
 
@@ -323,13 +275,12 @@ function applyPalette(root: HTMLElement, p: PaletteVars) {
   // Update meta theme-color for browser/PWA chrome
   setMetaThemeColor(p.sidebar);
 
-  // Los gráficos son el mismo acento escalonado en luminosidad, cada
-  // escalón tan saturado como permita su altura: una rampa viva, no cinco
-  // grises teñidos.
+  // Los gráficos son el mismo acento escalonado en luminosidad, con el
+  // mismo tope de saturación que el acento: una rampa firme, no caramelo.
   [0.84, 0.73, 0.62, 0.51, 0.41].forEach((L, i) => {
     root.style.setProperty(
       `--chart-${i + 1}`,
-      `oklch(${L} ${maxChroma(L, p.hue)} ${p.hue})`
+      `oklch(${L} ${Math.min(0.15, maxChroma(L, p.hue))} ${p.hue})`
     );
   });
 }
@@ -356,7 +307,7 @@ export function applyThemePreview(
     return;
   }
 
-  const preset = THEME_PRESETS.find((t) => t.id === themeId);
+  const preset = findPreset(themeId);
   if (!preset) {
     clearAllOverrides(root);
     return;
@@ -442,7 +393,7 @@ export function useCustomTheme() {
       const mode = resolvedTheme === "dark" ? "dark" : "light";
       applyPalette(root, generatePaletteFromHue(customSettings.hue, mode));
     } else if (themeId) {
-      const preset = THEME_PRESETS.find((t) => t.id === themeId);
+      const preset = findPreset(themeId);
       if (preset) {
         const palette =
           resolvedTheme === "dark" ? preset.dark : preset.light;

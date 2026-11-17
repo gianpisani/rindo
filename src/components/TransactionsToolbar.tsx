@@ -246,7 +246,7 @@ export function TransactionsToolbar({
           <Button
             variant="ghost"
             size="icon"
-            className="absolute right-1 top-1/2 size-7 -translate-y-1/2"
+            className="absolute right-0.5 top-1/2 size-9 -translate-y-1/2"
             aria-label="Limpiar búsqueda"
             onClick={() => onSearchChange("")}
           >
@@ -361,7 +361,7 @@ export function TransactionsToolbar({
             <Command className="rounded-card border">
               <CommandInput placeholder="Buscar categoría..." className="h-9" />
               <CommandList className="max-h-[168px]">
-                <CommandEmpty className="py-4 text-center text-xs text-muted-foreground">
+                <CommandEmpty className="p-4 text-center text-sm text-muted-foreground">
                   Sin resultados
                 </CommandEmpty>
                 <CommandItem

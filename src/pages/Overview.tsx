@@ -3,6 +3,7 @@ import { format } from "date-fns";
 import { es } from "date-fns/locale";
 import Layout from "@/components/Layout";
 import { Skeleton } from "@/components/ui/skeleton";
+import { EmptyState } from "@/components/EmptyState";
 import { InvestmentMoveDrawer } from "@/components/InvestmentMoveDrawer";
 import { TxSheet, type TxSheetData } from "@/components/finanzas/TxSheet";
 import { CategoryHistory, MonthBars, Spark, WorthChart } from "@/components/finanzas/FinCharts";
@@ -277,7 +278,7 @@ export default function Overview() {
               <span className="inicio-num">promedio al mes</span>
             </div>
             {loading ? cardSkeleton : trends.length === 0 ? (
-              <div className="fin-empty">Sin gastos todavía</div>
+              <EmptyState>Sin gastos todavía</EmptyState>
             ) : (
               <div className="inicio-scroll">{trendRows}</div>
             )}

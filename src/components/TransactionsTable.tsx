@@ -45,11 +45,10 @@ import {
   ChevronLeft,
   ChevronRight,
   Minimize2,
-  SearchX,
-  Inbox,
   ArrowDownToLine,
   LineChart,
 } from "lucide-react";
+import { EmptyState } from "@/components/EmptyState";
 import { Transaction } from "@/hooks/useTransactions";
 import {
   TRANSACTION_TYPES,
@@ -427,29 +426,11 @@ function SortHeader({ column, label, alignEnd }: { column: Column<Transaction>; 
 
 // ── Empty state ──────────────────────────────────────────────────────────
 
-function EmptyState({ hasFilters, onClear }: { hasFilters: boolean; onClear: () => void }) {
-  const Icon = hasFilters ? SearchX : Inbox;
-  return (
-    <div className="flex flex-col items-center gap-3 py-12 text-center">
-      <div className="flex h-12 w-12 items-center justify-center rounded-full">
-        <Icon className="h-5 w-5" />
-      </div>
-      <div className="space-y-1">
-        <p className="text-sm font-medium">
-          {hasFilters ? "Nada con estos filtros" : "Sin movimientos todavía"}
-        </p>
-        <p className="text-xs text-muted-foreground">
-          {hasFilters
-            ? "Prueba ajustar la búsqueda o los filtros"
-            : "Agrega la primera con el botón + o la tecla N"}
-        </p>
-      </div>
-      {hasFilters && (
-        <Button variant="ghost" size="xs" onClick={onClear}>
-          Limpiar filtros
-        </Button>
-      )}
-    </div>
+function TableEmpty({ hasFilters, onClear }: { hasFilters: boolean; onClear: () => void }) {
+  return hasFilters ? (
+    <EmptyState action={{ label: "Limpiar filtros", onClick: onClear }}>Nada con estos filtros</EmptyState>
+  ) : (
+    <EmptyState>Sin movimientos todavía: agrega el primero con + o la tecla N</EmptyState>
   );
 }
 
@@ -493,7 +474,7 @@ function CategoryCombobox({ value, options, onSave, trigger, placeholder = "Busc
             className="h-8 text-xs border-0 ring-0 focus:ring-0"
           />
           <CommandList>
-            <CommandEmpty className="py-3 text-center text-xs text-muted-foreground">
+            <CommandEmpty className="p-4 text-center text-sm text-muted-foreground">
               Sin resultados
             </CommandEmpty>
             <CommandGroup>
@@ -929,7 +910,7 @@ export function TransactionsTable({
               <Button
                 variant="ghost"
                 size="icon"
-                className="size-8 opacity-40 hover:opacity-100"
+                className="size-9 opacity-40 hover:opacity-100"
                 onClick={(e) => e.stopPropagation()}
               >
                 <MoreHorizontal className="h-4 w-4" />
@@ -1296,7 +1277,7 @@ export function TransactionsTable({
               {/* Count badge */}
               <button
                 onClick={() => setPanelExpanded(true)}
-                className="w-8 h-8 rounded-full bg-muted text-foreground flex items-center justify-center text-xs font-medium transition-colors"
+                className="size-9 rounded-full bg-muted text-foreground flex items-center justify-center text-xs font-medium transition-colors"
               >
                 {selectedIds.length}
               </button>
@@ -1304,7 +1285,7 @@ export function TransactionsTable({
               {/* Expand arrow */}
               <button
                 onClick={() => setPanelExpanded(true)}
-                className="p-0.5 transition-colors"
+                className="size-9 grid place-items-center"
               >
                 <ChevronRight className="h-3.5 w-3.5 rotate-180" />
               </button>
@@ -1336,7 +1317,7 @@ export function TransactionsTable({
                   seleccionada{selectedIds.length > 1 ? "s" : ""}
                 </span>
                 <div className="flex-1" />
-                <Button variant="ghost" size="icon" className="size-7" aria-label="Minimizar" onClick={() => setPanelExpanded(false)}>
+                <Button variant="ghost" size="icon" className="size-9" aria-label="Minimizar" onClick={() => setPanelExpanded(false)}>
                   <Minimize2 />
                 </Button>
               </div>
@@ -1461,7 +1442,7 @@ export function TransactionsTable({
       {isMobile ? (
         <div className="mobile-tx-list">
           {table.getRowModel().rows.length === 0 ? (
-            <EmptyState hasFilters={hasActiveFilters} onClear={clearFilters} />
+            <TableEmpty hasFilters={hasActiveFilters} onClear={clearFilters} />
           ) : groupedRows ? (
             groupedRows.map((group) => (
               <React.Fragment key={group.dayKey}>
@@ -1504,7 +1485,7 @@ export function TransactionsTable({
                 {table.getRowModel().rows.length === 0 ? (
                   <tr>
                     <td colSpan={columns.length}>
-                      <EmptyState hasFilters={hasActiveFilters} onClear={clearFilters} />
+                      <TableEmpty hasFilters={hasActiveFilters} onClear={clearFilters} />
                     </td>
                   </tr>
                 ) : groupedRows ? (
@@ -1551,7 +1532,7 @@ export function TransactionsTable({
               variant="ghost" size="icon"
               onClick={() => table.previousPage()}
               disabled={!table.getCanPreviousPage()}
-              className="size-8"
+              className="size-9"
               aria-label="Página anterior"
             >
               <ChevronLeft className="h-4 w-4" />
@@ -1563,7 +1544,7 @@ export function TransactionsTable({
               variant="ghost" size="icon"
               onClick={() => table.nextPage()}
               disabled={!table.getCanNextPage()}
-              className="size-8"
+              className="size-9"
               aria-label="Página siguiente"
             >
               <ChevronRight className="h-4 w-4" />

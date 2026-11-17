@@ -169,7 +169,7 @@ export function InicioTxRow({
         <Button
           variant="ghost"
           size="icon"
-          className="inicio-delete size-7 text-muted-foreground hover:bg-destructive/10 hover:text-destructive"
+          className="inicio-delete size-9 text-muted-foreground hover:bg-destructive/10 hover:text-destructive"
           aria-label="Borrar movimiento"
           // Que el blur del campo no se coma el toque: borrar gana.
           onPointerDown={(e) => e.preventDefault()}

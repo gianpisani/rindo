@@ -5,10 +5,11 @@ import {
   AlertTriangle,
   Clock,
   Trash2,
-  Loader2,
   Settings2,
   Plus,
 } from "lucide-react";
+import { EmptyState } from "@/components/EmptyState";
+import { Skeleton } from "@/components/ui/skeleton";
 import { Button } from "@/components/ui/button";
 import { getBankById } from "@/lib/banks";
 import { BankLogo } from "@/components/BankLogo";
@@ -115,7 +116,7 @@ function CredentialRow({
           variant="ghost"
           size="icon"
           onClick={() => onOpenPreferences(cred)}
-          className="size-8 shrink-0 text-muted-foreground"
+          className="size-9 shrink-0 text-muted-foreground"
           aria-label="Configurar auto-sync"
           title="Configurar auto-sync"
         >
@@ -157,7 +158,7 @@ function CredentialRow({
           <Button
             size="icon"
             variant="ghost"
-            className="size-8 shrink-0 text-muted-foreground hover:bg-destructive/10 hover:text-destructive"
+            className="size-9 shrink-0 text-muted-foreground hover:bg-destructive/10 hover:text-destructive"
             aria-label={`Quitar ${bank.label}`}
             onClick={() => setConfirmDelete(true)}
           >
@@ -189,8 +190,9 @@ export function BankSyncSettings({ onAddBank }: BankSyncSettingsProps) {
 
   if (isLoading) {
     return (
-      <div className="flex items-center justify-center py-8">
-        <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
+      <div className="space-y-4">
+        <Skeleton className="h-9 w-40" />
+        <Skeleton className="h-28 rounded-card" />
       </div>
     );
   }
@@ -217,15 +219,7 @@ export function BankSyncSettings({ onAddBank }: BankSyncSettingsProps) {
       </div>
 
       {!credentials || credentials.length === 0 ? (
-        <div className="flex flex-col items-center justify-center py-8 text-center space-y-2 rounded-card border border-dashed">
-          <Settings2 className="h-8 w-8" />
-          <p className="text-sm text-muted-foreground">
-            No hay bancos configurados para auto-sync.
-          </p>
-          <p className="text-xs">
-            Al sincronizar, marca "Guardar para auto-sync" para activar.
-          </p>
-        </div>
+        <EmptyState>Al sincronizar, marca «Guardar para auto-sync» y tu banco aparece acá</EmptyState>
       ) : (
         <div className="space-y-2">
           {credentials.map((cred) => (
