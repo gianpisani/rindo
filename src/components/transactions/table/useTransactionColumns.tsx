@@ -1,6 +1,6 @@
 import { useMemo, type ReactElement } from "react";
 import type { ColumnDef } from "@tanstack/react-table";
-import { CreditCard, Undo2 } from "lucide-react";
+import { Undo2 } from "lucide-react";
 import { Checkbox } from "@/components/ui/checkbox";
 import { InlineDateTimePicker } from "@/components/ui/date-time-picker";
 import { InlineAmount, InlineText } from "@/components/transactions/InlineTxField";
