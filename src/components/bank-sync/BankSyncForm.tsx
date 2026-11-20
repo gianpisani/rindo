@@ -26,7 +26,7 @@ export function BankSyncForm({ id, bank, form }: BankSyncFormProps) {
           <div className="flex-1 min-w-0">
             <p className="text-sm font-medium">Credenciales guardadas</p>
             <p className="text-xs text-muted-foreground mt-0.5">
-              RUT {storedCred.rut} · Contraseña encriptada. No es necesario ingresarlas de nuevo.
+              RUT {storedCred.rut} · Contraseña encriptada
             </p>
           </div>
         </div>

@@ -56,7 +56,6 @@ export function PeriodSettingsDialog() {
       open={open}
       onOpenChange={setOpen}
       title="Mes financiero"
-      description="Elige en qué día empieza y termina tu mes. Inicio, Finanzas, Meta y los filtros de Movimientos usan este corte."
       maxWidth="sm"
       footer={
         <div className="flex gap-2">

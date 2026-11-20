@@ -12,7 +12,6 @@ export function ReconciliationDrawer({ open, onOpenChange }: ReconciliationDrawe
       open={open}
       onOpenChange={onOpenChange}
       title="Conciliar Balance"
-      description="Verifica que tu balance real coincida con el de la app"
       maxWidth="md"
     >
       <ReconciliationCard onSuccess={() => onOpenChange(false)} />

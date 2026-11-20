@@ -50,6 +50,7 @@ export function BaseModal({
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent
+        {...(!description && { "aria-describedby": undefined })}
         className={cn(
           maxWidthClasses[maxWidth],
           "w-[92vw] max-h-[90vh] flex flex-col p-0 gap-0 rounded-card border-border dark:border-white/10"

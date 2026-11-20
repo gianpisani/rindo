@@ -17,26 +17,10 @@ export function hasBankSyncFooter(view: BankSyncView, hasBank: boolean, hasResul
   return (view === "form" && hasBank) || view === "polling" || (view === "result" && hasResult);
 }
 
-export function bankSyncHeading(
-  tab: BankSyncTab,
-  view: BankSyncView,
-  bankLabel: string | undefined,
-  hasStoredCredentials: boolean,
-): { title: string; description: string } {
-  const pickingForm = view === "form" && bankLabel !== undefined;
-
-  const title = tab === "settings" ? "Auto-sync"
-    : tab === "history" ? "Historial"
-    : pickingForm ? bankLabel
-    : "Sincronizar Banco";
-
-  const description = tab === "settings" ? "Gestiona tus bancos configurados"
-    : tab === "history" ? "Sincronizaciones recientes"
-    : pickingForm && hasStoredCredentials ? "Credenciales guardadas · Elige el rango a sincronizar"
-    : pickingForm ? "Ingresa tus credenciales para sincronizar"
-    : "Selecciona tu banco para comenzar";
-
-  return { title, description };
+export function bankSyncTitle(tab: BankSyncTab, view: BankSyncView, bankLabel: string | undefined): string {
+  if (tab === "settings") return "Auto-sync";
+  if (tab === "history") return "Historial";
+  return view === "form" && bankLabel !== undefined ? bankLabel : "Sincronizar Banco";
 }
 
 export function formatMovementDate(dateStr: string): string {
