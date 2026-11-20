@@ -7,381 +7,42 @@ import {
   getFilteredRowModel,
   flexRender,
   SortingState,
-  ColumnDef,
-  Column,
   Row,
   RowSelectionState,
 } from "@tanstack/react-table";
+import { ChevronLeft, ChevronRight } from "lucide-react";
 import { Button } from "../ui/button";
-import { Input } from "../ui/input";
-import { Badge } from "../ui/badge";
-import { Checkbox } from "../ui/checkbox";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-  DropdownMenuSeparator,
-} from "../ui/dropdown-menu";
-import {
-  ChevronDown,
-  ChevronUp,
-  ChevronsUpDown,
-  MoreHorizontal,
-  Pencil,
-  Trash2,
-  TrendingUp,
-  TrendingDown,
-  PiggyBank,
-  X,
-  Copy,
-  Check,
-  Tag,
-  ArrowRightLeft,
-  CreditCard,
-  Undo2,
-  ArrowLeftRight,
-  GripVertical,
-  ChevronLeft,
-  ChevronRight,
-  Minimize2,
-  ArrowDownToLine,
-  LineChart,
-} from "lucide-react";
 import { EmptyState } from "@/components/shared/EmptyState";
 import { Transaction } from "@/hooks/useTransactions";
-import {
-  TRANSACTION_TYPES,
-  INVESTMENT_TYPES,
-  allowsNegativeAmount,
-  displaySign,
-  signPrefix,
-  isCardPayment,
-  isCardPaymentCategory,
-  CARD_PAYMENT_ICON,
-  type TransactionType,
-} from "@/lib/ledger";
+import { displaySign } from "@/lib/ledger";
 import { getCleanDetail } from "@/lib/whisper";
-import NumberFlow, { type Format } from "@number-flow/react";
 import { useFuzzySearch } from "@/hooks/useFuzzySearch";
 import { useCreditCards } from "@/hooks/useCreditCards";
-import { format, subDays } from "date-fns";
+import { format } from "date-fns";
 import { es } from "date-fns/locale";
 import { cn } from "@/lib/utils";
 import { usePrivacyMode } from "@/hooks/usePrivacyMode";
 import { useIsMobile } from "@/hooks/useIsMobile";
-import { AnalyzingBadge } from "./AnalyzingBadge";
-import { InlineDateTimePicker } from "../ui/date-time-picker";
 import { useCategories } from "@/hooks/useCategories";
+import { useGhostClickGuard } from "@/hooks/useGhostClickGuard";
 import { CategoryComposer } from "../categories/CategoryComposer";
 import { QuickCategoryPicker } from "../categories/QuickCategoryPicker";
 import { useInlineEdit } from "@/hooks/useInlineEdit";
-import { getCategoryIcon } from "@/lib/category-icon";
-import { AMOUNT_TEXT_CLASS } from "@/lib/tx-display";
 import { ANALYZING_CATEGORY } from "@/lib/auto-category-policy";
-import { Popover, PopoverContent, PopoverTrigger } from "../ui/popover";
-import { Command, CommandInput, CommandList, CommandEmpty, CommandGroup, CommandItem } from "../ui/command";
+import { formatGroupDate } from "@/lib/tx-display";
+import { clpSigned } from "@/lib/format";
 import type { DateRangeValue } from "./DateRangeFilter";
-import { tintColor } from "@/lib/category-color";
-import { clp } from "@/lib/format";
+import { useTransactionColumns, type TableCategory } from "./table/useTransactionColumns";
+import { MobileTxCard } from "./table/MobileTxCard";
+import { SelectionPanel } from "./table/SelectionPanel";
 
-function categoryAvatar(name: string, categories: { name: string; icon?: string | null; color?: string | null }[]) {
-  const category = categories.find(c => c.name === name);
-  const analyzing = name === "⚡ Analizando...";
-  return {
-    emoji: analyzing ? "⚡" : category?.icon || getCategoryIcon(name),
-    style: { backgroundColor: tintColor(category?.color) },
-  };
-}
-
-function formatGroupDate(dayKey: string): string {
-  const today = format(new Date(), "yyyy-MM-dd");
-  const yesterday = format(subDays(new Date(), 1), "yyyy-MM-dd");
-  if (dayKey === today) return "Hoy";
-  if (dayKey === yesterday) return "Ayer";
-  const [y, m, d] = dayKey.split("-").map(Number);
-  const date = new Date(y, m - 1, d);
-  return format(date, "EEEE d 'de' MMMM", { locale: es });
-}
-
-const typeIcons: Record<TransactionType, typeof TrendingUp> = {
-  Ingreso: TrendingUp,
-  Gasto: TrendingDown,
-  Inversión: PiggyBank,
-  Rescate: ArrowDownToLine,
-  Rendimiento: LineChart,
-  Reembolso: ArrowLeftRight,
-};
-
-const signColor = (amount: number) =>
-  amount > 0 ? "text-success" : "";
-
-const SIGNED_CLP: Format = {
-  style: "currency",
-  currency: "CLP",
-  maximumFractionDigits: 0,
-  signDisplay: "exceptZero",
-};
-const formatSignedCLP = new Intl.NumberFormat("es-CL", SIGNED_CLP).format;
-
-function EditableTextCell({ value, onSave, className, placeholder }: {
-  value: string;
-  onSave: (value: string) => void;
-  className?: string;
-  placeholder?: string;
-}) {
-  const [isEditing, setIsEditing] = useState(false);
-  const [editValue, setEditValue] = useState(value);
-
-  useEffect(() => {
-    setEditValue(value);
-  }, [value]);
-
-  const handleSave = () => {
-    if (editValue !== value) onSave(editValue);
-    setIsEditing(false);
-  };
-
-  const handleKeyDown = (e: React.KeyboardEvent) => {
-    if (e.key === "Enter") handleSave();
-    else if (e.key === "Escape") { setEditValue(value); setIsEditing(false); }
-  };
-
-  if (isEditing) {
-    return (
-      <Input
-        value={editValue}
-        onChange={(e) => setEditValue(e.target.value)}
-        onBlur={handleSave}
-        onKeyDown={handleKeyDown}
-        className={cn("h-8 text-sm", className)}
-        autoFocus
-        placeholder={placeholder}
-      />
-    );
-  }
-
-  return (
-    <div
-      onClick={() => setIsEditing(true)}
-      className={cn(
-        "px-2 py-1 rounded-card cursor-pointer transition-all",
-        "group flex items-center gap-1",
-        className
-      )}
-    >
-      <span className="truncate" title={value || undefined}>
-        {value || <span className="text-muted-foreground italic">{placeholder || "Sin detalle"}</span>}
-      </span>
-      <Pencil className="h-3 w-3 opacity-0 group-hover:opacity-50 transition-opacity flex-shrink-0" />
-    </div>
-  );
-}
-
-function EditableAmountCell({
-  value,
-  onSave,
-  className,
-  allowNegative = false,
-}: {
-  value: number;
-  onSave: (value: number) => void;
-  className?: string;
-  allowNegative?: boolean;
-}) {
-  const [isEditing, setIsEditing] = useState(false);
-  const [editValue, setEditValue] = useState(value.toString());
-
-  useEffect(() => {
-    setEditValue(value.toString());
-  }, [value]);
-
-  const sanitize = (raw: string) => {
-    const isNegative = allowNegative && /^\s*[-−]/.test(raw);
-    return (isNegative ? "-" : "") + raw.replace(/\D/g, "");
-  };
-
-  const formatEditValue = (val: string) => {
-    const num = parseInt(val, 10);
-    if (isNaN(num)) return val === "-" ? "-" : "";
-    return num.toLocaleString("es-CL");
-  };
-
-  const handleSave = () => {
-    const numValue = parseInt(editValue, 10);
-    if (!isNaN(numValue) && numValue !== value) onSave(numValue);
-    setIsEditing(false);
-  };
-
-  const handleKeyDown = (e: React.KeyboardEvent) => {
-    if (e.key === "Enter") handleSave();
-    else if (e.key === "Escape") { setEditValue(value.toString()); setIsEditing(false); }
-  };
-
-  if (isEditing) {
-    return (
-      <div className="relative">
-        <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground text-sm">$</span>
-        <Input
-          value={formatEditValue(editValue)}
-          onChange={(e) => setEditValue(sanitize(e.target.value))}
-          onBlur={handleSave}
-          onKeyDown={handleKeyDown}
-          className={cn("h-8 text-sm text-right w-36 pl-7", className)}
-          autoFocus
-        />
-      </div>
-    );
-  }
-
-  return (
-    <div
-      onClick={() => setIsEditing(true)}
-      className={cn(
-        "px-2 py-1 rounded-card cursor-pointer transition-all text-right",
-        "group flex items-center justify-end gap-1 font-medium font-mono tabular-nums",
-        className
-      )}
-    >
-      <span>{clp(value)}</span>
-      <Pencil className="h-3 w-3 opacity-0 group-hover:opacity-50 transition-opacity flex-shrink-0" />
-    </div>
-  );
-}
-
-const CELL_TRIGGER =
-  "flex items-center gap-1 px-2 py-1 rounded-card transition-all group cursor-pointer";
-
-interface SelectableCellProps<T extends string> {
-  value: T;
-  options: { value: T; label: string; icon?: React.ComponentType<{ className?: string }> }[];
-  onSave: (value: T) => void;
-  renderValue?: (value: T) => React.ReactNode;
-  className?: string;
-}
-
-function SelectableCell<T extends string>({ value, options, onSave, renderValue, className }: SelectableCellProps<T>) {
-  const [open, setOpen] = useState(false);
-
-  return (
-    <DropdownMenu open={open} onOpenChange={setOpen}>
-      <DropdownMenuTrigger asChild>
-        <button className={cn(CELL_TRIGGER, className)}>
-          {renderValue ? renderValue(value) : value}
-          <ChevronDown className="h-3 w-3 opacity-0 group-hover:opacity-50 transition-opacity" />
-        </button>
-      </DropdownMenuTrigger>
-      <DropdownMenuContent align="start" className="min-w-[160px]">
-        {options.map((option) => (
-          <DropdownMenuItem
-            key={option.value}
-            onClick={() => { if (option.value !== value) onSave(option.value); setOpen(false); }}
-            className="flex items-center gap-2"
-          >
-            {option.icon && <option.icon className="h-4 w-4" />}
-            {option.label}
-            {option.value === value && <Check className="h-4 w-4 ml-auto" />}
-          </DropdownMenuItem>
-        ))}
-      </DropdownMenuContent>
-    </DropdownMenu>
-  );
-}
-
-function SortHeader({ column, label, alignEnd }: { column: Column<Transaction>; label: string; alignEnd?: boolean }) {
-  const sorted = column.getIsSorted();
-  return (
-    <div
-      className={cn("flex items-center cursor-pointer hover:bg-muted rounded-card px-2 py-1", alignEnd && "justify-end ml-auto")}
-      onClick={() => column.toggleSorting(sorted === "asc")}
-    >
-      <span className="text-xs font-medium">{label}</span>
-      {sorted === "asc" ? <ChevronUp className="ml-2 h-4 w-4" /> :
-        sorted === "desc" ? <ChevronDown className="ml-2 h-4 w-4" /> :
-          <ChevronsUpDown className="ml-2 h-4 w-4 opacity-50" />}
-    </div>
-  );
-}
+const MENU_GHOST_CLICK_MS = 400;
 
 function TableEmpty({ hasFilters, onClear }: { hasFilters: boolean; onClear: () => void }) {
   return hasFilters ? (
     <EmptyState action={{ label: "Limpiar filtros", onClick: onClear }}>Nada con estos filtros</EmptyState>
   ) : (
     <EmptyState>Sin movimientos todavía: agrega el primero con + o la tecla N</EmptyState>
-  );
-}
-
-interface CategoryComboboxOption {
-  value: string;
-  label: string;
-  emoji?: string;
-  color?: string | null;
-}
-
-interface CategoryComboboxProps {
-  value: string;
-  options: CategoryComboboxOption[];
-  onSave: (value: string) => void;
-  trigger: React.ReactNode;
-  placeholder?: string;
-}
-
-function CategoryCombobox({ value, options, onSave, trigger, placeholder = "Buscar categoría..." }: CategoryComboboxProps) {
-  const [open, setOpen] = useState(false);
-  const [search, setSearch] = useState("");
-
-  return (
-    <Popover
-      open={open}
-      onOpenChange={(next) => {
-        setOpen(next);
-        if (!next) setSearch("");
-      }}
-    >
-      <PopoverTrigger asChild>{trigger}</PopoverTrigger>
-      <PopoverContent className="w-[220px] p-0 border-0 rounded-card overflow-hidden" align="start" side="bottom" sideOffset={4}>
-        <Command className="rounded-card">
-          <CommandInput
-            value={search}
-            onValueChange={setSearch}
-            placeholder={placeholder}
-            className="h-8 text-xs border-0 ring-0 focus:ring-0"
-          />
-          <CommandList>
-            <CommandEmpty className="p-4 text-center text-sm text-muted-foreground">
-              Sin resultados
-            </CommandEmpty>
-            <CommandGroup>
-              {options.map((option) => (
-                <CommandItem
-                  key={option.value}
-                  value={option.label}
-                  onSelect={() => {
-                    if (option.value !== value) onSave(option.value);
-                    setOpen(false);
-                  }}
-                  className="flex items-center gap-2 cursor-pointer"
-                >
-                  {option.emoji && (
-                    <span className="text-sm leading-none flex-shrink-0">{option.emoji}</span>
-                  )}
-                  {option.color && (
-                    <div
-                      className="w-2 h-2 rounded-full flex-shrink-0"
-                      style={{ backgroundColor: option.color }}
-                    />
-                  )}
-                  <span className="truncate text-sm">{option.label}</span>
-                  {option.value === value && (
-                    <Check className="h-3.5 w-3.5 ml-auto flex-shrink-0 text-foreground" />
-                  )}
-                </CommandItem>
-              ))}
-            </CommandGroup>
-          </CommandList>
-        </Command>
-      </PopoverContent>
-    </Popover>
   );
 }
 
@@ -393,7 +54,7 @@ interface TransactionsTableProps {
   onDeleteMultiple: (ids: string[]) => void;
   onUpdateMultiple: (ids: string[], updates: Partial<Pick<Transaction, "category_name" | "type">>) => void;
   onDuplicate: (ids: string[]) => void;
-  categories: Array<{ id?: string; name: string; type: string; color?: string | null; icon?: string | null }>;
+  categories: TableCategory[];
   searchValue: string;
   onSearchChange: (v: string) => void;
   typeFilter: string;
@@ -435,26 +96,24 @@ export function TransactionsTable({
   const [sorting, setSorting] = useState<SortingState>([{ id: "date", desc: true }]);
   const [rowSelection, setRowSelection] = useState<RowSelectionState>({});
   const [pageIndex, setPageIndex] = useState(0);
-  const [panelExpanded, setPanelExpanded] = useState(false);
-  const [panelY, setPanelY] = useState<number | null>(null);
   const tbodyRef = useRef<HTMLTableSectionElement>(null);
   const { isPrivacyMode } = usePrivacyMode();
   const { creditCards, isLoading: isLoadingCards } = useCreditCards();
   const { addCategory } = useCategories();
   const isMobile = useIsMobile();
+  const menuGhostGuard = useGhostClickGuard(MENU_GHOST_CLICK_MS);
 
   const [categoryDraft, setCategoryDraft] = useState<{
     transactionId: string;
-    type: TransactionType;
+    type: Transaction["type"];
     name: string;
   } | null>(null);
 
-  const lastMenuCloseRef = useRef(0);
-  const trackMenuClose = (open: boolean) => {
-    if (!open) lastMenuCloseRef.current = Date.now();
+  const armGuardOnMenuClose = (open: boolean) => {
+    if (!open) menuGhostGuard.arm();
   };
-  const guardedEdit = (t: Transaction) => {
-    if (Date.now() - lastMenuCloseRef.current < 400) return;
+  const editUnlessMenuJustClosed = (t: Transaction) => {
+    if (menuGhostGuard.isArmed()) return;
     if (!t.isPending) onEdit(t);
   };
 
@@ -487,6 +146,7 @@ export function TransactionsTable({
   }, [onUpdateSilent]);
 
   const { save: saveInline, categoryOptions } = useInlineEdit();
+  const armMenuGuard = menuGhostGuard.arm;
   const withCategoryPicker = useCallback((t: Transaction, trigger: React.ReactElement) =>
     t.isPending || t.category_name === ANALYZING_CATEGORY ? trigger : (
       <QuickCategoryPicker
@@ -495,298 +155,24 @@ export function TransactionsTable({
         title={getCleanDetail(t.detail) || undefined}
         onPick={(name) => saveInline(t, { category_name: name })}
         onCreate={(name) => setCategoryDraft({ transactionId: t.id, type: t.type, name })}
-        onOpenChange={(open) => { if (!open) lastMenuCloseRef.current = Date.now(); }}
+        onOpenChange={(open) => { if (!open) armMenuGuard(); }}
       >
         {trigger}
       </QuickCategoryPicker>
-    ), [categoryOptions, saveInline]);
+    ), [categoryOptions, saveInline, armMenuGuard]);
 
-  const columns = useMemo<ColumnDef<Transaction>[]>(() => {
-    return [
-      ...(selecting ? [{
-        id: "select",
-        size: 48, minSize: 48, maxSize: 48,
-        header: ({ table }) => (
-          <Checkbox
-            checked={table.getIsAllPageRowsSelected() ? true : table.getIsSomePageRowsSelected() ? "indeterminate" : false}
-            onCheckedChange={(value) => table.toggleAllPageRowsSelected(!!value)}
-            aria-label="Seleccionar todo"
-            className="translate-y-[2px]"
-          />
-        ),
-        cell: ({ row }) => (
-          <Checkbox
-            checked={row.getIsSelected()}
-            onCheckedChange={(value) => row.toggleSelected(!!value)}
-            aria-label="Seleccionar fila"
-            className="translate-y-[2px]"
-            onClick={(e) => e.stopPropagation()}
-          />
-        ),
-        enableSorting: false,
-        enableHiding: false,
-      }] as ColumnDef<Transaction>[] : []),
-
-      {
-        accessorKey: "date",
-        size: 120, minSize: 120, maxSize: 120,
-        header: ({ column }) => <SortHeader column={column} label="Fecha" />,
-        cell: ({ row }) => {
-          const date = new Date(row.original.date);
-          return (
-            <div className={cn("font-medium text-sm", isPrivacyMode && "privacy-blur-light")}>
-              <InlineDateTimePicker
-                value={date}
-                onChange={(newDate) => handleInlineUpdate(row.original.id, "date", newDate.toISOString())}
-                showTime={true}
-              />
-            </div>
-          );
-        },
-      },
-
-      {
-        accessorKey: "detail",
-        size: 310, minSize: 220,
-        header: "Detalle",
-        cell: ({ row }) => {
-          const raw = row.original.detail || "";
-          const clean = getCleanDetail(raw);
-          const isBot = raw.startsWith("🤖");
-          const avatar = categoryAvatar(row.original.category_name, categories);
-
-          return (
-            <div className={cn("flex items-center gap-2 max-w-[300px]", isPrivacyMode && "privacy-blur")}>
-              <div className="relative flex-shrink-0">
-                {withCategoryPicker(row.original, (
-                  <button
-                    type="button"
-                    className="w-7 h-7 rounded-full flex items-center justify-center text-sm leading-none select-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-                    style={avatar.style}
-                    aria-label={`Cambiar categoría (${row.original.category_name})`}
-                  >
-                    {avatar.emoji}
-                  </button>
-                ))}
-                {isBot && (
-                  <div
-                    className="absolute -bottom-0.5 -right-0.5 w-3.5 h-3.5 rounded-full bg-background flex items-center justify-center"
-                    title="Detectado por el bot"
-                  >
-                    <span className="text-xs leading-none scale-75">🤖</span>
-                  </div>
-                )}
-              </div>
-              <div className="flex flex-col min-w-0 flex-1">
-                <EditableTextCell
-                  value={clean}
-                  onSave={(newDetail) => {
-                    const prefix = isBot ? "🤖 " : "";
-                    handleInlineUpdate(row.original.id, "detail", newDetail ? prefix + newDetail : null);
-                  }}
-                  placeholder="Agregar detalle..."
-                  className="text-sm text-muted-foreground"
-                />
-                {row.original.bank_description && row.original.bank_description !== clean && (
-                  <p
-                    className="text-xs truncate leading-none mt-0.5"
-                    title={row.original.bank_description}
-                  >
-                    {row.original.bank_description}
-                  </p>
-                )}
-              </div>
-            </div>
-          );
-        },
-      },
-
-      {
-        accessorKey: "category_name",
-        size: 200, minSize: 170, maxSize: 240,
-        header: ({ column }) => <SortHeader column={column} label="Categoría" />,
-        cell: ({ row }) => {
-          const categoryName = row.original.category_name;
-          const type = row.original.type;
-          const isMissing = categoryName === "Sin categoría";
-          const isReimbursement = type === "Ingreso" && categoryName.toLowerCase().includes("reembolso");
-          const linkedCategory = row.original.reimbursement_for_category;
-
-          if (row.original.isPending || categoryName === "⚡ Analizando...") return <AnalyzingBadge saving={row.original.isPending} />;
-
-          const dotColor = categories.find(c => c.name === categoryName)?.color;
-          const optionsOfType = (t: string) =>
-            categories.filter(c => c.type === t).map(c => ({
-              value: c.name,
-              label: c.name,
-              emoji: c.icon || getCategoryIcon(c.name),
-              color: c.color,
-            }));
-
-          return (
-            <div className={cn("flex items-center gap-1 overflow-hidden", isPrivacyMode && "privacy-blur")}>
-              {withCategoryPicker(row.original, (
-                  <button className={cn(CELL_TRIGGER, "max-w-full overflow-hidden")}>
-                    <div className="flex items-center gap-1.5 min-w-0">
-                      {dotColor && (
-                        <div
-                          className="w-1.5 h-1.5 rounded-full flex-shrink-0"
-                          style={{ backgroundColor: dotColor }}
-                        />
-                      )}
-                      <span
-                        className={cn(
-                          "font-medium text-sm truncate",
-                          isMissing && "text-amber-500"
-                        )}
-                        title={categoryName}
-                      >
-                        {categoryName}
-                      </span>
-                    </div>
-                    <ChevronDown className="h-3 w-3 opacity-0 group-hover:opacity-50 transition-opacity" />
-                  </button>
-              ))}
-              {isReimbursement && (
-                <CategoryCombobox
-                  value={linkedCategory || ""}
-                  options={[{ value: "", label: "Sin vincular", emoji: "🔗" }, ...optionsOfType("Gasto")]}
-                  onSave={(val) => handleInlineUpdate(row.original.id, "reimbursement_for_category", val || null)}
-                  placeholder="Buscar gasto..."
-                  trigger={
-                    <button
-                      className={cn(
-                        "inline-flex items-center gap-1 rounded-full px-1.5 py-0.5 text-xs leading-none flex-shrink-0",
-                        "cursor-pointer transition-all hover:brightness-125",
-                        linkedCategory
-                          ? "bg-success/15 text-success font-medium"
-                          : "bg-white/5 italic"
-                      )}
-                      onClick={(e) => e.stopPropagation()}
-                    >
-                      <Undo2 className="h-2 w-2 flex-shrink-0" />
-                      {linkedCategory || "vincular"}
-                    </button>
-                  }
-                />
-              )}
-            </div>
-          );
-        },
-      },
-
-      ...((isLoadingCards || creditCards.length > 0) ? [{
-        id: "card",
-        size: 90, minSize: 80, maxSize: 110,
-        header: () => (
-          <div className="flex items-center gap-1 text-xs font-medium">
-            <CreditCard className="h-3.5 w-3.5" />
-            Tarjeta
-          </div>
-        ),
-        cell: ({ row }: { row: { original: Transaction } }) => {
-          const type = row.original.type;
-          const cardId = row.original.card_id;
-          if (INVESTMENT_TYPES.includes(type)) return <span className="text-xs">—</span>;
-
-          const selectedCard = creditCards.find(c => c.id === cardId);
-
-          return (
-            <SelectableCell
-              value={cardId || ""}
-              options={[
-                { value: "", label: "Cuenta" },
-                ...creditCards.map(c => ({ value: c.id, label: c.name })),
-              ]}
-              onSave={(newCardId) => handleInlineUpdate(row.original.id, "card_id", newCardId || null)}
-              renderValue={() => {
-                if (!selectedCard) {
-                  return (
-                    <span className="text-xs flex items-center gap-1">
-                      <CreditCard className="h-3 w-3" />
-                      Cuenta
-                    </span>
-                  );
-                }
-                const digits = selectedCard.last_4_digits;
-                return (
-                  <div className="flex items-center gap-1.5">
-                    <div
-                      className="w-2 h-2 rounded-full flex-shrink-0"
-                      style={{ backgroundColor: selectedCard.color || "#6366f1" }}
-                    />
-                    <span className="text-xs font-medium">
-                      {digits ? `****${digits}` : selectedCard.name}
-                    </span>
-                  </div>
-                );
-              }}
-            />
-          );
-        },
-      }] as ColumnDef<Transaction>[] : []),
-
-      {
-        accessorKey: "amount",
-        size: 170, minSize: 150, maxSize: 180,
-        header: ({ column }) => <SortHeader column={column} label="Monto" alignEnd />,
-        cell: ({ row }) => {
-          const amount = parseFloat(row.getValue("amount"));
-          const type = row.original.type;
-          const amountColor = AMOUNT_TEXT_CLASS[type];
-
-          return (
-            <div className={cn("flex items-center justify-end", isPrivacyMode && "privacy-blur")}>
-              <EditableAmountCell
-                value={amount}
-                allowNegative={allowsNegativeAmount(type)}
-                onSave={(newAmount) => handleInlineUpdate(row.original.id, "amount", newAmount)}
-                className={cn("text-sm font-medium", amountColor)}
-              />
-            </div>
-          );
-        },
-      },
-
-      {
-        id: "actions",
-        size: 60, minSize: 60, maxSize: 60,
-        cell: ({ row }) => (
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button
-                variant="ghost"
-                size="icon"
-                className="size-9 opacity-40 hover:opacity-100"
-                onClick={(e) => e.stopPropagation()}
-                aria-label="Opciones del movimiento"
-              >
-                <MoreHorizontal className="h-4 w-4" />
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end">
-              <DropdownMenuItem onClick={() => onEdit(row.original)}>
-                <Pencil className="mr-2 h-4 w-4" />
-                Editar en modal
-              </DropdownMenuItem>
-              <DropdownMenuItem onClick={() => onDuplicate([row.original.id])}>
-                <Copy className="mr-2 h-4 w-4" />
-                Duplicar
-              </DropdownMenuItem>
-              <DropdownMenuSeparator />
-              <DropdownMenuItem
-                onClick={() => onDelete(row.original.id)}
-                className="text-destructive focus:text-destructive"
-              >
-                <Trash2 className="mr-2 h-4 w-4" />
-                Eliminar
-              </DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
-        ),
-      },
-    ];
-  }, [selecting, onEdit, onDelete, onDuplicate, categories, creditCards, isPrivacyMode, handleInlineUpdate, withCategoryPicker]);
+  const columns = useTransactionColumns({
+    selecting,
+    categories,
+    creditCards,
+    isLoadingCards,
+    isPrivacyMode,
+    onEdit,
+    onDelete,
+    onDuplicate,
+    onInlineUpdate: handleInlineUpdate,
+    withCategoryPicker,
+  });
 
   const fuzzyResults = useFuzzySearch(transactions, searchValue);
 
@@ -823,9 +209,9 @@ export function TransactionsTable({
     getRowId: (row) => row.id,
   });
 
+  const pageRows = table.getRowModel().rows;
   const selectedRows = table.getFilteredSelectedRowModel().rows;
-  const selectedIds = selectedRows.map(row => row.original.id);
-  const hasSelection = selectedIds.length > 0;
+  const hasSelection = selectedRows.length > 0;
 
   const handleRowMouseDown = (e: React.MouseEvent, startIdx: number) => {
     if (!selecting || e.button !== 0) return;
@@ -833,7 +219,6 @@ export function TransactionsTable({
     if (target.closest('button, input, [role="menuitem"], [role="combobox"], [role="listbox"], [data-radix-collection-item], [type="checkbox"]')) return;
 
     const initialSelection = { ...rowSelection };
-    const allRows = table.getRowModel().rows;
     let currentIdx = startIdx;
 
     const handleMove = (ev: MouseEvent) => {
@@ -845,7 +230,7 @@ export function TransactionsTable({
 
       const newSelection: RowSelectionState = { ...initialSelection };
       for (let i = Math.min(startIdx, idx); i <= Math.max(startIdx, idx); i++) {
-        if (allRows[i]) newSelection[allRows[i].id] = true;
+        if (pageRows[i]) newSelection[pageRows[i].id] = true;
       }
       setRowSelection(newSelection);
     };
@@ -863,65 +248,13 @@ export function TransactionsTable({
 
   const filteredSum = filteredData.reduce((sum, t) => sum + displaySign(t.type) * t.amount, 0);
 
-  const summaryStats = (() => {
-    const rows = selectedRows.map(r => r.original);
-    if (rows.length === 0) return null;
-    const amounts = rows.map(r => isCardPayment(r) ? 0 : displaySign(r.type) * r.amount);
-    const sum = amounts.reduce((a, b) => a + b, 0);
-    const income = amounts.reduce((a, v) => a + Math.max(0, v), 0);
-    const expense = amounts.reduce((a, v) => a + Math.max(0, -v), 0);
-    return {
-      sum,
-      avg: Math.round(sum / amounts.length),
-      min: Math.min(...amounts),
-      max: Math.max(...amounts),
-      income,
-      expense,
-      mixed: income > 0 && expense > 0,
-    };
-  })();
-
-  const runBatch = (action: () => void) => {
-    action();
-    setRowSelection({});
-  };
-
-  const handleBatchTypeChange = (type: Transaction["type"]) => {
-    const matchingCategory = categories.find(c => c.type === type);
-    runBatch(() => onUpdateMultiple(selectedIds, { type, category_name: matchingCategory?.name || "Sin categoría" }));
-  };
-
-  const handleDragStart = (e: React.MouseEvent) => {
-    e.preventDefault();
-    const startY = e.clientY;
-    const startTop = panelY ?? 160;
-
-    const handleMove = (ev: MouseEvent) => {
-      setPanelY(Math.max(60, Math.min(window.innerHeight - 100, startTop + ev.clientY - startY)));
-    };
-    const handleUp = () => {
-      window.removeEventListener("mousemove", handleMove);
-      window.removeEventListener("mouseup", handleUp);
-    };
-    window.addEventListener("mousemove", handleMove);
-    window.addEventListener("mouseup", handleUp);
-  };
-
-  useEffect(() => {
-    if (!hasSelection) {
-      setPanelExpanded(false);
-      setPanelY(null);
-    }
-  }, [hasSelection]);
-
   const isDateSorted = sorting.length === 0 || sorting[0].id === "date";
 
   const groupedRows = useMemo(() => {
-    const rows = table.getRowModel().rows;
     if (!isDateSorted) return null;
 
-    const groups: { dayKey: string; start: number; rows: typeof rows }[] = [];
-    rows.forEach((row, i) => {
+    const groups: { dayKey: string; start: number; rows: typeof pageRows }[] = [];
+    pageRows.forEach((row, i) => {
       const dayKey = format(new Date(row.original.date), "yyyy-MM-dd");
       const lastGroup = groups[groups.length - 1];
       if (lastGroup && lastGroup.dayKey === dayKey) {
@@ -931,117 +264,24 @@ export function TransactionsTable({
       }
     });
     return groups;
-  }, [table.getRowModel().rows, isDateSorted]);
+  }, [pageRows, isDateSorted]);
 
-  const renderMobileCard = (row: Row<Transaction>, timeLabel: string) => {
-    const t = row.original;
-    const clean = getCleanDetail(t.detail);
-    const avatar = categoryAvatar(t.category_name, categories);
-    const isBot = (t.detail || "").startsWith("🤖");
-    const catData = categories.find(c => c.name === t.category_name);
-    const isMissing = t.category_name === "Sin categoría";
-    const isSelected = row.getIsSelected();
-    const avatarButton = (
-      <button
-        type="button"
-        className="w-10 h-10 rounded-full flex items-center justify-center text-xl leading-none select-none"
-        style={avatar.style}
-        aria-label={`Cambiar categoría (${t.category_name})`}
-        tabIndex={selecting ? -1 : undefined}
-      >
-        {avatar.emoji}
-      </button>
-    );
-
-    return (
-      <div
-        key={row.id}
-        className={cn(
-          "mobile-tx-card",
-          t.isPending && "pointer-events-none opacity-60",
-          isSelected && "mobile-tx-card-selected",
-          isMissing && "mobile-tx-card-missing"
-        )}
-        onClick={() => (selecting ? row.toggleSelected(!isSelected) : guardedEdit(t))}
-      >
-        {selecting && (
-          <div className="mobile-tx-checkbox">
-            <Checkbox checked={isSelected} className="h-4 w-4" tabIndex={-1} />
-          </div>
-        )}
-
-        <div className="relative flex-shrink-0">
-          {selecting ? avatarButton : withCategoryPicker(t, avatarButton)}
-          {isBot && (
-            <div className="absolute -bottom-0.5 -right-0.5 w-4 h-4 rounded-full bg-background flex items-center justify-center">
-              <span className="text-xs leading-none scale-75">🤖</span>
-            </div>
-          )}
-        </div>
-
-        <div className="flex-1 min-w-0 ml-3">
-          <div className="flex items-center justify-between gap-2">
-            <span className={cn("text-sm font-medium truncate", isPrivacyMode && "privacy-blur")}>
-              {clean || <span className="italic font-normal">Sin detalle</span>}
-            </span>
-            <span className={cn(
-              "text-sm font-medium tabular-nums whitespace-nowrap font-mono",
-              AMOUNT_TEXT_CLASS[t.type],
-              isPrivacyMode && "privacy-blur"
-            )}>
-              {signPrefix(t.type, t.amount)}
-              {clp(Math.abs(t.amount))}
-            </span>
-          </div>
-          <div className="flex items-center justify-between gap-2 mt-0.5">
-            <div className="flex items-center gap-1.5 min-w-0">
-              {t.isPending || t.category_name === "⚡ Analizando..." ? (
-                <AnalyzingBadge saving={t.isPending} />
-              ) : (
-                <>
-                  <span className="h-1.5 w-1.5 rounded-full shrink-0" style={{ backgroundColor: catData?.color || "currentColor" }} aria-hidden="true" />
-                  <span className={cn("text-xs truncate", isMissing ? "text-amber-500" : "text-muted-foreground")}>
-                    {t.category_name}
-                  </span>
-                </>
-              )}
-            </div>
-            <span className="text-xs tabular-nums flex-shrink-0">
-              {timeLabel}
-            </span>
-          </div>
-        </div>
-
-        <div className="flex-shrink-0 ml-1">
-          <DropdownMenu onOpenChange={trackMenuClose}>
-            <DropdownMenuTrigger asChild>
-              <button className="mobile-tx-actions-btn" onClick={(e) => e.stopPropagation()} aria-label="Opciones del movimiento">
-                <MoreHorizontal className="h-4 w-4" />
-              </button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end">
-              <DropdownMenuItem onClick={() => onEdit(t)}>
-                <Pencil className="mr-2 h-4 w-4" />
-                Editar
-              </DropdownMenuItem>
-              <DropdownMenuItem onClick={() => onDuplicate([t.id])}>
-                <Copy className="mr-2 h-4 w-4" />
-                Duplicar
-              </DropdownMenuItem>
-              <DropdownMenuSeparator />
-              <DropdownMenuItem
-                onClick={() => onDelete(t.id)}
-                className="text-destructive focus:text-destructive"
-              >
-                <Trash2 className="mr-2 h-4 w-4" />
-                Eliminar
-              </DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
-        </div>
-      </div>
-    );
-  };
+  const renderMobileCard = (row: Row<Transaction>, timeLabel: string) => (
+    <MobileTxCard
+      key={row.id}
+      row={row}
+      timeLabel={timeLabel}
+      selecting={selecting}
+      categories={categories}
+      isPrivacyMode={isPrivacyMode}
+      withCategoryPicker={withCategoryPicker}
+      onOpen={editUnlessMenuJustClosed}
+      onEdit={onEdit}
+      onDuplicate={onDuplicate}
+      onDelete={onDelete}
+      onMenuOpenChange={armGuardOnMenuClose}
+    />
+  );
 
   const renderDesktopRow = (row: Row<Transaction>, index: number) => {
     const isMissing = row.original.category_name === "Sin categoría";
@@ -1070,178 +310,22 @@ export function TransactionsTable({
   return (
     <div className="space-y-4 mx-auto">
       {hasSelection && (
-        <div
-          className={cn(
-            "fixed right-4 z-50 transition-all duration-300 ease-out",
-            "animate-in slide-in-from-right-5 fade-in-0",
-            panelExpanded ? "w-64" : "w-12"
-          )}
-          style={{ top: panelY ?? 160 }}
-        >
-          {!panelExpanded && (
-            <div
-              className={cn(
-                "flex flex-col items-center gap-1 py-2 px-1 rounded-card",
-                "backdrop-blur-xl border",
-                "shadow-float"
-              )}
-            >
-              <div
-                className="cursor-grab active:cursor-grabbing p-0.5 transition-colors"
-                onMouseDown={handleDragStart}
-              >
-                <GripVertical className="h-3.5 w-3.5" />
-              </div>
-
-              <button
-                onClick={() => setPanelExpanded(true)}
-                className="size-9 rounded-full bg-muted text-foreground flex items-center justify-center text-xs font-medium transition-colors"
-              >
-                {selectedIds.length}
-              </button>
-
-              <button
-                onClick={() => setPanelExpanded(true)}
-                className="size-9 grid place-items-center"
-                aria-label="Expandir acciones"
-              >
-                <ChevronRight className="h-3.5 w-3.5 rotate-180" />
-              </button>
-            </div>
-          )}
-
-          {panelExpanded && (
-            <div
-              className={cn(
-                "rounded-card overflow-hidden",
-                "backdrop-blur-xl border",
-                "shadow-float",
-                "animate-in slide-in-from-right-3 fade-in-0 duration-200"
-              )}
-            >
-              <div className="flex items-center gap-2 px-3 py-2 border-b">
-                <div
-                  className="cursor-grab active:cursor-grabbing transition-colors"
-                  onMouseDown={handleDragStart}
-                >
-                  <GripVertical className="h-3.5 w-3.5" />
-                </div>
-                <Badge variant="secondary" className="font-medium text-xs h-5 px-1.5">
-                  {selectedIds.length}
-                </Badge>
-                <span className="text-xs text-muted-foreground">
-                  seleccionada{selectedIds.length > 1 ? "s" : ""}
-                </span>
-                <div className="flex-1" />
-                <Button variant="ghost" size="icon" className="size-9" aria-label="Minimizar" onClick={() => setPanelExpanded(false)}>
-                  <Minimize2 />
-                </Button>
-              </div>
-
-              <div className="p-2 space-y-0.5">
-                <DropdownMenu>
-                  <DropdownMenuTrigger asChild>
-                    <button className="w-full flex items-center gap-2 px-2 py-1.5 rounded-card text-sm transition-colors text-left">
-                      <Tag className="h-3.5 w-3.5 text-muted-foreground" />
-                      <span className="text-sm">Cambiar categoría</span>
-                    </button>
-                  </DropdownMenuTrigger>
-                  <DropdownMenuContent align="end" side="left" className="max-h-[300px] overflow-auto">
-                    {categories
-                      .filter(c => c.name && c.name.trim().length > 0)
-                      .map((cat) => (
-                        <DropdownMenuItem key={cat.name + cat.type} onClick={() => runBatch(() => onUpdateMultiple(selectedIds, { category_name: cat.name }))}>
-                          <span className="mr-2">{cat.icon || getCategoryIcon(cat.name)}</span>
-                          {cat.name}
-                        </DropdownMenuItem>
-                      ))}
-                  </DropdownMenuContent>
-                </DropdownMenu>
-
-                <DropdownMenu>
-                  <DropdownMenuTrigger asChild>
-                    <button className="w-full flex items-center gap-2 px-2 py-1.5 rounded-card text-sm transition-colors text-left">
-                      <ArrowRightLeft className="h-3.5 w-3.5 text-muted-foreground" />
-                      <span className="text-sm">Cambiar tipo</span>
-                    </button>
-                  </DropdownMenuTrigger>
-                  <DropdownMenuContent align="end" side="left">
-                    {TRANSACTION_TYPES.filter((type) => type !== "Reembolso").map((type) => {
-                      const Icon = typeIcons[type];
-                      return (
-                        <DropdownMenuItem key={type} onClick={() => handleBatchTypeChange(type)}>
-                          <Icon className={cn("h-4 w-4 mr-2", AMOUNT_TEXT_CLASS[type])} /> {type}
-                        </DropdownMenuItem>
-                      );
-                    })}
-                  </DropdownMenuContent>
-                </DropdownMenu>
-
-                <button
-                  onClick={() => runBatch(() => onDuplicate(selectedIds))}
-                  className="w-full flex items-center gap-2 px-2 py-1.5 rounded-card text-sm transition-colors text-left"
-                >
-                  <Copy className="h-3.5 w-3.5 text-muted-foreground" />
-                  <span className="text-sm">Duplicar</span>
-                </button>
-
-                <div className="my-1 border-t" />
-
-                <button
-                  onClick={() => runBatch(() => onDeleteMultiple(selectedIds))}
-                  className="w-full flex items-center gap-2 px-2 py-1.5 rounded-card text-sm hover:bg-destructive/10 text-destructive transition-colors text-left"
-                >
-                  <Trash2 className="h-3.5 w-3.5" />
-                  <span className="text-sm">Eliminar</span>
-                </button>
-              </div>
-
-              {summaryStats && (
-                <div className="px-3 py-2 border-t">
-                  <div className="grid grid-cols-2 gap-x-4 gap-y-1">
-                    {([
-                      ["Suma", summaryStats.sum, "font-medium"],
-                      ["Prom", summaryStats.avg, "font-medium"],
-                      ["Min", summaryStats.min, ""],
-                      ["Max", summaryStats.max, ""],
-                    ] as const).map(([label, value, weight]) => (
-                      <div key={label} className="flex items-center justify-between">
-                        <span className="text-xs">{label}</span>
-                        <span className={cn("text-xs font-mono tabular-nums", weight, signColor(value), isPrivacyMode && "privacy-blur")}>
-                          <NumberFlow value={value} locales="es-CL" format={SIGNED_CLP} />
-                        </span>
-                      </div>
-                    ))}
-                  </div>
-                  {summaryStats.mixed && (
-                    <div className="flex items-center justify-between mt-1.5 pt-1.5 border-t">
-                      <span className={cn("text-xs font-mono tabular-nums text-success", isPrivacyMode && "privacy-blur")}>
-                        +{clp(summaryStats.income)}
-                      </span>
-                      <span className={cn("text-xs font-mono tabular-nums", isPrivacyMode && "privacy-blur")}>
-                        −{clp(summaryStats.expense)}
-                      </span>
-                    </div>
-                  )}
-                </div>
-              )}
-
-              <div className="px-2 py-1.5 border-t">
-                <Button variant="ghost" size="xs" className="w-full text-muted-foreground" onClick={() => setRowSelection({})}>
-                  <X />
-                  Deseleccionar todo
-                </Button>
-              </div>
-            </div>
-          )}
-        </div>
+        <SelectionPanel
+          selected={selectedRows.map(row => row.original)}
+          categories={categories}
+          isPrivacyMode={isPrivacyMode}
+          onClearSelection={() => setRowSelection({})}
+          onUpdateMultiple={onUpdateMultiple}
+          onDuplicate={onDuplicate}
+          onDeleteMultiple={onDeleteMultiple}
+        />
       )}
 
       {selecting && (
         <div className="flex items-center justify-between gap-2 text-sm text-muted-foreground">
           <span>
             {hasSelection
-              ? `${selectedIds.length} seleccionado${selectedIds.length > 1 ? "s" : ""}`
+              ? `${selectedRows.length} seleccionado${selectedRows.length > 1 ? "s" : ""}`
               : "Toca los movimientos para seleccionarlos"}
           </span>
           <Button variant="ghost" size="xs" onClick={() => onSelectingChange(false)}>
@@ -1252,7 +336,7 @@ export function TransactionsTable({
 
       {isMobile ? (
         <div className="mobile-tx-list">
-          {table.getRowModel().rows.length === 0 ? (
+          {pageRows.length === 0 ? (
             <TableEmpty hasFilters={hasActiveFilters} onClear={clearFilters} />
           ) : groupedRows ? (
             groupedRows.map((group) => (
@@ -1264,7 +348,7 @@ export function TransactionsTable({
               </React.Fragment>
             ))
           ) : (
-            table.getRowModel().rows.map((row) =>
+            pageRows.map((row) =>
               renderMobileCard(row, format(new Date(row.original.date), "d MMM HH:mm", { locale: es }))
             )
           )}
@@ -1293,7 +377,7 @@ export function TransactionsTable({
                 ))}
               </thead>
               <tbody ref={tbodyRef} className="divide-y bg-card">
-                {table.getRowModel().rows.length === 0 ? (
+                {pageRows.length === 0 ? (
                   <tr>
                     <td colSpan={columns.length}>
                       <TableEmpty hasFilters={hasActiveFilters} onClear={clearFilters} />
@@ -1316,7 +400,7 @@ export function TransactionsTable({
                     </React.Fragment>
                   ))
                 ) : (
-                  table.getRowModel().rows.map(renderDesktopRow)
+                  pageRows.map(renderDesktopRow)
                 )}
               </tbody>
             </table>
@@ -1331,7 +415,7 @@ export function TransactionsTable({
             <>
               {" · Suma "}
               <span className={cn("font-mono tabular-nums", isPrivacyMode && "privacy-blur")}>
-                {formatSignedCLP(filteredSum)}
+                {clpSigned(filteredSum)}
               </span>
             </>
           )}
