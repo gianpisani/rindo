@@ -2,14 +2,13 @@ import { format } from "date-fns";
 import { es } from "date-fns/locale";
 import type { HTMLAttributes } from "react";
 import { InicioTxRow } from "@/components/transactions/InicioTxRow";
+import { TxIcon } from "@/components/transactions/TxIcon";
 import type { Transaction } from "@/hooks/useTransactions";
 import type { InlineEdit } from "@/hooks/useInlineEdit";
 import { usePrivacyMode } from "@/hooks/usePrivacyMode";
 import { signPrefix } from "@/lib/ledger";
 import { AMOUNT_TONE, isAnalyzing } from "@/lib/tx-display";
 import { cn } from "@/lib/utils";
-import { tint } from "@/lib/category-color";
-import { clp } from "@/lib/format";
 
 interface Props extends HTMLAttributes<HTMLDivElement> {
   t: Transaction;
@@ -33,19 +32,16 @@ export function TxRow({ t, edit, when = "time", className, ...rest }: Props) {
         className
       )}
       icon={
-        <span
-          className={cn("inicio-ico", analyzing && "is-thinking")}
-          style={tint(analyzing ? "var(--inicio-violet)" : edit.colorOf(t.category_name))}
-        >
-          <span key={analyzing ? "thinking" : t.category_name} className="glyph">
-            {analyzing ? "⚡" : edit.emojiOf(t.category_name)}
-          </span>
-          {isBot && <span className="inicio-bot">🤖</span>}
-        </span>
+        <TxIcon
+          emoji={edit.emojiOf(t.category_name)}
+          color={edit.colorOf(t.category_name)}
+          thinking={analyzing}
+          bot={isBot}
+        />
       }
       detail={detail}
-      amount={Math.abs(Number(t.amount))}
-      sign={signPrefix(t.type, Number(t.amount))}
+      amount={Number(t.amount)}
+      signOf={(amount) => signPrefix(t.type, amount)}
       amountColor={AMOUNT_TONE[t.type]}
       category={categoryEditable ? t.category_name : undefined}
       categoryOptions={edit.categoryOptions(t.type)}
@@ -62,11 +58,9 @@ export function TxRow({ t, edit, when = "time", className, ...rest }: Props) {
       }
       editable={!analyzing && !t.isPending}
       privacy={isPrivacyMode}
-      formatAmount={clp}
       onSave={(changes) => edit.save(t, {
         ...changes,
         ...(changes.detail !== undefined && { detail: changes.detail ? (isBot ? `🤖 ${changes.detail}` : changes.detail) : null }),
-        ...(changes.amount !== undefined && { amount: Number(t.amount) < 0 ? -changes.amount : changes.amount }),
       })}
       onDelete={() => edit.remove(t)}
       {...rest}

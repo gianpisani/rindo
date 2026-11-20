@@ -1,22 +1,23 @@
 import { useMemo, type ReactElement } from "react";
 import type { ColumnDef } from "@tanstack/react-table";
-import { ChevronDown, CreditCard, Undo2 } from "lucide-react";
+import { CreditCard, Undo2 } from "lucide-react";
 import { Checkbox } from "@/components/ui/checkbox";
 import { InlineDateTimePicker } from "@/components/ui/date-time-picker";
-import { AnalyzingBadge } from "@/components/transactions/AnalyzingBadge";
+import { InlineAmount, InlineText } from "@/components/transactions/InlineTxField";
+import { TxIcon } from "@/components/transactions/TxIcon";
 import type { Transaction } from "@/hooks/useTransactions";
 import type { CreditCard as Card } from "@/hooks/useCreditCards";
-import { INVESTMENT_TYPES, allowsNegativeAmount } from "@/lib/ledger";
+import { INVESTMENT_TYPES, allowsNegativeAmount, signPrefix } from "@/lib/ledger";
 import { getCleanDetail } from "@/lib/whisper";
-import { AMOUNT_TEXT_CLASS, categoryAvatar } from "@/lib/tx-display";
-import { ANALYZING_CATEGORY } from "@/lib/auto-category-policy";
+import { AMOUNT_TONE, categoryAvatar, isAnalyzing } from "@/lib/tx-display";
+import { detailToSave, isBotDetail } from "@/lib/tx-detail";
+import { tintColor } from "@/lib/category-color";
 import { reimbursementFromPick, withUnlinkedReimbursement, UNLINKED_REIMBURSEMENT, type CategoryOption } from "@/lib/category-options";
 import type { TransactionType } from "@/lib/ledger";
 import { cn } from "@/lib/utils";
-import { EditableAmountCell, EditableTextCell, SelectableCell, SortHeader } from "./EditableCells";
+import { SelectableCell, SortHeader } from "./EditableCells";
 import { QuickCategoryPicker } from "@/components/categories/QuickCategoryPicker";
 import { RowActionsMenu } from "./RowActionsMenu";
-import { CELL_TRIGGER } from "./cell-trigger";
 
 export type TableCategory = { id?: string; name: string; type: string; color?: string | null; icon?: string | null };
 
@@ -48,6 +49,8 @@ export function useTransactionColumns({
   categoryOptions,
 }: ColumnsOptions) {
   return useMemo<ColumnDef<Transaction>[]>(() => {
+    const colorOf = (name: string) => categories.find((c) => c.name === name)?.color;
+
     return [
       ...(selecting ? [{
         id: "select",
@@ -77,18 +80,15 @@ export function useTransactionColumns({
         accessorKey: "date",
         size: 120, minSize: 120, maxSize: 120,
         header: ({ column }) => <SortHeader column={column} label="Fecha" />,
-        cell: ({ row }) => {
-          const date = new Date(row.original.date);
-          return (
-            <div className={cn("font-medium text-sm", isPrivacyMode && "privacy-blur-light")}>
-              <InlineDateTimePicker
-                value={date}
-                onChange={(newDate) => onInlineUpdate(row.original.id, "date", newDate.toISOString())}
-                showTime={true}
-              />
-            </div>
-          );
-        },
+        cell: ({ row }) => (
+          <div className={cn("text-sm", isPrivacyMode && "privacy-blur-light")}>
+            <InlineDateTimePicker
+              value={new Date(row.original.date)}
+              onChange={(newDate) => onInlineUpdate(row.original.id, "date", newDate.toISOString())}
+              showTime={true}
+            />
+          </div>
+        ),
       },
 
       {
@@ -96,49 +96,38 @@ export function useTransactionColumns({
         size: 310, minSize: 220,
         header: "Detalle",
         cell: ({ row }) => {
-          const raw = row.original.detail || "";
-          const clean = getCleanDetail(raw);
-          const isBot = raw.startsWith("🤖");
-          const avatar = categoryAvatar(row.original.category_name, categories);
+          const t = row.original;
+          const clean = getCleanDetail(t.detail);
+          const bank = t.bank_description && t.bank_description !== clean ? t.bank_description : null;
 
           return (
-            <div className={cn("flex items-center gap-2 max-w-[300px]", isPrivacyMode && "privacy-blur")}>
-              <div className="relative flex-shrink-0">
-                {withCategoryPicker(row.original, (
-                  <button
-                    type="button"
-                    className="w-7 h-7 rounded-full flex items-center justify-center text-sm leading-none select-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-                    style={avatar.style}
-                    aria-label={`Cambiar categoría (${row.original.category_name})`}
-                  >
-                    {avatar.emoji}
-                  </button>
-                ))}
-                {isBot && (
-                  <div
-                    className="absolute -bottom-0.5 -right-0.5 w-3.5 h-3.5 rounded-full bg-background flex items-center justify-center"
-                    title="Detectado por el bot"
-                  >
-                    <span className="text-xs leading-none scale-75">🤖</span>
-                  </div>
-                )}
-              </div>
-              <div className="flex flex-col min-w-0 flex-1">
-                <EditableTextCell
+            <div className="flex items-center gap-2">
+              {withCategoryPicker(t, (
+                <button
+                  type="button"
+                  className="grid size-9 flex-none place-items-center rounded-full"
+                  aria-label={`Cambiar categoría (${t.category_name})`}
+                >
+                  <TxIcon
+                    emoji={categoryAvatar(t.category_name, categories).emoji}
+                    color={colorOf(t.category_name)}
+                    thinking={isAnalyzing(t)}
+                    bot={isBotDetail(t.detail)}
+                  />
+                </button>
+              ))}
+              <div className={cn("min-w-0 flex-1 text-sm", isPrivacyMode && "privacy-blur")}>
+                <InlineText
                   value={clean}
-                  onSave={(newDetail) => {
-                    const prefix = isBot ? "🤖 " : "";
-                    onInlineUpdate(row.original.id, "detail", newDetail ? prefix + newDetail : null);
-                  }}
-                  placeholder="Agregar detalle..."
-                  className="text-sm text-muted-foreground"
+                  editable={!t.isPending}
+                  label="Detalle del movimiento"
+                  placeholder="Agregar detalle"
+                  title={clean || undefined}
+                  onSave={(next) => onInlineUpdate(t.id, "detail", detailToSave(t.detail, next))}
                 />
-                {row.original.bank_description && row.original.bank_description !== clean && (
-                  <p
-                    className="text-xs truncate leading-none mt-0.5"
-                    title={row.original.bank_description}
-                  >
-                    {row.original.bank_description}
+                {bank && (
+                  <p className="truncate text-xs text-muted-foreground" title={bank}>
+                    {bank}
                   </p>
                 )}
               </div>
@@ -152,57 +141,47 @@ export function useTransactionColumns({
         size: 200, minSize: 170, maxSize: 240,
         header: ({ column }) => <SortHeader column={column} label="Categoría" />,
         cell: ({ row }) => {
-          const categoryName = row.original.category_name;
-          const type = row.original.type;
+          const t = row.original;
+          const categoryName = t.category_name;
           const isMissing = categoryName === "Sin categoría";
-          const isReimbursement = type === "Ingreso" && categoryName.toLowerCase().includes("reembolso");
-          const linkedCategory = row.original.reimbursement_for_category;
+          const isReimbursement = t.type === "Ingreso" && categoryName.toLowerCase().includes("reembolso");
+          const linkedCategory = t.reimbursement_for_category;
 
-          if (row.original.isPending || categoryName === ANALYZING_CATEGORY) return <AnalyzingBadge saving={row.original.isPending} />;
-
-          const dotColor = categories.find(c => c.name === categoryName)?.color;
+          if (isAnalyzing(t)) {
+            return (
+              <span className="inicio-thinking block truncate text-xs" role="status">
+                {t.isPending ? "Guardando…" : "Jev está categorizando…"}
+              </span>
+            );
+          }
 
           return (
-            <div className={cn("flex items-center gap-1 overflow-hidden", isPrivacyMode && "privacy-blur")}>
-              {withCategoryPicker(row.original, (
-                  <button className={cn(CELL_TRIGGER, "max-w-full overflow-hidden")}>
-                    <div className="flex items-center gap-1.5 min-w-0">
-                      {dotColor && (
-                        <div
-                          className="w-1.5 h-1.5 rounded-full flex-shrink-0"
-                          style={{ backgroundColor: dotColor }}
-                        />
-                      )}
-                      <span
-                        className={cn(
-                          "font-medium text-sm truncate",
-                          isMissing && "text-amber-500"
-                        )}
-                        title={categoryName}
-                      >
-                        {categoryName}
-                      </span>
-                    </div>
-                    <ChevronDown className="h-3 w-3 opacity-0 group-hover:opacity-50 transition-opacity" />
-                  </button>
+            <div className={cn("flex items-center gap-2 text-sm", isPrivacyMode && "privacy-blur")}>
+              {withCategoryPicker(t, (
+                <button type="button" className="tx-category inicio-editable inicio-pick min-w-0" title={categoryName}>
+                  <span
+                    className="mr-2 inline-block size-2 rounded-full align-middle"
+                    style={{ background: tintColor(colorOf(categoryName), 100) }}
+                    aria-hidden="true"
+                  />
+                  <span className={cn(isMissing && "text-amber-500")}>{categoryName}</span>
+                </button>
               ))}
               {isReimbursement && (
                 <QuickCategoryPicker
                   value={linkedCategory || UNLINKED_REIMBURSEMENT.name}
                   options={withUnlinkedReimbursement(categoryOptions("Gasto"))}
                   title="Reembolso de"
-                  onPick={(name) => onInlineUpdate(row.original.id, "reimbursement_for_category", reimbursementFromPick(name))}
+                  onPick={(name) => onInlineUpdate(t.id, "reimbursement_for_category", reimbursementFromPick(name))}
                 >
                   <button
+                    type="button"
                     className={cn(
-                      "inline-flex items-center gap-1 rounded-full px-1.5 py-0.5 text-xs leading-none flex-shrink-0",
-                      "cursor-pointer transition-all hover:brightness-125",
-                      linkedCategory
-                        ? "bg-success/15 text-success font-medium"
-                        : "bg-white/5 italic"
+                      "inline-flex flex-none items-center gap-1 rounded-full px-2 text-xs leading-5 transition-[filter] hover:brightness-125",
+                      linkedCategory ? "bg-success/15 font-medium text-success" : "bg-muted italic text-muted-foreground"
                     )}
                   >
-                    <Undo2 className="h-2 w-2 flex-shrink-0" />
+                    <Undo2 className="size-3 flex-none" />
                     {linkedCategory || "vincular"}
                   </button>
                 </QuickCategoryPicker>
@@ -222,43 +201,36 @@ export function useTransactionColumns({
           </div>
         ),
         cell: ({ row }: { row: { original: Transaction } }) => {
-          const type = row.original.type;
-          const cardId = row.original.card_id;
-          if (INVESTMENT_TYPES.includes(type)) return <span className="text-xs">—</span>;
+          const t = row.original;
+          if (INVESTMENT_TYPES.includes(t.type)) return <span className="text-xs text-muted-foreground">—</span>;
 
-          const selectedCard = creditCards.find(c => c.id === cardId);
+          const selectedCard = creditCards.find(c => c.id === t.card_id);
 
           return (
+            <div className="text-xs">
             <SelectableCell
-              value={cardId || ""}
+              value={t.card_id || ""}
               options={[
                 { value: "", label: "Cuenta" },
                 ...creditCards.map(c => ({ value: c.id, label: c.name })),
               ]}
-              onSave={(newCardId) => onInlineUpdate(row.original.id, "card_id", newCardId || null)}
-              renderValue={() => {
-                if (!selectedCard) {
-                  return (
-                    <span className="text-xs flex items-center gap-1">
-                      <CreditCard className="h-3 w-3" />
-                      Cuenta
-                    </span>
-                  );
-                }
-                const digits = selectedCard.last_4_digits;
-                return (
-                  <div className="flex items-center gap-1.5">
-                    <div
-                      className="w-2 h-2 rounded-full flex-shrink-0"
-                      style={{ backgroundColor: selectedCard.color || "#6366f1" }}
-                    />
-                    <span className="text-xs font-medium">
-                      {digits ? `****${digits}` : selectedCard.name}
-                    </span>
-                  </div>
-                );
-              }}
-            />
+              onSave={(newCardId) => onInlineUpdate(t.id, "card_id", newCardId || null)}
+              label={`Tarjeta: ${selectedCard?.name ?? "Cuenta"}`}
+            >
+              {selectedCard ? (
+                <>
+                  <span
+                    className="mr-1 inline-block size-2 rounded-full align-middle"
+                    style={{ background: tintColor(selectedCard.color, 100) }}
+                    aria-hidden="true"
+                  />
+                  {selectedCard.last_4_digits ? `****${selectedCard.last_4_digits}` : selectedCard.name}
+                </>
+              ) : (
+                <span className="text-muted-foreground">Cuenta</span>
+              )}
+            </SelectableCell>
+            </div>
           );
         },
       }] as ColumnDef<Transaction>[] : []),
@@ -268,16 +240,16 @@ export function useTransactionColumns({
         size: 170, minSize: 150, maxSize: 180,
         header: ({ column }) => <SortHeader column={column} label="Monto" alignEnd />,
         cell: ({ row }) => {
-          const amount = parseFloat(row.getValue("amount"));
-          const type = row.original.type;
-
+          const t = row.original;
           return (
-            <div className={cn("flex items-center justify-end", isPrivacyMode && "privacy-blur")}>
-              <EditableAmountCell
-                value={amount}
-                allowNegative={allowsNegativeAmount(type)}
-                onSave={(newAmount) => onInlineUpdate(row.original.id, "amount", newAmount)}
-                className={cn("text-sm font-medium", AMOUNT_TEXT_CLASS[type])}
+            <div className={cn("text-right text-sm", isPrivacyMode && "privacy-blur")}>
+              <InlineAmount
+                amount={Number(t.amount)}
+                signOf={(amount) => signPrefix(t.type, amount)}
+                color={AMOUNT_TONE[t.type]}
+                allowNegative={allowsNegativeAmount(t.type)}
+                editable={!t.isPending}
+                onSave={(amount) => onInlineUpdate(t.id, "amount", amount)}
               />
             </div>
           );
