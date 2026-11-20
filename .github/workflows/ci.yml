@@ -29,7 +29,7 @@ jobs:
       - name: Lint (eslint)
         run: npx eslint src
       - name: Tests
-        run: npm run test:jev
+        run: npm test
       # Las VITE_SUPABASE_* públicas vienen del .env versionado (las mismas que usa Vercel).
       - name: Build
         run: npm run build

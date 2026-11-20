@@ -41,14 +41,10 @@ npm run dev        # http://localhost:8080
 ## Antes de abrir una PR
 
 ```sh
-npm run lint:design                    # escala de diseño
-npx tsc -p tsconfig.app.json --noEmit  # tipos
-npx eslint src                         # lint
-npm run test:jev                       # tests
-npm run build
+npm run check   # escala de diseño, tipos, lint, tests y build
 ```
 
-Es lo mismo que corre el CI.
+Es lo mismo que corre el CI. Los tests viven en `tests/` (`npm test`).
 
 ## Reglas
 
