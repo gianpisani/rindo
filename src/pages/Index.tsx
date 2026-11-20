@@ -1,450 +1,101 @@
-import { useState, useMemo, useRef, useEffect, type CSSProperties, type TouchEvent } from "react";
+import { useState } from "react";
+import { useNavigate } from "react-router-dom";
 import Layout from "@/components/layout/Layout";
-import { useTransactions, type Transaction } from "@/hooks/useTransactions";
-import { byNewest } from "@/lib/tx-order";
-import { useLiveRows } from "@/hooks/useLiveRows";
+import { useTransactions } from "@/hooks/useTransactions";
 import { useInlineEdit } from "@/hooks/useInlineEdit";
-import { TxRow } from "@/components/transactions/TxRow";
-import { isAnalyzing, needsReview } from "@/lib/tx-display";
-import { useBankSyncCredentials } from "@/hooks/useBankSyncCredentials";
 import { useCategories } from "@/hooks/useCategories";
-import { useCategoryLimits } from "@/hooks/useCategoryLimits";
-import { useGlobalDrawers } from "@/hooks/useGlobalDrawers";
-import { useMonthlyBudget } from "@/hooks/useMonthlyBudget";
-import { usePeriodConfig } from "@/hooks/usePeriodConfig";
-import { dayOfPeriod, periodEndOf, periodNameDate, shiftPeriod } from "@/lib/period";
-import {
-  computeRealFlows,
-  DEFAULT_TRANSIT_CATEGORIES,
-  SWEEP_ALERT_THRESHOLD,
-  type RealFlowsConfig,
-} from "@/lib/real-flows";
-import { useRealFlows } from "@/hooks/useRealFlows";
-import { limitUsage, summarizeCategoryPeriod } from "@/lib/category-spending";
-import { PiggyBank, ChevronRight, RefreshCw } from "lucide-react";
+import { useHomeMonth } from "@/hooks/useHomeMonth";
+import { useRecentFeed } from "@/hooks/useRecentFeed";
 import { BankSyncModal } from "@/components/bank-sync/BankSyncModal";
 import { useBankSyncContext } from "@/hooks/useBankSyncContext";
-import { useNavigate } from "react-router-dom";
-import { Button } from "@/components/ui/button";
-import { Skeleton } from "@/components/ui/skeleton";
-import { EmptyState } from "@/components/shared/EmptyState";
-import { format, isToday, isYesterday } from "date-fns";
-import { es } from "date-fns/locale";
-import { cn } from "@/lib/utils";
-import NumberFlow from "@number-flow/react";
-import { usePrivacyMode } from "@/hooks/usePrivacyMode";
-import { MonthPulse, PaceSpark, PaceText } from "@/components/home/MonthPulse";
 import { TxSheet, type TxSheetData } from "@/components/finanzas/TxSheet";
-import { computeMonthPace } from "@/lib/month-pace";
-import { HomeNotices, type HomeNotice } from "@/components/home/HomeNotices";
-import { useUserProfile } from "@/hooks/useUserProfile";
-import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
-import { ANALYZING_CATEGORY } from "@/lib/auto-category-policy";
-import { isCardPayment } from "@/lib/ledger";
-import { tint } from "@/lib/category-color";
-import { clp, clpCompact } from "@/lib/format";
-
-const transit = new Set(DEFAULT_TRANSIT_CATEGORIES);
-const TOP_CATEGORIES = 5;
-
-const sinceLabel = (iso: string) => {
-  const minutes = Math.max(0, Math.round((Date.now() - new Date(iso).getTime()) / 60000));
-  if (minutes < 1) return "recién";
-  if (minutes < 60) return `hace ${minutes} min`;
-  if (minutes < 60 * 24) return `hace ${Math.round(minutes / 60)} h`;
-  return `hace ${Math.round(minutes / 1440)} d`;
-};
+import { MonthPulse } from "@/components/home/MonthPulse";
+import { HomeHeader } from "@/components/home/HomeHeader";
+import { MoneyCard } from "@/components/home/MoneyCard";
+import { SpendCard } from "@/components/home/SpendCard";
+import { RecentFeed } from "@/components/home/RecentFeed";
+import { OverLimitsList } from "@/components/home/OverLimitsList";
+import { FeedPanel, type HomeTab } from "@/components/home/FeedPanel";
 
 const Index = () => {
   const { transactions, isLoading } = useTransactions();
   const edit = useInlineEdit();
   const { categories } = useCategories();
-  const { limits } = useCategoryLimits();
   const navigate = useNavigate();
-  const { openProfileEdit, openPeriodSettings } = useGlobalDrawers();
-  const { isPrivacyMode } = usePrivacyMode();
+  const bankSync = useBankSyncContext();
   const [storyOpen, setStoryOpen] = useState(false);
   const [isBankSyncOpen, setIsBankSyncOpen] = useState(false);
   const [sheet, setSheet] = useState<TxSheetData | null>(null);
-  const [reviewing, setReviewing] = useState(false);
-  const [showAllCats, setShowAllCats] = useState(false);
-  const [mobileTab, setMobileTab] = useState<"feed" | "limits">("feed");
-  const swipe = useRef<{ x: number; y: number } | null>(null);
-  const { data: bankCredentials } = useBankSyncCredentials();
-  const lastSync = (bankCredentials ?? [])
-    .filter((c) => c.is_active && c.last_sync_status === "success" && c.last_sync_at)
-    .map((c) => c.last_sync_at as string)
-    .sort()
-    .at(-1);
-  const bankSync = useBankSyncContext();
-  const { profile: userProfile, avatarUrl } = useUserProfile();
+  const [mobileTab, setMobileTab] = useState<HomeTab>("feed");
 
-  const getGreeting = () => {
-    const hour = new Date().getHours();
-    if (hour < 12) return "Buenos días";
-    if (hour < 20) return "Buenas tardes";
-    return "Buenas noches";
-  };
+  const month = useHomeMonth(transactions);
+  const feed = useRecentFeed(transactions, isLoading, edit.categoryOptions);
 
-  const displayName = userProfile?.nickname || userProfile?.full_name || null;
-  const greetingInitials = (displayName || "").slice(0, 2).toUpperCase();
-
-  const now = new Date();
-  const period = usePeriodConfig();
-  const { startDay } = period;
-  const thisPeriod = period.currentPeriod;
-  const periodEnd = periodEndOf(thisPeriod, startDay);
-  const lastMonth = shiftPeriod(thisPeriod, -1, startDay);
-  const lastMonthName = periodNameDate(lastMonth, startDay);
-
-  const { budget } = useMonthlyBudget();
-  const flowConfig = useMemo<Partial<RealFlowsConfig>>(() => ({ periodStartDay: startDay }), [startDay]);
-  const currentFlows = useRealFlows(transactions, thisPeriod, flowConfig);
-  const lastMonthFlows = useMemo(
-    () => computeRealFlows(transactions, lastMonth, flowConfig),
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    [transactions, lastMonth.getTime(), flowConfig]
-  );
-
-  const sweepAlert = useMemo(() => {
-    if (!budget?.savings_goal || dayOfPeriod(now, thisPeriod) > 7) return null;
-    if (lastMonthFlows.consumoBruto === 0 && lastMonthFlows.ingresoReal === 0)
-      return null;
-    const saved = lastMonthFlows.ingresoReal - lastMonthFlows.consumoNeto;
-    const gap = saved - lastMonthFlows.invertido;
-    return gap > SWEEP_ALERT_THRESHOLD ? { amount: gap } : null;
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [budget?.savings_goal, lastMonthFlows]);
-
-  const limitRows = useMemo(() => limitUsage(transactions, limits, thisPeriod, periodEnd), [transactions, limits, thisPeriod, periodEnd]);
-
-  const monthPace = useMemo(
-    () => computeMonthPace(transactions, now, { startDay }),
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    [transactions, now.getFullYear(), now.getMonth(), now.getDate(), startDay]
-  );
-  const hasPace = monthPace.typical !== null || monthPace.spentSoFar > 0;
-
-  const monthSpend = useMemo(() => {
-    const map = summarizeCategoryPeriod(transactions, thisPeriod, periodEnd);
-    for (const key of [...map.keys()]) if (transit.has(key)) map.delete(key);
-    return map;
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [transactions, thisPeriod.getTime(), periodEnd.getTime()]);
-  const monthExpenses = [...monthSpend.values()].reduce((s, c) => s + c.effectiveAmount, 0);
-  const spendBreakdown = [...monthSpend.entries()]
-    .filter(([category, c]) => category !== ANALYZING_CATEGORY && c.count > 0)
-    .map(([category, c]) => ({ category, effectiveAmount: c.effectiveAmount }))
-    .sort((a, b) => b.effectiveAmount - a.effectiveAmount);
-  const shownCategories = showAllCats ? spendBreakdown : spendBreakdown.slice(0, TOP_CATEGORIES);
-  const hiddenCategories = spendBreakdown.length - shownCategories.length;
-  const topSpend = spendBreakdown[0]?.effectiveAmount || 1;
-  const pctOf = (amount: number) => (monthExpenses > 0 ? Math.round((amount / monthExpenses) * 100) : 0);
-
-  const colorOf = edit.colorOf;
-  const emojiOf = edit.emojiOf;
-
-  const openCategory = (category: string) => {
-    const row = monthSpend.get(category);
-    const rows = transactions.filter((t) => {
-      const d = new Date(t.date);
-      if (d < thisPeriod || d > periodEnd) return false;
-      return (t.type === "Gasto" && t.category_name === category) || t.reimbursement_for_category === category;
-    });
-    const count = row?.count ?? 0;
+  const openCategory = (category: string) =>
     setSheet({
       title: category,
-      icon: emojiOf(category),
-      color: colorOf(category),
-      summary: `${clp(row?.effectiveAmount ?? 0)} · ${count} movimiento${count === 1 ? "" : "s"}${row && row.reimbursedAmount > 0 ? ` · ${clp(row.reimbursedAmount)} reembolsado` : ""}`,
-      transactions: rows,
+      icon: edit.emojiOf(category),
+      color: edit.colorOf(category),
+      ...month.categoryDetail(category),
       groupBy: "day",
     });
-  };
 
-  const { categoryOptions } = edit;
-  const toReview = useMemo(
-    () => transactions.filter((t) => needsReview(t) && categoryOptions(t.type).length > 0),
-    [transactions, categoryOptions]
-  );
-  useEffect(() => {
-    if (reviewing && toReview.length === 0) setReviewing(false);
-  }, [reviewing, toReview.length]);
-  const reviewSheet: TxSheetData | null = reviewing && toReview.length > 0 ? {
+  const reviewSheet: TxSheetData | null = feed.isReviewing ? {
     title: "Por revisar",
-    summary: `${toReview.length} sin categoría · toca el ícono para elegirla`,
-    transactions: toReview,
+    summary: `${feed.toReview.length} sin categoría · toca el ícono para elegirla`,
+    transactions: feed.toReview,
     groupBy: "month",
   } : null;
 
-  const notices = useMemo(() => {
-    const list: HomeNotice[] = [];
-    if (sweepAlert) {
-      list.push({
-        id: "sweep",
-        icon: PiggyBank,
-        label: `${clpCompact(sweepAlert.amount)} sin invertir`,
-        detail: `Cerraste ${format(lastMonthName, "MMMM", { locale: es })} con ${clpCompact(
-          sweepAlert.amount
-        )} ahorrados que no barriste a inversión.`,
-        tone: "warning",
-        onClick: () => navigate("/budget"),
-      });
-    }
-    return list;
-  }, [sweepAlert, lastMonthName, navigate]);
-
-  const recentTransactions = [...transactions]
-    .sort(byNewest)
-    .slice(0, 40);
-
-  const live = useLiveRows(recentTransactions, !isLoading, isAnalyzing);
-
-  const groupedTransactions = live.visible.reduce((acc, t) => {
-    const key = format(new Date(t.date), "yyyy-MM-dd");
-    if (!acc[key]) acc[key] = [];
-    acc[key].push(t);
-    return acc;
-  }, {} as Record<string, Transaction[]>);
-
-  const dayExpenses = (dateKey: string) =>
-    groupedTransactions[dateKey].reduce((sum, t) => sum + (t.type === "Gasto" && !isCardPayment(t) ? Number(t.amount) : 0), 0);
-
-  const sortedDateKeys = Object.keys(groupedTransactions).sort(
-    (a, b) => new Date(b).getTime() - new Date(a).getTime()
-  );
-
-  const getDateLabel = (dateStr: string) => {
-    const d = new Date(dateStr + "T12:00:00");
-    if (isToday(d)) return "Hoy";
-    if (isYesterday(d)) return "Ayer";
-    return format(d, "d MMM", { locale: es });
-  };
-
-  const overLimits = limitRows.filter((row) => row.state === "over");
-  const hasLimits = limitRows.length > 0;
   const seeAllLimits = () => navigate("/budget", { state: { tab: "limits" } });
-
-  const limitsList = !hasLimits ? (
-    <EmptyState action={{ label: "Poner un límite", onClick: seeAllLimits }}>
-      Aún no pones límites
-    </EmptyState>
-  ) : overLimits.length === 0 ? (
-    <EmptyState>Vas bien en todos tus límites</EmptyState>
-  ) : (
-    overLimits.map((cat, index) => {
-      const { limit } = cat;
-      return (
-        <button key={cat.category} onClick={() => openCategory(cat.category)} className="inicio-lim">
-          <span className="inicio-ico" style={tint(colorOf(cat.category))}>{emojiOf(cat.category)}</span>
-          <span className="n">{cat.category}</span>
-          <span className="pct">{Math.round(cat.usage)}%</span>
-          <span className="inicio-track">
-            <i style={{ width: "100%", background: "oklch(var(--destructive))", "--i": index } as CSSProperties} />
-          </span>
-          <span className={cn("of", isPrivacyMode && "privacy-blur")}>
-            <span>{clp(cat.spent)} de {clp(limit)}</span>
-            <span className="extra">+{clp(cat.spent - limit)}</span>
-          </span>
-        </button>
-      );
-    })
+  const limitsList = (
+    <OverLimitsList
+      hasLimits={month.hasLimits}
+      overLimits={month.overLimits}
+      edit={edit}
+      onOpenCategory={openCategory}
+      onSeeAll={seeAllLimits}
+    />
   );
-
-  const feedList = isLoading ? (
-    <div className="space-y-3 px-4 py-3">
-      {Array.from({ length: 6 }).map((_, i) => (
-        <div key={i} className="flex items-center gap-3">
-          <Skeleton className="size-[30px] rounded-full" />
-          <div className="flex-1 space-y-1.5">
-            <Skeleton className="h-3.5 w-32" />
-            <Skeleton className="h-3 w-20" />
-          </div>
-          <Skeleton className="h-4 w-16" />
-        </div>
-      ))}
-    </div>
-  ) : recentTransactions.length === 0 ? (
-    <EmptyState className="h-full">No hay movimientos aún: sincroniza tu banco y aparecen acá</EmptyState>
-  ) : (
-    <>
-      {toReview.length > 0 && (
-        <button className="inicio-review" onClick={() => setReviewing(true)}>
-          <b>{toReview.length}</b> por revisar →
-        </button>
-      )}
-      {sortedDateKeys.map((dateKey) => (
-        <div key={dateKey}>
-          <div className="inicio-day">
-            {getDateLabel(dateKey)}
-            {dayExpenses(dateKey) > 0 && (
-              <span className={cn(isPrivacyMode && "privacy-blur")}>−{clp(dayExpenses(dateKey))}</span>
-            )}
-          </div>
-          {groupedTransactions[dateKey].map((t) => {
-            const key = live.keyOf(t);
-            return (
-              <TxRow
-                key={key}
-                t={t}
-                edit={edit}
-                className={cn(live.entered.has(key) && "is-new", live.resolved.has(key) && "is-resolved")}
-              />
-            );
-          })}
-        </div>
-      ))}
-    </>
-  );
-
-  const stackRest = monthExpenses - shownCategories.reduce((s, c) => s + c.effectiveAmount, 0);
 
   return (
     <Layout fit>
       <div className="inicio">
         <div className="inicio-grid" data-tab={mobileTab}>
-          <header className="inicio-head">
-            {displayName && (
-              <button onClick={() => openProfileEdit()} className="inicio-avatar" aria-label="Editar perfil">
-                <Avatar className="size-full">
-                  {avatarUrl && <AvatarImage src={avatarUrl} alt="" className="object-cover" />}
-                  <AvatarFallback className="text-xs font-medium">
-                    {greetingInitials}
-                  </AvatarFallback>
-                </Avatar>
-              </button>
-            )}
-            <h1 className="inicio-hello">
-              {getGreeting()}{displayName ? `, ${displayName}` : ""}
-            </h1>
-            <div className="inicio-head-end">
-              <HomeNotices notices={notices} className="shrink-0" />
-              <Button
-                variant="ghost"
-                size="xs"
-                className="text-muted-foreground"
-                onClick={() => setIsBankSyncOpen(true)}
-                aria-label={lastSync ? `Sincronizar bancos, última vez ${sinceLabel(lastSync)}` : "Sincronizar bancos"}
-                title="Sincronizar bancos"
-              >
-                {lastSync && sinceLabel(lastSync)}
-                <RefreshCw aria-hidden />
-              </Button>
-            </div>
-          </header>
+          <HomeHeader sweepAlert={month.sweepAlert} lastMonthName={month.lastMonthName} onSync={() => setIsBankSyncOpen(true)} />
 
-          <section className="inicio-card inicio-money">
-            <div className="inicio-money-top">
-              <span className="inicio-title">Gastado</span>
-              <button className="inicio-month" onClick={() => openPeriodSettings()} title="Configurar mes financiero">
-                {period.isCalendar ? format(now, "MMMM yyyy", { locale: es }) : period.rangeLabel(thisPeriod)}
-              </button>
-            </div>
-            <span className={cn("inicio-big", isPrivacyMode && "privacy-blur")}>
-              <NumberFlow value={monthExpenses} format={{ style: "currency", currency: "CLP", maximumFractionDigits: 0 }} locales="es-CL" />
-            </span>
-            {hasPace && (
-              <button className="inicio-pace" onClick={() => setStoryOpen(true)}>
-                <span className="inicio-pace-text">
-                  <PaceText pace={monthPace} className={cn(isPrivacyMode && "privacy-blur")} />
-                  <small>Tu mes<ChevronRight aria-hidden /></small>
-                </span>
-                <PaceSpark pace={monthPace} className="inicio-spark" />
-              </button>
-            )}
-            <div className={cn("inicio-flows", isPrivacyMode && "privacy-blur")}>
-              <span className="inicio-flow text-success">
-                <NumberFlow className="font-mono" value={currentFlows.ingresoReal} prefix="+" format={{ style: "currency", currency: "CLP", maximumFractionDigits: 0 }} locales="es-CL" />
-                <small>entró</small>
-              </span>
-              {currentFlows.invertido > 0 && (
-                <span className="inicio-flow" style={{ color: "var(--inicio-blue)" }}>
-                  <NumberFlow className="font-mono" value={currentFlows.invertido} format={{ style: "currency", currency: "CLP", maximumFractionDigits: 0 }} locales="es-CL" />
-                  <small>invertido</small>
-                </span>
-              )}
-            </div>
-          </section>
+          <MoneyCard
+            period={month.period}
+            thisPeriod={month.thisPeriod}
+            monthExpenses={month.monthExpenses}
+            pace={month.monthPace}
+            hasPace={month.hasPace}
+            flows={month.currentFlows}
+            onOpenPace={() => setStoryOpen(true)}
+          />
 
-          <section className="inicio-card inicio-spend">
-            <span className="inicio-title">Por categoría</span>
-            {spendBreakdown.length === 0 ? (
-              <EmptyState>Sin gastos este mes</EmptyState>
-            ) : (
-              <>
-                {shownCategories.map((cat, index) => (
-                  <button key={cat.category} onClick={() => openCategory(cat.category)} className="inicio-cat">
-                    <span className="n">{emojiOf(cat.category)} {cat.category}</span>
-                    <span className={cn("v", isPrivacyMode && "privacy-blur")}>{clp(cat.effectiveAmount)}</span>
-                    <span className="p">{pctOf(cat.effectiveAmount)}%</span>
-                    <span className="inicio-track">
-                      <i style={{ width: `${Math.max((cat.effectiveAmount / topSpend) * 100, 1.5)}%`, background: colorOf(cat.category) || "var(--muted-foreground)", "--i": index } as CSSProperties} />
-                    </span>
-                  </button>
-                ))}
-                {(hiddenCategories > 0 || showAllCats) && (
-                  <button onClick={() => setShowAllCats((v) => !v)} className="inicio-more">
-                    {showAllCats ? "Ver menos" : `+${hiddenCategories} categoría${hiddenCategories === 1 ? "" : "s"} más`}
-                  </button>
-                )}
-                <div className="inicio-stack">
-                  {shownCategories.map((cat) => (
-                    <i key={cat.category} style={{ flex: cat.effectiveAmount, background: colorOf(cat.category) || "var(--muted-foreground)" }} />
-                  ))}
-                  {stackRest > 0 && <i style={{ flex: stackRest, background: "var(--border)" }} />}
-                </div>
-                <div className="inicio-legend">
-                  {shownCategories.map((cat) => (
-                    <button key={cat.category} onClick={() => openCategory(cat.category)}>
-                      {emojiOf(cat.category)} {cat.category} <b>{pctOf(cat.effectiveAmount)}%</b>
-                    </button>
-                  ))}
-                  {(hiddenCategories > 0 || showAllCats) && (
-                    <button onClick={() => setShowAllCats((v) => !v)}>{showAllCats ? "menos" : `+${hiddenCategories}`}</button>
-                  )}
-                </div>
-              </>
-            )}
-          </section>
+          <SpendCard
+            breakdown={month.spendBreakdown}
+            monthExpenses={month.monthExpenses}
+            edit={edit}
+            onOpenCategory={openCategory}
+          />
 
-          <section
-            className="inicio-card inicio-feed"
-            onTouchStart={(e: TouchEvent) => { swipe.current = { x: e.touches[0].clientX, y: e.touches[0].clientY }; }}
-            onTouchEnd={(e: TouchEvent) => {
-              const start = swipe.current;
-              swipe.current = null;
-              if (!start) return;
-              const dx = e.changedTouches[0].clientX - start.x;
-              const dy = e.changedTouches[0].clientY - start.y;
-              if (Math.abs(dx) < 56 || Math.abs(dx) < Math.abs(dy) * 1.6) return;
-              setMobileTab(dx < 0 ? "limits" : "feed");
-            }}
-          >
-            <div className="inicio-tabs" role="tablist">
-              <button className="inicio-tab" role="tab" aria-selected={mobileTab === "feed"} onClick={() => setMobileTab("feed")}>
-                Recientes{recentTransactions.length > 0 && <span className="inicio-count">{recentTransactions.length}</span>}
-              </button>
-              <button className="inicio-tab" role="tab" aria-selected={mobileTab === "limits"} onClick={() => setMobileTab("limits")}>
-                Límites{overLimits.length > 0 && <span className="inicio-pill">{overLimits.length}</span>}
-              </button>
-            </div>
-            <div className="inicio-panel-head">
-              <span className="inicio-title">
-                Recientes{recentTransactions.length > 0 && <span className="inicio-count">{recentTransactions.length}</span>}
-              </span>
-              <button onClick={() => navigate("/transactions")}>Ver todo →</button>
-            </div>
-            <div className="inicio-scroll inicio-list-feed">{feedList}</div>
-            <div className="inicio-scroll inicio-list-limits">
-              {limitsList}
-              {hasLimits && <button className="inicio-more inicio-see-all" onClick={seeAllLimits}>Ver todos →</button>}
-            </div>
-          </section>
+          <FeedPanel
+            tab={mobileTab}
+            onTab={setMobileTab}
+            recentCount={feed.recentCount}
+            overCount={month.overLimits.length}
+            hasLimits={month.hasLimits}
+            onSeeAllLimits={seeAllLimits}
+            feed={<RecentFeed isLoading={isLoading} feed={feed} edit={edit} />}
+            limits={limitsList}
+          />
 
           <aside className="inicio-card inicio-limits">
             <div className="inicio-panel-head">
               <span className="inicio-title">Límites pasados</span>
-              {hasLimits && <button onClick={seeAllLimits}>Ver todos →</button>}
+              {month.hasLimits && <button onClick={seeAllLimits}>Ver todos →</button>}
             </div>
             <div className="inicio-scroll">{limitsList}</div>
           </aside>
@@ -464,15 +115,15 @@ const Index = () => {
         />
       </div>
 
-      <TxSheet data={reviewSheet ?? sheet} edit={edit} onClose={() => { setSheet(null); setReviewing(false); }} />
+      <TxSheet data={reviewSheet ?? sheet} edit={edit} onClose={() => { setSheet(null); feed.stopReview(); }} />
 
       <MonthPulse
         open={storyOpen}
         onClose={() => setStoryOpen(false)}
-        initialMonth={thisPeriod}
+        initialMonth={month.thisPeriod}
         transactions={transactions}
         categories={categories}
-        flowConfig={flowConfig}
+        flowConfig={month.flowConfig}
       />
     </Layout>
   );
