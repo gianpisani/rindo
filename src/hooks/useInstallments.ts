@@ -4,6 +4,7 @@ import { requireUserId } from "@/integrations/supabase/session";
 import { toast } from "sonner";
 import { installmentTransactions } from "@/lib/installments";
 import { CREDIT_CARDS_KEY } from "./useCreditCards";
+import { optimistic } from "./optimistic";
 
 export interface InstallmentPurchase {
   id: string;
@@ -24,6 +25,8 @@ export interface InstallmentPurchase {
   card_name?: string;
   card_color?: string;
 }
+
+type InstallmentPatch = Partial<InstallmentPurchase> & { id: string };
 
 type InstallmentInput = Omit<InstallmentPurchase, "id" | "user_id" | "created_at" | "updated_at" | "card_name" | "card_color">;
 
@@ -71,6 +74,12 @@ export function useInstallments() {
     queryClient.invalidateQueries({ queryKey: ["transactions"] }),
   ]);
 
+  const patchInList = optimistic<InstallmentPurchase[], InstallmentPatch>(queryClient, INSTALLMENTS_KEY, (list, { id, ...changes }) =>
+    list.map((purchase) => (purchase.id === id ? { ...purchase, ...changes } : purchase)));
+
+  const removeFromList = optimistic<InstallmentPurchase[], string>(queryClient, INSTALLMENTS_KEY, (list, id) =>
+    list.filter((purchase) => purchase.id !== id));
+
   const addInstallment = useMutation({
     mutationFn: async (purchase: InstallmentInput) => {
       const userId = await requireUserId();
@@ -94,7 +103,8 @@ export function useInstallments() {
   });
 
   const updateInstallment = useMutation({
-    mutationFn: async ({ id, ...changes }: Partial<InstallmentPurchase> & { id: string }) => {
+    ...patchInList,
+    mutationFn: async ({ id, ...changes }: InstallmentPatch) => {
       const userId = await requireUserId();
       const previousIds = await linkedTransactionIds(id);
       const { data, error } = await supabase
@@ -112,6 +122,7 @@ export function useInstallments() {
   });
 
   const deleteInstallment = useMutation({
+    ...removeFromList,
     mutationFn: async (id: string) => {
       await deleteTransactionsById(await linkedTransactionIds(id));
       const { error } = await supabase.from("installment_purchases").delete().eq("id", id);
