@@ -2,12 +2,13 @@ import { queryOptions, useQuery, useMutation, useMutationState, useQueryClient }
 import { supabase } from "@/integrations/supabase/client";
 import { requireUserId } from "@/integrations/supabase/session";
 import { toast } from "sonner";
-import { useMemo, useRef } from "react";
+import { useMemo } from "react";
 import type { TransactionType } from "@/lib/ledger";
 import { byNewest } from "@/lib/tx-order";
 import { categorizeSavedTransaction } from "@/lib/ai-categorizer";
 import { ANALYZING_CATEGORY, UNCATEGORIZED, shouldCategorize, withManualCategorySource } from "@/lib/auto-category-policy";
-import { optimistic } from "./optimistic";
+import { groupPatches } from "@/lib/edit-history";
+import { optimistic, type Snapshot } from "./optimistic";
 
 export interface Transaction {
   category_source?: string | null;
@@ -65,26 +66,19 @@ const endOfToday = () => {
   return today;
 };
 
-const restorable = (t: Transaction, userId: string) => ({
-  date: t.date,
-  detail: t.detail,
-  category_name: t.category_name,
-  type: t.type,
-  amount: t.amount,
-  card_id: t.card_id,
-  installment_id: t.installment_id,
-  reimbursement_for_category: t.reimbursement_for_category,
-  bank_description: t.bank_description,
-  category_source: t.category_source ?? null,
-  user_id: userId,
-});
+const WRITE_SCOPE = { id: "transactions-write" };
 
-const plural = (count: number, one: string, many: string) => (count === 1 ? one : `${count} ${many}`);
+const savedRow = ({ isPending: _pending, ...row }: Transaction) => row;
+
+async function persistPatches(patches: TransactionPatch[]) {
+  await Promise.all(groupPatches(patches).map(async ({ ids, changes }) => {
+    const { data, error } = await supabase.from("transactions").update(withManualCategorySource(changes)).in("id", ids).select("id");
+    if (error) throw error;
+    if (data.length !== ids.length) throw new Error("Algunos movimientos ya no existen.");
+  }));
+}
 
 export function useTransactions() {
-  const queryClient = useQueryClient();
-  const lastDeletedRef = useRef<Transaction[]>([]);
-
   const { data: savedTransactions = [], isLoading } = useQuery(transactionsQuery);
 
   const pendingTransactions = useMutationState({
@@ -108,8 +102,17 @@ export function useTransactions() {
   const transactions = allTransactions.filter((t) => new Date(t.date) <= today);
   const futureTransactions = allTransactions.filter((t) => new Date(t.date) > today);
 
-  const patchList = (list: Transaction[], ids: string[], changes: Partial<Transaction>) =>
-    list.map((t) => (ids.includes(t.id) ? { ...t, ...changes } : t));
+  return {
+    transactions,
+    futureTransactions,
+    allTransactions,
+    isLoading,
+    ...useTransactionWrites(),
+  };
+}
+
+export function useTransactionWrites() {
+  const queryClient = useQueryClient();
 
   const categorizeInBackground = async (transaction: Transaction) => {
     const toastId = `categorize-${transaction.id}`;
@@ -157,66 +160,55 @@ export function useTransactions() {
     },
   });
 
+  const applyPatches = optimistic<Transaction[], TransactionPatch[]>(queryClient, TRANSACTIONS_KEY, (list, patches) => {
+    const byId = new Map(patches.map(({ id, ...changes }) => [id, changes]));
+    return list.map((t) => (byId.has(t.id) ? { ...t, ...byId.get(t.id) } : t));
+  });
+
   const updateTransaction = useMutation({
-    mutationFn: async ({ id, ...changes }: TransactionPatch) => {
-      const { error } = await supabase.from("transactions").update(withManualCategorySource(changes)).eq("id", id).select("id").single();
-      if (error) throw error;
-    },
-    ...optimistic<Transaction[], TransactionPatch>(queryClient, TRANSACTIONS_KEY, (list, { id, ...changes }) =>
-      patchList(list, [id], changes)),
+    scope: WRITE_SCOPE,
+    mutationFn: (patch: TransactionPatch) => persistPatches([patch]),
+    onMutate: (patch: TransactionPatch) => applyPatches.onMutate([patch]),
+    onError: (error: unknown, patch: TransactionPatch, snapshot?: Snapshot<Transaction[]>) => applyPatches.onError(error, [patch], snapshot),
+    onSettled: applyPatches.onSettled,
   });
 
-  const updateMultipleTransactions = useMutation({
-    mutationFn: async ({ ids, updates }: { ids: string[]; updates: Partial<Pick<Transaction, "category_name" | "type">> }) => {
-      const { error } = await supabase.from("transactions").update(withManualCategorySource(updates)).in("id", ids);
-      if (error) throw error;
-      return ids.length;
-    },
-    ...optimistic<Transaction[], { ids: string[]; updates: Partial<Transaction> }>(queryClient, TRANSACTIONS_KEY, (list, { ids, updates }) =>
-      patchList(list, ids, updates)),
-    onSuccess: (count) => toast.success(`${plural(count, "Movimiento actualizado", "movimientos actualizados")}`),
+  const updateTransactions = useMutation({
+    scope: WRITE_SCOPE,
+    meta: { handlesOwnError: true },
+    mutationFn: persistPatches,
+    ...applyPatches,
   });
-
-  const restoreDeleted = useMutation({
-    mutationFn: async () => {
-      const userId = await requireUserId();
-      const rows = lastDeletedRef.current.map((t) => restorable(t, userId));
-      const { error } = await supabase.from("transactions").insert(rows);
-      if (error) throw error;
-      lastDeletedRef.current = [];
-      return rows.length;
-    },
-    onSuccess: (count) => toast.success(plural(count, "Movimiento restaurado", "movimientos restaurados")),
-    onSettled: () => queryClient.invalidateQueries({ queryKey: TRANSACTIONS_KEY }),
-  });
-
-  const removeFromList = optimistic<Transaction[], string[]>(queryClient, TRANSACTIONS_KEY, (list, ids) =>
-    list.filter((t) => !ids.includes(t.id)));
 
   const deleteTransactions = useMutation({
+    scope: WRITE_SCOPE,
+    meta: { handlesOwnError: true },
     mutationFn: async (ids: string[]) => {
       const { error } = await supabase.from("transactions").delete().in("id", ids);
       if (error) throw error;
-      return ids.length;
     },
-    ...removeFromList,
-    onMutate: async (ids: string[]) => {
-      const snapshot = await removeFromList.onMutate(ids);
-      lastDeletedRef.current = (snapshot.previous ?? []).filter((t) => ids.includes(t.id));
-      return snapshot;
+    ...optimistic<Transaction[], string[]>(queryClient, TRANSACTIONS_KEY, (list, ids) =>
+      list.filter((t) => !ids.includes(t.id))),
+  });
+
+  const restoreTransactions = useMutation({
+    scope: WRITE_SCOPE,
+    meta: { handlesOwnError: true },
+    mutationFn: async (rows: Transaction[]) => {
+      const { error } = await supabase.from("transactions").insert(rows.map(savedRow));
+      if (error) throw error;
     },
-    onSuccess: (count) => {
-      toast.success(plural(count, "Movimiento eliminado", "movimientos eliminados"), {
-        action: { label: "Deshacer", onClick: () => restoreDeleted.mutate() },
-        duration: 8000,
-      });
-    },
+    ...optimistic<Transaction[], Transaction[]>(queryClient, TRANSACTIONS_KEY, (list, rows) =>
+      [...rows, ...list.filter((t) => !rows.some((row) => row.id === t.id))].sort(byNewest)),
   });
 
   const duplicateTransactions = useMutation({
+    scope: WRITE_SCOPE,
+    meta: { handlesOwnError: true },
     mutationFn: async (ids: string[]) => {
       const userId = await requireUserId();
-      const copies = allTransactions.filter((t) => ids.includes(t.id)).map((t) => ({
+      const originals = queryClient.getQueryData<Transaction[]>(TRANSACTIONS_KEY) ?? [];
+      const copies = originals.filter((t) => ids.includes(t.id)).map((t) => ({
         date: t.date,
         detail: t.detail ? `${t.detail} (copia)` : "(copia)",
         category_name: t.category_name,
@@ -224,23 +216,22 @@ export function useTransactions() {
         amount: t.amount,
         user_id: userId,
       }));
-      const { error } = await supabase.from("transactions").insert(copies);
+      const { data, error } = await supabase.from("transactions").insert(copies).select();
       if (error) throw error;
-      return copies.length;
+      return data as Transaction[];
     },
-    onSuccess: (count) => toast.success(plural(count, "Movimiento duplicado", "movimientos duplicados")),
+    onSuccess: (copies) => {
+      queryClient.setQueryData<Transaction[]>(TRANSACTIONS_KEY, (previous) => [...copies, ...(previous ?? [])].sort(byNewest));
+    },
     onSettled: () => queryClient.invalidateQueries({ queryKey: TRANSACTIONS_KEY }),
   });
 
   return {
-    transactions,
-    futureTransactions,
-    allTransactions,
-    isLoading,
     addTransaction,
     updateTransaction,
-    updateMultipleTransactions,
+    updateTransactions,
     deleteTransactions,
+    restoreTransactions,
     duplicateTransactions,
   };
 }

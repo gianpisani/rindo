@@ -31,6 +31,7 @@ test('records explicit choices without labelling old or pending predictions as c
   assert.deepEqual(withManualCategorySource({ category_name: 'Comida diaria' }), { category_name: 'Comida diaria', category_source: 'manual' });
   assert.deepEqual(withManualCategorySource({ category_name: '⚡ Analizando...' }), { category_name: '⚡ Analizando...', category_source: null });
   assert.deepEqual(withManualCategorySource({ category_name: 'Sin categoría' }), { category_name: 'Sin categoría', category_source: null });
+  assert.deepEqual(withManualCategorySource({ category_name: 'Comida diaria', category_source: 'jev' }), { category_name: 'Comida diaria', category_source: 'jev' });
   assert.deepEqual(withManualCategorySource({ detail: 'cena' } as { detail: string; category_name?: string }), { detail: 'cena' });
 });
 

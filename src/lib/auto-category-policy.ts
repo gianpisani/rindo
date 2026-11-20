@@ -12,7 +12,7 @@ export function shouldCategorize(transaction: { detail?: string | null; type: st
 
 const isChosenCategory = (name: string) => name !== '' && name !== UNCATEGORIZED && name !== ANALYZING_CATEGORY;
 
-export function withManualCategorySource<T extends { category_name?: string }>(values: T) {
-  if (values.category_name === undefined) return values;
+export function withManualCategorySource<T extends { category_name?: string; category_source?: string | null }>(values: T) {
+  if (values.category_name === undefined || 'category_source' in values) return values;
   return { ...values, category_source: isChosenCategory(values.category_name) ? 'manual' : null };
 }

@@ -12,6 +12,7 @@ import type { DateRangeValue } from "@/components/transactions/DateRangeFilter";
 import { useBankSyncContext } from "@/hooks/useBankSyncContext";
 import { useGlobalDrawers } from "@/hooks/useGlobalDrawers";
 import { useTransactions, type Transaction } from "@/hooks/useTransactions";
+import { useEditHistory } from "@/hooks/useEditHistory";
 import { useSearchFocusShortcut } from "@/hooks/useSearchFocusShortcut";
 import { useCategories } from "@/hooks/useCategories";
 import { useCreditCards } from "@/hooks/useCreditCards";
@@ -23,14 +24,8 @@ import { exportTransactionsCsv } from "@/lib/csv-export";
 const EDIT_GHOST_CLICK_MS = 800;
 
 export default function Transactions() {
-  const {
-    transactions,
-    futureTransactions,
-    updateTransaction,
-    deleteTransactions,
-    updateMultipleTransactions,
-    duplicateTransactions,
-  } = useTransactions();
+  const { transactions, futureTransactions } = useTransactions();
+  const history = useEditHistory();
   const { categories } = useCategories();
   const { creditCards, isLoading: isLoadingCards } = useCreditCards();
   const bankSync = useBankSyncContext();
@@ -134,10 +129,10 @@ export default function Transactions() {
           categories={categories}
           onEdit={editUnlessGhostClick}
           onDelete={(id) => askDelete([id], false)}
-          onUpdateSilent={(id, updates) => updateTransaction.mutate({ id, ...updates })}
+          onUpdateSilent={(id, updates) => history.update([id], updates)}
           onDeleteMultiple={(ids) => askDelete(ids, true)}
-          onUpdateMultiple={(ids, updates) => updateMultipleTransactions.mutate({ ids, updates })}
-          onDuplicate={(ids) => duplicateTransactions.mutate(ids)}
+          onUpdateMultiple={history.update}
+          onDuplicate={history.duplicate}
           searchValue={searchValue}
           onSearchChange={setSearchValue}
           typeFilter={typeFilter}
@@ -161,7 +156,7 @@ export default function Transactions() {
         bulk={bulkDelete}
         transactions={transactions}
         onClose={closeDeleteConfirm}
-        onConfirm={(ids) => deleteTransactions.mutate(ids)}
+        onConfirm={history.remove}
       />
     </Layout>
   );
