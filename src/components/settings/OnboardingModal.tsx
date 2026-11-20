@@ -54,7 +54,6 @@ export function OnboardingModal({
             }
       }
       title={isEdit ? "Perfil" : "Personaliza tu experiencia"}
-      description={isEdit ? undefined : "Haz que Rindo se sienta tuyo"}
       maxWidth={isEdit ? "sm" : "md"}
       footer={
         <OnboardingFooter

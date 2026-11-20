@@ -32,9 +32,6 @@ export function NameStep({
           onChange={(e) => onNicknameChange(e.target.value)}
           placeholder="Como quieres que te saludemos?"
         />
-        <p className="text-xs text-muted-foreground">
-          Este nombre aparece en el saludo de la home
-        </p>
       </div>
     </div>
   );

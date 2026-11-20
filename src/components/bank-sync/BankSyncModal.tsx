@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { BaseModal } from "@/components/shared/BaseModal";
 import type { SyncStep, SyncResult, SyncMovementItem } from "@/lib/bank-sync";
-import { bankSyncHeading, bankSyncView, hasBankSyncFooter, type BankSyncTab } from "@/lib/bank-sync";
+import { bankSyncTitle, bankSyncView, hasBankSyncFooter, type BankSyncTab } from "@/lib/bank-sync";
 import { useBankSyncForm } from "@/hooks/useBankSyncForm";
 import { useSyncResultSelection } from "@/hooks/useSyncResultSelection";
 import { BankSyncSettings } from "@/components/bank-sync/BankSyncSettings";
@@ -43,10 +43,10 @@ export function BankSyncModal({
   const [tab, setTab] = useState<BankSyncTab>("sync");
   const form = useBankSyncForm({ syncStep, onStart, onStartStored });
   const selection = useSyncResultSelection({ result, bank: form.bank, onImportSkipped, onDeleteImported });
-  const { selectedBank, storedCred } = form;
+  const { selectedBank } = form;
 
   const view = bankSyncView(syncStep, result !== null);
-  const { title, description } = bankSyncHeading(tab, view, selectedBank?.label, Boolean(storedCred));
+  const title = bankSyncTitle(tab, view, selectedBank?.label);
 
   function handleRetry() {
     onReset();
@@ -84,7 +84,6 @@ export function BankSyncModal({
       open={open}
       onOpenChange={onOpenChange}
       title={title}
-      description={description}
       maxWidth={view === "result" && result && !("error" in result) ? "lg" : "md"}
       footer={footer}
     >
