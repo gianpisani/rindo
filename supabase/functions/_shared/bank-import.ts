@@ -62,6 +62,8 @@ interface ImportResult {
 
 type DuplicateReason = 'bank_duplicate' | 'manual_duplicate'
 
+const UNVERIFIED_DUPLICATE = 'dedup_unverified'
+
 const MIN_NAME_PREFIX_LENGTH = 4
 const BANK_ROWS_TO_COMPARE = 10
 const TRANSFER_RE = /^(transferencia|traspaso)/i
@@ -225,7 +227,10 @@ export async function importBankMovements(params: {
     }
 
     const isoDate = convertDate(movement.date, syncDate)
-    const reason = await duplicateReason(client, userId, isoDate, amount, description)
+    const reason = await duplicateReason(client, userId, isoDate, amount, description).catch((error) => {
+      console.error('No se pudo revisar si el movimiento ya existía', error)
+      return UNVERIFIED_DUPLICATE
+    })
     if (reason) {
       skippedItems.push({ date: movement.date, description, amount, type, reason, card: movement.card })
       continue

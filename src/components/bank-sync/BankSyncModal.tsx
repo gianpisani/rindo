@@ -50,6 +50,7 @@ import { BankSyncSettings } from "@/components/bank-sync/BankSyncSettings";
 import { BankSyncHistory } from "@/components/bank-sync/BankSyncHistory";
 import { clp } from "@/lib/format";
 import { format } from "date-fns";
+import { SKIP_REASON_LABELS } from "@/lib/banks";
 
 const FORM_ID = "bank-sync-form";
 
@@ -66,11 +67,6 @@ function formatMovDate(dateStr: string): string {
   return dateStr;
 }
 
-const SKIP_REASON_LABELS: Record<string, string> = {
-  bank_duplicate: "Ya importada",
-  manual_duplicate: "Ingresada manualmente",
-  zero_amount: "Monto $0",
-};
 
 interface BankSyncModalProps {
   open: boolean;

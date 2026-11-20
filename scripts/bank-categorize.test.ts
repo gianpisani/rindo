@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict'
 import { test } from 'node:test'
-import { categorizeBankImport, merchantSearchTerm } from '../supabase/functions/_shared/bank-categorize.ts'
+import { categorizeBankImport, firstWordSearchTerm, merchantSearchTerm } from '../supabase/functions/_shared/bank-categorize.ts'
 
 // Jev runs without an API key, so it always leaves the movement uncategorized.
 function database({ similar = [] as string[], categoryNow = 'Sin categoría' } = {}) {
@@ -53,4 +53,11 @@ test('leaves the movement uncategorized when there is no similar history', async
   const db = database()
   await categorizeBankImport(db.client, [{ id: 'tx1', detail: 'COMPRA JUMBO', type: 'Gasto' }], 'owner', { apiKey: '' })
   assert.ok(!db.calls.some(c => c.op === 'update' && (c.args[0] as { category_name?: string }).category_name === 'Supermercado'))
+})
+
+test('correo y wallet buscan su historial con la primera palabra tal cual', () => {
+  assert.equal(firstWordSearchTerm('📱 Café Altura'), 'Café')
+  assert.equal(firstWordSearchTerm('Panadería Ñuñoa (USD)'), 'Panadería')
+  assert.equal(firstWordSearchTerm('Transferencia a Ana Pérez'), null)
+  assert.equal(firstWordSearchTerm('Ok'), null)
 })

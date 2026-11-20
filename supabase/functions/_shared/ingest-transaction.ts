@@ -1,4 +1,4 @@
-import { categoryFromHistory } from './bank-categorize.ts'
+import { firstWordSearchTerm, mostCommonCategory } from './bank-categorize.ts'
 import { CARD_PAYMENT_CATEGORY, cardForMovement, isCardPaymentText } from './card-payment.ts'
 import { UNCATEGORIZED } from './category-rules.ts'
 import { sendNotificationEmail, userEmail, type WeeklyStats } from './email-notification.ts'
@@ -32,9 +32,10 @@ export async function ingestTransaction(client: Client, row: TransactionRow, opt
     lastFour: options.cardLastFour || null,
     texts: [row.detail, row.bank_description],
   })
+  const searchTerm = firstWordSearchTerm(row.detail)
   const category = isCardPayment
     ? CARD_PAYMENT_CATEGORY
-    : await categoryFromHistory(client, row.user_id, row) ?? UNCATEGORIZED
+    : (searchTerm && await mostCommonCategory(client, row.user_id, searchTerm)) || UNCATEGORIZED
 
   const { data: transaction, error } = await client
     .from('transactions')

@@ -22,6 +22,7 @@ import { BankLogo } from "@/components/bank-sync/BankLogo";
 import { useBankSyncContext } from "@/contexts/BankSyncContext";
 import { useBankSyncLog, type SyncLogEntry } from "@/hooks/useBankSyncLog";
 import { clp } from "@/lib/format";
+import { SKIP_REASON_LABELS } from "@/lib/banks";
 
 function formatMovDate(dateStr: string): string {
   const parts = dateStr.split("-");
@@ -30,11 +31,6 @@ function formatMovDate(dateStr: string): string {
   return dateStr;
 }
 
-const SKIP_REASON_LABELS: Record<string, string> = {
-  bank_duplicate: "Ya importada",
-  manual_duplicate: "Ingresada manualmente",
-  zero_amount: "Monto $0",
-};
 
 function EntryDetail({ entry }: { entry: SyncLogEntry }) {
   const { importSkipped, deleteImported } = useBankSyncContext();

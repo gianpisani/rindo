@@ -77,3 +77,9 @@ export function validateRut(value: string): boolean {
   return verifier === expected;
 }
 
+export const SKIP_REASON_LABELS: Record<string, string> = {
+  bank_duplicate: "Ya importada",
+  manual_duplicate: "Ingresada manualmente",
+  dedup_unverified: "No se pudo revisar si ya existía",
+  zero_amount: "Monto $0",
+};

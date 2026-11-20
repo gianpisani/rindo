@@ -2,6 +2,7 @@ import type { SupabaseClient } from 'https://esm.sh/@supabase/supabase-js@2.39.3
 import { categorizeBatchForUser } from './categorize.ts'
 import { PENDING_CATEGORIES_FILTER, UNCATEGORIZED } from './category-rules.ts'
 import { normalizeMerchant, stopWords } from './category-history.ts'
+import { withoutImportMark } from './text.ts'
 
 export interface BankCategorizeItem { id: string; detail: string; type: string }
 
@@ -14,17 +15,24 @@ export function merchantSearchTerm(detail: string): string | null {
   return word ?? null
 }
 
-export async function categoryFromHistory(
-  client: SupabaseClient, userId: string, movement: { detail: string; type: string }, excludeIds: string[] = [],
+const MIN_SEARCH_TERM_LENGTH = 3
+const TRANSFER_WORD = /^transferencia$/i
+
+export function firstWordSearchTerm(detail: string): string | null {
+  const word = withoutImportMark(detail).split(/[\s(]/)[0]
+  if (!word || word.length < MIN_SEARCH_TERM_LENGTH || TRANSFER_WORD.test(word)) return null
+  return word
+}
+
+export async function mostCommonCategory(
+  client: SupabaseClient, userId: string, term: string, filters: { type?: string; excludeIds?: string[] } = {},
 ): Promise<string | null> {
-  const term = merchantSearchTerm(movement.detail)
-  if (!term) return null
   let query = client.from('transactions')
     .select('category_name')
     .eq('user_id', userId)
-    .eq('type', movement.type)
     .not('category_name', 'in', PENDING_CATEGORIES_FILTER)
-  if (excludeIds.length) query = query.not('id', 'in', `(${excludeIds.join(',')})`)
+  if (filters.type) query = query.eq('type', filters.type)
+  if (filters.excludeIds?.length) query = query.not('id', 'in', `(${filters.excludeIds.join(',')})`)
   const { data, error } = await query
     .ilike('detail', `%${term}%`)
     .order('created_at', { ascending: false })
@@ -39,6 +47,13 @@ export async function categoryFromHistory(
     counts.set(row.category_name, (counts.get(row.category_name) ?? 0) + 1)
   }
   return [...counts.entries()].sort((a, b) => b[1] - a[1])[0][0]
+}
+
+export function categoryFromHistory(
+  client: SupabaseClient, userId: string, movement: { detail: string; type: string }, excludeIds: string[] = [],
+): Promise<string | null> {
+  const term = merchantSearchTerm(movement.detail)
+  return term ? mostCommonCategory(client, userId, term, { type: movement.type, excludeIds }) : Promise.resolve(null)
 }
 
 async function applyHistoryCategory(client: SupabaseClient, userId: string, item: BankCategorizeItem, batchIds: string[]): Promise<boolean> {
