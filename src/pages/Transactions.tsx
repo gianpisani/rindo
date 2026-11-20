@@ -312,24 +312,29 @@ export default function Transactions() {
     const newDetail = detailText.trim();
     const detailChanged = !!newDetail && newDetail !== getCleanDetail(editingTransaction.detail);
 
-    updateTransaction.mutate({
-      id: editingTransaction.id,
-      category_name: data.category_name,
-      type: data.type,
-      card_id: data.card_id,
-      ...(detailChanged ? { detail: prefix + newDetail } : {}),
-      date: new Date(data.date).toISOString(),
-      amount,
-    });
-
-    if (split) {
-      setPendingTransaction({ id: editingTransaction.id, amount });
-      setIsDialogOpen(false);
-      setSharedDrawerOpen(true);
-      return;
-    }
-
-    closeComposer();
+    const transactionId = editingTransaction.id;
+    updateTransaction.mutate(
+      {
+        id: transactionId,
+        category_name: data.category_name,
+        type: data.type,
+        card_id: data.card_id,
+        ...(detailChanged ? { detail: prefix + newDetail } : {}),
+        date: new Date(data.date).toISOString(),
+        amount,
+      },
+      {
+        onSuccess: () => {
+          if (!split) {
+            closeComposer();
+            return;
+          }
+          setPendingTransaction({ id: transactionId, amount });
+          setIsDialogOpen(false);
+          setSharedDrawerOpen(true);
+        },
+      },
+    );
   };
 
   const handleSubmit = (e: React.FormEvent) => {
@@ -347,10 +352,8 @@ export default function Transactions() {
         detail: null,
       })),
       {
-        onSuccess: () => {
-          toast.success(`Gasto compartido dividido entre ${debtors.length} persona${debtors.length > 1 ? "s" : ""}`);
-          resetForm();
-        },
+        onSuccess: () => toast.success(`Gasto compartido dividido entre ${debtors.length} persona${debtors.length > 1 ? "s" : ""}`),
+        onSettled: resetForm,
       },
     );
   };

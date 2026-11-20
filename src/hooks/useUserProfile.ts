@@ -104,7 +104,7 @@ export function useUserProfile() {
     mutationFn: async () => {
       if (profile?.avatar_path) {
         const { error } = await supabase.storage.from("avatars").remove([profile.avatar_path]);
-        if (error) throw error;
+        if (error) console.warn("No se pudo borrar el archivo del avatar", error);
       }
       await updateOwnProfile({ avatar_path: null });
     },

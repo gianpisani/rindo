@@ -55,7 +55,7 @@ export function useCategories() {
 
   const updateCategory = useMutation({
     mutationFn: async ({ id, ...changes }: CategoryPatch) => {
-      const { error } = await supabase.from("categories").update(changes).eq("id", id);
+      const { error } = await supabase.from("categories").update(changes).eq("id", id).select("id").single();
       if (error) throw error;
     },
     ...optimistic<Category[], CategoryPatch>(queryClient, CATEGORIES_KEY, (list, { id, ...changes }) =>

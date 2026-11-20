@@ -133,6 +133,7 @@ export function useTransactions() {
 
   const addTransaction = useMutation({
     mutationKey: ["add-transaction"],
+    meta: { handlesOwnError: true },
     mutationFn: async (transaction: NewTransaction) => {
       const userId = await requireUserId();
       const { data, error } = await supabase
@@ -158,7 +159,7 @@ export function useTransactions() {
 
   const updateTransaction = useMutation({
     mutationFn: async ({ id, ...changes }: TransactionPatch) => {
-      const { error } = await supabase.from("transactions").update(withManualCategorySource(changes)).eq("id", id);
+      const { error } = await supabase.from("transactions").update(withManualCategorySource(changes)).eq("id", id).select("id").single();
       if (error) throw error;
     },
     ...optimistic<Transaction[], TransactionPatch>(queryClient, TRANSACTIONS_KEY, (list, { id, ...changes }) =>

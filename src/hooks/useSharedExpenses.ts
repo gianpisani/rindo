@@ -49,7 +49,7 @@ async function markDebtsPaid(ids: string[], paymentTransactionId: string, direct
   if (error) throw error;
 }
 
-async function reduceOriginalExpenses(debts: DebtPayment[]) {
+async function reduceOriginalExpenses(debts: DebtPayment[], { keepZero }: { keepZero: boolean }) {
   const { data, error } = await supabase
     .from("shared_expenses")
     .select("id, transaction_id")
@@ -66,15 +66,20 @@ async function reduceOriginalExpenses(debts: DebtPayment[]) {
     const { data: original, error: readError } = await supabase.from("transactions").select("amount").eq("id", transactionId).single();
     if (readError) throw readError;
     const reducedAmount = Number(original.amount) - reduction;
-    if (reducedAmount < 0) continue;
+    if (reducedAmount < 0 || (reducedAmount === 0 && !keepZero)) continue;
     const { error: updateError } = await supabase.from("transactions").update({ amount: reducedAmount }).eq("id", transactionId);
     if (updateError) throw updateError;
   }
 }
 
-async function settleTheyOweMe(debts: DebtPayment[], paymentTransactionId: string) {
+async function settleTheyOweMe(debts: DebtPayment[], paymentTransactionId: string, { keepZero }: { keepZero: boolean }) {
   await markDebtsPaid(debts.map((d) => d.sharedExpenseId), paymentTransactionId);
-  await reduceOriginalExpenses(debts);
+  try {
+    await reduceOriginalExpenses(debts, { keepZero });
+  } catch (error) {
+    console.error("No se pudo descontar lo pagado del gasto original", error);
+    toast.warning("Deuda saldada, pero no se pudo ajustar el gasto original.", { description: "Revisa su monto en Movimientos." });
+  }
 }
 
 export function useSharedExpenses() {
@@ -153,7 +158,7 @@ export function useSharedExpenses() {
         .select("id")
         .single();
       if (error) throw error;
-      await settleTheyOweMe([debt], payment.id);
+      await settleTheyOweMe([debt], payment.id, { keepZero: true });
     },
     onSuccess: () => toast.success("Pago registrado. Se ha creado el ingreso automáticamente"),
     onSettled: refreshWithTransactions,
@@ -167,7 +172,7 @@ export function useSharedExpenses() {
         .update({ type: "Reembolso", detail: paymentFrom(debts), category_name: PAYMENT_CATEGORY })
         .eq("id", existingTransactionId);
       if (error) throw error;
-      await settleTheyOweMe(debts, existingTransactionId);
+      await settleTheyOweMe(debts, existingTransactionId, { keepZero: false });
     },
     onSuccess: () => toast.success("Deudas vinculadas a la transacción"),
     onSettled: refreshWithTransactions,

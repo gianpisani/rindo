@@ -84,7 +84,9 @@ export function useCreditCards() {
       const { error } = await supabase
         .from("credit_cards")
         .update({ ...changes, updated_at: new Date().toISOString() })
-        .eq("id", id);
+        .eq("id", id)
+        .select("id")
+        .single();
       if (error) throw error;
     },
     ...optimistic<CreditCard[], CardPatch>(queryClient, CREDIT_CARDS_KEY, (list, { id, ...changes }) =>
