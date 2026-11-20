@@ -15,11 +15,6 @@ export function nextSort(current: SortRule[], id: string): SortRule[] {
   return DEFAULT_SORT;
 }
 
-export type SectionKind = "day" | "category" | "single";
-
-export const sectionKindOf = (sort: SortRule[]): SectionKind =>
-  isDefaultSort(sort) || sort[0].id === "date" ? "day" : sort[0].id === "category_name" ? "category" : "single";
-
 export function consecutiveSections<T>(items: T[], keyOf: (item: T) => string) {
   const sections: { key: string; start: number; items: T[] }[] = [];
   items.forEach((item, index) => {

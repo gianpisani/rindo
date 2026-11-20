@@ -31,7 +31,7 @@ import { QuickCategoryPicker } from "../categories/QuickCategoryPicker";
 import { useInlineEdit } from "@/hooks/useInlineEdit";
 import { ANALYZING_CATEGORY } from "@/lib/auto-category-policy";
 import { formatGroupDate } from "@/lib/tx-display";
-import { DEFAULT_SORT, consecutiveSections, sectionKindOf } from "@/lib/table-sort";
+import { DEFAULT_SORT, consecutiveSections } from "@/lib/table-sort";
 import { clpSigned } from "@/lib/format";
 import type { DateRangeValue } from "./DateRangeFilter";
 import { useTransactionColumns, type TableCategory } from "./table/useTransactionColumns";
@@ -154,7 +154,7 @@ export function TransactionsTable({
     onUpdateSilent(id, { [field]: value });
   }, [onUpdateSilent]);
 
-  const { save: saveInline, categoryOptions, emojiOf } = useInlineEdit();
+  const { save: saveInline, categoryOptions } = useInlineEdit();
   const armMenuGuard = menuGhostGuard.arm;
   const withCategoryPicker = useCallback((t: Transaction, trigger: React.ReactElement) =>
     t.isPending || t.category_name === ANALYZING_CATEGORY ? trigger : (
@@ -258,22 +258,14 @@ export function TransactionsTable({
 
   const filteredSum = filteredData.reduce((sum, t) => sum + displaySign(t.type) * t.amount, 0);
 
-  const sectionKind = sectionKindOf(sorting);
-  const sortedDesc = sorting[0]?.desc ?? true;
+  const groupByDay = sorting.length === 0 || sorting[0].id === "date";
 
-  const sections = useMemo(() => consecutiveSections(pageRows, (row) =>
-    sectionKind === "day" ? format(new Date(row.original.date), "yyyy-MM-dd")
-      : sectionKind === "category" ? row.original.category_name
-        : "all"),
-  [pageRows, sectionKind]);
-
-  const sectionTitle = (key: string) =>
-    sectionKind === "day" ? formatGroupDate(key)
-      : sectionKind === "category" ? `${emojiOf(key)} ${key}`
-        : sortedDesc ? "De mayor a menor monto" : "De menor a mayor monto";
+  const daySections = useMemo(() => consecutiveSections(pageRows, (row) =>
+    groupByDay ? format(new Date(row.original.date), "yyyy-MM-dd") : "all"),
+  [pageRows, groupByDay]);
 
   const timeLabel = (t: Transaction) =>
-    format(new Date(t.date), sectionKind === "day" ? "HH:mm" : "d MMM HH:mm", { locale: es });
+    format(new Date(t.date), groupByDay ? "HH:mm" : "d MMM HH:mm", { locale: es });
 
   const renderMobileCard = (row: Row<Transaction>, stamp: string) => (
     <MobileTxCard
@@ -352,9 +344,9 @@ export function TransactionsTable({
           {pageRows.length === 0 ? (
             <TableEmpty hasFilters={hasActiveFilters} onClear={clearFilters} />
           ) : (
-            sections.map((section) => (
+            daySections.map((section) => (
               <React.Fragment key={`${section.key}-${section.start}`}>
-                <div className="mobile-tx-date-header">{sectionTitle(section.key)}</div>
+                {groupByDay && <div className="mobile-tx-date-header">{formatGroupDate(section.key)}</div>}
                 {section.items.map((row) => renderMobileCard(row, timeLabel(row.original)))}
               </React.Fragment>
             ))
@@ -395,16 +387,7 @@ export function TransactionsTable({
                     </td>
                   </tr>
                 ) : (
-                  sections.map((section) => (
-                    <React.Fragment key={`${section.key}-${section.start}`}>
-                      <tr>
-                        <td colSpan={columns.length} className="px-3 py-1 border-t first:border-t-0">
-                          <span className="text-xs font-medium text-muted-foreground">{sectionTitle(section.key)}</span>
-                        </td>
-                      </tr>
-                      {section.items.map((row, i) => renderDesktopRow(row, section.start + i))}
-                    </React.Fragment>
-                  ))
+                  pageRows.map(renderDesktopRow)
                 )}
               </tbody>
             </table>

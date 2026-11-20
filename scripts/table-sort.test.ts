@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
-import { DEFAULT_SORT, consecutiveSections, isDefaultSort, nextSort, sectionKindOf } from '../src/lib/table-sort.ts';
+import { DEFAULT_SORT, consecutiveSections, isDefaultSort, nextSort } from '../src/lib/table-sort.ts';
 
 test('amount cycles biggest first, smallest first, then back to newest first', () => {
   const first = nextSort(DEFAULT_SORT, 'amount');
@@ -19,13 +19,6 @@ test('category starts A to Z and date toggles between oldest and newest first', 
 
 test('switching column starts the new column at its first direction', () => {
   assert.deepEqual(nextSort([{ id: 'amount', desc: false }], 'category_name'), [{ id: 'category_name', desc: false }]);
-});
-
-test('sections follow the sort so the list keeps the same shape', () => {
-  assert.equal(sectionKindOf(DEFAULT_SORT), 'day');
-  assert.equal(sectionKindOf([{ id: 'date', desc: false }]), 'day');
-  assert.equal(sectionKindOf([{ id: 'category_name', desc: false }]), 'category');
-  assert.equal(sectionKindOf([{ id: 'amount', desc: true }]), 'single');
 });
 
 test('consecutive sections keep order and the start index of each', () => {
