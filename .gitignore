@@ -28,3 +28,5 @@ dev-dist
 
 # Fuentes de Unicode/CLDR descargadas por scripts/generate-emojis.py
 .cache/
+# Estado local del CLI de Supabase
+supabase/.temp/
