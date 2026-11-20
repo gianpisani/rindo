@@ -12,7 +12,7 @@ import { useCategories } from "@/hooks/useCategories";
 import { useSoundFX } from "@/hooks/useSoundFX";
 import { cn } from "@/lib/utils";
 import { isCardPaymentCategory } from "@/lib/ledger";
-import "./whisper.css";
+import "../shared/whisper.css";
 import { clp } from "@/lib/format";
 
 /**

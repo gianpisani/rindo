@@ -2,17 +2,17 @@ import { useState, useMemo, useRef } from "react";
 import { useSearchParams } from "react-router-dom";
 import * as Dialog from "@radix-ui/react-dialog";
 import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
-import Layout from "@/components/Layout";
-import ConfirmDialog from "@/components/ConfirmDialog";
-import { TransactionsTable } from "@/components/TransactionsTable";
+import Layout from "@/components/layout/Layout";
+import ConfirmDialog from "@/components/shared/ConfirmDialog";
+import { TransactionsTable } from "@/components/transactions/TransactionsTable";
 import { getCategoryIcon } from "@/lib/category-icon";
 import { AMOUNT_TEXT_CLASS } from "@/lib/tx-display";
-import { TransactionsToolbar } from "@/components/TransactionsToolbar";
+import { TransactionsToolbar } from "@/components/transactions/TransactionsToolbar";
 import { Button } from "@/components/ui/button";
 import { useGlobalDrawers } from "@/hooks/useGlobalDrawers";
 import { usePrivacyMode } from "@/hooks/usePrivacyMode";
 import { categoryFrequency, getCleanDetail, WHISPER_TYPES } from "@/lib/whisper";
-import "@/components/whisper.css";
+import "@/components/shared/whisper.css";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -30,14 +30,14 @@ import { useSearchFocusShortcut } from "@/hooks/useSearchFocusShortcut";
 import { useCategories } from "@/hooks/useCategories";
 import { useCreditCards } from "@/hooks/useCreditCards";
 import { useSharedExpenses } from "@/hooks/useSharedExpenses";
-import SharedExpenseDrawer from "@/components/SharedExpenseDrawer";
-import { BankSyncModal } from "@/components/BankSyncModal";
+import SharedExpenseDrawer from "@/components/transactions/SharedExpenseDrawer";
+import { BankSyncModal } from "@/components/bank-sync/BankSyncModal";
 import { useBankSyncContext } from "@/contexts/BankSyncContext";
 import { format } from "date-fns";
 import Papa from "papaparse";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
-import type { DateRangeValue } from "@/components/DateRangeFilter";
+import type { DateRangeValue } from "@/components/transactions/DateRangeFilter";
 import {
   TransactionType,
   allowsNegativeAmount,

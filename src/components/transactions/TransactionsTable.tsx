@@ -12,17 +12,17 @@ import {
   Row,
   RowSelectionState,
 } from "@tanstack/react-table";
-import { Button } from "./ui/button";
-import { Input } from "./ui/input";
-import { Badge } from "./ui/badge";
-import { Checkbox } from "./ui/checkbox";
+import { Button } from "../ui/button";
+import { Input } from "../ui/input";
+import { Badge } from "../ui/badge";
+import { Checkbox } from "../ui/checkbox";
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
   DropdownMenuSeparator,
-} from "./ui/dropdown-menu";
+} from "../ui/dropdown-menu";
 import {
   ChevronDown,
   ChevronUp,
@@ -48,7 +48,7 @@ import {
   ArrowDownToLine,
   LineChart,
 } from "lucide-react";
-import { EmptyState } from "@/components/EmptyState";
+import { EmptyState } from "@/components/shared/EmptyState";
 import { Transaction } from "@/hooks/useTransactions";
 import {
   TRANSACTION_TYPES,
@@ -69,18 +69,18 @@ import { format, subDays } from "date-fns";
 import { es } from "date-fns/locale";
 import { cn } from "@/lib/utils";
 import { usePrivacyMode } from "@/hooks/usePrivacyMode";
-import { useIsMobile } from "@/hooks/use-mobile";
+import { useIsMobile } from "@/hooks/useIsMobile";
 import { AnalyzingBadge } from "./AnalyzingBadge";
-import { InlineDateTimePicker } from "./ui/date-time-picker";
+import { InlineDateTimePicker } from "../ui/date-time-picker";
 import { useCategories } from "@/hooks/useCategories";
-import { CategoryComposer } from "./CategoryComposer";
-import { QuickCategoryPicker } from "./QuickCategoryPicker";
+import { CategoryComposer } from "../categories/CategoryComposer";
+import { QuickCategoryPicker } from "../categories/QuickCategoryPicker";
 import { useInlineEdit } from "@/hooks/useInlineEdit";
 import { getCategoryIcon } from "@/lib/category-icon";
 import { AMOUNT_TEXT_CLASS } from "@/lib/tx-display";
 import { ANALYZING_CATEGORY } from "@/lib/auto-category-policy";
-import { Popover, PopoverContent, PopoverTrigger } from "./ui/popover";
-import { Command, CommandInput, CommandList, CommandEmpty, CommandGroup, CommandItem } from "./ui/command";
+import { Popover, PopoverContent, PopoverTrigger } from "../ui/popover";
+import { Command, CommandInput, CommandList, CommandEmpty, CommandGroup, CommandItem } from "../ui/command";
 import type { DateRangeValue } from "./DateRangeFilter";
 import { tintColor } from "@/lib/category-color";
 import { clp } from "@/lib/format";

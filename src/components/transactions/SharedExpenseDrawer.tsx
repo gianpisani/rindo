@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import * as Dialog from "@radix-ui/react-dialog";
 import { ArrowUp, Check, Plus, X } from "lucide-react";
 import { DebtorNameCombobox } from "./DebtorNameCombobox";
-import "./whisper.css";
+import "../shared/whisper.css";
 import { clp } from "@/lib/format";
 
 /**

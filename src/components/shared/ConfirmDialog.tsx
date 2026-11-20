@@ -1,6 +1,6 @@
 import { KeyboardEvent, ReactNode } from "react";
-import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "./ui/dialog";
-import { Button } from "./ui/button";
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "../ui/dialog";
+import { Button } from "../ui/button";
 import { AlertTriangle } from "lucide-react";
 import { useSoundFX } from "@/hooks/useSoundFX";
 

@@ -1,7 +1,7 @@
 import { useEffect, useLayoutEffect, useRef, useState, type ChangeEvent, type HTMLAttributes, type KeyboardEvent, type ReactNode } from "react";
 import { Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { QuickCategoryPicker, type QuickCategoryOption } from "@/components/QuickCategoryPicker";
+import { QuickCategoryPicker, type QuickCategoryOption } from "@/components/categories/QuickCategoryPicker";
 import { cn } from "@/lib/utils";
 
 /**

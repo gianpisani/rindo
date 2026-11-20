@@ -1,4 +1,4 @@
-import { BaseModal } from "./BaseModal";
+import { BaseModal } from "../shared/BaseModal";
 import { ReconciliationCard } from "./ReconciliationCard";
 
 interface ReconciliationDrawerProps {

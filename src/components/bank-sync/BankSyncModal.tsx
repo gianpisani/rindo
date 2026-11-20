@@ -1,6 +1,6 @@
 import { useState, useCallback } from "react";
 
-import { BaseModal } from "@/components/BaseModal";
+import { BaseModal } from "@/components/shared/BaseModal";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -43,11 +43,11 @@ import {
   getCustomHour,
   scheduleTimePhrase,
 } from "@/lib/banks";
-import { BankLogo } from "@/components/BankLogo";
+import { BankLogo } from "@/components/bank-sync/BankLogo";
 import { useSaveCredentials, useBankSyncCredentials } from "@/hooks/useBankSyncCredentials";
 import type { SyncScheduleId } from "@/lib/banks";
-import { BankSyncSettings } from "@/components/BankSyncSettings";
-import { BankSyncHistory } from "@/components/BankSyncHistory";
+import { BankSyncSettings } from "@/components/bank-sync/BankSyncSettings";
+import { BankSyncHistory } from "@/components/bank-sync/BankSyncHistory";
 import { clp } from "@/lib/format";
 
 const FORM_ID = "bank-sync-form";

@@ -4,7 +4,7 @@ import {
   DialogDescription,
   DialogHeader,
   DialogTitle,
-} from "./ui/dialog";
+} from "../ui/dialog";
 import { useRef, useEffect, ReactNode } from "react";
 import { cn } from "@/lib/utils";
 

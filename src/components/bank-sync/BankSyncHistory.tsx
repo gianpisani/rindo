@@ -12,13 +12,13 @@ import {
   Loader2,
   Trash2,
 } from "lucide-react";
-import { EmptyState } from "@/components/EmptyState";
+import { EmptyState } from "@/components/shared/EmptyState";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { cn } from "@/lib/utils";
 import { getBankById } from "@/lib/banks";
-import { BankLogo } from "@/components/BankLogo";
+import { BankLogo } from "@/components/bank-sync/BankLogo";
 import { useBankSyncContext } from "@/contexts/BankSyncContext";
 import { useBankSyncLog, type SyncLogEntry } from "@/hooks/useBankSyncLog";
 import { clp } from "@/lib/format";

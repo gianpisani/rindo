@@ -5,7 +5,7 @@ import { categoryFrequency } from "@/lib/whisper";
 import { getCategoryIcon } from "@/lib/category-icon";
 import { ANALYZING_CATEGORY } from "@/lib/auto-category-policy";
 import type { TransactionType } from "@/lib/ledger";
-import type { QuickCategoryOption } from "@/components/QuickCategoryPicker";
+import type { QuickCategoryOption } from "@/components/categories/QuickCategoryPicker";
 
 export type InlineChanges = Partial<Pick<Transaction, "detail" | "amount" | "category_name">>;
 

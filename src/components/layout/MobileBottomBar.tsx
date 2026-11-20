@@ -15,7 +15,7 @@ import { usePeriodConfig } from "@/hooks/usePeriodConfig";
 import { periodShortLabel } from "@/lib/period";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
-import { useIsMobile } from "@/hooks/use-mobile";
+import { useIsMobile } from "@/hooks/useIsMobile";
 import { useGlobalDrawers } from "@/hooks/useGlobalDrawers";
 import { useSoundFX } from "@/hooks/useSoundFX";
 import { useSoundPreferences } from "@/hooks/useSoundPreferences";

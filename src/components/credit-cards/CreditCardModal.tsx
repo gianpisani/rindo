@@ -4,7 +4,7 @@ import { ArrowUp, X } from "lucide-react";
 import { parseWhisper } from "@/lib/whisper";
 import type { CreditCard } from "@/hooks/useCreditCards";
 import { cn } from "@/lib/utils";
-import "./whisper.css";
+import "../shared/whisper.css";
 import { clp } from "@/lib/format";
 
 /**

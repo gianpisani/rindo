@@ -14,7 +14,7 @@ import { categoryFrequency, parseWhisper, WHISPER_TYPES, type WhisperDraft } fro
 import type { TransactionType } from '@/lib/ledger';
 import { cn } from '@/lib/utils';
 import SharedExpenseDrawer from './SharedExpenseDrawer';
-import './whisper.css';
+import '../shared/whisper.css';
 
 const types = WHISPER_TYPES;
 const foodCategoryOrder = ['Supermercado', 'Café y snacks', 'Comida diaria', 'Comidas y panoramas'];

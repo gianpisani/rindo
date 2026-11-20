@@ -1,7 +1,7 @@
 import { format } from "date-fns";
 import { es } from "date-fns/locale";
 import type { HTMLAttributes } from "react";
-import { InicioTxRow } from "@/components/InicioTxRow";
+import { InicioTxRow } from "@/components/transactions/InicioTxRow";
 import type { Transaction } from "@/hooks/useTransactions";
 import type { InlineEdit } from "@/hooks/useInlineEdit";
 import { usePrivacyMode } from "@/hooks/usePrivacyMode";

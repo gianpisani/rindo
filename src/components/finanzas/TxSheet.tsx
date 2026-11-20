@@ -1,10 +1,10 @@
 import type { ReactNode } from "react";
-import { EmptyState } from "@/components/EmptyState";
+import { EmptyState } from "@/components/shared/EmptyState";
 import { format } from "date-fns";
 import { es } from "date-fns/locale";
 import { Sheet, SheetContent, SheetDescription, SheetTitle } from "@/components/ui/sheet";
-import { TxRow } from "@/components/TxRow";
-import { useIsMobile } from "@/hooks/use-mobile";
+import { TxRow } from "@/components/transactions/TxRow";
+import { useIsMobile } from "@/hooks/useIsMobile";
 import type { Transaction } from "@/hooks/useTransactions";
 import type { InlineEdit } from "@/hooks/useInlineEdit";
 import { usePrivacyMode } from "@/hooks/usePrivacyMode";

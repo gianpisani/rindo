@@ -1,8 +1,8 @@
 import { useState } from "react";
-import Layout from "@/components/Layout";
-import ConfirmDialog from "@/components/ConfirmDialog";
+import Layout from "@/components/layout/Layout";
+import ConfirmDialog from "@/components/shared/ConfirmDialog";
 import { Button } from "@/components/ui/button";
-import { CategoryComposer, type CategoryValues } from "@/components/CategoryComposer";
+import { CategoryComposer, type CategoryValues } from "@/components/categories/CategoryComposer";
 import { Plus, Pencil, Trash2, TrendingUp, TrendingDown, PiggyBank, ArrowLeftRight, ArrowDownToLine, LineChart } from "lucide-react";
 import { useCategories } from "@/hooks/useCategories";
 import { cn } from "@/lib/utils";

@@ -1,9 +1,9 @@
 import { useMemo, useRef, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import * as Dialog from "@radix-ui/react-dialog";
-import Layout from "@/components/Layout";
+import Layout from "@/components/layout/Layout";
 import { Card } from "@/components/ui/card";
-import ConfirmDialog from "@/components/ConfirmDialog";
+import ConfirmDialog from "@/components/shared/ConfirmDialog";
 import {
   useSharedExpenses,
   type SharedExpenseDirection,
@@ -15,8 +15,8 @@ import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { CheckCircle2, Trash2, ChevronDown, HandCoins, X } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
-import { EmptyState } from "@/components/EmptyState";
-import "@/components/whisper.css";
+import { EmptyState } from "@/components/shared/EmptyState";
+import "@/components/shared/whisper.css";
 import { clp } from "@/lib/format";
 
 const shortDate = (d: string) => new Date(d).toLocaleDateString("es-CL", { day: "numeric", month: "short" });

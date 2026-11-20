@@ -1,11 +1,11 @@
 import { ReactNode, useEffect } from "react";
-import { PeriodSettingsDialog } from "@/components/PeriodSettingsDialog";
-import { ReconciliationDrawer } from "./ReconciliationDrawer";
-import { WhisperInput } from "./WhisperInput";
-import { OnboardingModal } from "./OnboardingModal";
+import { PeriodSettingsDialog } from "@/components/settings/PeriodSettingsDialog";
+import { ReconciliationDrawer } from "../settings/ReconciliationDrawer";
+import { WhisperInput } from "../transactions/WhisperInput";
+import { OnboardingModal } from "../settings/OnboardingModal";
 import { SidebarProvider, SidebarTrigger, SidebarInset } from "@/components/ui/sidebar";
-import { AppSidebar } from "@/components/AppSidebar";
-import { Button } from "./ui/button";
+import { AppSidebar } from "@/components/layout/AppSidebar";
+import { Button } from "../ui/button";
 import { Eye, EyeOff } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { usePrivacyMode } from "@/hooks/usePrivacyMode";
@@ -14,7 +14,7 @@ import { useKeyboardShortcuts } from "@/hooks/useKeyboardShortcuts";
 import { useSoundFX } from "@/hooks/useSoundFX";
 import { initSounds } from "@/lib/snd";
 import { MobileBottomBar } from "./MobileBottomBar";
-import { useIsMobile } from "@/hooks/use-mobile";
+import { useIsMobile } from "@/hooks/useIsMobile";
 import {
   Tooltip,
   TooltipContent,

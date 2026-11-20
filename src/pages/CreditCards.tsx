@@ -2,10 +2,10 @@ import { useMemo, useState, type CSSProperties } from "react";
 import { format } from "date-fns";
 import { es } from "date-fns/locale";
 import { ChevronLeft, ChevronRight, MoreHorizontal, Pencil, Plus, Trash2 } from "lucide-react";
-import Layout from "@/components/Layout";
+import Layout from "@/components/layout/Layout";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
-import { EmptyState } from "@/components/EmptyState";
+import { EmptyState } from "@/components/shared/EmptyState";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -18,9 +18,9 @@ import { installmentProgress } from "@/lib/installments";
 import { useTransactions } from "@/hooks/useTransactions";
 import { billingCycle, cardStatus, cycleStatement, type CardStatus } from "@/lib/card-cycle";
 import { isCardPayment } from "@/lib/ledger";
-import { CreditCardModal } from "@/components/CreditCardModal";
-import { InstallmentModal } from "@/components/InstallmentModal";
-import ConfirmDialog from "@/components/ConfirmDialog";
+import { CreditCardModal } from "@/components/credit-cards/CreditCardModal";
+import { InstallmentModal } from "@/components/credit-cards/InstallmentModal";
+import ConfirmDialog from "@/components/shared/ConfirmDialog";
 import { usePrivacyMode } from "@/hooks/usePrivacyMode";
 import { cn } from "@/lib/utils";
 import { inkOn } from "@/lib/category-color";

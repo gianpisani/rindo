@@ -1,10 +1,10 @@
 import { useMemo, useState } from "react";
 import { format } from "date-fns";
 import { es } from "date-fns/locale";
-import Layout from "@/components/Layout";
+import Layout from "@/components/layout/Layout";
 import { Skeleton } from "@/components/ui/skeleton";
-import { EmptyState } from "@/components/EmptyState";
-import { InvestmentMoveDrawer } from "@/components/InvestmentMoveDrawer";
+import { EmptyState } from "@/components/shared/EmptyState";
+import { InvestmentMoveDrawer } from "@/components/finanzas/InvestmentMoveDrawer";
 import { TxSheet, type TxSheetData } from "@/components/finanzas/TxSheet";
 import { CategoryHistory, MonthBars, Spark, WorthChart } from "@/components/finanzas/FinCharts";
 import { useTransactions, type Transaction } from "@/hooks/useTransactions";

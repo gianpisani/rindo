@@ -14,7 +14,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { BankLogo } from "@/components/BankLogo";
+import { BankLogo } from "@/components/bank-sync/BankLogo";
 import { getBankById, SYNC_SCHEDULES, isCustomSchedule, getCustomHour } from "@/lib/banks";
 import type { SyncScheduleId } from "@/lib/banks";
 import type { BankCredential } from "@/hooks/useBankSyncCredentials";

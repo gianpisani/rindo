@@ -1,10 +1,10 @@
 import { useState, useRef, useEffect, useCallback } from "react";
-import { BaseModal } from "./BaseModal";
-import { Button } from "./ui/button";
-import { Input } from "./ui/input";
-import { Label } from "./ui/label";
-import { Slider } from "./ui/slider";
-import { Avatar, AvatarImage, AvatarFallback } from "./ui/avatar";
+import { BaseModal } from "../shared/BaseModal";
+import { Button } from "../ui/button";
+import { Input } from "../ui/input";
+import { Label } from "../ui/label";
+import { Slider } from "../ui/slider";
+import { Avatar, AvatarImage, AvatarFallback } from "../ui/avatar";
 import { useUserProfile } from "@/hooks/useUserProfile";
 import {
   THEME_PRESETS,

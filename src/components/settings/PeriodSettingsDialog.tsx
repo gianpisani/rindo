@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { CalendarRange } from "lucide-react";
-import { BaseModal } from "@/components/BaseModal";
+import { BaseModal } from "@/components/shared/BaseModal";
 import { Button } from "@/components/ui/button";
 import {
   Select,

@@ -8,12 +8,12 @@ import {
   Settings2,
   Plus,
 } from "lucide-react";
-import { EmptyState } from "@/components/EmptyState";
+import { EmptyState } from "@/components/shared/EmptyState";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Button } from "@/components/ui/button";
 import { getBankById } from "@/lib/banks";
-import { BankLogo } from "@/components/BankLogo";
-import { BankSyncPreferencesDialog } from "@/components/BankSyncPreferencesDialog";
+import { BankLogo } from "@/components/bank-sync/BankLogo";
+import { BankSyncPreferencesDialog } from "@/components/bank-sync/BankSyncPreferencesDialog";
 import {
   useBankSyncCredentials,
   useDeleteCredentials,

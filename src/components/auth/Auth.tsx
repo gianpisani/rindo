@@ -1,11 +1,11 @@
 import { useState, useCallback, useMemo, useEffect, useRef } from "react";
 import { useSignIn, useSignUp } from "@/hooks/useAccount";
-import { Button } from "./ui/button";
-import { Input } from "./ui/input";
-import { Label } from "./ui/label";
+import { Button } from "../ui/button";
+import { Input } from "../ui/input";
+import { Label } from "../ui/label";
 import { CheckCircle } from "lucide-react";
 import { AnimatePresence, motion } from "framer-motion";
-import { RindoLogo } from "./RindoLogo";
+import { RindoLogo } from "../layout/RindoLogo";
 
 // ── Email domain helpers ────────────────────────────────────────────────────
 

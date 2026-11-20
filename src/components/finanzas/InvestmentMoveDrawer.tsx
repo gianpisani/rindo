@@ -8,7 +8,7 @@ import { usePrivacyMode } from "@/hooks/usePrivacyMode";
 import { computeLedger } from "@/lib/real-flows";
 import { parseWhisper } from "@/lib/whisper";
 import { cn } from "@/lib/utils";
-import "./whisper.css";
+import "../shared/whisper.css";
 import { clp } from "@/lib/format";
 
 /**

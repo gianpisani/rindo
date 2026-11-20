@@ -2,11 +2,11 @@ import { useEffect, useRef, useState } from "react";
 import * as Dialog from "@radix-ui/react-dialog";
 import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
 import { ArrowUp, Check, ChevronDown, X } from "lucide-react";
-import { EmojiPicker } from "@/components/EmojiPicker";
+import { EmojiPicker } from "@/components/categories/EmojiPicker";
 import { TRANSACTION_TYPES, type TransactionType } from "@/lib/ledger";
 import { cn } from "@/lib/utils";
 import { WHISPER_TYPES } from "@/lib/whisper";
-import "./whisper.css";
+import "../shared/whisper.css";
 
 /**
  * Nueva o editar categoría al estilo Whisper: el nombre en la línea grande,
