@@ -1,4 +1,4 @@
-import { useEffect } from "react";
+import { useEffect, useLayoutEffect } from "react";
 import { useUserProfile } from "./useUserProfile";
 import { useResolvedMode, useThemeDraftStore } from "./useThemeDraft";
 import { applyTheme, cacheTheme } from "@/lib/theme";
@@ -16,7 +16,7 @@ export function useCustomTheme() {
     if (profileLoaded) cacheTheme(themeId, settingsJson);
   }, [profileLoaded, themeId, settingsJson]);
 
-  useEffect(() => {
+  useLayoutEffect(() => {
     if (!mode || (!profileLoaded && !draft)) return;
     const choice = draft ?? themeChoiceFromProfile(themeId, settingsJson);
     applyTheme(choice.themeId, themeChoiceSettings(choice), mode);

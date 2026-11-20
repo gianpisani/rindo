@@ -1,5 +1,6 @@
 import { Check, Type } from "lucide-react";
 import { FONT_OPTIONS } from "@/lib/theme";
+import { revealOriginOf, type RevealOrigin } from "@/lib/theme-transition";
 import { cn } from "@/lib/utils";
 import { SectionLabel } from "./SectionLabel";
 
@@ -8,7 +9,7 @@ export function FontPicker({
   onChange,
 }: {
   selectedFont: string;
-  onChange: (fontId: string) => void;
+  onChange: (fontId: string, origin: RevealOrigin) => void;
 }) {
   return (
     <div>
@@ -19,7 +20,7 @@ export function FontPicker({
             key={font.id}
             type="button"
             aria-pressed={selectedFont === font.id}
-            onClick={() => onChange(font.id)}
+            onClick={(e) => onChange(font.id, revealOriginOf(e.currentTarget))}
             className={cn(
               "relative flex flex-col items-start px-3 py-2 rounded-card border text-left transition-[border-color,transform] duration-150",
               selectedFont === font.id ? "border-foreground" : "hover:border-muted-foreground active:scale-[0.98]"

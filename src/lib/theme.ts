@@ -1,32 +1,35 @@
 import { readJson, readStorage, writeStorage } from "./storage.ts";
 
-export interface PaletteVars {
+export type ThemeMode = "light" | "dark";
+
+export type Surface = "neutral" | "tinted";
+
+export interface SurfaceVars {
   background: string;
   foreground: string;
   card: string;
-  primary: string;
-  primaryForeground: string;
   muted: string;
   mutedForeground: string;
   border: string;
   input: string;
   sidebar: string;
+  sidebarAccent: string;
   sidebarBorder: string;
+}
+
+export interface AccentVars {
+  primary: string;
+  primaryForeground: string;
   hue: number;
 }
 
-export interface ThemePreset {
-  id: string;
-  name: string;
-  hue: number;
-  light: PaletteVars;
-  dark: PaletteVars;
-}
+export type PaletteVars = SurfaceVars & AccentVars;
 
 export interface CustomThemeSettings {
-  hue?: number;     // 0-360
-  font?: string;    // font option id
-  radius?: number;  // rem value
+  hue?: number;
+  font?: string;
+  radius?: number;
+  surface?: Surface;
 }
 
 export const FONT_OPTIONS = [
@@ -69,14 +72,56 @@ function relLuminance(L: number, C: number, h: number): number {
   return 0.2126 * r + 0.7152 * g + 0.0722 * b;
 }
 
-function contrast(a: number, b: number): number {
-  const [hi, lo] = a > b ? [a, b] : [b, a];
+function parseOklch(color: string): [number, number, number] {
+  const match = /oklch\(\s*([\d.]+)\s+([\d.]+)\s+([\d.]+)/.exec(color);
+  if (!match) throw new Error(`Color OKLCH inválido: ${color}`);
+  return [Number(match[1]), Number(match[2]), Number(match[3])];
+}
+
+export function oklchContrast(a: string, b: string): number {
+  const ya = relLuminance(...parseOklch(a));
+  const yb = relLuminance(...parseOklch(b));
+  const [hi, lo] = ya > yb ? [ya, yb] : [yb, ya];
   return (hi + 0.05) / (lo + 0.05);
 }
 
 const ok = (L: number, C: number, h: number) => `oklch(${L} ${C} ${h})`;
 
-const SURFACES = {
+const normalizeHue = (hue: number) => +(((hue % 360) + 360) % 360).toFixed(1);
+
+export const NEUTRAL_SURFACES: Record<ThemeMode, SurfaceVars> = {
+  light: {
+    background: "oklch(0.965 0.002 286)",
+    foreground: "oklch(0.13 0.005 285.823)",
+    card: "oklch(0.995 0 0)",
+    muted: "oklch(0.935 0.003 286)",
+    mutedForeground: "oklch(0.355 0.016 285.938)",
+    border: "oklch(0.835 0.008 286)",
+    input: "oklch(0.835 0.008 286)",
+    sidebar: "oklch(0.955 0.002 286)",
+    sidebarAccent: "oklch(0.91 0.004 286)",
+    sidebarBorder: "oklch(0.835 0.008 286)",
+  },
+  dark: {
+    background: "oklch(0.098 0.005 285.823)",
+    foreground: "oklch(0.985 0 0)",
+    card: "oklch(0.141 0.005 285.823)",
+    muted: "oklch(0.21 0.006 285.885)",
+    mutedForeground: "oklch(0.705 0.015 286.067)",
+    border: "oklch(1 0 0 / 8%)",
+    input: "oklch(1 0 0 / 12%)",
+    sidebar: "oklch(0.12 0.005 285.823)",
+    sidebarAccent: "oklch(0.21 0.006 285.885)",
+    sidebarBorder: "oklch(1 0 0 / 8%)",
+  },
+};
+
+export const RINDO_ACCENT: Record<ThemeMode, AccentVars> = {
+  light: { primary: "oklch(0.586 0.253 17.585)", primaryForeground: "oklch(0.969 0.015 12.422)", hue: 17.6 },
+  dark: { primary: "oklch(0.645 0.246 16.439)", primaryForeground: "oklch(0.969 0.015 12.422)", hue: 16.4 },
+};
+
+const TINTED = {
   light: {
     background: [0.962, 0.012],
     card: [0.993, 0.004],
@@ -101,43 +146,45 @@ const SURFACES = {
   },
 } as const;
 
-export function generatePaletteFromHue(
-  hue: number,
-  mode: "light" | "dark",
-  accentHue: number = hue
-): PaletteVars {
-  const h = +(((hue % 360) + 360) % 360).toFixed(1);
-  const ah = +(((accentHue % 360) + 360) % 360).toFixed(1);
-  const s = SURFACES[mode];
+export function tintedSurfaces(hue: number, mode: ThemeMode): SurfaceVars {
+  const h = normalizeHue(hue);
+  const t = TINTED[mode];
   const surface = ([L, C]: readonly [number, number]) => ok(L, C, h);
-
-  const accentC = Math.min(s.accentMaxC, maxChroma(s.accentL, ah));
-  const accentY = relLuminance(s.accentL, accentC, ah);
-  const light = ok(0.985, 0.01, ah);
-  const dark = ok(0.2, 0.03, ah);
-  const onAccent =
-    contrast(accentY, relLuminance(0.985, 0.01, ah)) >=
-    contrast(accentY, relLuminance(0.2, 0.03, ah))
-      ? light
-      : dark;
-
   return {
-    background: surface(s.background),
-    foreground: surface(s.foreground),
-    card: surface(s.card),
-    primary: ok(s.accentL, accentC, ah),
-    primaryForeground: onAccent,
-    muted: surface(s.muted),
-    mutedForeground: surface(s.mutedForeground),
-    border: surface(s.border),
-    input: surface(s.border),
-    sidebar: surface(s.sidebar),
-    sidebarBorder: surface(s.border),
-    hue: ah,
+    background: surface(t.background),
+    foreground: surface(t.foreground),
+    card: surface(t.card),
+    muted: surface(t.muted),
+    mutedForeground: surface(t.mutedForeground),
+    border: surface(t.border),
+    input: surface(t.border),
+    sidebar: surface(t.sidebar),
+    sidebarAccent: surface(t.muted),
+    sidebarBorder: surface(t.border),
   };
 }
 
-const PRESETS: { id: string; name: string; hue: number; accentHue?: number }[] = [
+export function generatedAccent(hue: number, mode: ThemeMode): AccentVars {
+  const h = normalizeHue(hue);
+  const t = TINTED[mode];
+  const primary = ok(t.accentL, Math.min(t.accentMaxC, maxChroma(t.accentL, h)), h);
+  const light = ok(0.985, 0.01, h);
+  const dark = ok(0.2, 0.03, h);
+  return {
+    primary,
+    primaryForeground: oklchContrast(primary, light) >= oklchContrast(primary, dark) ? light : dark,
+    hue: h,
+  };
+}
+
+interface AccentPreset {
+  id: string;
+  name: string;
+  hue: number;
+  accentHue?: number;
+}
+
+export const ACCENT_PRESETS: AccentPreset[] = [
   { id: "atardecer", name: "Atardecer", hue: 45, accentHue: 38 },
   { id: "arena", name: "Arena", hue: 80, accentHue: 65 },
   { id: "bosque", name: "Bosque", hue: 150 },
@@ -151,18 +198,38 @@ const RETIRED_PRESETS: Record<string, string> = {
   cereza: "lavanda",
 };
 
-export const THEME_PRESETS: ThemePreset[] = PRESETS.map(({ id, name, hue, accentHue }) => ({
-  id,
-  name,
-  hue,
-  light: generatePaletteFromHue(hue, "light", accentHue),
-  dark: generatePaletteFromHue(hue, "dark", accentHue),
-}));
-
-export function findPreset(id: string | null | undefined): ThemePreset | undefined {
+export function findPreset(id: string | null | undefined): AccentPreset | undefined {
   if (!id) return undefined;
   const resolved = RETIRED_PRESETS[id] ?? id;
-  return THEME_PRESETS.find((t) => t.id === resolved);
+  return ACCENT_PRESETS.find((t) => t.id === resolved);
+}
+
+export const defaultSurface = (themeId: string | null | undefined): Surface => (themeId ? "tinted" : "neutral");
+
+function accentFor(themeId: string | null | undefined, settings: CustomThemeSettings, mode: ThemeMode): AccentVars {
+  if (themeId === "custom" && settings.hue != null) return generatedAccent(settings.hue, mode);
+  const preset = findPreset(themeId);
+  return preset ? generatedAccent(preset.accentHue ?? preset.hue, mode) : RINDO_ACCENT[mode];
+}
+
+function tintHueFor(themeId: string | null | undefined, settings: CustomThemeSettings, accent: AccentVars): number {
+  if (themeId === "custom" && settings.hue != null) return settings.hue;
+  return findPreset(themeId)?.hue ?? accent.hue;
+}
+
+export function resolvePalette(
+  themeId: string | null | undefined,
+  settings: CustomThemeSettings,
+  mode: ThemeMode,
+): PaletteVars {
+  const accent = accentFor(themeId, settings, mode);
+  const surface = settings.surface ?? defaultSurface(themeId);
+  const surfaces = surface === "neutral" ? NEUTRAL_SURFACES[mode] : tintedSurfaces(tintHueFor(themeId, settings, accent), mode);
+  return { ...surfaces, ...accent };
+}
+
+function isStockLook(themeId: string | null | undefined, settings: CustomThemeSettings) {
+  return !findPreset(themeId) && !(themeId === "custom" && settings.hue != null) && (settings.surface ?? "neutral") === "neutral";
 }
 
 const CSS_VARS = [
@@ -232,7 +299,7 @@ function applyPalette(root: HTMLElement, p: PaletteVars) {
   root.style.setProperty("--sidebar-foreground", p.foreground);
   root.style.setProperty("--sidebar-primary", p.primary);
   root.style.setProperty("--sidebar-primary-foreground", p.primaryForeground);
-  root.style.setProperty("--sidebar-accent", p.muted);
+  root.style.setProperty("--sidebar-accent", p.sidebarAccent);
   root.style.setProperty("--sidebar-accent-foreground", p.foreground);
   root.style.setProperty("--sidebar-border", p.sidebarBorder);
 
@@ -269,19 +336,10 @@ export function parseCustomSettings(
   }
 }
 
-export type ThemeMode = "light" | "dark";
-
-function paletteFor(themeId: string | null | undefined, settings: CustomThemeSettings, mode: ThemeMode) {
-  if (themeId === "custom" && settings.hue != null) return generatePaletteFromHue(settings.hue, mode);
-  const preset = findPreset(themeId);
-  return preset ? preset[mode] : null;
-}
-
 export function applyTheme(themeId: string | null | undefined, settings: CustomThemeSettings, mode: ThemeMode) {
   const root = document.documentElement;
-  const palette = paletteFor(themeId, settings, mode);
-  if (palette) applyPalette(root, palette);
-  else clearAllOverrides(root);
+  if (isStockLook(themeId, settings)) clearAllOverrides(root);
+  else applyPalette(root, resolvePalette(themeId, settings, mode));
   applyFont(settings.font ?? null);
   if (settings.radius != null) root.style.setProperty("--radius", `${settings.radius}rem`);
   else root.style.removeProperty("--radius");

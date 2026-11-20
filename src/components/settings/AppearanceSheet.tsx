@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { useIsMobile } from "@/hooks/useIsMobile";
 import { useGlobalDrawers } from "@/hooks/useGlobalDrawers";
 import { useAppearanceEditor } from "@/hooks/useAppearanceEditor";
+import { revealOriginOf } from "@/lib/theme-transition";
 import { cn } from "@/lib/utils";
 import { ThemeEditor } from "./appearance/ThemeEditor";
 
@@ -18,7 +19,7 @@ function AppearanceBody({ title, className }: { title: ReactNode; className?: st
       <div className={cn("flex min-h-9 items-start justify-between gap-3", className)}>
         {title}
         {changed && (
-          <Button variant="ghost" size="xs" onClick={undo} className="shrink-0 text-muted-foreground">
+          <Button variant="ghost" size="xs" onClick={(e) => undo(revealOriginOf(e.currentTarget))} className="shrink-0 text-muted-foreground">
             <Undo2 />
             Deshacer
           </Button>

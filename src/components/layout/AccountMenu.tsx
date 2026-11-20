@@ -23,6 +23,7 @@ import { Switch } from "@/components/ui/switch";
 import { ColorModeToggle } from "@/components/settings/appearance/ColorModeToggle";
 import { COLOR_MODES } from "@/components/settings/appearance/color-modes";
 import { useAccountMenu, type AccountMenu as Account } from "@/hooks/useAccountMenu";
+import { revealOriginOf } from "@/lib/theme-transition";
 import { cn } from "@/lib/utils";
 import { UserAvatar } from "./UserAvatar";
 
@@ -93,7 +94,7 @@ function ColorModeItems({ account }: { account: Account }) {
             title={label}
             onSelect={(e) => {
               keepOpen(e);
-              account.setColorMode(value);
+              account.setColorMode(value, revealOriginOf(e.currentTarget as Element));
             }}
             className={cn(
               "h-8 justify-center rounded-full p-0",

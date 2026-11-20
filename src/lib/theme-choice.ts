@@ -1,37 +1,12 @@
-import { findPreset, parseCustomSettings, type CustomThemeSettings, type PaletteVars } from "./theme.ts";
+import { defaultSurface, findPreset, parseCustomSettings, type CustomThemeSettings, type Surface } from "./theme.ts";
 
 export const DEFAULT_RADIUS = 0.75;
 const DEFAULT_HUE = 240;
 const DEFAULT_FONT = "default";
 
-export type PreviewPalette = Pick<
-  PaletteVars,
-  "background" | "card" | "sidebar" | "primary" | "foreground" | "mutedForeground" | "border"
->;
-
-export const RINDO_PREVIEW: Record<"light" | "dark", PreviewPalette> = {
-  light: {
-    background: "oklch(0.965 0.002 286)",
-    card: "oklch(0.995 0 0)",
-    sidebar: "oklch(0.955 0.002 286)",
-    primary: "oklch(0.586 0.253 17.585)",
-    foreground: "oklch(0.13 0.005 285.823)",
-    mutedForeground: "oklch(0.355 0.016 285.938)",
-    border: "oklch(0.835 0.008 286)",
-  },
-  dark: {
-    background: "oklch(0.098 0.005 285.823)",
-    card: "oklch(0.141 0.005 285.823)",
-    sidebar: "oklch(0.12 0.005 285.823)",
-    primary: "oklch(0.645 0.246 16.439)",
-    foreground: "oklch(0.985 0 0)",
-    mutedForeground: "oklch(0.705 0.015 286.067)",
-    border: "oklch(1 0 0 / 8%)",
-  },
-};
-
 export interface ThemeChoice {
   themeId: string | null;
+  surface: Surface;
   hue: number;
   font: string;
   radius: number;
@@ -39,6 +14,7 @@ export interface ThemeChoice {
 
 export const INITIAL_THEME_CHOICE: ThemeChoice = {
   themeId: null,
+  surface: "neutral",
   hue: DEFAULT_HUE,
   font: DEFAULT_FONT,
   radius: DEFAULT_RADIUS,
@@ -49,17 +25,20 @@ export function themeChoiceFromProfile(
   settingsJson: string | null
 ): ThemeChoice {
   const settings = parseCustomSettings(settingsJson);
+  const themeId = savedThemeId === "custom" ? savedThemeId : findPreset(savedThemeId)?.id ?? null;
   return {
-    themeId: savedThemeId === "custom" ? savedThemeId : findPreset(savedThemeId)?.id ?? null,
+    themeId,
+    surface: settings.surface ?? defaultSurface(themeId),
     hue: settings.hue ?? DEFAULT_HUE,
     font: settings.font ?? DEFAULT_FONT,
     radius: settings.radius ?? DEFAULT_RADIUS,
   };
 }
 
-export function themeChoiceSettings({ themeId, hue, font, radius }: ThemeChoice): CustomThemeSettings {
+export function themeChoiceSettings({ themeId, surface, hue, font, radius }: ThemeChoice): CustomThemeSettings {
   const settings: CustomThemeSettings = {};
   if (themeId === "custom") settings.hue = hue;
+  if (surface !== defaultSurface(themeId)) settings.surface = surface;
   if (font !== DEFAULT_FONT) settings.font = font;
   if (Math.abs(radius - DEFAULT_RADIUS) > 0.01) settings.radius = radius;
   return settings;
