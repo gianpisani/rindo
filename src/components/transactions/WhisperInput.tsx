@@ -3,18 +3,20 @@ import { motion, useReducedMotion } from 'framer-motion';
 import { Check, ChevronDown } from 'lucide-react';
 import { toast } from 'sonner';
 import { useTransactions } from '@/hooks/useTransactions';
-import { useCategories } from '@/hooks/useCategories';
+import { useCategoryOptions } from '@/hooks/useCategoryOptions';
 import { useCreditCards } from '@/hooks/useCreditCards';
 import { useSharedExpenses } from '@/hooks/useSharedExpenses';
 import { useGlobalDrawers } from '@/hooks/useGlobalDrawers';
 import { useSoundFX } from '@/hooks/useSoundFX';
 import { usePrivacyMode } from '@/hooks/usePrivacyMode';
 import { useComposerSubmit } from '@/hooks/useComposerSubmit';
-import { categoryFrequency, parseWhisper, WHISPER_TYPES, type WhisperDraft } from '@/lib/whisper';
+import { parseWhisper, WHISPER_TYPES, type WhisperDraft } from '@/lib/whisper';
+import { rankFirst, reimbursementFromPick, withUnlinkedReimbursement, UNLINKED_REIMBURSEMENT } from '@/lib/category-options';
 import type { TransactionType } from '@/lib/ledger';
 import { cn } from '@/lib/utils';
 import { toLocalInput } from '@/lib/format';
 import SharedExpenseDrawer from './SharedExpenseDrawer';
+import { QuickCategoryPicker } from '@/components/categories/QuickCategoryPicker';
 import { WhisperComposer, WhisperShortcuts, WhisperSubmit } from '@/components/shared/whisper/WhisperComposer';
 import { WhisperOptions, WhisperOptionsToggle } from '@/components/shared/whisper/WhisperOptions';
 
@@ -43,8 +45,8 @@ export function WhisperInput({ open, onOpenChange, defaultType = 'Gasto', initia
   const categoryGroupRef = useRef<HTMLDivElement>(null);
   const optionsToggleRef = useRef<HTMLButtonElement>(null);
   const reducedMotion = useReducedMotion();
-  const { categories } = useCategories();
-  const { allTransactions, addTransaction } = useTransactions();
+  const categoryOptions = useCategoryOptions();
+  const { addTransaction } = useTransactions();
   const { creditCards } = useCreditCards();
   const { addSharedExpenses, uniqueDebtorNames } = useSharedExpenses();
   const { isPrivacyMode } = usePrivacyMode();
@@ -52,14 +54,9 @@ export function WhisperInput({ open, onOpenChange, defaultType = 'Gasto', initia
   const current = types.find(t => t.type === draft.type)!;
   const parsed = parseWhisper(draft.value);
   const fixedCategory = fixedCategories[draft.type];
-  const availableCategories = useMemo(() => {
-    const frequency = categoryFrequency(allTransactions, draft.type);
-    return categories.filter(c => c.is_active !== false && c.type === draft.type && !['Sin categoría', '⚡ Analizando...'].includes(c.name))
-      .sort((a, b) => {
-        const foodRank = (name: string) => draft.type === 'Gasto' && foodCategoryOrder.includes(name) ? foodCategoryOrder.indexOf(name) : foodCategoryOrder.length;
-        return foodRank(a.name) - foodRank(b.name) || (frequency.get(b.name) ?? 0) - (frequency.get(a.name) ?? 0) || a.name.localeCompare(b.name);
-      });
-  }, [categories, allTransactions, draft.type]);
+  const availableCategories = useMemo(
+    () => draft.type === 'Gasto' ? rankFirst(categoryOptions('Gasto'), foodCategoryOrder) : categoryOptions(draft.type),
+    [categoryOptions, draft.type]);
   const visibleCategories = allCategories ? availableCategories : availableCategories.slice(0, 5);
   const update = (values: Partial<WhisperDraft>) => { setDraft(previous => ({ ...previous, ...values })); setError(''); };
   const changeType = (type: TransactionType) => {
@@ -144,7 +141,7 @@ export function WhisperInput({ open, onOpenChange, defaultType = 'Gasto', initia
       </div>
       <div className="whisper-category-space">
         {!fixedCategory && <div ref={categoryGroupRef} className="whisper-categories" role="group" aria-label="Categorías disponibles">
-          {visibleCategories.map(category => <button key={category.id} type="button" className="whisper-category"
+          {visibleCategories.map(category => <button key={category.name} type="button" className="whisper-category"
             aria-pressed={draft.category === category.name} onClick={() => {
               update({ category: draft.category === category.name ? '' : category.name }); playTap(); inputRef.current?.focus();
             }}>
@@ -166,9 +163,15 @@ export function WhisperInput({ open, onOpenChange, defaultType = 'Gasto', initia
         </select></label>
         {draft.type === 'Gasto' && <label className="whisper-check"><input type="checkbox" checked={draft.shared} onChange={event => update({ shared: event.target.checked })} />Gasto compartido</label>}
         {draft.type === 'Rendimiento' && <label className="whisper-check"><input type="checkbox" checked={draft.isLoss} onChange={event => update({ isLoss: event.target.checked })} />Fue una pérdida</label>}
-        {['Ingreso', 'Reembolso'].includes(draft.type) && <label>Reembolso de<select aria-label="Categoría del reembolso" value={draft.reimbursementCategory} onChange={event => update({ reimbursementCategory: event.target.value })}>
-          <option value="">Sin vincular</option>{categories.filter(c => c.type === 'Gasto').map(c => <option key={c.id}>{c.name}</option>)}
-        </select></label>}
+        {['Ingreso', 'Reembolso'].includes(draft.type) && <label>Reembolso de
+          <QuickCategoryPicker value={draft.reimbursementCategory || UNLINKED_REIMBURSEMENT.name} title="Reembolso de"
+            options={withUnlinkedReimbursement(categoryOptions('Gasto'))}
+            onPick={name => update({ reimbursementCategory: reimbursementFromPick(name) ?? '' })}>
+            <button type="button" className="whisper-picker" aria-label="Categoría del reembolso">
+              <span>{draft.reimbursementCategory || UNLINKED_REIMBURSEMENT.name}</span><ChevronDown size={12} aria-hidden="true" />
+            </button>
+          </QuickCategoryPicker>
+        </label>}
       </WhisperOptions>
       {error && <p id="whisper-error" role="alert" className="whisper-error">{error}</p>}
       <div className="whisper-actions">

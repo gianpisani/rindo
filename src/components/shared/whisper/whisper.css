@@ -91,11 +91,13 @@
 .whisper-shortcuts kbd { font: inherit; color: rgb(255 255 255 / .65); }
 .whisper-options { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); align-items: start; gap: 16px; width: min(100%, 390px); overflow: hidden; }
 .whisper-options label { display: grid; gap: 8px; min-width: 0; font-size: var(--fs-1); color: #a3a3a3; }
-.whisper-options input:not([type=checkbox]), .whisper-options select {
+.whisper-options input:not([type=checkbox]), .whisper-options select, .whisper-options .whisper-picker {
   width: 100%; min-width: 0; max-width: 100%; min-height: 38px; padding: 8px;
   border-radius: var(--radius-card); background: rgb(255 255 255 / .06); border: 1px solid rgb(255 255 255 / .1);
   color: #e5e5e5; color-scheme: dark; font-size: var(--fs-1);
 }
+.whisper-options .whisper-picker { display: flex; align-items: center; justify-content: space-between; gap: 8px; text-align: left; }
+.whisper-options .whisper-picker span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .whisper-options label.whisper-check { display: flex; align-items: center; gap: 8px; min-height: 32px; }
 .whisper-check input { accent-color: var(--whisper-accent); }
 .whisper-composer option { background: #171717; color: #fafafa; }

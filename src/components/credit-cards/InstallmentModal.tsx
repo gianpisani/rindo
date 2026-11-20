@@ -1,12 +1,13 @@
 import { useEffect, useRef, useState } from "react";
-import { Check } from "lucide-react";
+import { Check, ChevronDown } from "lucide-react";
 import { addMonths, format } from "date-fns";
 import { es } from "date-fns/locale";
 import { parseWhisper } from "@/lib/whisper";
 import { getCategoryIcon } from "@/lib/category-icon";
 import type { InstallmentPurchase } from "@/hooks/useInstallments";
 import type { CreditCard } from "@/hooks/useCreditCards";
-import { useCategories } from "@/hooks/useCategories";
+import { useCategoryOptions } from "@/hooks/useCategoryOptions";
+import { QuickCategoryPicker } from "@/components/categories/QuickCategoryPicker";
 import { useSoundFX } from "@/hooks/useSoundFX";
 import { useComposerSubmit } from "@/hooks/useComposerSubmit";
 import { isCardPaymentCategory } from "@/lib/ledger";
@@ -35,7 +36,7 @@ const monthOf = (iso: string) => {
 };
 
 export function InstallmentModal({ open, onOpenChange, installment, creditCards, onSave }: InstallmentModalProps) {
-  const { categories } = useCategories();
+  const categoryOptions = useCategoryOptions();
   const { playTap } = useSoundFX();
   const [value, setValue] = useState("");
   const [count, setCount] = useState(6);
@@ -54,7 +55,8 @@ export function InstallmentModal({ open, onOpenChange, installment, creditCards,
   const installmentAmount = parsed ? Math.ceil(parsed.amount / count) : 0;
   const ready = !!parsed && description.length > 0 && !!cardId;
   const selectedCard = creditCards.find((c) => c.id === cardId);
-  const expenseCategories = categories.filter((c) => c.type === "Gasto" && c.is_active !== false && !isCardPaymentCategory(c.name));
+  const expenseCategories = categoryOptions("Gasto").filter((c) => !isCardPaymentCategory(c.name));
+  const categoryIcon = expenseCategories.find((c) => c.name === categoryName)?.icon ?? getCategoryIcon(categoryName);
   const counts = INSTALLMENT_OPTIONS.includes(count) ? INSTALLMENT_OPTIONS : [...INSTALLMENT_OPTIONS, count].sort((a, b) => a - b);
 
   useEffect(() => {
@@ -214,14 +216,14 @@ export function InstallmentModal({ open, onOpenChange, installment, creditCards,
         </label>
         <label>
           Categoría
-          <select value={categoryName} onChange={(e) => setCategoryName(e.target.value)} aria-label="Categoría">
-            {!expenseCategories.some((c) => c.name === categoryName) && <option value={categoryName}>{categoryName}</option>}
-            {expenseCategories.map((c) => (
-              <option key={c.id} value={c.name}>
-                {c.icon || getCategoryIcon(c.name)} {c.name}
-              </option>
-            ))}
-          </select>
+          <QuickCategoryPicker value={categoryName} options={expenseCategories} title="Categoría" onPick={setCategoryName}>
+            <button type="button" className="whisper-picker" aria-label="Categoría">
+              <span>
+                {categoryIcon} {categoryName}
+              </span>
+              <ChevronDown size={12} aria-hidden="true" />
+            </button>
+          </QuickCategoryPicker>
         </label>
         <label>
           Notas

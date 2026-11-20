@@ -21,7 +21,9 @@ import { Badge } from "@/components/ui/badge";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import type { Transaction } from "@/hooks/useTransactions";
 import { TRANSACTION_TYPES, displaySign, isCardPayment, type TransactionType } from "@/lib/ledger";
-import { getCategoryIcon } from "@/lib/category-icon";
+import { uniqueByName } from "@/lib/category-options";
+import { QuickCategoryPicker } from "@/components/categories/QuickCategoryPicker";
+import { useCategoryOptions } from "@/hooks/useCategoryOptions";
 import { AMOUNT_TEXT_CLASS } from "@/lib/tx-display";
 import { cn } from "@/lib/utils";
 import { clp, SIGNED_CLP_FORMAT } from "@/lib/format";
@@ -79,7 +81,10 @@ export function SelectionPanel({
 }: SelectionPanelProps) {
   const [expanded, setExpanded] = useState(false);
   const [panelY, setPanelY] = useState<number | null>(null);
+  const categoryOptions = useCategoryOptions();
   const selectedIds = selected.map(t => t.id);
+  const selectedTypes = [...new Set(selected.map(t => t.type))];
+  const batchCategoryOptions = uniqueByName((selectedTypes.length === 1 ? selectedTypes : TRANSACTION_TYPES).flatMap(categoryOptions));
   const stats = selectionStats(selected);
 
   const runBatch = (action: () => void) => {
@@ -178,24 +183,17 @@ export function SelectionPanel({
           </div>
 
           <div className="p-2 space-y-0.5">
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <button className={ACTION_ROW}>
-                  <Tag className="h-3.5 w-3.5 text-muted-foreground" />
-                  <span className="text-sm">Cambiar categoría</span>
-                </button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="end" side="left" className="max-h-[300px] overflow-auto">
-                {categories
-                  .filter(c => c.name && c.name.trim().length > 0)
-                  .map((cat) => (
-                    <DropdownMenuItem key={cat.name + cat.type} onClick={() => runBatch(() => onUpdateMultiple(selectedIds, { category_name: cat.name }))}>
-                      <span className="mr-2">{cat.icon || getCategoryIcon(cat.name)}</span>
-                      {cat.name}
-                    </DropdownMenuItem>
-                  ))}
-              </DropdownMenuContent>
-            </DropdownMenu>
+            <QuickCategoryPicker
+              value=""
+              options={batchCategoryOptions}
+              title={`Cambiar categoría de ${selectedIds.length}`}
+              onPick={(name) => runBatch(() => onUpdateMultiple(selectedIds, { category_name: name }))}
+            >
+              <button className={ACTION_ROW}>
+                <Tag className="h-3.5 w-3.5 text-muted-foreground" />
+                <span className="text-sm">Cambiar categoría</span>
+              </button>
+            </QuickCategoryPicker>
 
             <DropdownMenu>
               <DropdownMenuTrigger asChild>

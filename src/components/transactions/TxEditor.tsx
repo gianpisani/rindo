@@ -19,7 +19,6 @@ import { useTransactions } from "@/hooks/useTransactions";
 import { useCreditCards } from "@/hooks/useCreditCards";
 import { usePrivacyMode } from "@/hooks/usePrivacyMode";
 import type { TxEditorState } from "@/hooks/useTxEditor";
-import { getCategoryIcon } from "@/lib/category-icon";
 import { WHISPER_TYPES } from "@/lib/whisper";
 import type { TransactionType } from "@/lib/ledger";
 import { cn } from "@/lib/utils";
@@ -122,7 +121,7 @@ export function TxEditor({ editor }: { editor: TxEditorState }) {
               <div className="whisper-categories" role="group" aria-label="Categoría (tocar guarda)">
                 {categories.visible.map((category) => (
                   <button
-                    key={category.id}
+                    key={category.name}
                     type="button"
                     className="whisper-category"
                     aria-pressed={form.category_name === category.name}
@@ -130,7 +129,7 @@ export function TxEditor({ editor }: { editor: TxEditorState }) {
                     onClick={() => editor.saveEdit({ category_name: category.name })}
                   >
                     <span className="whisper-category-dot" aria-hidden="true" />
-                    {category.icon || getCategoryIcon(category.name)} {category.name}
+                    {category.icon} {category.name}
                     {form.category_name === category.name && <Check size={12} aria-hidden="true" />}
                   </button>
                 ))}

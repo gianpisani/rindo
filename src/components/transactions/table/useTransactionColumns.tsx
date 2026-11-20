@@ -8,12 +8,13 @@ import type { Transaction } from "@/hooks/useTransactions";
 import type { CreditCard as Card } from "@/hooks/useCreditCards";
 import { INVESTMENT_TYPES, allowsNegativeAmount } from "@/lib/ledger";
 import { getCleanDetail } from "@/lib/whisper";
-import { getCategoryIcon } from "@/lib/category-icon";
 import { AMOUNT_TEXT_CLASS, categoryAvatar } from "@/lib/tx-display";
 import { ANALYZING_CATEGORY } from "@/lib/auto-category-policy";
+import { reimbursementFromPick, withUnlinkedReimbursement, UNLINKED_REIMBURSEMENT, type CategoryOption } from "@/lib/category-options";
+import type { TransactionType } from "@/lib/ledger";
 import { cn } from "@/lib/utils";
 import { EditableAmountCell, EditableTextCell, SelectableCell, SortHeader } from "./EditableCells";
-import { CategoryCombobox } from "./CategoryCombobox";
+import { QuickCategoryPicker } from "@/components/categories/QuickCategoryPicker";
 import { RowActionsMenu } from "./RowActionsMenu";
 import { CELL_TRIGGER } from "./cell-trigger";
 
@@ -30,6 +31,7 @@ interface ColumnsOptions {
   onDuplicate: (ids: string[]) => void;
   onInlineUpdate: (id: string, field: keyof Transaction, value: unknown) => void;
   withCategoryPicker: (t: Transaction, trigger: ReactElement) => ReactElement;
+  categoryOptions: (type: TransactionType) => CategoryOption[];
 }
 
 export function useTransactionColumns({
@@ -43,6 +45,7 @@ export function useTransactionColumns({
   onDuplicate,
   onInlineUpdate,
   withCategoryPicker,
+  categoryOptions,
 }: ColumnsOptions) {
   return useMemo<ColumnDef<Transaction>[]>(() => {
     return [
@@ -158,13 +161,6 @@ export function useTransactionColumns({
           if (row.original.isPending || categoryName === ANALYZING_CATEGORY) return <AnalyzingBadge saving={row.original.isPending} />;
 
           const dotColor = categories.find(c => c.name === categoryName)?.color;
-          const optionsOfType = (t: string) =>
-            categories.filter(c => c.type === t).map(c => ({
-              value: c.name,
-              label: c.name,
-              emoji: c.icon || getCategoryIcon(c.name),
-              color: c.color,
-            }));
 
           return (
             <div className={cn("flex items-center gap-1 overflow-hidden", isPrivacyMode && "privacy-blur")}>
@@ -191,27 +187,25 @@ export function useTransactionColumns({
                   </button>
               ))}
               {isReimbursement && (
-                <CategoryCombobox
-                  value={linkedCategory || ""}
-                  options={[{ value: "", label: "Sin vincular", emoji: "🔗" }, ...optionsOfType("Gasto")]}
-                  onSave={(val) => onInlineUpdate(row.original.id, "reimbursement_for_category", val || null)}
-                  placeholder="Buscar gasto..."
-                  trigger={
-                    <button
-                      className={cn(
-                        "inline-flex items-center gap-1 rounded-full px-1.5 py-0.5 text-xs leading-none flex-shrink-0",
-                        "cursor-pointer transition-all hover:brightness-125",
-                        linkedCategory
-                          ? "bg-success/15 text-success font-medium"
-                          : "bg-white/5 italic"
-                      )}
-                      onClick={(e) => e.stopPropagation()}
-                    >
-                      <Undo2 className="h-2 w-2 flex-shrink-0" />
-                      {linkedCategory || "vincular"}
-                    </button>
-                  }
-                />
+                <QuickCategoryPicker
+                  value={linkedCategory || UNLINKED_REIMBURSEMENT.name}
+                  options={withUnlinkedReimbursement(categoryOptions("Gasto"))}
+                  title="Reembolso de"
+                  onPick={(name) => onInlineUpdate(row.original.id, "reimbursement_for_category", reimbursementFromPick(name))}
+                >
+                  <button
+                    className={cn(
+                      "inline-flex items-center gap-1 rounded-full px-1.5 py-0.5 text-xs leading-none flex-shrink-0",
+                      "cursor-pointer transition-all hover:brightness-125",
+                      linkedCategory
+                        ? "bg-success/15 text-success font-medium"
+                        : "bg-white/5 italic"
+                    )}
+                  >
+                    <Undo2 className="h-2 w-2 flex-shrink-0" />
+                    {linkedCategory || "vincular"}
+                  </button>
+                </QuickCategoryPicker>
               )}
             </div>
           );
@@ -303,5 +297,5 @@ export function useTransactionColumns({
         ),
       },
     ];
-  }, [selecting, onEdit, onDelete, onDuplicate, categories, creditCards, isLoadingCards, isPrivacyMode, onInlineUpdate, withCategoryPicker]);
+  }, [selecting, onEdit, onDelete, onDuplicate, categories, creditCards, isLoadingCards, isPrivacyMode, onInlineUpdate, withCategoryPicker, categoryOptions]);
 }

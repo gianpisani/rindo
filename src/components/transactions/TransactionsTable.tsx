@@ -172,6 +172,7 @@ export function TransactionsTable({
     onDuplicate,
     onInlineUpdate: handleInlineUpdate,
     withCategoryPicker,
+    categoryOptions,
   });
 
   const fuzzyResults = useFuzzySearch(transactions, searchValue);

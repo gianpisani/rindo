@@ -2,16 +2,12 @@ import { useMemo, useState, type FormEvent } from "react";
 import { toast } from "sonner";
 import { useTransactions, type Transaction } from "@/hooks/useTransactions";
 import { useCategories } from "@/hooks/useCategories";
+import { useCategoryOptions } from "@/hooks/useCategoryOptions";
 import { useSharedExpenses, type SharedExpense } from "@/hooks/useSharedExpenses";
-import { categoryFrequency, getCleanDetail, WHISPER_TYPES } from "@/lib/whisper";
+import { getCleanDetail, WHISPER_TYPES } from "@/lib/whisper";
 import { toLocalInput } from "@/lib/format";
-import {
-  allowsNegativeAmount,
-  CARD_PAYMENT_CATEGORY,
-  CARD_PAYMENT_ICON,
-  isCardPaymentCategory,
-  type TransactionType,
-} from "@/lib/ledger";
+import { cardPaymentOption } from "@/lib/category-options";
+import { allowsNegativeAmount, type TransactionType } from "@/lib/ledger";
 
 const LOSS_ACCENT = "oklch(var(--destructive))";
 const TOP_CATEGORIES = 5;
@@ -42,8 +38,9 @@ const toggleById = <T extends { id: string }>(list: T[], item: T) =>
   list.some((d) => d.id === item.id) ? list.filter((d) => d.id !== item.id) : [...list, item];
 
 export function useTxEditor() {
-  const { allTransactions, updateTransaction } = useTransactions();
-  const { categories, addCategory } = useCategories();
+  const { updateTransaction } = useTransactions();
+  const { addCategory } = useCategories();
+  const categoryOptions = useCategoryOptions();
   const {
     addSharedExpenses,
     getSharedExpensesByTransaction,
@@ -75,37 +72,14 @@ export function useTxEditor() {
   const composerType = WHISPER_TYPES.find((t) => t.type === form.type) ?? WHISPER_TYPES[0];
   const accent = form.type === "Rendimiento" && form.isLoss ? LOSS_ACCENT : composerType.color;
 
-  const availableCategories = useMemo(() => {
-    const frequency = categoryFrequency(allTransactions, form.type);
-    return categories
-      .filter(
-        (c) =>
-          c.is_active !== false &&
-          c.type === form.type &&
-          c.name.trim().length > 0 &&
-          !["Sin categoría", "⚡ Analizando..."].includes(c.name)
-      )
-      .sort((a, b) => (frequency.get(b.name) ?? 0) - (frequency.get(a.name) ?? 0) || a.name.localeCompare(b.name));
-  }, [categories, allTransactions, form.type]);
-  const cardPaymentOption = useMemo(() => {
-    if (form.type !== "Gasto" && form.type !== "Ingreso") return null;
-    const own = availableCategories.find((c) => isCardPaymentCategory(c.name));
-    return own ?? {
-      id: "system-card-payment",
-      name: CARD_PAYMENT_CATEGORY,
-      type: form.type,
-      icon: CARD_PAYMENT_ICON,
-      color: null,
-      user_id: "",
-      created_at: "",
-    };
-  }, [availableCategories, form.type]);
+  const availableCategories = categoryOptions(form.type);
   const visibleCategories = useMemo(() => {
     const top = showAllCategories ? availableCategories : availableCategories.slice(0, TOP_CATEGORIES);
     const current = availableCategories.find((c) => c.name === form.category_name);
     const shown = current && !top.includes(current) ? [...top, current] : top;
-    return cardPaymentOption && !shown.includes(cardPaymentOption) ? [...shown, cardPaymentOption] : shown;
-  }, [availableCategories, showAllCategories, form.category_name, cardPaymentOption]);
+    const cardPayment = cardPaymentOption(availableCategories, form.type);
+    return cardPayment && !shown.includes(cardPayment) ? [...shown, cardPayment] : shown;
+  }, [availableCategories, showAllCategories, form.category_name, form.type]);
   const hasMoreCategories = availableCategories.length > TOP_CATEGORIES;
 
   const existingShared: SharedExpense[] = transaction ? getSharedExpensesByTransaction(transaction.id) : [];
