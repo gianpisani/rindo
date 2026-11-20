@@ -123,33 +123,33 @@ export const RINDO_ACCENT: Record<ThemeMode, AccentVars> = {
 
 const TINTED = {
   light: {
-    background: [0.962, 0.012],
-    card: [0.993, 0.004],
-    sidebar: [0.948, 0.014],
-    muted: [0.928, 0.016],
-    border: [0.878, 0.018],
-    foreground: [0.22, 0.022],
-    mutedForeground: [0.475, 0.035],
-    accentL: 0.54,
-    accentMaxC: 0.15,
+    background: [0.955, 0.032],
+    card: [0.99, 0.012],
+    sidebar: [0.935, 0.04],
+    muted: [0.91, 0.045],
+    border: [0.855, 0.05],
+    foreground: [0.22, 0.045],
+    mutedForeground: [0.46, 0.07],
+    accentL: 0.52,
+    accentMaxC: 0.23,
   },
   dark: {
-    background: [0.185, 0.016],
-    card: [0.225, 0.018],
-    sidebar: [0.165, 0.016],
-    muted: [0.275, 0.02],
-    border: [0.32, 0.022],
-    foreground: [0.955, 0.008],
-    mutedForeground: [0.735, 0.03],
-    accentL: 0.74,
-    accentMaxC: 0.14,
+    background: [0.18, 0.042],
+    card: [0.225, 0.048],
+    sidebar: [0.16, 0.04],
+    muted: [0.28, 0.055],
+    border: [0.33, 0.06],
+    foreground: [0.955, 0.015],
+    mutedForeground: [0.74, 0.055],
+    accentL: 0.72,
+    accentMaxC: 0.2,
   },
 } as const;
 
 export function tintedSurfaces(hue: number, mode: ThemeMode): SurfaceVars {
   const h = normalizeHue(hue);
   const t = TINTED[mode];
-  const surface = ([L, C]: readonly [number, number]) => ok(L, C, h);
+  const surface = ([L, C]: readonly [number, number]) => ok(L, Math.min(C, maxChroma(L, h)), h);
   return {
     background: surface(t.background),
     foreground: surface(t.foreground),
