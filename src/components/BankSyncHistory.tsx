@@ -21,12 +21,9 @@ import { getBankById } from "@/lib/banks";
 import { BankLogo } from "@/components/BankLogo";
 import { useBankSyncContext } from "@/contexts/BankSyncContext";
 import { useBankSyncLog, type SyncLogEntry } from "@/hooks/useBankSyncLog";
+import { clp } from "@/lib/format";
 
 // ── Helpers ────────────────────────────────────────────────────────────────────
-
-function formatAmount(amount: number): string {
-  return new Intl.NumberFormat("es-CL", { style: "currency", currency: "CLP", maximumFractionDigits: 0 }).format(amount);
-}
 
 function formatMovDate(dateStr: string): string {
   const parts = dateStr.split("-");
@@ -154,7 +151,7 @@ function EntryDetail({ entry }: { entry: SyncLogEntry }) {
                 </div>
                 <span className={cn("text-xs font-medium tabular-nums shrink-0",
                   item.type === "Ingreso" ? "text-success" : "")}>
-                  {item.type === "Ingreso" ? "+" : "-"}{formatAmount(item.amount)}
+                  {item.type === "Ingreso" ? "+" : "-"}{clp(item.amount)}
                 </span>
               </div>
             ))}
@@ -225,7 +222,7 @@ function EntryDetail({ entry }: { entry: SyncLogEntry }) {
                   </div>
                   <span className={cn("text-xs font-medium tabular-nums shrink-0",
                     item.type === "Ingreso" ? "text-success" : "")}>
-                    {item.type === "Ingreso" ? "+" : "-"}{formatAmount(item.amount)}
+                    {item.type === "Ingreso" ? "+" : "-"}{clp(item.amount)}
                   </span>
                 </div>
               );

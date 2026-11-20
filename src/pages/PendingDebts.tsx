@@ -17,8 +17,8 @@ import { CheckCircle2, Trash2, ChevronDown, HandCoins, X } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
 import { EmptyState } from "@/components/EmptyState";
 import "@/components/whisper.css";
+import { clp } from "@/lib/format";
 
-const fmt = (n: number) => `$${new Intl.NumberFormat("es-CL").format(n)}`;
 const shortDate = (d: string) => new Date(d).toLocaleDateString("es-CL", { day: "numeric", month: "short" });
 
 type Debt = SharedExpenseWithTransaction;
@@ -162,7 +162,7 @@ export default function PendingDebts() {
                 <span
                   className={cn("text-xl font-medium tabular-nums", section.amountClass, isPrivacyMode && "privacy-blur")}
                 >
-                  {fmt(section.total)}
+                  {clp(section.total)}
                 </span>
               </div>
 
@@ -171,7 +171,7 @@ export default function PendingDebts() {
                   <div className="flex items-center justify-between gap-3 px-4 py-3">
                     <p className="font-medium text-sm truncate">{person.name}</p>
                     <span className={cn("text-sm font-medium tabular-nums", isPrivacyMode && "privacy-blur")}>
-                      {fmt(person.total)}
+                      {clp(person.total)}
                     </span>
                   </div>
 
@@ -202,7 +202,7 @@ export default function PendingDebts() {
                         </div>
                         {person.debts.length > 1 && (
                           <span className={cn("text-sm tabular-nums shrink-0", isPrivacyMode && "privacy-blur")}>
-                            {fmt(debt.amount_owed)}
+                            {clp(debt.amount_owed)}
                           </span>
                         )}
                         <Button
@@ -263,7 +263,7 @@ export default function PendingDebts() {
                     </div>
                     <span className={cn("tabular-nums text-xs shrink-0", isPrivacyMode && "privacy-blur")}>
                       {debt.direction === "they_owe_me" ? "+" : "−"}
-                      {fmt(debt.amount_owed)}
+                      {clp(debt.amount_owed)}
                     </span>
                     {debt.paid_at && <span className="text-xs shrink-0">{shortDate(debt.paid_at)}</span>}
                   </div>
@@ -314,7 +314,7 @@ export default function PendingDebts() {
                 <div className={cn("whisper-preview", isPrivacyMode && "privacy-blur")} aria-hidden="true">
                   {settleTarget && (
                     <span>
-                      le pagaste {fmt(settleTarget.amount_owed)} a {settleTarget.debtor_name}
+                      le pagaste {clp(settleTarget.amount_owed)} a {settleTarget.debtor_name}
                     </span>
                   )}
                 </div>
@@ -343,7 +343,7 @@ export default function PendingDebts() {
                         {shortDate(tx.date)} · {tx.category_name}
                       </span>
                     </span>
-                    <span className={cn("whisper-debt-row-amount", isPrivacyMode && "privacy-blur")}>{fmt(tx.amount)}</span>
+                    <span className={cn("whisper-debt-row-amount", isPrivacyMode && "privacy-blur")}>{clp(tx.amount)}</span>
                   </button>
                 ))}
               </div>
@@ -359,7 +359,7 @@ export default function PendingDebts() {
         title={confirm?.kind === "paid" ? "Confirmar pago" : "Eliminar deuda"}
         description={
           confirm?.kind === "paid"
-            ? `Se registrará el pago de ${fmt(confirm.debt.amount_owed)} de ${confirm.debt.debtor_name}.`
+            ? `Se registrará el pago de ${clp(confirm.debt.amount_owed)} de ${confirm.debt.debtor_name}.`
             : "Esta acción no se puede deshacer."
         }
         confirmText={confirm?.kind === "paid" ? "Pagado" : "Eliminar"}

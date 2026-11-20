@@ -25,3 +25,12 @@ export const isAnalyzing = (t: Transaction) => Boolean(t.isPending) || t.categor
  * seguro (lo que sí categoriza con confianza ya no está "Sin categoría").
  */
 export const needsReview = (t: Transaction) => !t.isPending && t.category_name === "Sin categoría";
+
+export const AMOUNT_TEXT_CLASS: Record<TransactionType, string> = {
+  Ingreso: "text-success",
+  Gasto: "text-foreground",
+  Inversión: "text-blue-600 dark:text-blue-500",
+  Rescate: "text-cyan-700 dark:text-cyan-500",
+  Rendimiento: "text-violet-600 dark:text-violet-500",
+  Reembolso: "text-success",
+};

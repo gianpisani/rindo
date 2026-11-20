@@ -12,7 +12,7 @@ import { useCategories } from "@/hooks/useCategories";
 import { usePrivacyMode } from "@/hooks/usePrivacyMode";
 import { useInlineEdit } from "@/hooks/useInlineEdit";
 import { useGlobalDrawers } from "@/hooks/useGlobalDrawers";
-import { computeLedger, computeRealFlows, DEFAULT_TRANSIT_CATEGORIES } from "@/hooks/useRealFlows";
+import { computeLedger, computeRealFlows, DEFAULT_TRANSIT_CATEGORIES } from "@/lib/real-flows";
 import { summarizeCategoryPeriod } from "@/lib/category-spending";
 import {
   buildHistory,
@@ -28,6 +28,7 @@ import { usePeriodConfig } from "@/hooks/usePeriodConfig";
 import { ANALYZING_CATEGORY } from "@/lib/auto-category-policy";
 import { cn } from "@/lib/utils";
 import { tint } from "@/lib/category-color";
+import { clp } from "@/lib/format";
 
 /**
  * Finanzas: ¿cómo vengo en el tiempo? El mes en curso vive en el Inicio; acá
@@ -41,10 +42,6 @@ const RANGE_KEY = "finanzas-meses";
 const RANGES = [12, 6, 3] as const;
 type Range = (typeof RANGES)[number];
 
-/** "−$1.338.641": el signo va antes del peso, no "$-1.338.641" como lo deja es-CL. */
-const clp = (value: number) =>
-  (value < 0 ? "−" : "") +
-  new Intl.NumberFormat("es-CL", { style: "currency", currency: "CLP", minimumFractionDigits: 0 }).format(Math.abs(value));
 const transit = new Set(DEFAULT_TRANSIT_CATEGORIES);
 
 /** Gasto neto por categoría de un período, sin tránsito ni lo que Jev aún categoriza. */

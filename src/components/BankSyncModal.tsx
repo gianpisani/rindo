@@ -48,6 +48,7 @@ import { useSaveCredentials, useBankSyncCredentials } from "@/hooks/useBankSyncC
 import type { SyncScheduleId } from "@/lib/banks";
 import { BankSyncSettings } from "@/components/BankSyncSettings";
 import { BankSyncHistory } from "@/components/BankSyncHistory";
+import { clp } from "@/lib/format";
 
 const FORM_ID = "bank-sync-form";
 
@@ -60,10 +61,6 @@ const STATUS_MESSAGES: Record<string, string> = {
 };
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
-
-function formatAmount(amount: number): string {
-  return new Intl.NumberFormat("es-CL", { style: "currency", currency: "CLP", maximumFractionDigits: 0 }).format(amount);
-}
 
 function formatMovDate(dateStr: string): string {
   const parts = dateStr.split("-");
@@ -734,7 +731,7 @@ export function BankSyncModal({
                               <p className="text-xs text-muted-foreground">{formatMovDate(item.date)}</p>
                             </div>
                             <span className={cn("text-sm font-medium tabular-nums shrink-0", item.type === "Ingreso" ? "text-success" : "text-foreground")}>
-                              {item.type === "Ingreso" ? "+" : "-"}{formatAmount(item.amount)}
+                              {item.type === "Ingreso" ? "+" : "-"}{clp(item.amount)}
                             </span>
                           </div>
                         ))}
@@ -783,7 +780,7 @@ export function BankSyncModal({
                                 </div>
                               </div>
                               <span className={cn("text-sm font-medium tabular-nums shrink-0", item.type === "Ingreso" ? "text-success" : "text-foreground")}>
-                                {item.type === "Ingreso" ? "+" : "-"}{formatAmount(item.amount)}
+                                {item.type === "Ingreso" ? "+" : "-"}{clp(item.amount)}
                               </span>
                             </div>
                           );

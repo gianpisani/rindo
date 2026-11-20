@@ -2,7 +2,7 @@ import { useCallback, useMemo, useState } from "react";
 import { useTransactions, type Transaction } from "@/hooks/useTransactions";
 import { useCategories } from "@/hooks/useCategories";
 import { categoryFrequency } from "@/lib/whisper";
-import { getCategoryIcon } from "@/components/TransactionsTable";
+import { getCategoryIcon } from "@/lib/category-icon";
 import { ANALYZING_CATEGORY } from "@/lib/auto-category-policy";
 import type { TransactionType } from "@/lib/ledger";
 import type { QuickCategoryOption } from "@/components/QuickCategoryPicker";

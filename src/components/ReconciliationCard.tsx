@@ -7,8 +7,9 @@ import { useTransactions } from "@/hooks/useTransactions";
 import { useCategories } from "@/hooks/useCategories";
 import { useCreditCards } from "@/hooks/useCreditCards";
 import { useSoundFX } from "@/hooks/useSoundFX";
-import { computeRealBalance } from "@/hooks/useRealFlows";
+import { computeRealBalance } from "@/lib/real-flows";
 import { cardsDebt } from "@/lib/card-cycle";
+import { clp } from "@/lib/format";
 
 interface ReconciliationCardProps {
   onSuccess?: () => void;
@@ -40,13 +41,6 @@ export function ReconciliationCard({ onSuccess }: ReconciliationCardProps = {}) 
 
   // Diferencia a Conciliar = Liquidez real − Balance App
   const diferencia = balanceReal - balanceApp;
-
-  const formatCurrency = (amount: number) => {
-    return new Intl.NumberFormat("es-CL", {
-      style: "currency",
-      currency: "CLP",
-    }).format(amount);
-  };
 
   const handleInputChange = (
     e: React.ChangeEvent<HTMLInputElement>,
@@ -101,7 +95,7 @@ export function ReconciliationCard({ onSuccess }: ReconciliationCardProps = {}) 
       
       await addTransaction.mutateAsync({
         date: new Date().toISOString(),
-        detail: `Conciliación automática - Ajuste de ${formatCurrency(Math.abs(diferencia))}`,
+        detail: `Conciliación automática - Ajuste de ${clp(Math.abs(diferencia))}`,
         category_name: categoryName,
         type: type,
         amount: Math.abs(diferencia),
@@ -155,23 +149,23 @@ export function ReconciliationCard({ onSuccess }: ReconciliationCardProps = {}) 
           <div className="space-y-2 text-sm">
             <div className="flex justify-between items-center">
               <span className="flex items-center gap-2 text-muted-foreground"><Wallet className="h-4 w-4" />Saldo en tu banco</span>
-              <span className="font-mono tabular-nums">{formatCurrency(cuentaCorrienteNum)}</span>
+              <span className="font-mono tabular-nums">{clp(cuentaCorrienteNum)}</span>
             </div>
             <div className="flex justify-between items-center">
               <span className="flex items-center gap-2 text-muted-foreground"><CreditCard className="h-4 w-4" />− Tarjetas</span>
-              <span className="font-mono tabular-nums">{formatCurrency(deudaTarjetas)}</span>
+              <span className="font-mono tabular-nums">{clp(deudaTarjetas)}</span>
             </div>
             <div className="flex justify-between items-center border-t pt-2">
               <span className="font-medium">= Liquidez real</span>
               <span className={`text-xl font-medium font-mono tabular-nums ${balanceReal >= 0 ? "text-success" : "text-destructive"}`}>
-                {formatCurrency(balanceReal)}
+                {clp(balanceReal)}
               </span>
             </div>
           </div>
           <div className="flex justify-between items-center">
             <span className="text-sm text-muted-foreground">Líquido en Rindo</span>
             <span className={`text-xl font-medium font-mono tabular-nums ${balanceApp >= 0 ? "text-success" : "text-destructive"}`}>
-              {formatCurrency(balanceApp)}
+              {clp(balanceApp)}
             </span>
           </div>
           <p className="text-xs text-muted-foreground">
@@ -196,7 +190,7 @@ export function ReconciliationCard({ onSuccess }: ReconciliationCardProps = {}) 
                 </span>
               </div>
               <span className={`text-xl font-medium font-mono tabular-nums ${diferenciaColor}`}>
-                {formatCurrency(Math.abs(diferencia))}
+                {clp(Math.abs(diferencia))}
               </span>
             </div>
             
@@ -231,7 +225,7 @@ export function ReconciliationCard({ onSuccess }: ReconciliationCardProps = {}) 
                     </div>
                     <div className="flex items-center justify-between">
                       <span className="text-muted-foreground">Monto</span>
-                      <span className="font-medium font-mono tabular-nums">{formatCurrency(Math.abs(diferencia))}</span>
+                      <span className="font-medium font-mono tabular-nums">{clp(Math.abs(diferencia))}</span>
                     </div>
                     <div className="flex items-center justify-between">
                       <span className="text-muted-foreground">Categoría</span>

@@ -5,6 +5,7 @@ import { parseWhisper } from "@/lib/whisper";
 import type { CreditCard } from "@/hooks/useCreditCards";
 import { cn } from "@/lib/utils";
 import "./whisper.css";
+import { clp } from "@/lib/format";
 
 /**
  * Nueva tarjeta al estilo Whisper: una línea con el cupo y el nombre
@@ -34,9 +35,6 @@ const CARD_COLORS = [
   "#1e293b", // slate
   "#000000", // black
 ];
-
-const formatCurrency = (v: number) =>
-  new Intl.NumberFormat("es-CL", { style: "currency", currency: "CLP", maximumFractionDigits: 0 }).format(v);
 
 const dayOf = (raw: string, fallback: number) => {
   const n = parseInt(raw, 10);
@@ -157,7 +155,7 @@ export function CreditCardModal({ open, onOpenChange, card, onSave }: CreditCard
                 className="whisper-input"
               />
               <div className="whisper-preview" aria-hidden="true">
-                {parsed && <span>cupo {formatCurrency(parsed.amount)}</span>}
+                {parsed && <span>cupo {clp(parsed.amount)}</span>}
               </div>
             </div>
 

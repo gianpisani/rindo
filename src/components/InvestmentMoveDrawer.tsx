@@ -5,10 +5,11 @@ import { toast } from "sonner";
 import { useTransactions } from "@/hooks/useTransactions";
 import { useSoundFX } from "@/hooks/useSoundFX";
 import { usePrivacyMode } from "@/hooks/usePrivacyMode";
-import { computeLedger } from "@/hooks/useRealFlows";
+import { computeLedger } from "@/lib/real-flows";
 import { parseWhisper } from "@/lib/whisper";
 import { cn } from "@/lib/utils";
 import "./whisper.css";
+import { clp } from "@/lib/format";
 
 /**
  * Los dos movimientos que tocan el balde invertido y que no son un aporte:
@@ -34,14 +35,6 @@ const MOVES: { key: Move; label: string; color: string; placeholder: string }[] 
   { key: "valor", label: "Rendimiento", color: "#a78bfa", placeholder: "12500000" },
 ];
 const LOSS_COLOR = "oklch(var(--destructive))";
-
-function formatCurrency(value: number) {
-  return new Intl.NumberFormat("es-CL", {
-    style: "currency",
-    currency: "CLP",
-    maximumFractionDigits: 0,
-  }).format(value);
-}
 
 function parseAmount(value: string): number {
   const digits = value.replace(/\D/g, "");
@@ -126,7 +119,7 @@ export function InvestmentMoveDrawer({
     try {
       await addTransaction.mutateAsync({
         date: new Date().toISOString(),
-        detail: `Inversiones valen ${formatCurrency(valor)}`,
+        detail: `Inversiones valen ${clp(valor)}`,
         category_name: "Rendimiento",
         type: "Rendimiento",
         amount: delta,
@@ -134,8 +127,8 @@ export function InvestmentMoveDrawer({
       playCelebration();
       toast.success(
         delta > 0
-          ? `Tu patrimonio subió ${formatCurrency(delta)}`
-          : `Tu patrimonio bajó ${formatCurrency(Math.abs(delta))}`
+          ? `Tu patrimonio subió ${clp(delta)}`
+          : `Tu patrimonio bajó ${clp(Math.abs(delta))}`
       );
       close();
     } finally {
@@ -240,14 +233,14 @@ export function InvestmentMoveDrawer({
                 aria-hidden="true"
               >
                 {move === "rescate" ? (
-                  rescate > 0 && <span>rescatas {formatCurrency(rescate)}</span>
+                  rescate > 0 && <span>rescatas {clp(rescate)}</span>
                 ) : hasValor ? (
                   alDia ? (
                     <span>ya está al día, no hay nada que registrar</span>
                   ) : (
                     <span>
                       {delta > 0 ? "ganaron +" : "perdieron −"}
-                      {formatCurrency(Math.abs(delta))}
+                      {clp(Math.abs(delta))}
                     </span>
                   )
                 ) : null}
@@ -265,7 +258,7 @@ export function InvestmentMoveDrawer({
                 )}
                 <br />
                 Invertido según Rindo:{" "}
-                <span className={cn("whisper-inv-amount", isPrivacyMode && "privacy-blur")}>{formatCurrency(invertido)}</span>
+                <span className={cn("whisper-inv-amount", isPrivacyMode && "privacy-blur")}>{clp(invertido)}</span>
               </p>
             </div>
 
@@ -282,7 +275,7 @@ export function InvestmentMoveDrawer({
                   <>
                     {move === "rescate" ? (
                       <span className={cn(isPrivacyMode && rescate > 0 && "privacy-blur")}>
-                        Rescatar{rescate > 0 ? ` ${formatCurrency(rescate)}` : ""}
+                        Rescatar{rescate > 0 ? ` ${clp(rescate)}` : ""}
                       </span>
                     ) : (
                       "Registrar rendimiento"

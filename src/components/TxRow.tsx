@@ -9,10 +9,7 @@ import { signPrefix } from "@/lib/ledger";
 import { AMOUNT_TONE, isAnalyzing } from "@/lib/tx-display";
 import { cn } from "@/lib/utils";
 import { tint } from "@/lib/category-color";
-
-const clp = (value: number) =>
-  new Intl.NumberFormat("es-CL", { style: "currency", currency: "CLP", minimumFractionDigits: 0 }).format(value);
-
+import { clp } from "@/lib/format";
 
 interface Props extends HTMLAttributes<HTMLDivElement> {
   t: Transaction;

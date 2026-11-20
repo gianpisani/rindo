@@ -8,11 +8,12 @@ import { usePeriodConfig } from "@/hooks/usePeriodConfig";
 import { es } from "date-fns/locale";
 import type { Transaction } from "@/hooks/useTransactions";
 import type { Category } from "@/hooks/useCategories";
-import { computeRealFlows, type RealFlowsConfig } from "@/hooks/useRealFlows";
+import { computeRealFlows, type RealFlowsConfig } from "@/lib/real-flows";
 import { computeMonthPace, paceVerdict, type MonthPace, type PaceVerdict } from "@/lib/month-pace";
 import { usePrivacyMode } from "@/hooks/usePrivacyMode";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
+import { clp, clpCompact } from "@/lib/format";
 
 /*
  * El pulso del mes: una sola pregunta — ¿este mes voy mejor o peor que mi
@@ -27,11 +28,6 @@ const TONE: Record<PaceVerdict, string> = {
   even: "var(--foreground)",
 };
 const MUTED = "var(--muted-foreground)";
-
-const clp = (v: number) =>
-  new Intl.NumberFormat("es-CL", { style: "currency", currency: "CLP", maximumFractionDigits: 0 }).format(v);
-const clpShort = (v: number) =>
-  new Intl.NumberFormat("es-CL", { style: "currency", currency: "CLP", notation: "compact", maximumFractionDigits: 1 }).format(v);
 
 function useWidth<T extends HTMLElement>() {
   const ref = useRef<T>(null);
@@ -161,7 +157,7 @@ function PaceRace({ pace, verdict, privacy }: { pace: MonthPace; verdict: PaceVe
               típico
             </text>
             <text x={x(days) + 8} y={y(typical.median[days]) + 16} className="fill-muted-foreground text-xs tabular-nums">
-              {clpShort(typical.median[days])}
+              {clpCompact(typical.median[days])}
             </text>
           </g>
         )}
@@ -171,7 +167,7 @@ function PaceRace({ pace, verdict, privacy }: { pace: MonthPace; verdict: PaceVe
               tú
             </text>
             <text x={x(days) + 8} y={y(pace.projectedTotal) + 16} className="text-xs tabular-nums" fill={tone}>
-              ~{clpShort(pace.projectedTotal)}
+              ~{clpCompact(pace.projectedTotal)}
             </text>
           </g>
         )}
@@ -239,7 +235,7 @@ function Drivers({ pace, colors, privacy }: { pace: MonthPace; colors: Map<strin
             </div>
             <span className={cn("w-20 text-right text-sm font-medium tabular-nums", privacy && "privacy-blur")}>
               {over ? "+" : "−"}
-              {clpShort(Math.abs(r.delta))}
+              {clpCompact(Math.abs(r.delta))}
             </span>
           </div>
         );
@@ -446,10 +442,10 @@ export function MonthPulse({ open, onClose, initialMonth, transactions, categori
                     </p>
                     <p className={cn("mt-1 text-xl font-medium tabular-nums", isPrivacyMode && "privacy-blur")}>
                       {pace.isLive ? "~" : ""}
-                      {clpShort(pace.projectedTotal)}
+                      {clpCompact(pace.projectedTotal)}
                     </p>
                     <p className={cn("text-xs text-muted-foreground", isPrivacyMode && "privacy-blur")}>
-                      típico {clpShort(pace.typicalTotal)}
+                      típico {clpCompact(pace.typicalTotal)}
                     </p>
                   </div>
                   {income.amount > 0 && (
@@ -462,10 +458,10 @@ export function MonthPulse({ open, onClose, initialMonth, transactions, categori
                         style={{ color: leftover >= 0 ? TONE.under : TONE.over }}
                       >
                         {pace.isLive ? "~" : ""}
-                        {clpShort(Math.abs(leftover))}
+                        {clpCompact(Math.abs(leftover))}
                       </p>
                       <p className={cn("text-xs text-muted-foreground", isPrivacyMode && "privacy-blur")}>
-                        de {clpShort(income.amount)} {income.estimated ? "que suelen entrar" : "que entraron"}
+                        de {clpCompact(income.amount)} {income.estimated ? "que suelen entrar" : "que entraron"}
                       </p>
                     </div>
                   )}
@@ -500,7 +496,7 @@ export function PaceText({ pace, className }: { pace: MonthPace; className?: str
     <b className={className} style={{ color: verdict === "even" ? undefined : TONE[verdict] }}>
       {verdict === "even"
         ? "Justo en tu ritmo"
-        : `${clpShort(Math.abs(pace.delta))} ${verdict === "under" ? "bajo" : "sobre"} tu ritmo`}
+        : `${clpCompact(Math.abs(pace.delta))} ${verdict === "under" ? "bajo" : "sobre"} tu ritmo`}
     </b>
   );
 }

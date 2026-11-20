@@ -9,7 +9,7 @@ import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { EmptyState } from "@/components/EmptyState";
 import { CategorySelect } from "@/components/CategorySelect";
-import { getCategoryIcon } from "@/components/TransactionsTable";
+import { getCategoryIcon } from "@/lib/category-icon";
 import { useTransactions } from "@/hooks/useTransactions";
 import { useMonthlyBudget } from "@/hooks/useMonthlyBudget";
 import { useCategories } from "@/hooks/useCategories";
@@ -27,6 +27,7 @@ import {
   type Sweep,
 } from "@/lib/savings-goal";
 import { tint } from "@/lib/category-color";
+import { clp } from "@/lib/format";
 
 /**
  * Meta: ahorrar $X al mes. La página responde una sola pregunta, ¿la estás
@@ -38,9 +39,6 @@ import { tint } from "@/lib/category-color";
 const MONTHS = 12;
 /** Hasta este día del mes, un $0 todavía no es una alarma: el barrido puede venir. */
 const GRACE_DAY = 5;
-
-const formatCurrency = (v: number) =>
-  new Intl.NumberFormat("es-CL", { style: "currency", currency: "CLP", maximumFractionDigits: 0 }).format(v);
 
 const day = (d: Date) => format(d, "d MMM", { locale: es }).replace(".", "");
 
@@ -182,11 +180,11 @@ export default function Meta() {
 
   let note: { text: string; tone: Tone } = { text: "", tone: "wait" };
   if (nextTotal > 0) {
-    note = { text: `ya barriste ${formatCurrency(nextTotal)} para ${nextMonthName} ✓`, tone: "met" };
+    note = { text: `ya barriste ${clp(nextTotal)} para ${nextMonthName} ✓`, tone: "met" };
   } else if (current.met) {
     note = { text: `cumplida ✓ · barrido el ${listDays(current.sweeps)}`, tone: "met" };
   } else if (current.saved > 0) {
-    note = { text: `barrido el ${listDays(current.sweeps)} · faltan ${formatCurrency(goal - current.saved)}`, tone: "part" };
+    note = { text: `barrido el ${listDays(current.sweeps)} · faltan ${clp(goal - current.saved)}`, tone: "part" };
   } else if (currentTone === "wait") {
     note = { text: "todavía no barres nada este mes", tone: "wait" };
   } else {
@@ -194,13 +192,13 @@ export default function Meta() {
   }
 
   // ── El detalle del mes elegido: dos líneas fijas, sin saltos ──
-  const detailTop = `${format(periodNameDate(selected.month, startDay), "MMMM", { locale: es })} · ${formatCurrency(selected.saved)}`;
+  const detailTop = `${format(periodNameDate(selected.month, startDay), "MMMM", { locale: es })} · ${clp(selected.saved)}`;
   const detailBottom = (() => {
     const parts: string[] = [];
     if (selected.sweeps.length) parts.push(`barrido el ${listDays(selected.sweeps)}`);
-    if (selected.rescued > 0) parts.push(`rescataste ${formatCurrency(selected.rescued)}`);
+    if (selected.rescued > 0) parts.push(`rescataste ${clp(selected.rescued)}`);
     if (!selected.met && selected.biggestHit) {
-      parts.push(`el golpe: ${selected.biggestHit.label} ${formatCurrency(selected.biggestHit.amount)}`);
+      parts.push(`el golpe: ${selected.biggestHit.label} ${clp(selected.biggestHit.amount)}`);
     }
     if (!parts.length) parts.push(selected.met ? "cumplida" : "sin movimientos a inversión");
     return parts.join(" · ");
@@ -308,7 +306,7 @@ export default function Meta() {
             <Skeleton className="h-6 w-48" />
           ) : hasGoal && !editing ? (
             <button className="meta-goal" onClick={() => setEditing(true)} aria-label="Editar meta">
-              Ahorrar <b className={cn(isPrivacyMode && "privacy-blur")}>{formatCurrency(goal)}</b> al mes
+              Ahorrar <b className={cn(isPrivacyMode && "privacy-blur")}>{clp(goal)}</b> al mes
               <Pencil />
             </button>
           ) : hasGoal ? (
@@ -342,7 +340,7 @@ export default function Meta() {
                   locales="es-CL"
                 />
               </div>
-              <div className={cn("meta-of", isPrivacyMode && "privacy-blur")}>de {formatCurrency(goal)}</div>
+              <div className={cn("meta-of", isPrivacyMode && "privacy-blur")}>de {clp(goal)}</div>
               <div className="meta-track" aria-hidden>
                 <i style={{ width: `${Math.max(pct, current.saved > 0 ? 1.5 : 0)}%` }} />
               </div>
@@ -410,7 +408,7 @@ export default function Meta() {
                 <span className="meta-label">Límites</span>
                 {limitRows.length > 0 && (
                   <span className={cn("meta-count", isPrivacyMode && "privacy-blur")}>
-                    <b>{formatCurrency(limitsTotal)}</b> al mes
+                    <b>{clp(limitsTotal)}</b> al mes
                   </span>
                 )}
               </div>
@@ -492,11 +490,11 @@ export default function Meta() {
                         </span>
                       ) : (
                         <span className={cn("of", isPrivacyMode && "privacy-blur")}>
-                          <span>{formatCurrency(row.spent)} de {formatCurrency(row.limit)}</span>
+                          <span>{clp(row.spent)} de {clp(row.limit)}</span>
                           {row.state === "over" ? (
-                            <span className="extra">+{formatCurrency(row.spent - row.limit)}</span>
+                            <span className="extra">+{clp(row.spent - row.limit)}</span>
                           ) : (
-                            <span>quedan {formatCurrency(row.limit - row.spent)}</span>
+                            <span>quedan {clp(row.limit - row.spent)}</span>
                           )}
                         </span>
                       )}

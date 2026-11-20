@@ -5,7 +5,7 @@ import { ArrowUp, Check, ChevronDown, X } from "lucide-react";
 import { addMonths, format } from "date-fns";
 import { es } from "date-fns/locale";
 import { parseWhisper } from "@/lib/whisper";
-import { getCategoryIcon } from "./TransactionsTable";
+import { getCategoryIcon } from "@/lib/category-icon";
 import type { InstallmentPurchase } from "@/hooks/useInstallments";
 import type { CreditCard } from "@/hooks/useCreditCards";
 import { useCategories } from "@/hooks/useCategories";
@@ -13,6 +13,7 @@ import { useSoundFX } from "@/hooks/useSoundFX";
 import { cn } from "@/lib/utils";
 import { isCardPaymentCategory } from "@/lib/ledger";
 import "./whisper.css";
+import { clp } from "@/lib/format";
 
 /**
  * Compra en cuotas al estilo Whisper: una línea con el total y qué compraste
@@ -35,8 +36,6 @@ const INSTALLMENT_OPTIONS = [3, 6, 12, 18, 24, 36];
 const DEFAULT_CATEGORY = "Otros gastos";
 const FALLBACK_ACCENT = "#fafafa";
 
-const formatCurrency = (v: number) =>
-  new Intl.NumberFormat("es-CL", { style: "currency", currency: "CLP", maximumFractionDigits: 0 }).format(v);
 const isoDay = (d: Date) => format(d, "yyyy-MM-dd");
 const monthOf = (iso: string) => {
   const d = new Date(`${iso}T12:00:00`);
@@ -187,7 +186,7 @@ export function InstallmentModal({ open, onOpenChange, installment, creditCards,
               <div className="whisper-preview" aria-hidden="true">
                 {parsed && (
                   <span>
-                    {count} cuotas de {formatCurrency(installmentAmount)}
+                    {count} cuotas de {clp(installmentAmount)}
                   </span>
                 )}
               </div>

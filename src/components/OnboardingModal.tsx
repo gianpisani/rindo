@@ -18,7 +18,7 @@ import {
   parseCustomSettings,
   type CustomThemeSettings,
   type PaletteVars,
-} from "@/hooks/useCustomTheme";
+} from "@/lib/theme";
 import { useTheme } from "next-themes";
 import {
   Camera,

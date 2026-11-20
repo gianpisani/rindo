@@ -14,12 +14,12 @@ import { useMonthlyBudget } from "@/hooks/useMonthlyBudget";
 import { usePeriodConfig } from "@/hooks/usePeriodConfig";
 import { dayOfPeriod, periodEndOf, periodNameDate, shiftPeriod } from "@/lib/period";
 import {
-  useRealFlows,
   computeRealFlows,
   DEFAULT_TRANSIT_CATEGORIES,
   SWEEP_ALERT_THRESHOLD,
   type RealFlowsConfig,
-} from "@/hooks/useRealFlows";
+} from "@/lib/real-flows";
+import { useRealFlows } from "@/hooks/useRealFlows";
 import { limitUsage, summarizeCategoryPeriod } from "@/lib/category-spending";
 import { PiggyBank, ChevronRight, RefreshCw } from "lucide-react";
 import { BankSyncModal } from "@/components/BankSyncModal";
@@ -42,6 +42,7 @@ import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import { ANALYZING_CATEGORY } from "@/lib/auto-category-policy";
 import { isCardPayment } from "@/lib/ledger";
 import { tint } from "@/lib/category-color";
+import { clp, clpCompact } from "@/lib/format";
 
 /*
  * Inicio: ¿cómo voy este mes? Lo gastado y el ritmo, en qué se va la plata,
@@ -64,12 +65,6 @@ const sinceLabel = (iso: string) => {
 };
 
 /** El ícono de una categoría sobre un tono de su color. */
-
-const formatCurrency = (value: number) =>
-  new Intl.NumberFormat("es-CL", { style: "currency", currency: "CLP", minimumFractionDigits: 0 }).format(value);
-
-const formatCompact = (value: number) =>
-  new Intl.NumberFormat("es-CL", { style: "currency", currency: "CLP", notation: "compact" }).format(value);
 
 const Index = () => {
   const { transactions, isLoading } = useTransactions();
@@ -184,7 +179,7 @@ const Index = () => {
       title: category,
       icon: emojiOf(category),
       color: colorOf(category),
-      summary: `${formatCurrency(row?.effectiveAmount ?? 0)} · ${count} movimiento${count === 1 ? "" : "s"}${row && row.reimbursedAmount > 0 ? ` · ${formatCurrency(row.reimbursedAmount)} reembolsado` : ""}`,
+      summary: `${clp(row?.effectiveAmount ?? 0)} · ${count} movimiento${count === 1 ? "" : "s"}${row && row.reimbursedAmount > 0 ? ` · ${clp(row.reimbursedAmount)} reembolsado` : ""}`,
       transactions: rows,
       groupBy: "day",
     });
@@ -217,8 +212,8 @@ const Index = () => {
       list.push({
         id: "sweep",
         icon: PiggyBank,
-        label: `${formatCompact(sweepAlert.amount)} sin invertir`,
-        detail: `Cerraste ${format(lastMonthName, "MMMM", { locale: es })} con ${formatCompact(
+        label: `${clpCompact(sweepAlert.amount)} sin invertir`,
+        detail: `Cerraste ${format(lastMonthName, "MMMM", { locale: es })} con ${clpCompact(
           sweepAlert.amount
         )} ahorrados que no barriste a inversión.`,
         tone: "warning",
@@ -280,8 +275,8 @@ const Index = () => {
             <i style={{ width: "100%", background: "oklch(var(--destructive))", "--i": index } as CSSProperties} />
           </span>
           <span className={cn("of", isPrivacyMode && "privacy-blur")}>
-            <span>{formatCurrency(cat.spent)} de {formatCurrency(limit)}</span>
-            <span className="extra">+{formatCurrency(cat.spent - limit)}</span>
+            <span>{clp(cat.spent)} de {clp(limit)}</span>
+            <span className="extra">+{clp(cat.spent - limit)}</span>
           </span>
         </button>
       );
@@ -317,7 +312,7 @@ const Index = () => {
             {getDateLabel(dateKey)}
             {/* Cuánto se fue ese día dice más que cuántos movimientos hubo */}
             {dayExpenses(dateKey) > 0 && (
-              <span className={cn(isPrivacyMode && "privacy-blur")}>−{formatCurrency(dayExpenses(dateKey))}</span>
+              <span className={cn(isPrivacyMode && "privacy-blur")}>−{clp(dayExpenses(dateKey))}</span>
             )}
           </div>
           {groupedTransactions[dateKey].map((t) => {
@@ -424,7 +419,7 @@ const Index = () => {
                 {shownCategories.map((cat, index) => (
                   <button key={cat.category} onClick={() => openCategory(cat.category)} className="inicio-cat">
                     <span className="n">{emojiOf(cat.category)} {cat.category}</span>
-                    <span className={cn("v", isPrivacyMode && "privacy-blur")}>{formatCurrency(cat.effectiveAmount)}</span>
+                    <span className={cn("v", isPrivacyMode && "privacy-blur")}>{clp(cat.effectiveAmount)}</span>
                     <span className="p">{pctOf(cat.effectiveAmount)}%</span>
                     <span className="inicio-track">
                       <i style={{ width: `${Math.max((cat.effectiveAmount / topSpend) * 100, 1.5)}%`, background: colorOf(cat.category) || "var(--muted-foreground)", "--i": index } as CSSProperties} />

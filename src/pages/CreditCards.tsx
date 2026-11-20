@@ -24,6 +24,7 @@ import ConfirmDialog from "@/components/ConfirmDialog";
 import { usePrivacyMode } from "@/hooks/usePrivacyMode";
 import { cn } from "@/lib/utils";
 import { inkOn } from "@/lib/category-color";
+import { clp } from "@/lib/format";
 
 /**
  * Tarjetas: ¿cuánto llevo este ciclo, cuándo cierra y cuándo pago? Cada
@@ -31,9 +32,6 @@ import { inkOn } from "@/lib/category-color";
  * quedan) y el estado de cuenta de la tarjeta elegida, ciclo por ciclo. Lo
  * largo scrollea adentro de su panel, nunca la página.
  */
-
-const formatCurrency = (v: number) =>
-  new Intl.NumberFormat("es-CL", { style: "currency", currency: "CLP", maximumFractionDigits: 0 }).format(v);
 
 /** Las filas del estado de cuenta van sin íconos: algunos detalles traen emoji y otros no. */
 const withoutEmoji = (text: string) => text.replace(/[\p{Extended_Pictographic}\u{FE0F}\u{200D}]/gu, "").replace(/\s+/g, " ").trim();
@@ -222,7 +220,7 @@ export default function CreditCards() {
                   Cuotas
                   {hasActiveInstallments && (
                     <small className={cn(isPrivacyMode && "privacy-blur")}>
-                      {" "}· {formatCurrency(monthlyPayment)} al mes
+                      {" "}· {clp(monthlyPayment)} al mes
                     </small>
                   )}
                 </span>
@@ -272,7 +270,7 @@ export default function CreditCards() {
                   <span>
                     {day(cycle.start)} → {day(cycle.end)}
                   </span>
-                  <b className={cn(isPrivacyMode && "privacy-blur")}>{formatCurrency(cycleTxs.total)}</b>
+                  <b className={cn(isPrivacyMode && "privacy-blur")}>{clp(cycleTxs.total)}</b>
                 </div>
               )}
               <div className="tj-list" data-scrollable>
@@ -288,7 +286,7 @@ export default function CreditCards() {
                         <span className={cn("n", isPrivacyMode && "privacy-blur")}>{withoutEmoji(tx.detail || tx.category_name)}</span>
                         <span className={cn("v", isPrivacyMode && "privacy-blur")}>
                           {credit ? "+" : ""}
-                          {formatCurrency(Number(tx.amount))}
+                          {clp(Number(tx.amount))}
                         </span>
                       </div>
                     );
@@ -370,8 +368,8 @@ function Plastic({
         }
       }}
       aria-pressed={selected}
-      aria-label={`${card.name}, por facturar ${formatCurrency(cycle.porFacturar)}${
-        cycle.showAPagar ? `, a pagar ${formatCurrency(cycle.aPagar)} el ${day(cycle.payDate)}` : ""
+      aria-label={`${card.name}, por facturar ${clp(cycle.porFacturar)}${
+        cycle.showAPagar ? `, a pagar ${clp(cycle.aPagar)} el ${day(cycle.payDate)}` : ""
       }`}
     >
       <div className="tj-pl-top">
@@ -397,12 +395,12 @@ function Plastic({
 
       <div className="tj-pl-mid">
         <span className="tj-pl-label">por facturar</span>
-        <span className={cn("tj-pl-big", isPrivacyMode && "privacy-blur")}>{formatCurrency(cycle.porFacturar)}</span>
+        <span className={cn("tj-pl-big", isPrivacyMode && "privacy-blur")}>{clp(cycle.porFacturar)}</span>
         <span className="tj-pl-of">
           <span>cierra el {day(cycle.closes)}</span>
           {cycle.showAPagar ? (
             <span>
-              a pagar <b className={cn(isPrivacyMode && "privacy-blur")}>{formatCurrency(cycle.aPagar)}</b> el {day(cycle.payDate)}
+              a pagar <b className={cn(isPrivacyMode && "privacy-blur")}>{clp(cycle.aPagar)}</b> el {day(cycle.payDate)}
             </span>
           ) : (
             <span>pagas el {day(cycle.nextPay)}</span>
@@ -411,7 +409,7 @@ function Plastic({
       </div>
 
       <div className="tj-pl-bot">
-        <span className={cn(isPrivacyMode && "privacy-blur")}>disponible {formatCurrency(card.available_credit)}</span>
+        <span className={cn(isPrivacyMode && "privacy-blur")}>disponible {clp(card.available_credit)}</span>
         <span>{card.last_4_digits ? `···· ${card.last_4_digits}` : ""}</span>
       </div>
     </div>
@@ -448,7 +446,7 @@ function InstallmentRow({
           {installment.card_name && <small>{installment.card_name}</small>}
         </span>
         <span className={cn("v", isPrivacyMode && "privacy-blur")}>
-          {formatCurrency(installment.installment_amount)}
+          {clp(installment.installment_amount)}
           <small>/mes</small>
         </span>
         <span className="row2">
@@ -462,8 +460,8 @@ function InstallmentRow({
       {open && (
         <div className="tj-inst-detail">
           <p className={cn("tj-inst-meta", isPrivacyMode && "privacy-blur")}>
-            <span>total {formatCurrency(installment.total_amount)}</span>
-            {!done && <span>quedan {formatCurrency(left * installment.installment_amount)}</span>}
+            <span>total {clp(installment.total_amount)}</span>
+            {!done && <span>quedan {clp(left * installment.installment_amount)}</span>}
             <span>última {format(last, "MMM yyyy", { locale: es }).replace(".", "")}</span>
           </p>
           <div className="tj-inst-actions">

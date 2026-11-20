@@ -76,107 +76,14 @@ import { useCategories } from "@/hooks/useCategories";
 import { CategoryComposer } from "./CategoryComposer";
 import { QuickCategoryPicker } from "./QuickCategoryPicker";
 import { useInlineEdit } from "@/hooks/useInlineEdit";
+import { getCategoryIcon } from "@/lib/category-icon";
+import { AMOUNT_TEXT_CLASS } from "@/lib/tx-display";
 import { ANALYZING_CATEGORY } from "@/lib/auto-category-policy";
 import { Popover, PopoverContent, PopoverTrigger } from "./ui/popover";
 import { Command, CommandInput, CommandList, CommandEmpty, CommandGroup, CommandItem } from "./ui/command";
 import type { DateRangeValue } from "./DateRangeFilter";
 import { tintColor } from "@/lib/category-color";
-
-// ── Category icon map ──────────────────────────────────────────────────────
-
-const CATEGORY_ICONS: Record<string, string> = {
-  comida: "🍔",
-  alimentación: "🍔",
-  restaurante: "🍽️",
-  almuerzo: "🍽️",
-  cena: "🍽️",
-  café: "☕",
-  coffee: "☕",
-  bar: "🍺",
-  bebida: "🥤",
-  transporte: "🚗",
-  movilización: "🚗",
-  taxi: "🚕",
-  metro: "🚇",
-  bencina: "⛽",
-  gasolina: "⛽",
-  estacionamiento: "🅿️",
-  ropa: "👕",
-  vestuario: "👗",
-  calzado: "👟",
-  moda: "👗",
-  salud: "💊",
-  médico: "🏥",
-  farmacia: "💊",
-  clínica: "🏥",
-  dental: "🦷",
-  deporte: "🏋️",
-  gimnasio: "🏋️",
-  fitness: "🏋️",
-  entretenimiento: "🎬",
-  cine: "🎬",
-  teatro: "🎭",
-  concierto: "🎵",
-  streaming: "📺",
-  netflix: "📺",
-  spotify: "🎵",
-  música: "🎵",
-  educación: "📚",
-  universidad: "🎓",
-  curso: "📚",
-  libro: "📖",
-  viaje: "✈️",
-  viajes: "✈️",
-  hotel: "🏨",
-  turismo: "🗺️",
-  hospedaje: "🏨",
-  supermercado: "🛒",
-  mercado: "🛒",
-  almacén: "🛒",
-  tecnología: "💻",
-  electrónica: "💻",
-  computación: "💻",
-  celular: "📱",
-  mascota: "🐾",
-  mascotas: "🐾",
-  veterinario: "🐾",
-  hogar: "🏠",
-  arriendo: "🏠",
-  casa: "🏠",
-  muebles: "🪑",
-  servicios: "💡",
-  agua: "💧",
-  internet: "📶",
-  suscripción: "🔄",
-  suscripciones: "🔄",
-  ahorro: "💰",
-  inversión: "📈",
-  fondos: "📈",
-  fintual: "📈",
-  sueldo: "💵",
-  salario: "💵",
-  ingreso: "💵",
-  regalo: "🎁",
-  cumpleaños: "🎂",
-  deuda: "💳",
-  crédito: "💳",
-  seguro: "🛡️",
-  peluquería: "✂️",
-  belleza: "💅",
-  "sin categoría": "❓",
-  transferencia: "↔️",
-};
-
-export function getCategoryIcon(name: string): string {
-  if (!name) return "🏷️";
-  if (isCardPaymentCategory(name)) return CARD_PAYMENT_ICON;
-  const lower = name.toLowerCase();
-  if (CATEGORY_ICONS[lower]) return CATEGORY_ICONS[lower];
-  for (const [key, icon] of Object.entries(CATEGORY_ICONS)) {
-    if (lower.includes(key)) return icon;
-  }
-  return "🏷️";
-}
+import { clp } from "@/lib/format";
 
 // ── Avatar helpers ─────────────────────────────────────────────────────────
 
@@ -215,18 +122,6 @@ const typeIcons: Record<TransactionType, typeof TrendingUp> = {
   Reembolso: ArrowLeftRight,
 };
 
-export const typeAmountColors: Record<TransactionType, string> = {
-  Ingreso: "text-success",
-  Gasto: "text-foreground",
-  // Montos como texto: un tono más oscuro en claro para llegar a 4.5:1.
-  Inversión: "text-blue-600 dark:text-blue-500",
-  Rescate: "text-cyan-700 dark:text-cyan-500",
-  Rendimiento: "text-violet-600 dark:text-violet-500",
-  Reembolso: "text-success",
-};
-
-const formatCLP = (amount: number) =>
-  new Intl.NumberFormat("es-CL", { style: "currency", currency: "CLP", minimumFractionDigits: 0 }).format(amount);
 
 const signColor = (amount: number) =>
   amount > 0 ? "text-success" : "";
@@ -363,7 +258,7 @@ function EditableAmountCell({
         className
       )}
     >
-      <span>{formatCLP(value)}</span>
+      <span>{clp(value)}</span>
       <Pencil className="h-3 w-3 opacity-0 group-hover:opacity-50 transition-opacity flex-shrink-0" />
     </div>
   );
@@ -885,7 +780,7 @@ export function TransactionsTable({
         cell: ({ row }) => {
           const amount = parseFloat(row.getValue("amount"));
           const type = row.original.type;
-          const amountColor = typeAmountColors[type];
+          const amountColor = AMOUNT_TEXT_CLASS[type];
 
           return (
             <div className={cn("flex items-center justify-end", isPrivacyMode && "privacy-blur")}>
@@ -1161,11 +1056,11 @@ export function TransactionsTable({
             </span>
             <span className={cn(
               "text-sm font-medium tabular-nums whitespace-nowrap font-mono",
-              typeAmountColors[t.type],
+              AMOUNT_TEXT_CLASS[t.type],
               isPrivacyMode && "privacy-blur"
             )}>
               {signPrefix(t.type, t.amount)}
-              {formatCLP(Math.abs(t.amount))}
+              {clp(Math.abs(t.amount))}
             </span>
           </div>
           <div className="flex items-center justify-between gap-2 mt-0.5">
@@ -1357,7 +1252,7 @@ export function TransactionsTable({
                       const Icon = typeIcons[type];
                       return (
                         <DropdownMenuItem key={type} onClick={() => handleBatchTypeChange(type)}>
-                          <Icon className={cn("h-4 w-4 mr-2", typeAmountColors[type])} /> {type}
+                          <Icon className={cn("h-4 w-4 mr-2", AMOUNT_TEXT_CLASS[type])} /> {type}
                         </DropdownMenuItem>
                       );
                     })}
@@ -1404,10 +1299,10 @@ export function TransactionsTable({
                   {summaryStats.mixed && (
                     <div className="flex items-center justify-between mt-1.5 pt-1.5 border-t">
                       <span className={cn("text-xs font-mono tabular-nums text-success", isPrivacyMode && "privacy-blur")}>
-                        +{formatCLP(summaryStats.income)}
+                        +{clp(summaryStats.income)}
                       </span>
                       <span className={cn("text-xs font-mono tabular-nums", isPrivacyMode && "privacy-blur")}>
-                        −{formatCLP(summaryStats.expense)}
+                        −{clp(summaryStats.expense)}
                       </span>
                     </div>
                   )}

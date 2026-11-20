@@ -3,6 +3,7 @@ import * as Dialog from "@radix-ui/react-dialog";
 import { ArrowUp, Check, Plus, X } from "lucide-react";
 import { DebtorNameCombobox } from "./DebtorNameCombobox";
 import "./whisper.css";
+import { clp } from "@/lib/format";
 
 /**
  * Gasto compartido al estilo Whisper: el total como línea grande, "partes
@@ -25,8 +26,6 @@ interface SharedExpenseDrawerProps {
   suggestions?: string[];
 }
 
-const formatCurrency = (v: number) =>
-  new Intl.NumberFormat("es-CL", { style: "currency", currency: "CLP", maximumFractionDigits: 0 }).format(v);
 const parseAmount = (raw: string) => parseInt(raw.replace(/\D/g, ""), 10) || 0;
 const formatInput = (amount: number) => (amount ? new Intl.NumberFormat("es-CL").format(amount) : "");
 
@@ -91,12 +90,12 @@ export default function SharedExpenseDrawer({
   // La frase de abajo: qué le toca a cada uno, o cuánto falta por repartir.
   let preview = "";
   if (named.length === 0) preview = "¿Con quién lo compartiste?";
-  else if (splitMode === "equal") preview = `${formatCurrency(equalShare)} cada uno${includeMe ? ", tú incluido" : ""}`;
-  else if (includeMe && myShare < 0) preview = `se pasan por ${formatCurrency(-myShare)}`;
-  else if (includeMe) preview = `tu parte queda en ${formatCurrency(myShare)}`;
+  else if (splitMode === "equal") preview = `${clp(equalShare)} cada uno${includeMe ? ", tú incluido" : ""}`;
+  else if (includeMe && myShare < 0) preview = `se pasan por ${clp(-myShare)}`;
+  else if (includeMe) preview = `tu parte queda en ${clp(myShare)}`;
   else if (Math.abs(missing) < 1) preview = "cuadra ✓";
-  else if (missing > 0) preview = `faltan ${formatCurrency(missing)} por repartir`;
-  else preview = `se pasan por ${formatCurrency(-missing)}`;
+  else if (missing > 0) preview = `faltan ${clp(missing)} por repartir`;
+  else preview = `se pasan por ${clp(-missing)}`;
 
   return (
     <Dialog.Root open={open} onOpenChange={onOpenChange}>
@@ -126,7 +125,7 @@ export default function SharedExpenseDrawer({
 
             <div className="whisper-entry">
               <p className="whisper-input whisper-shared-total" aria-label="Total del gasto">
-                {formatCurrency(totalAmount)}
+                {clp(totalAmount)}
               </p>
               <div className="whisper-preview" aria-live="polite">
                 <span>{preview}</span>
@@ -188,7 +187,7 @@ export default function SharedExpenseDrawer({
                     />
                   ) : (
                     <span className="whisper-shared-amount whisper-shared-fixed" aria-hidden="true">
-                      {debtor.name.trim() ? formatCurrency(equalShare) : ""}
+                      {debtor.name.trim() ? clp(equalShare) : ""}
                     </span>
                   )}
                   <button

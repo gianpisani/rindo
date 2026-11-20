@@ -4,7 +4,9 @@ import * as Dialog from "@radix-ui/react-dialog";
 import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
 import Layout from "@/components/Layout";
 import ConfirmDialog from "@/components/ConfirmDialog";
-import { TransactionsTable, getCategoryIcon, typeAmountColors } from "@/components/TransactionsTable";
+import { TransactionsTable } from "@/components/TransactionsTable";
+import { getCategoryIcon } from "@/lib/category-icon";
+import { AMOUNT_TEXT_CLASS } from "@/lib/tx-display";
 import { TransactionsToolbar } from "@/components/TransactionsToolbar";
 import { Button } from "@/components/ui/button";
 import { useGlobalDrawers } from "@/hooks/useGlobalDrawers";
@@ -43,6 +45,7 @@ import {
   CARD_PAYMENT_ICON,
   isCardPaymentCategory,
 } from "@/lib/ledger";
+import { clp } from "@/lib/format";
 
 // ── Editor de movimientos: corregir la categoría es un toque ──
 
@@ -56,9 +59,6 @@ const LOSS_ACCENT = "oklch(var(--destructive))";
 
 /** Un instante como valor de <input type="datetime-local">, en hora local. */
 const toLocalInput = (d: Date) => new Date(d.getTime() - d.getTimezoneOffset() * 60000).toISOString().slice(0, 16);
-
-const formatCurrency = (amount: number) =>
-  new Intl.NumberFormat("es-CL", { style: "currency", currency: "CLP" }).format(amount);
 
 const EMPTY_FORM = {
   // Fecha y hora como valor de datetime-local, en hora local.
@@ -138,7 +138,7 @@ function DebtPanel({
               <span>{debt.name}</span>
               <small>{debt.detail}</small>
             </span>
-            <span className={cn("amt", blur && "privacy-blur")}>{formatCurrency(debt.amount)}</span>
+            <span className={cn("amt", blur && "privacy-blur")}>{clp(debt.amount)}</span>
           </div>
         );
       })}
@@ -148,7 +148,7 @@ function DebtPanel({
             <span>
               {selected.length} deuda{plural} seleccionada{plural}
             </span>
-            <b className={cn(totalMismatch && "warn", blur && "privacy-blur")}>{formatCurrency(selectedTotal)}</b>
+            <b className={cn(totalMismatch && "warn", blur && "privacy-blur")}>{clp(selectedTotal)}</b>
           </div>
           <button type="button" className="whisper-tx-mini primary" disabled={pending} onClick={onConfirm}>
             <Check size={12} /> {confirmLabel}
@@ -487,7 +487,6 @@ export default function Transactions() {
     link.click();
   };
 
-
   return (
     <Layout>
       <div className="space-y-6">
@@ -555,7 +554,7 @@ export default function Transactions() {
                       <p className="edit-tx-meta">
                         <b className={cn(isPrivacyMode && "privacy-blur")}>
                           {formData.type === "Rendimiento" && formData.isLoss ? "−" : ""}
-                          {formatCurrency(effectiveAmount)}
+                          {clp(effectiveAmount)}
                         </b>
                         {Number.isFinite(new Date(formData.date).getTime()) && (
                           <span>{format(new Date(formData.date), "d MMM, HH:mm", { locale: es })}</span>
@@ -861,7 +860,7 @@ export default function Transactions() {
                                     <small>Pagado {se.paid_at ? new Date(se.paid_at).toLocaleDateString("es-CL") : ""}</small>
                                   )}
                                   {isEditingThis && editExceeds && (
-                                    <small className="warn">Máximo disponible: {formatCurrency(editRemaining)}</small>
+                                    <small className="warn">Máximo disponible: {clp(editRemaining)}</small>
                                   )}
                                 </span>
                                 {isEditingThis ? (
@@ -905,7 +904,7 @@ export default function Transactions() {
                                   </span>
                                 ) : (
                                   <>
-                                    <span className={cn("amt", isPrivacyMode && "privacy-blur")}>{formatCurrency(se.amount_owed)}</span>
+                                    <span className={cn("amt", isPrivacyMode && "privacy-blur")}>{clp(se.amount_owed)}</span>
                                     <span className="whisper-tx-row-actions">
                                       {!se.paid && (
                                         <>
@@ -951,7 +950,7 @@ export default function Transactions() {
                           {myShare >= 0 && (
                             <div className="whisper-tx-foot">
                               <span>Tu parte</span>
-                              <b className={cn(isPrivacyMode && "privacy-blur")}>{formatCurrency(myShare)}</b>
+                              <b className={cn(isPrivacyMode && "privacy-blur")}>{clp(myShare)}</b>
                             </div>
                           )}
 
@@ -959,7 +958,7 @@ export default function Transactions() {
                             <div className="whisper-tx-add">
                               <div className="whisper-tx-foot">
                                 <span>Disponible para asignar</span>
-                                <b className={cn(remaining <= 0 && "warn", isPrivacyMode && "privacy-blur")}>{formatCurrency(remaining)}</b>
+                                <b className={cn(remaining <= 0 && "warn", isPrivacyMode && "privacy-blur")}>{clp(remaining)}</b>
                               </div>
                               <div className="whisper-tx-inline">
                                 <input
@@ -1012,7 +1011,7 @@ export default function Transactions() {
                                 </button>
                               </div>
                               {exceedsLimit && (
-                                <p className="whisper-tx-note warn">El monto supera el disponible ({formatCurrency(remaining)})</p>
+                                <p className="whisper-tx-note warn">El monto supera el disponible ({clp(remaining)})</p>
                               )}
                             </div>
                           )}
@@ -1181,9 +1180,9 @@ export default function Transactions() {
                 <span className="font-medium">{tx.detail || "Sin detalle"}</span>
                 <span className={cn(
                   "font-medium font-mono tabular-nums",
-                  typeAmountColors[tx.type]
+                  AMOUNT_TEXT_CLASS[tx.type]
                 )}>
-                  {formatCurrency(tx.amount)}
+                  {clp(tx.amount)}
                 </span>
               </div>
               <div className="flex items-center justify-between text-xs text-muted-foreground">

@@ -1,8 +1,6 @@
 import { useRef, useState, type CSSProperties, type PointerEvent } from "react";
 import { cn } from "@/lib/utils";
-
-const clp = (value: number) =>
-  new Intl.NumberFormat("es-CL", { style: "currency", currency: "CLP", minimumFractionDigits: 0 }).format(value);
+import { clp } from "@/lib/format";
 
 // ─── Patrimonio en el tiempo ─────────────────────────────────────────────
 // Lo invertido abajo, lo líquido encima: la altura total es el patrimonio.
