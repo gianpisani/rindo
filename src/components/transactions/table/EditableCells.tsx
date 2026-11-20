@@ -1,6 +1,6 @@
 import type { ReactNode } from "react";
 import type { Column, Table } from "@tanstack/react-table";
-import { ArrowDown, ArrowUp, Check, ChevronDown } from "lucide-react";
+import { ArrowDown, ArrowUp, Check } from "lucide-react";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import type { Transaction } from "@/hooks/useTransactions";
 import { cn } from "@/lib/utils";
