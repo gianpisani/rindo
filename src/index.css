@@ -2,7 +2,6 @@
 @tailwind components;
 @tailwind utilities;
 
-/* Smooth app entrance after loading screen */
 @keyframes app-enter {
   0%   { opacity: 0; }
   100% { opacity: 1; }
@@ -11,7 +10,6 @@
   animation: app-enter 0.4s ease-out both;
 }
 
-/* Privacy Mode Blur Effect */
 .privacy-blur {
   filter: blur(6px);
   transition: filter 0.2s ease-in-out;
@@ -31,25 +29,16 @@
   }
 }
 
-/* Modern Vibrant Design System - Professional & Bold
-Based on Indigo, Blue, Cyan palette
-*/
-
 @layer base {
   :root {
-    /* Escala tipográfica cerrada: meta, cuerpo, título, y el número
-       principal de cada pantalla. Nada más (Tailwind usa estas mismas). */
     --fs-1: 12px;
     --fs-2: 14px;
     --fs-3: 20px;
     --fs-hero: clamp(32px, 8vw, 40px);
     --font-mono: "JetBrains Mono", monospace;
-    /* Dos radios: superficies (--radius-card, ajustable en Redondez) y
-       pastillas (9999px). Una sombra, solo para lo que flota. */
     --radius: 0.75rem;
     --radius-card: var(--radius);
     --shadow-float: 0 8px 24px -6px rgb(0 0 0 / 0.3);
-    /* Theme Rose - Warm Finance (Light) */
     --background: oklch(0.965 0.002 286);
     --foreground: oklch(0.13 0.005 285.823);
     --card: oklch(0.995 0 0);
@@ -64,55 +53,35 @@ Based on Indigo, Blue, Cyan palette
     --muted-foreground: oklch(0.355 0.016 285.938);
     --accent: oklch(0.935 0.003 286);
     --accent-foreground: oklch(0.18 0.006 285.885);
-    /* Un tono más oscuro que red-600: como texto (montos, avisos) llega a
-       ≥4.5:1 sobre card y fondo, también sobre su propio tinte al 10%. */
     --destructive: 0.52 0.21 27.3;
     --destructive-foreground: oklch(0.985 0 0);
 
-    /* Accent palette (OKLCH triplets) — remapped Tailwind -500 shades.
-       Light usa los valores stock exactos; .dark los reemplaza por
-       versiones más luminosas y saturadas que no se lavan sobre negro.
-       --accent-chroma vive también en :root para que los presets (p. ej.
-       Grafito) puedan referenciarlo en modo claro. */
     --accent-chroma: 0.19;
-    --accent-rose: 0.645 0.215 16.4;     /* = #f43f5e (rose-500) */
-    --accent-emerald: 0.696 0.149 162.5; /* = #10b981 (emerald-500) */
-    --accent-blue: 0.623 0.188 259.8;    /* = #3b82f6 (blue-500) */
-    --accent-amber: 0.769 0.165 70.1;    /* = #f59e0b (amber-500) */
-    --accent-violet: 0.606 0.25 292.7;   /* = #8b5cf6 (violet-500) */
-    --accent-cyan: 0.715 0.143 215.2;    /* = #06b6d4 (cyan-500) */
+    --accent-rose: 0.645 0.215 16.4;
+    --accent-emerald: 0.696 0.149 162.5;
+    --accent-blue: 0.623 0.188 259.8;
+    --accent-amber: 0.769 0.165 70.1;
+    --accent-violet: 0.606 0.25 292.7;
+    --accent-cyan: 0.715 0.143 215.2;
 
     --border: oklch(0.835 0.008 286);
     --input: oklch(0.835 0.008 286);
-    /* Focus ring neutro: el color de marca queda para la navegación activa.
-       Al 60% llega a 5:1 sobre fondo y card (al 40% no pasaba el 3:1). */
     --ring: color-mix(in oklch, var(--foreground) 60%, transparent);
 
-    /* Un verde y un rojo. --success es lo bueno (ingresos, metas cumplidas);
-       --destructive es lo único que avisa (ritmo pasado, límites, errores,
-       eliminar). Tripletes OKLCH: oklch(var(--success)). El gasto no es una
-       alerta: sus montos van en --foreground y, donde se compara con lo que
-       entró (mes a mes), en --spend: un violeta frío, vivo pero no rojo.
-       En claro van más oscuros que su accent (emerald-500 da 2.5:1 como
-       texto) para que los montos lleguen a ≥4.5:1 en card y fondo de todo
-       tema; .dark vuelve a los accents, que ya pasan sobre negro. */
     --success: 0.48 0.11 162.5;
     --spend: 0.52 0.25 293;
 
-    /* Additional functional colors (HSL for compatibility) */
     --warning: 38 92% 50%;
     --warning-foreground: 0 0% 0%;
     --info: 188 86% 43%;
     --info-foreground: 0 0% 100%;
 
-    /* Charts - OKLCH */
     --chart-1: oklch(0.81 0.117 11.638);
     --chart-2: oklch(0.645 0.246 16.439);
     --chart-3: oklch(0.586 0.253 17.585);
     --chart-4: oklch(0.514 0.222 16.935);
     --chart-5: oklch(0.455 0.188 13.697);
 
-    /* Sidebar */
     --sidebar: oklch(0.955 0.002 286);
     --sidebar-foreground: oklch(0.13 0.005 285.823);
     --sidebar-primary: oklch(0.586 0.253 17.585);
@@ -138,14 +107,6 @@ Based on Indigo, Blue, Cyan palette
     --muted-foreground: oklch(0.705 0.015 286.067);
     --accent: oklch(0.21 0.006 285.885);
     --accent-foreground: oklch(0.985 0 0);
-    /* Accent palette — un solo token de saturación para todos los accents:
-       mismo chroma OKLCH = viveza perceptualmente pareja entre colores.
-       Es LA perilla del sistema: subir para más punch, bajar para más
-       elegancia. Si algún hue no alcanza ese chroma en la pantalla, el
-       gamut mapping de CSS Color 4 lo reduce solo (preservando L y H). */
-    /* 0.21 es el techo real del rosa a esta luminosidad: pedir más no lo
-       hace más vivo, solo lo recorta el navegador. Los otros tonos llegan
-       algo antes y el gamut mapping los baja preservando tono y luz. */
     --accent-chroma: 0.21;
     --accent-rose: 0.68 var(--accent-chroma) 18;
     --accent-emerald: 0.8 var(--accent-chroma) 162;
@@ -154,7 +115,6 @@ Based on Indigo, Blue, Cyan palette
     --accent-violet: 0.66 var(--accent-chroma) 295;
     --accent-cyan: 0.78 var(--accent-chroma) 210;
 
-    /* Un solo rojo en dark: destructive ES el rose accent */
     --destructive: var(--accent-rose);
     --destructive-foreground: oklch(0.985 0 0);
     --success: var(--accent-emerald);
@@ -163,20 +123,17 @@ Based on Indigo, Blue, Cyan palette
     --border: oklch(1 0 0 / 8%);
     --input: oklch(1 0 0 / 12%);
 
-    /* Additional functional colors (HSL for compatibility) */
     --warning: 40 98% 58%;
     --warning-foreground: 0 0% 0%;
     --info: 190 92% 55%;
     --info-foreground: 0 0% 100%;
 
-    /* Charts - OKLCH */
     --chart-1: oklch(0.81 0.117 11.638);
     --chart-2: oklch(0.645 0.246 16.439);
     --chart-3: oklch(0.586 0.253 17.585);
     --chart-4: oklch(0.514 0.222 16.935);
     --chart-5: oklch(0.455 0.188 13.697);
 
-    /* Sidebar */
     --sidebar: oklch(0.12 0.005 285.823);
     --sidebar-foreground: oklch(0.985 0 0);
     --sidebar-primary: oklch(0.645 0.246 16.439);
@@ -202,7 +159,6 @@ Based on Indigo, Blue, Cyan palette
     -moz-osx-font-smoothing: grayscale;
     overflow-x: clip;
     max-width: 100%;
-    /* Uso de visualViewport para mejor manejo de teclado virtual */
     min-height: 100vh;
     min-height: -webkit-fill-available;
   }
@@ -221,10 +177,8 @@ Based on Indigo, Blue, Cyan palette
     min-height: -webkit-fill-available;
   }
   
-  /* Dos grosores: lo destacado es 500, nunca el "bolder" del navegador */
   b, strong, th { font-weight: 500; }
 
-  /* Mejor manejo del scroll en mobile */
   @media (hover: none) and (pointer: coarse) {
     #root {
       min-height: 100vh;
@@ -234,13 +188,11 @@ Based on Indigo, Blue, Cyan palette
     }
   }
 
-  /* Prevenir overflow en todos los contenedores principales */
   #root, [data-sidebar="inset"] {
     overflow-x: clip;
     max-width: 100%;
   }
 
-  /* PWA Splash Screen — matches theme via .dark class applied in main.tsx */
   html {
     background-color: #f0f0f2;
     min-height: 100vh;
@@ -250,7 +202,6 @@ Based on Indigo, Blue, Cyan palette
     background-color: #000000;
   }
 
-  /* iOS PWA - Background for safe areas */
   @supports (-webkit-touch-callout: none) {
     html { background-color: #f0f0f2; }
     html.dark, html.dark body { background-color: #000000; }
@@ -264,45 +215,38 @@ Based on Indigo, Blue, Cyan palette
     }
   }
 
-  /* Prevenir scroll horizontal en todos los elementos */
   img, video, iframe {
     max-width: 100%;
     height: auto;
   }
 
-  /* Smooth transitions for mobile touch interactions */
   @media (hover: none) and (pointer: coarse) {
     * {
       -webkit-tap-highlight-color: transparent;
       touch-action: manipulation;
     }
     
-    /* Prevenir bounce en iOS */
     body {
       overscroll-behavior-y: none;
       -webkit-overflow-scrolling: touch;
     }
     
-    /* Prevenir zoom en inputs de iOS */
     input, select, textarea {
       font-size: 16px !important; /* design-scale-ok: iOS hace zoom en inputs bajo 16px */
     }
   }
   
-  /* Prevenir pull-to-refresh en Chrome Android */
   body {
     overscroll-behavior-y: contain;
   }
 }
 
 @layer utilities {
-  /* Smooth theme transitions for key surfaces */
   [data-sidebar],
   header {
     transition: background-color 0.35s ease, color 0.25s ease, border-color 0.3s ease;
   }
 
-  /* iOS-like haptic button feedback */
   @media (hover: none) {
     button, a, [role="button"] {
       -webkit-touch-callout: none;
@@ -316,7 +260,6 @@ Based on Indigo, Blue, Cyan palette
     }
   }
   
-  /* ── Mobile Bottom Tab Bar ── */
   .mobile-tab-bar {
     display: flex;
     align-items: center;
@@ -379,12 +322,10 @@ Based on Indigo, Blue, Cyan palette
     100% { transform: scale(1); opacity: 1; }
   }
 
-  /* ── Mobile Drawer ── */
   .mobile-drawer-content {
     max-height: 85vh !important;
   }
 
-  /* ── Mobile Transaction Cards ── */
   .mobile-tx-list {
     display: flex;
     flex-direction: column;
@@ -469,8 +410,6 @@ Based on Indigo, Blue, Cyan palette
   }
 }
 
-
-
 @media (prefers-reduced-motion: reduce) {
   *,
   *::before,
@@ -489,21 +428,12 @@ Based on Indigo, Blue, Cyan palette
   body {
     @apply bg-background text-foreground;
   }
-  /* Foco visible con teclado en todo lo que se toca, una sola regla: solo
-     :focus-visible, así el clic con mouse no deja anillo. Lo que ya trae su
-     propio anillo (botones e inputs de shadcn) lo sigue usando. */
   :where(a[href], button, summary, [role="button"], [role="tab"], [tabindex]:not([tabindex="-1"])):focus-visible {
     outline: 2px solid var(--ring);
     outline-offset: 2px;
   }
 }
 
-/* ══ Inicio ════════════════════════════════════════════════════════════
-   Una pantalla exacta en web y celular. La grilla responde al ancho que le
-   queda al contenido (con o sin sidebar), por eso container queries y no
-   breakpoints del viewport. Rojo solo para alertas: los gastos van en
-   blanco y el color queda para lo que entra, la inversión y los límites
-   pasados. */
 .inicio {
   container: inicio / inline-size;
   display: flex;
@@ -546,15 +476,12 @@ Based on Indigo, Blue, Cyan palette
 .inicio-count { font-variant-numeric: tabular-nums; font-size: var(--fs-1); font-weight: 400; color: var(--inicio-faint); margin-left: 6px; }
 .inicio-num { font-variant-numeric: tabular-nums; }
 
-/* Encabezado */
 .inicio-avatar { width: 28px; height: 28px; border-radius: 9999px; flex: none; overflow: hidden;
   box-shadow: 0 0 0 1px color-mix(in oklch, var(--foreground) 14%, transparent); transition: box-shadow .2s; }
 .inicio-avatar:hover { box-shadow: 0 0 0 1px color-mix(in oklch, var(--foreground) 32%, transparent); }
 .inicio-hello { font-size: var(--fs-3); font-weight: 500; min-width: 0; }
 .inicio-head-end { margin-left: auto; display: flex; align-items: center; gap: 8px; flex: none; }
 
-/* El mes: lo gastado grande, el ritmo, y lo que entró chico. El mini
-   gráfico del ritmo toma el alto que sobra: la tarjeta no deja huecos. */
 .inicio-money { padding: 16px 16px; display: flex; flex-direction: column; }
 .inicio-money-top { display: flex; justify-content: space-between; align-items: baseline; }
 .inicio-month:hover { color: var(--foreground); }
@@ -573,7 +500,6 @@ Based on Indigo, Blue, Cyan palette
 .inicio-flow { display: flex; align-items: baseline; gap: 6px; font-variant-numeric: tabular-nums; font-size: var(--fs-2); font-weight: 500; white-space: nowrap; }
 .inicio-flow small { font-size: var(--fs-1); font-weight: 500; }
 
-/* Por categoría */
 .inicio-spend { padding: 16px 16px; display: flex; flex-direction: column; gap: 8px; }
 .inicio-cat { display: grid; grid-template-columns: minmax(0, 1fr) auto 34px; gap: 4px 8px; align-items: center; font-size: var(--fs-1); text-align: left; border-radius: var(--radius-card); }
 .inicio-cat .n { min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
@@ -586,7 +512,6 @@ Based on Indigo, Blue, Cyan palette
 .inicio-more:hover { color: var(--foreground); }
 .inicio-stack, .inicio-legend { display: none; }
 
-/* Paneles con lista */
 .inicio-feed, .inicio-limits { display: flex; flex-direction: column; overflow: hidden; }
 .inicio-panel-head { display: flex; justify-content: space-between; align-items: center; gap: 8px; padding: 12px 16px 6px; }
 .inicio-panel-head a, .inicio-panel-head button { font-size: var(--fs-1); color: var(--muted-foreground); }
@@ -600,16 +525,13 @@ Based on Indigo, Blue, Cyan palette
 .inicio-tx:hover { background: var(--inicio-hover); }
 .inicio-ico { flex: none; width: 30px; height: 30px; border-radius: 9999px; display: grid; place-items: center; font-size: var(--fs-2); line-height: 1; position: relative; }
 .inicio-bot { position: absolute; right: -3px; bottom: -3px; width: 21px; height: 21px; border-radius: 9999px; background: var(--card);
-  /* El 🤖 usa la escala (--fs-1) y el círculo entero se achica a ~13px con transform */
   font-size: var(--fs-1); line-height: 1; display: grid; place-items: center; transform: scale(.625); transform-origin: bottom right; }
 .inicio-tx .body { flex: 1; min-width: 0; }
 .inicio-tx .d { font-size: var(--fs-2); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .inicio-tx .c { font-size: var(--fs-1); color: var(--muted-foreground); white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
-  /* aire para el fondo de la categoría editable, sin mover el texto */
   margin: -1px -4px; padding: 1px 4px; }
 .inicio-tx .m { font-family: var(--font-mono); font-variant-numeric: tabular-nums; font-size: var(--fs-2); font-weight: 500; flex: none; }
 
-/* Límites */
 .inicio-pill { font-variant-numeric: tabular-nums; font-size: var(--fs-1); font-weight: 500; padding: 2px 8px; border-radius: 9999px; white-space: nowrap;
   color: oklch(var(--destructive)); background: oklch(var(--destructive) / .12); }
 .inicio-lim { width: 100%; padding: 8px 16px; display: grid; grid-template-columns: auto minmax(0, 1fr) auto; gap: 3px 8px; align-items: center; text-align: left; }
@@ -618,31 +540,22 @@ Based on Indigo, Blue, Cyan palette
 .inicio-lim .n { font-size: var(--fs-1); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .inicio-lim .pct { font-variant-numeric: tabular-nums; font-size: var(--fs-1); font-weight: 500; }
 .inicio-lim .of span { white-space: nowrap; }
-/* Si la columna es angosta, cede el "de" (con …) antes que salirse */
 .inicio-lim .of span:first-child { min-width: 0; overflow: hidden; text-overflow: ellipsis; }
 .inicio-lim .of span:last-child { flex: none; }
 .inicio-lim .of { grid-column: 2 / -1; min-width: 0; font-family: var(--font-mono); font-variant-numeric: tabular-nums; font-size: var(--fs-1); color: var(--inicio-faint); display: flex; justify-content: space-between; gap: 6px; }
 .inicio-lim .inicio-track { grid-column: 2 / -1; height: 4px; margin-top: 2px; }
 .inicio-lim .pct, .inicio-lim .extra { color: oklch(var(--destructive)); }
 .inicio-see-all { display: block; padding: 8px 16px; }
-/* "N por revisar": una línea callada sobre Recientes, solo si hay */
 .inicio-review { display: block; width: 100%; padding: 8px 16px; text-align: left; font-size: var(--fs-1); color: var(--muted-foreground); }
 .inicio-review b { font-weight: 500; color: var(--foreground); }
 .inicio-review:hover { color: var(--foreground); }
 .inicio-tabs { display: none; }
 .inicio-list-limits { display: none; }
 
-/* ── Movimiento ──────────────────────────────────────────────────────────
-   Todo breve y con propósito: una fila que llega, Jev pensando y el ícono
-   que cae en su lugar. El bloque de prefers-reduced-motion al inicio del
-   archivo apaga estas animaciones. */
-
-/* Las barras crecen al cargar, escalonadas */
 @keyframes inicio-grow { from { transform: scaleX(0); } }
 .inicio-track i { transform-origin: left center; animation: inicio-grow .7s cubic-bezier(.2, .8, .2, 1) both; animation-delay: calc(var(--i, 0) * 45ms + 60ms); }
 .inicio-stack i { transform-origin: left center; animation: inicio-grow .8s cubic-bezier(.2, .8, .2, 1) both; }
 
-/* Una fila que llega: se abre su espacio, entra y brilla un momento */
 @keyframes inicio-row-in {
   from { max-height: 0; padding-top: 0; padding-bottom: 0; opacity: 0; transform: translateY(-6px); }
   60% { opacity: 1; transform: none; }
@@ -654,7 +567,6 @@ Based on Indigo, Blue, Cyan palette
 }
 .inicio-tx.is-new { overflow: hidden; animation: inicio-row-in .42s cubic-bezier(.2, .8, .2, 1) both, inicio-glow 1.8s ease-out both; }
 
-/* Jev pensando: el círculo respira y la frase brilla */
 @keyframes inicio-breathe {
   0%, 100% { box-shadow: 0 0 0 0 color-mix(in oklch, var(--inicio-violet) 0%, transparent); }
   50% { box-shadow: 0 0 0 4px color-mix(in oklch, var(--inicio-violet) 22%, transparent); }
@@ -669,7 +581,6 @@ Based on Indigo, Blue, Cyan palette
   -webkit-background-clip: text; background-clip: text; color: transparent; animation: inicio-shimmer 1.6s linear infinite;
 }
 
-/* Jev respondió: el ícono cae en su lugar y la categoría aparece */
 @keyframes inicio-pop {
   0% { transform: scale(.4) rotate(-14deg); opacity: 0; }
   55% { transform: scale(1.18) rotate(4deg); opacity: 1; }
@@ -684,16 +595,10 @@ Based on Indigo, Blue, Cyan palette
 .inicio-tx.is-resolved .glyph { animation: inicio-pop .55s cubic-bezier(.3, 1.4, .5, 1) both; }
 .inicio-tx.is-resolved .c { animation: inicio-fade-in .35s ease-out .12s both; }
 
-/* Cambio de pestaña en celular */
 .inicio-list-feed, .inicio-list-limits { animation: inicio-fade-in .22s ease-out; }
 
-/* La leyenda del celular abre cada categoría */
 .inicio-legend button { display: flex; align-items: center; gap: 4px; white-space: nowrap; padding: 2px 6px; margin: -2px 0; border-radius: 9999px; }
 
-/* ── Editar en la fila ─────────────────────────────────────────────────
-   Lo editable se ve igual que siempre; al pasar por encima aparece un
-   fondo tenue y el cursor de texto. El campo ocupa exactamente el lugar
-   del texto, así nada salta al abrirlo. */
 .inicio-tx { position: relative; }
 .inicio-editable { display: inline-block; max-width: 100%; margin: -1px -4px; padding: 1px 4px; border-radius: var(--radius-card); text-align: left;
   color: inherit; font: inherit; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; vertical-align: bottom; transition: background .15s; }
@@ -714,7 +619,6 @@ Based on Indigo, Blue, Cyan palette
 .inicio-edit.amount { width: 100%; min-width: 0; text-align: right; color: var(--foreground); }
 .inicio-edit::placeholder { color: var(--inicio-faint); }
 
-/* Borrar: aparece al pasar por la fila y el monto le hace espacio */
 .inicio-tx .m { transition: transform .18s cubic-bezier(.2, .8, .2, 1); }
 .inicio-delete { position: absolute; right: 8px; top: 50%; margin-top: -18px;
   opacity: 0; transform: scale(.85); pointer-events: none; transition: opacity .16s, transform .16s, color .15s, background .15s; }
@@ -723,20 +627,15 @@ Based on Indigo, Blue, Cyan palette
   .inicio-tx.is-editable:hover > .m { transform: translateX(-32px); }
 }
 .inicio-tx.is-editing .inicio-delete, .inicio-delete:focus-visible { opacity: 1; transform: none; pointer-events: auto; }
-/* Editando, la fila le reserva el lugar al basurero: el campo nunca pasa
-   por debajo del monto. */
 .inicio-tx.is-editing { padding-right: 50px; }
 .inicio-tx.is-editing > .m { transform: none !important; }
 
-/* La fila borrada se pliega antes de irse */
 @keyframes inicio-row-out {
   from { max-height: 64px; }
   to { max-height: 0; padding-top: 0; padding-bottom: 0; opacity: 0; transform: translateX(12px); }
 }
 .inicio-tx.is-leaving { overflow: hidden; pointer-events: none; animation: inicio-row-out .26s cubic-bezier(.4, 0, .2, 1) forwards; }
 
-/* El selector de categoría (QuickCategoryPicker) sube suave junto al ícono.
-   Va fuera de @layer: así gana a la animación por defecto del popover. */
 @keyframes quick-rise { from { opacity: 0; transform: translateY(6px); } }
 @keyframes quick-sink { to { opacity: 0; transform: translateY(4px); } }
 .quick-picker[data-state="open"] { animation: quick-rise .18s cubic-bezier(.2, .8, .2, 1); }
@@ -745,26 +644,20 @@ Based on Indigo, Blue, Cyan palette
   .quick-picker[data-state] { animation: none; }
 }
 
-/* La navbar flotante del celular (MobileBottomBar, visible bajo 768px) mide
-   60px + 8 de margen sobre el safe-area, que <main> ya reserva con pb-safe.
-   El inicio es una pantalla fija: sin esto su última tarjeta queda debajo. */
 @media (max-width: 767px) {
   .inicio { padding-bottom: 78px; }
 }
 
-/* ══ Tablet ══ */
 @container inicio (max-width: 900px) {
   .inicio-grid { grid-template-columns: minmax(0, 1.15fr) minmax(0, 1fr); grid-template-areas: "head head" "money spend" "feed limits"; }
 }
 
-/* ══ Celular: una pantalla, sin scroll de página ══ */
 @container inicio (max-width: 600px) {
   .inicio-grid { gap: 8px; grid-template-columns: minmax(0, 1fr);
     grid-template-rows: auto auto auto minmax(0, 1fr);
     grid-template-areas: "head" "money" "spend" "feed"; }
   .inicio-money { padding: 12px 16px; }
   .inicio-big { margin: 6px 0 8px; }
-  /* En celular el ritmo va en una línea, con el gráfico a la derecha */
   .inicio-pace { flex: none; flex-direction: row; align-items: center; margin-bottom: 8px; padding: 4px 8px; }
   .inicio-pace-text { flex: 1; min-width: 0; }
   .inicio-pace-text b { overflow: hidden; text-overflow: ellipsis; }
@@ -788,13 +681,6 @@ Based on Indigo, Blue, Cyan palette
   .inicio-grid[data-tab="limits"] .inicio-list-limits { display: block; }
 }
 
-/* ══ Meta ═══════════════════════════════════════════════════════════════
-   Ahorrar $X al mes, ¿lo cumpliste? Una pantalla exacta en web y celular,
-   como el Inicio: container queries sobre el ancho que le queda al
-   contenido. Verde cuando el mes llegó a la meta, rojo solo cuando quedó
-   en cero; lo parcial va en el color del texto, no es una alarma.
-   En web: el mes y los doce meses arriba, los límites en tarjetas chicas a
-   lo ancho. En celular: el mes arriba y dos pestañas para el resto. */
 .meta {
   container: meta / inline-size;
   display: flex;
@@ -805,7 +691,6 @@ Based on Indigo, Blue, Cyan palette
   --meta-hover: color-mix(in oklch, var(--foreground) 4%, transparent);
   --meta-faint: color-mix(in oklch, var(--muted-foreground) 60%, transparent);
   --meta-amber: oklch(var(--accent-amber));
-  /* Alto reservado bajo cada barra: la línea de la meta se ubica con esto */
   --meta-mon: 18px;
 }
 .meta-head { display: flex; align-items: center; gap: 12px; min-width: 0; flex-wrap: wrap; }
@@ -817,7 +702,6 @@ Based on Indigo, Blue, Cyan palette
 .meta-goal:hover { background: var(--meta-hover); border-color: var(--border); color: var(--foreground); }
 .meta-goal:hover svg { opacity: 1; }
 
-/* Campos en línea: la meta, un límite */
 .meta-edit { display: flex; align-items: center; gap: 4px; }
 .meta-edit-field { display: flex; align-items: center; height: 32px; padding: 0 8px; gap: 4px; border-radius: var(--radius-card); background: var(--card); border: 1px solid var(--border);
   font-family: var(--font-mono); font-size: var(--fs-2); color: var(--muted-foreground); transition: border-color .15s, box-shadow .15s; }
@@ -825,8 +709,6 @@ Based on Indigo, Blue, Cyan palette
 .meta-edit-field input { width: 108px; min-width: 0; background: transparent; outline: none; font: inherit; font-weight: 500; color: var(--foreground); font-variant-numeric: tabular-nums; }
 .meta-edit-field input::placeholder { color: var(--meta-faint); font-weight: 400; }
 
-/* La grilla de web: dos filas, la de abajo a lo ancho. Sin estirar: el
-   espacio que sobre queda abajo, no dentro de las tarjetas. */
 .meta-grid {
   display: grid;
   gap: 12px;
@@ -844,17 +726,14 @@ Based on Indigo, Blue, Cyan palette
 .meta-count { font-variant-numeric: tabular-nums; font-size: var(--fs-1); color: var(--muted-foreground); }
 .meta-count b { font-weight: 500; color: var(--foreground); }
 
-/* Primera vez: pedir la meta */
 .meta-setup { max-width: 420px; padding: 24px 24px; display: flex; flex-direction: column; gap: 8px; }
 .meta-setup h2 { font-size: var(--fs-3); font-weight: 500; }
 .meta-setup p { font-size: var(--fs-1); color: var(--muted-foreground); margin-bottom: 8px; }
 
-/* El mes en curso */
 .meta-now { padding: 16px 16px; display: flex; flex-direction: column; }
 .meta-month { font-size: var(--fs-1); font-weight: 500; color: var(--muted-foreground); text-transform: capitalize; }
 .meta-big { font-family: var(--font-mono); font-variant-numeric: tabular-nums; font-size: var(--fs-hero); line-height: 1; font-weight: 600; letter-spacing: -0.03em; margin: 12px 0 4px; }
 .meta-of { font-family: var(--font-mono); font-variant-numeric: tabular-nums; font-size: var(--fs-1); color: var(--muted-foreground); padding-bottom: 16px; }
-/* En web la tarjeta es tan alta como los doce meses: el aire se reparte entre el número, la barra y la frase */
 .meta-track { height: 6px; border-radius: 9999px; background: var(--meta-hover); overflow: hidden; margin: auto 0 12px; padding-top: 0; }
 .meta-track i { display: block; height: 100%; border-radius: 9999px; background: var(--foreground); transform-origin: left center; animation: meta-grow .8s cubic-bezier(.2, .8, .2, 1) both; transition: width .5s ease-out; }
 .meta-now[data-tone="met"] .meta-track i { background: oklch(var(--success)); }
@@ -862,7 +741,6 @@ Based on Indigo, Blue, Cyan palette
 .meta-note[data-tone="met"] { color: oklch(var(--success)); }
 .meta-note[data-tone="none"] { color: oklch(var(--destructive)); }
 
-/* Los últimos doce meses */
 .meta-hist { padding: 16px 16px 12px; display: flex; flex-direction: column; gap: 8px; }
 .meta-chart { position: relative; height: 190px; display: grid; grid-template-columns: repeat(12, minmax(0, 1fr)); gap: 4px; }
 .meta-goal-line { position: absolute; left: 0; right: 0; border-top: 1px dashed color-mix(in oklch, var(--foreground) 30%, transparent); pointer-events: none; z-index: 1; }
@@ -878,14 +756,12 @@ Based on Indigo, Blue, Cyan palette
 .meta-mon span { padding: 1px 4px; margin: 0 -4px; border-radius: var(--radius-card); transition: background .15s, color .15s; }
 .meta-col[aria-selected="true"] .meta-mon span { color: var(--foreground); font-weight: 500; background: color-mix(in oklch, var(--foreground) 9%, transparent); }
 
-/* El mes elegido: dos líneas de alto fijo, así el gráfico no salta */
 .meta-detail { display: flex; flex-direction: column; gap: 2px; padding-top: 8px; border-top: 1px solid var(--border); }
 .meta-detail-top { font-variant-numeric: tabular-nums; font-size: var(--fs-1); font-weight: 500; text-transform: capitalize; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .meta-detail[data-tone="met"] .meta-detail-top { color: oklch(var(--success)); }
 .meta-detail[data-tone="none"] .meta-detail-top { color: oklch(var(--destructive)); }
 .meta-detail-sub { font-size: var(--fs-1); color: var(--muted-foreground); min-height: 2.6em; line-height: 1.3; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
 
-/* Límites por categoría: en web, tarjetas chicas a lo ancho; se tocan para editar */
 .meta-limits { padding: 16px 16px; display: flex; flex-direction: column; gap: 8px; }
 .meta-lim-list { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 8px; }
 .meta-lim { padding: 8px 12px; display: grid; grid-template-columns: auto minmax(0, 1fr) auto; gap: 3px 8px; align-items: center; text-align: left; cursor: pointer;
@@ -899,8 +775,6 @@ Based on Indigo, Blue, Cyan palette
 .meta-lim[data-state="near"] .pct { color: var(--meta-amber); }
 .meta-lim-track { grid-column: 2 / -1; height: 4px; border-radius: 9999px; background: var(--meta-hover); overflow: hidden; }
 .meta-lim-track i { display: block; height: 100%; border-radius: 9999px; transform-origin: left center; animation: meta-grow .7s cubic-bezier(.2, .8, .2, 1) both; animation-delay: calc(var(--i, 0) * 45ms + 60ms); transition: width .5s ease-out; }
-/* Cómo voy: una estela tenue hasta donde cierro el mes si lo que queda se
-   parece a los meses anteriores. Crece después de la barra. */
 .meta-lim-track { position: relative; }
 .meta-lim-track i:first-child { position: relative; z-index: 1; }
 .meta-lim-track i.meta-ghost { position: absolute; top: 0; border-radius: 0 9999px 9999px 0; opacity: .32; animation-delay: calc(var(--i, 0) * 45ms + 520ms); }
@@ -922,12 +796,10 @@ Based on Indigo, Blue, Cyan palette
   .meta-track i, .meta-bar i, .meta-lim-track i { animation: none; transition: none; }
 }
 
-/* La navbar flotante del celular: ver el mismo ajuste en .inicio */
 @media (max-width: 767px) {
   .meta { padding-bottom: 78px; }
 }
 
-/* ══ Celular: una pantalla, sin scroll de página ══ */
 @container meta (max-width: 600px) {
   .meta { gap: 8px; }
   .meta-goal { padding: 4px 8px; margin-left: auto; }
@@ -936,7 +808,6 @@ Based on Indigo, Blue, Cyan palette
   .meta-big { margin: 8px 0 2px; }
   .meta-of { padding-bottom: 0; }
   .meta-track { margin: 8px 0 8px; }
-  /* Las pestañas: qué tarjeta ocupa el resto de la pantalla */
   .meta-tabs { grid-area: tabs; display: flex; gap: 4px; padding: 2px; border-radius: 9999px; background: var(--card); border: 1px solid var(--border); }
   .meta-tab { position: relative; flex: 1; font-size: var(--fs-1); font-weight: 500; color: var(--muted-foreground); border-radius: 9999px; padding: 8px; transition: background .15s, color .15s; }
   .meta-tab[aria-selected="true"] { color: var(--foreground); background: var(--meta-hover); }
@@ -946,7 +817,6 @@ Based on Indigo, Blue, Cyan palette
   .meta-grid[data-tab="limits"] .meta-hist { display: none; }
   .meta-hist { padding: 12px 12px 12px; gap: 8px; }
   .meta-chart { flex: 1; height: auto; min-height: 120px; gap: 3px; }
-  /* Los límites vuelven a ser una lista que scrollea dentro de la tarjeta */
   .meta-limits { padding: 12px 0 0; gap: 6px; overflow: hidden; }
   .meta-limits .meta-card-head { padding: 0 12px; }
   .meta-lim-list { flex: 1; min-height: 0; overflow-y: auto; display: flex; flex-direction: column; gap: 0; padding-bottom: 8px; scrollbar-width: thin; scrollbar-color: var(--border) transparent; }
@@ -956,11 +826,6 @@ Based on Indigo, Blue, Cyan palette
   .meta-bar { max-width: 22px; }
 }
 
-/* ══ Finanzas ══════════════════════════════════════════════════════════
-   ¿Cómo vengo en el tiempo? El mes en curso vive en el Inicio. Mismo
-   sistema que el inicio: tarjetas
-   .inicio-card, una pantalla exacta, gráficos dibujados a mano para que
-   calcen con el resto. Vive dentro de .inicio para heredar sus colores. */
 .fin-grid { flex: 1; min-height: 0; display: grid; gap: 12px;
   grid-template-columns: minmax(0, 1.3fr) minmax(0, 1fr);
   grid-template-rows: auto minmax(0, 1fr) minmax(0, 1.1fr);
@@ -980,13 +845,10 @@ Based on Indigo, Blue, Cyan palette
 .fin-card-head .inicio-num b { font-family: var(--font-mono); color: var(--foreground); font-weight: 500; }
 .fin-plot { position: relative; flex: 1; min-height: 0; margin: 4px 16px 0; }
 
-/* Las barras crecen desde abajo */
 @keyframes fin-rise { from { transform: scaleY(0); } }
 
-/* El promedio, punteado, sobre las barras de una categoría */
 .fin-avg { position: absolute; left: 0; right: 0; border-top: 1px dashed color-mix(in oklch, var(--foreground) 30%, transparent); pointer-events: none; }
 
-/* Patrimonio en el tiempo */
 .fin-worth .fin-plot svg { position: absolute; inset: 0; width: 100%; height: 100%; overflow: visible; }
 .fin-worth .area { animation: fin-fade .8s ease-out both; }
 @keyframes fin-fade { from { opacity: 0; } }
@@ -1002,14 +864,12 @@ Based on Indigo, Blue, Cyan palette
 .fin-stats-row { display: flex; flex-wrap: wrap; gap: 4px 24px; }
 .fin-stats-row span { display: flex; align-items: baseline; gap: 6px; white-space: nowrap; }
 .fin-stats p { margin-top: 4px; color: var(--inicio-faint); }
-/* En angosto cada dato va con su etiqueta arriba: los tres caben en una fila */
 @media (max-width: 767px) {
   .fin-stats-row { flex-wrap: nowrap; justify-content: space-between; gap: 12px; }
   .fin-stats-row span { flex-direction: column; align-items: flex-start; gap: 2px; }
 }
 .fin-stats b { font-family: var(--font-mono); font-size: var(--fs-2); font-weight: 500; color: var(--foreground); }
 
-/* Mes a mes */
 .fin-bars { position: absolute; inset: 0 0 18px; display: flex; align-items: flex-end; gap: 4px; }
 .fin-mon { flex: 1; height: 100%; display: flex; align-items: flex-end; justify-content: center; gap: 2px; border-radius: var(--radius-card); cursor: pointer; padding: 0 1px; transition: background .15s; }
 .fin-mon:hover, .fin-mon[data-active="true"] { background: var(--inicio-hover); }
@@ -1021,7 +881,6 @@ Based on Indigo, Blue, Cyan palette
 .fin-axis-abs span { position: absolute; top: 0; font-size: var(--fs-1); color: var(--inicio-faint);
   text-transform: lowercase; white-space: nowrap; }
 
-/* Tendencia por categoría */
 .fin-trend { width: 100%; display: grid; grid-template-columns: auto minmax(0, 1fr) auto auto; gap: 8px; align-items: center; padding: 8px 16px; text-align: left; transition: background .15s; }
 .fin-trend:hover { background: var(--inicio-hover); }
 .fin-trend .inicio-ico { width: 26px; height: 26px; font-size: var(--fs-1); }
@@ -1031,31 +890,26 @@ Based on Indigo, Blue, Cyan palette
 .fin-spark i:last-child { background: var(--c, var(--muted-foreground)); }
 .fin-trend .v { font-family: var(--font-mono); font-variant-numeric: tabular-nums; font-size: var(--fs-1); font-weight: 500; text-align: right; white-space: nowrap; min-width: 76px; }
 
-/* Panel con los movimientos de una categoría, un día o un mes */
 .fin-sheet { display: flex; flex-direction: column; padding: 0; gap: 0; }
 .fin-sheet-head { display: flex; align-items: center; gap: 12px; padding: 16px 48px 12px 16px; border-bottom: 1px solid var(--border); }
 .fin-sheet-head .inicio-ico { width: 36px; height: 36px; font-size: var(--fs-3); }
 .fin-sheet-head h2 { font-size: var(--fs-3); font-weight: 500; }
 .fin-sheet-head p { font-variant-numeric: tabular-nums; font-size: var(--fs-1); color: var(--muted-foreground); margin-top: 2px; }
 .fin-sheet .inicio-scroll { padding-top: 4px; }
-/* El gasto mes a mes de una categoría, sobre su lista de movimientos */
 .fin-sheet-chart { flex: none; padding: 12px 16px 8px; border-bottom: 1px solid var(--border); }
 .fin-sheet-chart .hd { font-size: var(--fs-1); color: var(--muted-foreground); }
 .fin-sheet-chart .hd b { font-family: var(--font-mono); font-variant-numeric: tabular-nums; font-weight: 500; color: var(--foreground); }
 .fin-sheet-chart .fin-plot { height: 104px; margin: 8px 0 0; }
 
-/* ══ Tablet ══ */
 @container inicio (max-width: 900px) {
   .fin-grid { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); }
 }
 
-/* ══ Celular: una pantalla; lo largo scrollea adentro ══ */
 @container inicio (max-width: 600px) {
   .fin-grid { gap: 8px; grid-template-columns: minmax(0, 1fr);
     grid-template-rows: auto auto minmax(0, 1fr);
     grid-template-areas: "head" "worth" "months"; }
   .fin-worth { height: 230px; }
-  /* Mes a mes y categorías comparten la tarjeta */
   .fin-trends { display: none; }
   .fin-hist-tabs { display: flex; gap: 4px; padding: 8px 8px 0; }
   .fin-hist-tabs button { flex: 1; font-size: var(--fs-1); font-weight: 500; color: var(--muted-foreground); border-radius: 9999px; padding: 8px; }
@@ -1067,20 +921,10 @@ Based on Indigo, Blue, Cyan palette
 .fin-trends-body { display: none; }
 @container inicio (max-width: 600px) { .fin-months[data-tab="trends"] .fin-trends-body { display: block; } }
 
-
-/* Con "reducir movimiento" la regla global acorta las animaciones, pero no
-   sus retardos: sin esto, las barras escalonadas quedarían invisibles un
-   momento antes de aparecer de golpe. */
 @media (prefers-reduced-motion: reduce) {
   .inicio *, .inicio *::before, .inicio *::after { animation-delay: 0s !important; }
 }
 
-/* ══ Tarjetas ═══════════════════════════════════════════════════════════
-   ¿Cuánto llevo este ciclo, cuándo cierra y cuándo pago? Una pantalla
-   exacta, como Meta y Finanzas. Arriba los plásticos, cada uno con su ciclo
-   (se toca uno para ver su estado de cuenta). Abajo dos paneles que
-   scrollean adentro: las cuotas y el estado de cuenta ciclo por ciclo. El
-   color de cada tarjeta lo elige el usuario; va plano, sin adornos. */
 .tj {
   container: tj / inline-size;
   display: flex;
@@ -1095,7 +939,6 @@ Based on Indigo, Blue, Cyan palette
 .tj-head { display: flex; align-items: baseline; gap: 12px; min-width: 0; flex-wrap: wrap; }
 .tj-title { font-size: var(--fs-3); font-weight: 500; }
 
-/* Web: los plásticos a lo ancho, abajo los dos paneles ocupan el resto */
 .tj-grid {
   flex: 1;
   min-height: 0;
@@ -1116,22 +959,16 @@ Based on Indigo, Blue, Cyan palette
 .tj-label small { font-size: var(--fs-1); font-weight: 500; color: var(--tj-faint); }
 .tj-list { flex: 1; min-height: 0; overflow-y: auto; padding-bottom: 6px; scrollbar-width: thin; scrollbar-color: var(--border) transparent; }
 
-/* Primera vez */
 .tj-setup { max-width: 420px; padding: 24px 24px; gap: 8px; align-items: flex-start; }
 .tj-setup h2 { font-size: var(--fs-3); font-weight: 500; }
 .tj-setup p { font-size: var(--fs-1); color: var(--muted-foreground); margin-bottom: 8px; }
 
-/* ── Los plásticos ── */
 .tj-wallet { display: flex; gap: 12px; overflow-x: auto; scroll-snap-type: x proximity; padding: 4px 4px 8px; margin: -4px -4px -8px; scrollbar-width: none; }
 .tj-wallet::-webkit-scrollbar { display: none; }
 .tj-plastic {
   position: relative; flex: none; width: 300px; aspect-ratio: 1.586; border-radius: var(--radius-card); padding: 16px 16px 16px;
   display: flex; flex-direction: column; text-align: left; color: var(--tj-ink, #000); cursor: pointer; scroll-snap-align: start;
   background: var(--tj-c);
-  /* Sin color propio, el violeta de respaldo lee mejor en negro (4.8:1 claro,
-     6.2:1 oscuro; el blanco no llega a 4.5). Los textos del plástico van a
-     opacidad plena: en los colores medios (índigo, azul, rojo) cualquier
-     atenuación baja de 4.5:1. */
   outline: 2px solid transparent; outline-offset: 3px;
   transition: transform .2s, outline-color .15s;
 }
@@ -1148,7 +985,6 @@ Based on Indigo, Blue, Cyan palette
 .tj-pl-bot { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; font-variant-numeric: tabular-nums; font-size: var(--fs-1); white-space: nowrap; }
 .tj-pl-name { min-width: 0; font-size: var(--fs-2); font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 
-/* ── Cuotas ── */
 .tj-inst { border-top: 1px solid color-mix(in oklch, var(--border) 60%, transparent); }
 .tj-inst:first-child { border-top: 0; }
 .tj-inst-main { width: 100%; display: grid; grid-template-columns: auto minmax(0, 1fr) auto; gap: 3px 8px; align-items: center; padding: 8px 16px; text-align: left; transition: background .15s; }
@@ -1170,7 +1006,6 @@ Based on Indigo, Blue, Cyan palette
 .tj-inst-meta { display: flex; gap: 12px; flex-wrap: wrap; font-variant-numeric: tabular-nums; font-size: var(--fs-1); color: var(--muted-foreground); }
 .tj-inst-actions { display: flex; gap: 4px; }
 
-/* ── Estado de cuenta ── */
 .tj-stepper { display: flex; align-items: center; gap: 2px; flex: none; }
 .tj-stepper button { width: 28px; height: 28px; display: grid; place-items: center; border-radius: 9999px; color: var(--muted-foreground); transition: background .15s, color .15s; }
 .tj-stepper button:hover:not(:disabled) { background: var(--tj-hover); color: var(--foreground); }
@@ -1190,25 +1025,20 @@ Based on Indigo, Blue, Cyan palette
   .tj-inst-track i { animation: none; transition: none; }
 }
 
-/* La navbar flotante del celular: ver el mismo ajuste en .inicio y .meta */
 @media (max-width: 767px) {
   .tj { padding-bottom: 78px; }
 }
 
-/* ══ Tablet: los paneles apilados siguen cabiendo ══ */
 @container tj (max-width: 760px) {
   .tj-stepper .label { min-width: 96px; }
 }
 
-/* ══ Celular: una pantalla, sin scroll de página ══ */
 @container tj (max-width: 600px) {
   .tj { gap: 8px; }
   .tj-grid { gap: 8px; grid-template-columns: minmax(0, 1fr); grid-template-rows: auto auto minmax(0, 1fr); grid-template-areas: "wallet" "tabs" "panel"; }
-  /* Los plásticos se pasan de lado, uno a la vez */
   .tj-wallet { gap: 8px; scroll-snap-type: x mandatory; }
   .tj-plastic { width: min(300px, 82cqw); padding: 12px 16px 12px; }
   .tj-plastic:hover { transform: none; }
-  /* Las pestañas: qué panel ocupa el resto de la pantalla */
   .tj-tabs { grid-area: tabs; display: flex; gap: 4px; padding: 2px; border-radius: 9999px; background: var(--card); border: 1px solid var(--border); }
   .tj-tab { flex: 1; font-size: var(--fs-1); font-weight: 500; color: var(--muted-foreground); border-radius: 9999px; padding: 8px; transition: background .15s, color .15s; }
   .tj-tab[aria-selected="true"] { color: var(--foreground); background: var(--tj-hover); }
