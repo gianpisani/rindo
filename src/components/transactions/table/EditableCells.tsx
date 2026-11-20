@@ -1,9 +1,10 @@
 import type { ReactNode } from "react";
-import type { Column } from "@tanstack/react-table";
-import { Check, ChevronDown, ChevronUp, ChevronsUpDown } from "lucide-react";
+import type { Column, Table } from "@tanstack/react-table";
+import { ArrowDown, ArrowUp, Check, ChevronDown } from "lucide-react";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import type { Transaction } from "@/hooks/useTransactions";
 import { cn } from "@/lib/utils";
+import { isDefaultSort, nextSort } from "@/lib/table-sort";
 
 interface SelectableCellProps<T extends string> {
   value: T;
@@ -37,17 +38,27 @@ export function SelectableCell<T extends string>({ value, options, onSave, label
   );
 }
 
-export function SortHeader({ column, label, alignEnd }: { column: Column<Transaction>; label: string; alignEnd?: boolean }) {
-  const sorted = column.getIsSorted();
+export function SortHeader({ column, table, label, alignEnd }: {
+  column: Column<Transaction>;
+  table: Table<Transaction>;
+  label: string;
+  alignEnd?: boolean;
+}) {
+  const sorting = table.getState().sorting;
+  const active = !isDefaultSort(sorting) && sorting[0].id === column.id;
+  const Arrow = active && !sorting[0].desc ? ArrowUp : ArrowDown;
   return (
-    <div
-      className={cn("flex items-center cursor-pointer hover:bg-muted rounded-card px-2 py-1", alignEnd && "justify-end ml-auto")}
-      onClick={() => column.toggleSorting(sorted === "asc")}
+    <button
+      type="button"
+      onClick={() => table.setSorting(nextSort(sorting, column.id))}
+      className={cn(
+        "group -mx-2 inline-flex h-7 items-center gap-1 rounded-full px-2 text-xs font-medium transition-colors",
+        active ? "bg-muted text-foreground" : "text-muted-foreground hover:bg-muted/60 hover:text-foreground",
+        alignEnd && "flex-row-reverse"
+      )}
     >
-      <span className="text-xs font-medium">{label}</span>
-      {sorted === "asc" ? <ChevronUp className="ml-2 h-4 w-4" /> :
-        sorted === "desc" ? <ChevronDown className="ml-2 h-4 w-4" /> :
-          <ChevronsUpDown className="ml-2 h-4 w-4 opacity-50" />}
-    </div>
+      {label}
+      <Arrow className={cn("size-3 transition-opacity", active ? "opacity-100" : "opacity-0 group-hover:opacity-60 group-focus-visible:opacity-60")} />
+    </button>
   );
 }
