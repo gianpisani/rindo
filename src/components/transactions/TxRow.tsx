@@ -6,6 +6,7 @@ import { TxIcon } from "@/components/transactions/TxIcon";
 import type { Transaction } from "@/hooks/useTransactions";
 import type { InlineEdit } from "@/hooks/useInlineEdit";
 import { usePrivacyMode } from "@/hooks/usePrivacyMode";
+import { useFlashedRows } from "@/hooks/useRowFlash";
 import { signPrefix } from "@/lib/ledger";
 import { AMOUNT_TONE, isAnalyzing } from "@/lib/tx-display";
 import { cn } from "@/lib/utils";
@@ -18,6 +19,7 @@ interface Props extends HTMLAttributes<HTMLDivElement> {
 
 export function TxRow({ t, edit, when = "time", className, ...rest }: Props) {
   const { isPrivacyMode } = usePrivacyMode();
+  const flashed = useFlashedRows();
   const analyzing = isAnalyzing(t);
   const isBot = (t.detail || "").startsWith("🤖");
   const detail = (t.detail || "").replace(/^🤖\s*/, "").trim();
@@ -27,7 +29,7 @@ export function TxRow({ t, edit, when = "time", className, ...rest }: Props) {
   return (
     <InicioTxRow
       className={cn(
-        edit.changed.has(t.id) && "is-resolved",
+        flashed.has(t.id) && "is-resolved",
         edit.leaving.has(t.id) && "is-leaving",
         className
       )}

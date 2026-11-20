@@ -1,16 +1,19 @@
 import { useEffect } from "react";
 import { useEditHistory } from "@/hooks/useEditHistory";
 
-const isTextEditing = (target: EventTarget | null) =>
+const OVERLAY = '[role="dialog"], [role="alertdialog"], [role="menu"], [role="listbox"]';
+
+const isBusyElsewhere = (target: EventTarget | null) =>
   target instanceof HTMLElement &&
-  (target.tagName === "INPUT" || target.tagName === "TEXTAREA" || target.isContentEditable);
+  (target.tagName === "INPUT" || target.tagName === "TEXTAREA" || target.tagName === "SELECT" ||
+    target.isContentEditable || target.closest(OVERLAY) !== null);
 
 export function useUndoShortcuts() {
   const { undo, redo } = useEditHistory();
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
-      if (!(e.metaKey || e.ctrlKey) || e.altKey || e.defaultPrevented || isTextEditing(e.target)) return;
+      if (!(e.metaKey || e.ctrlKey) || e.altKey || e.defaultPrevented || isBusyElsewhere(e.target)) return;
       const key = e.key.toLowerCase();
       const wantsRedo = (key === "z" && e.shiftKey) || (key === "y" && e.ctrlKey && !e.shiftKey);
       const wantsUndo = key === "z" && !e.shiftKey;
