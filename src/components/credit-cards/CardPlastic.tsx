@@ -64,23 +64,23 @@ export function CardPlastic({ card, cycle, selected, isPrivacyMode, onSelect, on
       </div>
 
       <div className="tj-pl-mid">
-        <span className="tj-pl-label">por facturar</span>
+        <span className="tj-pl-label">Por facturar</span>
         <span className={cn("tj-pl-big", isPrivacyMode && "privacy-blur")}>{clp(cycle.porFacturar)}</span>
-        <span className="tj-pl-of">
-          <span>cierra el {shortDay(cycle.closes)}</span>
+        <span className="tj-pl-dates">
+          Cierra {shortDay(cycle.closes)} ·{" "}
           {cycle.showAPagar ? (
-            <span>
-              a pagar <b className={cn(isPrivacyMode && "privacy-blur")}>{clp(cycle.aPagar)}</b> el {shortDay(cycle.payDate)}
-            </span>
+            <>
+              A pagar <b className={cn(isPrivacyMode && "privacy-blur")}>{clp(cycle.aPagar)}</b> el {shortDay(cycle.payDate)}
+            </>
           ) : (
-            <span>pagas el {shortDay(cycle.nextPay)}</span>
+            <>Pagas {shortDay(cycle.nextPay)}</>
           )}
         </span>
       </div>
 
       <div className="tj-pl-bot">
-        <span className={cn(isPrivacyMode && "privacy-blur")}>disponible {clp(card.available_credit)}</span>
-        <span>{card.last_4_digits ? `···· ${card.last_4_digits}` : ""}</span>
+        <span className={cn(isPrivacyMode && "privacy-blur")}>Disponible {clp(card.available_credit)}</span>
+        {card.last_4_digits && <span className="tj-pl-digits">···· {card.last_4_digits}</span>}
       </div>
     </div>
   );

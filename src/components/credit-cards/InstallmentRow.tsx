@@ -1,3 +1,4 @@
+import type { CSSProperties } from "react";
 import { Pencil, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import type { InstallmentPurchase } from "@/hooks/useInstallments";
@@ -8,6 +9,7 @@ import { cn } from "@/lib/utils";
 interface InstallmentRowProps {
   installment: InstallmentPurchase;
   progress: ReturnType<typeof installmentProgress>;
+  showCard: boolean;
   open: boolean;
   isPrivacyMode: boolean;
   onToggle: () => void;
@@ -18,6 +20,7 @@ interface InstallmentRowProps {
 export function InstallmentRow({
   installment,
   progress: { billed, left, last, active },
+  showCard,
   open,
   isPrivacyMode,
   onToggle,
@@ -29,21 +32,23 @@ export function InstallmentRow({
 
   return (
     <div className="tj-inst" data-done={done || undefined} data-open={open || undefined}>
-      <button className="tj-inst-main" onClick={onToggle} aria-expanded={open}>
-        <i className="tj-dot" style={{ background: installment.card_color || "var(--tj-fallback)" }} aria-hidden />
-        <span className="n">
-          {installment.description}
-          {installment.card_name && <small>{installment.card_name}</small>}
-        </span>
+      <button
+        className="tj-inst-main"
+        style={{ "--tj-c": installment.card_color || "var(--tj-fallback)" } as CSSProperties}
+        onClick={onToggle}
+        aria-expanded={open}
+      >
+        <span className="n">{installment.description}</span>
         <span className={cn("v", isPrivacyMode && "privacy-blur")}>
           {clp(installment.installment_amount)}
           <small>/mes</small>
         </span>
-        <span className="row2">
-          <span className="tj-inst-track">
-            <i style={{ width: `${(billed / total) * 100}%` }} />
-          </span>
-          <span className="k">{done ? "terminada" : `quedan ${left} de ${total}`}</span>
+        <span className="tj-inst-track" aria-hidden>
+          <i style={{ width: `${(billed / total) * 100}%` }} />
+        </span>
+        <span className="k">
+          {done ? "Terminada" : `${billed} de ${total} · termina ${shortMonthYear(last)}`}
+          {showCard && installment.card_name && ` · ${installment.card_name}`}
         </span>
       </button>
 
@@ -52,7 +57,6 @@ export function InstallmentRow({
           <p className={cn("tj-inst-meta", isPrivacyMode && "privacy-blur")}>
             <span>total {clp(installment.total_amount)}</span>
             {!done && <span>quedan {clp(left * installment.installment_amount)}</span>}
-            <span>última {shortMonthYear(last)}</span>
           </p>
           <div className="tj-inst-actions">
             <Button variant="ghost" size="sm" onClick={onEdit}>

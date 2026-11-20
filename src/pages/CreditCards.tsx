@@ -13,6 +13,7 @@ import { useTransactions } from "@/hooks/useTransactions";
 import { usePrivacyMode } from "@/hooks/usePrivacyMode";
 import { useCardStatement } from "@/hooks/useCardStatement";
 import { useCardEditors } from "@/hooks/useCardEditors";
+import { useInlineEdit } from "@/hooks/useInlineEdit";
 import { installmentsOverview } from "@/lib/card-view";
 
 export default function CreditCards() {
@@ -21,9 +22,11 @@ export default function CreditCards() {
   const purchases = useInstallments();
   const { transactions } = useTransactions();
   const { cardSummaries } = cards;
+  const edit = useInlineEdit();
 
   const loading = cards.isLoading || purchases.isLoading;
   const hasCards = cardSummaries.length > 0;
+  const manyCards = cardSummaries.length > 1;
 
   const statement = useCardStatement(cardSummaries, transactions);
   const editors = useCardEditors(cards, purchases, statement.forgetCard);
@@ -48,13 +51,30 @@ export default function CreditCards() {
         </header>
 
         {loading ? (
-          <div className="tj-grid">
+          <div className="tj-grid" data-tab="cuenta" aria-busy>
             <div className="tj-wallet">
               <Skeleton className="tj-plastic" />
-              <Skeleton className="tj-plastic" />
             </div>
-            <Skeleton className="tj-card tj-cuotas" />
-            <Skeleton className="tj-card tj-cuenta" />
+            <Skeleton className="tj-card tj-cuotas tj-cuotas-skeleton" />
+            <div className="tj-card tj-cuenta">
+              <div className="tj-card-head">
+                <Skeleton className="h-4 w-32" />
+                <Skeleton className="h-4 w-28" />
+              </div>
+              <div className="tj-cycle">
+                <Skeleton className="h-6 w-36" />
+              </div>
+              {Array.from({ length: 6 }).map((_, i) => (
+                <div key={i} className="tj-tx">
+                  <Skeleton className="size-[30px] rounded-full" />
+                  <div className="body space-y-1">
+                    <Skeleton className="h-3.5 w-40" />
+                    <Skeleton className="h-3 w-24" />
+                  </div>
+                  <Skeleton className="h-4 w-16" />
+                </div>
+              ))}
+            </div>
           </div>
         ) : !hasCards ? (
           <section className="tj-card tj-setup">
@@ -66,13 +86,13 @@ export default function CreditCards() {
           </section>
         ) : (
           <div className="tj-grid" data-tab={tab}>
-            <section className="tj-wallet" aria-label="Mis tarjetas">
+            <section className="tj-wallet" data-many={manyCards || undefined} aria-label="Mis tarjetas">
               {cardSummaries.map((card) => (
                 <CardPlastic
                   key={card.id}
                   card={card}
                   cycle={statement.cardCycles.get(card.id)!}
-                  selected={cardSummaries.length > 1 && card.id === selected?.id}
+                  selected={manyCards && card.id === selected?.id}
                   isPrivacyMode={isPrivacyMode}
                   onSelect={() => statement.selectCard(card.id)}
                   onEdit={() => editors.openEditCard(card.id)}
@@ -92,6 +112,7 @@ export default function CreditCards() {
 
             <InstallmentsPanel
               overview={installments}
+              showCard={manyCards}
               isPrivacyMode={isPrivacyMode}
               onAdd={() => editors.openInstallmentModal(null)}
               onEdit={editors.openInstallmentModal}
@@ -99,11 +120,12 @@ export default function CreditCards() {
             />
 
             <StatementPanel
-              cardName={selected && cardSummaries.length > 1 ? selected.name : undefined}
+              cardName={manyCards ? selected?.name : undefined}
               cycle={statement.cycle}
               statement={statement.statement}
               cycleOffset={statement.cycleOffset}
               onOffsetChange={statement.setCycleOffset}
+              edit={edit}
               isPrivacyMode={isPrivacyMode}
             />
           </div>
