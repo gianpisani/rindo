@@ -9,3 +9,10 @@ export function errorMessage(error: unknown) {
   if (/failed to fetch|network|load failed/i.test(error.message)) return OFFLINE_MESSAGE;
   return error.message;
 }
+
+export class MissingRowsError extends Error {
+  constructor(readonly missing: number) {
+    super(missing === 1 ? "Ese movimiento ya no existe." : "Algunos movimientos ya no existen.");
+    this.name = "MissingRowsError";
+  }
+}

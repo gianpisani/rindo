@@ -23,7 +23,7 @@ import { categoriesQuery } from "./hooks/useCategories";
 import { categoryLimitsQuery } from "./hooks/useCategoryLimits";
 import { BankSyncProvider } from "./contexts/BankSyncContext";
 import { useUndoShortcuts } from "./hooks/useUndoShortcuts";
-import { clearEditHistory } from "./hooks/useEditHistory";
+import { clearEditHistory, loadEditHistory } from "./hooks/useEditHistory";
 
 function dismissSplash() {
   const splash = document.getElementById("splash");
@@ -50,6 +50,7 @@ const App = () => {
     const minDelay = new Promise((r) => setTimeout(r, 1200));
 
     supabase.auth.getSession().then(async ({ data: { session } }) => {
+      if (session) loadEditHistory(session.user.id);
       setSession(session);
 
       if (session) {
@@ -69,6 +70,7 @@ const App = () => {
         queryClient.clear();
         clearEditHistory();
       }
+      if (session) loadEditHistory(session.user.id);
       setSession(session);
     });
 

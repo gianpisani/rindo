@@ -1,4 +1,4 @@
-import { Check, ChevronDown, Plus, Users } from "lucide-react";
+import { Check, ChevronDown, Plus, Trash2, Users } from "lucide-react";
 import { format } from "date-fns";
 import { es } from "date-fns/locale";
 import {
@@ -125,7 +125,6 @@ export function TxEditor({ editor }: { editor: TxEditorState }) {
                     type="button"
                     className="whisper-category"
                     aria-pressed={form.category_name === category.name}
-                    disabled={editor.isSaving}
                     onClick={() => editor.saveEdit({ category_name: category.name })}
                   >
                     <span className="whisper-category-dot" aria-hidden="true" />
@@ -156,7 +155,6 @@ export function TxEditor({ editor }: { editor: TxEditorState }) {
             <button
               type="button"
               className="whisper-more-categories edit-tx-split"
-              disabled={editor.isSaving}
               onClick={shared.startSplit}
             >
               <Users size={12} aria-hidden="true" /> Dividir gasto
@@ -289,7 +287,10 @@ export function TxEditor({ editor }: { editor: TxEditorState }) {
               moreLabel="Monto, fecha y cuenta"
               lessLabel="Ocultar detalles"
             />
-            <WhisperSubmit disabled={editor.isSaving} keyHint={false}>
+            <button type="button" className="whisper-options-toggle" onClick={editor.remove}>
+              <Trash2 size={12} aria-hidden="true" /> Borrar
+            </button>
+            <WhisperSubmit keyHint={false}>
               Guardar
             </WhisperSubmit>
           </div>

@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import { billingCycle, cardStatus, cardsDebt, cycleStatement, paidBetween, paymentDate } from '../src/lib/card-cycle.ts';
-import { installmentsOverview, labeledCycle, withoutEmoji } from '../src/lib/card-view.ts';
+import { installmentsOverview, labeledCycle, statementDetail, withoutEmoji } from '../src/lib/card-view.ts';
 import { shortDay, shortMonthYear } from '../src/lib/format.ts';
 
 // Tarjeta que cierra el 20 y se paga el 5.
@@ -96,6 +96,12 @@ test('el ciclo etiquetado lleva el mes del cierre', () => {
 
 test('el detalle del estado de cuenta va sin emojis', () => {
   assert.equal(withoutEmoji('🍕 Pizza  ❤️ casa'), 'Pizza casa');
+});
+
+test('el detalle del estado de cuenta no repite los dígitos de la tarjeta', () => {
+  assert.equal(statementDetail('🤖 UBER EATS (****3491)'), 'UBER EATS');
+  assert.equal(statementDetail('Farmacia (**** 3491)'), 'Farmacia');
+  assert.equal(statementDetail('Pago (3491) cuota'), 'Pago (3491) cuota');
 });
 
 test('las cuotas activas van primero y suman el pago mensual', () => {

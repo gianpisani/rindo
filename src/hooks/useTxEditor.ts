@@ -1,6 +1,7 @@
 import { useMemo, useState, type FormEvent } from "react";
 import { toast } from "sonner";
-import { useTransactions, type Transaction } from "@/hooks/useTransactions";
+import type { Transaction } from "@/hooks/useTransactions";
+import { useEditHistory } from "@/hooks/useEditHistory";
 import { useCategories } from "@/hooks/useCategories";
 import { useCategoryOptions } from "@/hooks/useCategoryOptions";
 import { useSharedExpenses, type SharedExpense } from "@/hooks/useSharedExpenses";
@@ -38,7 +39,7 @@ const toggleById = <T extends { id: string }>(list: T[], item: T) =>
   list.some((d) => d.id === item.id) ? list.filter((d) => d.id !== item.id) : [...list, item];
 
 export function useTxEditor() {
-  const { updateTransaction } = useTransactions();
+  const history = useEditHistory();
   const { addCategory } = useCategories();
   const categoryOptions = useCategoryOptions();
   const {
@@ -149,7 +150,7 @@ export function useTxEditor() {
   };
 
   const saveEdit = (overrides: Partial<TxForm> = {}, { split = false } = {}) => {
-    if (!transaction || updateTransaction.isPending) return;
+    if (!transaction) return;
     const data = { ...form, ...overrides };
     if (!data.date || !Number.isFinite(new Date(data.date).getTime())) {
       setExpanded(true);
@@ -162,29 +163,30 @@ export function useTxEditor() {
     const newDetail = detailText.trim();
     const detailChanged = !!newDetail && newDetail !== getCleanDetail(transaction.detail);
 
-    const transactionId = transaction.id;
-    updateTransaction.mutate(
-      {
-        id: transactionId,
-        category_name: data.category_name,
-        type: data.type,
-        card_id: data.card_id,
-        ...(detailChanged ? { detail: prefix + newDetail } : {}),
-        date: new Date(data.date).toISOString(),
-        amount,
-      },
-      {
-        onSuccess: () => {
-          if (!split) {
-            close();
-            return;
-          }
-          setSplitTarget({ id: transactionId, amount });
-          setIsOpen(false);
-          setSplitDrawerOpen(true);
-        },
-      },
-    );
+    const dateChanged = data.date !== toLocalInput(new Date(transaction.date));
+
+    void history.update([transaction.id], {
+      category_name: data.category_name,
+      type: data.type,
+      card_id: data.card_id,
+      ...(detailChanged ? { detail: prefix + newDetail } : {}),
+      ...(dateChanged ? { date: new Date(data.date).toISOString() } : {}),
+      amount,
+    });
+
+    if (!split) {
+      close();
+      return;
+    }
+    setSplitTarget({ id: transaction.id, amount });
+    setIsOpen(false);
+    setSplitDrawerOpen(true);
+  };
+
+  const remove = () => {
+    if (!transaction) return;
+    void history.remove([transaction.id]);
+    close();
   };
 
   const submit = (event: FormEvent) => {
@@ -294,11 +296,11 @@ export function useTxEditor() {
     error,
     accent,
     effectiveAmount,
-    isSaving: updateTransaction.isPending,
     changeType,
     changeAmount,
     saveEdit,
     submit,
+    remove,
     categories: {
       visible: visibleCategories,
       available: availableCategories,

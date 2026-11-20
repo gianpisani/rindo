@@ -8,7 +8,8 @@ import { byNewest } from "@/lib/tx-order";
 import { categorizeSavedTransaction } from "@/lib/ai-categorizer";
 import { ANALYZING_CATEGORY, UNCATEGORIZED, shouldCategorize, withManualCategorySource } from "@/lib/auto-category-policy";
 import { groupPatches } from "@/lib/edit-history";
-import { optimistic, type Snapshot } from "./optimistic";
+import { MissingRowsError } from "@/lib/errors";
+import { optimistic } from "./optimistic";
 
 export interface Transaction {
   category_source?: string | null;
@@ -74,7 +75,7 @@ async function persistPatches(patches: TransactionPatch[]) {
   await Promise.all(groupPatches(patches).map(async ({ ids, changes }) => {
     const { data, error } = await supabase.from("transactions").update(withManualCategorySource(changes)).in("id", ids).select("id");
     if (error) throw error;
-    if (data.length !== ids.length) throw new Error("Algunos movimientos ya no existen.");
+    if (data.length !== ids.length) throw new MissingRowsError(ids.length - data.length);
   }));
 }
 
@@ -165,14 +166,6 @@ export function useTransactionWrites() {
     return list.map((t) => (byId.has(t.id) ? { ...t, ...byId.get(t.id) } : t));
   });
 
-  const updateTransaction = useMutation({
-    scope: WRITE_SCOPE,
-    mutationFn: (patch: TransactionPatch) => persistPatches([patch]),
-    onMutate: (patch: TransactionPatch) => applyPatches.onMutate([patch]),
-    onError: (error: unknown, patch: TransactionPatch, snapshot?: Snapshot<Transaction[]>) => applyPatches.onError(error, [patch], snapshot),
-    onSettled: applyPatches.onSettled,
-  });
-
   const updateTransactions = useMutation({
     scope: WRITE_SCOPE,
     meta: { handlesOwnError: true },
@@ -228,7 +221,6 @@ export function useTransactionWrites() {
 
   return {
     addTransaction,
-    updateTransaction,
     updateTransactions,
     deleteTransactions,
     restoreTransactions,

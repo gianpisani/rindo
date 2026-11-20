@@ -51,7 +51,7 @@ export function AppearanceSheet() {
       <SheetContent
         side="right"
         aria-describedby={undefined}
-        className="flex flex-col gap-4 overflow-y-auto"
+        className="flex w-[--appearance-width] flex-col gap-4 overflow-y-auto border-sidebar-border bg-sidebar shadow-none backdrop-blur-none duration-200 ease-linear sm:max-w-none dark:border-sidebar-border"
         onOpenAutoFocus={(e) => e.preventDefault()}
         onFocusOutside={(e) => e.preventDefault()}
       >

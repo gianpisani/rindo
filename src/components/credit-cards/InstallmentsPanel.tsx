@@ -10,26 +10,27 @@ import { cn } from "@/lib/utils";
 
 interface InstallmentsPanelProps {
   overview: ReturnType<typeof installmentsOverview<InstallmentPurchase>>;
+  showCard: boolean;
   isPrivacyMode: boolean;
   onAdd: () => void;
   onEdit: (installment: InstallmentPurchase) => void;
   onDelete: (id: string) => void;
 }
 
-export function InstallmentsPanel({ overview: { rows, monthlyPayment }, isPrivacyMode, onAdd, onEdit, onDelete }: InstallmentsPanelProps) {
+export function InstallmentsPanel({ overview: { rows, monthlyPayment }, showCard, isPrivacyMode, onAdd, onEdit, onDelete }: InstallmentsPanelProps) {
   const [openInstallment, setOpenInstallment] = useState<string | null>(null);
 
   return (
     <section className="tj-card tj-cuotas">
       <div className="tj-card-head">
-        <span className="tj-label">
+        <h2 className="tj-label">
           Cuotas
           {monthlyPayment > 0 && (
-            <small className={cn(isPrivacyMode && "privacy-blur")}>
-              {" "}· {clp(monthlyPayment)} al mes
-            </small>
+            <span className="tj-label-sum">
+              <b className={cn(isPrivacyMode && "privacy-blur")}>{clp(monthlyPayment)}</b> al mes
+            </span>
           )}
-        </span>
+        </h2>
         <Button variant="ghost" size="sm" onClick={onAdd}>
           <Plus /> Compra
         </Button>
@@ -43,6 +44,7 @@ export function InstallmentsPanel({ overview: { rows, monthlyPayment }, isPrivac
               key={inst.id}
               installment={inst}
               progress={progress}
+              showCard={showCard}
               open={openInstallment === inst.id}
               isPrivacyMode={isPrivacyMode}
               onToggle={() => setOpenInstallment(openInstallment === inst.id ? null : inst.id)}

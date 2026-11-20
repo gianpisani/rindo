@@ -29,6 +29,8 @@ import { useGhostClickGuard } from "@/hooks/useGhostClickGuard";
 import { CategoryComposer } from "../categories/CategoryComposer";
 import { QuickCategoryPicker } from "../categories/QuickCategoryPicker";
 import { useInlineEdit } from "@/hooks/useInlineEdit";
+import { useFlashRecategorized } from "@/hooks/useFlashRecategorized";
+import { useFlashedRows } from "@/hooks/useRowFlash";
 import { ANALYZING_CATEGORY } from "@/lib/auto-category-policy";
 import { formatGroupDate } from "@/lib/tx-display";
 import { DEFAULT_SORT, consecutiveSections } from "@/lib/table-sort";
@@ -37,7 +39,6 @@ import type { DateRangeValue } from "./DateRangeFilter";
 import { useTransactionColumns, type TableCategory } from "./table/useTransactionColumns";
 import { MobileTxCard } from "./table/MobileTxCard";
 import { SelectionPanel } from "./table/SelectionPanel";
-import { useRecategorizedIds } from "./table/useRecategorizedIds";
 
 const MENU_GHOST_CLICK_MS = 400;
 
@@ -110,7 +111,8 @@ export function TransactionsTable({
   const { addCategory } = useCategories();
   const isMobile = useIsMobile();
   const menuGhostGuard = useGhostClickGuard(MENU_GHOST_CLICK_MS);
-  const recategorized = useRecategorizedIds(transactions);
+  useFlashRecategorized(transactions);
+  const flashed = useFlashedRows();
 
   const [categoryDraft, setCategoryDraft] = useState<{
     transactionId: string;
@@ -273,7 +275,7 @@ export function TransactionsTable({
       row={row}
       timeLabel={stamp}
       selecting={selecting}
-      resolved={recategorized.has(row.id)}
+      resolved={flashed.has(row.id)}
       categories={categories}
       isPrivacyMode={isPrivacyMode}
       withCategoryPicker={withCategoryPicker}
@@ -297,7 +299,7 @@ export function TransactionsTable({
         className={cn(
           "transition-colors",
           !row.original.isPending && "is-editable",
-          recategorized.has(row.id) && "is-resolved",
+          flashed.has(row.id) && "is-resolved",
           row.original.isPending && "pointer-events-none opacity-60",
           isMissing && "border-l-2 border-l-amber-400/70"
         )}

@@ -10,8 +10,10 @@ export function writeStorage(key: string, value: string | null) {
   try {
     if (value === null) localStorage.removeItem(key);
     else localStorage.setItem(key, value);
+    return true;
   } catch (error) {
     console.warn(`No se pudo guardar ${key} en este navegador`, error);
+    return false;
   }
 }
 

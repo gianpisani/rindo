@@ -7,6 +7,8 @@ type InstallmentLike = Parameters<typeof installmentProgress>[0] & { installment
 export const withoutEmoji = (text: string) =>
   text.replace(/[\p{Extended_Pictographic}\u{FE0F}\u{200D}]/gu, "").replace(/\s+/g, " ").trim();
 
+export const statementDetail = (text: string) => withoutEmoji(text).replace(/\s*\(\*+\s*\d{4}\)$/, "");
+
 export function labeledCycle(billingDay: number, offset: number, now = new Date()) {
   const cycle = billingCycle(billingDay, offset, now);
   return { ...cycle, label: monthYear(cycle.end) };
