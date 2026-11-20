@@ -11,6 +11,7 @@
     --font-mono: "JetBrains Mono", monospace;
     --radius: 0.75rem;
     --radius-card: var(--radius);
+    --appearance-width: 24rem;
     --shadow-float: 0 8px 24px -6px rgb(0 0 0 / 0.3);
     --background: oklch(0.965 0.002 286);
     --foreground: oklch(0.13 0.005 285.823);

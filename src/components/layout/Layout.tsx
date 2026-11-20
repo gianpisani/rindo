@@ -41,6 +41,7 @@ export default function Layout({ children, fit = false }: LayoutProps) {
     setReconciliationOpen,
     profileEditOpen,
     setProfileEditOpen,
+    appearanceOpen,
   } = useGlobalDrawers();
 
   const isMobile = useIsMobile();
@@ -115,7 +116,13 @@ export default function Layout({ children, fit = false }: LayoutProps) {
 
         <AppSidebar />
 
-        <SidebarInset className={cn(fit && "h-svh")}>
+        <SidebarInset
+          className={cn(
+            "transition-[margin] duration-200 ease-linear",
+            fit && "h-svh",
+            appearanceOpen && !isMobile && "mr-[--appearance-width]"
+          )}
+        >
           <header className="sticky top-0 z-40 flex h-14 shrink-0 items-center gap-2 border-b backdrop-blur px-4">
             {!isMobile && <SidebarTrigger className="-ml-1" />}
             {isMobile && (
