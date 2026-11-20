@@ -31,6 +31,7 @@ import { QuickCategoryPicker } from "../categories/QuickCategoryPicker";
 import { useInlineEdit } from "@/hooks/useInlineEdit";
 import { ANALYZING_CATEGORY } from "@/lib/auto-category-policy";
 import { formatGroupDate } from "@/lib/tx-display";
+import { DEFAULT_SORT, consecutiveSections } from "@/lib/table-sort";
 import { clpSigned } from "@/lib/format";
 import type { DateRangeValue } from "./DateRangeFilter";
 import { useTransactionColumns, type TableCategory } from "./table/useTransactionColumns";
@@ -100,7 +101,7 @@ export function TransactionsTable({
   onSelectingChange,
   pageSize,
 }: TransactionsTableProps) {
-  const [sorting, setSorting] = useState<SortingState>([{ id: "date", desc: true }]);
+  const [sorting, setSorting] = useState<SortingState>(DEFAULT_SORT);
   const [rowSelection, setRowSelection] = useState<RowSelectionState>({});
   const [pageIndex, setPageIndex] = useState(0);
   const tbodyRef = useRef<HTMLTableSectionElement>(null);
@@ -146,7 +147,7 @@ export function TransactionsTable({
 
   useEffect(() => {
     setPageIndex(0);
-  }, [pageSize]);
+  }, [pageSize, sorting]);
 
   const handleInlineUpdate = useCallback((id: string, field: keyof Transaction, value: unknown) => {
     if (id.startsWith("pending-")) return;
@@ -257,29 +258,20 @@ export function TransactionsTable({
 
   const filteredSum = filteredData.reduce((sum, t) => sum + displaySign(t.type) * t.amount, 0);
 
-  const isDateSorted = sorting.length === 0 || sorting[0].id === "date";
+  const groupByDay = sorting.length === 0 || sorting[0].id === "date";
 
-  const groupedRows = useMemo(() => {
-    if (!isDateSorted) return null;
+  const daySections = useMemo(() => consecutiveSections(pageRows, (row) =>
+    groupByDay ? format(new Date(row.original.date), "yyyy-MM-dd") : "all"),
+  [pageRows, groupByDay]);
 
-    const groups: { dayKey: string; start: number; rows: typeof pageRows }[] = [];
-    pageRows.forEach((row, i) => {
-      const dayKey = format(new Date(row.original.date), "yyyy-MM-dd");
-      const lastGroup = groups[groups.length - 1];
-      if (lastGroup && lastGroup.dayKey === dayKey) {
-        lastGroup.rows.push(row);
-      } else {
-        groups.push({ dayKey, start: i, rows: [row] });
-      }
-    });
-    return groups;
-  }, [pageRows, isDateSorted]);
+  const timeLabel = (t: Transaction) =>
+    format(new Date(t.date), groupByDay ? "HH:mm" : "d MMM HH:mm", { locale: es });
 
-  const renderMobileCard = (row: Row<Transaction>, timeLabel: string) => (
+  const renderMobileCard = (row: Row<Transaction>, stamp: string) => (
     <MobileTxCard
       key={row.id}
       row={row}
-      timeLabel={timeLabel}
+      timeLabel={stamp}
       selecting={selecting}
       resolved={recategorized.has(row.id)}
       categories={categories}
@@ -351,19 +343,13 @@ export function TransactionsTable({
         <div className="mobile-tx-list">
           {pageRows.length === 0 ? (
             <TableEmpty hasFilters={hasActiveFilters} onClear={clearFilters} />
-          ) : groupedRows ? (
-            groupedRows.map((group) => (
-              <React.Fragment key={group.dayKey}>
-                <div className="mobile-tx-date-header">
-                  {formatGroupDate(group.dayKey)}
-                </div>
-                {group.rows.map((row) => renderMobileCard(row, format(new Date(row.original.date), "HH:mm")))}
+          ) : (
+            daySections.map((section) => (
+              <React.Fragment key={`${section.key}-${section.start}`}>
+                {groupByDay && <div className="mobile-tx-date-header">{formatGroupDate(section.key)}</div>}
+                {section.items.map((row) => renderMobileCard(row, timeLabel(row.original)))}
               </React.Fragment>
             ))
-          ) : (
-            pageRows.map((row) =>
-              renderMobileCard(row, format(new Date(row.original.date), "d MMM HH:mm", { locale: es }))
-            )
           )}
         </div>
       ) : (
@@ -376,7 +362,11 @@ export function TransactionsTable({
                     {headerGroup.headers.map((header) => (
                       <th
                         key={header.id}
-                        className="px-3 py-1.5 text-left text-xs font-medium text-foreground"
+                        aria-sort={header.column.getIsSorted() === "asc" ? "ascending" : header.column.getIsSorted() === "desc" ? "descending" : undefined}
+                        className={cn(
+                          "h-9 px-3 text-left align-middle text-xs font-medium text-muted-foreground",
+                          header.column.id === "amount" && "text-right"
+                        )}
                         style={{
                           width: header.column.columnDef.size,
                           minWidth: header.column.columnDef.minSize,
@@ -396,22 +386,6 @@ export function TransactionsTable({
                       <TableEmpty hasFilters={hasActiveFilters} onClear={clearFilters} />
                     </td>
                   </tr>
-                ) : groupedRows ? (
-                  groupedRows.map((group) => (
-                    <React.Fragment key={group.dayKey}>
-                      <tr>
-                        <td
-                          colSpan={columns.length}
-                          className="px-4 py-1 border-t first:border-t-0"
-                        >
-                          <span className="text-xs font-medium text-muted-foreground">
-                            {formatGroupDate(group.dayKey)}
-                          </span>
-                        </td>
-                      </tr>
-                      {group.rows.map((row, i) => renderDesktopRow(row, group.start + i))}
-                    </React.Fragment>
-                  ))
                 ) : (
                   pageRows.map(renderDesktopRow)
                 )}
