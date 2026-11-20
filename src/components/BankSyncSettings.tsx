@@ -68,7 +68,7 @@ function ActiveIndicator({ isActive, color }: { isActive: boolean; color: string
       style={{ color: isActive ? color : undefined }}
     >
       <span
-        className={isActive ? "h-1.5 w-1.5 rounded-full" : "h-1.5 w-1.5 rounded-full"}
+        className="h-1.5 w-1.5 rounded-full"
         style={{ backgroundColor: isActive ? color : undefined }}
       />
       <span className={isActive ? "" : "text-muted-foreground"}>

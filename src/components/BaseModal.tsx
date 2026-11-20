@@ -16,12 +16,6 @@ interface BaseModalProps {
   children: ReactNode;
   footer?: ReactNode;
   maxWidth?: "sm" | "md" | "lg" | "xl";
-  variant?: "default" | "income" | "expense" | "investment";
-  /**
-   * En false no hay X, ni Escape, ni click afuera: la única salida es la
-   * acción del pie. Para diálogos que exigen una respuesta.
-   */
-  dismissible?: boolean;
 }
 
 const maxWidthClasses = {
@@ -29,29 +23,6 @@ const maxWidthClasses = {
   md: "sm:max-w-[500px]",
   lg: "sm:max-w-[600px]",
   xl: "sm:max-w-[700px]",
-};
-
-const variantStyles = {
-  default: {
-    border: "border-border dark:border-white/10",
-    header: "",
-    accent: "",
-  },
-  income: {
-    border: "border-success/30",
-    header: "bg-success/5",
-    accent: "text-success",
-  },
-  expense: {
-    border: "border-destructive/30",
-    header: "bg-destructive/5",
-    accent: "text-destructive",
-  },
-  investment: {
-    border: "border-blue-500/30",
-    header: "bg-blue-500/5",
-    accent: "text-blue-500",
-  },
 };
 
 export function BaseModal({
@@ -62,10 +33,7 @@ export function BaseModal({
   children,
   footer,
   maxWidth = "lg",
-  variant = "default",
-  dismissible = true,
 }: BaseModalProps) {
-  const styles = variantStyles[variant];
   const scrollRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -85,24 +53,13 @@ export function BaseModal({
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent
-        hideClose={!dismissible}
-        onEscapeKeyDown={(e) => !dismissible && e.preventDefault()}
-        onPointerDownOutside={(e) => !dismissible && e.preventDefault()}
-        onInteractOutside={(e) => !dismissible && e.preventDefault()}
         className={cn(
           maxWidthClasses[maxWidth],
-          "w-[92vw] max-h-[90vh] flex flex-col p-0 gap-0 rounded-card",
-          styles.border
+          "w-[92vw] max-h-[90vh] flex flex-col p-0 gap-0 rounded-card border-border dark:border-white/10"
         )}
       >
-        <DialogHeader className={cn(
-          "px-6 pt-6 pb-4 flex-shrink-0 rounded-t-card",
-          styles.header
-        )}>
-          <DialogTitle className={cn(
-            "text-xl text-center font-medium",
-            styles.accent
-          )}>
+        <DialogHeader className="px-6 pt-6 pb-4 flex-shrink-0 rounded-t-card">
+          <DialogTitle className="text-xl text-center font-medium">
             {title}
           </DialogTitle>
           {description && (

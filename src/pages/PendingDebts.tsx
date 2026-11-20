@@ -2,7 +2,7 @@ import { useMemo, useRef, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import * as Dialog from "@radix-ui/react-dialog";
 import Layout from "@/components/Layout";
-import { GlassCard } from "@/components/GlassCard";
+import { Card } from "@/components/ui/card";
 import ConfirmDialog from "@/components/ConfirmDialog";
 import {
   useSharedExpenses,
@@ -167,7 +167,7 @@ export default function PendingDebts() {
               </div>
 
               {section.people.map((person) => (
-                <GlassCard key={person.name}>
+                <Card key={person.name}>
                   <div className="flex items-center justify-between gap-3 px-4 py-3">
                     <p className="font-medium text-sm truncate">{person.name}</p>
                     <span className={cn("text-sm font-medium tabular-nums", isPrivacyMode && "privacy-blur")}>
@@ -232,7 +232,7 @@ export default function PendingDebts() {
                       </div>
                     ))}
                   </div>
-                </GlassCard>
+                </Card>
               ))}
             </section>
           ))

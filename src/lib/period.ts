@@ -70,11 +70,6 @@ export function dayOfPeriod(date: Date, start: Date): number {
   return dayNumber(date) - dayNumber(start) + 1;
 }
 
-/** Fecha local del día `day` (1-based) del periodo. */
-export function dateOfPeriodDay(start: Date, day: number): Date {
-  return new Date(start.getFullYear(), start.getMonth(), start.getDate() + day - 1);
-}
-
 /** Los periodos desde el que contiene `first` hasta el que contiene `last`, a lo más `max` (los más recientes). */
 export function periodsBetween(first: Date, last: Date, startDay: number, max = 36): Date[] {
   const out: Date[] = [];

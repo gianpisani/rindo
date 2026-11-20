@@ -276,5 +276,3 @@ export function ReconciliationCard({ onSuccess }: ReconciliationCardProps = {}) 
     </div>
   );
 }
-
-export default ReconciliationCard;

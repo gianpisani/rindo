@@ -14,9 +14,9 @@ import { useTransactions } from "@/hooks/useTransactions";
 import { useMonthlyBudget } from "@/hooks/useMonthlyBudget";
 import { useCategories } from "@/hooks/useCategories";
 import { useCategoryLimits } from "@/hooks/useCategoryLimits";
-import { useCategoryInsights } from "@/hooks/useCategoryInsights";
+import { DEFAULT_ALERT_AT, limitUsage } from "@/lib/category-spending";
 import { usePeriodConfig } from "@/hooks/usePeriodConfig";
-import { dayOfPeriod, periodIndex, periodNameDate, periodStartOf, shiftPeriod } from "@/lib/period";
+import { dayOfPeriod, periodEndOf, periodIndex, periodNameDate, periodStartOf, shiftPeriod } from "@/lib/period";
 import { usePrivacyMode } from "@/hooks/usePrivacyMode";
 import { cn } from "@/lib/utils";
 import { isCardPayment, isCardPaymentCategory } from "@/lib/ledger";
@@ -38,7 +38,6 @@ import { tint } from "@/lib/category-color";
 const MONTHS = 12;
 /** Hasta este día del mes, un $0 todavía no es una alarma: el barrido puede venir. */
 const GRACE_DAY = 5;
-const DEFAULT_ALERT_AT = 80;
 
 const formatCurrency = (v: number) =>
   new Intl.NumberFormat("es-CL", { style: "currency", currency: "CLP", maximumFractionDigits: 0 }).format(v);
@@ -208,20 +207,9 @@ export default function Meta() {
   })();
 
   // ── Límites por categoría: las mismas filas que el Inicio, y acá se editan ──
-  const { categorySpending } = useCategoryInsights(transactions, limits, today, 6, startDay);
   const limitRows = useMemo(
-    () =>
-      categorySpending
-        .filter((c) => c.limit && c.limit > 0)
-        .map((c) => {
-          const limit = c.limit as number;
-          const usage = (c.effectiveAmount / limit) * 100;
-          const state: "over" | "near" | "ok" =
-            usage > 100 ? "over" : usage >= (c.alertPercentage || DEFAULT_ALERT_AT) ? "near" : "ok";
-          return { category: c.category, spent: c.effectiveAmount, limit, usage, state };
-        })
-        .sort((a, b) => b.usage - a.usage),
-    [categorySpending]
+    () => limitUsage(transactions, limits, thisPeriod, periodEndOf(thisPeriod, startDay)),
+    [transactions, limits, thisPeriod, startDay],
   );
   const limitsTotal = limitRows.reduce((s, r) => s + r.limit, 0);
 

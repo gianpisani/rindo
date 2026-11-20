@@ -115,8 +115,6 @@ export interface Buckets {
   patrimonio: number;
 }
 
-export const EMPTY_BUCKETS: Buckets = { liquido: 0, invertido: 0, patrimonio: 0 };
-
 /**
  * Plata en tránsito puro: el gasto que puse por otros y su devolución
  * tagueada, y el pago de la tarjeta (sus compras ya restaron). No es mío en

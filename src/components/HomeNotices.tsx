@@ -188,5 +188,3 @@ export function HomeNotices({
     </>
   );
 }
-
-export default HomeNotices;

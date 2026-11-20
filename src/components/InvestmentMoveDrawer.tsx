@@ -310,5 +310,3 @@ export function InvestmentMoveDrawer({
     </Dialog.Root>
   );
 }
-
-export default InvestmentMoveDrawer;

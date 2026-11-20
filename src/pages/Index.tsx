@@ -9,7 +9,6 @@ import { isAnalyzing, needsReview } from "@/lib/tx-display";
 import { useBankSyncCredentials } from "@/hooks/useBankSyncCredentials";
 import { useCategories } from "@/hooks/useCategories";
 import { useCategoryLimits } from "@/hooks/useCategoryLimits";
-import { useCategoryInsights } from "@/hooks/useCategoryInsights";
 import { useGlobalDrawers } from "@/hooks/useGlobalDrawers";
 import { useMonthlyBudget } from "@/hooks/useMonthlyBudget";
 import { usePeriodConfig } from "@/hooks/usePeriodConfig";
@@ -21,7 +20,7 @@ import {
   SWEEP_ALERT_THRESHOLD,
   type RealFlowsConfig,
 } from "@/hooks/useRealFlows";
-import { summarizeCategoryPeriod } from "@/lib/category-spending";
+import { limitUsage, summarizeCategoryPeriod } from "@/lib/category-spending";
 import { PiggyBank, ChevronRight, RefreshCw } from "lucide-react";
 import { BankSyncModal } from "@/components/BankSyncModal";
 import { useBankSyncContext } from "@/contexts/BankSyncContext";
@@ -139,8 +138,7 @@ const Index = () => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [budget?.savings_goal, lastMonthFlows]);
 
-  // Límites por categoría (el mismo cálculo que Meta)
-  const { categorySpending } = useCategoryInsights(transactions, limits, now, 6, startDay);
+  const limitRows = useMemo(() => limitUsage(transactions, limits, thisPeriod, periodEnd), [transactions, limits, thisPeriod, periodEnd]);
 
   // El pulso del mes: tu gasto de hoy contra tu mes típico al mismo día
   const monthPace = useMemo(
@@ -260,11 +258,8 @@ const Index = () => {
 
   // ─── Límites ──────────────────────────────────────────
   // En Inicio, solo los que ya se pasaron: el resto vive completo en Meta.
-  const overLimits = categorySpending
-    .filter((c) => c.limit && c.limit > 0 && c.effectiveAmount > c.limit)
-    .map((c) => ({ ...c, usage: (c.effectiveAmount / (c.limit as number)) * 100 }))
-    .sort((a, b) => b.usage - a.usage);
-  const hasLimits = categorySpending.some((c) => c.limit && c.limit > 0);
+  const overLimits = limitRows.filter((row) => row.state === "over");
+  const hasLimits = limitRows.length > 0;
   const seeAllLimits = () => navigate("/budget", { state: { tab: "limits" } });
 
   const limitsList = !hasLimits ? (
@@ -275,7 +270,7 @@ const Index = () => {
     <EmptyState>Vas bien en todos tus límites</EmptyState>
   ) : (
     overLimits.map((cat, index) => {
-      const limit = cat.limit as number;
+      const { limit } = cat;
       return (
         <button key={cat.category} onClick={() => openCategory(cat.category)} className="inicio-lim">
           <span className="inicio-ico" style={tint(colorOf(cat.category))}>{emojiOf(cat.category)}</span>
@@ -285,8 +280,8 @@ const Index = () => {
             <i style={{ width: "100%", background: "oklch(var(--destructive))", "--i": index } as CSSProperties} />
           </span>
           <span className={cn("of", isPrivacyMode && "privacy-blur")}>
-            <span>{formatCurrency(cat.effectiveAmount)} de {formatCurrency(limit)}</span>
-            <span className="extra">+{formatCurrency(cat.effectiveAmount - limit)}</span>
+            <span>{formatCurrency(cat.spent)} de {formatCurrency(limit)}</span>
+            <span className="extra">+{formatCurrency(cat.spent - limit)}</span>
           </span>
         </button>
       );

@@ -41,6 +41,7 @@ import {
   validateRut,
   isCustomSchedule,
   getCustomHour,
+  scheduleTimePhrase,
 } from "@/lib/banks";
 import { BankLogo } from "@/components/BankLogo";
 import { useSaveCredentials, useBankSyncCredentials } from "@/hooks/useBankSyncCredentials";
@@ -76,21 +77,6 @@ const SKIP_REASON_LABELS: Record<string, string> = {
   manual_duplicate: "Ingresada manualmente",
   zero_amount: "Monto $0",
 };
-
-function getScheduleTimeLabel(id: string): string {
-  if (isCustomSchedule(id)) {
-    const h = getCustomHour(id);
-    return `las ${h}:00`;
-  }
-  const labels: Record<string, string> = {
-    daily_08: "las 8:00",
-    daily_14: "las 14:00",
-    daily_20: "las 20:00",
-    twice_daily: "las 8:00 y 20:00",
-    disabled: null!,
-  };
-  return labels[id] ?? id;
-}
 
 // ── Props ────────────────────────────────────────────────────────────────────
 
@@ -274,7 +260,6 @@ export function BankSyncModal({
     setIsDeleting(false);
   }
 
-  const showForm = syncStep === "idle" || syncStep === "failed";
   const showPolling = syncStep === "submitting" || syncStep === "polling";
   const showResult = syncStep === "completed" || (syncStep === "failed" && result !== null);
 
@@ -712,7 +697,7 @@ export function BankSyncModal({
                       <CalendarClock className="h-4 w-4 text-muted-foreground shrink-0 mt-0.5" />
                       <div className="text-xs text-muted-foreground leading-relaxed">
                         <span className="font-medium text-foreground">Auto-sync activado.</span>{" "}
-                        Tus movimientos se sincronizarán automáticamente a {getScheduleTimeLabel(syncSchedule)}.
+                        Tus movimientos se sincronizarán automáticamente a {scheduleTimePhrase(syncSchedule)}.
                         Puedes sincronizar manualmente cuando necesites desde aquí.
                       </div>
                     </div>

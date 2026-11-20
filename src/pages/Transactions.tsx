@@ -300,10 +300,6 @@ export default function Transactions() {
     setNewCategory(null);
     setTxError("");
   };
-  const cycleType = (backwards: boolean) => {
-    const index = WHISPER_TYPES.findIndex((t) => t.type === formData.type);
-    changeType(WHISPER_TYPES[(index + (backwards ? WHISPER_TYPES.length - 1 : 1)) % WHISPER_TYPES.length].type);
-  };
 
   const createCategory = () => {
     if (!newCategory || !newCategory.name.trim()) return;
