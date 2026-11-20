@@ -3,16 +3,17 @@ import { format } from "date-fns";
 import { es } from "date-fns/locale";
 import { useLocation } from "react-router-dom";
 import NumberFlow from "@number-flow/react";
-import { Check, Pencil, Plus, Trash2, X } from "lucide-react";
+import { Check, ChevronDown, Pencil, Plus, Trash2, X } from "lucide-react";
 import Layout from "@/components/layout/Layout";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { EmptyState } from "@/components/shared/EmptyState";
-import { CategorySelect } from "@/components/categories/CategorySelect";
+import { QuickCategoryPicker } from "@/components/categories/QuickCategoryPicker";
 import { getCategoryIcon } from "@/lib/category-icon";
 import { useTransactions } from "@/hooks/useTransactions";
 import { useMonthlyBudget } from "@/hooks/useMonthlyBudget";
 import { useCategories } from "@/hooks/useCategories";
+import { useCategoryOptions } from "@/hooks/useCategoryOptions";
 import { useCategoryLimits } from "@/hooks/useCategoryLimits";
 import { DEFAULT_ALERT_AT, limitUsage } from "@/lib/category-spending";
 import { usePeriodConfig } from "@/hooks/usePeriodConfig";
@@ -91,6 +92,7 @@ export default function Meta() {
   const { transactions, isLoading } = useTransactions();
   const { budget, isLoading: budgetLoading, upsertBudget } = useMonthlyBudget();
   const { categories } = useCategories();
+  const categoryOptions = useCategoryOptions();
   const { limits, upsertLimit, deleteLimit } = useCategoryLimits();
   const { isPrivacyMode } = usePrivacyMode();
 
@@ -220,9 +222,8 @@ export default function Meta() {
   const colorOf = (name: string) => catOf(name)?.color ?? null;
 
   const limited = new Set(limits.map((l) => l.category_name));
-  const addable = categories
-    .filter((c) => c.type === "Gasto" && c.is_active !== false && !limited.has(c.name) && !isCardPaymentCategory(c.name))
-    .map((c) => ({ value: c.name, label: c.name, emoji: c.icon || getCategoryIcon(c.name) }));
+  const addable = categoryOptions("Gasto").filter((c) => !limited.has(c.name) && !isCardPaymentCategory(c.name));
+  const addCatOption = addable.find((c) => c.name === addCat);
 
   const [editingCat, setEditingCat] = useState<string | null>(null);
   const [limitDraft, setLimitDraft] = useState("");
@@ -470,14 +471,27 @@ export default function Meta() {
                 })}
                 {adding ? (
                   <div className="meta-lim-add">
-                    <CategorySelect
-                      value={addCat}
-                      options={addable}
-                      onChange={setAddCat}
-                      placeholder="Categoría"
-                      searchPlaceholder="Buscar categoría…"
-                      className="meta-lim-select"
-                    />
+                    <QuickCategoryPicker value={addCat} options={addable} title="Categoría del límite" onPick={setAddCat}>
+                      <button
+                        type="button"
+                        className={cn(
+                          "meta-lim-select flex h-10 w-full items-center justify-between rounded-card border border-input bg-background px-3 text-sm",
+                          !addCatOption && "text-muted-foreground"
+                        )}
+                      >
+                        <span className="truncate">
+                          {addCatOption ? (
+                            <>
+                              <span className="mr-1.5">{addCatOption.icon}</span>
+                              {addCatOption.name}
+                            </>
+                          ) : (
+                            "Categoría"
+                          )}
+                        </span>
+                        <ChevronDown className="h-4 w-4 shrink-0 opacity-50" />
+                      </button>
+                    </QuickCategoryPicker>
                     <AmountField
                       value={addDraft}
                       onChange={setAddDraft}

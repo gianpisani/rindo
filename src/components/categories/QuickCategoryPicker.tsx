@@ -7,12 +7,9 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useIsMobile } from "@/hooks/useIsMobile";
 import { tintColor } from "@/lib/category-color";
+import type { CategoryOption } from "@/lib/category-options";
 
-export interface QuickCategoryOption {
-  name: string;
-  icon: string;
-  color?: string | null;
-}
+export type QuickCategoryOption = CategoryOption;
 
 interface Props {
   value: string;

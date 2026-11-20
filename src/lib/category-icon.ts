@@ -95,3 +95,12 @@ export function getCategoryIcon(name: string): string {
   }
   return FALLBACK_ICON;
 }
+
+export function categoriesInUse(
+  transactions: { category_name: string }[],
+  categories: { name: string; icon?: string | null }[],
+) {
+  return Array.from(new Set(transactions.map((t) => t.category_name).filter((name) => name && name.trim().length > 0)))
+    .sort((a, b) => a.localeCompare(b))
+    .map((name) => ({ name, emoji: categories.find((c) => c.name === name)?.icon || getCategoryIcon(name) }));
+}

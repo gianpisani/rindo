@@ -1,6 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import * as Dialog from "@radix-ui/react-dialog";
-import { ArrowUp, ChevronDown, Loader2, X } from "lucide-react";
+import { ChevronDown, Loader2 } from "lucide-react";
 import { toast } from "sonner";
 import { useTransactions } from "@/hooks/useTransactions";
 import { useSoundFX } from "@/hooks/useSoundFX";
@@ -8,7 +7,7 @@ import { usePrivacyMode } from "@/hooks/usePrivacyMode";
 import { computeLedger } from "@/lib/real-flows";
 import { parseWhisper } from "@/lib/whisper";
 import { cn } from "@/lib/utils";
-import "../shared/whisper.css";
+import { WhisperComposer, WhisperShortcuts, WhisperSubmit } from "@/components/shared/whisper/WhisperComposer";
 import { clp } from "@/lib/format";
 
 type Move = "rescate" | "valor";
@@ -129,158 +128,126 @@ export function InvestmentMoveDrawer({
   const previewTone = move === "valor" && hasValor && !alDia && delta < 0 ? LOSS_COLOR : undefined;
 
   return (
-    <Dialog.Root open={open} onOpenChange={(next) => (next ? onOpenChange(true) : close())}>
-      <Dialog.Portal>
-        <Dialog.Overlay className="whisper-backdrop" />
-        <Dialog.Content
-          data-scrollable
-          className="whisper-composer"
-          style={{ "--whisper-accent": current.color } as React.CSSProperties}
-          onOpenAutoFocus={(event) => {
-            event.preventDefault();
-            inputRef.current?.focus();
-          }}
+    <WhisperComposer
+      open={open}
+      onOpenChange={(next) => (next ? onOpenChange(true) : close())}
+      title="Inversiones"
+      description="Lo que sale de las inversiones y lo que crece solo. Tab cambia entre rescate y rendimiento. Para el rescate escribe el monto y, si quieres, de dónde salió. Para el rendimiento escribe cuánto valen hoy tus inversiones en total."
+      accent={current.color}
+      focusOnOpen={() => inputRef.current?.focus()}
+      onSubmit={submit}
+    >
+      <div className="whisper-type">
+        <span className="whisper-dot" aria-hidden="true" />
+        <span aria-hidden="true">{current.label}</span>
+        <select
+          aria-label="Movimiento"
+          value={move}
+          onChange={(event) => changeMove(event.target.value as Move)}
         >
-          <Dialog.Title className="sr-only">Inversiones</Dialog.Title>
-          <Dialog.Description className="sr-only">
-            Lo que sale de las inversiones y lo que crece solo. Tab cambia entre rescate y rendimiento. Para el rescate escribe el monto y, si quieres, de dónde salió. Para el rendimiento escribe cuánto valen hoy tus inversiones en total.
-          </Dialog.Description>
-          <Dialog.Close className="whisper-close" aria-label="Cerrar">
-            <X size={16} />
-          </Dialog.Close>
+          {MOVES.map((m) => (
+            <option key={m.key} value={m.key}>
+              {m.label}
+            </option>
+          ))}
+        </select>
+        <ChevronDown size={12} aria-hidden="true" />
+      </div>
 
-          <form onSubmit={submit} className="whisper-form">
-            <div className="whisper-type">
-              <span className="whisper-dot" aria-hidden="true" />
-              <span aria-hidden="true">{current.label}</span>
-              <select
-                aria-label="Movimiento"
-                value={move}
-                onChange={(event) => changeMove(event.target.value as Move)}
-              >
-                {MOVES.map((m) => (
-                  <option key={m.key} value={m.key}>
-                    {m.label}
-                  </option>
-                ))}
-              </select>
-              <ChevronDown size={12} aria-hidden="true" />
-            </div>
-
-            <div className="whisper-entry">
-              {move === "rescate" ? (
-                <input
-                  key="rescate"
-                  ref={inputRef}
-                  aria-label="Monto del rescate y de dónde salió"
-                  autoComplete="off"
-                  autoCorrect="off"
-                  spellCheck={false}
-                  maxLength={200}
-                  value={rescateValue}
-                  onChange={(event) => setRescateValue(event.target.value)}
-                  placeholder={current.placeholder}
-                  className={cn("whisper-input", isPrivacyMode && rescateValue && "privacy-blur")}
-                  onKeyDown={(event) => {
-                    if (event.key === "Tab" && !event.altKey && !event.ctrlKey && !event.metaKey) {
-                      event.preventDefault();
-                      cycleMove();
-                    }
-                  }}
-                />
-              ) : (
-                <input
-                  key="valor"
-                  ref={inputRef}
-                  aria-label="Cuánto valen hoy tus inversiones"
-                  autoComplete="off"
-                  inputMode="numeric"
-                  maxLength={20}
-                  value={valorHoy}
-                  onChange={(event) => setValorHoy(event.target.value.replace(/\D/g, ""))}
-                  placeholder={current.placeholder}
-                  className={cn("whisper-input", isPrivacyMode && valorHoy && "privacy-blur")}
-                  onKeyDown={(event) => {
-                    if (event.key === "Tab" && !event.altKey && !event.ctrlKey && !event.metaKey) {
-                      event.preventDefault();
-                      cycleMove();
-                    }
-                  }}
-                />
-              )}
-              <div
-                className={cn("whisper-preview", isPrivacyMode && "privacy-blur")}
-                style={previewTone ? { color: previewTone } : undefined}
-                aria-hidden="true"
-              >
-                {move === "rescate" ? (
-                  rescate > 0 && <span>rescatas {clp(rescate)}</span>
-                ) : hasValor ? (
-                  alDia ? (
-                    <span>ya está al día, no hay nada que registrar</span>
-                  ) : (
-                    <span>
-                      {delta > 0 ? "ganaron +" : "perdieron −"}
-                      {clp(Math.abs(delta))}
-                    </span>
-                  )
-                ) : null}
-              </div>
-            </div>
-
-            <div className="whisper-category-space">
-              <p className="whisper-caption" aria-live="polite">
-                {move === "rescate" ? (
-                  "Vuelve a tu liquidez. Tu patrimonio no cambia: cambia de balde."
-                ) : hasValor && !alDia ? (
-                  <>Tu patrimonio {delta > 0 ? "sube" : "baja"} eso. Tu liquidez no cambia.</>
-                ) : (
-                  "¿Cuánto valen hoy tus inversiones, en total?"
-                )}
-                <br />
-                Invertido según Rindo:{" "}
-                <span className={cn("whisper-inv-amount", isPrivacyMode && "privacy-blur")}>{clp(invertido)}</span>
-              </p>
-            </div>
-
-            <div className="whisper-actions">
-              <button
-                type="submit"
-                className="whisper-submit"
-                disabled={!ready || isSaving}
-                aria-label={move === "rescate" ? "Rescatar" : "Registrar rendimiento"}
-              >
-                {isSaving ? (
-                  <Loader2 size={14} className="animate-spin" aria-hidden="true" />
-                ) : (
-                  <>
-                    {move === "rescate" ? (
-                      <span className={cn(isPrivacyMode && rescate > 0 && "privacy-blur")}>
-                        Rescatar{rescate > 0 ? ` ${clp(rescate)}` : ""}
-                      </span>
-                    ) : (
-                      "Registrar rendimiento"
-                    )}
-                    <span className="hidden sm:inline" aria-hidden="true">↵</span>
-                    <ArrowUp size={14} className="sm:hidden" aria-hidden="true" />
-                  </>
-                )}
-              </button>
-            </div>
-            <p className="whisper-shortcuts">
+      <div className="whisper-entry">
+        {move === "rescate" ? (
+          <input
+            key="rescate"
+            ref={inputRef}
+            aria-label="Monto del rescate y de dónde salió"
+            autoComplete="off"
+            autoCorrect="off"
+            spellCheck={false}
+            maxLength={200}
+            value={rescateValue}
+            onChange={(event) => setRescateValue(event.target.value)}
+            placeholder={current.placeholder}
+            className={cn("whisper-input", isPrivacyMode && rescateValue && "privacy-blur")}
+            onKeyDown={(event) => {
+              if (event.key === "Tab" && !event.altKey && !event.ctrlKey && !event.metaKey) {
+                event.preventDefault();
+                cycleMove();
+              }
+            }}
+          />
+        ) : (
+          <input
+            key="valor"
+            ref={inputRef}
+            aria-label="Cuánto valen hoy tus inversiones"
+            autoComplete="off"
+            inputMode="numeric"
+            maxLength={20}
+            value={valorHoy}
+            onChange={(event) => setValorHoy(event.target.value.replace(/\D/g, ""))}
+            placeholder={current.placeholder}
+            className={cn("whisper-input", isPrivacyMode && valorHoy && "privacy-blur")}
+            onKeyDown={(event) => {
+              if (event.key === "Tab" && !event.altKey && !event.ctrlKey && !event.metaKey) {
+                event.preventDefault();
+                cycleMove();
+              }
+            }}
+          />
+        )}
+        <div
+          className={cn("whisper-preview", isPrivacyMode && "privacy-blur")}
+          style={previewTone ? { color: previewTone } : undefined}
+          aria-hidden="true"
+        >
+          {move === "rescate" ? (
+            rescate > 0 && <span>rescatas {clp(rescate)}</span>
+          ) : hasValor ? (
+            alDia ? (
+              <span>ya está al día, no hay nada que registrar</span>
+            ) : (
               <span>
-                <kbd>Tab</kbd> movimiento
+                {delta > 0 ? "ganaron +" : "perdieron −"}
+                {clp(Math.abs(delta))}
               </span>
-              <span>
-                <kbd>↵</kbd> guardar
-              </span>
-              <span>
-                <kbd>Esc</kbd> cerrar
-              </span>
-            </p>
-          </form>
-        </Dialog.Content>
-      </Dialog.Portal>
-    </Dialog.Root>
+            )
+          ) : null}
+        </div>
+      </div>
+
+      <div className="whisper-category-space">
+        <p className="whisper-caption" aria-live="polite">
+          {move === "rescate" ? (
+            "Vuelve a tu liquidez. Tu patrimonio no cambia: cambia de balde."
+          ) : hasValor && !alDia ? (
+            <>Tu patrimonio {delta > 0 ? "sube" : "baja"} eso. Tu liquidez no cambia.</>
+          ) : (
+            "¿Cuánto valen hoy tus inversiones, en total?"
+          )}
+          <br />
+          Invertido según Rindo:{" "}
+          <span className={cn("whisper-inv-amount", isPrivacyMode && "privacy-blur")}>{clp(invertido)}</span>
+        </p>
+      </div>
+
+      <div className="whisper-actions">
+        <WhisperSubmit
+          label={move === "rescate" ? "Rescatar" : "Registrar rendimiento"}
+          disabled={!ready || isSaving}
+          keyHint={!isSaving}
+        >
+          {isSaving ? (
+            <Loader2 size={14} className="animate-spin" aria-hidden="true" />
+          ) : move === "rescate" ? (
+            <span className={cn(isPrivacyMode && rescate > 0 && "privacy-blur")}>
+              Rescatar{rescate > 0 ? ` ${clp(rescate)}` : ""}
+            </span>
+          ) : (
+            "Registrar rendimiento"
+          )}
+        </WhisperSubmit>
+      </div>
+      <WhisperShortcuts items={[["Tab", "movimiento"], ["↵", "guardar"], ["Esc", "cerrar"]]} />
+    </WhisperComposer>
   );
 }

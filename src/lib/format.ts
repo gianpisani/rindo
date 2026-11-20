@@ -10,4 +10,16 @@ export const clp = (value: number) => withSign(value, CLP.format(Math.abs(value)
 
 export const clpCompact = (value: number) => withSign(value, CLP_COMPACT.format(Math.abs(value)));
 
+export const SIGNED_CLP_FORMAT = {
+  style: "currency",
+  currency: "CLP",
+  maximumFractionDigits: 0,
+  signDisplay: "exceptZero",
+} as const satisfies Intl.NumberFormatOptions;
+
+export const clpSigned = new Intl.NumberFormat("es-CL", SIGNED_CLP_FORMAT).format;
+
 export const groupDigits = (value: number) => DIGITS.format(value);
+
+export const toLocalInput = (date: Date) =>
+  new Date(date.getTime() - date.getTimezoneOffset() * 60000).toISOString().slice(0, 16);
