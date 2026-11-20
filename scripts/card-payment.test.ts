@@ -95,6 +95,7 @@ function fakeClient(cards: { id: string; last_4_digits: string | null }[]) {
         select() { return builder; },
         eq() { return builder; },
         neq() { return builder; },
+        not() { return builder; },
         gte() { return builder; },
         order() { return builder; },
         limit() { return builder; },

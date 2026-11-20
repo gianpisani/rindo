@@ -1,32 +1,33 @@
 import type { SupabaseClient } from 'https://esm.sh/@supabase/supabase-js@2.39.3'
-import { classifyWithJev, type JevCategory } from './jev-categorizer.ts'
+import { CATEGORIZABLE_TYPES, PENDING_CATEGORIES, PENDING_CATEGORIES_FILTER, UNCATEGORIZED } from './category-rules.ts'
 import { historyContext, type CategoryHistoryEntry } from './category-history.ts'
+import { classifyWithJev, type JevCategory } from './jev-categorizer.ts'
 
 interface Config { apiKey: string; accessToken?: string }
 interface UserContext { userId: string; categories: JevCategory[]; history: CategoryHistoryEntry[] }
+
+const HISTORY_PAGE_SIZE = 1000
+const HISTORY_MAX_ROWS = 10_000
+const CONCURRENT_CLASSIFICATIONS = 4
 
 export async function loadCategoryContext(client: SupabaseClient, userId: string): Promise<UserContext> {
   const { data: categories, error } = await client.from('categories').select('*').eq('user_id', userId)
   if (error) throw new Error('No se pudieron consultar las categorías')
   const history: CategoryHistoryEntry[] = []
-  // Paginate past Supabase's default 1,000-row response limit. The 10k cap bounds
-  // work for imports; all 800+ current movements fit without sampling them away.
-  for (let offset = 0; offset < 10_000; offset += 1000) {
+  for (let offset = 0; offset < HISTORY_MAX_ROWS; offset += HISTORY_PAGE_SIZE) {
     const { data, error: historyError } = await client.from('transactions')
       .select(categories?.some(c => c.is_active !== undefined)
         ? 'id, detail, bank_description, type, category_name, category_source'
         : 'id, detail, bank_description, type, category_name').eq('user_id', userId)
-      .not('category_name', 'in', '("Sin categoría","⚡ Analizando...")')
-      .order('created_at', { ascending: false }).order('id').range(offset, offset + 999)
+      .not('category_name', 'in', PENDING_CATEGORIES_FILTER)
+      .order('created_at', { ascending: false }).order('id').range(offset, offset + HISTORY_PAGE_SIZE - 1)
     if (historyError) throw new Error('No se pudo consultar el historial')
     history.push(...(data ?? []))
-    if (!data || data.length < 1000) break
+    if (!data || data.length < HISTORY_PAGE_SIZE) break
   }
   return { userId, categories: (categories ?? []).map(c => ({ id: c.id, name: c.name, type: c.type, description: c.description || undefined, is_active: c.is_active })), history }
 }
 
-// Only call from handlers that have already authenticated their user/job.
-// Public HTTP callers use categorizeForSession below, never supply an arbitrary owner.
 export async function categorizeForUser(
   client: SupabaseClient, transactionId: string, userId: string, config: Config, context?: UserContext,
 ) {
@@ -34,10 +35,10 @@ export async function categorizeForUser(
   const { data: tx, error: txError } = await client.from('transactions')
     .select('id, detail, bank_description, type, category_name').eq('id', transactionId).eq('user_id', userId).single()
   if (txError || !tx) throw new Error('No se encontró el movimiento')
-  if (!['Sin categoría', '⚡ Analizando...'].includes(tx.category_name)) {
+  if (!PENDING_CATEGORIES.includes(tx.category_name)) {
     return { success: true, applied: false, category: tx.category_name, method: 'manual', confidence: 0 }
   }
-  if (!['Gasto', 'Ingreso', 'Inversión'].includes(tx.type)) {
+  if (!CATEGORIZABLE_TYPES.includes(tx.type)) {
     return { success: true, applied: false, category: tx.category_name, method: 'fixed', confidence: 0 }
   }
   const data = context ?? await loadCategoryContext(client, userId)
@@ -62,14 +63,16 @@ export async function categorizeForSession(client: SupabaseClient, body: { trans
 }
 
 export async function categorizeBatchForUser(client: SupabaseClient, transactionIds: string[], userId: string, config: Config) {
-  const context = await loadCategoryContext(client, userId)
+  const historySnapshot = await loadCategoryContext(client, userId)
   const results = []
-  // One history snapshot per import prevents the batch teaching itself from its
-  // own predictions. Bounded concurrency avoids a burst of model requests.
-  for (let index = 0; index < transactionIds.length; index += 4) {
-    const chunk = await Promise.all(transactionIds.slice(index, index + 4).map(async id => {
-      try { return { transactionId: id, ...await categorizeForUser(client, id, userId, config, context) } }
-      catch { return { transactionId: id, success: false, applied: false, category: 'Sin categoría' } }
+  for (let index = 0; index < transactionIds.length; index += CONCURRENT_CLASSIFICATIONS) {
+    const chunk = await Promise.all(transactionIds.slice(index, index + CONCURRENT_CLASSIFICATIONS).map(async id => {
+      try {
+        return { transactionId: id, ...await categorizeForUser(client, id, userId, config, historySnapshot) }
+      } catch (error) {
+        console.error('No se pudo categorizar el movimiento', id, error)
+        return { transactionId: id, success: false, applied: false, category: UNCATEGORIZED }
+      }
     }))
     results.push(...chunk)
   }

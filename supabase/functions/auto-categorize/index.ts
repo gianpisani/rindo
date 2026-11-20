@@ -1,29 +1,31 @@
-import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.39.3'
-import { corsHeaders } from '../_shared/cors.ts'
 import { categorizeBatchForUser, categorizeForSession } from '../_shared/categorize.ts'
+import { json, preflight } from '../_shared/http.ts'
+import { authenticatedUser, bearerToken, userClient } from '../_shared/supabase.ts'
+
+const MAX_BATCH_SIZE = 200
 
 Deno.serve(async req => {
-  if (req.method === 'OPTIONS') return new Response('ok', { headers: corsHeaders })
-  const headers = { ...corsHeaders, 'Content-Type': 'application/json' }
-  const token = (req.headers.get('Authorization') ?? '').replace(/^Bearer\s+/i, '')
-  const client = createClient(Deno.env.get('SUPABASE_URL') ?? '', Deno.env.get('SUPABASE_ANON_KEY') ?? '', {
-    global: { headers: { Authorization: `Bearer ${token}` } },
-  })
+  const preflightResponse = preflight(req)
+  if (preflightResponse) return preflightResponse
+
   try {
     const body = await req.json()
-    const config = { apiKey: Deno.env.get('AI_GATEWAY_API_KEY') ?? '', accessToken: token }
+    const apiKey = Deno.env.get('AI_GATEWAY_API_KEY') ?? ''
+
     if (Array.isArray(body.transactions)) {
-      const { data: { user }, error } = await client.auth.getUser(token)
-      if (error || !user) return new Response(JSON.stringify({ success: false }), { status: 401, headers })
-      if (body.transactions.length > 200 || body.transactions.some((tx: { id?: unknown }) => typeof tx?.id !== 'string')) {
-        return new Response(JSON.stringify({ success: false }), { status: 400, headers })
+      const session = await authenticatedUser(req)
+      if (!session) return json({ success: false }, 401)
+      if (body.transactions.length > MAX_BATCH_SIZE || body.transactions.some((tx: { id?: unknown }) => typeof tx?.id !== 'string')) {
+        return json({ success: false }, 400)
       }
-      const results = await categorizeBatchForUser(client, [...new Set<string>(body.transactions.map((tx: { id: string }) => tx.id))], user.id, config)
-      return new Response(JSON.stringify({ success: true, results }), { headers })
+      const ids = [...new Set<string>(body.transactions.map((tx: { id: string }) => tx.id))]
+      const results = await categorizeBatchForUser(session.client, ids, session.userId, { apiKey })
+      return json({ success: true, results })
     }
-    const result = await categorizeForSession(client, body, config)
-    return new Response(JSON.stringify(result), { headers })
-  } catch {
-    return new Response(JSON.stringify({ success: false, error: 'No se pudo categorizar el movimiento' }), { status: 400, headers })
+
+    return json(await categorizeForSession(userClient(req), body, { apiKey, accessToken: bearerToken(req) ?? '' }))
+  } catch (error) {
+    console.error('auto-categorize error:', error)
+    return json({ success: false, error: 'No se pudo categorizar el movimiento' }, 400)
   }
 })

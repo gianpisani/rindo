@@ -1,24 +1,6 @@
-/**
- * Cryptographic utilities for bank sync credential management.
- * Uses Web Crypto API (built-in Deno, zero dependencies).
- *
- * Two independent keys:
- *   BANK_CREDENTIALS_ENCRYPTION_KEY — at-rest encryption (edge function ↔ database)
- *   CREDENTIALS_TRANSIT_KEY         — transit encryption (edge function ↔ Open Banking API)
- *
- * Format: base64(iv[12] || ciphertext || authTag[16])
- */
-
-const ALGORITHM = "AES-GCM"
-const IV_LENGTH = 12   // 96-bit IV, recommended for GCM
-const TAG_LENGTH = 128 // auth tag bits
-
-// ── Helpers ──────────────────────────────────────────────────────────────────
-
-function hexToKey(hexKey: string): Promise<CryptoKey> {
-  const raw = hexToBytes(hexKey)
-  return crypto.subtle.importKey("raw", raw, { name: ALGORITHM }, false, ["encrypt", "decrypt"])
-}
+const ALGORITHM = 'AES-GCM'
+const GCM_IV_BYTES = 12
+const GCM_TAG_BITS = 128
 
 function hexToBytes(hex: string): Uint8Array {
   const bytes = new Uint8Array(hex.length / 2)
@@ -28,9 +10,12 @@ function hexToBytes(hex: string): Uint8Array {
   return bytes
 }
 
+function hexToKey(hexKey: string): Promise<CryptoKey> {
+  return crypto.subtle.importKey('raw', hexToBytes(hexKey), { name: ALGORITHM }, false, ['encrypt', 'decrypt'])
+}
+
 function concatBuffers(...bufs: Uint8Array[]): Uint8Array {
-  const total = bufs.reduce((s, b) => s + b.length, 0)
-  const out = new Uint8Array(total)
+  const out = new Uint8Array(bufs.reduce((s, b) => s + b.length, 0))
   let offset = 0
   for (const b of bufs) {
     out.set(b, offset)
@@ -41,52 +26,37 @@ function concatBuffers(...bufs: Uint8Array[]): Uint8Array {
 
 async function encrypt(plaintext: string, hexKey: string): Promise<string> {
   const key = await hexToKey(hexKey)
-  const iv = crypto.getRandomValues(new Uint8Array(IV_LENGTH))
-  const encoded = new TextEncoder().encode(plaintext)
-  const ciphertext = await crypto.subtle.encrypt({ name: ALGORITHM, iv, tagLength: TAG_LENGTH }, key, encoded)
-  const blob = concatBuffers(iv, new Uint8Array(ciphertext))
-  return btoa(String.fromCharCode(...blob))
+  const iv = crypto.getRandomValues(new Uint8Array(GCM_IV_BYTES))
+  const ciphertext = await crypto.subtle.encrypt({ name: ALGORITHM, iv, tagLength: GCM_TAG_BITS }, key, new TextEncoder().encode(plaintext))
+  return btoa(String.fromCharCode(...concatBuffers(iv, new Uint8Array(ciphertext))))
 }
 
 async function decrypt(base64Blob: string, hexKey: string): Promise<string> {
   const key = await hexToKey(hexKey)
   const blob = Uint8Array.from(atob(base64Blob), (c) => c.charCodeAt(0))
-  const iv = blob.subarray(0, IV_LENGTH)
-  const ciphertext = blob.subarray(IV_LENGTH)
-  const plaintext = await crypto.subtle.decrypt({ name: ALGORITHM, iv, tagLength: TAG_LENGTH }, key, ciphertext)
+  const iv = blob.subarray(0, GCM_IV_BYTES)
+  const ciphertext = blob.subarray(GCM_IV_BYTES)
+  const plaintext = await crypto.subtle.decrypt({ name: ALGORITHM, iv, tagLength: GCM_TAG_BITS }, key, ciphertext)
   return new TextDecoder().decode(plaintext)
 }
 
-// ── At-rest encryption (edge function ↔ database) ────────────────────────────
+function keyFromEnv(name: string): string {
+  const key = Deno.env.get(name)
+  if (!key) throw new Error(`${name} not configured`)
+  return key
+}
 
-/**
- * Encrypts a bank password for storage in the database.
- * Uses BANK_CREDENTIALS_ENCRYPTION_KEY env var.
- */
+const AT_REST_KEY = 'BANK_CREDENTIALS_ENCRYPTION_KEY'
+const TRANSIT_KEY = 'CREDENTIALS_TRANSIT_KEY'
+
 export async function encryptPassword(password: string): Promise<string> {
-  const key = Deno.env.get("BANK_CREDENTIALS_ENCRYPTION_KEY")
-  if (!key) throw new Error("BANK_CREDENTIALS_ENCRYPTION_KEY not configured")
-  return encrypt(password, key)
+  return encrypt(password, keyFromEnv(AT_REST_KEY))
 }
 
-/**
- * Decrypts a bank password retrieved from the database.
- * Uses BANK_CREDENTIALS_ENCRYPTION_KEY env var.
- */
 export async function decryptPassword(encrypted: string): Promise<string> {
-  const key = Deno.env.get("BANK_CREDENTIALS_ENCRYPTION_KEY")
-  if (!key) throw new Error("BANK_CREDENTIALS_ENCRYPTION_KEY not configured")
-  return decrypt(encrypted, key)
+  return decrypt(encrypted, keyFromEnv(AT_REST_KEY))
 }
 
-// ── Transit encryption (edge function ↔ Open Banking API) ────────────────────
-
-/**
- * Encrypts { rut, password } into a single base64 blob for sending to the Open Banking API.
- * Uses CREDENTIALS_TRANSIT_KEY env var.
- */
 export async function encryptForTransit(rut: string, password: string): Promise<string> {
-  const key = Deno.env.get("CREDENTIALS_TRANSIT_KEY")
-  if (!key) throw new Error("CREDENTIALS_TRANSIT_KEY not configured")
-  return encrypt(JSON.stringify({ rut, password }), key)
+  return encrypt(JSON.stringify({ rut, password }), keyFromEnv(TRANSIT_KEY))
 }
