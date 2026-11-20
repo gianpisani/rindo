@@ -26,6 +26,18 @@ App de finanzas personales (Vite + React + TS + Tailwind 3 + shadcn/ui + Supabas
 - Tocables de ícono: área ≥ 36px (`size-9`).
 - Foco con teclado: lo da la regla global `:focus-visible` de `src/index.css`; no pongas `outline-none` sin reemplazo.
 
+## Código
+- **Autoexplicativo:** los nombres dicen la intención. Sin comentarios (salvo `design-scale-ok` y directivas de lint/TS).
+- **Sin redundancia:** antes de escribir algo, busca si ya existe en `src/lib` o `src/hooks`. Una sola implementación por cosa.
+- **Carpetas firmes:**
+  - `src/pages/` solo compone pantallas; no llama a Supabase directo.
+  - `src/hooks/` es la única capa que habla con Supabase (queries y mutaciones con react-query).
+  - `src/lib/` lógica pura, sin React ni Supabase, testeable.
+  - `src/components/<área>/` componentes por área; `src/components/ui/` solo primitivas shadcn.
+  - `supabase/functions/_shared/` todo lo que repiten las edge functions.
+- **Errores:** nunca `catch {}` mudo ni `{ error }` de Supabase sin revisar. Si falla una acción del usuario, `toast.error` con mensaje claro; si falla una lectura, el estado de error de la query.
+- **Optimista:** toda mutación que el usuario ve se aplica al cache en `onMutate`, se revierte en `onError` y se reconcilia en `onSettled`.
+
 ## Antes de commitear
 ```
 npm run lint:design

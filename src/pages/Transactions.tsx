@@ -2,15 +2,17 @@ import { useState, useMemo, useRef } from "react";
 import { useSearchParams } from "react-router-dom";
 import * as Dialog from "@radix-ui/react-dialog";
 import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
-import Layout from "@/components/Layout";
-import ConfirmDialog from "@/components/ConfirmDialog";
-import { TransactionsTable, getCategoryIcon, typeAmountColors } from "@/components/TransactionsTable";
-import { TransactionsToolbar } from "@/components/TransactionsToolbar";
+import Layout from "@/components/layout/Layout";
+import ConfirmDialog from "@/components/shared/ConfirmDialog";
+import { TransactionsTable } from "@/components/transactions/TransactionsTable";
+import { getCategoryIcon } from "@/lib/category-icon";
+import { AMOUNT_TEXT_CLASS } from "@/lib/tx-display";
+import { TransactionsToolbar } from "@/components/transactions/TransactionsToolbar";
 import { Button } from "@/components/ui/button";
 import { useGlobalDrawers } from "@/hooks/useGlobalDrawers";
 import { usePrivacyMode } from "@/hooks/usePrivacyMode";
 import { categoryFrequency, getCleanDetail, WHISPER_TYPES } from "@/lib/whisper";
-import "@/components/whisper.css";
+import "@/components/shared/whisper.css";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -28,14 +30,14 @@ import { useSearchFocusShortcut } from "@/hooks/useSearchFocusShortcut";
 import { useCategories } from "@/hooks/useCategories";
 import { useCreditCards } from "@/hooks/useCreditCards";
 import { useSharedExpenses } from "@/hooks/useSharedExpenses";
-import SharedExpenseDrawer from "@/components/SharedExpenseDrawer";
-import { BankSyncModal } from "@/components/BankSyncModal";
+import SharedExpenseDrawer from "@/components/transactions/SharedExpenseDrawer";
+import { BankSyncModal } from "@/components/bank-sync/BankSyncModal";
 import { useBankSyncContext } from "@/contexts/BankSyncContext";
 import { format } from "date-fns";
 import Papa from "papaparse";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
-import type { DateRangeValue } from "@/components/DateRangeFilter";
+import type { DateRangeValue } from "@/components/transactions/DateRangeFilter";
 import {
   TransactionType,
   allowsNegativeAmount,
@@ -43,10 +45,8 @@ import {
   CARD_PAYMENT_ICON,
   isCardPaymentCategory,
 } from "@/lib/ledger";
+import { clp } from "@/lib/format";
 
-// ── Editor de movimientos: corregir la categoría es un toque ──
-
-/** Colores para una categoría nueva creada desde el composer. */
 const CATEGORY_COLORS = [
   "#ef4444", "#f97316", "#f59e0b", "#10b981", "#14b8a6", "#0ea5e9",
   "#3b82f6", "#6366f1", "#8b5cf6", "#a855f7", "#ec4899", "#64748b",
@@ -54,29 +54,20 @@ const CATEGORY_COLORS = [
 
 const LOSS_ACCENT = "oklch(var(--destructive))";
 
-/** Un instante como valor de <input type="datetime-local">, en hora local. */
 const toLocalInput = (d: Date) => new Date(d.getTime() - d.getTimezoneOffset() * 60000).toISOString().slice(0, 16);
 
-const formatCurrency = (amount: number) =>
-  new Intl.NumberFormat("es-CL", { style: "currency", currency: "CLP" }).format(amount);
-
 const EMPTY_FORM = {
-  // Fecha y hora como valor de datetime-local, en hora local.
   date: "",
-  // El monto, solo dígitos; vacío deja el guardado.
   value: "",
   category_name: "",
   type: "Gasto" as TransactionType,
   card_id: null as string | null,
-  // Solo aplica al rendimiento, el único tipo que puede ser negativo.
   isLoss: false,
 };
 
-/** Agrega el ítem a la lista, o lo saca si ya estaba. */
 const toggleById = <T extends { id: string }>(list: T[], item: T) =>
   list.some((d) => d.id === item.id) ? list.filter((d) => d.id !== item.id) : [...list, item];
 
-/** Panel para elegir deudas pendientes y aplicarles este movimiento. */
 function DebtPanel({
   title,
   onClose,
@@ -129,16 +120,12 @@ function DebtPanel({
             }}
             className="whisper-tx-row"
           >
-            {/* Indicador visual, NO un Checkbox de Radix: un Checkbox
-                controlado dentro de un <form> monta un input oculto que
-                re-despacha un evento 'click' burbujeante cada vez que
-                cambia `checked`, y entra en loop infinito. */}
             <span className="whisper-tx-check" aria-hidden="true">{isSelected && <Check size={10} />}</span>
             <span className="name">
               <span>{debt.name}</span>
               <small>{debt.detail}</small>
             </span>
-            <span className={cn("amt", blur && "privacy-blur")}>{formatCurrency(debt.amount)}</span>
+            <span className={cn("amt", blur && "privacy-blur")}>{clp(debt.amount)}</span>
           </div>
         );
       })}
@@ -148,7 +135,7 @@ function DebtPanel({
             <span>
               {selected.length} deuda{plural} seleccionada{plural}
             </span>
-            <b className={cn(totalMismatch && "warn", blur && "privacy-blur")}>{formatCurrency(selectedTotal)}</b>
+            <b className={cn(totalMismatch && "warn", blur && "privacy-blur")}>{clp(selectedTotal)}</b>
           </div>
           <button type="button" className="whisper-tx-mini primary" disabled={pending} onClick={onConfirm}>
             <Check size={12} /> {confirmLabel}
@@ -165,9 +152,7 @@ export default function Transactions() {
     futureTransactions,
     allTransactions,
     updateTransaction,
-    updateTransactionSilent,
-    deleteTransaction,
-    deleteMultipleTransactions,
+    deleteTransactions,
     updateMultipleTransactions,
     duplicateTransactions,
   } = useTransactions();
@@ -191,31 +176,24 @@ export default function Transactions() {
 
   const [showFuture, setShowFuture] = useState(false);
   const [isBankSyncOpen, setIsBankSyncOpen] = useState(false);
-  // Modo selección: los checkboxes y las acciones masivas aparecen a pedido.
   const [selecting, setSelecting] = useState(false);
   const [pageSize, setPageSize] = useState(100);
 
-  // El composer solo edita: los movimientos nuevos entran por el QuickAdd global.
-  // editingTransaction queda puesto al cerrar, así el fade de salida no cambia de modo.
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingTransaction, setEditingTransaction] = useState<Transaction | null>(null);
-  // El editor: detalles (monto, fecha, cuenta) abiertos, todas las categorías, categoría nueva en línea, error.
   const [txExpanded, setTxExpanded] = useState(false);
   const [allCategories, setAllCategories] = useState(false);
   const [newCategory, setNewCategory] = useState<{ name: string; icon: string; color: string } | null>(null);
   const [txError, setTxError] = useState("");
-  // El nombre del movimiento, editable en el título. Si no cambia, el detail guardado queda intacto.
   const [detailText, setDetailText] = useState("");
   const [sharedDrawerOpen, setSharedDrawerOpen] = useState(false);
   const [pendingTransaction, setPendingTransaction] = useState<{ id: string; amount: number } | null>(null);
   const [confirmPaid, setConfirmPaid] = useState<{ id: string; name: string; amount: number; detail?: string } | null>(null);
-  // Gasto ya dividido: la persona que se está agregando, o la deuda cuyo monto se edita.
   const [newDebtor, setNewDebtor] = useState<{ name: string; amount: string } | null>(null);
   const [editingDebtor, setEditingDebtor] = useState<{ id: string; amount: string } | null>(null);
   const [debtsToLink, setDebtsToLink] = useState<Array<{ id: string; debtorName: string; amount: number; transactionDetail?: string }>>([]);
   const [debtsIOweToSettle, setDebtsIOweToSettle] = useState<Array<{ id: string; debtorName: string; amount: number }>>([]);
   const [settleDebtToggle, setSettleDebtToggle] = useState(false);
-  // Deudas enlaza aquí con ?search=<detalle> para encontrar el gasto que originó la deuda.
   const [searchParams] = useSearchParams();
   const [searchValue, setSearchValue] = useState(searchParams.get("search") || "");
   const searchInputRef = useRef<HTMLInputElement>(null);
@@ -225,18 +203,14 @@ export default function Transactions() {
   const [cardFilter, setCardFilter] = useState("all");
   const [dateRange, setDateRange] = useState<DateRangeValue>({});
 
-  // Lo que espera confirmación para eliminarse: un id, o los de la selección.
   const [deleteId, setDeleteId] = useState<string | null>(null);
   const [deleteIds, setDeleteIds] = useState<string[]>([]);
   const [formData, setFormData] = useState(() => ({ ...EMPTY_FORM, date: toLocalInput(new Date()) }));
-  // El monto: lo escrito en "Monto", o el guardado si el campo queda vacío.
   const editingMagnitude = editingTransaction ? Math.abs(editingTransaction.amount) : 0;
   const effectiveAmount = Number(formData.value.replace(/\D/g, "")) || editingMagnitude;
   const composerType = WHISPER_TYPES.find((t) => t.type === formData.type) ?? WHISPER_TYPES[0];
   const composerAccent = formData.type === "Rendimiento" && formData.isLoss ? LOSS_ACCENT : composerType.color;
 
-  // Las categorías que ofrece el filtro: las que aparecen en lo que se está
-  // viendo, con su emoji ya resuelto.
   const toolbarCategories = useMemo(
     () =>
       Array.from(
@@ -256,7 +230,6 @@ export default function Transactions() {
     [transactions, futureTransactions, showFuture, categories]
   );
 
-  // Las categorías del tipo elegido, las más usadas primero; cinco a la vista.
   const availableCategories = useMemo(() => {
     const frequency = categoryFrequency(allTransactions, formData.type);
     return categories
@@ -269,10 +242,6 @@ export default function Transactions() {
       )
       .sort((a, b) => (frequency.get(b.name) ?? 0) - (frequency.get(a.name) ?? 0) || a.name.localeCompare(b.name));
   }, [categories, allTransactions, formData.type]);
-  // "Pago de tarjeta" es una categoría del sistema: no vive en la tabla, pero
-  // se elige acá para marcar a mano un pago que la importación no reconoció.
-  // Siempre a la vista en Gasto e Ingreso; si alguien ya tiene la suya ("Pago
-  // Tarjeta"), se ofrece esa.
   const cardPaymentOption = useMemo(() => {
     if (formData.type !== "Gasto" && formData.type !== "Ingreso") return null;
     const own = availableCategories.find((c) => isCardPaymentCategory(c.name));
@@ -288,7 +257,6 @@ export default function Transactions() {
   }, [availableCategories, formData.type]);
   const visibleCategories = useMemo(() => {
     const top = allCategories ? availableCategories : availableCategories.slice(0, 5);
-    // La categoría del movimiento que se edita siempre se ve, aunque no sea de las frecuentes.
     const current = availableCategories.find((c) => c.name === formData.category_name);
     const shown = current && !top.includes(current) ? [...top, current] : top;
     return cardPaymentOption && !shown.includes(cardPaymentOption) ? [...shown, cardPaymentOption] : shown;
@@ -302,26 +270,21 @@ export default function Transactions() {
     setNewCategory(null);
     setTxError("");
   };
-  const cycleType = (backwards: boolean) => {
-    const index = WHISPER_TYPES.findIndex((t) => t.type === formData.type);
-    changeType(WHISPER_TYPES[(index + (backwards ? WHISPER_TYPES.length - 1 : 1)) % WHISPER_TYPES.length].type);
-  };
 
-  const createCategory = async () => {
+  const createCategory = () => {
     if (!newCategory || !newCategory.name.trim()) return;
     const name = newCategory.name.trim();
-    try {
-      await addCategory.mutateAsync({ name, type: formData.type, color: newCategory.color, icon: newCategory.icon || "🏷️" });
-    } catch {
-      // addCategory ya notifica el error; quedarse en el form.
-      return;
-    }
-    setNewCategory(null);
-    await saveEdit({ category_name: name });
+    addCategory.mutate(
+      { name, type: formData.type, color: newCategory.color, icon: newCategory.icon || "🏷️" },
+      {
+        onSuccess: () => {
+          setNewCategory(null);
+          saveEdit({ category_name: name });
+        },
+      },
+    );
   };
 
-  // Lo que alimenta los paneles de deudas: lo pendiente en cada dirección, y
-  // lo ya dividido del movimiento que se edita.
   const existingShared = editingTransaction ? getSharedExpensesByTransaction(editingTransaction.id) : [];
   const pendingDebts = sharedExpensesWithTransaction.filter((se) => !se.paid && se.direction === "they_owe_me");
   const pendingIOwe = sharedExpensesWithTransaction.filter((se) => !se.paid && se.direction === "i_owe_them");
@@ -335,9 +298,7 @@ export default function Transactions() {
     resetForm();
   };
 
-  /** Guarda el movimiento. `overrides` permite guardar al tocar una categoría,
-   *  y `split` abre el reparto del gasto compartido después de guardar. */
-  const saveEdit = async (overrides: Partial<typeof formData> = {}, { split = false } = {}) => {
+  const saveEdit = (overrides: Partial<typeof formData> = {}, { split = false } = {}) => {
     if (!editingTransaction || updateTransaction.isPending) return;
     const data = { ...formData, ...overrides };
     if (!data.date || !Number.isFinite(new Date(data.date).getTime())) {
@@ -346,33 +307,34 @@ export default function Transactions() {
       return;
     }
 
-    // Un rendimiento negativo es un mes malo, no un error: el resto de los
-    // tipos siempre va en positivo.
     const amount = allowsNegativeAmount(data.type) && data.isLoss ? -effectiveAmount : effectiveAmount;
-    // El badge del bot sobrevive a que le cambies el nombre, igual que en la
-    // edición inline de la tabla. Un nombre vacío no borra el guardado.
     const prefix = (editingTransaction.detail || "").startsWith("🤖") ? "🤖 " : "";
     const newDetail = detailText.trim();
     const detailChanged = !!newDetail && newDetail !== getCleanDetail(editingTransaction.detail);
 
-    await updateTransaction.mutateAsync({
-      id: editingTransaction.id,
-      category_name: data.category_name,
-      type: data.type,
-      card_id: data.card_id,
-      ...(detailChanged ? { detail: prefix + newDetail } : {}),
-      date: new Date(data.date).toISOString(),
-      amount,
-    });
-
-    if (split) {
-      setPendingTransaction({ id: editingTransaction.id, amount });
-      setIsDialogOpen(false);
-      setSharedDrawerOpen(true);
-      return;
-    }
-
-    closeComposer();
+    const transactionId = editingTransaction.id;
+    updateTransaction.mutate(
+      {
+        id: transactionId,
+        category_name: data.category_name,
+        type: data.type,
+        card_id: data.card_id,
+        ...(detailChanged ? { detail: prefix + newDetail } : {}),
+        date: new Date(data.date).toISOString(),
+        amount,
+      },
+      {
+        onSuccess: () => {
+          if (!split) {
+            closeComposer();
+            return;
+          }
+          setPendingTransaction({ id: transactionId, amount });
+          setIsDialogOpen(false);
+          setSharedDrawerOpen(true);
+        },
+      },
+    );
   };
 
   const handleSubmit = (e: React.FormEvent) => {
@@ -380,42 +342,40 @@ export default function Transactions() {
     saveEdit();
   };
 
-  const handleSharedExpenseConfirm = async (debtors: Array<{ name: string; amount: number }>) => {
+  const handleSharedExpenseConfirm = (debtors: Array<{ name: string; amount: number }>) => {
     if (!pendingTransaction) return;
-
-    try {
-      await addSharedExpenses.mutateAsync(
-        debtors.map((d) => ({
-          transaction_id: pendingTransaction.id,
-          debtor_name: d.name,
-          amount_owed: d.amount,
-          detail: null,
-        }))
-      );
-
-      toast.success(`Gasto compartido dividido entre ${debtors.length} persona${debtors.length > 1 ? "s" : ""}`);
-    } catch (error) {
-      console.error("Error guardando gastos compartidos:", error);
-    }
-
-    setPendingTransaction(null);
-    resetForm();
+    addSharedExpenses.mutate(
+      debtors.map((d) => ({
+        transaction_id: pendingTransaction.id,
+        debtor_name: d.name,
+        amount_owed: d.amount,
+        detail: null,
+      })),
+      {
+        onSuccess: () => toast.success(`Gasto compartido dividido entre ${debtors.length} persona${debtors.length > 1 ? "s" : ""}`),
+        onSettled: resetForm,
+      },
+    );
   };
 
-  const handleMarkAsPaid = async () => {
+  const handleMarkAsPaid = () => {
     if (!confirmPaid) return;
-    await markAsPaid.mutateAsync({
-      sharedExpenseId: confirmPaid.id,
-      debtorName: confirmPaid.name,
-      amount: confirmPaid.amount,
-      transactionDetail: confirmPaid.detail,
-    });
-    // Actualizar el monto para que "Guardar cambios" no sobreescriba el monto reducido
-    const newAmount = effectiveAmount - confirmPaid.amount;
-    if (newAmount >= 0) {
-      setFormData((prev) => ({ ...prev, value: String(newAmount) }));
-    }
-    setConfirmPaid(null);
+    const paid = confirmPaid;
+    markAsPaid.mutate(
+      {
+        sharedExpenseId: paid.id,
+        debtorName: paid.name,
+        amount: paid.amount,
+        transactionDetail: paid.detail,
+      },
+      {
+        onSuccess: () => {
+          const reducedAmount = effectiveAmount - paid.amount;
+          if (reducedAmount >= 0) setFormData((prev) => ({ ...prev, value: String(reducedAmount) }));
+          setConfirmPaid(null);
+        },
+      },
+    );
   };
 
   const resetForm = () => {
@@ -433,11 +393,6 @@ export default function Transactions() {
     setSettleDebtToggle(false);
   };
 
-  // Ghost click de iOS: al tocar "Eliminar" (en el menú de una card, el
-  // panel de selección o el propio diálogo de confirmación) el overlay se
-  // desmonta y el click retrasado del navegador aterriza en la card que
-  // quedó debajo, abriendo Editar sin querer. Cualquier paso del flujo de
-  // eliminar arma esta ventana y handleEdit la respeta.
   const editGhostGuardRef = useRef(0);
   const armEditGuard = () => {
     editGhostGuardRef.current = Date.now();
@@ -458,7 +413,6 @@ export default function Transactions() {
       isLoss: transaction.amount < 0,
     });
     setDetailText(getCleanDetail(transaction.detail));
-    // Monto, fecha y cuenta casi nunca cambian: parten cerrados.
     setTxExpanded(false);
     setTxError("");
 
@@ -470,7 +424,7 @@ export default function Transactions() {
     setDeleteId(id);
   };
 
-  const handleDeleteMultiple = async (ids: string[]) => {
+  const handleDeleteMultiple = (ids: string[]) => {
     armEditGuard();
     setDeleteIds(ids);
   };
@@ -492,13 +446,11 @@ export default function Transactions() {
     link.click();
   };
 
-
   return (
     <Layout>
       <div className="space-y-6">
         <div className="flex items-center justify-between">
           <h1 className="text-xl font-medium">Movimientos</h1>
-          {/* Casi todo llega solo: anotar a mano es secundario */}
           <Button variant="ghost" size="sm" className="gap-1.5 text-muted-foreground" onClick={() => useGlobalDrawers.getState().openQuickAdd("Gasto")} aria-label="Agregar movimiento">
             <Plus className="h-4 w-4" />
             <span className="hidden sm:inline">Agregar</span>
@@ -518,7 +470,6 @@ export default function Transactions() {
                   data-scrollable
                   className="whisper-composer"
                   style={{ "--whisper-accent": composerAccent } as React.CSSProperties}
-                  // Sin foco automático: en el celular no abre el teclado.
                   onOpenAutoFocus={(event) => event.preventDefault()}
                 >
                   <Dialog.Title className="sr-only">Editar movimiento</Dialog.Title>
@@ -530,7 +481,6 @@ export default function Transactions() {
                   </Dialog.Close>
 
                   <form id="transaction-form" onSubmit={handleSubmit} className="whisper-form edit-tx">
-                    {/* Tipo */}
                     <div className="whisper-type">
                       <span className="whisper-dot" aria-hidden="true" />
                       <span aria-hidden="true">{formData.type}</span>
@@ -546,7 +496,6 @@ export default function Transactions() {
                       <ChevronDown size={12} aria-hidden="true" />
                     </div>
 
-                    {/* Qué movimiento es: el nombre (editable) y una línea con monto, fecha y cuenta */}
                     <div className="edit-tx-head">
                       <input
                         aria-label="Nombre del movimiento"
@@ -560,7 +509,7 @@ export default function Transactions() {
                       <p className="edit-tx-meta">
                         <b className={cn(isPrivacyMode && "privacy-blur")}>
                           {formData.type === "Rendimiento" && formData.isLoss ? "−" : ""}
-                          {formatCurrency(effectiveAmount)}
+                          {clp(effectiveAmount)}
                         </b>
                         {Number.isFinite(new Date(formData.date).getTime()) && (
                           <span>{format(new Date(formData.date), "d MMM, HH:mm", { locale: es })}</span>
@@ -572,7 +521,6 @@ export default function Transactions() {
                       </p>
                     </div>
 
-                    {/* Categorías */}
                     <div className="whisper-category-space">
                       {formData.type === "Rendimiento" && (
                         <div className="whisper-categories whisper-tx-sign" role="group" aria-label="Ganancia o pérdida">
@@ -661,7 +609,6 @@ export default function Transactions() {
                               className="whisper-category"
                               aria-pressed={formData.category_name === category.name}
                               disabled={updateTransaction.isPending}
-                              // Corregir la categoría es la acción principal: un toque guarda y cierra.
                               onClick={() => saveEdit({ category_name: category.name })}
                             >
                               <span className="whisper-category-dot" aria-hidden="true" />
@@ -693,7 +640,6 @@ export default function Transactions() {
 
                     </div>
 
-                    {/* Gasto compartido: guarda y abre el reparto */}
                     {formData.type === "Gasto" && existingShared.length === 0 && (
                       <button
                         type="button"
@@ -705,7 +651,6 @@ export default function Transactions() {
                       </button>
                     )}
 
-                    {/* Detalles: monto, fecha y cuenta. Casi nunca cambian, parten cerrados. */}
                     <AnimatePresence initial={false}>
                       {txExpanded && (
                         <motion.div
@@ -776,7 +721,6 @@ export default function Transactions() {
                       )}
                     </AnimatePresence>
 
-                    {/* Vincular a deuda(s) pendiente(s): Ingreso o Reembolso */}
                     {showLinkPanel && (
                       <DebtPanel
                         title="Vincular a una deuda pendiente"
@@ -800,22 +744,23 @@ export default function Transactions() {
                         blur={isPrivacyMode}
                         confirmLabel="Vincular seleccionadas"
                         pending={linkExistingTransactionToDebts.isPending}
-                        onConfirm={async () => {
-                          await linkExistingTransactionToDebts.mutateAsync({
-                            debts: debtsToLink.map((d) => ({
-                              sharedExpenseId: d.id,
-                              amount: d.amount,
-                              debtorName: d.debtorName,
-                              transactionDetail: d.transactionDetail,
-                            })),
-                            existingTransactionId: editingTransaction.id,
-                          });
-                          closeComposer();
-                        }}
+                        onConfirm={() =>
+                          linkExistingTransactionToDebts.mutate(
+                            {
+                              debts: debtsToLink.map((d) => ({
+                                sharedExpenseId: d.id,
+                                amount: d.amount,
+                                debtorName: d.debtorName,
+                                transactionDetail: d.transactionDetail,
+                              })),
+                              existingTransactionId: editingTransaction.id,
+                            },
+                            { onSuccess: closeComposer },
+                          )
+                        }
                       />
                     )}
 
-                    {/* Gasto compartido ya dividido: se edita acá mismo */}
                     {formData.type === "Gasto" && existingShared.length > 0 && (() => {
                       const liveTxAmount = transactions.find((t) => t.id === editingTransaction.id)?.amount ?? effectiveAmount;
                       const alreadyAssignedAll = existingShared.reduce((sum, se) => sum + se.amount_owed, 0);
@@ -845,10 +790,11 @@ export default function Transactions() {
                             const editRemaining = effectiveAmount - otherAssigned;
                             const editExceeds = editAmount > editRemaining;
                             const editValid = draft && editAmount > 0 && !editExceeds;
-                            const saveAmount = async () => {
-                              await updateSharedExpenseAmount.mutateAsync({ id: se.id, amount_owed: editAmount });
-                              setEditingDebtor(null);
-                            };
+                            const saveAmount = () =>
+                              updateSharedExpenseAmount.mutate(
+                                { id: se.id, amount_owed: editAmount },
+                                { onSuccess: () => setEditingDebtor(null) },
+                              );
 
                             return (
                               <div key={se.id} className="whisper-tx-row" data-paid={se.paid || undefined}>
@@ -863,7 +809,7 @@ export default function Transactions() {
                                     <small>Pagado {se.paid_at ? new Date(se.paid_at).toLocaleDateString("es-CL") : ""}</small>
                                   )}
                                   {isEditingThis && editExceeds && (
-                                    <small className="warn">Máximo disponible: {formatCurrency(editRemaining)}</small>
+                                    <small className="warn">Máximo disponible: {clp(editRemaining)}</small>
                                   )}
                                 </span>
                                 {isEditingThis ? (
@@ -907,7 +853,7 @@ export default function Transactions() {
                                   </span>
                                 ) : (
                                   <>
-                                    <span className={cn("amt", isPrivacyMode && "privacy-blur")}>{formatCurrency(se.amount_owed)}</span>
+                                    <span className={cn("amt", isPrivacyMode && "privacy-blur")}>{clp(se.amount_owed)}</span>
                                     <span className="whisper-tx-row-actions">
                                       {!se.paid && (
                                         <>
@@ -953,7 +899,7 @@ export default function Transactions() {
                           {myShare >= 0 && (
                             <div className="whisper-tx-foot">
                               <span>Tu parte</span>
-                              <b className={cn(isPrivacyMode && "privacy-blur")}>{formatCurrency(myShare)}</b>
+                              <b className={cn(isPrivacyMode && "privacy-blur")}>{clp(myShare)}</b>
                             </div>
                           )}
 
@@ -961,7 +907,7 @@ export default function Transactions() {
                             <div className="whisper-tx-add">
                               <div className="whisper-tx-foot">
                                 <span>Disponible para asignar</span>
-                                <b className={cn(remaining <= 0 && "warn", isPrivacyMode && "privacy-blur")}>{formatCurrency(remaining)}</b>
+                                <b className={cn(remaining <= 0 && "warn", isPrivacyMode && "privacy-blur")}>{clp(remaining)}</b>
                               </div>
                               <div className="whisper-tx-inline">
                                 <input
@@ -990,15 +936,17 @@ export default function Transactions() {
                                   type="button"
                                   className="whisper-tx-mini primary"
                                   disabled={!isFormValid}
-                                  onClick={async () => {
-                                    await addSharedExpenses.mutateAsync([{
-                                      transaction_id: editingTransaction.id,
-                                      debtor_name: newDebtor.name.trim(),
-                                      amount_owed: newAmount,
-                                      detail: null,
-                                    }]);
-                                    setNewDebtor(null);
-                                  }}
+                                  onClick={() =>
+                                    addSharedExpenses.mutate(
+                                      [{
+                                        transaction_id: editingTransaction.id,
+                                        debtor_name: newDebtor.name.trim(),
+                                        amount_owed: newAmount,
+                                        detail: null,
+                                      }],
+                                      { onSuccess: () => setNewDebtor(null) },
+                                    )
+                                  }
                                 >
                                   <Check size={12} /> Agregar
                                 </button>
@@ -1012,7 +960,7 @@ export default function Transactions() {
                                 </button>
                               </div>
                               {exceedsLimit && (
-                                <p className="whisper-tx-note warn">El monto supera el disponible ({formatCurrency(remaining)})</p>
+                                <p className="whisper-tx-note warn">El monto supera el disponible ({clp(remaining)})</p>
                               )}
                             </div>
                           )}
@@ -1020,7 +968,6 @@ export default function Transactions() {
                       );
                     })()}
 
-                    {/* Saldar deuda(s) que yo debo: solo Gasto */}
                     {formData.type === "Gasto" && settleDebtToggle && pendingIOwe.length > 0 && (
                       <DebtPanel
                         title="Saldar una deuda que debo"
@@ -1043,13 +990,15 @@ export default function Transactions() {
                         blur={isPrivacyMode}
                         confirmLabel="Saldar seleccionadas"
                         pending={settleDebtsIOwe.isPending}
-                        onConfirm={async () => {
-                          await settleDebtsIOwe.mutateAsync({
-                            debts: debtsIOweToSettle.map((d) => ({ sharedExpenseId: d.id })),
-                            existingTransactionId: editingTransaction.id,
-                          });
-                          closeComposer();
-                        }}
+                        onConfirm={() =>
+                          settleDebtsIOwe.mutate(
+                            {
+                              debts: debtsIOweToSettle.map((d) => ({ sharedExpenseId: d.id })),
+                              existingTransactionId: editingTransaction.id,
+                            },
+                            { onSuccess: closeComposer },
+                          )
+                        }
                       />
                     )}
 
@@ -1093,7 +1042,6 @@ export default function Transactions() {
           onReset={bankSync.reset}
         />
 
-        {/* Toolbar: una línea, ver TransactionsToolbar para el criterio */}
         <TransactionsToolbar
           searchValue={searchValue}
           onSearchChange={setSearchValue}
@@ -1129,16 +1077,10 @@ export default function Transactions() {
           categories={categories}
           onEdit={handleEdit}
           onDelete={handleDelete}
-          onUpdateSilent={async (id, updates) => {
-            await updateTransactionSilent.mutateAsync({ id, ...updates });
-          }}
+          onUpdateSilent={(id, updates) => updateTransaction.mutate({ id, ...updates })}
           onDeleteMultiple={handleDeleteMultiple}
-          onUpdateMultiple={async (ids, updates) => {
-            await updateMultipleTransactions.mutateAsync({ ids, updates });
-          }}
-          onDuplicate={async (ids) => {
-            await duplicateTransactions.mutateAsync(ids);
-          }}
+          onUpdateMultiple={(ids, updates) => updateMultipleTransactions.mutate({ ids, updates })}
+          onDuplicate={(ids) => duplicateTransactions.mutate(ids)}
           searchValue={searchValue}
           onSearchChange={setSearchValue}
           typeFilter={typeFilter}
@@ -1170,7 +1112,7 @@ export default function Transactions() {
           armEditGuard();
           setDeleteId(null);
         }}
-        onConfirm={() => deleteId && deleteTransaction.mutateAsync(deleteId)}
+        onConfirm={() => deleteId && deleteTransactions.mutate([deleteId])}
         title="¿Eliminar transacción?"
         description="Esta acción no se puede deshacer."
         confirmText="Eliminar"
@@ -1185,9 +1127,9 @@ export default function Transactions() {
                 <span className="font-medium">{tx.detail || "Sin detalle"}</span>
                 <span className={cn(
                   "font-medium font-mono tabular-nums",
-                  typeAmountColors[tx.type]
+                  AMOUNT_TEXT_CLASS[tx.type]
                 )}>
-                  {formatCurrency(tx.amount)}
+                  {clp(tx.amount)}
                 </span>
               </div>
               <div className="flex items-center justify-between text-xs text-muted-foreground">
@@ -1206,7 +1148,7 @@ export default function Transactions() {
           armEditGuard();
           setDeleteIds([]);
         }}
-        onConfirm={() => deleteMultipleTransactions.mutateAsync(deleteIds)}
+        onConfirm={() => deleteTransactions.mutate(deleteIds)}
         title={`¿Eliminar ${deleteIds.length} transacciones?`}
         description="Esta acción eliminará las transacciones seleccionadas. Podrás deshacerlo desde el toast de confirmación."
         confirmText={`Eliminar ${deleteIds.length}`}

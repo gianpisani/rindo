@@ -1,12 +1,3 @@
-/**
- * El ritmo del mes: cuánto llevas gastado hoy contra lo que tu yo de los
- * últimos meses llevaba gastado al mismo día (tu "mes típico").
- *
- * No compara contra un presupuesto (eso vive en /budget), compara contra ti:
- * por eso puede mejorar o empeorar día a día. Función pura, sin alias `@/`,
- * para poder testearla con `node --test`.
- */
-
 export interface PaceEntry {
   type: string;
   date: string;
@@ -17,30 +8,22 @@ export interface PaceEntry {
 
 export interface PaceDriver {
   category: string;
-  /** Gasto neto acumulado de la categoría hasta el día de corte. */
   me: number;
-  /** Mediana de lo que llevabas en esa categoría al mismo día. */
   typical: number;
   delta: number;
 }
 
 export interface MonthPace {
   daysInMonth: number;
-  /** Día de corte: hoy si el mes está en curso, el último si ya cerró. */
   asOfDay: number;
   isLive: boolean;
-  /** Gasto neto acumulado por día (índice 0..daysInMonth, 0 = antes de empezar). */
   me: number[];
-  /** Tu mes típico acumulado: mediana y banda p25–p75 (null sin historia). */
   typical: { median: number[]; low: number[]; high: number[] } | null;
-  /** Cuántos meses pasados forman el mes típico. */
   typicalMonths: number;
   spentSoFar: number;
   typicalSoFar: number;
-  /** spentSoFar − typicalSoFar: negativo = vas bajo tu ritmo. */
   delta: number;
   typicalTotal: number;
-  /** Lo que llevas + lo que sueles gastar de acá a fin de mes. */
   projectedTotal: number;
   drivers: PaceDriver[];
 }
@@ -56,11 +39,9 @@ import { DEFAULT_TRANSIT_CATEGORIES, isCardPayment } from "./ledger.ts";
 
 export const PACE_LOOKBACK_MONTHS = 6;
 
-/** Gasto neto por categoría y día de cada periodo: índice(periodo) → categoría → [0..días]. */
 function dailyByCategory(entries: PaceEntry[], transit: Set<string>, startDay: number) {
   const months = new Map<number, Map<string, number[]>>();
   for (const e of entries) {
-    // El pago de la tarjeta no es gasto: sus compras ya cuentan.
     if (isCardPayment(e)) continue;
     const expense = e.type === "Gasto" && !transit.has(e.category_name);
     const refund =
@@ -94,7 +75,6 @@ function quantile(values: number[], q: number) {
   return s[lo] + (s[hi] - s[lo]) * (pos - lo);
 }
 
-/** Lleva el día `d` de un mes de `days` días al día equivalente de otro de `len`. */
 const scaleDay = (d: number, days: number, len: number) =>
   Math.min(len, Math.round((d * len) / days));
 
@@ -125,7 +105,6 @@ export function computeMonthPace(
   const current = byMonth.get(key);
   const me = cumulative(totalDaily(current, days));
 
-  // Meses pasados con gasto: forman el mes típico.
   const past: Array<{ len: number; cum: number[]; cats: Map<string, number[]> }> = [];
   for (let back = 1; back <= lookback; back++) {
     const pk = key - back;
@@ -158,7 +137,6 @@ export function computeMonthPace(
     ? spentSoFar + Math.max(0, typicalTotal - typicalSoFar)
     : spentSoFar;
 
-  // Qué categorías explican la diferencia contra tu mes típico.
   const drivers: PaceDriver[] = [];
   if (past.length > 0) {
     const names = new Set<string>(current ? [...current.keys()] : []);
@@ -198,7 +176,6 @@ export function computeMonthPace(
 
 export type PaceVerdict = "under" | "even" | "over";
 
-/** ±5% del típico a la fecha cuenta como "en tu ritmo". */
 export function paceVerdict(pace: MonthPace): PaceVerdict {
   if (!pace.typical) return "even";
   const band = Math.max(5_000, pace.typicalSoFar * 0.05);

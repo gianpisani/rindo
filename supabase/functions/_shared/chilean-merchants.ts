@@ -1,10 +1,6 @@
 import { normalizeMerchant } from './category-history.ts'
 
-// What a Chilean merchant *is*, never which of the user's categories it maps to:
-// categories are personal, so Jev maps the description onto them. Aliases are
-// matched as whole words on the normalized detail (lowercase, no accents).
 const merchants: [aliases: string[], description: string][] = [
-  // Supermercados
   [['jumbo'], 'Jumbo: cadena de supermercados/hipermercados (Cencosud).'],
   [['lider', 'hiper lider', 'lider express', 'liderexpress', 'walmart'], 'Lider / Lider Express: cadena de supermercados de Walmart Chile.'],
   [['tottus'], 'Tottus: cadena de supermercados (Falabella).'],
@@ -23,7 +19,6 @@ const merchants: [aliases: string[], description: string][] = [
   [['cornershop'], 'Cornershop: app de compras de supermercado a domicilio.'],
   [['frutos del maipo', 'la vega', 'lo valledor'], 'Mercado/feria de frutas, verduras y abarrotes.'],
 
-  // Farmacias y salud
   [['cruz verde'], 'Cruz Verde: cadena de farmacias.'],
   [['salcobrand'], 'Salcobrand: cadena de farmacias.'],
   [['ahumada', 'farmacias ahumada'], 'Farmacias Ahumada: cadena de farmacias.'],
@@ -35,7 +30,6 @@ const merchants: [aliases: string[], description: string][] = [
   [['isapre', 'colmena', 'banmedica', 'consalud', 'cruz blanca', 'nueva masvida', 'vida tres', 'fonasa'], 'Sistema previsional de salud (Isapre/Fonasa): cotización o plan de salud.'],
   [['optica', 'rotter krauss', 'opticas gmo', 'gmo'], 'Óptica: lentes y exámenes de la vista.'],
 
-  // Retail, tiendas por departamento y hogar
   [['falabella'], 'Falabella: tienda por departamento (ropa, tecnología, hogar); también banco/tarjeta CMR.'],
   [['ripley'], 'Ripley: tienda por departamento (ropa, tecnología, hogar); también banco/tarjeta Ripley.'],
   [['paris'], 'Paris: tienda por departamento (Cencosud): ropa, tecnología, hogar.'],
@@ -51,28 +45,23 @@ const merchants: [aliases: string[], description: string][] = [
   [['daiso', 'miniso'], 'Tienda de artículos variados de bajo costo (hogar, regalos, accesorios).'],
   [['lapiz lopez', 'librerias antartica', 'antartica', 'feria chilena del libro', 'buscalibre', 'contrapunto'], 'Librería o papelería (libros, útiles).'],
 
-  // Ropa, calzado y deporte
   [['h m', 'hm', 'zara', 'mango', 'forever 21', 'bershka', 'pull bear', 'stradivarius', 'tricot', 'corona', 'fashions park', 'family shop', 'gef', 'basement', 'sybilla', 'americanino', 'mossimo', 'uniqlo', 'shein', 'dijon'], 'Tienda de ropa y moda.'],
   [['bata', 'hush puppies', 'guante', 'aldo', 'skechers', 'crocs', 'vans', 'converse'], 'Tienda de calzado.'],
   [['decathlon', 'nike', 'adidas', 'puma', 'under armour', 'the north face', 'columbia', 'lippi', 'doite', 'andesgear', 'marmot', 'patagonia', 'sparta'], 'Tienda de artículos deportivos, outdoor o ropa deportiva.'],
 
-  // Tecnología
   [['pc factory', 'pcfactory'], 'PC Factory: tienda de computación y tecnología.'],
   [['mac online', 'maconline', 'ishop', 'apple store'], 'Tienda/servicio de productos Apple.'],
   [['samsung', 'xiaomi', 'sp digital', 'spdigital', 'microplay', 'weplay', 'zmart'], 'Tienda de tecnología, electrónica o videojuegos.'],
 
-  // Marketplaces y compras online
   [['mercadolibre', 'mercado libre', 'meli'], 'Mercado Libre: marketplace online (el producto comprado es desconocido).'],
   [['aliexpress', 'temu', 'amazon', 'ebay', 'linio', 'dafiti'], 'Marketplace o tienda online (el producto comprado es desconocido).'],
 
-  // Delivery y apps de comida
   [['uber eats', 'ubereats'], 'Uber Eats: delivery de comida (no es viaje de Uber).'],
   [['rappi'], 'Rappi: app de delivery de comida, supermercado y farmacia.'],
   [['pedidosya', 'pedidos ya'], 'PedidosYa: app de delivery de comida y supermercado.'],
   [['justo'], 'Justo: plataforma de pedidos directos a restaurantes.'],
   [['didi food'], 'DiDi Food: delivery de comida.'],
 
-  // Comida rápida, cafés y restaurantes
   [['mcdonalds', 'mc donalds', 'burger king', 'kfc', 'wendys', 'subway', 'taco bell', 'carls jr', 'popeyes', 'five guys', 'johnny rockets'], 'Cadena de comida rápida.'],
   [['dominos', 'papa johns', 'pizza hut', 'telepizza', 'little caesars', 'melt pizzas', 'melt'], 'Cadena de pizzerías.'],
   [['doggis', 'juan maestro', 'domino', 'lomiton', 'schopdog', 'fuente alemana', 'fuente mardoqueo', 'tip y tap', 'la fuente chilena', 'fuente de soda'], 'Local chileno de completos/sándwiches (comida rápida).'],
@@ -81,7 +70,6 @@ const merchants: [aliases: string[], description: string][] = [
   [['niu sushi', 'sushi', 'mr sushi', 'tanta', 'liguria', 'la piojera', 'el hoyo', 'bar nacional'], 'Restaurante o bar.'],
   [['cerveceria', 'botilleria', 'la vinoteca', 'mundo del vino'], 'Botillería o tienda de alcohol.'],
 
-  // Transporte
   [['uber', 'uber trip', 'uber rides'], 'Uber: viaje en auto por app (transporte). Distinto de Uber Eats.'],
   [['didi', 'cabify', 'indrive', 'beat'], 'App de viajes en auto (transporte).'],
   [['metro', 'bip', 'tarjeta bip', 'metrotren', 'efe', 'red movilidad', 'transantiago'], 'Transporte público (Metro de Santiago, tarjeta Bip!, trenes EFE, buses Red).'],
@@ -93,7 +81,6 @@ const merchants: [aliases: string[], description: string][] = [
   [['despegar', 'booking', 'airbnb', 'expedia', 'hotels com', 'cocha'], 'Agencia/plataforma de viajes o alojamiento.'],
   [['bird', 'lime', 'mobike', 'bike santiago'], 'Arriendo de scooters o bicicletas.'],
 
-  // Servicios básicos, telecom y hogar
   [['enel', 'cge', 'chilquinta', 'saesa', 'frontel'], 'Compañía eléctrica (cuenta de la luz).'],
   [['aguas andinas', 'esval', 'essbio', 'aguas del valle', 'nuevosur', 'smapa'], 'Compañía sanitaria (cuenta del agua).'],
   [['metrogas', 'lipigas', 'abastible', 'gasco'], 'Gas (cuenta del gas de cañería o cilindro).'],
@@ -105,7 +92,6 @@ const merchants: [aliases: string[], description: string][] = [
   [['registro civil', 'srcei'], 'Registro Civil (trámites, certificados, carnet).'],
   [['permiso de circulacion', 'municipalidad', 'muni'], 'Municipalidad: permisos de circulación, patentes o trámites municipales.'],
 
-  // Suscripciones y entretención
   [['netflix', 'disney', 'hbo', 'hbo max', 'prime video', 'star plus', 'paramount', 'crunchyroll', 'mubi', 'apple tv'], 'Suscripción de streaming de video.'],
   [['spotify', 'deezer', 'apple music', 'youtube premium', 'tidal'], 'Suscripción de streaming de música.'],
   [['chatgpt', 'openai', 'anthropic', 'claude', 'notion', 'google one', 'icloud', 'dropbox', 'adobe', 'canva', 'microsoft', 'github'], 'Suscripción de software o servicio digital.'],
@@ -115,39 +101,32 @@ const merchants: [aliases: string[], description: string][] = [
   [['smart fit', 'smartfit', 'sportlife', 'energy fitness', 'pacific fitness', 'o2 fitness', 'bodytech', 'crossfit'], 'Gimnasio.'],
   [['jardin infantil', 'colegio', 'universidad', 'duoc', 'inacap', 'udd', 'uai', 'uandes', 'usach', 'uchile'], 'Institución educacional (matrícula, mensualidad, arancel).'],
 
-  // Mascotas
   [['superzoo', 'pet happy', 'petco', 'club de perros y gatos', 'tusmascotas', 'veterinaria', 'vet'], 'Tienda de mascotas o veterinaria.'],
 
-  // Finanzas, pagos e intermediarios (el comercio real puede estar después)
   [['mercado pago', 'mercadopago', 'merpago'], 'Mercado Pago: procesador de pagos; el comercio real suele aparecer a continuación en el detalle.'],
   [['sumup', 'tuu', 'getnet', 'transbank', 'webpay', 'onepay', 'flow', 'khipu', 'payu', 'klap', 'mach', 'tenpo', 'fpay'], 'Procesador de pagos o billetera: intermediario; el comercio real suele aparecer a continuación en el detalle.'],
   [['afp', 'provida', 'habitat', 'afp capital', 'cuprum', 'afp modelo', 'planvital', 'afp uno'], 'AFP: ahorro previsional.'],
   [['fintual', 'racional', 'renta4', 'buda', 'orionx', 'cryptomkt', 'coinbase', 'binance'], 'Plataforma de inversión o criptomonedas.'],
   [['servipag', 'caja vecina', 'unired', 'sencillito'], 'Recaudador de pagos de cuentas; el servicio pagado puede aparecer en el detalle.'],
 
-  // Belleza y cuidado personal
   [['peluqueria', 'barberia', 'manicure', 'depilacion'], 'Peluquería, barbería o centro de belleza.'],
   [['sephora', 'mac cosmetics', 'the body shop', 'natura', 'avon', 'loreal'], 'Tienda de cosmética y cuidado personal.'],
 ]
 
-// Ambiguous words that also appear as ordinary text in details. They only count
-// when the detail mentions nothing else we recognize.
-const weakAliases = new Set(['paris', 'easy', 'flex', 'cic', 'vet', 'muni', 'tag', 'bip', 'metro', 'uber', 'beat', 'lime', 'bird', 'corona', 'imperial', 'colonia', 'melt', 'buses', 'mts', 'efe', 'jac', 'justo', 'sushi', 'flow', 'mach', 'energy', 'apple', 'capital', 'gmo', 'upa', 'claude', 'max'])
+const aliasesAlsoUsedAsOrdinaryWords = new Set(['paris', 'easy', 'flex', 'cic', 'vet', 'muni', 'tag', 'bip', 'metro', 'uber', 'beat', 'lime', 'bird', 'corona', 'imperial', 'colonia', 'melt', 'buses', 'mts', 'efe', 'jac', 'justo', 'sushi', 'flow', 'mach', 'energy', 'apple', 'capital', 'gmo', 'upa', 'claude', 'max'])
 
-const index = merchants.flatMap(([aliases, description]) =>
+const longestAliasFirst = merchants.flatMap(([aliases, description]) =>
   aliases.map(alias => ({ alias: normalizeMerchant(alias), description })))
-  // Longer aliases first so "uber eats" beats "uber" and "lider express" beats "lider".
   .sort((a, b) => b.alias.length - a.alias.length)
 
 export function chileanMerchantContext(detail: string): string[] {
   let text = ` ${normalizeMerchant(detail)} `
   const strong: string[] = []
   const weak: string[] = []
-  for (const { alias, description } of index) {
+  for (const { alias, description } of longestAliasFirst) {
     if (!text.includes(` ${alias} `)) continue
-    // Consume the match so a shorter alias inside it doesn't also fire.
     text = text.replace(` ${alias} `, '  ')
-    const bucket = weakAliases.has(alias) ? weak : strong
+    const bucket = aliasesAlsoUsedAsOrdinaryWords.has(alias) ? weak : strong
     if (!bucket.includes(description)) bucket.push(description)
   }
   return (strong.length ? strong : weak).slice(0, 3)

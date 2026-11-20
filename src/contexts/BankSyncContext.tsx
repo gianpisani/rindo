@@ -2,8 +2,7 @@ import { createContext, useContext, useState, useRef, useCallback, ReactNode } f
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { useQueryClient } from "@tanstack/react-query";
-
-// ── Types ─────────────────────────────────────────────────────────────────────
+import { errorMessage } from "@/lib/errors";
 
 export type SyncStep = "idle" | "submitting" | "polling" | "completed" | "failed";
 
@@ -21,13 +20,10 @@ export type SyncResult =
   | { imported: number; skipped: number; importedItems: SyncMovementItem[]; skippedItems: SyncMovementItem[] }
   | { error: string };
 
-// "YYYY-MM-DD" (native date input) → "DD-MM-YYYY" (API format)
 function toApiDate(yyyymmdd: string): string {
   const [yyyy, mm, dd] = yyyymmdd.split("-");
   return `${dd}-${mm}-${yyyy}`;
 }
-
-// ── Context shape ─────────────────────────────────────────────────────────────
 
 interface BankSyncContextValue {
   step: SyncStep;
@@ -42,8 +38,6 @@ interface BankSyncContextValue {
 }
 
 const BankSyncContext = createContext<BankSyncContextValue | null>(null);
-
-// ── Provider ─────────────────────────────────────────────────────────────────
 
 export function BankSyncProvider({ children }: { children: ReactNode }) {
   const queryClient = useQueryClient();
@@ -71,8 +65,6 @@ export function BankSyncProvider({ children }: { children: ReactNode }) {
     setPollStatus("queued");
     setResult(null);
   }, []);
-
-  // ── Polling ─────────────────────────────────────────────────────────────
 
   function startPolling(jobId: string) {
     stopPolling();
@@ -137,95 +129,48 @@ export function BankSyncProvider({ children }: { children: ReactNode }) {
         }
 
         setPollStatus(data.status);
-      } catch {
-        // Network hiccup — keep polling
+      } catch (error) {
+        console.warn("Falló una consulta de la sincronización; se reintenta", error);
       }
     } finally {
       isCallingRef.current = false;
     }
   }
 
-  // ── Start ────────────────────────────────────────────────────────────────
-
-  const startSync = useCallback(
-    async (params: { bank: string; rut: string; password: string; fromDate?: string; toDate?: string }) => {
+  const start = useCallback(
+    async (body: Record<string, string>, range: { fromDate?: string; toDate?: string }) => {
       setStep("submitting");
-
+      if (range.fromDate) body.fromDate = toApiDate(range.fromDate);
+      if (range.toDate) body.toDate = toApiDate(range.toDate);
       try {
-        const body: Record<string, string> = {
-          action: "start",
-          bank: params.bank,
-          rut: params.rut,
-          password: params.password,
-        };
-        if (params.fromDate) body.fromDate = toApiDate(params.fromDate);
-        if (params.toDate) body.toDate = toApiDate(params.toDate);
-
         const { data, error } = await supabase.functions.invoke("bank-sync", { body });
-
-        console.error("[bank-sync start] error:", error, "data:", data);
-
-        if (error) {
-          setResult({ error: error.message || "Error al llamar la función de sincronización." });
+        if (error || !data?.jobId) {
+          setResult({ error: data?.error || errorMessage(error) });
           setStep("failed");
           return;
         }
-        if (!data?.jobId) {
-          setResult({ error: data?.error || "La API no devolvió un jobId. Revisa las credenciales." });
-          setStep("failed");
-          return;
-        }
-
         setPollStatus(data.status ?? "queued");
         setStep("polling");
         startPolling(data.jobId);
       } catch (e) {
-        const msg = e instanceof Error ? e.message : "Error de red. Intenta de nuevo.";
-        console.error("[bank-sync start] catch:", e);
-        setResult({ error: msg });
+        setResult({ error: errorMessage(e) });
         setStep("failed");
       }
     },
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [queryClient]
+    [],
+  );
+
+  const startSync = useCallback(
+    ({ bank, rut, password, ...range }: { bank: string; rut: string; password: string; fromDate?: string; toDate?: string }) =>
+      start({ action: "start", bank, rut, password }, range),
+    [start],
   );
 
   const startSyncStored = useCallback(
-    async (params: { bank: string; fromDate?: string; toDate?: string }) => {
-      setStep("submitting");
-
-      try {
-        const body: Record<string, string> = {
-          action: "start-stored",
-          bank: params.bank,
-        };
-        if (params.fromDate) body.fromDate = toApiDate(params.fromDate);
-        if (params.toDate) body.toDate = toApiDate(params.toDate);
-
-        const { data, error } = await supabase.functions.invoke("bank-sync", { body });
-
-        if (error) {
-          setResult({ error: error.message || "Error al llamar la función de sincronización." });
-          setStep("failed");
-          return;
-        }
-        if (!data?.jobId) {
-          setResult({ error: data?.error || "La API no devolvió un jobId." });
-          setStep("failed");
-          return;
-        }
-
-        setPollStatus(data.status ?? "queued");
-        setStep("polling");
-        startPolling(data.jobId);
-      } catch (e) {
-        const msg = e instanceof Error ? e.message : "Error de red. Intenta de nuevo.";
-        setResult({ error: msg });
-        setStep("failed");
-      }
-    },
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    [queryClient]
+    ({ bank, ...range }: { bank: string; fromDate?: string; toDate?: string }) =>
+      start({ action: "start-stored", bank }, range),
+    [start],
   );
 
   const importSkipped = useCallback(
@@ -294,8 +239,6 @@ export function BankSyncProvider({ children }: { children: ReactNode }) {
     </BankSyncContext.Provider>
   );
 }
-
-// ── Consumer hook ─────────────────────────────────────────────────────────────
 
 export function useBankSyncContext() {
   const ctx = useContext(BankSyncContext);

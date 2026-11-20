@@ -1,14 +1,11 @@
-// Cliente mínimo de la API open-banking-chile: iniciar un scraping y consultar su job.
-// Lo usan bank-sync (el cliente hace el polling) y bank-sync-all (el cron hace el polling).
-
-import { encryptForTransit } from './crypto.ts'
 import type { ScrapeResult } from './bank-import.ts'
+import { encryptForTransit } from './crypto.ts'
 
 const OPEN_BANKING_BASE = 'https://open-banking-api-98187240066.southamerica-west1.run.app'
 
 export type JobStatus = 'queued' | 'running' | 'awaiting_2fa' | 'completed' | 'failed'
 
-export interface Job {
+interface Job {
   id: string
   bank: string
   status: JobStatus
@@ -19,7 +16,6 @@ export interface Job {
   error?: string
 }
 
-/** Inicia un job de scraping. Si la API responde con error devuelve `{ apiError }`. */
 export async function startScrape(
   apiKey: string,
   params: { bank: string; rut: string; password: string; fromDate?: string },
@@ -39,7 +35,6 @@ export async function startScrape(
   return { jobId, status }
 }
 
-/** Consulta el estado de un job. Si la API responde con error devuelve `{ apiError }`. */
 export async function getJob(apiKey: string, jobId: string): Promise<Job | { apiError: string }> {
   const res = await fetch(`${OPEN_BANKING_BASE}/api/v1/jobs/${jobId}`, {
     headers: { 'Authorization': `Bearer ${apiKey}` },

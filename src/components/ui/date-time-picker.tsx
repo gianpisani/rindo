@@ -138,7 +138,6 @@ export function DateTimePicker({
   );
 }
 
-// Versión compacta para tablas
 interface InlineDateTimePickerProps {
   value: Date;
   onChange: (date: Date) => void;

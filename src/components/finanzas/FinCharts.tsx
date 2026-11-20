@@ -1,11 +1,6 @@
 import { useRef, useState, type CSSProperties, type PointerEvent } from "react";
 import { cn } from "@/lib/utils";
-
-const clp = (value: number) =>
-  new Intl.NumberFormat("es-CL", { style: "currency", currency: "CLP", minimumFractionDigits: 0 }).format(value);
-
-// ─── Patrimonio en el tiempo ─────────────────────────────────────────────
-// Lo invertido abajo, lo líquido encima: la altura total es el patrimonio.
+import { clp } from "@/lib/format";
 
 export interface WorthPoint { label: string; liquido: number; invertido: number }
 
@@ -49,8 +44,6 @@ export function WorthChart({ points, onHover }: { points: WorthPoint[]; onHover:
   );
 }
 
-// ─── Mes a mes ───────────────────────────────────────────────────────────
-
 export interface MonthBar { key: string; label: string; ingreso: number; gasto: number; current: boolean }
 
 export function MonthBars({ months, onHover }: {
@@ -83,10 +76,6 @@ export function MonthBars({ months, onHover }: {
     </>
   );
 }
-
-// ─── Una categoría mes a mes ─────────────────────────────────────────────
-// El gasto de la categoría en el rango, para verlo en detalle junto a sus
-// movimientos: la línea punteada es el promedio y cada barra se puede tocar.
 
 export function CategoryHistory({ points, color, privacy }: {
   points: { label: string; value: number }[];
@@ -136,7 +125,6 @@ export function CategoryHistory({ points, color, privacy }: {
   );
 }
 
-/** La tendencia de una categoría, en su color: los meses previos atenuados, el en curso pleno. */
 export function Spark({ values, color }: { values: number[]; color?: string | null }) {
   const max = Math.max(1, ...values);
   return (
@@ -146,16 +134,9 @@ export function Spark({ values, color }: { values: number[]; color?: string | nu
   );
 }
 
-/**
- * Etiquetas de un eje ubicadas donde cae cada punto, a lo más ~6: con más,
- * se tocan en una pantalla angosta. La primera y la última se apoyan en los
- * bordes para no salirse de la tarjeta.
- */
 function AxisLabels({ labels, at }: { labels: string[]; at: (index: number) => number }) {
   const last = labels.length - 1;
   const every = Math.max(1, Math.ceil(labels.length / 6));
-  // Se cuenta hacia atrás desde el último mes: siempre aparece y el paso es
-  // parejo, así ninguna etiqueta se pisa con la de al lado.
   const shown = labels.map((_, i) => i).filter((i) => (last - i) % every === 0);
   return (
     <div className="fin-axis-abs" aria-hidden="true">

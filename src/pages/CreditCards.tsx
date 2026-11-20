@@ -2,10 +2,10 @@ import { useMemo, useState, type CSSProperties } from "react";
 import { format } from "date-fns";
 import { es } from "date-fns/locale";
 import { ChevronLeft, ChevronRight, MoreHorizontal, Pencil, Plus, Trash2 } from "lucide-react";
-import Layout from "@/components/Layout";
+import Layout from "@/components/layout/Layout";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
-import { EmptyState } from "@/components/EmptyState";
+import { EmptyState } from "@/components/shared/EmptyState";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -13,33 +13,23 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { useCreditCards, type CreditCard, type CreditCardSummary } from "@/hooks/useCreditCards";
-import { installmentProgress, useInstallments, type InstallmentPurchase } from "@/hooks/useInstallments";
+import { useInstallments, type InstallmentPurchase } from "@/hooks/useInstallments";
+import { installmentProgress } from "@/lib/installments";
 import { useTransactions } from "@/hooks/useTransactions";
 import { billingCycle, cardStatus, cycleStatement, type CardStatus } from "@/lib/card-cycle";
 import { isCardPayment } from "@/lib/ledger";
-import { CreditCardModal } from "@/components/CreditCardModal";
-import { InstallmentModal } from "@/components/InstallmentModal";
-import ConfirmDialog from "@/components/ConfirmDialog";
+import { CreditCardModal } from "@/components/credit-cards/CreditCardModal";
+import { InstallmentModal } from "@/components/credit-cards/InstallmentModal";
+import ConfirmDialog from "@/components/shared/ConfirmDialog";
 import { usePrivacyMode } from "@/hooks/usePrivacyMode";
 import { cn } from "@/lib/utils";
 import { inkOn } from "@/lib/category-color";
+import { clp } from "@/lib/format";
 
-/**
- * Tarjetas: ¿cuánto llevo este ciclo, cuándo cierra y cuándo pago? Cada
- * plástico lo responde de un vistazo. Abajo, las compras en cuotas (cuántas
- * quedan) y el estado de cuenta de la tarjeta elegida, ciclo por ciclo. Lo
- * largo scrollea adentro de su panel, nunca la página.
- */
-
-const formatCurrency = (v: number) =>
-  new Intl.NumberFormat("es-CL", { style: "currency", currency: "CLP", maximumFractionDigits: 0 }).format(v);
-
-/** Las filas del estado de cuenta van sin íconos: algunos detalles traen emoji y otros no. */
 const withoutEmoji = (text: string) => text.replace(/[\p{Extended_Pictographic}\u{FE0F}\u{200D}]/gu, "").replace(/\s+/g, " ").trim();
 
 const day = (d: Date) => format(d, "d MMM", { locale: es }).replace(".", "");
 
-/** El ciclo que se muestra en el estado de cuenta, con su nombre. */
 const labeledCycle = (billingDay: number, offset: number) => {
   const cycle = billingCycle(billingDay, offset);
   return { ...cycle, label: format(cycle.end, "MMMM yyyy", { locale: es }) };
@@ -67,22 +57,18 @@ export default function CreditCards() {
   const loading = isLoadingCards || isLoadingInstallments;
   const hasCards = cardSummaries.length > 0;
 
-  // ── Modales ──
   const [cardModalOpen, setCardModalOpen] = useState(false);
   const [installmentModalOpen, setInstallmentModalOpen] = useState(false);
   const [editingCard, setEditingCard] = useState<CreditCard | null>(null);
   const [editingInstallment, setEditingInstallment] = useState<InstallmentPurchase | null>(null);
-  // Eliminar tarjeta o compra: un solo diálogo. El contenido se queda mientras se cierra.
   const [toDelete, setToDelete] = useState<{ kind: "card" | "installment"; id: string } | null>(null);
   const [deleteOpen, setDeleteOpen] = useState(false);
   const [openInstallment, setOpenInstallment] = useState<string | null>(null);
 
-  // ── La tarjeta elegida manda el estado de cuenta ──
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [cycleOffset, setCycleOffset] = useState(0);
   const selected = cardSummaries.find((c) => c.id === selectedId) ?? cardSummaries[0];
 
-  // Lo que muestra cada plástico: lo por facturar y lo que queda por pagar.
   const cardCycles = useMemo(
     () => new Map(cardSummaries.map((card) => [card.id, cardStatus(transactions, card)] as const)),
     [cardSummaries, transactions]
@@ -97,7 +83,6 @@ export default function CreditCards() {
     [transactions, selected, cycle]
   );
 
-  // Cuotas: primero las que siguen corriendo, después las terminadas.
   const sortedInstallments = useMemo(() => {
     const rows = installments.map((installment) => ({ installment, progress: installmentProgress(installment) }));
     return [...rows.filter((r) => r.progress.active), ...rows.filter((r) => !r.progress.active)];
@@ -107,7 +92,6 @@ export default function CreditCards() {
     .reduce((sum, r) => sum + r.installment.installment_amount, 0);
   const hasActiveInstallments = monthlyPayment > 0;
 
-  // En celular, cuotas y estado de cuenta comparten el panel. Sin cuotas activas, parte en el estado de cuenta.
   const [mobileTab, setMobileTab] = useState<"cuotas" | "cuenta" | null>(null);
   const tab = mobileTab ?? (hasActiveInstallments ? "cuotas" : "cuenta");
 
@@ -185,7 +169,6 @@ export default function CreditCards() {
           </section>
         ) : (
           <div className="tj-grid" data-tab={tab}>
-            {/* Los plásticos */}
             <section className="tj-wallet" aria-label="Mis tarjetas">
               {cardSummaries.map((card) => (
                 <Plastic
@@ -204,7 +187,6 @@ export default function CreditCards() {
               ))}
             </section>
 
-            {/* Solo en celular: qué panel se ve */}
             <div className="tj-tabs" role="tablist">
               <button className="tj-tab" role="tab" aria-selected={tab === "cuotas"} onClick={() => setMobileTab("cuotas")}>
                 Cuotas
@@ -214,14 +196,13 @@ export default function CreditCards() {
               </button>
             </div>
 
-            {/* Compras en cuotas */}
             <section className="tj-card tj-cuotas">
               <div className="tj-card-head">
                 <span className="tj-label">
                   Cuotas
                   {hasActiveInstallments && (
                     <small className={cn(isPrivacyMode && "privacy-blur")}>
-                      {" "}· {formatCurrency(monthlyPayment)} al mes
+                      {" "}· {clp(monthlyPayment)} al mes
                     </small>
                   )}
                 </span>
@@ -249,7 +230,6 @@ export default function CreditCards() {
               </div>
             </section>
 
-            {/* Estado de cuenta de la tarjeta elegida */}
             <section className="tj-card tj-cuenta">
               <div className="tj-card-head">
                 <span className="tj-label">
@@ -271,7 +251,7 @@ export default function CreditCards() {
                   <span>
                     {day(cycle.start)} → {day(cycle.end)}
                   </span>
-                  <b className={cn(isPrivacyMode && "privacy-blur")}>{formatCurrency(cycleTxs.total)}</b>
+                  <b className={cn(isPrivacyMode && "privacy-blur")}>{clp(cycleTxs.total)}</b>
                 </div>
               )}
               <div className="tj-list" data-scrollable>
@@ -279,7 +259,6 @@ export default function CreditCards() {
                   <EmptyState>Sin movimientos en este ciclo</EmptyState>
                 ) : (
                   cycleTxs.txs.map((tx) => {
-                    // Un pago (de cualquier lado) se ve como abono: no suma al total.
                     const credit = tx.type === "Ingreso" || isCardPayment(tx);
                     return (
                       <div key={tx.id} className="tj-tx" data-in={credit || undefined}>
@@ -287,7 +266,7 @@ export default function CreditCards() {
                         <span className={cn("n", isPrivacyMode && "privacy-blur")}>{withoutEmoji(tx.detail || tx.category_name)}</span>
                         <span className={cn("v", isPrivacyMode && "privacy-blur")}>
                           {credit ? "+" : ""}
-                          {formatCurrency(Number(tx.amount))}
+                          {clp(Number(tx.amount))}
                         </span>
                       </div>
                     );
@@ -336,7 +315,6 @@ export default function CreditCards() {
   );
 }
 
-// ─── El plástico ─────────────────────────────────────────────────────────
 function Plastic({
   card,
   cycle,
@@ -369,8 +347,8 @@ function Plastic({
         }
       }}
       aria-pressed={selected}
-      aria-label={`${card.name}, por facturar ${formatCurrency(cycle.porFacturar)}${
-        cycle.showAPagar ? `, a pagar ${formatCurrency(cycle.aPagar)} el ${day(cycle.payDate)}` : ""
+      aria-label={`${card.name}, por facturar ${clp(cycle.porFacturar)}${
+        cycle.showAPagar ? `, a pagar ${clp(cycle.aPagar)} el ${day(cycle.payDate)}` : ""
       }`}
     >
       <div className="tj-pl-top">
@@ -396,12 +374,12 @@ function Plastic({
 
       <div className="tj-pl-mid">
         <span className="tj-pl-label">por facturar</span>
-        <span className={cn("tj-pl-big", isPrivacyMode && "privacy-blur")}>{formatCurrency(cycle.porFacturar)}</span>
+        <span className={cn("tj-pl-big", isPrivacyMode && "privacy-blur")}>{clp(cycle.porFacturar)}</span>
         <span className="tj-pl-of">
           <span>cierra el {day(cycle.closes)}</span>
           {cycle.showAPagar ? (
             <span>
-              a pagar <b className={cn(isPrivacyMode && "privacy-blur")}>{formatCurrency(cycle.aPagar)}</b> el {day(cycle.payDate)}
+              a pagar <b className={cn(isPrivacyMode && "privacy-blur")}>{clp(cycle.aPagar)}</b> el {day(cycle.payDate)}
             </span>
           ) : (
             <span>pagas el {day(cycle.nextPay)}</span>
@@ -410,14 +388,13 @@ function Plastic({
       </div>
 
       <div className="tj-pl-bot">
-        <span className={cn(isPrivacyMode && "privacy-blur")}>disponible {formatCurrency(card.available_credit)}</span>
+        <span className={cn(isPrivacyMode && "privacy-blur")}>disponible {clp(card.available_credit)}</span>
         <span>{card.last_4_digits ? `···· ${card.last_4_digits}` : ""}</span>
       </div>
     </div>
   );
 }
 
-// ─── Una compra en cuotas ─────────────────────────────────────────────────
 function InstallmentRow({
   installment,
   progress: { billed, left, last, active },
@@ -447,7 +424,7 @@ function InstallmentRow({
           {installment.card_name && <small>{installment.card_name}</small>}
         </span>
         <span className={cn("v", isPrivacyMode && "privacy-blur")}>
-          {formatCurrency(installment.installment_amount)}
+          {clp(installment.installment_amount)}
           <small>/mes</small>
         </span>
         <span className="row2">
@@ -461,8 +438,8 @@ function InstallmentRow({
       {open && (
         <div className="tj-inst-detail">
           <p className={cn("tj-inst-meta", isPrivacyMode && "privacy-blur")}>
-            <span>total {formatCurrency(installment.total_amount)}</span>
-            {!done && <span>quedan {formatCurrency(left * installment.installment_amount)}</span>}
+            <span>total {clp(installment.total_amount)}</span>
+            {!done && <span>quedan {clp(left * installment.installment_amount)}</span>}
             <span>última {format(last, "MMM yyyy", { locale: es }).replace(".", "")}</span>
           </p>
           <div className="tj-inst-actions">

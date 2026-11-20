@@ -1,6 +1,8 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
+import { requireUserId } from "@/integrations/supabase/session";
 import { toast } from "sonner";
+import { optimistic } from "./optimistic";
 
 export interface CreditCard {
   id: string;
@@ -25,128 +27,80 @@ export interface CreditCardSummary extends CreditCard {
   active_installment_count: number;
 }
 
+export const CREDIT_CARDS_KEY = ["credit_cards"];
+const SUMMARIES_KEY = [...CREDIT_CARDS_KEY, "summaries"];
+
+type CardInput = Omit<CreditCard, "id" | "user_id" | "created_at" | "updated_at">;
+type CardPatch = Partial<CreditCard> & { id: string };
+
+async function fetchCards() {
+  const userId = await requireUserId();
+  const { data, error } = await supabase.from("credit_cards").select("*").eq("user_id", userId).order("name");
+  if (error) throw error;
+  return data as CreditCard[];
+}
+
+async function fetchSummaries() {
+  const userId = await requireUserId();
+  const { data, error } = await supabase.from("credit_card_summary").select("*").eq("user_id", userId).order("card_name");
+  if (error) throw error;
+  return (data ?? []).map((row) => ({
+    id: row.card_id,
+    user_id: row.user_id,
+    name: row.card_name,
+    credit_limit: Number(row.credit_limit),
+    billing_day: row.billing_day,
+    payment_day: row.payment_day,
+    color: row.color,
+    last_4_digits: row.last_4_digits ?? null,
+    is_active: row.is_active,
+    used_credit_installments: Number(row.used_credit_installments),
+    used_credit_transactions: Number(row.used_credit_transactions),
+    total_used_credit: Number(row.total_used_credit),
+    available_credit: Number(row.available_credit),
+    next_payment_installments: Number(row.next_payment_installments),
+    active_installment_count: Number(row.active_installment_count),
+  })) as CreditCardSummary[];
+}
+
 export function useCreditCards() {
   const queryClient = useQueryClient();
+  const { data: creditCards = [], isLoading } = useQuery({ queryKey: CREDIT_CARDS_KEY, queryFn: fetchCards });
+  const { data: cardSummaries = [], isLoading: isLoadingSummaries } = useQuery({ queryKey: SUMMARIES_KEY, queryFn: fetchSummaries });
 
-  // Fetch all credit cards (filtered by user)
-  const { data: creditCards = [], isLoading } = useQuery({
-    queryKey: ["credit_cards"],
-    queryFn: async () => {
-      const { data: userData } = await supabase.auth.getUser();
-      if (!userData.user) throw new Error("No user found");
-
-      const { data, error } = await supabase
-        .from("credit_cards")
-        .select("*")
-        .eq("user_id", userData.user.id)
-        .order("name");
-
-      if (error) throw error;
-      return data as CreditCard[];
-    },
-  });
-
-  // Fetch credit cards with summary (from view, filtered by user)
-  const { data: cardSummaries = [], isLoading: isLoadingSummaries } = useQuery({
-    queryKey: ["credit_card_summaries"],
-    queryFn: async () => {
-      const { data: userData } = await supabase.auth.getUser();
-      if (!userData.user) throw new Error("No user found");
-
-      const { data, error } = await supabase
-        .from("credit_card_summary")
-        .select("*")
-        .eq("user_id", userData.user.id)
-        .order("card_name");
-
-      if (error) throw error;
-      
-      // Map view columns to our interface
-      return (data || []).map(row => ({
-        id: row.card_id,
-        user_id: row.user_id,
-        name: row.card_name,
-        credit_limit: Number(row.credit_limit),
-        billing_day: row.billing_day,
-        payment_day: row.payment_day,
-        color: row.color,
-        last_4_digits: row.last_4_digits ?? null,
-        is_active: row.is_active,
-        used_credit_installments: Number(row.used_credit_installments),
-        used_credit_transactions: Number(row.used_credit_transactions),
-        total_used_credit: Number(row.total_used_credit),
-        available_credit: Number(row.available_credit),
-        next_payment_installments: Number(row.next_payment_installments),
-        active_installment_count: Number(row.active_installment_count),
-      })) as CreditCardSummary[];
-    },
-  });
-
-  // Add credit card
   const addCreditCard = useMutation({
-    mutationFn: async (card: Omit<CreditCard, "id" | "user_id" | "created_at" | "updated_at">) => {
-      const { data: userData } = await supabase.auth.getUser();
-      if (!userData.user) throw new Error("No user found");
-
-      const { data, error } = await supabase
-        .from("credit_cards")
-        .insert({
-          ...card,
-          user_id: userData.user.id,
-        })
-        .select()
-        .single();
-
+    mutationFn: async (card: CardInput) => {
+      const userId = await requireUserId();
+      const { data, error } = await supabase.from("credit_cards").insert({ ...card, user_id: userId }).select().single();
       if (error) throw error;
       return data as CreditCard;
     },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["credit_cards"] });
-      queryClient.invalidateQueries({ queryKey: ["credit_card_summaries"] });
-      toast.success("Tarjeta agregada");
-    },
-    onError: (error: Error) => {
-      toast.error(error.message);
-    },
+    onSuccess: () => toast.success("Tarjeta agregada"),
+    onSettled: () => queryClient.invalidateQueries({ queryKey: CREDIT_CARDS_KEY }),
   });
 
-  // Update credit card
   const updateCreditCard = useMutation({
-    mutationFn: async ({ id, ...card }: Partial<CreditCard> & { id: string }) => {
-      const { data, error } = await supabase
+    mutationFn: async ({ id, ...changes }: CardPatch) => {
+      const { error } = await supabase
         .from("credit_cards")
-        .update({ ...card, updated_at: new Date().toISOString() })
+        .update({ ...changes, updated_at: new Date().toISOString() })
         .eq("id", id)
-        .select()
+        .select("id")
         .single();
-
       if (error) throw error;
-      return data;
     },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["credit_cards"] });
-      queryClient.invalidateQueries({ queryKey: ["credit_card_summaries"] });
-      toast.success("Tarjeta actualizada");
-    },
-    onError: (error: Error) => {
-      toast.error(error.message);
-    },
+    ...optimistic<CreditCard[], CardPatch>(queryClient, CREDIT_CARDS_KEY, (list, { id, ...changes }) =>
+      list.map((card) => (card.id === id ? { ...card, ...changes } : card))),
+    onSuccess: () => toast.success("Tarjeta actualizada"),
   });
 
-  // Delete credit card
   const deleteCreditCard = useMutation({
     mutationFn: async (id: string) => {
       const { error } = await supabase.from("credit_cards").delete().eq("id", id);
       if (error) throw error;
     },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["credit_cards"] });
-      queryClient.invalidateQueries({ queryKey: ["credit_card_summaries"] });
-      toast.success("Tarjeta eliminada");
-    },
-    onError: (error: Error) => {
-      toast.error(error.message);
-    },
+    ...optimistic<CreditCard[], string>(queryClient, CREDIT_CARDS_KEY, (list, id) => list.filter((card) => card.id !== id)),
+    onSuccess: () => toast.success("Tarjeta eliminada"),
   });
 
   return {

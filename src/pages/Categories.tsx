@@ -1,8 +1,8 @@
-import React, { useState } from "react";
-import Layout from "@/components/Layout";
-import ConfirmDialog from "@/components/ConfirmDialog";
+import { useState } from "react";
+import Layout from "@/components/layout/Layout";
+import ConfirmDialog from "@/components/shared/ConfirmDialog";
 import { Button } from "@/components/ui/button";
-import { CategoryComposer, type CategoryValues } from "@/components/CategoryComposer";
+import { CategoryComposer, type CategoryValues } from "@/components/categories/CategoryComposer";
 import { Plus, Pencil, Trash2, TrendingUp, TrendingDown, PiggyBank, ArrowLeftRight, ArrowDownToLine, LineChart } from "lucide-react";
 import { useCategories } from "@/hooks/useCategories";
 import { cn } from "@/lib/utils";
@@ -32,7 +32,7 @@ interface Category {
 }
 
 export default function Categories() {
-  const { categories, hasCategoryContext, addCategory, updateCategory, deleteCategory } = useCategories();
+  const { categories, addCategory, updateCategory, deleteCategory } = useCategories();
 
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingCategory, setEditingCategory] = useState<Category | null>(null);
@@ -50,14 +50,11 @@ export default function Categories() {
     {} as Record<TransactionType, Category[]>
   );
 
-  // Sin contexto de categorías en el perfil, descripción y "en uso" no se mandan.
   const handleSave = async (values: CategoryValues) => {
-    const { description, is_active, ...base } = values;
-    const payload = hasCategoryContext ? { ...base, description, is_active } : base;
     if (editingCategory) {
-      await updateCategory.mutateAsync({ id: editingCategory.id, ...payload });
+      await updateCategory.mutateAsync({ id: editingCategory.id, ...values });
     } else {
-      await addCategory.mutateAsync(payload);
+      await addCategory.mutateAsync(values);
     }
     setEditingCategory(null);
   };
@@ -75,11 +72,10 @@ export default function Categories() {
 
   const handleDelete = (id: string) => setConfirmDelete({ open: true, id });
 
-  const confirmDeleteAction = async () => {
-    if (confirmDelete.id) await deleteCategory.mutateAsync(confirmDelete.id);
+  const confirmDeleteAction = () => {
+    if (confirmDelete.id) deleteCategory.mutate(confirmDelete.id);
   };
 
-  // Crear vive al final de cada grupo, discreto: abre con el tipo del grupo, que se puede cambiar.
   const newChip = (type?: TransactionType) => (
     <Button variant="ghost" size="sm" className="text-muted-foreground" onClick={() => handleNew(type)}>
       <Plus />
@@ -94,7 +90,6 @@ export default function Categories() {
 
         {categories.length === 0 && newChip()}
 
-        {/* Solo los tipos con categorías; "Nueva" deja elegir cualquier tipo */}
         {(Object.entries(grouped) as [keyof typeof typeConfig, Category[]][]).filter(([, cats]) => cats.length > 0).map(([type, cats]) => {
           const { icon: Icon, label, color } = typeConfig[type];
           return (
@@ -115,7 +110,6 @@ export default function Categories() {
                     <span className="text-sm leading-none">{cat.icon || "🏷️"}</span>
                     <span>{cat.name}</span>
                     {cat.is_active === false && <span className="text-xs text-muted-foreground">Archivada</span>}
-                    {/* Hover actions */}
                     <div className="absolute inset-0 rounded-full flex items-center justify-end pr-1.5 gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity backdrop-blur-sm">
                       <Button
                         variant="ghost"
@@ -153,7 +147,7 @@ export default function Categories() {
         }}
         category={editingCategory}
         initialType={newType}
-        withContext={hasCategoryContext}
+        withContext
         pending={addCategory.isPending || updateCategory.isPending}
         onSave={handleSave}
       />

@@ -21,10 +21,8 @@ export function useKeyboardShortcuts() {
         !!target.closest('[role="dialog"], [role="alertdialog"]') ||
         target.isContentEditable;
 
-      // All single-key shortcuts: ignore when inside inputs
       if (isInputField) return;
 
-      // Don't fire single-key shortcuts when modifiers are held
       if (e.metaKey || e.ctrlKey || e.altKey) return;
 
       switch (e.key) {
@@ -51,7 +49,6 @@ export function useKeyboardShortcuts() {
         }
 
         default:
-          // 1-9 → Navigate to section (orden fijo de APP_ROUTES)
           if (e.key >= "1" && e.key <= "9") {
             const index = parseInt(e.key) - 1;
             if (index < maxShortcut && routePaths[index]) {

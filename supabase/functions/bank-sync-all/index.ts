@@ -1,64 +1,29 @@
-// Edge Function: bank-sync-all
-// Ejecutada cada hora por pg_cron. Filtra las credenciales según sync_schedule
-// y ejecuta el scraping de cada banco configurado por cada usuario.
-
-import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.39.3'
-import { corsHeaders } from '../_shared/cors.ts'
-import { decryptPassword } from '../_shared/crypto.ts'
 import { importBankMovements, type ScrapeResult } from '../_shared/bank-import.ts'
-import { sendBankSyncFailureEmail } from '../_shared/email-notification.ts'
+import { decryptPassword } from '../_shared/crypto.ts'
+import { sendBankSyncFailureEmail, userEmail } from '../_shared/email-notification.ts'
+import { fail, json, preflight } from '../_shared/http.ts'
 import { getJob, startScrape, type JobStatus } from '../_shared/open-banking.ts'
+import { isServiceRole, serviceClient, type Client } from '../_shared/supabase.ts'
 
 const POLL_INTERVAL_MS = 5_000
-const POLL_MAX_ATTEMPTS = 24  // 24 × 5s = 120s max per job
+const POLL_MAX_ATTEMPTS = 24
 const CIRCUIT_BREAKER_LIMIT = 5
 const INVALID_CREDS_LIMIT = 3
 const MAX_LOOKBACK_DAYS = 7
+const CHILE_UTC_OFFSETS_STANDARD_AND_SUMMER = [3, 4]
+const INVALID_CREDENTIALS_HINTS = ['incorrecto', 'bloqueado', 'inválido']
 
-// ── Schedule resolution ───────────────────────────────────────────────────────
+type FailureReason = 'circuit_breaker' | 'invalid_credentials' | '2fa_blocked'
 
-/**
- * Returns the sync schedules that should run at the current UTC hour,
- * mapped to Chile time (UTC-3 standard / UTC-4 DST).
- * We run at both -3 and -4 offsets to cover daylight saving transitions.
- */
-function getSchedulesForCurrentHour(): string[] {
-  const utcHour = new Date().getUTCHours()
-
-  // Chile Standard Time = UTC-3 | Chile Summer Time = UTC-4
-  const chileHourStd = (utcHour + 24 - 3) % 24   // UTC-3
-  const chileHourDst = (utcHour + 24 - 4) % 24   // UTC-4
-
-  const schedules: string[] = []
-  const pad = (n: number) => n.toString().padStart(2, '0')
-
-  for (const hour of new Set([chileHourStd, chileHourDst])) {
-    if (hour === 8)  schedules.push('daily_08', 'twice_daily')
-    if (hour === 14) schedules.push('daily_14')
-    if (hour === 20) schedules.push('daily_20', 'twice_daily')
-    schedules.push(`custom_${pad(hour)}`)
-  }
-
-  return [...new Set(schedules)]
+interface Credential {
+  id: string
+  user_id: string
+  bank: string
+  rut: string
+  encrypted_password: string
+  notify_email: boolean
+  consecutive_failures: number
 }
-
-/**
- * Fecha (DD-MM-YYYY, el formato que espera el scraper) de hace `daysBack` dias
- * en hora de Chile. Se calcula en America/Santiago y no en UTC porque para el
- * horario daily_20 la ejecucion cae pasada la medianoche UTC, y restar un dia
- * sobre la fecha UTC devolvia el dia en curso en Chile.
- */
-function getFromDate(daysBack: number): string {
-  const nowChile = new Date(
-    new Date().toLocaleString('en-US', { timeZone: 'America/Santiago' }),
-  )
-  nowChile.setDate(nowChile.getDate() - daysBack)
-  const dd = String(nowChile.getDate()).padStart(2, '0')
-  const mm = String(nowChile.getMonth() + 1).padStart(2, '0')
-  return `${dd}-${mm}-${nowChile.getFullYear()}`
-}
-
-// ── Job polling ───────────────────────────────────────────────────────────────
 
 interface JobPollResult {
   status: JobStatus
@@ -66,90 +31,166 @@ interface JobPollResult {
   error?: string
 }
 
+function schedulesForCurrentHour(): string[] {
+  const utcHour = new Date().getUTCHours()
+  const chileHours = new Set(CHILE_UTC_OFFSETS_STANDARD_AND_SUMMER.map((offset) => (utcHour + 24 - offset) % 24))
+  const schedules: string[] = []
+  for (const hour of chileHours) {
+    if (hour === 8) schedules.push('daily_08', 'twice_daily')
+    if (hour === 14) schedules.push('daily_14')
+    if (hour === 20) schedules.push('daily_20', 'twice_daily')
+    schedules.push(`custom_${hour.toString().padStart(2, '0')}`)
+  }
+  return [...new Set(schedules)]
+}
+
+function scraperFromDateInSantiago(daysBack: number): string {
+  const nowChile = new Date(new Date().toLocaleString('en-US', { timeZone: 'America/Santiago' }))
+  nowChile.setDate(nowChile.getDate() - daysBack)
+  const dd = String(nowChile.getDate()).padStart(2, '0')
+  const mm = String(nowChile.getMonth() + 1).padStart(2, '0')
+  return `${dd}-${mm}-${nowChile.getFullYear()}`
+}
+
+function daysMissedSinceLastSuccess(consecutiveFailures: number): number {
+  return Math.min(consecutiveFailures + 1, MAX_LOOKBACK_DAYS)
+}
+
 async function pollJob(jobId: string, apiKey: string): Promise<JobPollResult> {
   for (let i = 0; i < POLL_MAX_ATTEMPTS; i++) {
     await new Promise((r) => setTimeout(r, POLL_INTERVAL_MS))
-
-    const data = await getJob(apiKey, jobId)
-    if ('apiError' in data) {
-      return { status: 'failed', error: data.apiError }
-    }
-
-    if (data.status === 'awaiting_2fa') {
-      return { status: 'awaiting_2fa', error: '2FA requerida — sync automático no puede continuar' }
-    }
-
-    if (data.status === 'completed') {
-      return { status: 'completed', result: data.result }
-    }
-
-    if (data.status === 'failed') {
-      return { status: 'failed', error: data.error ?? 'Scraping falló' }
-    }
-
-    // queued or running — keep polling
+    const job = await getJob(apiKey, jobId)
+    if ('apiError' in job) return { status: 'failed', error: job.apiError }
+    if (job.status === 'awaiting_2fa') return { status: 'awaiting_2fa', error: '2FA requerida — sync automático no puede continuar' }
+    if (job.status === 'completed') return { status: 'completed', result: job.result }
+    if (job.status === 'failed') return { status: 'failed', error: job.error ?? 'Scraping falló' }
   }
-
   return { status: 'failed', error: 'Timeout esperando resultado del banco' }
 }
 
-// ── Main handler ──────────────────────────────────────────────────────────────
+async function logSync(supabase: Client, cred: Credential, entry: { status: string; imported?: number; skipped?: number; error?: string | null; importedItems?: unknown[]; skippedItems?: unknown[] }) {
+  const { error } = await supabase.from('bank_sync_log').insert({
+    user_id: cred.user_id,
+    bank: cred.bank,
+    trigger: 'cron',
+    imported: entry.imported ?? 0,
+    skipped: entry.skipped ?? 0,
+    status: entry.status,
+    error: entry.error ?? null,
+    imported_items: entry.importedItems ?? [],
+    skipped_items: entry.skippedItems ?? [],
+  })
+  if (error) console.error(`No se pudo registrar el sync de ${cred.user_id}/${cred.bank}:`, error)
+}
+
+async function updateCredential(supabase: Client, cred: Credential, changes: Record<string, unknown>) {
+  const { error } = await supabase.from('bank_sync_credentials').update(changes).eq('id', cred.id)
+  if (error) console.error(`No se pudo actualizar la credencial de ${cred.user_id}/${cred.bank}:`, error)
+}
+
+async function recordFailure(supabase: Client, cred: Credential, status: string, failures: number, error: string | undefined) {
+  await updateCredential(supabase, cred, {
+    last_sync_at: new Date().toISOString(),
+    last_sync_status: status,
+    last_error: error ?? null,
+    consecutive_failures: failures,
+  })
+  await logSync(supabase, cred, { status, error })
+}
+
+async function deactivateAndNotify(supabase: Client, cred: Credential, reason: FailureReason) {
+  await updateCredential(supabase, cred, { is_active: false })
+  if (!cred.notify_email) return
+  try {
+    const to = await userEmail(supabase, cred.user_id)
+    if (to) await sendBankSyncFailureEmail({ to, bank: cred.bank, reason })
+  } catch (error) {
+    console.error(`⚠️ No se pudo avisar la desactivación de ${cred.user_id}/${cred.bank}:`, error)
+  }
+}
+
+function looksLikeInvalidCredentials(error: string | undefined): boolean {
+  const message = (error ?? '').toLowerCase()
+  return INVALID_CREDENTIALS_HINTS.some((hint) => message.includes(hint))
+}
+
+async function syncCredential(supabase: Client, cred: Credential, apiKey: string): Promise<{ status: string; imported?: number; skipped?: number; error?: string }> {
+  const password = await decryptPassword(cred.encrypted_password)
+  const lookbackDays = daysMissedSinceLastSuccess(cred.consecutive_failures)
+  const fromDate = scraperFromDateInSantiago(lookbackDays)
+
+  const started = await startScrape(apiKey, { bank: cred.bank, rut: cred.rut, password, fromDate })
+  if ('apiError' in started) throw new Error(started.apiError)
+  console.log(`Usuario ${cred.user_id} banco ${cred.bank}: job ${started.jobId} iniciado (desde ${fromDate}, ${lookbackDays}d)`)
+
+  const poll = await pollJob(started.jobId, apiKey)
+  const failures = cred.consecutive_failures + 1
+
+  if (poll.status === 'awaiting_2fa') {
+    await recordFailure(supabase, cred, '2fa_blocked', failures, '2FA requerida')
+    await deactivateAndNotify(supabase, cred, '2fa_blocked')
+    return { status: '2fa_blocked' }
+  }
+
+  if (poll.status === 'failed') {
+    const invalidCredentials = looksLikeInvalidCredentials(poll.error)
+    const status = invalidCredentials ? 'invalid_credentials' : 'failed'
+    await recordFailure(supabase, cred, status, failures, poll.error)
+    if (failures >= CIRCUIT_BREAKER_LIMIT || (invalidCredentials && failures >= INVALID_CREDS_LIMIT)) {
+      await deactivateAndNotify(supabase, cred, invalidCredentials ? 'invalid_credentials' : 'circuit_breaker')
+    }
+    return { status, error: poll.error }
+  }
+
+  const imported = await importBankMovements({
+    supabaseClient: supabase,
+    userId: cred.user_id,
+    result: poll.result!,
+    trigger: 'cron',
+    sendEmail: cred.notify_email,
+  })
+  await logSync(supabase, cred, {
+    status: 'success',
+    imported: imported.imported,
+    skipped: imported.skipped,
+    importedItems: imported.importedItems,
+    skippedItems: imported.skippedItems,
+  })
+  await updateCredential(supabase, cred, {
+    last_sync_at: new Date().toISOString(),
+    last_sync_status: 'success',
+    last_error: null,
+    consecutive_failures: 0,
+  })
+  console.log(`Usuario ${cred.user_id} banco ${cred.bank}: ${imported.imported} importadas, ${imported.skipped} ignoradas`)
+  return { status: 'success', imported: imported.imported, skipped: imported.skipped }
+}
 
 Deno.serve(async (req) => {
-  if (req.method === 'OPTIONS') {
-    return new Response('ok', { headers: corsHeaders })
-  }
-
-  // Only callable with service_role_key
-  const authHeader = req.headers.get('Authorization') ?? ''
-  const serviceRoleKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
-  if (!authHeader.includes(serviceRoleKey)) {
-    return new Response(
-      JSON.stringify({ error: 'Unauthorized' }),
-      { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 401 },
-    )
-  }
+  const preflightResponse = preflight(req)
+  if (preflightResponse) return preflightResponse
+  if (!isServiceRole(req)) return fail(401, 'No autorizado')
 
   const startTime = Date.now()
-  const schedulesToRun = getSchedulesForCurrentHour()
+  const schedulesToRun = schedulesForCurrentHour()
   const apiKey = Deno.env.get('OPEN_BANKING_API_KEY') ?? ''
-
   console.log(`bank-sync-all: hora UTC ${new Date().getUTCHours()}, schedules activos: ${schedulesToRun.join(', ')}`)
 
-  if (schedulesToRun.length === 0) {
-    return new Response(
-      JSON.stringify({ success: true, message: 'No hay bancos programados para esta hora', duration_ms: 0 }),
-      { headers: { ...corsHeaders, 'Content-Type': 'application/json' } },
-    )
-  }
-
-  const supabase = createClient(
-    Deno.env.get('SUPABASE_URL') ?? '',
-    serviceRoleKey,
-  )
-
-  // Fetch all active credentials whose schedule matches the current hour
+  const supabase = serviceClient()
   const { data: credentials, error: fetchError } = await supabase
     .from('bank_sync_credentials')
     .select('id, user_id, bank, rut, encrypted_password, sync_schedule, notify_email, consecutive_failures, last_sync_status')
     .eq('is_active', true)
     .lt('consecutive_failures', CIRCUIT_BREAKER_LIMIT)
     .in('sync_schedule', schedulesToRun)
-
   if (fetchError) {
     console.error('Error fetching credentials:', fetchError)
-    return new Response(
-      JSON.stringify({ success: false, error: fetchError.message }),
-      { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 500 },
-    )
+    return json({ success: false, error: 'No se pudieron leer las credenciales' }, 500)
   }
 
-  if (!credentials || credentials.length === 0) {
+  if (!credentials?.length) {
     console.log('No hay credenciales activas para los schedules:', schedulesToRun)
-    return new Response(
-      JSON.stringify({ success: true, message: 'No hay credenciales configuradas para esta hora', duration_ms: Date.now() - startTime }),
-      { headers: { ...corsHeaders, 'Content-Type': 'application/json' } },
-    )
+    return json({ success: true, message: 'No hay credenciales configuradas para esta hora', duration_ms: Date.now() - startTime })
   }
 
   console.log(`Procesando ${credentials.length} banco(s)...`)
@@ -160,131 +201,24 @@ Deno.serve(async (req) => {
   let twoFaBlocked = 0
   const details: unknown[] = []
 
-  // Process each credential sequentially to respect rate limits
-  for (const cred of credentials) {
-    const { id: credId, user_id: userId, bank, rut, encrypted_password, consecutive_failures, notify_email: notifyEmail } = cred
-
+  for (const cred of credentials as Credential[]) {
+    const { user_id: userId, bank } = cred
     try {
-      // Decrypt password from at-rest storage
-      const password = await decryptPassword(encrypted_password)
-
-      // Con N fallas consecutivas el hueco real es N+1 dias: el run que fallo
-      // cubria desde el dia anterior a su ejecucion. Con N=0 queda el default
-      // de 1 dia. El circuit breaker desactiva a las 5 fallas, asi que el tope
-      // natural son 6 dias; MAX_LOOKBACK_DAYS acota el caso de datos raros.
-      const lookbackDays = Math.min(consecutive_failures + 1, MAX_LOOKBACK_DAYS)
-      const fromDate = getFromDate(lookbackDays)
-
-      // Start scraping job
-      const started = await startScrape(apiKey, { bank, rut, password, fromDate })
-      if ('apiError' in started) throw new Error(started.apiError)
-      const { jobId } = started
-      console.log(`Usuario ${userId} banco ${bank}: job ${jobId} iniciado (desde ${fromDate}, ${lookbackDays}d)`)
-
-      // Poll for result
-      const pollResult = await pollJob(jobId, apiKey)
-
-      if (pollResult.status === 'awaiting_2fa') {
+      const outcome = await syncCredential(supabase, cred, apiKey)
+      if (outcome.status === 'success') {
+        banksSynced++
+        transactionsImported += outcome.imported ?? 0
+      } else if (outcome.status === '2fa_blocked') {
         twoFaBlocked++
-        await updateCredentialStatus(supabase, credId, userId, bank, '2fa_blocked', consecutive_failures + 1, '2FA requerida')
-        details.push({ userId, bank, status: '2fa_blocked' })
-
-        // Notify user and deactivate if they keep requiring 2FA
-        const getUserEmail = async () => {
-          const { data } = await supabase.auth.admin.getUserById(userId)
-          return data?.user?.email
-        }
-        const userEmail = notifyEmail ? await getUserEmail() : null
-        if (userEmail) {
-          await sendBankSyncFailureEmail({ to: userEmail, bank, reason: '2fa_blocked' }).catch(() => {})
-        }
-        // Deactivate for 2FA permanently — user needs to re-enable manually
-        await supabase
-          .from('bank_sync_credentials')
-          .update({ is_active: false })
-          .eq('id', credId)
-        continue
-      }
-
-      if (pollResult.status === 'failed') {
+      } else {
         errorsCount++
-        const isInvalidCreds = (pollResult.error ?? '').toLowerCase().includes('incorrecto') ||
-          (pollResult.error ?? '').toLowerCase().includes('bloqueado') ||
-          (pollResult.error ?? '').toLowerCase().includes('inválido')
-
-        const newFailures = consecutive_failures + 1
-        const newStatus = isInvalidCreds ? 'invalid_credentials' : 'failed'
-
-        await updateCredentialStatus(supabase, credId, userId, bank, newStatus, newFailures, pollResult.error)
-
-        // Circuit breaker — deactivate after too many failures
-        if (newFailures >= CIRCUIT_BREAKER_LIMIT || (isInvalidCreds && newFailures >= INVALID_CREDS_LIMIT)) {
-          await supabase
-            .from('bank_sync_credentials')
-            .update({ is_active: false })
-            .eq('id', credId)
-
-          if (notifyEmail) {
-            const { data } = await supabase.auth.admin.getUserById(userId)
-            const userEmail = data?.user?.email
-            if (userEmail) {
-              await sendBankSyncFailureEmail({
-                to: userEmail,
-                bank,
-                reason: isInvalidCreds ? 'invalid_credentials' : 'circuit_breaker',
-              }).catch(() => {})
-            }
-          }
-        }
-
-        details.push({ userId, bank, status: newStatus, error: pollResult.error })
-        continue
       }
-
-      // Completed — import movements
-      const importResult = await importBankMovements({
-        supabaseClient: supabase,
-        userId,
-        result: pollResult.result!,
-        trigger: 'cron',
-        sendEmail: notifyEmail,
-      })
-
-      // Write to bank_sync_log
-      await supabase.from('bank_sync_log').insert({
-        user_id: userId,
-        bank,
-        trigger: 'cron',
-        imported: importResult.imported,
-        skipped: importResult.skipped,
-        status: 'success',
-        imported_items: importResult.importedItems,
-        skipped_items: importResult.skippedItems,
-      })
-
-      // Reset failures on success
-      await supabase
-        .from('bank_sync_credentials')
-        .update({
-          last_sync_at: new Date().toISOString(),
-          last_sync_status: 'success',
-          last_error: null,
-          consecutive_failures: 0,
-          updated_at: new Date().toISOString(),
-        })
-        .eq('id', credId)
-
-      banksSynced++
-      transactionsImported += importResult.imported
-      details.push({ userId, bank, status: 'success', imported: importResult.imported, skipped: importResult.skipped })
-      console.log(`Usuario ${userId} banco ${bank}: ${importResult.imported} importadas, ${importResult.skipped} ignoradas`)
-
-    } catch (err: unknown) {
-      const message = err instanceof Error ? err.message : String(err)
-      console.error(`Error procesando ${userId}/${bank}:`, message)
+      details.push({ userId, bank, ...outcome })
+    } catch (error: unknown) {
+      const message = error instanceof Error ? error.message : String(error)
+      console.error(`Error procesando ${userId}/${bank}:`, error)
       errorsCount++
-      const newFailures = cred.consecutive_failures + 1
-      await updateCredentialStatus(supabase, credId, userId, bank, 'failed', newFailures, message)
+      await recordFailure(supabase, cred, 'failed', cred.consecutive_failures + 1, message)
       details.push({ userId, bank, status: 'failed', error: message })
     }
   }
@@ -292,47 +226,9 @@ Deno.serve(async (req) => {
   const duration = Date.now() - startTime
   console.log(`bank-sync-all completado: ${banksSynced} bancos, ${transactionsImported} transacciones, ${errorsCount} errores, ${twoFaBlocked} 2FA en ${duration}ms`)
 
-  return new Response(
-    JSON.stringify({
-      success: true,
-      stats: { banks_synced: banksSynced, transactions_imported: transactionsImported, errors: errorsCount, two_fa_blocked: twoFaBlocked, duration_ms: duration },
-      details,
-    }),
-    { headers: { ...corsHeaders, 'Content-Type': 'application/json' } },
-  )
-})
-
-// ── Helper ────────────────────────────────────────────────────────────────────
-
-async function updateCredentialStatus(
-  supabase: ReturnType<typeof createClient>,
-  credId: string,
-  userId: string,
-  bank: string,
-  status: string,
-  failures: number,
-  error: string | undefined,
-) {
-  await supabase
-    .from('bank_sync_credentials')
-    .update({
-      last_sync_at: new Date().toISOString(),
-      last_sync_status: status,
-      last_error: error ?? null,
-      consecutive_failures: failures,
-      updated_at: new Date().toISOString(),
-    })
-    .eq('id', credId)
-
-  await supabase.from('bank_sync_log').insert({
-    user_id: userId,
-    bank,
-    trigger: 'cron',
-    imported: 0,
-    skipped: 0,
-    status,
-    error: error ?? null,
-    imported_items: [],
-    skipped_items: [],
+  return json({
+    success: true,
+    stats: { banks_synced: banksSynced, transactions_imported: transactionsImported, errors: errorsCount, two_fa_blocked: twoFaBlocked, duration_ms: duration },
+    details,
   })
-}
+})

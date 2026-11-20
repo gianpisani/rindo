@@ -1,0 +1,542 @@
+import { useState, useCallback, useMemo, useEffect, useRef } from "react";
+import { useSignIn, useSignUp } from "@/hooks/useAccount";
+import { Button } from "../ui/button";
+import { Input } from "../ui/input";
+import { Label } from "../ui/label";
+import { CheckCircle } from "lucide-react";
+import { AnimatePresence, motion } from "framer-motion";
+import { RindoLogo } from "../layout/RindoLogo";
+
+const EMAIL_DOMAINS = [
+  "gmail.com",
+  "hotmail.com",
+  "outlook.com",
+  "icloud.com",
+  "yahoo.com",
+  "live.com",
+];
+
+function getDomainSuggestion(email: string): string | null {
+  const atIndex = email.indexOf("@");
+  if (atIndex === -1 || atIndex === 0) return null;
+  const partial = email.slice(atIndex + 1);
+  if (!partial) return EMAIL_DOMAINS[0];
+  const match = EMAIL_DOMAINS.find((d) => d.startsWith(partial.toLowerCase()));
+  if (match && match !== partial.toLowerCase()) return match;
+  return null;
+}
+
+function getVisibleDomains(email: string): string[] {
+  const atIndex = email.indexOf("@");
+  if (atIndex === -1 || atIndex === 0) return [];
+  const partial = email.slice(atIndex + 1).toLowerCase();
+  if (!partial) return EMAIL_DOMAINS.slice(0, 4);
+  return EMAIL_DOMAINS.filter((d) => d.startsWith(partial) && d !== partial).slice(0, 4);
+}
+
+const ROTATING_WORDS = [
+  "Ordena tus finanzas",
+  "Sincroniza tu banco",
+  "Controla tu presupuesto",
+  "Proyecta tu futuro",
+  "Maneja tus deudas",
+  "Trackea cada peso",
+];
+
+function RotatingText() {
+  const [index, setIndex] = useState(0);
+
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setIndex((i) => (i + 1) % ROTATING_WORDS.length);
+    }, 3000);
+    return () => clearInterval(interval);
+  }, []);
+
+  return (
+    <div className="h-7 overflow-hidden relative">
+      <AnimatePresence mode="wait">
+        <motion.p
+          key={index}
+          initial={{ opacity: 0, y: 16, filter: "blur(4px)" }}
+          animate={{ opacity: 1, y: 0, filter: "blur(0px)" }}
+          exit={{ opacity: 0, y: -16, filter: "blur(4px)" }}
+          transition={{ duration: 0.5, ease: "easeInOut" }}
+          className="text-sm text-white/30 absolute inset-0 text-center"
+        >
+          {ROTATING_WORDS[index]}
+        </motion.p>
+      </AnimatePresence>
+    </div>
+  );
+}
+
+interface ActivityItem {
+  icon: string;
+  text: string;
+  detail?: string;
+  color: string;
+  side: "left" | "right";
+}
+
+const ACTIVITY_ITEMS: ActivityItem[] = [
+  { icon: "🏦", text: "Sync Banco de Chile", detail: "12 movimientos importados", color: "text-blue-400", side: "left" },
+  { icon: "🏦", text: "Sync Santander", detail: "8 movimientos importados", color: "text-white", side: "right" },
+  { icon: "🏦", text: "Sync BancoEstado", detail: "5 movimientos importados", color: "text-orange-400", side: "left" },
+  { icon: "🤖", text: "IA categorizó 8 gastos", detail: "Comida, Transporte, Hogar...", color: "text-purple-400", side: "right" },
+  { icon: "📈", text: "Proyección 12 meses", detail: "Tendrás ahorrado $15.820.000", color: "text-success", side: "left" },
+  { icon: "⚠️", text: "Presupuesto excedido", detail: "Transporte +$15k", color: "text-destructive", side: "right" },
+  { icon: "📱", text: "Categorizado con IA", detail: "Spotify → Suscripciones", color: "text-purple-400", side: "left" },
+  { icon: "🔔", text: "Cuota 3/12 detectada", detail: "Bicicleta · −$133.250", color: "text-orange-400", side: "right" },
+  { icon: "📊", text: "Presupuesto comida", detail: "78% usado · quedan 11 días", color: "text-amber-400", side: "left" },
+  { icon: "🍔", text: "Pago Uber Eats", detail: "−$12.500 · Comida", color: "text-white", side: "right" },
+  { icon: "💰", text: "Ingreso sueldo", detail: "+$1.850.000", color: "text-success", side: "left" },
+  { icon: "🏠", text: "Pago arriendo", detail: "−$450.000 · Hogar", color: "text-white", side: "left" },
+  { icon: "📋", text: "Conciliación rápida", detail: "3 pendientes", color: "text-blue-400", side: "right" },
+];
+
+interface FloatingCard {
+  id: number;
+  item: typeof ACTIVITY_ITEMS[number];
+  x: number;
+  duration: number;
+}
+
+function FloatingActivity() {
+  const [cards, setCards] = useState<FloatingCard[]>([]);
+  const counterRef = useRef(0);
+  const lastSideRef = useRef<"left" | "right">("right");
+  const usedIndexes = useRef<Set<number>>(new Set());
+
+  useEffect(() => {
+    function spawnCard() {
+      const targetSide = lastSideRef.current === "left" ? "right" : "left";
+      lastSideRef.current = targetSide;
+
+      const candidates = ACTIVITY_ITEMS
+        .map((item, i) => ({ item, i }))
+        .filter(({ item, i }) => item.side === targetSide && !usedIndexes.current.has(i));
+
+      const pool = candidates.length > 0
+        ? candidates
+        : ACTIVITY_ITEMS.map((item, i) => ({ item, i })).filter(({ i }) => !usedIndexes.current.has(i));
+
+      if (pool.length === 0) {
+        usedIndexes.current.clear();
+        return;
+      }
+
+      const pick = pool[Math.floor(Math.random() * pool.length)];
+      usedIndexes.current.add(pick.i);
+      if (usedIndexes.current.size > ACTIVITY_ITEMS.length * 0.6) {
+        usedIndexes.current.clear();
+      }
+
+      const card: FloatingCard = {
+        id: counterRef.current++,
+        item: pick.item,
+        x: 3 + Math.random() * 12, // 3-15% from edge
+        duration: 14 + Math.random() * 4, // 14-18s drift
+      };
+
+      setCards((prev) => [...prev.slice(-5), card]); // max 6 visible
+    }
+
+    const initialTimers = [
+      setTimeout(() => spawnCard(), 2000),
+      setTimeout(() => spawnCard(), 6000),
+    ];
+
+    const spawn = () => {
+      spawnCard();
+      const nextDelay = 4500 + Math.random() * 2500;
+      timerId = setTimeout(spawn, nextDelay);
+    };
+    let timerId = setTimeout(spawn, 10000);
+
+    return () => {
+      initialTimers.forEach(clearTimeout);
+      clearTimeout(timerId);
+    };
+  }, []);
+
+  return (
+    <div className="absolute inset-0 overflow-hidden pointer-events-none hidden lg:block">
+      <AnimatePresence>
+        {cards.map((card) => (
+          <motion.div
+            key={card.id}
+            initial={{ opacity: 0, y: -10 }}
+            animate={{ opacity: [0, 0.5, 0.5, 0.3, 0], y: ["0%", "85vh"] }}
+            exit={{ opacity: 0 }}
+            transition={{
+              duration: card.duration,
+              ease: [0.25, 0.1, 0.25, 1],
+              opacity: { duration: card.duration, times: [0, 0.08, 0.6, 0.85, 1] },
+            }}
+            className="absolute select-none"
+            style={{
+              [card.item.side === "left" ? "left" : "right"]: `${card.x}%`,
+              top: "-50px",
+            }}
+          >
+            <div className="flex items-center gap-2 pl-2 pr-3 py-2 rounded-card border border-white/[0.08] bg-gradient-to-r from-white/[0.04] to-white/[0.02] backdrop-blur-md">
+              <span className="text-sm leading-none shrink-0">{card.item.icon}</span>
+              <div className="flex flex-col gap-0.5">
+                <span className="text-xs text-white/50 font-medium leading-none whitespace-nowrap">
+                  {card.item.text}
+                </span>
+                {card.item.detail && (
+                  <span className={`text-xs leading-none whitespace-nowrap ${card.item.color} opacity-50`}>
+                    {card.item.detail}
+                  </span>
+                )}
+              </div>
+            </div>
+          </motion.div>
+        ))}
+      </AnimatePresence>
+    </div>
+  );
+}
+
+function AmbientBackground() {
+  return (
+    <div className="absolute inset-0 overflow-hidden pointer-events-none">
+      <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] rounded-full bg-white/[0.012] blur-[120px]" />
+      <div
+        className="absolute inset-0 opacity-[0.015]"
+        style={{
+          backgroundImage: `url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='1'/%3E%3C/svg%3E")`,
+        }}
+      />
+    </div>
+  );
+}
+
+const LANDING_BANKS = [
+  { value: "bchile", label: "Banco de Chile" },
+  { value: "bci", label: "BCI" },
+  { value: "santander", label: "Santander" },
+  { value: "bestado", label: "BancoEstado" },
+  { value: "scotiabank", label: "Scotiabank" },
+  { value: "itau", label: "Itaú" },
+  { value: "falabella", label: "Falabella" },
+  { value: "bice", label: "BICE" },
+  { value: "bancosecurity", label: "Security" },
+  { value: "edwards", label: "Edwards" },
+];
+
+function BankStrip() {
+  return (
+    <motion.div
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      transition={{ delay: 1.5, duration: 1 }}
+      className="flex flex-col items-center gap-3"
+    >
+      <p className="text-xs text-white/15 font-medium">
+        Sincroniza con tu banco
+      </p>
+      <div className="flex items-center gap-1 justify-center">
+        {LANDING_BANKS.map((bank) => (
+          <img
+            key={bank.value}
+            src={`/banks/${bank.value}.png`}
+            alt={bank.label}
+            title={bank.label}
+            className="w-6 h-6 rounded-card object-contain opacity-40 hover:opacity-60 transition-opacity duration-300"
+          />
+        ))}
+      </div>
+    </motion.div>
+  );
+}
+
+const formVariants = {
+  enter: { opacity: 0, y: 20, filter: "blur(2px)" },
+  center: { opacity: 1, y: 0, filter: "blur(0px)" },
+  exit: { opacity: 0, y: -20, filter: "blur(2px)" },
+};
+
+export default function Auth() {
+  const [isLogin, setIsLogin] = useState(true);
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [emailSent, setEmailSent] = useState(false);
+  const signIn = useSignIn();
+  const signUp = useSignUp();
+  const loading = signIn.isPending || signUp.isPending;
+
+  const handleAuth = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (isLogin) signIn.mutate({ email, password });
+    else signUp.mutate({ email, password }, { onSuccess: () => setEmailSent(true) });
+  };
+
+  const domainSuggestion = getDomainSuggestion(email);
+  const visibleDomains = getVisibleDomains(email);
+  const showDomainUI = email.includes("@") && email.indexOf("@") > 0;
+
+  const acceptSuggestion = useCallback(() => {
+    if (!domainSuggestion) return;
+    const atIndex = email.indexOf("@");
+    setEmail(email.slice(0, atIndex + 1) + domainSuggestion);
+  }, [email, domainSuggestion]);
+
+  const handleEmailKeyDown = useCallback(
+    (e: React.KeyboardEvent<HTMLInputElement>) => {
+      if ((e.key === "Tab" || e.key === "ArrowRight") && domainSuggestion && showDomainUI) {
+        e.preventDefault();
+        acceptSuggestion();
+      }
+    },
+    [domainSuggestion, showDomainUI, acceptSuggestion]
+  );
+
+  const handleDomainChipClick = useCallback(
+    (domain: string) => {
+      const atIndex = email.indexOf("@");
+      setEmail(email.slice(0, atIndex + 1) + domain);
+      const pwInput = document.getElementById("password") as HTMLInputElement | null;
+      pwInput?.focus();
+    },
+    [email]
+  );
+
+  const ghostText = useMemo(() => {
+    if (!showDomainUI || !domainSuggestion) return "";
+    const partial = email.slice(email.indexOf("@") + 1);
+    return domainSuggestion.slice(partial.length);
+  }, [email, showDomainUI, domainSuggestion]);
+
+  return (
+    <div className="min-h-screen bg-black flex items-center justify-center relative overflow-hidden">
+      <AmbientBackground />
+      <FloatingActivity />
+
+      <div className="relative z-10 w-full max-w-[360px] px-6">
+        <motion.div
+          initial={{ opacity: 0, y: -12 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.8, ease: "easeOut" }}
+          className="text-center mb-8"
+        >
+          <motion.div
+            initial={{ opacity: 0, scale: 0.8 }}
+            animate={{ opacity: 1, scale: 1 }}
+            transition={{ duration: 0.6, delay: 0.1 }}
+            className="mb-4"
+          >
+            <RindoLogo size={56} className="text-white mx-auto" />
+          </motion.div>
+
+          <h1 className="text-hero font-medium text-white">
+            rindo<span className="text-primary">.</span>
+          </h1>
+
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={{ delay: 0.6, duration: 0.8 }}
+            className="mt-3"
+          >
+            <RotatingText />
+          </motion.div>
+        </motion.div>
+
+        <motion.div
+          initial={{ scaleX: 0, opacity: 0 }}
+          animate={{ scaleX: 1, opacity: 1 }}
+          transition={{ delay: 0.8, duration: 0.6, ease: "easeOut" }}
+          className="h-px bg-gradient-to-r from-transparent via-white/[0.06] to-transparent mb-8"
+        />
+
+        <AnimatePresence mode="wait">
+          {!emailSent ? (
+            <motion.form
+              key={isLogin ? "login" : "signup"}
+              variants={formVariants}
+              initial="enter"
+              animate="center"
+              exit="exit"
+              transition={{ duration: 0.3, ease: "easeInOut" }}
+              onSubmit={handleAuth}
+              className="space-y-4"
+            >
+              <div className="space-y-2">
+                <Label htmlFor="email" className="text-xs font-medium text-white/25">
+                  Correo
+                </Label>
+                <div className="relative group">
+                  <Input
+                    id="email"
+                    type="email"
+                    placeholder="tu@email.com"
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
+                    onKeyDown={handleEmailKeyDown}
+                    className="h-12 bg-white/[0.03] border-white/[0.08] text-white placeholder:text-white/15 rounded-card focus-visible:ring-1 focus-visible:ring-white/20 focus-visible:border-white/15 focus-visible:bg-white/[0.05] transition-all duration-300"
+                    required
+                    autoComplete="email"
+                  />
+                  {showDomainUI && ghostText && (
+                    <div className="hidden lg:flex absolute inset-0 pointer-events-none items-center px-3">
+                      <span className="text-transparent text-sm">{email}</span>
+                      <span className="text-white/15 text-sm">{ghostText}</span>
+                    </div>
+                  )}
+                </div>
+                {showDomainUI && ghostText && (
+                  <p className="hidden lg:block text-xs text-white/15 ml-1">
+                    Tab para completar
+                  </p>
+                )}
+                {showDomainUI && visibleDomains.length > 0 && (
+                  <div className="lg:hidden flex flex-wrap gap-1.5 mt-2">
+                    {visibleDomains.map((domain) => (
+                      <button
+                        key={domain}
+                        type="button"
+                        onClick={() => handleDomainChipClick(domain)}
+                        className="px-2 py-1 text-xs rounded-full bg-white/[0.04] border border-white/[0.08] text-white/30 hover:bg-white/[0.08] hover:text-white/50 active:bg-white/[0.1] active:text-white/60 transition-colors"
+                      >
+                        @{domain}
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="password" className="text-xs font-medium text-white/25">
+                  Contraseña
+                </Label>
+                <Input
+                  id="password"
+                  type="password"
+                  placeholder="••••••••"
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  className="h-12 bg-white/[0.03] border-white/[0.08] text-white placeholder:text-white/15 rounded-card focus-visible:ring-1 focus-visible:ring-white/20 focus-visible:border-white/15 focus-visible:bg-white/[0.05] transition-all duration-300"
+                  required
+                  autoComplete={isLogin ? "current-password" : "new-password"}
+                  minLength={6}
+                />
+                {!isLogin && (
+                  <p className="text-xs text-white/15 ml-1">Mínimo 6 caracteres</p>
+                )}
+              </div>
+
+              <div className="pt-2">
+                <Button
+                  type="submit"
+                  className="w-full h-12 font-medium transition-all duration-300 bg-white text-black hover:bg-white/90"
+                  disabled={loading}
+                >
+                  {loading
+                    ? "Cargando..."
+                    : isLogin
+                      ? "Iniciar sesión"
+                      : "Crear cuenta"}
+                </Button>
+              </div>
+            </motion.form>
+          ) : (
+            <motion.div
+              key="email-sent"
+              initial={{ opacity: 0, scale: 0.95, filter: "blur(6px)" }}
+              animate={{ opacity: 1, scale: 1, filter: "blur(0px)" }}
+              transition={{ duration: 0.5, ease: "easeOut" }}
+              className="min-h-[260px] flex items-center justify-center"
+            >
+              <div className="text-center space-y-6 py-8">
+                <motion.div
+                  initial={{ scale: 0.5, opacity: 0 }}
+                  animate={{ scale: 1, opacity: 1 }}
+                  transition={{ duration: 0.5, delay: 0.2, type: "spring" }}
+                >
+                  <CheckCircle className="h-16 w-16 text-white/80 mx-auto" />
+                </motion.div>
+
+                <div className="space-y-3">
+                  <motion.h3
+                    initial={{ opacity: 0, y: 8 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ duration: 0.4, delay: 0.4 }}
+                    className="text-xl font-medium text-white"
+                  >
+                    Revisa tu correo
+                  </motion.h3>
+                  <motion.div
+                    initial={{ opacity: 0, y: 8 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ duration: 0.4, delay: 0.5 }}
+                  >
+                    <p className="text-white/25 text-sm mb-2">Te enviamos un link de confirmación a</p>
+                    <p className="font-medium text-white/70">{email}</p>
+                  </motion.div>
+                  <motion.div
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    transition={{ duration: 0.4, delay: 0.7 }}
+                    className="pt-4 space-y-3"
+                  >
+                    <div className="flex items-start gap-2 text-xs text-white/25 text-left bg-white/[0.03] border border-white/[0.06] p-3 rounded-card">
+                      <CheckCircle className="h-4 w-4 mt-0.5 flex-shrink-0 text-white/40" />
+                      <span>Revisa tu bandeja de entrada (y spam por si acaso)</span>
+                    </div>
+                    <Button
+                      onClick={() => {
+                        setEmailSent(false);
+                        setIsLogin(true);
+                      }}
+                      variant="ghost"
+                      className="w-full h-11 border border-white/[0.08] text-white/30 hover:text-white/60 hover:border-white/15 bg-transparent"
+                    >
+                      Volver al inicio de sesión
+                    </Button>
+                  </motion.div>
+                </div>
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
+
+        {!emailSent && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={{ delay: 0.5 }}
+            className="text-center mt-8"
+          >
+            <button
+              type="button"
+              onClick={() => setIsLogin(!isLogin)}
+              className="text-xs text-white/15 hover:text-white/30 transition-colors duration-300"
+            >
+              {isLogin ? (
+                <>¿No tienes cuenta? <span className="text-white/30 hover:text-white/50">Regístrate</span></>
+              ) : (
+                <>¿Ya tienes cuenta? <span className="text-white/30 hover:text-white/50">Inicia sesión</span></>
+              )}
+            </button>
+          </motion.div>
+        )}
+
+        <div className="mt-8">
+          <BankStrip />
+        </div>
+
+        <motion.p
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ delay: 1.8, duration: 1 }}
+          className="text-center text-xs text-white/10 mt-6"
+        >
+          Tu banco no te juzga. Yo sí.
+        </motion.p>
+      </div>
+    </div>
+  );
+}

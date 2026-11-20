@@ -1,9 +1,9 @@
 import { useMemo, useRef, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import * as Dialog from "@radix-ui/react-dialog";
-import Layout from "@/components/Layout";
-import { GlassCard } from "@/components/GlassCard";
-import ConfirmDialog from "@/components/ConfirmDialog";
+import Layout from "@/components/layout/Layout";
+import { Card } from "@/components/ui/card";
+import ConfirmDialog from "@/components/shared/ConfirmDialog";
 import {
   useSharedExpenses,
   type SharedExpenseDirection,
@@ -15,20 +15,14 @@ import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { CheckCircle2, Trash2, ChevronDown, HandCoins, X } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
-import { EmptyState } from "@/components/EmptyState";
-import "@/components/whisper.css";
+import { EmptyState } from "@/components/shared/EmptyState";
+import "@/components/shared/whisper.css";
+import { clp } from "@/lib/format";
 
-const fmt = (n: number) => `$${new Intl.NumberFormat("es-CL").format(n)}`;
 const shortDate = (d: string) => new Date(d).toLocaleDateString("es-CL", { day: "numeric", month: "short" });
 
 type Debt = SharedExpenseWithTransaction;
 
-/**
- * Deudas es para ver quién me debe, a quién le debo y cuánto. Las deudas
- * nacen en Movimientos, al dividir un gasto, y casi siempre se pagan solas
- * cuando llega la transferencia. Acá solo queda la salida para lo que se pagó
- * en efectivo (marcar como pagada o saldar) y eliminar.
- */
 const directions: { value: SharedExpenseDirection; label: string; amountClass: string }[] = [
   { value: "they_owe_me", label: "Me deben", amountClass: "text-amber-500" },
   { value: "i_owe_them", label: "Yo debo", amountClass: "text-foreground" },
@@ -46,8 +40,6 @@ export default function PendingDebts() {
   const { transactions } = useTransactions();
   const { isPrivacyMode } = usePrivacyMode();
 
-  // Marcar como pagada (me deben) o eliminar: un solo diálogo de confirmación.
-  // El contenido se queda mientras el diálogo se cierra, para que no cambie en la animación.
   const [confirm, setConfirm] = useState<{ kind: "paid" | "delete"; debt: Debt } | null>(null);
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [settleTarget, setSettleTarget] = useState<Debt | null>(null);
@@ -56,7 +48,6 @@ export default function PendingDebts() {
   const [settleQuery, setSettleQuery] = useState("");
   const settleInputRef = useRef<HTMLInputElement>(null);
 
-  // Pendientes agrupadas por dirección y persona, de mayor a menor.
   const sections = useMemo(
     () =>
       directions
@@ -162,16 +153,16 @@ export default function PendingDebts() {
                 <span
                   className={cn("text-xl font-medium tabular-nums", section.amountClass, isPrivacyMode && "privacy-blur")}
                 >
-                  {fmt(section.total)}
+                  {clp(section.total)}
                 </span>
               </div>
 
               {section.people.map((person) => (
-                <GlassCard key={person.name}>
+                <Card key={person.name}>
                   <div className="flex items-center justify-between gap-3 px-4 py-3">
                     <p className="font-medium text-sm truncate">{person.name}</p>
                     <span className={cn("text-sm font-medium tabular-nums", isPrivacyMode && "privacy-blur")}>
-                      {fmt(person.total)}
+                      {clp(person.total)}
                     </span>
                   </div>
 
@@ -185,7 +176,6 @@ export default function PendingDebts() {
                         )}
                       >
                         <div className="flex-1 min-w-0">
-                          {/* La deuda lleva al movimiento que la originó, si lo tiene. */}
                           {debt.transaction_id ? (
                             <Link
                               to={`/transactions?search=${encodeURIComponent(debt.transaction_detail ?? "")}`}
@@ -202,7 +192,7 @@ export default function PendingDebts() {
                         </div>
                         {person.debts.length > 1 && (
                           <span className={cn("text-sm tabular-nums shrink-0", isPrivacyMode && "privacy-blur")}>
-                            {fmt(debt.amount_owed)}
+                            {clp(debt.amount_owed)}
                           </span>
                         )}
                         <Button
@@ -232,7 +222,7 @@ export default function PendingDebts() {
                       </div>
                     ))}
                   </div>
-                </GlassCard>
+                </Card>
               ))}
             </section>
           ))
@@ -263,7 +253,7 @@ export default function PendingDebts() {
                     </div>
                     <span className={cn("tabular-nums text-xs shrink-0", isPrivacyMode && "privacy-blur")}>
                       {debt.direction === "they_owe_me" ? "+" : "−"}
-                      {fmt(debt.amount_owed)}
+                      {clp(debt.amount_owed)}
                     </span>
                     {debt.paid_at && <span className="text-xs shrink-0">{shortDate(debt.paid_at)}</span>}
                   </div>
@@ -274,7 +264,6 @@ export default function PendingDebts() {
         )}
       </div>
 
-      {/* Saldar deuda: elegir el gasto con el que pagaste. */}
       <Dialog.Root open={!!settleTarget} onOpenChange={(open) => !open && closeSettle()}>
         <Dialog.Portal>
           <Dialog.Overlay className="whisper-backdrop" />
@@ -314,7 +303,7 @@ export default function PendingDebts() {
                 <div className={cn("whisper-preview", isPrivacyMode && "privacy-blur")} aria-hidden="true">
                   {settleTarget && (
                     <span>
-                      le pagaste {fmt(settleTarget.amount_owed)} a {settleTarget.debtor_name}
+                      le pagaste {clp(settleTarget.amount_owed)} a {settleTarget.debtor_name}
                     </span>
                   )}
                 </div>
@@ -343,7 +332,7 @@ export default function PendingDebts() {
                         {shortDate(tx.date)} · {tx.category_name}
                       </span>
                     </span>
-                    <span className={cn("whisper-debt-row-amount", isPrivacyMode && "privacy-blur")}>{fmt(tx.amount)}</span>
+                    <span className={cn("whisper-debt-row-amount", isPrivacyMode && "privacy-blur")}>{clp(tx.amount)}</span>
                   </button>
                 ))}
               </div>
@@ -359,7 +348,7 @@ export default function PendingDebts() {
         title={confirm?.kind === "paid" ? "Confirmar pago" : "Eliminar deuda"}
         description={
           confirm?.kind === "paid"
-            ? `Se registrará el pago de ${fmt(confirm.debt.amount_owed)} de ${confirm.debt.debtor_name}.`
+            ? `Se registrará el pago de ${clp(confirm.debt.amount_owed)} de ${confirm.debt.debtor_name}.`
             : "Esta acción no se puede deshacer."
         }
         confirmText={confirm?.kind === "paid" ? "Pagado" : "Eliminar"}

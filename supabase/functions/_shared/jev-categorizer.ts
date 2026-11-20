@@ -1,8 +1,8 @@
-// Shared by the Edge Function and the local POC. No database writes here.
+import { CATEGORIZABLE_TYPES, PENDING_CATEGORIES, UNCATEGORIZED } from './category-rules.ts'
 import { chileanMerchantContext } from './chilean-merchants.ts'
 
-export const JEV_MODEL = 'typesafe-ai/jev'
-export const JEV_ENDPOINT = 'https://ai-gateway.vercel.sh/typesafe/v1/systemone'
+const JEV_MODEL = 'typesafe-ai/jev'
+const JEV_ENDPOINT = 'https://ai-gateway.vercel.sh/typesafe/v1/systemone'
 export const JEV_POLICY = { selection: 'most_likely' } as const
 
 export interface JevCategory {
@@ -20,7 +20,7 @@ export interface JevTransaction {
   type: string
 }
 
-export interface JevResult {
+interface JevResult {
   status: 'accepted' | 'review' | 'unavailable' | 'skipped'
   category: string
   categoryId: string | null
@@ -35,14 +35,14 @@ export interface JevResult {
   model?: string
 }
 
-const ignoredCategories = new Set(['Sin categoría', '⚡ Analizando...'])
+const ignoredCategories = new Set(PENDING_CATEGORIES)
 
 export function prepareJevRequest(transaction: JevTransaction, categories: JevCategory[], history: JevHistoryExample[] = []) {
   if (!transaction || typeof transaction.detail !== 'string' ||
       transaction.detail.trim().length < 3 || transaction.detail.length > 1000) {
     throw new Error('invalid_detail')
   }
-  if (!['Gasto', 'Ingreso', 'Inversión'].includes(transaction.type)) {
+  if (!CATEGORIZABLE_TYPES.includes(transaction.type)) {
     throw new Error('unsupported_type')
   }
   if (!Array.isArray(categories) || categories.length > 200) throw new Error('invalid_categories')
@@ -61,7 +61,6 @@ export function prepareJevRequest(transaction: JevTransaction, categories: JevCa
   if (new Set(eligible.map(c => c.id)).size !== eligible.length) throw new Error('duplicate_category_id')
   if (!eligible.length) throw new Error('no_categories')
 
-  // Opaque local keys keep database IDs out of the provider request.
   const options = Object.fromEntries(eligible.map((c, i) => [`c${i}`, c]))
   const criteria = Object.fromEntries(Object.entries(options).map(([key, c]) => [
     key, c.description ? `${c.name}: ${c.description}` : `Categoría del usuario: ${c.name}.`,
@@ -130,7 +129,6 @@ export function parseJevDecision(raw: unknown, options: Record<string, JevCatego
   const chosen = options[answer.choice]
   const metadata = record(raw.provider_metadata) ? raw.provider_metadata : {}
   const gateway = record(metadata.gateway) ? metadata.gateway : {}
-  // Gateway reports USD as a string. Missing/invalid cost must not look free.
   const cost = typeof gateway.cost === 'number' ? gateway.cost
     : typeof gateway.cost === 'string' && gateway.cost.trim() ? Number(gateway.cost) : undefined
 
@@ -142,7 +140,7 @@ export function parseJevDecision(raw: unknown, options: Record<string, JevCatego
     confidence: answer.confidence,
     probability: selected,
     margin,
-    alternatives: keys.map(key => ({ category: options[key]?.name ?? 'Sin categoría', probability: probabilities[key] }))
+    alternatives: keys.map(key => ({ category: options[key]?.name ?? UNCATEGORIZED, probability: probabilities[key] }))
       .sort((a, b) => b.probability - a.probability),
     reason: 'most_likely',
     latencyMs: 0,
@@ -158,7 +156,7 @@ export async function classifyWithJev(
 ): Promise<JevResult> {
   const started = performance.now()
   const fallback = (status: JevResult['status'], reason: string): JevResult => ({
-    status, reason, category: 'Sin categoría', categoryId: null,
+    status, reason, category: UNCATEGORIZED, categoryId: null,
     latencyMs: Math.round(performance.now() - started),
   })
   let prepared: ReturnType<typeof prepareJevRequest>
@@ -183,7 +181,6 @@ export async function classifyWithJev(
     const result = parseJevDecision(await response.json(), prepared.options)
     return { ...result, latencyMs: Math.round(performance.now() - started) }
   } catch {
-    // Never expose provider error bodies, descriptions or credentials in logs.
     return fallback('unavailable', controller.signal.aborted ? 'timeout' : 'invalid_response_or_network')
   } finally {
     clearTimeout(timer)

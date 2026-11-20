@@ -4,26 +4,17 @@ import "./index.css";
 import { injectSpeedInsights } from '@vercel/speed-insights';
 import { inject } from '@vercel/analytics';
 import { ThemeProvider } from "next-themes";
-import { applyThemePreview, applyFontPreview, applyRadiusPreview, getCachedThemeId, getCachedCustomSettings } from "./hooks/useCustomTheme";
+import { applyTheme, getCachedCustomSettings, getCachedThemeId } from "./lib/theme";
+import { readStorage } from "./lib/storage";
 
 injectSpeedInsights();
 inject();
 
-// Apply cached theme instantly to avoid flash of default colors
-const cachedTheme = getCachedThemeId();
-const cachedSettings = getCachedCustomSettings();
-{
-  const prefersDark = window.matchMedia("(prefers-color-scheme: dark)").matches;
-  const storedTheme = localStorage.getItem("theme");
-  const mode = storedTheme === "light" ? "light" : storedTheme === "dark" ? "dark" : prefersDark ? "dark" : "light";
-  // Apply dark/light class immediately so loading screen uses correct colors
-  document.documentElement.classList.toggle("dark", mode === "dark");
-  if (cachedTheme) {
-    applyThemePreview(cachedTheme, mode, cachedSettings);
-  }
-  if (cachedSettings?.font) applyFontPreview(cachedSettings.font);
-  if (cachedSettings?.radius != null) applyRadiusPreview(cachedSettings.radius);
-}
+const storedMode = readStorage("theme");
+const prefersDark = window.matchMedia("(prefers-color-scheme: dark)").matches;
+const initialMode = storedMode === "light" || storedMode === "dark" ? storedMode : prefersDark ? "dark" : "light";
+document.documentElement.classList.toggle("dark", initialMode === "dark");
+applyTheme(getCachedThemeId(), getCachedCustomSettings() ?? {}, initialMode);
 
 createRoot(document.getElementById("root")!).render(
   <ThemeProvider attribute="class" defaultTheme="system" enableSystem>
@@ -31,15 +22,10 @@ createRoot(document.getElementById("root")!).render(
   </ThemeProvider>
 );
 
-// Register Service Worker for PWA
-if ('serviceWorker' in navigator) {
-  window.addEventListener('load', () => {
-    navigator.serviceWorker.register('/sw.js', { scope: '/' })
-      .then((registration) => {
-        console.log('SW registered: ', registration);
-      })
-      .catch((registrationError) => {
-        console.log('SW registration failed: ', registrationError);
-      });
+if ("serviceWorker" in navigator) {
+  window.addEventListener("load", () => {
+    navigator.serviceWorker
+      .register("/sw.js", { scope: "/" })
+      .catch((error) => console.error("No se pudo registrar el service worker", error));
   });
 }

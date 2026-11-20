@@ -27,8 +27,8 @@ test('period comparisons apply the same net formula and do not mix months', () =
   assert.equal(current.count, 1);
 });
 test('records explicit choices without labelling old or pending predictions as confirmed', () => {
-  assert.deepEqual(withManualCategorySource({ category_name: 'Comida diaria' }, true), { category_name: 'Comida diaria', category_source: 'manual' });
-  assert.deepEqual(withManualCategorySource({ category_name: '⚡ Analizando...' }, true), { category_name: '⚡ Analizando...', category_source: null });
-  assert.deepEqual(withManualCategorySource({ detail: 'cena' } as { detail: string; category_name?: string }, true), { detail: 'cena' });
-  assert.deepEqual(withManualCategorySource({ category_name: 'Comida' }, false), { category_name: 'Comida' });
+  assert.deepEqual(withManualCategorySource({ category_name: 'Comida diaria' }), { category_name: 'Comida diaria', category_source: 'manual' });
+  assert.deepEqual(withManualCategorySource({ category_name: '⚡ Analizando...' }), { category_name: '⚡ Analizando...', category_source: null });
+  assert.deepEqual(withManualCategorySource({ category_name: 'Sin categoría' }), { category_name: 'Sin categoría', category_source: null });
+  assert.deepEqual(withManualCategorySource({ detail: 'cena' } as { detail: string; category_name?: string }), { detail: 'cena' });
 });

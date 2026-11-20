@@ -11,7 +11,6 @@ export interface WhisperDraft {
   isLoss: boolean;
 }
 
-// CLP: reject malformed/decimal-looking amounts instead of silently multiplying them.
 export function parseWhisper(input: string) {
   const match = input.trim().match(/^\$?\s*(\d+(?:[.,]\d{3})*)(?:\s+(.+))?$/);
   if (!match) return null;
@@ -20,7 +19,6 @@ export function parseWhisper(input: string) {
   return { amount, detail: match[2]?.trim() || null };
 }
 
-/** El detalle sin el prefijo 🤖 con que el bot marca lo que detectó. */
 export function getCleanDetail(detail: string | null): string {
   if (!detail) return '';
   return detail.replace(/^🤖\s*/, '').trim();
@@ -32,7 +30,6 @@ export function categoryFrequency(history: { category_name: string; type: string
   return counts;
 }
 
-/** Los seis tipos con su color y el ejemplo del placeholder, en el orden del Whisper. */
 export const WHISPER_TYPES: { type: TransactionType; color: string; placeholder: string }[] = [
   { type: 'Gasto', color: '#fafafa', placeholder: '15000 almuerzo' },
   { type: 'Ingreso', color: 'oklch(var(--success))', placeholder: '1500000 sueldo' },
