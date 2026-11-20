@@ -1,6 +1,5 @@
 import { useMemo, useRef, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import * as Dialog from "@radix-ui/react-dialog";
 import Layout from "@/components/layout/Layout";
 import { Card } from "@/components/ui/card";
 import ConfirmDialog from "@/components/shared/ConfirmDialog";
@@ -13,10 +12,10 @@ import { useTransactions } from "@/hooks/useTransactions";
 import { usePrivacyMode } from "@/hooks/usePrivacyMode";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
-import { CheckCircle2, Trash2, ChevronDown, HandCoins, X } from "lucide-react";
+import { CheckCircle2, Trash2, ChevronDown, HandCoins } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
 import { EmptyState } from "@/components/shared/EmptyState";
-import "@/components/shared/whisper.css";
+import { WhisperComposer, WhisperStaticType } from "@/components/shared/whisper/WhisperComposer";
 import { clp } from "@/lib/format";
 
 const shortDate = (d: string) => new Date(d).toLocaleDateString("es-CL", { day: "numeric", month: "short" });
@@ -264,82 +263,64 @@ export default function PendingDebts() {
         )}
       </div>
 
-      <Dialog.Root open={!!settleTarget} onOpenChange={(open) => !open && closeSettle()}>
-        <Dialog.Portal>
-          <Dialog.Overlay className="whisper-backdrop" />
-          <Dialog.Content
-            data-scrollable
-            className="whisper-composer"
-            onOpenAutoFocus={(event) => {
-              event.preventDefault();
-              settleInputRef.current?.focus();
-            }}
-          >
-            <Dialog.Title className="sr-only">Saldar deuda</Dialog.Title>
-            <Dialog.Description className="sr-only">
-              Elige el gasto con el que pagaste esta deuda. Puedes escribir para buscar entre tus últimos gastos.
-            </Dialog.Description>
-            <Dialog.Close className="whisper-close" aria-label="Cerrar">
-              <X size={16} />
-            </Dialog.Close>
-            <div className="whisper-form">
-              <div className="whisper-type" data-static>
-                <span className="whisper-dot" aria-hidden="true" />
-                <span>Saldar deuda</span>
-              </div>
+      <WhisperComposer
+        open={!!settleTarget}
+        onOpenChange={(open) => !open && closeSettle()}
+        title="Saldar deuda"
+        description="Elige el gasto con el que pagaste esta deuda. Puedes escribir para buscar entre tus últimos gastos."
+        focusOnOpen={() => settleInputRef.current?.focus()}
+      >
+        <WhisperStaticType>Saldar deuda</WhisperStaticType>
 
-              <div className="whisper-entry">
-                <input
-                  ref={settleInputRef}
-                  aria-label="Buscar el gasto con el que pagaste"
-                  autoComplete="off"
-                  autoCorrect="off"
-                  spellCheck={false}
-                  value={settleQuery}
-                  onChange={(event) => setSettleQuery(event.target.value)}
-                  placeholder="Buscar gasto"
-                  className="whisper-input whisper-debt-search"
-                />
-                <div className={cn("whisper-preview", isPrivacyMode && "privacy-blur")} aria-hidden="true">
-                  {settleTarget && (
-                    <span>
-                      le pagaste {clp(settleTarget.amount_owed)} a {settleTarget.debtor_name}
-                    </span>
-                  )}
-                </div>
-              </div>
+        <div className="whisper-entry">
+          <input
+            ref={settleInputRef}
+            aria-label="Buscar el gasto con el que pagaste"
+            autoComplete="off"
+            autoCorrect="off"
+            spellCheck={false}
+            value={settleQuery}
+            onChange={(event) => setSettleQuery(event.target.value)}
+            placeholder="Buscar gasto"
+            className="whisper-input whisper-debt-search"
+          />
+          <div className={cn("whisper-preview", isPrivacyMode && "privacy-blur")} aria-hidden="true">
+            {settleTarget && (
+              <span>
+                le pagaste {clp(settleTarget.amount_owed)} a {settleTarget.debtor_name}
+              </span>
+            )}
+          </div>
+        </div>
 
-              <div className="whisper-debt-list" role="listbox" aria-label="Últimos gastos">
-                {recentGastos.length === 0 && (
-                  <p className="whisper-caption">
-                    {settleQuery.trim() ? "Ningún gasto calza con eso." : "No tienes gastos registrados todavía."}
-                  </p>
-                )}
-                {recentGastos.map((tx) => (
-                  <button
-                    key={tx.id}
-                    type="button"
-                    role="option"
-                    aria-selected={false}
-                    disabled={settleDebtsIOwe.isPending}
-                    onClick={() => handleSettleWithTransaction(tx.id)}
-                    className="whisper-debt-row"
-                  >
-                    <HandCoins size={14} aria-hidden="true" />
-                    <span className="whisper-debt-row-main">
-                      <span className={cn("whisper-debt-row-detail", isPrivacyMode && "privacy-blur")}>{tx.detail || "Sin detalle"}</span>
-                      <span className="whisper-debt-row-meta">
-                        {shortDate(tx.date)} · {tx.category_name}
-                      </span>
-                    </span>
-                    <span className={cn("whisper-debt-row-amount", isPrivacyMode && "privacy-blur")}>{clp(tx.amount)}</span>
-                  </button>
-                ))}
-              </div>
-            </div>
-          </Dialog.Content>
-        </Dialog.Portal>
-      </Dialog.Root>
+        <div className="whisper-debt-list" role="listbox" aria-label="Últimos gastos">
+          {recentGastos.length === 0 && (
+            <p className="whisper-caption">
+              {settleQuery.trim() ? "Ningún gasto calza con eso." : "No tienes gastos registrados todavía."}
+            </p>
+          )}
+          {recentGastos.map((tx) => (
+            <button
+              key={tx.id}
+              type="button"
+              role="option"
+              aria-selected={false}
+              disabled={settleDebtsIOwe.isPending}
+              onClick={() => handleSettleWithTransaction(tx.id)}
+              className="whisper-debt-row"
+            >
+              <HandCoins size={14} aria-hidden="true" />
+              <span className="whisper-debt-row-main">
+                <span className={cn("whisper-debt-row-detail", isPrivacyMode && "privacy-blur")}>{tx.detail || "Sin detalle"}</span>
+                <span className="whisper-debt-row-meta">
+                  {shortDate(tx.date)} · {tx.category_name}
+                </span>
+              </span>
+              <span className={cn("whisper-debt-row-amount", isPrivacyMode && "privacy-blur")}>{clp(tx.amount)}</span>
+            </button>
+          ))}
+        </div>
+      </WhisperComposer>
 
       <ConfirmDialog
         open={confirmOpen}

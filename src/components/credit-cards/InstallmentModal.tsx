@@ -1,7 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import * as Dialog from "@radix-ui/react-dialog";
-import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
-import { ArrowUp, Check, ChevronDown, X } from "lucide-react";
+import { Check } from "lucide-react";
 import { addMonths, format } from "date-fns";
 import { es } from "date-fns/locale";
 import { parseWhisper } from "@/lib/whisper";
@@ -10,9 +8,10 @@ import type { InstallmentPurchase } from "@/hooks/useInstallments";
 import type { CreditCard } from "@/hooks/useCreditCards";
 import { useCategories } from "@/hooks/useCategories";
 import { useSoundFX } from "@/hooks/useSoundFX";
-import { cn } from "@/lib/utils";
+import { useComposerSubmit } from "@/hooks/useComposerSubmit";
 import { isCardPaymentCategory } from "@/lib/ledger";
-import "../shared/whisper.css";
+import { WhisperComposer, WhisperShortcuts, WhisperStaticType, WhisperSubmit } from "@/components/shared/whisper/WhisperComposer";
+import { WhisperOptions, WhisperOptionsToggle } from "@/components/shared/whisper/WhisperOptions";
 import { clp } from "@/lib/format";
 
 interface InstallmentModalProps {
@@ -38,7 +37,6 @@ const monthOf = (iso: string) => {
 export function InstallmentModal({ open, onOpenChange, installment, creditCards, onSave }: InstallmentModalProps) {
   const { categories } = useCategories();
   const { playTap } = useSoundFX();
-  const reducedMotion = useReducedMotion();
   const [value, setValue] = useState("");
   const [count, setCount] = useState(6);
   const [cardId, setCardId] = useState("");
@@ -47,8 +45,7 @@ export function InstallmentModal({ open, onOpenChange, installment, creditCards,
   const [categoryName, setCategoryName] = useState(DEFAULT_CATEGORY);
   const [notes, setNotes] = useState("");
   const [expanded, setExpanded] = useState(false);
-  const [error, setError] = useState("");
-  const saving = useRef(false);
+  const { error, setError, guardedSubmit } = useComposerSubmit();
   const inputRef = useRef<HTMLInputElement>(null);
 
   const isEditing = !!installment;
@@ -81,11 +78,9 @@ export function InstallmentModal({ open, onOpenChange, installment, creditCards,
     }
     setExpanded(false);
     setError("");
-  }, [installment, open, creditCards]);
+  }, [installment, open, creditCards, setError]);
 
-  const submit = async (event: React.FormEvent) => {
-    event.preventDefault();
-    if (saving.current) return;
+  const submit = guardedSubmit(async () => {
     if (!parsed) {
       setError("Escribe el total en pesos, seguido de qué compraste.");
       inputRef.current?.focus();
@@ -105,195 +100,148 @@ export function InstallmentModal({ open, onOpenChange, installment, creditCards,
       setError("Revisa las fechas.");
       return;
     }
-    saving.current = true;
-    try {
-      await onSave({
-        card_id: cardId,
-        description,
-        total_amount: parsed.amount,
-        total_installments: count,
-        installment_amount: installmentAmount,
-        paid_installments: installment?.paid_installments || 0,
-        purchase_date: purchaseDate,
-        first_installment_date: firstDate,
-        category_name: categoryName,
-        notes: notes || null,
-        is_active: true,
-      });
-      onOpenChange(false);
-    } catch {
-      setError("No se guardó la compra. Intenta de nuevo.");
-    } finally {
-      saving.current = false;
-    }
-  };
+    await onSave({
+      card_id: cardId,
+      description,
+      total_amount: parsed.amount,
+      total_installments: count,
+      installment_amount: installmentAmount,
+      paid_installments: installment?.paid_installments || 0,
+      purchase_date: purchaseDate,
+      first_installment_date: firstDate,
+      category_name: categoryName,
+      notes: notes || null,
+      is_active: true,
+    });
+    onOpenChange(false);
+  }, "No se guardó la compra. Intenta de nuevo.");
 
   const accent = selectedCard?.color && selectedCard.color !== "#000000" ? selectedCard.color : FALLBACK_ACCENT;
 
   return (
-    <Dialog.Root open={open} onOpenChange={onOpenChange}>
-      <Dialog.Portal>
-        <Dialog.Overlay className="whisper-backdrop" />
-        <Dialog.Content
-          data-scrollable
-          className="whisper-composer"
-          style={{ "--whisper-accent": accent } as React.CSSProperties}
-          onOpenAutoFocus={(event) => {
-            event.preventDefault();
-            inputRef.current?.focus();
+    <WhisperComposer
+      open={open}
+      onOpenChange={onOpenChange}
+      title={isEditing ? "Editar compra" : "Nueva compra en cuotas"}
+      description="Escribe el total y qué compraste en una línea. Abajo eliges la tarjeta y la cantidad de cuotas. En más opciones están las fechas, la categoría y las notas."
+      accent={accent}
+      focusOnOpen={() => inputRef.current?.focus()}
+      onSubmit={submit}
+    >
+      <WhisperStaticType>{isEditing ? "Editar compra" : "Compra en cuotas"}</WhisperStaticType>
+
+      <div className="whisper-entry">
+        <input
+          ref={inputRef}
+          aria-label="Total y qué compraste"
+          aria-describedby={error ? "inst-error inst-shortcuts" : "inst-shortcuts"}
+          aria-invalid={!!error}
+          autoComplete="off"
+          autoCorrect="off"
+          spellCheck={false}
+          maxLength={200}
+          value={value}
+          onChange={(event) => {
+            setValue(event.target.value);
+            setError("");
           }}
-        >
-          <Dialog.Title className="sr-only">{isEditing ? "Editar compra" : "Nueva compra en cuotas"}</Dialog.Title>
-          <Dialog.Description className="sr-only">
-            Escribe el total y qué compraste en una línea. Abajo eliges la tarjeta y la cantidad de cuotas. En más opciones están las fechas, la categoría y las notas.
-          </Dialog.Description>
-          <Dialog.Close className="whisper-close" aria-label="Cerrar">
-            <X size={16} />
-          </Dialog.Close>
+          placeholder="1498800 MacBook Air"
+          className="whisper-input"
+        />
+        <div className="whisper-preview" aria-hidden="true">
+          {parsed && (
+            <span>
+              {count} cuotas de {clp(installmentAmount)}
+            </span>
+          )}
+        </div>
+      </div>
 
-          <form onSubmit={submit} className="whisper-form">
-            <div className="whisper-type" data-static>
-              <span className="whisper-dot" aria-hidden="true" />
-              <span>{isEditing ? "Editar compra" : "Compra en cuotas"}</span>
-            </div>
-
-            <div className="whisper-entry">
-              <input
-                ref={inputRef}
-                aria-label="Total y qué compraste"
-                aria-describedby={error ? "inst-error inst-shortcuts" : "inst-shortcuts"}
-                aria-invalid={!!error}
-                autoComplete="off"
-                autoCorrect="off"
-                spellCheck={false}
-                maxLength={200}
-                value={value}
-                onChange={(event) => {
-                  setValue(event.target.value);
-                  setError("");
+      <div className="whisper-category-space">
+        {creditCards.length > 1 && (
+          <div className="whisper-categories" role="group" aria-label="Tarjeta">
+            {creditCards.map((card) => (
+              <button
+                key={card.id}
+                type="button"
+                className="whisper-category"
+                aria-pressed={cardId === card.id}
+                style={{ "--whisper-accent": card.color && card.color !== "#000000" ? card.color : FALLBACK_ACCENT } as React.CSSProperties}
+                onClick={() => {
+                  setCardId(card.id);
+                  playTap();
+                  inputRef.current?.focus();
                 }}
-                placeholder="1498800 MacBook Air"
-                className="whisper-input"
-              />
-              <div className="whisper-preview" aria-hidden="true">
-                {parsed && (
-                  <span>
-                    {count} cuotas de {clp(installmentAmount)}
-                  </span>
-                )}
-              </div>
-            </div>
-
-            <div className="whisper-category-space">
-              {creditCards.length > 1 && (
-                <div className="whisper-categories" role="group" aria-label="Tarjeta">
-                  {creditCards.map((card) => (
-                    <button
-                      key={card.id}
-                      type="button"
-                      className="whisper-category"
-                      aria-pressed={cardId === card.id}
-                      style={{ "--whisper-accent": card.color && card.color !== "#000000" ? card.color : FALLBACK_ACCENT } as React.CSSProperties}
-                      onClick={() => {
-                        setCardId(card.id);
-                        playTap();
-                        inputRef.current?.focus();
-                      }}
-                    >
-                      <span className="whisper-category-dot" aria-hidden="true" />
-                      {card.name}
-                      {cardId === card.id && <Check size={12} aria-hidden="true" />}
-                    </button>
-                  ))}
-                </div>
-              )}
-              <div className="whisper-categories whisper-counts" role="group" aria-label="Cantidad de cuotas">
-                {counts.map((n) => (
-                  <button
-                    key={n}
-                    type="button"
-                    className="whisper-category"
-                    aria-pressed={count === n}
-                    onClick={() => {
-                      setCount(n);
-                      playTap();
-                      inputRef.current?.focus();
-                    }}
-                  >
-                    {n} cuotas
-                  </button>
-                ))}
-              </div>
-              <p className="whisper-caption" aria-live="polite">
-                {selectedCard ? `${selectedCard.name} · ` : ""}
-                primera cuota en {monthOf(firstDate) || "—"} · {categoryName}
-              </p>
-            </div>
-
-            <AnimatePresence initial={false}>
-              {expanded && (
-                <motion.div
-                  className="whisper-options"
-                  initial={{ height: 0, opacity: 0 }}
-                  animate={{ height: "auto", opacity: 1 }}
-                  exit={{ height: 0, opacity: 0 }}
-                  transition={{ duration: reducedMotion ? 0 : 0.18 }}
-                >
-                  <label>
-                    Fecha de compra
-                    <input type="date" value={purchaseDate} onChange={(e) => setPurchaseDate(e.target.value)} aria-label="Fecha de compra" />
-                  </label>
-                  <label>
-                    Primera cuota
-                    <input type="date" value={firstDate} onChange={(e) => setFirstDate(e.target.value)} aria-label="Fecha de la primera cuota" />
-                  </label>
-                  <label>
-                    Categoría
-                    <select value={categoryName} onChange={(e) => setCategoryName(e.target.value)} aria-label="Categoría">
-                      {!expenseCategories.some((c) => c.name === categoryName) && <option value={categoryName}>{categoryName}</option>}
-                      {expenseCategories.map((c) => (
-                        <option key={c.id} value={c.name}>
-                          {c.icon || getCategoryIcon(c.name)} {c.name}
-                        </option>
-                      ))}
-                    </select>
-                  </label>
-                  <label>
-                    Notas
-                    <input value={notes} onChange={(e) => setNotes(e.target.value)} placeholder="Opcional" aria-label="Notas" />
-                  </label>
-                </motion.div>
-              )}
-            </AnimatePresence>
-
-            {error && (
-              <p id="inst-error" role="alert" className="whisper-error">
-                {error}
-              </p>
-            )}
-
-            <div className="whisper-actions">
-              <button type="button" className="whisper-options-toggle" aria-expanded={expanded} onClick={() => setExpanded(!expanded)}>
-                {expanded ? "Menos opciones" : "Más opciones"}
-                <ChevronDown size={12} className={cn(expanded && "rotate-180")} />
+              >
+                <span className="whisper-category-dot" aria-hidden="true" />
+                {card.name}
+                {cardId === card.id && <Check size={12} aria-hidden="true" />}
               </button>
-              <button type="submit" className="whisper-submit" disabled={!ready} aria-label="Guardar compra">
-                {isEditing ? "Guardar cambios" : "Agregar compra"}
-                <span className="hidden sm:inline" aria-hidden="true">↵</span>
-                <ArrowUp size={14} className="sm:hidden" aria-hidden="true" />
-              </button>
-            </div>
-            <p id="inst-shortcuts" className="whisper-shortcuts">
-              <span>
-                <kbd>↵</kbd> guardar
-              </span>
-              <span>
-                <kbd>Esc</kbd> cerrar
-              </span>
-            </p>
-          </form>
-        </Dialog.Content>
-      </Dialog.Portal>
-    </Dialog.Root>
+            ))}
+          </div>
+        )}
+        <div className="whisper-categories whisper-counts" role="group" aria-label="Cantidad de cuotas">
+          {counts.map((n) => (
+            <button
+              key={n}
+              type="button"
+              className="whisper-category"
+              aria-pressed={count === n}
+              onClick={() => {
+                setCount(n);
+                playTap();
+                inputRef.current?.focus();
+              }}
+            >
+              {n} cuotas
+            </button>
+          ))}
+        </div>
+        <p className="whisper-caption" aria-live="polite">
+          {selectedCard ? `${selectedCard.name} · ` : ""}
+          primera cuota en {monthOf(firstDate) || "—"} · {categoryName}
+        </p>
+      </div>
+
+      <WhisperOptions open={expanded}>
+        <label>
+          Fecha de compra
+          <input type="date" value={purchaseDate} onChange={(e) => setPurchaseDate(e.target.value)} aria-label="Fecha de compra" />
+        </label>
+        <label>
+          Primera cuota
+          <input type="date" value={firstDate} onChange={(e) => setFirstDate(e.target.value)} aria-label="Fecha de la primera cuota" />
+        </label>
+        <label>
+          Categoría
+          <select value={categoryName} onChange={(e) => setCategoryName(e.target.value)} aria-label="Categoría">
+            {!expenseCategories.some((c) => c.name === categoryName) && <option value={categoryName}>{categoryName}</option>}
+            {expenseCategories.map((c) => (
+              <option key={c.id} value={c.name}>
+                {c.icon || getCategoryIcon(c.name)} {c.name}
+              </option>
+            ))}
+          </select>
+        </label>
+        <label>
+          Notas
+          <input value={notes} onChange={(e) => setNotes(e.target.value)} placeholder="Opcional" aria-label="Notas" />
+        </label>
+      </WhisperOptions>
+
+      {error && (
+        <p id="inst-error" role="alert" className="whisper-error">
+          {error}
+        </p>
+      )}
+
+      <div className="whisper-actions">
+        <WhisperOptionsToggle expanded={expanded} onToggle={() => setExpanded(!expanded)} />
+        <WhisperSubmit label="Guardar compra" disabled={!ready}>
+          {isEditing ? "Guardar cambios" : "Agregar compra"}
+        </WhisperSubmit>
+      </div>
+      <WhisperShortcuts id="inst-shortcuts" items={[["↵", "guardar"], ["Esc", "cerrar"]]} />
+    </WhisperComposer>
   );
 }

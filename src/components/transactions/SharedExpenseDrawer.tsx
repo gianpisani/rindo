@@ -1,8 +1,7 @@
 import { useEffect, useRef, useState } from "react";
-import * as Dialog from "@radix-ui/react-dialog";
-import { ArrowUp, Check, Plus, X } from "lucide-react";
+import { Check, Plus, X } from "lucide-react";
 import { DebtorNameCombobox } from "./DebtorNameCombobox";
-import "../shared/whisper.css";
+import { WhisperComposer, WhisperShortcuts, WhisperStaticType, WhisperSubmit } from "@/components/shared/whisper/WhisperComposer";
 import { clp } from "@/lib/format";
 
 interface Debtor {
@@ -88,132 +87,105 @@ export default function SharedExpenseDrawer({
   else preview = `se pasan por ${clp(-missing)}`;
 
   return (
-    <Dialog.Root open={open} onOpenChange={onOpenChange}>
-      <Dialog.Portal>
-        <Dialog.Overlay className="whisper-backdrop" />
-        <Dialog.Content
-          data-scrollable
-          className="whisper-composer"
-          onOpenAutoFocus={(event) => {
-            event.preventDefault();
-            firstNameRef.current?.querySelector("input")?.focus();
-          }}
-        >
-          <Dialog.Title className="sr-only">Gasto compartido</Dialog.Title>
-          <Dialog.Description className="sr-only">
-            Reparte el gasto entre las personas que deben. Elige partes iguales o montos a mano, y si tú también participas.
-          </Dialog.Description>
-          <Dialog.Close className="whisper-close" aria-label="Cerrar">
-            <X size={16} />
-          </Dialog.Close>
+    <WhisperComposer
+      open={open}
+      onOpenChange={onOpenChange}
+      title="Gasto compartido"
+      description="Reparte el gasto entre las personas que deben. Elige partes iguales o montos a mano, y si tú también participas."
+      focusOnOpen={() => firstNameRef.current?.querySelector("input")?.focus()}
+      onSubmit={confirm}
+    >
+      <WhisperStaticType>Gasto compartido</WhisperStaticType>
 
-          <form onSubmit={confirm} className="whisper-form">
-            <div className="whisper-type" data-static>
-              <span className="whisper-dot" aria-hidden="true" />
-              <span>Gasto compartido</span>
-            </div>
+      <div className="whisper-entry">
+        <p className="whisper-input whisper-shared-total" aria-label="Total del gasto">
+          {clp(totalAmount)}
+        </p>
+        <div className="whisper-preview" aria-live="polite">
+          <span>{preview}</span>
+        </div>
+      </div>
 
-            <div className="whisper-entry">
-              <p className="whisper-input whisper-shared-total" aria-label="Total del gasto">
-                {clp(totalAmount)}
-              </p>
-              <div className="whisper-preview" aria-live="polite">
-                <span>{preview}</span>
-              </div>
-            </div>
-
-            <div className="whisper-category-space">
-              <div className="whisper-categories" role="group" aria-label="Cómo dividir">
-                <button type="button" className="whisper-category" aria-pressed={splitMode === "equal"} onClick={() => setSplitMode("equal")}>
-                  <span className="whisper-category-dot" aria-hidden="true" />
-                  Partes iguales
-                  {splitMode === "equal" && <Check size={12} aria-hidden="true" />}
-                </button>
-                <button type="button" className="whisper-category" aria-pressed={splitMode === "manual"} onClick={() => setSplitMode("manual")}>
-                  <span className="whisper-category-dot" aria-hidden="true" />
-                  A mano
-                  {splitMode === "manual" && <Check size={12} aria-hidden="true" />}
-                </button>
-                <button type="button" className="whisper-category" aria-pressed={includeMe} onClick={() => setIncludeMe(!includeMe)}>
-                  <span className="whisper-category-dot" aria-hidden="true" />
-                  Yo también
-                  {includeMe && <Check size={12} aria-hidden="true" />}
-                </button>
-              </div>
-              {freeSuggestions.length > 0 && (
-                <div className="whisper-categories whisper-shared-suggestions" role="group" aria-label="Personas frecuentes">
-                  {freeSuggestions.map((name) => (
-                    <button key={name} type="button" className="whisper-category" onClick={() => pickSuggestion(name)}>
-                      <Plus size={11} aria-hidden="true" />
-                      {name}
-                    </button>
-                  ))}
-                </div>
-              )}
-              <p className="whisper-caption" aria-hidden="true">
-                {splitMode === "equal" ? "Se divide entre quienes nombres" : "Escribe cuánto le toca a cada uno"}
-                {includeMe ? " y tú" : ""}
-              </p>
-            </div>
-
-            <div className="whisper-shared-rows" role="group" aria-label="Personas que deben">
-              {debtors.map((debtor, index) => (
-                <div key={index} className="whisper-shared-row" data-manual={splitMode === "manual" || undefined} ref={index === 0 ? firstNameRef : undefined}>
-                  <DebtorNameCombobox
-                    placeholder="Nombre"
-                    value={debtor.name}
-                    onChange={(name) => updateDebtor(index, { name })}
-                    suggestions={suggestions}
-                    className="whisper-shared-name"
-                  />
-                  {splitMode === "manual" ? (
-                    <input
-                      inputMode="numeric"
-                      placeholder="Monto"
-                      aria-label={`Monto de ${debtor.name || "esta persona"}`}
-                      value={formatInput(debtor.amount)}
-                      onChange={(e) => updateDebtor(index, { amount: parseAmount(e.target.value) })}
-                      className="whisper-shared-amount"
-                    />
-                  ) : (
-                    <span className="whisper-shared-amount whisper-shared-fixed" aria-hidden="true">
-                      {debtor.name.trim() ? clp(equalShare) : ""}
-                    </span>
-                  )}
-                  <button
-                    type="button"
-                    className="whisper-shared-remove"
-                    onClick={() => removeDebtor(index)}
-                    disabled={debtors.length === 1}
-                    aria-label="Quitar persona"
-                  >
-                    <X size={13} />
-                  </button>
-                </div>
-              ))}
-              <button type="button" className="whisper-shared-add" onClick={() => addDebtor()}>
-                <Plus size={12} aria-hidden="true" /> Otra persona
+      <div className="whisper-category-space">
+        <div className="whisper-categories" role="group" aria-label="Cómo dividir">
+          <button type="button" className="whisper-category" aria-pressed={splitMode === "equal"} onClick={() => setSplitMode("equal")}>
+            <span className="whisper-category-dot" aria-hidden="true" />
+            Partes iguales
+            {splitMode === "equal" && <Check size={12} aria-hidden="true" />}
+          </button>
+          <button type="button" className="whisper-category" aria-pressed={splitMode === "manual"} onClick={() => setSplitMode("manual")}>
+            <span className="whisper-category-dot" aria-hidden="true" />
+            A mano
+            {splitMode === "manual" && <Check size={12} aria-hidden="true" />}
+          </button>
+          <button type="button" className="whisper-category" aria-pressed={includeMe} onClick={() => setIncludeMe(!includeMe)}>
+            <span className="whisper-category-dot" aria-hidden="true" />
+            Yo también
+            {includeMe && <Check size={12} aria-hidden="true" />}
+          </button>
+        </div>
+        {freeSuggestions.length > 0 && (
+          <div className="whisper-categories whisper-shared-suggestions" role="group" aria-label="Personas frecuentes">
+            {freeSuggestions.map((name) => (
+              <button key={name} type="button" className="whisper-category" onClick={() => pickSuggestion(name)}>
+                <Plus size={11} aria-hidden="true" />
+                {name}
               </button>
-            </div>
+            ))}
+          </div>
+        )}
+        <p className="whisper-caption" aria-hidden="true">
+          {splitMode === "equal" ? "Se divide entre quienes nombres" : "Escribe cuánto le toca a cada uno"}
+          {includeMe ? " y tú" : ""}
+        </p>
+      </div>
 
-            <div className="whisper-actions">
-              <button type="submit" className="whisper-submit" disabled={!isValid} aria-label="Confirmar reparto">
-                Confirmar
-                <span className="hidden sm:inline" aria-hidden="true">↵</span>
-                <ArrowUp size={14} className="sm:hidden" aria-hidden="true" />
-              </button>
-            </div>
-            <p className="whisper-shortcuts">
-              <span>
-                <kbd>↵</kbd> confirmar
+      <div className="whisper-shared-rows" role="group" aria-label="Personas que deben">
+        {debtors.map((debtor, index) => (
+          <div key={index} className="whisper-shared-row" data-manual={splitMode === "manual" || undefined} ref={index === 0 ? firstNameRef : undefined}>
+            <DebtorNameCombobox
+              placeholder="Nombre"
+              value={debtor.name}
+              onChange={(name) => updateDebtor(index, { name })}
+              suggestions={suggestions}
+              className="whisper-shared-name"
+            />
+            {splitMode === "manual" ? (
+              <input
+                inputMode="numeric"
+                placeholder="Monto"
+                aria-label={`Monto de ${debtor.name || "esta persona"}`}
+                value={formatInput(debtor.amount)}
+                onChange={(e) => updateDebtor(index, { amount: parseAmount(e.target.value) })}
+                className="whisper-shared-amount"
+              />
+            ) : (
+              <span className="whisper-shared-amount whisper-shared-fixed" aria-hidden="true">
+                {debtor.name.trim() ? clp(equalShare) : ""}
               </span>
-              <span>
-                <kbd>Esc</kbd> cerrar
-              </span>
-            </p>
-          </form>
-        </Dialog.Content>
-      </Dialog.Portal>
-    </Dialog.Root>
+            )}
+            <button
+              type="button"
+              className="whisper-shared-remove"
+              onClick={() => removeDebtor(index)}
+              disabled={debtors.length === 1}
+              aria-label="Quitar persona"
+            >
+              <X size={13} />
+            </button>
+          </div>
+        ))}
+        <button type="button" className="whisper-shared-add" onClick={() => addDebtor()}>
+          <Plus size={12} aria-hidden="true" /> Otra persona
+        </button>
+      </div>
+
+      <div className="whisper-actions">
+        <WhisperSubmit label="Confirmar reparto" disabled={!isValid}>
+          Confirmar
+        </WhisperSubmit>
+      </div>
+      <WhisperShortcuts items={[["↵", "confirmar"], ["Esc", "cerrar"]]} />
+    </WhisperComposer>
   );
 }
