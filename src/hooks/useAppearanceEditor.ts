@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { useUserProfile } from "./useUserProfile";
-import { endThemeDraft, startThemeDraft, useThemeDraft, useThemeDraftStore } from "./useThemeDraft";
+import { endThemeDraft, revealThemeDraft, startThemeDraft, useThemeDraft, useThemeDraftStore } from "./useThemeDraft";
+import type { RevealOrigin } from "@/lib/theme-transition";
 import { sameThemeChoice, serializeThemeChoice, themeChoiceFromProfile, type ThemeChoice } from "@/lib/theme-choice";
 
 const AUTOSAVE_DELAY_MS = 400;
@@ -41,6 +42,6 @@ export function useAppearanceEditor() {
   return {
     draft,
     changed: !sameThemeChoice(draft.choice, initial),
-    undo: () => startThemeDraft(initial),
+    undo: (origin?: RevealOrigin) => revealThemeDraft(initial, origin),
   };
 }

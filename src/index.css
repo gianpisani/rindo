@@ -1048,3 +1048,9 @@
   .tj-inst-main, .tj-tx { padding-left: 12px; padding-right: 12px; }
   .tj-inst-detail { padding: 4px 12px 12px 32px; }
 }
+
+::view-transition-old(root),
+::view-transition-new(root) {
+  animation: none;
+  mix-blend-mode: normal;
+}

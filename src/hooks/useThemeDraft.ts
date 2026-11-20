@@ -1,7 +1,9 @@
+import { flushSync } from "react-dom";
 import { create } from "zustand";
 import { useTheme } from "next-themes";
-import { generatePaletteFromHue, type ThemeMode } from "@/lib/theme";
+import type { Surface, ThemeMode } from "@/lib/theme";
 import { INITIAL_THEME_CHOICE, type ThemeChoice } from "@/lib/theme-choice";
+import { resolveColorMode, revealTheme, type RevealOrigin } from "@/lib/theme-transition";
 
 export type ColorMode = ThemeMode | "system";
 
@@ -11,8 +13,13 @@ export const startThemeDraft = (choice: ThemeChoice) => useThemeDraftStore.setSt
 
 export const endThemeDraft = () => useThemeDraftStore.setState({ draft: null });
 
-const patchDraft = (patch: Partial<ThemeChoice>) =>
-  useThemeDraftStore.setState(({ draft }) => ({ draft: { ...(draft ?? INITIAL_THEME_CHOICE), ...patch } }));
+export const revealThemeDraft = (choice: ThemeChoice, origin?: RevealOrigin) =>
+  revealTheme(() => flushSync(() => startThemeDraft(choice)), origin);
+
+const currentDraft = () => useThemeDraftStore.getState().draft ?? INITIAL_THEME_CHOICE;
+
+const patchDraft = (patch: Partial<ThemeChoice>, origin?: RevealOrigin) =>
+  revealThemeDraft({ ...currentDraft(), ...patch }, origin);
 
 export function useResolvedMode(): ThemeMode | undefined {
   const { resolvedTheme } = useTheme();
@@ -20,21 +27,33 @@ export function useResolvedMode(): ThemeMode | undefined {
   return undefined;
 }
 
-export function useThemeDraft() {
+export function useColorMode() {
   const { theme, setTheme } = useTheme();
+  return {
+    colorMode: (theme ?? "system") as ColorMode,
+    setColorMode: (mode: ColorMode, origin?: RevealOrigin) =>
+      revealTheme(() => {
+        document.documentElement.classList.toggle("dark", resolveColorMode(mode) === "dark");
+        flushSync(() => setTheme(mode));
+      }, origin),
+  };
+}
+
+export function useThemeDraft() {
+  const { colorMode, setColorMode } = useColorMode();
   const currentMode = useResolvedMode() ?? "dark";
   const choice = useThemeDraftStore((s) => s.draft) ?? INITIAL_THEME_CHOICE;
 
   return {
-    colorMode: (theme ?? "system") as ColorMode,
+    colorMode,
     currentMode,
     choice,
-    customPalette: generatePaletteFromHue(choice.hue, currentMode),
-    selectTheme: (themeId: string | null) => patchDraft({ themeId }),
+    selectAccent: (themeId: string | null, origin?: RevealOrigin) => patchDraft({ themeId }, origin),
+    selectSurface: (surface: Surface, origin?: RevealOrigin) => patchDraft({ surface }, origin),
     changeHue: (hue: number) => patchDraft({ hue, themeId: "custom" }),
-    changeFont: (font: string) => patchDraft({ font }),
+    changeFont: (font: string, origin?: RevealOrigin) => patchDraft({ font }, origin),
     changeRadius: (radius: number) => patchDraft({ radius }),
-    changeMode: (mode: ColorMode) => setTheme(mode),
+    changeMode: setColorMode,
   };
 }
 

@@ -1,5 +1,5 @@
 import { useCallback, useRef } from "react";
-import { generatePaletteFromHue } from "@/lib/theme";
+import { generatedAccent } from "@/lib/theme";
 
 export function HueSlider({
   value,
@@ -47,9 +47,9 @@ export function HueSlider({
 
   const pct = (value / 360) * 100;
   const track = Array.from({ length: 13 }, (_, i) =>
-    generatePaletteFromHue(i * 30, mode).primary
+    generatedAccent(i * 30, mode).primary
   ).join(", ");
-  const thumb = generatePaletteFromHue(value, mode).primary;
+  const thumb = generatedAccent(value, mode).primary;
 
   return (
     <div
