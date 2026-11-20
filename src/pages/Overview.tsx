@@ -29,22 +29,14 @@ import { ANALYZING_CATEGORY } from "@/lib/auto-category-policy";
 import { cn } from "@/lib/utils";
 import { tint } from "@/lib/category-color";
 import { clp } from "@/lib/format";
-
-/**
- * Finanzas: ¿cómo vengo en el tiempo? El mes en curso vive en el Inicio; acá
- * está la historia. El patrimonio creciendo, mes a mes lo que entró contra lo
- * que salió, y la tendencia de cada categoría. Todo cuenta igual que el
- * Inicio (mismas funciones) y cada categoría abre sus movimientos, editables.
- */
+import { readStorage, writeStorage } from "@/lib/storage";
 
 const RANGE_KEY = "finanzas-meses";
-/** Cuántos meses mira la historia. */
 const RANGES = [12, 6, 3] as const;
 type Range = (typeof RANGES)[number];
 
 const transit = new Set(DEFAULT_TRANSIT_CATEGORIES);
 
-/** Gasto neto por categoría de un período, sin tránsito ni lo que Jev aún categoriza. */
 const spendByCategory = (transactions: Transaction[], start: Date, end: Date) => {
   const map = summarizeCategoryPeriod(transactions, start, end);
   for (const key of [...map.keys()]) if (transit.has(key) || key === ANALYZING_CATEGORY) map.delete(key);
@@ -62,28 +54,24 @@ export default function Overview() {
 
   const now = new Date();
   const thisMonth = startOfMonthOf(now, startDay);
-  /** Cada periodo se llama como el mes en que termina. */
   const nameOf = (d: Date) => periodNameDate(d, startDay);
   const [sheet, setSheet] = useState<TxSheetData | null>(null);
   const [investmentMoveOpen, setInvestmentMoveOpen] = useState(false);
   const [histTab, setHistTab] = useState<"months" | "trends">("months");
   const [range, setRange] = useState<Range>(() => {
-    try {
-      const saved = Number(localStorage.getItem(RANGE_KEY));
-      return (RANGES as readonly number[]).includes(saved) ? (saved as Range) : 12;
-    } catch { return 12; }
+    const saved = Number(readStorage(RANGE_KEY));
+    return (RANGES as readonly number[]).includes(saved) ? (saved as Range) : 12;
   });
   const [hoverMonth, setHoverMonth] = useState<number | null>(null);
   const [hoverWorth, setHoverWorth] = useState<number | null>(null);
 
   const pickRange = (next: Range) => {
     setRange(next);
-    try { localStorage.setItem(RANGE_KEY, String(next)); } catch { /* sin almacenamiento, no pasa nada */ }
+    writeStorage(RANGE_KEY, String(next));
   };
 
   const colorOf = (name: string) => categories.find((c) => c.name === name)?.color ?? null;
 
-  // Los últimos N meses con datos, contando el mes en curso.
   const months = useMemo(() => {
     const first = transactions.reduce<Date | null>((min, t) => {
       const d = new Date(t.date);
@@ -108,7 +96,6 @@ export default function Overview() {
     );
   }, [transactions, months, flowConfig, startDay]);
   const averages = historyAverages(history, now, startDay);
-  // Sin tope: la tarjeta lista todas las categorías del rango, no solo las que más pesan.
   const trends = useMemo(
     () => categoryTrends(months, (start, end) => new Map([...spendByCategory(transactions, start, end)].map(([k, v]) => [k, v.effectiveAmount])), now, Infinity, startDay),
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -120,8 +107,6 @@ export default function Overview() {
   const monthLabel = (d: Date) => format(nameOf(d), "MMM", { locale: es }).replace(".", "");
   const hovered = hoverMonth !== null ? history[hoverMonth] : null;
 
-  // Abrir una categoría muestra su gasto mes a mes en el rango, sobre la
-  // lista de movimientos: el detalle del gráfico sin perder el resto.
   const openTrend = (c: typeof trends[number]) => {
     const rows = transactions.filter((t) => {
       const d = new Date(t.date);
@@ -170,7 +155,6 @@ export default function Overview() {
             </div>
           </header>
 
-          {/* ¿Cómo va mi plata en el tiempo? */}
           <section className="inicio-card fin-card fin-worth">
             <div className="fin-card-head">
               <span className="inicio-title">Patrimonio</span>
@@ -198,11 +182,9 @@ export default function Overview() {
                 </div>
                 {worthNow && (
                   <div className={cn("fin-legend", isPrivacyMode && "privacy-blur")}>
-                    {/* Rindo no conoce el saldo inicial: si no calza con el banco, tocarlo concilia */}
                     <button className="is-liquid" onClick={() => openReconciliation()} title="Conciliar con tu banco">
                       <i className="bg-success" />Líquido <b>{clp(worthNow.liquido)}</b>
                     </button>
-                    {/* Tocar lo invertido abre el rescate y el valor de hoy de las inversiones */}
                     <button onClick={() => setInvestmentMoveOpen(true)} title="Rescatar o actualizar inversiones">
                       <i style={{ background: "var(--inicio-blue)" }} />Invertido <b>{clp(worthNow.invertidoAcumulado)}</b>
                     </button>
@@ -222,7 +204,6 @@ export default function Overview() {
             )}
           </section>
 
-          {/* Mes a mes (en celular comparte tarjeta con las categorías) */}
           <section className="inicio-card fin-card fin-months" data-tab={histTab}>
             <div className="fin-hist-tabs" role="tablist">
               <button role="tab" aria-selected={histTab === "months"} onClick={() => setHistTab("months")}>Mes a mes</button>
@@ -241,7 +222,6 @@ export default function Overview() {
             <div className="fin-months-body flex min-h-0 flex-1 flex-col">
               {loading ? cardSkeleton : (
                 <>
-                  {/* En celular el encabezado va oculto: el mes activo se lee acá */}
                   <div className={cn("px-4 pt-2 text-xs text-muted-foreground inicio-num sm:hidden", isPrivacyMode && "privacy-blur")}>
                     {hovered ? `${format(nameOf(hovered.month), "MMM yyyy", { locale: es })} · +${clpShort(hovered.ingreso)} · −${clpShort(hovered.gasto)}` : "Toca un mes para verlo"}
                   </div>
@@ -261,7 +241,6 @@ export default function Overview() {
               )}
             </div>
             <div className="fin-trends-body inicio-scroll">
-              {/* En celular el encabezado va oculto: aquí se dice una vez qué son los montos */}
               <div className="px-4 pt-2 text-xs text-muted-foreground">promedio al mes</div>
               {trendRows}
             </div>

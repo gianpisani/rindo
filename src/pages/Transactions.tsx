@@ -47,9 +47,6 @@ import {
 } from "@/lib/ledger";
 import { clp } from "@/lib/format";
 
-// ── Editor de movimientos: corregir la categoría es un toque ──
-
-/** Colores para una categoría nueva creada desde el composer. */
 const CATEGORY_COLORS = [
   "#ef4444", "#f97316", "#f59e0b", "#10b981", "#14b8a6", "#0ea5e9",
   "#3b82f6", "#6366f1", "#8b5cf6", "#a855f7", "#ec4899", "#64748b",
@@ -57,26 +54,20 @@ const CATEGORY_COLORS = [
 
 const LOSS_ACCENT = "oklch(var(--destructive))";
 
-/** Un instante como valor de <input type="datetime-local">, en hora local. */
 const toLocalInput = (d: Date) => new Date(d.getTime() - d.getTimezoneOffset() * 60000).toISOString().slice(0, 16);
 
 const EMPTY_FORM = {
-  // Fecha y hora como valor de datetime-local, en hora local.
   date: "",
-  // El monto, solo dígitos; vacío deja el guardado.
   value: "",
   category_name: "",
   type: "Gasto" as TransactionType,
   card_id: null as string | null,
-  // Solo aplica al rendimiento, el único tipo que puede ser negativo.
   isLoss: false,
 };
 
-/** Agrega el ítem a la lista, o lo saca si ya estaba. */
 const toggleById = <T extends { id: string }>(list: T[], item: T) =>
   list.some((d) => d.id === item.id) ? list.filter((d) => d.id !== item.id) : [...list, item];
 
-/** Panel para elegir deudas pendientes y aplicarles este movimiento. */
 function DebtPanel({
   title,
   onClose,
@@ -129,10 +120,6 @@ function DebtPanel({
             }}
             className="whisper-tx-row"
           >
-            {/* Indicador visual, NO un Checkbox de Radix: un Checkbox
-                controlado dentro de un <form> monta un input oculto que
-                re-despacha un evento 'click' burbujeante cada vez que
-                cambia `checked`, y entra en loop infinito. */}
             <span className="whisper-tx-check" aria-hidden="true">{isSelected && <Check size={10} />}</span>
             <span className="name">
               <span>{debt.name}</span>
@@ -189,31 +176,24 @@ export default function Transactions() {
 
   const [showFuture, setShowFuture] = useState(false);
   const [isBankSyncOpen, setIsBankSyncOpen] = useState(false);
-  // Modo selección: los checkboxes y las acciones masivas aparecen a pedido.
   const [selecting, setSelecting] = useState(false);
   const [pageSize, setPageSize] = useState(100);
 
-  // El composer solo edita: los movimientos nuevos entran por el QuickAdd global.
-  // editingTransaction queda puesto al cerrar, así el fade de salida no cambia de modo.
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingTransaction, setEditingTransaction] = useState<Transaction | null>(null);
-  // El editor: detalles (monto, fecha, cuenta) abiertos, todas las categorías, categoría nueva en línea, error.
   const [txExpanded, setTxExpanded] = useState(false);
   const [allCategories, setAllCategories] = useState(false);
   const [newCategory, setNewCategory] = useState<{ name: string; icon: string; color: string } | null>(null);
   const [txError, setTxError] = useState("");
-  // El nombre del movimiento, editable en el título. Si no cambia, el detail guardado queda intacto.
   const [detailText, setDetailText] = useState("");
   const [sharedDrawerOpen, setSharedDrawerOpen] = useState(false);
   const [pendingTransaction, setPendingTransaction] = useState<{ id: string; amount: number } | null>(null);
   const [confirmPaid, setConfirmPaid] = useState<{ id: string; name: string; amount: number; detail?: string } | null>(null);
-  // Gasto ya dividido: la persona que se está agregando, o la deuda cuyo monto se edita.
   const [newDebtor, setNewDebtor] = useState<{ name: string; amount: string } | null>(null);
   const [editingDebtor, setEditingDebtor] = useState<{ id: string; amount: string } | null>(null);
   const [debtsToLink, setDebtsToLink] = useState<Array<{ id: string; debtorName: string; amount: number; transactionDetail?: string }>>([]);
   const [debtsIOweToSettle, setDebtsIOweToSettle] = useState<Array<{ id: string; debtorName: string; amount: number }>>([]);
   const [settleDebtToggle, setSettleDebtToggle] = useState(false);
-  // Deudas enlaza aquí con ?search=<detalle> para encontrar el gasto que originó la deuda.
   const [searchParams] = useSearchParams();
   const [searchValue, setSearchValue] = useState(searchParams.get("search") || "");
   const searchInputRef = useRef<HTMLInputElement>(null);
@@ -223,18 +203,14 @@ export default function Transactions() {
   const [cardFilter, setCardFilter] = useState("all");
   const [dateRange, setDateRange] = useState<DateRangeValue>({});
 
-  // Lo que espera confirmación para eliminarse: un id, o los de la selección.
   const [deleteId, setDeleteId] = useState<string | null>(null);
   const [deleteIds, setDeleteIds] = useState<string[]>([]);
   const [formData, setFormData] = useState(() => ({ ...EMPTY_FORM, date: toLocalInput(new Date()) }));
-  // El monto: lo escrito en "Monto", o el guardado si el campo queda vacío.
   const editingMagnitude = editingTransaction ? Math.abs(editingTransaction.amount) : 0;
   const effectiveAmount = Number(formData.value.replace(/\D/g, "")) || editingMagnitude;
   const composerType = WHISPER_TYPES.find((t) => t.type === formData.type) ?? WHISPER_TYPES[0];
   const composerAccent = formData.type === "Rendimiento" && formData.isLoss ? LOSS_ACCENT : composerType.color;
 
-  // Las categorías que ofrece el filtro: las que aparecen en lo que se está
-  // viendo, con su emoji ya resuelto.
   const toolbarCategories = useMemo(
     () =>
       Array.from(
@@ -254,7 +230,6 @@ export default function Transactions() {
     [transactions, futureTransactions, showFuture, categories]
   );
 
-  // Las categorías del tipo elegido, las más usadas primero; cinco a la vista.
   const availableCategories = useMemo(() => {
     const frequency = categoryFrequency(allTransactions, formData.type);
     return categories
@@ -267,10 +242,6 @@ export default function Transactions() {
       )
       .sort((a, b) => (frequency.get(b.name) ?? 0) - (frequency.get(a.name) ?? 0) || a.name.localeCompare(b.name));
   }, [categories, allTransactions, formData.type]);
-  // "Pago de tarjeta" es una categoría del sistema: no vive en la tabla, pero
-  // se elige acá para marcar a mano un pago que la importación no reconoció.
-  // Siempre a la vista en Gasto e Ingreso; si alguien ya tiene la suya ("Pago
-  // Tarjeta"), se ofrece esa.
   const cardPaymentOption = useMemo(() => {
     if (formData.type !== "Gasto" && formData.type !== "Ingreso") return null;
     const own = availableCategories.find((c) => isCardPaymentCategory(c.name));
@@ -286,7 +257,6 @@ export default function Transactions() {
   }, [availableCategories, formData.type]);
   const visibleCategories = useMemo(() => {
     const top = allCategories ? availableCategories : availableCategories.slice(0, 5);
-    // La categoría del movimiento que se edita siempre se ve, aunque no sea de las frecuentes.
     const current = availableCategories.find((c) => c.name === formData.category_name);
     const shown = current && !top.includes(current) ? [...top, current] : top;
     return cardPaymentOption && !shown.includes(cardPaymentOption) ? [...shown, cardPaymentOption] : shown;
@@ -315,8 +285,6 @@ export default function Transactions() {
     );
   };
 
-  // Lo que alimenta los paneles de deudas: lo pendiente en cada dirección, y
-  // lo ya dividido del movimiento que se edita.
   const existingShared = editingTransaction ? getSharedExpensesByTransaction(editingTransaction.id) : [];
   const pendingDebts = sharedExpensesWithTransaction.filter((se) => !se.paid && se.direction === "they_owe_me");
   const pendingIOwe = sharedExpensesWithTransaction.filter((se) => !se.paid && se.direction === "i_owe_them");
@@ -330,8 +298,6 @@ export default function Transactions() {
     resetForm();
   };
 
-  /** Guarda el movimiento. `overrides` permite guardar al tocar una categoría,
-   *  y `split` abre el reparto del gasto compartido después de guardar. */
   const saveEdit = (overrides: Partial<typeof formData> = {}, { split = false } = {}) => {
     if (!editingTransaction || updateTransaction.isPending) return;
     const data = { ...formData, ...overrides };
@@ -341,11 +307,7 @@ export default function Transactions() {
       return;
     }
 
-    // Un rendimiento negativo es un mes malo, no un error: el resto de los
-    // tipos siempre va en positivo.
     const amount = allowsNegativeAmount(data.type) && data.isLoss ? -effectiveAmount : effectiveAmount;
-    // El badge del bot sobrevive a que le cambies el nombre, igual que en la
-    // edición inline de la tabla. Un nombre vacío no borra el guardado.
     const prefix = (editingTransaction.detail || "").startsWith("🤖") ? "🤖 " : "";
     const newDetail = detailText.trim();
     const detailChanged = !!newDetail && newDetail !== getCleanDetail(editingTransaction.detail);
@@ -428,11 +390,6 @@ export default function Transactions() {
     setSettleDebtToggle(false);
   };
 
-  // Ghost click de iOS: al tocar "Eliminar" (en el menú de una card, el
-  // panel de selección o el propio diálogo de confirmación) el overlay se
-  // desmonta y el click retrasado del navegador aterriza en la card que
-  // quedó debajo, abriendo Editar sin querer. Cualquier paso del flujo de
-  // eliminar arma esta ventana y handleEdit la respeta.
   const editGhostGuardRef = useRef(0);
   const armEditGuard = () => {
     editGhostGuardRef.current = Date.now();
@@ -453,7 +410,6 @@ export default function Transactions() {
       isLoss: transaction.amount < 0,
     });
     setDetailText(getCleanDetail(transaction.detail));
-    // Monto, fecha y cuenta casi nunca cambian: parten cerrados.
     setTxExpanded(false);
     setTxError("");
 
@@ -492,7 +448,6 @@ export default function Transactions() {
       <div className="space-y-6">
         <div className="flex items-center justify-between">
           <h1 className="text-xl font-medium">Movimientos</h1>
-          {/* Casi todo llega solo: anotar a mano es secundario */}
           <Button variant="ghost" size="sm" className="gap-1.5 text-muted-foreground" onClick={() => useGlobalDrawers.getState().openQuickAdd("Gasto")} aria-label="Agregar movimiento">
             <Plus className="h-4 w-4" />
             <span className="hidden sm:inline">Agregar</span>
@@ -512,7 +467,6 @@ export default function Transactions() {
                   data-scrollable
                   className="whisper-composer"
                   style={{ "--whisper-accent": composerAccent } as React.CSSProperties}
-                  // Sin foco automático: en el celular no abre el teclado.
                   onOpenAutoFocus={(event) => event.preventDefault()}
                 >
                   <Dialog.Title className="sr-only">Editar movimiento</Dialog.Title>
@@ -524,7 +478,6 @@ export default function Transactions() {
                   </Dialog.Close>
 
                   <form id="transaction-form" onSubmit={handleSubmit} className="whisper-form edit-tx">
-                    {/* Tipo */}
                     <div className="whisper-type">
                       <span className="whisper-dot" aria-hidden="true" />
                       <span aria-hidden="true">{formData.type}</span>
@@ -540,7 +493,6 @@ export default function Transactions() {
                       <ChevronDown size={12} aria-hidden="true" />
                     </div>
 
-                    {/* Qué movimiento es: el nombre (editable) y una línea con monto, fecha y cuenta */}
                     <div className="edit-tx-head">
                       <input
                         aria-label="Nombre del movimiento"
@@ -566,7 +518,6 @@ export default function Transactions() {
                       </p>
                     </div>
 
-                    {/* Categorías */}
                     <div className="whisper-category-space">
                       {formData.type === "Rendimiento" && (
                         <div className="whisper-categories whisper-tx-sign" role="group" aria-label="Ganancia o pérdida">
@@ -655,7 +606,6 @@ export default function Transactions() {
                               className="whisper-category"
                               aria-pressed={formData.category_name === category.name}
                               disabled={updateTransaction.isPending}
-                              // Corregir la categoría es la acción principal: un toque guarda y cierra.
                               onClick={() => saveEdit({ category_name: category.name })}
                             >
                               <span className="whisper-category-dot" aria-hidden="true" />
@@ -687,7 +637,6 @@ export default function Transactions() {
 
                     </div>
 
-                    {/* Gasto compartido: guarda y abre el reparto */}
                     {formData.type === "Gasto" && existingShared.length === 0 && (
                       <button
                         type="button"
@@ -699,7 +648,6 @@ export default function Transactions() {
                       </button>
                     )}
 
-                    {/* Detalles: monto, fecha y cuenta. Casi nunca cambian, parten cerrados. */}
                     <AnimatePresence initial={false}>
                       {txExpanded && (
                         <motion.div
@@ -770,7 +718,6 @@ export default function Transactions() {
                       )}
                     </AnimatePresence>
 
-                    {/* Vincular a deuda(s) pendiente(s): Ingreso o Reembolso */}
                     {showLinkPanel && (
                       <DebtPanel
                         title="Vincular a una deuda pendiente"
@@ -811,7 +758,6 @@ export default function Transactions() {
                       />
                     )}
 
-                    {/* Gasto compartido ya dividido: se edita acá mismo */}
                     {formData.type === "Gasto" && existingShared.length > 0 && (() => {
                       const liveTxAmount = transactions.find((t) => t.id === editingTransaction.id)?.amount ?? effectiveAmount;
                       const alreadyAssignedAll = existingShared.reduce((sum, se) => sum + se.amount_owed, 0);
@@ -1019,7 +965,6 @@ export default function Transactions() {
                       );
                     })()}
 
-                    {/* Saldar deuda(s) que yo debo: solo Gasto */}
                     {formData.type === "Gasto" && settleDebtToggle && pendingIOwe.length > 0 && (
                       <DebtPanel
                         title="Saldar una deuda que debo"
@@ -1094,7 +1039,6 @@ export default function Transactions() {
           onReset={bankSync.reset}
         />
 
-        {/* Toolbar: una línea, ver TransactionsToolbar para el criterio */}
         <TransactionsToolbar
           searchValue={searchValue}
           onSearchChange={setSearchValue}

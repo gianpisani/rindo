@@ -23,8 +23,6 @@ import { useBankSyncContext } from "@/contexts/BankSyncContext";
 import { useBankSyncLog, type SyncLogEntry } from "@/hooks/useBankSyncLog";
 import { clp } from "@/lib/format";
 
-// ── Helpers ────────────────────────────────────────────────────────────────────
-
 function formatMovDate(dateStr: string): string {
   const parts = dateStr.split("-");
   if (parts.length === 3 && parts[0].length <= 2) return `${parts[0]}/${parts[1]}`;
@@ -37,8 +35,6 @@ const SKIP_REASON_LABELS: Record<string, string> = {
   manual_duplicate: "Ingresada manualmente",
   zero_amount: "Monto $0",
 };
-
-// ── Expanded entry detail ─────────────────────────────────────────────────────
 
 function EntryDetail({ entry }: { entry: SyncLogEntry }) {
   const { importSkipped, deleteImported } = useBankSyncContext();
@@ -112,7 +108,6 @@ function EntryDetail({ entry }: { entry: SyncLogEntry }) {
 
   return (
     <div className="space-y-3 pt-1">
-      {/* Imported list */}
       {importedItems.length > 0 && deletedCount === 0 && (
         <div className="space-y-1.5">
           <div className="flex items-center justify-between">
@@ -176,7 +171,6 @@ function EntryDetail({ entry }: { entry: SyncLogEntry }) {
         </p>
       )}
 
-      {/* Skipped list with import option */}
       {skippedItems.length > 0 && importedCount === 0 && (
         <div className="space-y-1.5">
           <div className="flex items-center justify-between">
@@ -252,8 +246,6 @@ function EntryDetail({ entry }: { entry: SyncLogEntry }) {
   );
 }
 
-// ── Log entry row ─────────────────────────────────────────────────────────────
-
 function LogEntryRow({ entry }: { entry: SyncLogEntry }) {
   const [expanded, setExpanded] = useState(false);
   const bank = getBankById(entry.bank);
@@ -322,8 +314,6 @@ function LogEntryRow({ entry }: { entry: SyncLogEntry }) {
     </div>
   );
 }
-
-// ── Main component ────────────────────────────────────────────────────────────
 
 export function BankSyncHistory() {
   const { data: entries, isLoading } = useBankSyncLog();

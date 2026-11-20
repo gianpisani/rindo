@@ -15,13 +15,6 @@ import { isCardPaymentCategory } from "@/lib/ledger";
 import "../shared/whisper.css";
 import { clp } from "@/lib/format";
 
-/**
- * Compra en cuotas al estilo Whisper: una línea con el total y qué compraste
- * ("1498800 MacBook Air"), la tarjeta y la cantidad de cuotas en pastillas,
- * y la cuota resultante como vista previa. Fechas, categoría y notas viven en
- * "Más opciones". El composer toma el color de la tarjeta elegida.
- */
-
 interface InstallmentModalProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
@@ -65,7 +58,6 @@ export function InstallmentModal({ open, onOpenChange, installment, creditCards,
   const ready = !!parsed && description.length > 0 && !!cardId;
   const selectedCard = creditCards.find((c) => c.id === cardId);
   const expenseCategories = categories.filter((c) => c.type === "Gasto" && c.is_active !== false && !isCardPaymentCategory(c.name));
-  // Una cantidad rara (10, 48) se muestra como pastilla propia mientras se edita.
   const counts = INSTALLMENT_OPTIONS.includes(count) ? INSTALLMENT_OPTIONS : [...INSTALLMENT_OPTIONS, count].sort((a, b) => a - b);
 
   useEffect(() => {

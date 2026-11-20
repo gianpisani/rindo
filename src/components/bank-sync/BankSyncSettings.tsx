@@ -21,8 +21,6 @@ import {
 import type { BankCredential } from "@/hooks/useBankSyncCredentials";
 import { cn } from "@/lib/utils";
 
-// ── Status helpers ────────────────────────────────────────────────────────────
-
 function StatusBadge({ status }: { status: BankCredential["last_sync_status"] }) {
   if (!status) {
     return (
@@ -84,8 +82,6 @@ function formatSyncDate(dateStr: string | null): string {
   return d.toLocaleDateString("es-CL", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" });
 }
 
-// ── Credential row ────────────────────────────────────────────────────────────
-
 function CredentialRow({
   cred,
   onDelete,
@@ -104,7 +100,6 @@ function CredentialRow({
     <div
       className={cn("flex flex-col gap-3 p-4 rounded-card border bg-card transition-opacity", !cred.is_active && "opacity-70")}
     >
-      {/* Top row: logo + name + settings gear */}
       <div className="flex items-center gap-3">
         <BankLogo bank={bank} size="sm" />
         <div className="flex-1 min-w-0">
@@ -124,10 +119,8 @@ function CredentialRow({
         </Button>
       </div>
 
-      {/* Auto-sync activo/pausado */}
       <ActiveIndicator isActive={cred.is_active} color={bank.color} />
 
-      {/* Last sync status */}
       <div className="flex items-center justify-between">
         <StatusBadge status={cred.last_sync_status} />
         {cred.last_sync_at && (
@@ -135,7 +128,6 @@ function CredentialRow({
         )}
       </div>
 
-      {/* Delete */}
       <div className="flex items-center justify-end gap-2">
         {confirmDelete ? (
           <div className="flex gap-1.5 shrink-0">
@@ -167,7 +159,6 @@ function CredentialRow({
         )}
       </div>
 
-      {/* Error message */}
       {cred.last_error && (cred.last_sync_status === "failed" || cred.last_sync_status === "invalid_credentials") && (
         <p className="text-xs text-destructive/80 bg-destructive/5 rounded-card px-2 py-1.5">
           {getFriendlyError(cred.last_sync_status)}
@@ -176,8 +167,6 @@ function CredentialRow({
     </div>
   );
 }
-
-// ── Main component ────────────────────────────────────────────────────────────
 
 interface BankSyncSettingsProps {
   onAddBank: () => void;

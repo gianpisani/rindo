@@ -4,8 +4,6 @@ import { toast } from "sonner";
 import { useQueryClient } from "@tanstack/react-query";
 import { errorMessage } from "@/lib/errors";
 
-// ── Types ─────────────────────────────────────────────────────────────────────
-
 export type SyncStep = "idle" | "submitting" | "polling" | "completed" | "failed";
 
 export interface SyncMovementItem {
@@ -22,13 +20,10 @@ export type SyncResult =
   | { imported: number; skipped: number; importedItems: SyncMovementItem[]; skippedItems: SyncMovementItem[] }
   | { error: string };
 
-// "YYYY-MM-DD" (native date input) → "DD-MM-YYYY" (API format)
 function toApiDate(yyyymmdd: string): string {
   const [yyyy, mm, dd] = yyyymmdd.split("-");
   return `${dd}-${mm}-${yyyy}`;
 }
-
-// ── Context shape ─────────────────────────────────────────────────────────────
 
 interface BankSyncContextValue {
   step: SyncStep;
@@ -43,8 +38,6 @@ interface BankSyncContextValue {
 }
 
 const BankSyncContext = createContext<BankSyncContextValue | null>(null);
-
-// ── Provider ─────────────────────────────────────────────────────────────────
 
 export function BankSyncProvider({ children }: { children: ReactNode }) {
   const queryClient = useQueryClient();
@@ -72,8 +65,6 @@ export function BankSyncProvider({ children }: { children: ReactNode }) {
     setPollStatus("queued");
     setResult(null);
   }, []);
-
-  // ── Polling ─────────────────────────────────────────────────────────────
 
   function startPolling(jobId: string) {
     stopPolling();
@@ -138,8 +129,8 @@ export function BankSyncProvider({ children }: { children: ReactNode }) {
         }
 
         setPollStatus(data.status);
-      } catch {
-        // Network hiccup — keep polling
+      } catch (error) {
+        console.warn("Falló una consulta de la sincronización; se reintenta", error);
       }
     } finally {
       isCallingRef.current = false;
@@ -248,8 +239,6 @@ export function BankSyncProvider({ children }: { children: ReactNode }) {
     </BankSyncContext.Provider>
   );
 }
-
-// ── Consumer hook ─────────────────────────────────────────────────────────────
 
 export function useBankSyncContext() {
   const ctx = useContext(BankSyncContext);

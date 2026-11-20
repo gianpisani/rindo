@@ -15,34 +15,21 @@ export interface QuickCategoryOption {
 }
 
 interface Props {
-  /** La categoría actual. */
   value: string;
-  /** Ya filtradas al tipo del movimiento y en orden (las más usadas primero). */
   options: QuickCategoryOption[];
   onPick: (name: string) => void;
-  /** Si se entrega, ofrece crear una categoría con lo buscado. */
   onCreate?: (name: string) => void;
-  /** Encabezado en el celular: de qué movimiento se trata. */
   title?: string;
   onOpenChange?: (open: boolean) => void;
-  /** El botón que lo abre (el ícono de la categoría). */
   children: ReactElement;
 }
 
-/** Con más de esto aparece el buscador; con menos, se ven todas de una. */
 const SEARCH_FROM = 12;
 
 const plain = (text: string) => text.normalize("NFD").replace(/[̀-ͯ]/g, "").toLowerCase();
 
-// Lo que se toca adentro no debe llegar a la fila (el portal igual burbujea en React).
 const stop = (e: MouseEvent) => e.stopPropagation();
 
-/**
- * Cambiar la categoría de un movimiento: un toque en su ícono abre las
- * categorías de su tipo, otro toque la guarda y cierra. Sin confirmar.
- * En web, un popover que sube junto al ícono; en el celular, una hoja abajo.
- * Es la única forma de recategorizar uno a uno en toda la app.
- */
 export function QuickCategoryPicker({ value, options, onPick, onCreate, title, onOpenChange, children }: Props) {
   const isMobile = useIsMobile();
   const [open, setOpenState] = useState(false);
@@ -147,7 +134,6 @@ export function QuickCategoryPicker({ value, options, onPick, onCreate, title, o
         align="start"
         sideOffset={8}
         className="quick-picker w-80 p-3"
-        // Abre parado sobre la categoría actual, no sobre la primera.
         onOpenAutoFocus={(e) => {
           if (options.length > SEARCH_FROM) return;
           e.preventDefault();

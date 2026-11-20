@@ -8,14 +8,6 @@ import { cn } from "@/lib/utils";
 import { WHISPER_TYPES } from "@/lib/whisper";
 import "../shared/whisper.css";
 
-/**
- * Nueva o editar categoría al estilo Whisper: el nombre en la línea grande,
- * abajo la categoría tal como se verá (emoji + nombre + tipo; tocarla abre
- * el emoji), el tipo en pastillas, el color en bolitas. "Qué incluye" y
- * "En uso" viven en "Más opciones". El composer se tiñe del color elegido.
- * Lo usan Categorías y el atajo de la tabla de movimientos.
- */
-
 export interface CategoryValues {
   name: string;
   type: TransactionType;
@@ -28,22 +20,15 @@ export interface CategoryValues {
 interface CategoryComposerProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  /** Categoría que se edita; sin ella, se crea una nueva. */
   category?: { [K in keyof CategoryValues]?: CategoryValues[K] | null } | null;
-  /** Nombre con el que abre al crear (lo que se tecleó buscando). */
   initialName?: string;
-  /** Con tipo fijo la categoría nace de ese tipo y no se ofrece cambiarlo. */
   fixedType?: TransactionType;
-  /** Tipo con el que abre al crear; a diferencia de fixedType, se puede cambiar. */
   initialType?: TransactionType;
-  /** Muestra "Qué incluye" y "En uso" (solo si el perfil ya usa ese contexto). */
   withContext?: boolean;
   pending?: boolean;
-  /** Guarda. Si lanza, el composer se queda abierto con el error. */
   onSave: (values: CategoryValues) => Promise<void>;
 }
 
-// Los mismos colores que el Whisper le da a cada tipo.
 const TYPE_ACCENT = Object.fromEntries(WHISPER_TYPES.map((t) => [t.type, t.color])) as Record<TransactionType, string>;
 
 const DEFAULT_COLORS = [

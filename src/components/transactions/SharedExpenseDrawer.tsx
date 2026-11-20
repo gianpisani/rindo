@@ -5,14 +5,6 @@ import { DebtorNameCombobox } from "./DebtorNameCombobox";
 import "../shared/whisper.css";
 import { clp } from "@/lib/format";
 
-/**
- * Gasto compartido al estilo Whisper: el total como línea grande, "partes
- * iguales" / "a mano" y "yo también" en pastillas, y las personas como filas
- * compactas (nombre con sugerencias, y el monto cuando se reparte a mano).
- * La vista previa dice cuánto queda por repartir o si cuadra. Se abre justo
- * después de guardar un gasto compartido, así que sigue la misma estética.
- */
-
 interface Debtor {
   name: string;
   amount: number;
@@ -54,7 +46,6 @@ export default function SharedExpenseDrawer({
   const removeDebtor = (index: number) =>
     setDebtors((previous) => (previous.length > 1 ? previous.filter((_, i) => i !== index) : previous));
 
-  // Un nombre sugerido llena la primera fila vacía o agrega una nueva.
   const pickSuggestion = (name: string) => {
     const empty = debtors.findIndex((d) => d.name.trim() === "");
     if (empty >= 0) updateDebtor(empty, { name });
@@ -87,7 +78,6 @@ export default function SharedExpenseDrawer({
     onOpenChange(false);
   };
 
-  // La frase de abajo: qué le toca a cada uno, o cuánto falta por repartir.
   let preview = "";
   if (named.length === 0) preview = "¿Con quién lo compartiste?";
   else if (splitMode === "equal") preview = `${clp(equalShare)} cada uno${includeMe ? ", tú incluido" : ""}`;

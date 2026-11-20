@@ -52,15 +52,11 @@ import { clp } from "@/lib/format";
 
 const FORM_ID = "bank-sync-form";
 
-// ── Status labels during polling ─────────────────────────────────────────────
-
 const STATUS_MESSAGES: Record<string, string> = {
   queued: "En cola, iniciando conexión...",
   running: "Conectando con tu banco...",
   awaiting_2fa: "Esperando aprobación 2FA en tu app del banco...",
 };
-
-// ── Helpers ──────────────────────────────────────────────────────────────────
 
 function formatMovDate(dateStr: string): string {
   const parts = dateStr.split("-");
@@ -75,8 +71,6 @@ const SKIP_REASON_LABELS: Record<string, string> = {
   zero_amount: "Monto $0",
 };
 
-// ── Props ────────────────────────────────────────────────────────────────────
-
 interface BankSyncModalProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
@@ -90,11 +84,7 @@ interface BankSyncModalProps {
   onReset: () => void;
 }
 
-// ── Tabs ─────────────────────────────────────────────────────────────────────
-
 type ModalTab = "sync" | "settings" | "history";
-
-// ── Component ────────────────────────────────────────────────────────────────
 
 export function BankSyncModal({
   open,
@@ -117,14 +107,12 @@ export function BankSyncModal({
   const [toDate, setToDate] = useState<Date | undefined>(new Date());
   const [showPassword, setShowPassword] = useState(false);
 
-  // Save credentials state
   const [saveCredentials, setSaveCredentials] = useState(false);
   const [syncSchedule, setSyncSchedule] = useState<SyncScheduleId>("daily_20");
   const saveCredentialsMutation = useSaveCredentials();
   const { data: existingCredentials } = useBankSyncCredentials();
   const hasCredentialsForBank = existingCredentials?.some((c) => c.bank === bank);
 
-  // Result step state
   const [selectedSkipped, setSelectedSkipped] = useState<Set<number>>(new Set());
   const [isImporting, setIsImporting] = useState(false);
   const [importedSkippedCount, setImportedSkippedCount] = useState(0);
@@ -159,7 +147,6 @@ export function BankSyncModal({
     onStart({ bank, rut, password, fromDate: fromStr, toDate: toStr });
   }
 
-  // After sync completes, optionally save credentials
   async function handleSyncComplete() {
     if (saveCredentials && bank && rut && password && !hasCredentialsForBank) {
       try {
@@ -171,7 +158,6 @@ export function BankSyncModal({
     }
   }
 
-  // Trigger credential save when sync transitions to completed
   const [saveTriggerred, setSaveTriggered] = useState(false);
   if (syncStep === "completed" && !saveTriggerred && saveCredentials && password) {
     setSaveTriggered(true);
@@ -265,7 +251,6 @@ export function BankSyncModal({
 
   const isSyncing = activeStep !== "form";
 
-  // Dynamic title/description
   const modalTitle = tab === "settings" ? "Auto-sync"
     : tab === "history" ? "Historial"
     : activeStep === "form" && selectedBank ? selectedBank.label
@@ -277,9 +262,6 @@ export function BankSyncModal({
     : activeStep === "form" && selectedBank ? "Ingresa tus credenciales para sincronizar"
     : "Selecciona tu banco para comenzar";
 
-  // El pie es el único lugar con peso primary: una acción terminal por paso.
-  // Las acciones contextuales (eliminar/importar seleccionadas) viven junto a
-  // su lista, en `outline`, para que la jerarquía la marque la posición.
   const modalFooter = tab !== "sync" ? undefined
     : activeStep === "form" && selectedBank ? (
       <div className="flex gap-3">
@@ -340,7 +322,6 @@ export function BankSyncModal({
       maxWidth={activeStep === "result" && result && !("error" in result) ? "lg" : "md"}
       footer={modalFooter}
     >
-      {/* ── Tab bar (only when not syncing) ─────────────────────────────── */}
       {!isSyncing && (
         <div className="flex gap-1 p-1 rounded-full mb-4">
           {(
@@ -368,20 +349,16 @@ export function BankSyncModal({
         </div>
       )}
 
-      {/* ── Settings tab ────────────────────────────────────────────────── */}
       {tab === "settings" && (
         <BankSyncSettings
           onAddBank={() => { setTab("sync"); onReset(); setBank(""); }}
         />
       )}
 
-      {/* ── History tab ─────────────────────────────────────────────────── */}
       {tab === "history" && <BankSyncHistory />}
 
-      {/* ── Sync tab ────────────────────────────────────────────────────── */}
       {tab === "sync" && (
         <>
-          {/* ── STEP 1: Form ───────────────────────────────────────────── */}
           {activeStep === "form" && !selectedBank && (
             <div className="grid grid-cols-2 gap-2 pt-1">
               {BANKS.map((b) => {
@@ -414,7 +391,6 @@ export function BankSyncModal({
 
           {activeStep === "form" && selectedBank && (
             <form id={FORM_ID} onSubmit={handleSubmit} className="space-y-4 pt-1">
-              {/* ── Dynamic bank header ─────────────────────────────────── */}
               <div
                 className="relative flex items-center gap-4 p-4 rounded-card overflow-hidden"
                 style={{ background: `linear-gradient(135deg, ${selectedBank.color}18 0%, ${selectedBank.color}08 100%)` }}
@@ -447,7 +423,6 @@ export function BankSyncModal({
                 <div className="absolute bottom-0 left-0 right-0 h-[2px]" style={{ background: `linear-gradient(90deg, ${selectedBank.color}60, ${selectedBank.color}10)` }} />
               </div>
 
-              {/* ── Stored credentials notice ────────────────────────────── */}
               {storedCred && (
                 <div className="flex items-start gap-3 p-3 rounded-card border">
                   <Lock className="h-4 w-4 text-muted-foreground shrink-0 mt-0.5" />
@@ -460,7 +435,6 @@ export function BankSyncModal({
                 </div>
               )}
 
-              {/* ── Credentials (only when no stored creds) ─────────────── */}
               {!storedCred && (
                 <div className="relative">
                   <div className="absolute -inset-[1px] rounded-card opacity-40" style={{ background: `linear-gradient(135deg, ${selectedBank.color}50, transparent 50%, ${selectedBank.color}20)` }} />
@@ -520,7 +494,6 @@ export function BankSyncModal({
                 </div>
               )}
 
-              {/* ── Date range ──────────────────────────────────────────── */}
               <div className="space-y-2">
                 <Label className="text-sm font-medium">
                   Rango de fechas{" "}
@@ -534,7 +507,6 @@ export function BankSyncModal({
                 <p className="text-xs text-muted-foreground">Si no se indica, se importan todos los movimientos disponibles.</p>
               </div>
 
-              {/* ── Save credentials for auto-sync ──────────────────────── */}
               {!hasCredentialsForBank && (
                 <div className="rounded-card border p-3 space-y-3 transition-colors">
                   <div className="flex items-start gap-3">
@@ -605,7 +577,6 @@ export function BankSyncModal({
             </form>
           )}
 
-          {/* ── STEP 2: Polling ─────────────────────────────────────────── */}
           {activeStep === "polling" && (
             <div className="flex flex-col items-center justify-center py-8 space-y-6">
               {pollStatus === "awaiting_2fa" ? (
@@ -638,7 +609,6 @@ export function BankSyncModal({
             </div>
           )}
 
-          {/* ── STEP 3: Result ───────────────────────────────────────────── */}
           {activeStep === "result" && result && (
             <div className="space-y-4">
               {"error" in result ? (
@@ -651,7 +621,6 @@ export function BankSyncModal({
                 </div>
               ) : (
                 <>
-                  {/* Summary header */}
                   <div className="flex items-center gap-3 py-3">
                     <div className="flex items-center justify-center h-10 w-10 rounded-full bg-success/10">
                       <CheckCircle2 className="h-5 w-5 text-success" />
@@ -664,7 +633,6 @@ export function BankSyncModal({
                     </div>
                   </div>
 
-                  {/* Stats pills */}
                   <div className="flex gap-2 flex-wrap">
                     {result.imported > 0 && (
                       <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-success/10 text-success text-sm font-medium">
@@ -688,7 +656,6 @@ export function BankSyncModal({
                     )}
                   </div>
 
-                  {/* Auto-sync confirmation message */}
                   {credentialsSaved && syncSchedule !== "disabled" && (
                     <div className="flex items-start gap-2 p-3 rounded-card border">
                       <CalendarClock className="h-4 w-4 text-muted-foreground shrink-0 mt-0.5" />
@@ -700,7 +667,6 @@ export function BankSyncModal({
                     </div>
                   )}
 
-                  {/* Imported transactions list */}
                   {result.importedItems.length > 0 && deletedImportedCount === 0 && (
                     <div className="space-y-2">
                       <div className="flex items-center justify-between">
@@ -745,7 +711,6 @@ export function BankSyncModal({
                     </div>
                   )}
 
-                  {/* Skipped transactions */}
                   {result.skippedItems.length > 0 && importedSkippedCount === 0 && (
                     <div className="space-y-2">
                       <div className="flex items-center justify-between">

@@ -53,16 +53,11 @@ const STEPS = [
 
 const DEFAULT_RADIUS = 0.75;
 
-// ── Mini preview card for a theme palette ─────────────────────────────
-// Una miniatura de la app con los colores que se van a aplicar: fondo,
-// barra lateral con la navegación activa en el acento y tarjetas con su
-// texto y su texto secundario.
 type PreviewPalette = Pick<
   PaletteVars,
   "background" | "card" | "sidebar" | "primary" | "foreground" | "mutedForeground" | "border"
 >;
 
-// El tema Rindo de index.css, para su miniatura.
 const RINDO_PREVIEW: Record<"light" | "dark", PreviewPalette> = {
   light: {
     background: "oklch(0.965 0.002 286)",
@@ -140,7 +135,6 @@ function ThemePreviewCard({
   );
 }
 
-// ── Custom hue slider with rainbow track and glass thumb ──────────────
 function HueSlider({
   value,
   onChange,
@@ -177,8 +171,6 @@ function HueSlider({
   );
 
   const pct = (value / 360) * 100;
-  // La barra muestra los acentos de verdad, no un arcoíris decorativo: el
-  // color bajo el dedo es exactamente el que va a quedar en la app.
   const track = Array.from({ length: 13 }, (_, i) =>
     generatePaletteFromHue(i * 30, mode).primary
   ).join(", ");
@@ -191,7 +183,6 @@ function HueSlider({
       onPointerDown={handlePointerDown}
       onPointerMove={handlePointerMove}
     >
-      {/* Barra de tonos */}
       <div
         className="absolute inset-y-[10px] inset-x-0 rounded-full"
         style={{
@@ -199,7 +190,6 @@ function HueSlider({
           boxShadow: "inset 0 1px 3px rgba(0,0,0,0.15)",
         }}
       />
-      {/* Glass thumb */}
       <div
         className="absolute top-1/2 -translate-y-1/2 size-[22px] rounded-full pointer-events-none transition-[left] duration-75 ease-out"
         style={{
@@ -214,7 +204,6 @@ function HueSlider({
   );
 }
 
-// ── Section header ────────────────────────────────────────────────────
 function SectionLabel({
   icon: Icon,
   children,
@@ -232,7 +221,6 @@ function SectionLabel({
   );
 }
 
-// ─────────────────────────────────────────────────────────────────────
 export function OnboardingModal({
   open,
   onOpenChange,
@@ -255,14 +243,12 @@ export function OnboardingModal({
   const [initialized, setInitialized] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  // Pre-fill on open
   useEffect(() => {
     if (open && profile && !initialized) {
       setFullName(profile.full_name || "");
       setNickname(profile.nickname || "");
       setLocalAvatarPreview(null);
       const saved = profile.accent_color_1;
-      // Un id retirado se muestra como el tema al que hoy apunta.
       setSelectedTheme(saved === "custom" ? saved : findPreset(saved)?.id ?? null);
       const settings = parseCustomSettings(profile.accent_color_2);
       setCustomHue(settings.hue ?? 240);
@@ -298,8 +284,6 @@ export function OnboardingModal({
     if (Math.abs(customRadius - DEFAULT_RADIUS) > 0.01) settings.radius = customRadius;
     return Object.keys(settings).length > 0 ? JSON.stringify(settings) : null;
   }, [selectedTheme, customHue, selectedFont, customRadius]);
-
-  // ── Handlers ──────────────────────────────────────────────────────
 
   const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -449,7 +433,6 @@ export function OnboardingModal({
         </div>
       }
     >
-      {/* Step indicators */}
       <p className="text-center text-xs text-muted-foreground mb-2">
         Paso {step + 1} de {STEPS.length}
       </p>
@@ -473,7 +456,6 @@ export function OnboardingModal({
         })}
       </div>
 
-      {/* Step content with slide transition */}
       <div
         className={cn(
           "transition-all duration-200 ease-out",
@@ -482,7 +464,6 @@ export function OnboardingModal({
           !animating && "opacity-100 translate-x-0"
         )}
       >
-        {/* Step 0: Name */}
         {step === 0 && (
           <div className="space-y-4">
             <div className="space-y-2">
@@ -510,7 +491,6 @@ export function OnboardingModal({
           </div>
         )}
 
-        {/* Step 1: Avatar */}
         {step === 1 && (
           <div className="flex flex-col items-center gap-4">
             <div className="relative group">
@@ -569,10 +549,8 @@ export function OnboardingModal({
           </div>
         )}
 
-        {/* Step 2: Full theme customization */}
         {step === 2 && (
           <div className="space-y-6 max-h-[55vh] overflow-y-auto overscroll-contain pr-1 -mr-1 scrollbar-thin scrollbar-thumb-muted scrollbar-track-transparent">
-            {/* ── Claro / Oscuro / Sistema: el único lugar donde se elige ── */}
             <div className="grid grid-cols-3 gap-1 p-1 rounded-full bg-muted">
               {([
                 { value: "light", label: "Claro", icon: Sun },
@@ -595,18 +573,15 @@ export function OnboardingModal({
               ))}
             </div>
 
-            {/* ── Color ───────────────────────────────────────── */}
             <div>
               <SectionLabel icon={Palette}>Color</SectionLabel>
               <div className="grid grid-cols-4 gap-2 p-0.5">
-                {/* Default Rindo */}
                 <ThemePreviewCard
                   palette={RINDO_PREVIEW[currentMode]}
                   name="Rindo"
                   selected={selectedTheme === null}
                   onClick={() => handleSelectTheme(null)}
                 />
-                {/* Presets */}
                 {THEME_PRESETS.map((preset) => {
                   const palette = currentMode === "dark" ? preset.dark : preset.light;
                   return (
@@ -619,7 +594,6 @@ export function OnboardingModal({
                     />
                   );
                 })}
-                {/* Custom: la miniatura muestra el tono del slider */}
                 <ThemePreviewCard
                   palette={customPalette}
                   name="Custom"
@@ -628,7 +602,6 @@ export function OnboardingModal({
                 />
               </div>
 
-              {/* Hue slider — slides in when custom selected */}
               {selectedTheme === "custom" && (
                 <div className="mt-3 animate-in fade-in slide-in-from-top-1 duration-200">
                   <HueSlider value={customHue} onChange={handleCustomHue} mode={currentMode} />
@@ -636,7 +609,6 @@ export function OnboardingModal({
               )}
             </div>
 
-            {/* ── Fuente ──────────────────────────────────────── */}
             <div>
               <SectionLabel icon={Type}>Fuente</SectionLabel>
               <div className="grid grid-cols-2 gap-2">
@@ -672,7 +644,6 @@ export function OnboardingModal({
               </div>
             </div>
 
-            {/* ── Redondez ────────────────────────────────────── */}
             <div>
               <div className="flex items-center justify-between mb-2">
                 <div className="flex items-center gap-2">
@@ -681,7 +652,6 @@ export function OnboardingModal({
                     Redondez
                   </span>
                 </div>
-                {/* Live mini preview */}
                 <div className="flex items-center gap-1.5">
                   <div
                     className="w-7 h-5 border-2 transition-all duration-150"
@@ -708,7 +678,6 @@ export function OnboardingModal({
           </div>
         )}
       </div>
-      {/* end slide wrapper */}
     </BaseModal>
   );
 }

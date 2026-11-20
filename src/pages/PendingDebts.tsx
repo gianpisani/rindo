@@ -23,12 +23,6 @@ const shortDate = (d: string) => new Date(d).toLocaleDateString("es-CL", { day: 
 
 type Debt = SharedExpenseWithTransaction;
 
-/**
- * Deudas es para ver quién me debe, a quién le debo y cuánto. Las deudas
- * nacen en Movimientos, al dividir un gasto, y casi siempre se pagan solas
- * cuando llega la transferencia. Acá solo queda la salida para lo que se pagó
- * en efectivo (marcar como pagada o saldar) y eliminar.
- */
 const directions: { value: SharedExpenseDirection; label: string; amountClass: string }[] = [
   { value: "they_owe_me", label: "Me deben", amountClass: "text-amber-500" },
   { value: "i_owe_them", label: "Yo debo", amountClass: "text-foreground" },
@@ -46,8 +40,6 @@ export default function PendingDebts() {
   const { transactions } = useTransactions();
   const { isPrivacyMode } = usePrivacyMode();
 
-  // Marcar como pagada (me deben) o eliminar: un solo diálogo de confirmación.
-  // El contenido se queda mientras el diálogo se cierra, para que no cambie en la animación.
   const [confirm, setConfirm] = useState<{ kind: "paid" | "delete"; debt: Debt } | null>(null);
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [settleTarget, setSettleTarget] = useState<Debt | null>(null);
@@ -56,7 +48,6 @@ export default function PendingDebts() {
   const [settleQuery, setSettleQuery] = useState("");
   const settleInputRef = useRef<HTMLInputElement>(null);
 
-  // Pendientes agrupadas por dirección y persona, de mayor a menor.
   const sections = useMemo(
     () =>
       directions
@@ -185,7 +176,6 @@ export default function PendingDebts() {
                         )}
                       >
                         <div className="flex-1 min-w-0">
-                          {/* La deuda lleva al movimiento que la originó, si lo tiene. */}
                           {debt.transaction_id ? (
                             <Link
                               to={`/transactions?search=${encodeURIComponent(debt.transaction_detail ?? "")}`}
@@ -274,7 +264,6 @@ export default function PendingDebts() {
         )}
       </div>
 
-      {/* Saldar deuda: elegir el gasto con el que pagaste. */}
       <Dialog.Root open={!!settleTarget} onOpenChange={(open) => !open && closeSettle()}>
         <Dialog.Portal>
           <Dialog.Overlay className="whisper-backdrop" />

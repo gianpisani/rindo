@@ -8,10 +8,6 @@ interface SpendingEntry {
   reimbursement_for_category?: string | null;
 }
 
-/** Reimbursements belong to their tagged category and the month received.
- * They reduce spending but never increase the number of purchases.
- * Card payments are not spending (their purchases already are): skipped.
- */
 export function summarizeCategoryPeriod<T extends SpendingEntry>(entries: T[], start: Date, end: Date) {
   const result = new Map<string, { amount: number; reimbursedAmount: number; effectiveAmount: number; count: number; transactions: T[] }>();
   for (const entry of entries) {

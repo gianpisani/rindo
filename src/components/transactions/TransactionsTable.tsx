@@ -85,10 +85,6 @@ import type { DateRangeValue } from "./DateRangeFilter";
 import { tintColor } from "@/lib/category-color";
 import { clp } from "@/lib/format";
 
-// ── Avatar helpers ─────────────────────────────────────────────────────────
-
-// The avatar shows what the movement *is*: its category icon on a wash of the
-// category color. Uncolored categories fall back to the neutral muted tone.
 function categoryAvatar(name: string, categories: { name: string; icon?: string | null; color?: string | null }[]) {
   const category = categories.find(c => c.name === name);
   const analyzing = name === "⚡ Analizando...";
@@ -98,20 +94,15 @@ function categoryAvatar(name: string, categories: { name: string; icon?: string 
   };
 }
 
-// ── Date group helpers ─────────────────────────────────────────────────────
-
 function formatGroupDate(dayKey: string): string {
   const today = format(new Date(), "yyyy-MM-dd");
   const yesterday = format(subDays(new Date(), 1), "yyyy-MM-dd");
   if (dayKey === today) return "Hoy";
   if (dayKey === yesterday) return "Ayer";
-  // Parse safely
   const [y, m, d] = dayKey.split("-").map(Number);
   const date = new Date(y, m - 1, d);
   return format(date, "EEEE d 'de' MMMM", { locale: es });
 }
-
-// ── Type config ────────────────────────────────────────────────────────────
 
 const typeIcons: Record<TransactionType, typeof TrendingUp> = {
   Ingreso: TrendingUp,
@@ -122,11 +113,9 @@ const typeIcons: Record<TransactionType, typeof TrendingUp> = {
   Reembolso: ArrowLeftRight,
 };
 
-
 const signColor = (amount: number) =>
   amount > 0 ? "text-success" : "";
 
-// Formato con signo: NumberFlow en el panel de selección y la suma del pie.
 const SIGNED_CLP: Format = {
   style: "currency",
   currency: "CLP",
@@ -134,8 +123,6 @@ const SIGNED_CLP: Format = {
   signDisplay: "exceptZero",
 };
 const formatSignedCLP = new Intl.NumberFormat("es-CL", SIGNED_CLP).format;
-
-// ── Editable cell components ───────────────────────────────────────────────
 
 function EditableTextCell({ value, onSave, className, placeholder }: {
   value: string;
@@ -200,7 +187,6 @@ function EditableAmountCell({
   value: number;
   onSave: (value: number) => void;
   className?: string;
-  /** El rendimiento puede ser negativo: editarlo no debe comerse el signo. */
   allowNegative?: boolean;
 }) {
   const [isEditing, setIsEditing] = useState(false);
@@ -210,7 +196,6 @@ function EditableAmountCell({
     setEditValue(value.toString());
   }, [value]);
 
-  // El signo sobrevive al tipeo solo donde tiene sentido; el resto son dígitos.
   const sanitize = (raw: string) => {
     const isNegative = allowNegative && /^\s*[-−]/.test(raw);
     return (isNegative ? "-" : "") + raw.replace(/\D/g, "");
@@ -264,7 +249,6 @@ function EditableAmountCell({
   );
 }
 
-/** Clases del botón que abre un editor inline de celda. */
 const CELL_TRIGGER =
   "flex items-center gap-1 px-2 py-1 rounded-card transition-all group cursor-pointer";
 
@@ -304,7 +288,6 @@ function SelectableCell<T extends string>({ value, options, onSave, renderValue,
   );
 }
 
-/** Encabezado que ordena la columna al hacer click. */
 function SortHeader({ column, label, alignEnd }: { column: Column<Transaction>; label: string; alignEnd?: boolean }) {
   const sorted = column.getIsSorted();
   return (
@@ -320,8 +303,6 @@ function SortHeader({ column, label, alignEnd }: { column: Column<Transaction>; 
   );
 }
 
-// ── Empty state ──────────────────────────────────────────────────────────
-
 function TableEmpty({ hasFilters, onClear }: { hasFilters: boolean; onClear: () => void }) {
   return hasFilters ? (
     <EmptyState action={{ label: "Limpiar filtros", onClick: onClear }}>Nada con estos filtros</EmptyState>
@@ -329,8 +310,6 @@ function TableEmpty({ hasFilters, onClear }: { hasFilters: boolean; onClear: () 
     <EmptyState>Sin movimientos todavía: agrega el primero con + o la tecla N</EmptyState>
   );
 }
-
-// ── Category Combobox: a qué gasto devuelve un reembolso ─────────────
 
 interface CategoryComboboxOption {
   value: string;
@@ -343,7 +322,6 @@ interface CategoryComboboxProps {
   value: string;
   options: CategoryComboboxOption[];
   onSave: (value: string) => void;
-  /** El botón que abre la lista. */
   trigger: React.ReactNode;
   placeholder?: string;
 }
@@ -407,8 +385,6 @@ function CategoryCombobox({ value, options, onSave, trigger, placeholder = "Busc
   );
 }
 
-// ── Props ──────────────────────────────────────────────────────────────────
-
 interface TransactionsTableProps {
   transactions: Transaction[];
   onEdit: (transaction: Transaction) => void;
@@ -418,7 +394,6 @@ interface TransactionsTableProps {
   onUpdateMultiple: (ids: string[], updates: Partial<Pick<Transaction, "category_name" | "type">>) => void;
   onDuplicate: (ids: string[]) => void;
   categories: Array<{ id?: string; name: string; type: string; color?: string | null; icon?: string | null }>;
-  // Los filtros viven en la página (los edita TransactionsToolbar).
   searchValue: string;
   onSearchChange: (v: string) => void;
   typeFilter: string;
@@ -429,13 +404,10 @@ interface TransactionsTableProps {
   onCardFilterChange: (v: string) => void;
   dateRange: DateRangeValue;
   onDateRangeChange: (v: DateRangeValue) => void;
-  /** Modo selección: solo entonces se ven los checkboxes y se puede marcar filas. */
   selecting: boolean;
   onSelectingChange: (v: boolean) => void;
   pageSize: number;
 }
-
-// ── Main component ─────────────────────────────────────────────────────────
 
 export function TransactionsTable({
   transactions,
@@ -471,18 +443,12 @@ export function TransactionsTable({
   const { addCategory } = useCategories();
   const isMobile = useIsMobile();
 
-  // Crear categoría desde la celda: guarda a qué transacción asignarla,
-  // con qué tipo nace y el nombre tecleado en la búsqueda.
   const [categoryDraft, setCategoryDraft] = useState<{
     transactionId: string;
     type: TransactionType;
     name: string;
   } | null>(null);
 
-  // Touch-through guard: en iOS, al tocar un item del menú "..." el menú se
-  // desmonta y el click del navegador aterriza en la card que quedó debajo,
-  // abriendo el modal de editar sin querer. Ignoramos clicks en cards
-  // durante una ventana corta después de cerrar cualquier menú.
   const lastMenuCloseRef = useRef(0);
   const trackMenuClose = (open: boolean) => {
     if (!open) lastMenuCloseRef.current = Date.now();
@@ -507,7 +473,6 @@ export function TransactionsTable({
     setRowSelection({});
   }, [transactions.length]);
 
-  // Salir del modo selección suelta lo marcado.
   useEffect(() => {
     if (!selecting) setRowSelection({});
   }, [selecting]);
@@ -521,8 +486,6 @@ export function TransactionsTable({
     onUpdateSilent(id, { [field]: value });
   }, [onUpdateSilent]);
 
-  // Cambiar la categoría es el mismo selector que en el inicio, y optimista:
-  // la fila cambia al tocar y la red va detrás.
   const { save: saveInline, categoryOptions } = useInlineEdit();
   const withCategoryPicker = useCallback((t: Transaction, trigger: React.ReactElement) =>
     t.isPending || t.category_name === ANALYZING_CATEGORY ? trigger : (
@@ -532,7 +495,6 @@ export function TransactionsTable({
         title={getCleanDetail(t.detail) || undefined}
         onPick={(name) => saveInline(t, { category_name: name })}
         onCreate={(name) => setCategoryDraft({ transactionId: t.id, type: t.type, name })}
-        // Mismo resguardo que los menús: el toque que cierra no abre la card de abajo.
         onOpenChange={(open) => { if (!open) lastMenuCloseRef.current = Date.now(); }}
       >
         {trigger}
@@ -541,7 +503,6 @@ export function TransactionsTable({
 
   const columns = useMemo<ColumnDef<Transaction>[]>(() => {
     return [
-      // ── Select (solo en modo selección) ─────────────────────────────────
       ...(selecting ? [{
         id: "select",
         size: 48, minSize: 48, maxSize: 48,
@@ -566,7 +527,6 @@ export function TransactionsTable({
         enableHiding: false,
       }] as ColumnDef<Transaction>[] : []),
 
-      // ── Fecha ────────────────────────────────────────────────────────────
       {
         accessorKey: "date",
         size: 120, minSize: 120, maxSize: 120,
@@ -585,7 +545,6 @@ export function TransactionsTable({
         },
       },
 
-      // ── Detalle (avatar + texto limpio) ──────────────────────────────────
       {
         accessorKey: "detail",
         size: 310, minSize: 220,
@@ -598,7 +557,6 @@ export function TransactionsTable({
 
           return (
             <div className={cn("flex items-center gap-2 max-w-[300px]", isPrivacyMode && "privacy-blur")}>
-              {/* Avatar: tocarlo cambia la categoría */}
               <div className="relative flex-shrink-0">
                 {withCategoryPicker(row.original, (
                   <button
@@ -619,7 +577,6 @@ export function TransactionsTable({
                   </div>
                 )}
               </div>
-              {/* Text */}
               <div className="flex flex-col min-w-0 flex-1">
                 <EditableTextCell
                   value={clean}
@@ -644,7 +601,6 @@ export function TransactionsTable({
         },
       },
 
-      // ── Categoría (icono + color dot + nombre + reimbursement link) ────
       {
         accessorKey: "category_name",
         size: 200, minSize: 170, maxSize: 240,
@@ -691,7 +647,6 @@ export function TransactionsTable({
                     <ChevronDown className="h-3 w-3 opacity-0 group-hover:opacity-50 transition-opacity" />
                   </button>
               ))}
-              {/* Reembolso: a qué categoría de gasto devuelve, en una píldora con su propio popover */}
               {isReimbursement && (
                 <CategoryCombobox
                   value={linkedCategory || ""}
@@ -720,7 +675,6 @@ export function TransactionsTable({
         },
       },
 
-      // ── Tarjeta ──────────────────────────────────────────────────────────
       ...((isLoadingCards || creditCards.length > 0) ? [{
         id: "card",
         size: 90, minSize: 80, maxSize: 110,
@@ -772,7 +726,6 @@ export function TransactionsTable({
         },
       }] as ColumnDef<Transaction>[] : []),
 
-      // ── Monto (coloreado; el tipo se cambia en el editor) ───────────────
       {
         accessorKey: "amount",
         size: 170, minSize: 150, maxSize: 180,
@@ -795,7 +748,6 @@ export function TransactionsTable({
         },
       },
 
-      // ── Acciones ─────────────────────────────────────────────────────────
       {
         id: "actions",
         size: 60, minSize: 60, maxSize: 60,
@@ -836,8 +788,6 @@ export function TransactionsTable({
     ];
   }, [selecting, onEdit, onDelete, onDuplicate, categories, creditCards, isPrivacyMode, handleInlineUpdate, withCategoryPicker]);
 
-  // ── Filtering ────────────────────────────────────────────────────────────
-
   const fuzzyResults = useFuzzySearch(transactions, searchValue);
 
   const filteredData = useMemo(() => {
@@ -877,9 +827,7 @@ export function TransactionsTable({
   const selectedIds = selectedRows.map(row => row.original.id);
   const hasSelection = selectedIds.length > 0;
 
-  // ── Drag-to-select (Excel-like) ─────────────────────────────────────────
   const handleRowMouseDown = (e: React.MouseEvent, startIdx: number) => {
-    // Solo en modo selección, con click izquierdo y fuera de controles
     if (!selecting || e.button !== 0) return;
     const target = e.target as HTMLElement;
     if (target.closest('button, input, [role="menuitem"], [role="combobox"], [role="listbox"], [data-radix-collection-item], [type="checkbox"]')) return;
@@ -890,13 +838,11 @@ export function TransactionsTable({
 
     const handleMove = (ev: MouseEvent) => {
       if (!tbodyRef.current) return;
-      // La fila con data-row-index bajo el cursor
       const tr = document.elementFromPoint(ev.clientX, ev.clientY)?.closest("tr[data-row-index]");
       const idx = tr ? parseInt(tr.getAttribute("data-row-index") || "", 10) : NaN;
       if (isNaN(idx) || idx === currentIdx) return;
       currentIdx = idx;
 
-      // Build selection: keep initial + add drag range
       const newSelection: RowSelectionState = { ...initialSelection };
       for (let i = Math.min(startIdx, idx); i <= Math.max(startIdx, idx); i++) {
         if (allRows[i]) newSelection[allRows[i].id] = true;
@@ -907,25 +853,19 @@ export function TransactionsTable({
     const handleUp = () => {
       window.removeEventListener("mousemove", handleMove);
       window.removeEventListener("mouseup", handleUp);
-      // Re-enable text selection
       document.body.style.userSelect = "";
     };
 
-    // Disable text selection during drag
     document.body.style.userSelect = "none";
     window.addEventListener("mousemove", handleMove);
     window.addEventListener("mouseup", handleUp);
   };
 
-  // Suma con signo de lo filtrado: Gasto/Inversión restan, Ingreso/Reembolso suman
   const filteredSum = filteredData.reduce((sum, t) => sum + displaySign(t.type) * t.amount, 0);
 
-  // ── Stats de la selección (panel flotante) ──────────────────────────────
   const summaryStats = (() => {
     const rows = selectedRows.map(r => r.original);
     if (rows.length === 0) return null;
-    // Montos con signo: Gasto/Inversión restan, Ingreso/Reembolso suman.
-    // El pago de tarjeta no es gasto ni ingreso (sus compras ya contaron): vale 0.
     const amounts = rows.map(r => isCardPayment(r) ? 0 : displaySign(r.type) * r.amount);
     const sum = amounts.reduce((a, b) => a + b, 0);
     const income = amounts.reduce((a, v) => a + Math.max(0, v), 0);
@@ -941,7 +881,6 @@ export function TransactionsTable({
     };
   })();
 
-  // ── Batch handlers: aplican a lo seleccionado y limpian la selección ──────
   const runBatch = (action: () => void) => {
     action();
     setRowSelection({});
@@ -952,7 +891,6 @@ export function TransactionsTable({
     runBatch(() => onUpdateMultiple(selectedIds, { type, category_name: matchingCategory?.name || "Sin categoría" }));
   };
 
-  // ── Panel drag handlers ──────────────────────────────────────────────────
   const handleDragStart = (e: React.MouseEvent) => {
     e.preventDefault();
     const startY = e.clientY;
@@ -969,7 +907,6 @@ export function TransactionsTable({
     window.addEventListener("mouseup", handleUp);
   };
 
-  // Reset panel state when selection is cleared
   useEffect(() => {
     if (!hasSelection) {
       setPanelExpanded(false);
@@ -977,15 +914,12 @@ export function TransactionsTable({
     }
   }, [hasSelection]);
 
-  // ── Date grouping ─────────────────────────────────────────────────────────
-
   const isDateSorted = sorting.length === 0 || sorting[0].id === "date";
 
   const groupedRows = useMemo(() => {
     const rows = table.getRowModel().rows;
     if (!isDateSorted) return null;
 
-    // `start`: índice de la primera fila del grupo en la página, para el drag-to-select.
     const groups: { dayKey: string; start: number; rows: typeof rows }[] = [];
     rows.forEach((row, i) => {
       const dayKey = format(new Date(row.original.date), "yyyy-MM-dd");
@@ -999,7 +933,6 @@ export function TransactionsTable({
     return groups;
   }, [table.getRowModel().rows, isDateSorted]);
 
-  // Card de la lista móvil. Agrupada por día basta la hora; sin agrupar, va la fecha.
   const renderMobileCard = (row: Row<Transaction>, timeLabel: string) => {
     const t = row.original;
     const clean = getCleanDetail(t.detail);
@@ -1029,7 +962,6 @@ export function TransactionsTable({
           isSelected && "mobile-tx-card-selected",
           isMissing && "mobile-tx-card-missing"
         )}
-        // En modo selección tocar la card la marca; si no, abre el editor.
         onClick={() => (selecting ? row.toggleSelected(!isSelected) : guardedEdit(t))}
       >
         {selecting && (
@@ -1038,7 +970,6 @@ export function TransactionsTable({
           </div>
         )}
 
-        {/* Avatar: tocarlo cambia la categoría (fuera del modo selección) */}
         <div className="relative flex-shrink-0">
           {selecting ? avatarButton : withCategoryPicker(t, avatarButton)}
           {isBot && (
@@ -1048,7 +979,6 @@ export function TransactionsTable({
           )}
         </div>
 
-        {/* Content */}
         <div className="flex-1 min-w-0 ml-3">
           <div className="flex items-center justify-between gap-2">
             <span className={cn("text-sm font-medium truncate", isPrivacyMode && "privacy-blur")}>
@@ -1082,7 +1012,6 @@ export function TransactionsTable({
           </div>
         </div>
 
-        {/* Actions */}
         <div className="flex-shrink-0 ml-1">
           <DropdownMenu onOpenChange={trackMenuClose}>
             <DropdownMenuTrigger asChild>
@@ -1114,7 +1043,6 @@ export function TransactionsTable({
     );
   };
 
-  // Fila de la tabla de escritorio; `index` es su posición en la página.
   const renderDesktopRow = (row: Row<Transaction>, index: number) => {
     const isMissing = row.original.category_name === "Sin categoría";
     return (
@@ -1139,11 +1067,8 @@ export function TransactionsTable({
     );
   };
 
-  // ── Render ────────────────────────────────────────────────────────────────
-
   return (
     <div className="space-y-4 mx-auto">
-      {/* ── Floating Selection Panel (right side) ────────────────────────── */}
       {hasSelection && (
         <div
           className={cn(
@@ -1153,7 +1078,6 @@ export function TransactionsTable({
           )}
           style={{ top: panelY ?? 160 }}
         >
-          {/* Collapsed pill */}
           {!panelExpanded && (
             <div
               className={cn(
@@ -1162,7 +1086,6 @@ export function TransactionsTable({
                 "shadow-float"
               )}
             >
-              {/* Drag handle */}
               <div
                 className="cursor-grab active:cursor-grabbing p-0.5 transition-colors"
                 onMouseDown={handleDragStart}
@@ -1170,7 +1093,6 @@ export function TransactionsTable({
                 <GripVertical className="h-3.5 w-3.5" />
               </div>
 
-              {/* Count badge */}
               <button
                 onClick={() => setPanelExpanded(true)}
                 className="size-9 rounded-full bg-muted text-foreground flex items-center justify-center text-xs font-medium transition-colors"
@@ -1178,7 +1100,6 @@ export function TransactionsTable({
                 {selectedIds.length}
               </button>
 
-              {/* Expand arrow */}
               <button
                 onClick={() => setPanelExpanded(true)}
                 className="size-9 grid place-items-center"
@@ -1189,7 +1110,6 @@ export function TransactionsTable({
             </div>
           )}
 
-          {/* Expanded panel */}
           {panelExpanded && (
             <div
               className={cn(
@@ -1199,7 +1119,6 @@ export function TransactionsTable({
                 "animate-in slide-in-from-right-3 fade-in-0 duration-200"
               )}
             >
-              {/* Header with drag handle */}
               <div className="flex items-center gap-2 px-3 py-2 border-b">
                 <div
                   className="cursor-grab active:cursor-grabbing transition-colors"
@@ -1219,7 +1138,6 @@ export function TransactionsTable({
                 </Button>
               </div>
 
-              {/* Actions */}
               <div className="p-2 space-y-0.5">
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild>
@@ -1278,7 +1196,6 @@ export function TransactionsTable({
                 </button>
               </div>
 
-              {/* Quick summary */}
               {summaryStats && (
                 <div className="px-3 py-2 border-t">
                   <div className="grid grid-cols-2 gap-x-4 gap-y-1">
@@ -1309,7 +1226,6 @@ export function TransactionsTable({
                 </div>
               )}
 
-              {/* Deselect */}
               <div className="px-2 py-1.5 border-t">
                 <Button variant="ghost" size="xs" className="w-full text-muted-foreground" onClick={() => setRowSelection({})}>
                   <X />
@@ -1321,7 +1237,6 @@ export function TransactionsTable({
         </div>
       )}
 
-      {/* ── Modo selección: cuántas van y cómo salir ─────────────────────── */}
       {selecting && (
         <div className="flex items-center justify-between gap-2 text-sm text-muted-foreground">
           <span>
@@ -1335,7 +1250,6 @@ export function TransactionsTable({
         </div>
       )}
 
-      {/* ── Lista: cards en el celular, tabla en escritorio ──────────────── */}
       {isMobile ? (
         <div className="mobile-tx-list">
           {table.getRowModel().rows.length === 0 ? (
@@ -1410,7 +1324,6 @@ export function TransactionsTable({
         </div>
       )}
 
-      {/* ── Pie: cuántos, su suma y la página ───────────────────────────── */}
       <div className="flex items-center justify-between gap-3 text-xs text-muted-foreground">
         <span>
           {filteredData.length} movimiento{filteredData.length === 1 ? "" : "s"}
@@ -1450,7 +1363,6 @@ export function TransactionsTable({
         )}
       </div>
 
-      {/* Crear categoría desde una celda y asignarla a esa transacción */}
       <CategoryComposer
         open={categoryDraft !== null}
         onOpenChange={(open) => !open && setCategoryDraft(null)}

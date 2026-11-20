@@ -29,20 +29,11 @@ import {
 import { tint } from "@/lib/category-color";
 import { clp } from "@/lib/format";
 
-/**
- * Meta: ahorrar $X al mes. La página responde una sola pregunta, ¿la estás
- * cumpliendo?, con un número por mes: lo que de verdad se movió a inversión.
- * Al lado, los límites por categoría: el único lugar donde se ven y editan.
- * Nada derivado. Una pantalla exacta en web y celular.
- */
-
 const MONTHS = 12;
-/** Hasta este día del mes, un $0 todavía no es una alarma: el barrido puede venir. */
 const GRACE_DAY = 5;
 
 const day = (d: Date) => format(d, "d MMM", { locale: es }).replace(".", "");
 
-/** "29 ago", "28 ene y 12 feb", "28 ene, 12 feb y 20 feb". Dos aportes el mismo día son un día. */
 const listDays = (sweeps: Sweep[]) => {
   const days = Array.from(new Set(sweeps.map((s) => day(s.date))));
   if (days.length <= 1) return days.join("");
@@ -52,18 +43,14 @@ const listDays = (sweeps: Sweep[]) => {
 const parseAmount = (raw: string) => parseInt(raw.replace(/\D/g, ""), 10) || 0;
 const formatInput = (raw: string) => (raw ? parseAmount(raw).toLocaleString("es-CL") : "");
 
-/** El ícono de una categoría sobre un tono de su color. */
-
 type Tone = "met" | "part" | "none" | "wait";
 
-/** `dayOfMonth`: día del mes financiero en curso (1 = el día en que empieza). */
 const toneOf = (m: SavingsMonth, isCurrent: boolean, dayOfMonth: number): Tone => {
   if (m.met) return "met";
   if (m.saved > 0) return "part";
   return isCurrent && dayOfMonth <= GRACE_DAY ? "wait" : "none";
 };
 
-/** Un campo de monto en línea: Enter guarda, Esc cancela. */
 function AmountField({
   value,
   onChange,
@@ -129,15 +116,12 @@ export default function Meta() {
   const current = months[months.length - 1];
   const metCount = months.filter((m) => m.met).length;
   const [selectedKey, setSelectedKey] = useState(current.key);
-  // Si cambia el mes financiero, la selección vuelve al mes en curso.
   useEffect(() => setSelectedKey(current.key), [current.key]);
   const selected = months.find((m) => m.key === selectedKey) ?? current;
 
-  // La escala del gráfico: la meta con aire arriba, o el mejor mes si la pasó.
   const scale = Math.max(goal * 1.12, ...months.map((m) => m.saved * 1.04), 1);
   const goalFrac = hasGoal ? goal / scale : 0;
 
-  // ── Editar la meta ──
   const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState("");
   useEffect(() => {
@@ -172,7 +156,6 @@ export default function Meta() {
     </span>
   );
 
-  // ── El estado del mes en curso, en una frase ──
   const currentTone = toneOf(current, true, todayInPeriod);
   const pct = hasGoal ? Math.min(100, Math.round((current.saved / goal) * 100)) : 0;
   const nextMonthName = format(periodNameDate(shiftPeriod(thisPeriod, 1, startDay), startDay), "MMMM", { locale: es });
@@ -191,7 +174,6 @@ export default function Meta() {
     note = { text: "este mes no barriste nada", tone: "none" };
   }
 
-  // ── El detalle del mes elegido: dos líneas fijas, sin saltos ──
   const detailTop = `${format(periodNameDate(selected.month, startDay), "MMMM", { locale: es })} · ${clp(selected.saved)}`;
   const detailBottom = (() => {
     const parts: string[] = [];
@@ -204,17 +186,12 @@ export default function Meta() {
     return parts.join(" · ");
   })();
 
-  // ── Límites por categoría: las mismas filas que el Inicio, y acá se editan ──
   const limitRows = useMemo(
     () => limitUsage(transactions, limits, thisPeriod, periodEndOf(thisPeriod, startDay)),
     [transactions, limits, thisPeriod, startDay],
   );
   const limitsTotal = limitRows.reduce((s, r) => s + r.limit, 0);
 
-  // Cómo voy: dónde cierro el mes si lo que queda se parece a los mismos
-  // días de los últimos 3 meses. No extrapola un ritmo: un cargo fijo que ya
-  // pasó (arriendo, suscripciones) no suma nada, y lo que suele caer a fin
-  // de mes sí.
   const remainingTypical = useMemo(() => {
     const sums = new Map<string, number>();
     for (const t of transactions) {
@@ -242,7 +219,6 @@ export default function Meta() {
   const emojiOf = (name: string) => catOf(name)?.icon || getCategoryIcon(name);
   const colorOf = (name: string) => catOf(name)?.color ?? null;
 
-  // Categorías de gasto que todavía no tienen límite: las que se pueden agregar.
   const limited = new Set(limits.map((l) => l.category_name));
   const addable = categories
     .filter((c) => c.type === "Gasto" && c.is_active !== false && !limited.has(c.name) && !isCardPaymentCategory(c.name))
@@ -288,8 +264,6 @@ export default function Meta() {
     setAdding(false);
   };
 
-  // En celular, los meses y los límites comparten la tarjeta. "Ver todos" de
-  // los límites en el Inicio llega directo a la pestaña de límites.
   const location = useLocation();
   const [mobileTab, setMobileTab] = useState<"months" | "limits">(
     (location.state as { tab?: string } | null)?.tab === "limits" ? "limits" : "months"
@@ -328,7 +302,6 @@ export default function Meta() {
           </section>
         ) : (
           <div className="meta-grid" data-tab={mobileTab}>
-            {/* El mes en curso */}
             <section className="meta-card meta-now" data-tone={currentTone}>
               <span className="meta-month">
                 {period.isCalendar ? format(today, "MMMM yyyy", { locale: es }) : period.rangeLabel(thisPeriod)}
@@ -349,7 +322,6 @@ export default function Meta() {
               </p>
             </section>
 
-            {/* Solo en celular: qué tarjeta se ve */}
             <div className="meta-tabs" role="tablist">
               <button className="meta-tab" role="tab" aria-selected={mobileTab === "months"} onClick={() => setMobileTab("months")}>
                 {MONTHS} meses
@@ -360,7 +332,6 @@ export default function Meta() {
               </button>
             </div>
 
-            {/* Los últimos doce meses */}
             <section className="meta-card meta-hist">
               <div className="meta-card-head">
                 <span className="meta-label">Últimos {MONTHS} meses</span>
@@ -402,7 +373,6 @@ export default function Meta() {
               </div>
             </section>
 
-            {/* Límites por categoría: ver, tocar para editar, agregar abajo */}
             <section className="meta-card meta-limits">
               <div className="meta-card-head">
                 <span className="meta-label">Límites</span>
@@ -441,14 +411,11 @@ export default function Meta() {
                       <span className="meta-ico" style={tint(colorOf(row.category))}>{emojiOf(row.category)}</span>
                       <span className="n">{row.category}</span>
                       <span className="pct">
-                        {/* Cómo voy: si a este ritmo me paso, adónde llego */}
                         {willPass && <small className="proj">→ {Math.round(projection as number)}%</small>}
                         {Math.round(row.usage)}%
                       </span>
                       <span className="meta-lim-track" title={projection !== null ? `A este ritmo cierras el mes en ${Math.round(projection)}%` : undefined}>
-                        {/* Un 1% tiene que dejar marca: si no, la fila miente. */}
                         <i style={{ width: row.usage > 0 ? `max(3px, ${Math.min(row.usage, 100)}%)` : "0%", background: color, "--i": index } as CSSProperties} />
-                        {/* La estela: desde donde vas hasta donde cierras a este ritmo */}
                         {projection !== null && projection > row.usage && (
                           <i
                             className="meta-ghost"

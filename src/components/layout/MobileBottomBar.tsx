@@ -35,7 +35,6 @@ function RouteIcon({ route, className }: { route: RouteConfig; className?: strin
   return <Icon className={className} />;
 }
 
-// Todas las filas de la hoja "Más" se ven igual: ícono chico + texto.
 const rowClass =
   "flex w-full items-center gap-3 px-3 py-2 rounded-card text-left transition-colors";
 const rowIconClass =
@@ -62,7 +61,6 @@ export function MobileBottomBar() {
   const displayName = profile?.nickname || profile?.full_name || null;
   const userInitials = (displayName || "U").slice(0, 2).toUpperCase();
 
-  // Menú fijo: las rutas principales van en la barra, las herramientas en el drawer
   const tabRoutes = getMainRoutes();
   const drawerRoutes = getToolRoutes();
 
@@ -76,13 +74,11 @@ export function MobileBottomBar() {
 
   return (
     <>
-      {/* Bottom Tab Bar */}
       <nav
         className="fixed bottom-0 inset-x-0 z-50 md:hidden"
         style={{ paddingBottom: "env(safe-area-inset-bottom, 4px)" }}
       >
         <div className="mobile-tab-bar">
-          {/* Fixed tabs */}
           {tabRoutes.map((route) => {
             const isActive = location.pathname === route.url;
             return (
@@ -123,7 +119,6 @@ export function MobileBottomBar() {
             );
           })}
 
-          {/* More button - opens drawer */}
           <button
             onClick={() => setDrawerOpen(true)}
             className="mobile-tab-item"
@@ -140,7 +135,6 @@ export function MobileBottomBar() {
         </div>
       </nav>
 
-      {/* Swipe-up Drawer */}
       <Drawer open={drawerOpen} onOpenChange={setDrawerOpen}>
         <DrawerContent className="mobile-drawer-content">
           <DrawerTitle className="sr-only">Menú</DrawerTitle>
@@ -153,7 +147,6 @@ export function MobileBottomBar() {
               <span className="text-sm font-medium">Agregar movimiento</span>
             </button>
 
-            {/* Routes not in bottom bar */}
             {drawerRoutes.map((route) => {
               const isActive = location.pathname === route.url;
               return (
@@ -226,9 +219,7 @@ export function MobileBottomBar() {
 
             <div className="my-2 mx-3 h-px" />
 
-            {/* Profile + Logout */}
             <div className="flex items-center gap-2">
-              {/* Profile */}
               <button
                 onClick={() => {
                   setDrawerOpen(false);
@@ -249,7 +240,6 @@ export function MobileBottomBar() {
                 <UserPen className="size-4 text-muted-foreground shrink-0" />
               </button>
 
-              {/* Logout button */}
               <Button
                 variant="ghost"
                 size="icon"
@@ -265,7 +255,6 @@ export function MobileBottomBar() {
             </div>
           </div>
 
-          {/* Safe area spacer */}
           <div style={{ height: "env(safe-area-inset-bottom, 8px)", minHeight: 8 }} />
         </DrawerContent>
       </Drawer>

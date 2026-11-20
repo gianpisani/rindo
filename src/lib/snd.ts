@@ -1,6 +1,5 @@
 import Snd from "snd-lib";
 
-// Los únicos tres sonidos de snd-lib que usa la app, a volumen fijo.
 export type Sound = "playTap" | "playToggleOn" | "playToggleOff";
 
 let snd: Snd | null = null;

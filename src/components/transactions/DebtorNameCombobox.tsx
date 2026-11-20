@@ -13,12 +13,6 @@ interface DebtorNameComboboxProps {
   autoFocus?: boolean;
 }
 
-/**
- * Input de texto libre para nombre de deudor/acreedor, con sugerencias
- * de personas ya registradas. A diferencia de un combobox estricto, no
- * fuerza el valor a uno de la lista: el usuario siempre puede escribir
- * un nombre nuevo.
- */
 export function DebtorNameCombobox({
   value,
   onChange,

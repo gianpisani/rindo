@@ -35,7 +35,6 @@ export function WhisperInput({ open, onOpenChange, defaultType = 'Gasto', initia
   const [draft, setDraft] = useState<WhisperDraft>(() => initialDraft ?? {
     value: '', type: defaultType, category: '', date: localDate(), cardId: '', shared: false, reimbursementCategory: '', isLoss: false,
   });
-  // The picker only has minute precision; untouched, the save takes the exact moment.
   const [dateTouched, setDateTouched] = useState(false);
   const [expanded, setExpanded] = useState(false);
   const [allCategories, setAllCategories] = useState(false);
@@ -81,7 +80,6 @@ export function WhisperInput({ open, onOpenChange, defaultType = 'Gasto', initia
     if (!draft.date || !Number.isFinite(new Date(draft.date).getTime())) { setExpanded(true); setError('Elige una fecha válida.'); return; }
     saving.current = true;
     const submittedDraft = { ...draft };
-    // The composer closes immediately; the shared mutation owns saving and categorizing.
     onOpenChange(false);
     try {
       const transaction = await addTransaction.mutateAsync({
@@ -139,7 +137,6 @@ export function WhisperInput({ open, onOpenChange, defaultType = 'Gasto', initia
                   if (event.key === 'Enter') event.preventDefault();
                   return;
                 }
-                // Keep Whisper's original Tab gesture; Down opens the normal focus order.
                 if (event.key === 'Tab' && !event.altKey && !event.ctrlKey && !event.metaKey) {
                   event.preventDefault(); cycleType(event.shiftKey); return;
                 }

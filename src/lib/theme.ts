@@ -1,5 +1,5 @@
+import { readJson, readStorage, writeStorage } from "./storage";
 
-// ── Full palette definition ─────────────────────────────────────────
 export interface PaletteVars {
   background: string;
   foreground: string;
@@ -12,7 +12,6 @@ export interface PaletteVars {
   input: string;
   sidebar: string;
   sidebarBorder: string;
-  /** Tono OKLCH del acento — de acá salen los colores de los gráficos. */
   hue: number;
 }
 
@@ -24,14 +23,12 @@ export interface ThemePreset {
   dark: PaletteVars;
 }
 
-// ── Custom theme settings (stored as JSON in accent_color_2) ────────
 export interface CustomThemeSettings {
   hue?: number;     // 0-360
   font?: string;    // font option id
   radius?: number;  // rem value
 }
 
-// ── Font options ────────────────────────────────────────────────────
 export const FONT_OPTIONS = [
   { id: "default", name: "Jakarta", family: "'Plus Jakarta Sans', sans-serif" },
   { id: "inter", name: "Inter", family: "'Inter', sans-serif" },
@@ -43,15 +40,8 @@ export const FONT_OPTIONS = [
   { id: "bricolage", name: "Bricolage", family: "'Bricolage Grotesque', sans-serif" },
 ];
 
-// ── Color en OKLCH ──────────────────────────────────────────────────
-// Un tema es un tono repartido en dos dosis: un susurro en los neutros
-// (fondo, tarjetas, bordes, texto) para que la app entera se sienta de
-// ese color sin volverse caramelo, y un acento firme —no chillón— para
-// la navegación activa y los gráficos.
-
 const RAD = Math.PI / 180;
 
-/** OKLCH → sRGB lineal, sin gamma: alcanza para saber si el color entra. */
 function oklchToLinearRgb(L: number, C: number, h: number): [number, number, number] {
   const a = C * Math.cos(h * RAD), b = C * Math.sin(h * RAD);
   const l = (L + 0.3963377774 * a + 0.2158037573 * b) ** 3;
@@ -64,7 +54,6 @@ function oklchToLinearRgb(L: number, C: number, h: number): [number, number, num
   ];
 }
 
-/** Chroma máximo que entra en sRGB a esa luminosidad y ese tono. */
 function maxChroma(L: number, h: number): number {
   let lo = 0, hi = 0.45;
   for (let i = 0; i < 18; i++) {
@@ -75,7 +64,6 @@ function maxChroma(L: number, h: number): number {
   return +lo.toFixed(4);
 }
 
-/** Luminancia relativa (WCAG) de un color OKLCH. */
 function relLuminance(L: number, C: number, h: number): number {
   const [r, g, b] = oklchToLinearRgb(L, C, h).map((v) => Math.min(1, Math.max(0, v)));
   return 0.2126 * r + 0.7152 * g + 0.0722 * b;
@@ -88,14 +76,6 @@ function contrast(a: number, b: number): number {
 
 const ok = (L: number, C: number, h: number) => `oklch(${L} ${C} ${h})`;
 
-/**
- * Luz y tono de cada superficie, iguales para todos los temas: ningún
- * tema queda más oscuro ni con menos contraste que otro. El segundo
- * número es cuánto tono lleva: un susurro en el fondo, casi nada en las
- * tarjetas (se levantan del fondo por luz, no por color) y algo más en
- * el texto secundario para que no sea gris sobre gris. Medido: texto y
- * texto secundario pasan 4.5:1 sobre fondo, tarjeta y muted en ambos modos.
- */
 const SURFACES = {
   light: {
     background: [0.962, 0.012],
@@ -121,11 +101,6 @@ const SURFACES = {
   },
 } as const;
 
-/**
- * La paleta completa de un tono. `accentHue` deja que un tema tenga
- * neutros de un tono y acento de un vecino (arena con acento ocre);
- * por defecto son el mismo.
- */
 export function generatePaletteFromHue(
   hue: number,
   mode: "light" | "dark",
@@ -138,7 +113,6 @@ export function generatePaletteFromHue(
 
   const accentC = Math.min(s.accentMaxC, maxChroma(s.accentL, ah));
   const accentY = relLuminance(s.accentL, accentC, ah);
-  // Texto sobre el acento: claro u oscuro, el que más contraste.
   const light = ok(0.985, 0.01, ah);
   const dark = ok(0.2, 0.03, ah);
   const onAccent =
@@ -163,10 +137,6 @@ export function generatePaletteFromHue(
   };
 }
 
-// ── Theme presets ───────────────────────────────────────────────────
-// Seis tonos repartidos por la rueda. Los ids retirados apuntan al
-// vecino más parecido, así nadie pierde el tema que tenía guardado.
-
 const PRESETS: { id: string; name: string; hue: number; accentHue?: number }[] = [
   { id: "atardecer", name: "Atardecer", hue: 45, accentHue: 38 },
   { id: "arena", name: "Arena", hue: 80, accentHue: 65 },
@@ -189,14 +159,11 @@ export const THEME_PRESETS: ThemePreset[] = PRESETS.map(({ id, name, hue, accent
   dark: generatePaletteFromHue(hue, "dark", accentHue),
 }));
 
-/** El preset de un id guardado, incluidos los retirados. */
 export function findPreset(id: string | null | undefined): ThemePreset | undefined {
   if (!id) return undefined;
   const resolved = RETIRED_PRESETS[id] ?? id;
   return THEME_PRESETS.find((t) => t.id === resolved);
 }
-
-// ── CSS variable names to override ──────────────────────────────────
 
 const CSS_VARS = [
   "--background",
@@ -269,11 +236,8 @@ function applyPalette(root: HTMLElement, p: PaletteVars) {
   root.style.setProperty("--sidebar-accent-foreground", p.foreground);
   root.style.setProperty("--sidebar-border", p.sidebarBorder);
 
-  // Update meta theme-color for browser/PWA chrome
   setMetaThemeColor(p.sidebar);
 
-  // Los gráficos son el mismo acento escalonado en luminosidad, con el
-  // mismo tope de saturación que el acento: una rampa firme, no caramelo.
   [0.84, 0.73, 0.62, 0.51, 0.41].forEach((L, i) => {
     root.style.setProperty(
       `--chart-${i + 1}`,
@@ -281,8 +245,6 @@ function applyPalette(root: HTMLElement, p: PaletteVars) {
     );
   });
 }
-
-// ── Public helpers (used by OnboardingModal for live preview) ────────
 
 export function applyThemePreview(
   themeId: string | null,
@@ -298,7 +260,6 @@ export function applyThemePreview(
 
   if (!themeId) {
     clearAllOverrides(root);
-    // Re-apply font/radius if they exist
     if (customSettings?.font) applyFontPreview(customSettings.font);
     if (customSettings?.radius != null) applyRadiusPreview(customSettings.radius);
     return;
@@ -329,28 +290,13 @@ export function clearThemeOverrides() {
   clearAllOverrides(document.documentElement);
 }
 
-// ── localStorage cache keys ─────────────────────────────────────────
 const THEME_CACHE_KEY = "rindo-theme-id";
 const CUSTOM_SETTINGS_CACHE_KEY = "rindo-custom-settings";
 
-export function getCachedThemeId(): string | null {
-  try {
-    return localStorage.getItem(THEME_CACHE_KEY);
-  } catch {
-    return null;
-  }
-}
+export const getCachedThemeId = () => readStorage(THEME_CACHE_KEY);
 
-export function getCachedCustomSettings(): CustomThemeSettings | null {
-  try {
-    const raw = localStorage.getItem(CUSTOM_SETTINGS_CACHE_KEY);
-    return raw ? JSON.parse(raw) : null;
-  } catch {
-    return null;
-  }
-}
+export const getCachedCustomSettings = () => readJson<CustomThemeSettings>(CUSTOM_SETTINGS_CACHE_KEY);
 
-// ── Parse custom settings from profile ──────────────────────────────
 export function parseCustomSettings(
   raw: string | null | undefined
 ): CustomThemeSettings {
@@ -381,12 +327,6 @@ export function applyTheme(themeId: string | null | undefined, settings: CustomT
 }
 
 export function cacheTheme(themeId: string | null | undefined, settingsJson: string | null | undefined) {
-  try {
-    if (themeId) localStorage.setItem(THEME_CACHE_KEY, themeId);
-    else localStorage.removeItem(THEME_CACHE_KEY);
-    if (settingsJson) localStorage.setItem(CUSTOM_SETTINGS_CACHE_KEY, settingsJson);
-    else localStorage.removeItem(CUSTOM_SETTINGS_CACHE_KEY);
-  } catch (error) {
-    console.warn("No se pudo guardar el tema en este navegador", error);
-  }
+  writeStorage(THEME_CACHE_KEY, themeId || null);
+  writeStorage(CUSTOM_SETTINGS_CACHE_KEY, settingsJson || null);
 }

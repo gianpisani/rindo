@@ -214,13 +214,11 @@ export function AppSidebar() {
   );
 }
 
-
 function NavItem({ route, isActive }: { route: RouteConfig; isActive: boolean }) {
   const navigate = useNavigate();
   const { state: sidebarState, isMobile: isSidebarMobile } = useSidebar();
   const isCollapsed = sidebarState === "collapsed" && !isSidebarMobile;
   const Icon = route.icon;
-  // El atajo no se muestra en la lista: vive en el tooltip.
   const label = route.shortcut ? `${route.title} (${route.shortcut})` : route.title;
 
   const item = (

@@ -123,8 +123,8 @@ export function useTransactions() {
         toast.warning("Guardado. No pudimos asignar una categoría.", { id: toastId, description: "Puedes elegirla en el movimiento.", duration: 4500 });
       }
     } catch {
-      const { data, error } = await releaseAnalyzingCategory(transaction);
-      if (!error && !data?.length) toast.dismiss(toastId);
+      const released = await releaseAnalyzingCategory(transaction).then((result) => result, () => null);
+      if (released && !released.error && !released.data?.length) toast.dismiss(toastId);
       else toast.warning("Movimiento guardado. No pudimos categorizarlo.", { id: toastId, description: "Puedes elegir una categoría manualmente.", duration: 4500 });
     } finally {
       queryClient.invalidateQueries({ queryKey: TRANSACTIONS_KEY });

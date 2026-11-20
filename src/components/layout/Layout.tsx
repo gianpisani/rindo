@@ -24,16 +24,6 @@ import {
 
 interface LayoutProps {
   children: ReactNode;
-  /**
-   * Para vistas que son una pantalla exacta y no scrollean: le da altura
-   * DEFINIDA al shell (`h-svh`, no `min-h-svh`), que es lo único que
-   * permite que un `flex-1` adentro sepa contra qué medirse. Sin esto, un
-   * hijo con `overflow-y-auto` no tiene techo y crece con su contenido,
-   * estirando a sus vecinos del grid.
-   *
-   * El alto del header y los paddings los descuenta el flex solo: no hay
-   * ningún número que se pueda desincronizar.
-   */
   fit?: boolean;
 }
 
@@ -53,15 +43,12 @@ export default function Layout({ children, fit = false }: LayoutProps) {
   } = useGlobalDrawers();
 
   const isMobile = useIsMobile();
-  // Initialize sound system once
   useEffect(() => {
     initSounds().catch(() => {});
   }, []);
 
-  // Register all keyboard shortcuts
   useKeyboardShortcuts();
 
-  // Prevent zoom on iOS with double-tap and optimize scroll
   useEffect(() => {
     let lastTouchEnd = 0;
     const preventZoom = (e: TouchEvent) => {
@@ -96,7 +83,6 @@ export default function Layout({ children, fit = false }: LayoutProps) {
   return (
     <TooltipProvider delayDuration={200}>
       <SidebarProvider>
-        {/* El único composer para anotar a mano. */}
         <WhisperInput
           key={quickAddRevision}
           open={quickAddOpen}
@@ -108,7 +94,6 @@ export default function Layout({ children, fit = false }: LayoutProps) {
           defaultType={quickAddDefaultType}
         />
 
-        {/* Reconciliation Drawer - Global */}
         <ReconciliationDrawer
           open={reconciliationOpen}
           onOpenChange={(open) => {
@@ -117,24 +102,19 @@ export default function Layout({ children, fit = false }: LayoutProps) {
           }}
         />
 
-        {/* Mes financiero - Global */}
         <PeriodSettingsDialog />
 
-        {/* Profile Edit Modal - Global */}
         <OnboardingModal
           open={profileEditOpen}
           onOpenChange={setProfileEditOpen}
           mode="edit"
         />
 
-        {/* Desktop Sidebar */}
         <AppSidebar />
 
         <SidebarInset className={cn(fit && "h-svh")}>
-          {/* Top Bar with Trigger and Actions */}
           <header className="sticky top-0 z-40 flex h-14 shrink-0 items-center gap-2 border-b backdrop-blur px-4">
             {!isMobile && <SidebarTrigger className="-ml-1" />}
-            {/* En escritorio el logo ya está arriba de la barra lateral. */}
             {isMobile && (
               <span className="text-xl font-medium">
                 rindo<span className="text-primary">.</span>
@@ -169,14 +149,10 @@ export default function Layout({ children, fit = false }: LayoutProps) {
             </Tooltip>
           </header>
 
-          {/* Main Content */}
           <main
             className={cn(
               "flex flex-1 flex-col gap-4 p-4 sm:p-6 overflow-x-clip max-w-full",
               isMobile && "pb-28 pb-safe",
-              // Con altura definida el contenido calza justo; si la pantalla
-              // es más baja que el mínimo de las cards, scrollea acá adentro
-              // en vez de quedar cortado.
               fit && "min-h-0 overflow-y-auto"
             )}
             data-scrollable
@@ -185,7 +161,6 @@ export default function Layout({ children, fit = false }: LayoutProps) {
           </main>
         </SidebarInset>
 
-        {/* Mobile Bottom Navigation */}
         <MobileBottomBar />
       </SidebarProvider>
     </TooltipProvider>

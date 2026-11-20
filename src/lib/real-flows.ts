@@ -16,30 +16,16 @@ import {
 
 export { DEFAULT_TRANSIT_CATEGORIES };
 
-// ─── Configuración (defaults, todo parametrizable) ───────
-// Ninguna de estas reglas es obligatoria: cada una se puede
-// desactivar o ajustar por usuario vía `RealFlowsConfig`.
-
-/** Día del mes desde el cual un ingreso recurrente se atribuye al mes siguiente (el que financia). */
 export const SALARY_SHIFT_DAY = 25;
 
-/** Categorías de ingreso que se consideran "sueldo" para la regla de atribución. */
 export const DEFAULT_SALARY_CATEGORIES = ["Sueldo"];
 
-/** Diferencia mínima entre ahorrado e invertido para avisar "cerraste el mes sin barrer". */
 export const SWEEP_ALERT_THRESHOLD = 200_000;
 
 export interface RealFlowsConfig {
-  /** Día ≥ N atribuye el sueldo al mes siguiente. `null` desactiva la regla. */
   salaryShiftDay: number | null;
-  /** Nombres de categoría de ingreso afectas al sueldo-shift. */
   salaryCategories: string[];
-  /** Categorías de gasto en tránsito, excluidas de todo. */
   transitCategories: string[];
-  /**
-   * Día en que empieza el mes financiero (1 = calendario). Con un valor
-   * distinto de 1 la regla del sueldo-shift se apaga: el corte ya la cubre.
-   */
   periodStartDay: number;
 }
 
@@ -57,28 +43,16 @@ export function resolveFlowConfig(
 }
 
 export interface RealFlows {
-  /** Ingresos sin tag de reembolso, con sueldo-shift aplicado. */
   ingresoReal: number;
-  /** Ingresos con `reimbursement_for_category` recibidos en el mes. */
   reembolsosRecibidos: number;
-  /** Gastos del mes, sin tránsito ni pagos de tarjeta. */
   consumoBruto: number;
-  /** consumoBruto − reembolsosRecibidos. */
   consumoNeto: number;
-  /** Aportes a inversiones del mes. */
   invertido: number;
-  /** Plata rescatada de las inversiones en el mes (volvió a la liquidez). */
   rescatado: number;
-  /** Lo que las inversiones ganaron (o perdieron) en el mes. */
   rendimiento: number;
-  /** Gasto neto por día del periodo (índice 1..días; 0 sin uso). Para burn-down. */
   dailyNet: number[];
 }
 
-/**
- * Fecha de atribución de una transacción: a qué mes "pertenece".
- * Un sueldo que llega el día ≥ `salaryShiftDay` financia el mes siguiente.
- */
 export function attributionDate(
   t: Transaction,
   config: RealFlowsConfig = DEFAULT_FLOW_CONFIG
@@ -97,11 +71,6 @@ export function attributionDate(
   return date;
 }
 
-/**
- * Clasifica los flujos reales de un mes financiero (`month` = cualquier fecha
- * dentro del periodo; con `periodStartDay = 1` es el mes calendario).
- * Función pura (sin hooks) para poder testearla y computar rangos de meses.
- */
 export function computeRealFlows(
   transactions: Transaction[],
   month: Date,
@@ -123,7 +92,6 @@ export function computeRealFlows(
   const dailyNet = new Array(daysInMonth + 1).fill(0);
 
   for (const t of transactions) {
-    // El pago de la tarjeta no es ingreso ni gasto: sus compras ya contaron.
     if (isCardPayment(t)) continue;
     const date = new Date(t.date);
     const amount = Number(t.amount);
@@ -168,10 +136,6 @@ export function computeRealFlows(
   };
 }
 
-/**
- * Los dos baldes del patrimonio (líquido / invertido) de todo el historial.
- * La matemática vive en `@/lib/ledger`: acá solo se ata a las transacciones.
- */
 export function computeLedger(
   transactions: Transaction[],
   passThroughCategories: string[] = DEFAULT_PASS_THROUGH_CATEGORIES
@@ -179,14 +143,6 @@ export function computeLedger(
   return computeBuckets(transactions, passThroughCategories);
 }
 
-/**
- * Balance líquido histórico: lo que puedo gastar hoy. Ingresos − gastos −
- * aportes + rescates, excluyendo el tránsito puro en ambas direcciones (el
- * gasto puesto por otros y su devolución tagueada, y el pago de la tarjeta).
- * Como cada compra con tarjeta ya restó, es la liquidez real: saldo del banco
- * menos la deuda de las tarjetas. Las categorías de ajuste
- * (p.ej. Conciliación) SÍ cuentan: existen para corregir el balance.
- */
 export function computeRealBalance(
   transactions: Transaction[],
   passThroughCategories: string[] = DEFAULT_PASS_THROUGH_CATEGORIES

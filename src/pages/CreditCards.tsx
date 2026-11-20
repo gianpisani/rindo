@@ -26,19 +26,10 @@ import { cn } from "@/lib/utils";
 import { inkOn } from "@/lib/category-color";
 import { clp } from "@/lib/format";
 
-/**
- * Tarjetas: ¿cuánto llevo este ciclo, cuándo cierra y cuándo pago? Cada
- * plástico lo responde de un vistazo. Abajo, las compras en cuotas (cuántas
- * quedan) y el estado de cuenta de la tarjeta elegida, ciclo por ciclo. Lo
- * largo scrollea adentro de su panel, nunca la página.
- */
-
-/** Las filas del estado de cuenta van sin íconos: algunos detalles traen emoji y otros no. */
 const withoutEmoji = (text: string) => text.replace(/[\p{Extended_Pictographic}\u{FE0F}\u{200D}]/gu, "").replace(/\s+/g, " ").trim();
 
 const day = (d: Date) => format(d, "d MMM", { locale: es }).replace(".", "");
 
-/** El ciclo que se muestra en el estado de cuenta, con su nombre. */
 const labeledCycle = (billingDay: number, offset: number) => {
   const cycle = billingCycle(billingDay, offset);
   return { ...cycle, label: format(cycle.end, "MMMM yyyy", { locale: es }) };
@@ -66,22 +57,18 @@ export default function CreditCards() {
   const loading = isLoadingCards || isLoadingInstallments;
   const hasCards = cardSummaries.length > 0;
 
-  // ── Modales ──
   const [cardModalOpen, setCardModalOpen] = useState(false);
   const [installmentModalOpen, setInstallmentModalOpen] = useState(false);
   const [editingCard, setEditingCard] = useState<CreditCard | null>(null);
   const [editingInstallment, setEditingInstallment] = useState<InstallmentPurchase | null>(null);
-  // Eliminar tarjeta o compra: un solo diálogo. El contenido se queda mientras se cierra.
   const [toDelete, setToDelete] = useState<{ kind: "card" | "installment"; id: string } | null>(null);
   const [deleteOpen, setDeleteOpen] = useState(false);
   const [openInstallment, setOpenInstallment] = useState<string | null>(null);
 
-  // ── La tarjeta elegida manda el estado de cuenta ──
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [cycleOffset, setCycleOffset] = useState(0);
   const selected = cardSummaries.find((c) => c.id === selectedId) ?? cardSummaries[0];
 
-  // Lo que muestra cada plástico: lo por facturar y lo que queda por pagar.
   const cardCycles = useMemo(
     () => new Map(cardSummaries.map((card) => [card.id, cardStatus(transactions, card)] as const)),
     [cardSummaries, transactions]
@@ -96,7 +83,6 @@ export default function CreditCards() {
     [transactions, selected, cycle]
   );
 
-  // Cuotas: primero las que siguen corriendo, después las terminadas.
   const sortedInstallments = useMemo(() => {
     const rows = installments.map((installment) => ({ installment, progress: installmentProgress(installment) }));
     return [...rows.filter((r) => r.progress.active), ...rows.filter((r) => !r.progress.active)];
@@ -106,7 +92,6 @@ export default function CreditCards() {
     .reduce((sum, r) => sum + r.installment.installment_amount, 0);
   const hasActiveInstallments = monthlyPayment > 0;
 
-  // En celular, cuotas y estado de cuenta comparten el panel. Sin cuotas activas, parte en el estado de cuenta.
   const [mobileTab, setMobileTab] = useState<"cuotas" | "cuenta" | null>(null);
   const tab = mobileTab ?? (hasActiveInstallments ? "cuotas" : "cuenta");
 
@@ -184,7 +169,6 @@ export default function CreditCards() {
           </section>
         ) : (
           <div className="tj-grid" data-tab={tab}>
-            {/* Los plásticos */}
             <section className="tj-wallet" aria-label="Mis tarjetas">
               {cardSummaries.map((card) => (
                 <Plastic
@@ -203,7 +187,6 @@ export default function CreditCards() {
               ))}
             </section>
 
-            {/* Solo en celular: qué panel se ve */}
             <div className="tj-tabs" role="tablist">
               <button className="tj-tab" role="tab" aria-selected={tab === "cuotas"} onClick={() => setMobileTab("cuotas")}>
                 Cuotas
@@ -213,7 +196,6 @@ export default function CreditCards() {
               </button>
             </div>
 
-            {/* Compras en cuotas */}
             <section className="tj-card tj-cuotas">
               <div className="tj-card-head">
                 <span className="tj-label">
@@ -248,7 +230,6 @@ export default function CreditCards() {
               </div>
             </section>
 
-            {/* Estado de cuenta de la tarjeta elegida */}
             <section className="tj-card tj-cuenta">
               <div className="tj-card-head">
                 <span className="tj-label">
@@ -278,7 +259,6 @@ export default function CreditCards() {
                   <EmptyState>Sin movimientos en este ciclo</EmptyState>
                 ) : (
                   cycleTxs.txs.map((tx) => {
-                    // Un pago (de cualquier lado) se ve como abono: no suma al total.
                     const credit = tx.type === "Ingreso" || isCardPayment(tx);
                     return (
                       <div key={tx.id} className="tj-tx" data-in={credit || undefined}>
@@ -335,7 +315,6 @@ export default function CreditCards() {
   );
 }
 
-// ─── El plástico ─────────────────────────────────────────────────────────
 function Plastic({
   card,
   cycle,
@@ -416,7 +395,6 @@ function Plastic({
   );
 }
 
-// ─── Una compra en cuotas ─────────────────────────────────────────────────
 function InstallmentRow({
   installment,
   progress: { billed, left, last, active },

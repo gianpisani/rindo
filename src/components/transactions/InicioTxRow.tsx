@@ -4,13 +4,6 @@ import { Button } from "@/components/ui/button";
 import { QuickCategoryPicker, type QuickCategoryOption } from "@/components/categories/QuickCategoryPicker";
 import { cn } from "@/lib/utils";
 
-/**
- * Una fila de Recientes que se edita donde está: solo lo que ya se ve.
- * Detalle y monto se vuelven un campo con la misma tipografía (Enter o
- * salir guarda, Esc cancela); tocar el ícono cambia la categoría; el
- * basurero aparece al pasar el mouse (en táctil, mientras editas la fila).
- * Quien la usa decide cómo guardar: acá no hay red, solo la interacción.
- */
 interface Props extends HTMLAttributes<HTMLDivElement> {
   detail: string;
   amount: number;
@@ -18,7 +11,6 @@ interface Props extends HTMLAttributes<HTMLDivElement> {
   amountColor?: string;
   icon: ReactNode;
   meta: ReactNode;
-  /** Categoría actual; sin ella (reembolsos, pendientes) no se ofrece cambiarla. */
   category?: string;
   categoryOptions: QuickCategoryOption[];
   editable: boolean;
@@ -30,7 +22,6 @@ interface Props extends HTMLAttributes<HTMLDivElement> {
 
 type Field = "detail" | "amount" | null;
 
-/** 1500000 → "1.500.000": el monto se lee mientras se escribe. */
 const groupDigits = (digits: string) => (digits ? Number(digits).toLocaleString("es-CL") : "");
 
 export function InicioTxRow({
@@ -41,10 +32,7 @@ export function InicioTxRow({
   const [draft, setDraft] = useState("");
   const [picking, setPicking] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
-  // Esc cancela; el blur que sigue no debe guardar lo descartado.
   const cancelled = useRef(false);
-  // Cuántos dígitos quedan a la izquierda del cursor: al agregar puntos el
-  // texto cambia de largo, pero el cursor sigue detrás del mismo dígito.
   const caretDigits = useRef<number | null>(null);
 
   useLayoutEffect(() => {
@@ -139,7 +127,6 @@ export function InicioTxRow({
       {field === "amount" ? (
         <span className="m inicio-amount-edit" style={{ color: amountColor }}>
           <span aria-hidden="true">{sign}$</span>
-          {/* El campo mide lo que su texto: una copia invisible le da el ancho */}
           <span className="inicio-autosize" data-value={groupDigits(draft) || "0"}>
             <input
               ref={inputRef}
@@ -171,7 +158,6 @@ export function InicioTxRow({
           size="icon"
           className="inicio-delete size-9 text-muted-foreground hover:bg-destructive/10 hover:text-destructive"
           aria-label="Borrar movimiento"
-          // Que el blur del campo no se coma el toque: borrar gana.
           onPointerDown={(e) => e.preventDefault()}
           onClick={onDelete}
         >

@@ -1,6 +1,3 @@
-
-// ── Bank data ─────────────────────────────────────────────────────────────────
-
 export const BANKS = [
   { value: "bancosecurity", label: "Banco Security", color: "#7B2D8E" },
   { value: "bchile",        label: "Banco de Chile", color: "#0066CC" },
@@ -19,8 +16,6 @@ export type Bank = typeof BANKS[number];
 export function getBankById(id: string): Bank | undefined {
   return BANKS.find((b) => b.value === id);
 }
-
-// ── Sync schedule options ─────────────────────────────────────────────────────
 
 export const SYNC_SCHEDULES = [
   { value: "daily_08",    label: "Diario a las 8:00",          shortLabel: "8:00" },
@@ -52,8 +47,6 @@ export function scheduleTimePhrase(id: string): string {
   if (isCustomSchedule(id)) return `las ${getCustomHour(id)}:00`;
   return SCHEDULE_TIMES[id] ?? id;
 }
-
-// ── RUT helpers ───────────────────────────────────────────────────────────────
 
 export function cleanRut(value: string): string {
   return value.replace(/[^0-9kK]/g, "");

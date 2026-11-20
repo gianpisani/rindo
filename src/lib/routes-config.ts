@@ -18,10 +18,7 @@ export interface RouteConfig {
   group: "main" | "tools";
 }
 
-// Configuración central de todas las rutas
-// El orden aquí define el orden en el sidebar, command bar, y navegación con flechas
 export const APP_ROUTES: RouteConfig[] = [
-  // Rutas principales
   {
     title: "Inicio",
     url: "/",
@@ -44,7 +41,6 @@ export const APP_ROUTES: RouteConfig[] = [
     group: "main",
   },
 
-  // Herramientas
   {
     title: "Categorías",
     url: "/categories",
@@ -75,7 +71,6 @@ export const APP_ROUTES: RouteConfig[] = [
   },
 ];
 
-// Helper functions
 export const getMainRoutes = () => APP_ROUTES.filter(r => r.group === "main");
 export const getToolRoutes = () => APP_ROUTES.filter(r => r.group === "tools");
 export const getAllRoutePaths = () => APP_ROUTES.map(r => r.url);

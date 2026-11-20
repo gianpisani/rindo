@@ -29,11 +29,6 @@ const QUICK = [
   { label: "25 → 24", day: 25 },
 ];
 
-/**
- * El mes financiero: en qué día empieza y en qué día termina el mes que usa
- * toda la analítica. Se abre desde el menú de usuario, la barra de comandos y
- * la fecha del periodo en Finanzas.
- */
 export function PeriodSettingsDialog() {
   const open = useGlobalDrawers((s) => s.periodSettingsOpen);
   const setOpen = useGlobalDrawers((s) => s.setPeriodSettingsOpen);

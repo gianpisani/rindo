@@ -6,7 +6,6 @@ import { cn } from "@/lib/utils";
 import { EMOJI_CATEGORIES, EMOJI_SEARCH_TEXT } from "@/data/emojis";
 import { Search } from "lucide-react";
 
-/** El texto buscable viene sin tildes, así que la consulta también. */
 const normalize = (s: string) =>
   s.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
 
@@ -18,8 +17,6 @@ interface EmojiPickerProps {
 export function EmojiPicker({ value, onSelect }: EmojiPickerProps) {
   const [search, setSearch] = useState("");
 
-  // Busca por nombre y sinónimos de cada emoji. Si el término calza con el
-  // nombre de la categoría, se muestra completa.
   const filteredCategories = useMemo(() => {
     const query = normalize(search.trim());
     if (!query) return EMOJI_CATEGORIES;

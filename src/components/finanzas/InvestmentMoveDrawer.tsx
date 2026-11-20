@@ -11,21 +11,6 @@ import { cn } from "@/lib/utils";
 import "../shared/whisper.css";
 import { clp } from "@/lib/format";
 
-/**
- * Los dos movimientos que tocan el balde invertido y que no son un aporte:
- *
- *   Rescate     — saqué plata de las inversiones y volvió a mi liquidez.
- *   Rendimiento — las inversiones valen otra cosa que lo que puse.
- *
- * El rendimiento se pregunta al revés de como se guarda: uno sabe cuánto
- * valen HOY, no cuánto ganaron. La diferencia contra lo que Rindo tiene
- * registrado es el rendimiento, y puede ser negativa.
- *
- * Va en el formato del Whisper: la pastilla de arriba elige el movimiento
- * (Tab lo cambia), la línea grande es el monto, y la vista previa dice qué
- * va a pasar antes de guardar.
- */
-
 type Move = "rescate" | "valor";
 
 const MIN_DELTA = 1_000;
@@ -44,7 +29,6 @@ function parseAmount(value: string): number {
 interface InvestmentMoveDrawerProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  /** Movimiento con el que abre. Por defecto, el rescate. */
   defaultMove?: Move;
 }
 
@@ -63,7 +47,6 @@ export function InvestmentMoveDrawer({
   const [isSaving, setIsSaving] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
 
-  // Abre siempre en el movimiento con el que lo llamaron.
   useEffect(() => {
     if (open) setMove(defaultMove);
   }, [open, defaultMove]);
@@ -143,8 +126,6 @@ export function InvestmentMoveDrawer({
     else void handleRendimiento();
   };
 
-  // La vista previa: lo que se va a guardar, en el color del movimiento.
-  // Una pérdida va en rojo aunque el movimiento sea violeta.
   const previewTone = move === "valor" && hasValor && !alDia && delta < 0 ? LOSS_COLOR : undefined;
 
   return (

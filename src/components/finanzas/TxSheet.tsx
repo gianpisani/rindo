@@ -16,19 +16,12 @@ export interface TxSheetData {
   title: string;
   icon?: string;
   color?: string | null;
-  /** Resumen bajo el título, ya formateado ("$251.100 · 18 movimientos"). */
   summary: string;
   transactions: Transaction[];
-  /** Día (listas de un mes) o mes (listas de varios meses). */
   groupBy: "day" | "month";
-  /** Gráfico opcional sobre la lista: el detalle del período, sin taparla. */
   chart?: ReactNode;
 }
 
-/**
- * Los movimientos detrás de una barra o una categoría, editables igual que
- * en el inicio. A la derecha en web, desde abajo en el celular.
- */
 export function TxSheet({ data, edit, onClose }: { data: TxSheetData | null; edit: InlineEdit; onClose: () => void }) {
   const isMobile = useIsMobile();
   const { isPrivacyMode } = usePrivacyMode();
@@ -49,7 +42,6 @@ export function TxSheet({ data, edit, onClose }: { data: TxSheetData | null; edi
       <SheetContent
         side={isMobile ? "bottom" : "right"}
         className={cn("inicio fin-sheet", isMobile ? "h-[82dvh] rounded-t-card" : "w-full sm:max-w-md")}
-        // Abrir no debe dejar una fila "seleccionada": el foco va al panel.
         onOpenAutoFocus={(e) => { e.preventDefault(); (e.currentTarget as HTMLElement).focus(); }}
       >
         {data && (

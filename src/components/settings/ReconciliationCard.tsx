@@ -10,16 +10,14 @@ import { useSoundFX } from "@/hooks/useSoundFX";
 import { computeRealBalance } from "@/lib/real-flows";
 import { cardsDebt } from "@/lib/card-cycle";
 import { clp } from "@/lib/format";
+import { readJson, writeStorage } from "@/lib/storage";
+
+const RECONCILIATION_KEY = "reconciliation-data";
 
 interface ReconciliationCardProps {
   onSuccess?: () => void;
 }
 
-/**
- * Conciliar: el líquido de Rindo es la liquidez real (cada compra con tarjeta
- * ya restó), así que se compara contra el saldo del banco menos la deuda de
- * las tarjetas que Rindo conoce (por facturar + a pagar).
- */
 export function ReconciliationCard({ onSuccess }: ReconciliationCardProps = {}) {
   const { transactions, addTransaction } = useTransactions();
   const { categories } = useCategories();
@@ -29,17 +27,13 @@ export function ReconciliationCard({ onSuccess }: ReconciliationCardProps = {}) 
   const [isCreating, setIsCreating] = useState(false);
   const [showPreview, setShowPreview] = useState(false);
 
-  // El líquido de la app: el mismo cálculo que Finanzas.
   const balanceApp = computeRealBalance(transactions);
-  // Lo que se debe en las tarjetas, según sus compras y pagos vinculados.
   const deudaTarjetas = cardsDebt(transactions, cardSummaries);
 
   const cuentaCorrienteNum = parseFloat(cuentaCorriente) || 0;
 
-  // Liquidez real = saldo del banco − deuda de tarjetas
   const balanceReal = cuentaCorrienteNum - deudaTarjetas;
 
-  // Diferencia a Conciliar = Liquidez real − Balance App
   const diferencia = balanceReal - balanceApp;
 
   const handleInputChange = (
@@ -55,18 +49,12 @@ export function ReconciliationCard({ onSuccess }: ReconciliationCardProps = {}) 
     return new Intl.NumberFormat("es-CL").format(Number(value));
   };
 
-  // Persistir en localStorage
   useEffect(() => {
-    try {
-      const saved = localStorage.getItem("reconciliation-data");
-      if (saved) setCuentaCorriente(JSON.parse(saved).cc || "");
-    } catch { /* sin almacenamiento, no pasa nada */ }
+    setCuentaCorriente(readJson<{ cc?: string }>(RECONCILIATION_KEY)?.cc || "");
   }, []);
 
   useEffect(() => {
-    try {
-      localStorage.setItem("reconciliation-data", JSON.stringify({ cc: cuentaCorriente }));
-    } catch { /* sin almacenamiento, no pasa nada */ }
+    writeStorage(RECONCILIATION_KEY, JSON.stringify({ cc: cuentaCorriente }));
   }, [cuentaCorriente]);
 
   const diferenciaColor = 
@@ -84,7 +72,6 @@ export function ReconciliationCard({ onSuccess }: ReconciliationCardProps = {}) 
     setIsCreating(true);
     
     try {
-      // Buscar categoría de conciliación o usar "Otros"
       const conciliacionCategory = categories.find(c => 
         c.name.toLowerCase().includes("conciliación") || 
         c.name.toLowerCase().includes("ajuste")
@@ -101,13 +88,11 @@ export function ReconciliationCard({ onSuccess }: ReconciliationCardProps = {}) 
         amount: Math.abs(diferencia),
       });
       
-      // Limpiar inputs después de conciliar
       setCuentaCorriente("");
       setShowPreview(false);
 
       playCelebration();
 
-      // Llamar callback si existe
       if (onSuccess) {
         onSuccess();
       }
@@ -120,7 +105,6 @@ export function ReconciliationCard({ onSuccess }: ReconciliationCardProps = {}) 
 
   return (
     <div className="space-y-4">
-      {/* Inputs */}
       <div className="space-y-4">
         <div className="space-y-2">
           <Label htmlFor="cuenta-corriente" className="flex items-center gap-2 text-sm font-medium">
@@ -142,10 +126,8 @@ export function ReconciliationCard({ onSuccess }: ReconciliationCardProps = {}) 
 
       </div>
 
-      {/* Results */}
       {hasInputs && (
         <div className="space-y-3 pt-4 border-t">
-          {/* Saldo en tu banco − Tarjetas = Liquidez real */}
           <div className="space-y-2 text-sm">
             <div className="flex justify-between items-center">
               <span className="flex items-center gap-2 text-muted-foreground"><Wallet className="h-4 w-4" />Saldo en tu banco</span>
@@ -172,7 +154,6 @@ export function ReconciliationCard({ onSuccess }: ReconciliationCardProps = {}) 
             Tarjetas es lo que Rindo sabe que debes: lo por facturar más lo que queda por pagar del estado de cuenta cerrado.
           </p>
 
-          {/* Diferencia */}
           <div className={`rounded-card p-4 mt-2 ${
             !needsReconciliation 
               ? "bg-success/10 border border-success/20" 

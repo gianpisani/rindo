@@ -15,13 +15,6 @@ import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { clp, clpCompact } from "@/lib/format";
 
-/*
- * El pulso del mes: una sola pregunta — ¿este mes voy mejor o peor que mi
- * mes típico, a esta misma altura? Se lee en vivo, cualquier día, y puede
- * empeorar mañana. El detalle (categorías) solo aparece para explicar la
- * diferencia, no para listar todo.
- */
-
 const TONE: Record<PaceVerdict, string> = {
   under: "oklch(var(--success))",
   over: "oklch(var(--destructive))",
@@ -44,11 +37,9 @@ function useWidth<T extends HTMLElement>() {
 const linePath = (pts: Array<[number, number]>) =>
   pts.map(([x, y], i) => `${i ? "L" : "M"}${x.toFixed(1)},${y.toFixed(1)}`).join("");
 
-// ─── La carrera: tú vs tu mes típico ─────────────────────
 function PaceRace({ pace, verdict, privacy }: { pace: MonthPace; verdict: PaceVerdict; privacy: boolean }) {
   const [ref, W] = useWidth<HTMLDivElement>();
   const [hover, setHover] = useState<number | null>(null);
-  // En web la carrera es la protagonista: crece con el ancho disponible.
   const H = W >= 440 ? Math.round(Math.min(440, Math.max(280, W * 0.62))) : 240;
   const pad = { l: 4, r: 64, t: 20, b: 26 };
   const { daysInMonth: days, asOfDay, me, typical } = pace;
@@ -91,7 +82,6 @@ function PaceRace({ pace, verdict, privacy }: { pace: MonthPace; verdict: PaceVe
       onPointerLeave={() => setHover(null)}
     >
       <svg width={W} height={H} className="overflow-visible">
-        {/* Grid recesivo: solo la línea base */}
         <line x1={pad.l} x2={W - pad.r} y1={H - pad.b} y2={H - pad.b} stroke="var(--border)" />
         {ticks.map((d) => (
           <text key={d} x={x(d)} y={H - 8} textAnchor="middle" className="fill-muted-foreground text-xs tabular-nums">
@@ -113,7 +103,6 @@ function PaceRace({ pace, verdict, privacy }: { pace: MonthPace; verdict: PaceVe
           />
         )}
 
-        {/* Proyección: lo que llevas + lo que sueles gastar de acá al fin */}
         {pace.isLive && typical && asOfDay < days && (
           <motion.line
             x1={x(asOfDay)} y1={y(me[asOfDay])} x2={x(days)} y2={y(pace.projectedTotal)}
@@ -135,7 +124,6 @@ function PaceRace({ pace, verdict, privacy }: { pace: MonthPace; verdict: PaceVe
           transition={{ duration: 0.9, ease: "easeOut" }}
         />
 
-        {/* Hoy */}
         <g transform={`translate(${x(asOfDay)},${y(me[asOfDay])})`}>
           {pace.isLive && (
             <motion.circle
@@ -150,7 +138,6 @@ function PaceRace({ pace, verdict, privacy }: { pace: MonthPace; verdict: PaceVe
           </text>
         </g>
 
-        {/* Etiquetas directas al final */}
         {typical && (
           <g className={cn(privacy && "privacy-blur")}>
             <text x={x(days) + 8} y={y(typical.median[days]) + 4} className="fill-muted-foreground text-xs">
@@ -197,7 +184,6 @@ function PaceRace({ pace, verdict, privacy }: { pace: MonthPace; verdict: PaceVe
   );
 }
 
-// ─── Lo que explica la diferencia ────────────────────────
 function Drivers({ pace, colors, privacy }: { pace: MonthPace; colors: Map<string, string | null>; privacy: boolean }) {
   const floor = Math.max(3_000, pace.typicalSoFar * 0.02);
   const rows = pace.drivers.filter((d) => Math.abs(d.delta) >= floor).slice(0, 4);
@@ -244,7 +230,6 @@ function Drivers({ pace, colors, privacy }: { pace: MonthPace; colors: Map<strin
   );
 }
 
-// ─── Titular ─────────────────────────────────────────────
 function Headline({ pace, verdict, privacy }: { pace: MonthPace; verdict: PaceVerdict; privacy: boolean }) {
   const tone = TONE[verdict];
   if (!pace.typical) {
@@ -292,7 +277,6 @@ function Headline({ pace, verdict, privacy }: { pace: MonthPace; verdict: PaceVe
   );
 }
 
-// ─── Vista completa ──────────────────────────────────────
 interface MonthPulseProps {
   open: boolean;
   onClose: () => void;
@@ -330,8 +314,6 @@ export function MonthPulse({ open, onClose, initialMonth, transactions, categori
   const verdict = paceVerdict(pace);
   const colors = useMemo(() => new Map(categories.map((c) => [c.name, c.color])), [categories]);
 
-  // Lo que entró este mes (con sueldo-shift). Si el sueldo aún no llega, el
-  // de los meses anteriores: la pregunta es cuánto te va a sobrar.
   const income = useMemo(() => {
     const cur = computeRealFlows(transactions, month, flowConfig).ingresoReal;
     if (cur > 0 || !pace.isLive) return { amount: cur, estimated: false };
@@ -369,7 +351,6 @@ export function MonthPulse({ open, onClose, initialMonth, transactions, categori
           transition={{ duration: 0.25 }}
         >
           <div className="mx-auto flex min-h-full max-w-2xl flex-col gap-8 px-4 pb-8 pt-[max(1rem,env(safe-area-inset-top))] md:px-8 md:pt-8 lg:max-w-6xl lg:px-12 lg:pb-12">
-            {/* Barra: mes + cerrar */}
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-1">
                 <Button
@@ -433,7 +414,6 @@ export function MonthPulse({ open, onClose, initialMonth, transactions, categori
                 )}
               </div>
 
-              {/* Cómo aterriza */}
               {pace.typical && (
                 <div className="grid grid-cols-2 gap-3 lg:col-start-1 lg:row-start-2">
                   <div className="rounded-card bg-muted p-4">
@@ -487,8 +467,6 @@ export function MonthPulse({ open, onClose, initialMonth, transactions, categori
   );
 }
 
-// ─── El ritmo en la tarjeta del mes (inicio) ─────────────
-/** La frase del ritmo, en su color. Sin mes típico todavía, no hay frase. */
 export function PaceText({ pace, className }: { pace: MonthPace; className?: string }) {
   if (!pace.typical) return null;
   const verdict = paceVerdict(pace);
@@ -501,11 +479,6 @@ export function PaceText({ pace, className }: { pace: MonthPace; className?: str
   );
 }
 
-/**
- * El mini gráfico: tu gasto acumulado contra tu mes típico. Se estira al
- * alto y ancho que le dé su caja (el trazo no se deforma); el punto de hoy
- * va aparte para que siga redondo.
- */
 export function PaceSpark({ pace, className }: { pace: MonthPace; className?: string }) {
   const tone = TONE[paceVerdict(pace)];
   const W = 100;

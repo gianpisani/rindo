@@ -14,18 +14,15 @@ import { clp } from "@/lib/format";
 interface Props extends HTMLAttributes<HTMLDivElement> {
   t: Transaction;
   edit: InlineEdit;
-  /** "time" (13:48) en listas agrupadas por día; "date" (26 sep) en listas largas. */
   when?: "time" | "date";
 }
 
-/** Un movimiento editable en su lugar: ícono, detalle, categoría y monto. */
 export function TxRow({ t, edit, when = "time", className, ...rest }: Props) {
   const { isPrivacyMode } = usePrivacyMode();
   const analyzing = isAnalyzing(t);
   const isBot = (t.detail || "").startsWith("🤖");
   const detail = (t.detail || "").replace(/^🤖\s*/, "").trim();
   const stamp = format(new Date(t.date), when === "time" ? "HH:mm" : "d MMM", { locale: es });
-  // El reembolso muestra a qué gasto devuelve: esa relación no se edita acá.
   const categoryEditable = !analyzing && !t.reimbursement_for_category;
 
   return (
@@ -40,7 +37,6 @@ export function TxRow({ t, edit, when = "time", className, ...rest }: Props) {
           className={cn("inicio-ico", analyzing && "is-thinking")}
           style={tint(analyzing ? "var(--inicio-violet)" : edit.colorOf(t.category_name))}
         >
-          {/* La key cambia con el estado: así el ícono nuevo entra con su propio rebote */}
           <span key={analyzing ? "thinking" : t.category_name} className="glyph">
             {analyzing ? "⚡" : edit.emojiOf(t.category_name)}
           </span>

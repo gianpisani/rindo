@@ -44,18 +44,9 @@ import { isCardPayment } from "@/lib/ledger";
 import { tint } from "@/lib/category-color";
 import { clp, clpCompact } from "@/lib/format";
 
-/*
- * Inicio: ¿cómo voy este mes? Lo gastado y el ritmo, en qué se va la plata,
- * los límites pasados y lo que va llegando. Cada categoría abre sus movimientos para
- * corregirlos ahí mismo. La historia (patrimonio, el líquido, mes a mes,
- * tendencias) vive en Finanzas, y anotar a mano, en Movimientos.
- */
-
 const transit = new Set(DEFAULT_TRANSIT_CATEGORIES);
-/** Las categorías de gasto que se ven sin tocar "más". */
 const TOP_CATEGORIES = 5;
 
-/** "hace 5 min", "hace 2 h", "hace 3 d": lo justo para saber si está al día. */
 const sinceLabel = (iso: string) => {
   const minutes = Math.max(0, Math.round((Date.now() - new Date(iso).getTime()) / 60000));
   if (minutes < 1) return "recién";
@@ -63,8 +54,6 @@ const sinceLabel = (iso: string) => {
   if (minutes < 60 * 24) return `hace ${Math.round(minutes / 60)} h`;
   return `hace ${Math.round(minutes / 1440)} d`;
 };
-
-/** El ícono de una categoría sobre un tono de su color. */
 
 const Index = () => {
   const { transactions, isLoading } = useTransactions();
@@ -79,7 +68,6 @@ const Index = () => {
   const [sheet, setSheet] = useState<TxSheetData | null>(null);
   const [reviewing, setReviewing] = useState(false);
   const [showAllCats, setShowAllCats] = useState(false);
-  // En celular Recientes y Límites comparten la tarjeta.
   const [mobileTab, setMobileTab] = useState<"feed" | "limits">("feed");
   const swipe = useRef<{ x: number; y: number } | null>(null);
   const { data: bankCredentials } = useBankSyncCredentials();
@@ -101,19 +89,16 @@ const Index = () => {
   const displayName = userProfile?.nickname || userProfile?.full_name || null;
   const greetingInitials = (displayName || "").slice(0, 2).toUpperCase();
 
-  // "Mes" = el mes financiero del usuario (con inicio 1, el calendario).
   const now = new Date();
   const period = usePeriodConfig();
   const { startDay } = period;
   const thisPeriod = period.currentPeriod;
   const periodEnd = periodEndOf(thisPeriod, startDay);
   const lastMonth = shiftPeriod(thisPeriod, -1, startDay);
-  /** El mes anterior se llama como el mes en que terminó. */
   const lastMonthName = periodNameDate(lastMonth, startDay);
 
   const { budget } = useMonthlyBudget();
   const flowConfig = useMemo<Partial<RealFlowsConfig>>(() => ({ periodStartDay: startDay }), [startDay]);
-  // Flujos reales: ingreso con sueldo-shift, consumo neto de reembolsos, sin tránsito.
   const currentFlows = useRealFlows(transactions, thisPeriod, flowConfig);
   const lastMonthFlows = useMemo(
     () => computeRealFlows(transactions, lastMonth, flowConfig),
@@ -121,8 +106,6 @@ const Index = () => {
     [transactions, lastMonth.getTime(), flowConfig]
   );
 
-  // Detector de sweep: mes cerrado con ahorro sin invertir, visible los
-  // primeros días del mes (solo si el usuario ya opera con meta de ahorro)
   const sweepAlert = useMemo(() => {
     if (!budget?.savings_goal || dayOfPeriod(now, thisPeriod) > 7) return null;
     if (lastMonthFlows.consumoBruto === 0 && lastMonthFlows.ingresoReal === 0)
@@ -135,7 +118,6 @@ const Index = () => {
 
   const limitRows = useMemo(() => limitUsage(transactions, limits, thisPeriod, periodEnd), [transactions, limits, thisPeriod, periodEnd]);
 
-  // El pulso del mes: tu gasto de hoy contra tu mes típico al mismo día
   const monthPace = useMemo(
     () => computeMonthPace(transactions, now, { startDay }),
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -143,10 +125,6 @@ const Index = () => {
   );
   const hasPace = monthPace.typical !== null || monthPace.spentSoFar > 0;
 
-  // ─── Gastos del mes ───────────────────────────────────
-  // Netos de reembolsos y sin plata en tránsito, de mayor a menor. Lo que Jev
-  // aún está categorizando ya cuenta en el total, pero no tiene fila propia:
-  // su barra crece recién cuando sabe a qué categoría va.
   const monthSpend = useMemo(() => {
     const map = summarizeCategoryPeriod(transactions, thisPeriod, periodEnd);
     for (const key of [...map.keys()]) if (transit.has(key)) map.delete(key);
@@ -166,7 +144,6 @@ const Index = () => {
   const colorOf = edit.colorOf;
   const emojiOf = edit.emojiOf;
 
-  // Una categoría abre sus movimientos del mes, editables: así se corrige.
   const openCategory = (category: string) => {
     const row = monthSpend.get(category);
     const rows = transactions.filter((t) => {
@@ -185,10 +162,6 @@ const Index = () => {
     });
   };
 
-  // ─── Por revisar ──────────────────────────────────────
-  // Lo que quedó sin categoría, solo de tipos que tienen categorías para
-  // elegir. La lista es en vivo: lo que se corrige sale de ella, y al
-  // quedar vacía la hoja se cierra sola.
   const { categoryOptions } = edit;
   const toReview = useMemo(
     () => transactions.filter((t) => needsReview(t) && categoryOptions(t.type).length > 0),
@@ -204,8 +177,6 @@ const Index = () => {
     groupBy: "month",
   } : null;
 
-  // ─── Avisos ───────────────────────────────────────────
-  // Viven en la fila del saludo: ver HomeNotices para el por qué.
   const notices = useMemo(() => {
     const list: HomeNotice[] = [];
     if (sweepAlert) {
@@ -223,7 +194,6 @@ const Index = () => {
     return list;
   }, [sweepAlert, lastMonthName, navigate]);
 
-  // Últimas 40 transacciones agrupadas por fecha
   const recentTransactions = [...transactions]
     .sort(byNewest)
     .slice(0, 40);
@@ -251,8 +221,6 @@ const Index = () => {
     return format(d, "d MMM", { locale: es });
   };
 
-  // ─── Límites ──────────────────────────────────────────
-  // En Inicio, solo los que ya se pasaron: el resto vive completo en Meta.
   const overLimits = limitRows.filter((row) => row.state === "over");
   const hasLimits = limitRows.length > 0;
   const seeAllLimits = () => navigate("/budget", { state: { tab: "limits" } });
@@ -283,7 +251,6 @@ const Index = () => {
     })
   );
 
-  // ─── Recientes ────────────────────────────────────────
   const feedList = isLoading ? (
     <div className="space-y-3 px-4 py-3">
       {Array.from({ length: 6 }).map((_, i) => (
@@ -310,7 +277,6 @@ const Index = () => {
         <div key={dateKey}>
           <div className="inicio-day">
             {getDateLabel(dateKey)}
-            {/* Cuánto se fue ese día dice más que cuántos movimientos hubo */}
             {dayExpenses(dateKey) > 0 && (
               <span className={cn(isPrivacyMode && "privacy-blur")}>−{clp(dayExpenses(dateKey))}</span>
             )}
@@ -334,13 +300,9 @@ const Index = () => {
   const stackRest = monthExpenses - shownCategories.reduce((s, c) => s + c.effectiveAmount, 0);
 
   return (
-    // `fit`: el inicio es una pantalla exacta. Le da altura definida al shell,
-    // que es lo que permite medir el resto sin restar nada a mano.
     <Layout fit>
       <div className="inicio">
         <div className="inicio-grid" data-tab={mobileTab}>
-          {/* Saludo. A la derecha, avisos y sincronizar: la fila ya existe,
-              así que nada de eso empuja las cards fuera del fold. */}
           <header className="inicio-head">
             {displayName && (
               <button onClick={() => openProfileEdit()} className="inicio-avatar" aria-label="Editar perfil">
@@ -371,9 +333,6 @@ const Index = () => {
             </div>
           </header>
 
-          {/* El mes: lo gastado y cómo va contra tu mes típico. Es el mismo
-              total que reparte "Por categoría". Lo que entró y lo invertido,
-              chico. El líquido es historia: vive en Finanzas. */}
           <section className="inicio-card inicio-money">
             <div className="inicio-money-top">
               <span className="inicio-title">Gastado</span>
@@ -407,9 +366,6 @@ const Index = () => {
             </div>
           </section>
 
-          {/* Por categoría: el total ya está en la tarjeta del mes. Una barra
-              fina en el color de cada categoría; en celular, una sola barra
-              apilada con su leyenda. Tocar una categoría abre sus movimientos. */}
           <section className="inicio-card inicio-spend">
             <span className="inicio-title">Por categoría</span>
             {spendBreakdown.length === 0 ? (
@@ -451,7 +407,6 @@ const Index = () => {
             )}
           </section>
 
-          {/* Recientes. En celular comparte la tarjeta con Límites. */}
           <section
             className="inicio-card inicio-feed"
             onTouchStart={(e: TouchEvent) => { swipe.current = { x: e.touches[0].clientX, y: e.touches[0].clientY }; }}
@@ -461,7 +416,6 @@ const Index = () => {
               if (!start) return;
               const dx = e.changedTouches[0].clientX - start.x;
               const dy = e.changedTouches[0].clientY - start.y;
-              // Solo un gesto claramente horizontal: el vertical es scroll.
               if (Math.abs(dx) < 56 || Math.abs(dx) < Math.abs(dy) * 1.6) return;
               setMobileTab(dx < 0 ? "limits" : "feed");
             }}
@@ -487,7 +441,6 @@ const Index = () => {
             </div>
           </section>
 
-          {/* Límites pasados; todos, en Meta */}
           <aside className="inicio-card inicio-limits">
             <div className="inicio-panel-head">
               <span className="inicio-title">Límites pasados</span>

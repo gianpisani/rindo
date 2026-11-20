@@ -27,7 +27,6 @@ interface Preset {
   getRange: () => DateRangeValue;
 }
 
-/** "Este mes" y "Mes pasado" siguen el mes financiero del usuario. */
 const presetsFor = (startDay: number): Preset[] => [
   { label: "Hoy", getRange: () => ({ from: startOfDay(new Date()), to: endOfDay(new Date()) }) },
   {

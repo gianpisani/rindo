@@ -35,8 +35,6 @@ export default function ConfirmDialog({
     onOpenChange(false);
   };
 
-  // Keyboard-first: Enter siempre ejecuta la acción primaria, sin importar
-  // qué botón tenga el foco (Radix enfoca "Cancelar" por defecto)
   const handleKeyDown = (e: KeyboardEvent) => {
     if (e.key === "Enter") {
       e.preventDefault();
@@ -83,5 +81,4 @@ export default function ConfirmDialog({
     </Dialog>
   );
 }
-
 

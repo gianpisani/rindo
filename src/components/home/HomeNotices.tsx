@@ -2,36 +2,16 @@ import { AlertCircle, ChevronRight, X, type LucideIcon } from "lucide-react";
 import { Popover, PopoverContent, PopoverTrigger } from "../ui/popover";
 import { cn } from "@/lib/utils";
 
-/**
- * Los avisos del inicio viven en la fila del saludo, no en el flujo.
- *
- * El inicio es una pantalla exacta: el alto de las cards se mide contra lo
- * que hay arriba. Un banner insertado en el flujo empuja todo y rompe el
- * fold, y el próximo aviso lo rompe de nuevo. Acá el aire vacío al lado de
- * "Buenas tardes" es el que los recibe: por muchos que haya, la fila ya
- * existía y el alto de la vista no cambia nunca.
- *
- * Con uno o dos se leen enteros. Con tres —o en pantalla angosta, donde el
- * saludo se come el ancho— colapsan a un contador que los abre en un popover.
- * El corte lo hace CSS, no un hook de ancho: medir en JS deja un frame con
- * las pastillas puestas antes de corregirse.
- */
-
 export interface HomeNotice {
   id: string;
   icon: LucideIcon;
-  /** Texto corto: el que entra en la pastilla. */
   label: string;
-  /** La frase completa, para el popover. */
   detail: string;
   tone: "primary" | "warning";
-  /** A dónde lleva el aviso. */
   onClick?: () => void;
-  /** Si no lo entregas, el aviso no se puede cerrar (se va solo). */
   onDismiss?: () => void;
 }
 
-/** Cuántos avisos se muestran enteros antes de colapsar al contador. */
 const MAX_PILLS = 2;
 
 const tones = {
@@ -70,7 +50,6 @@ function DismissButton({
   );
 }
 
-/** Un aviso entero, para cuando hay espacio. */
 function NoticePill({ notice }: { notice: HomeNotice }) {
   const tone = tones[notice.tone];
   return (
@@ -94,7 +73,6 @@ function NoticePill({ notice }: { notice: HomeNotice }) {
   );
 }
 
-/** La lista completa, dentro del popover del contador. */
 function NoticeRow({ notice }: { notice: HomeNotice }) {
   const tone = tones[notice.tone];
   return (
@@ -124,7 +102,6 @@ function NoticeRow({ notice }: { notice: HomeNotice }) {
   );
 }
 
-/** El contador: los avisos completos viven en su popover. */
 function NoticeCounter({
   notices,
   className,
@@ -172,7 +149,6 @@ export function HomeNotices({
 }) {
   if (notices.length === 0) return null;
 
-  // Muchos avisos no caben enteros en ningún ancho: van al contador siempre.
   if (notices.length > MAX_PILLS) {
     return <NoticeCounter notices={notices} className={className} />;
   }

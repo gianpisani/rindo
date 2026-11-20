@@ -7,8 +7,6 @@ import { CheckCircle } from "lucide-react";
 import { AnimatePresence, motion } from "framer-motion";
 import { RindoLogo } from "../layout/RindoLogo";
 
-// ── Email domain helpers ────────────────────────────────────────────────────
-
 const EMAIL_DOMAINS = [
   "gmail.com",
   "hotmail.com",
@@ -35,8 +33,6 @@ function getVisibleDomains(email: string): string[] {
   if (!partial) return EMAIL_DOMAINS.slice(0, 4);
   return EMAIL_DOMAINS.filter((d) => d.startsWith(partial) && d !== partial).slice(0, 4);
 }
-
-// ── Rotating words ──────────────────────────────────────────────────────────
 
 const ROTATING_WORDS = [
   "Ordena tus finanzas",
@@ -75,8 +71,6 @@ function RotatingText() {
   );
 }
 
-// ── Floating activity feed ───────────────────────────────────────────────────
-
 interface ActivityItem {
   icon: string;
   text: string;
@@ -86,18 +80,15 @@ interface ActivityItem {
 }
 
 const ACTIVITY_ITEMS: ActivityItem[] = [
-  // ── Sync con bancos ──
   { icon: "🏦", text: "Sync Banco de Chile", detail: "12 movimientos importados", color: "text-blue-400", side: "left" },
   { icon: "🏦", text: "Sync Santander", detail: "8 movimientos importados", color: "text-white", side: "right" },
   { icon: "🏦", text: "Sync BancoEstado", detail: "5 movimientos importados", color: "text-orange-400", side: "left" },
-  // ── IA y automatización ──
   { icon: "🤖", text: "IA categorizó 8 gastos", detail: "Comida, Transporte, Hogar...", color: "text-purple-400", side: "right" },
   { icon: "📈", text: "Proyección 12 meses", detail: "Tendrás ahorrado $15.820.000", color: "text-success", side: "left" },
   { icon: "⚠️", text: "Presupuesto excedido", detail: "Transporte +$15k", color: "text-destructive", side: "right" },
   { icon: "📱", text: "Categorizado con IA", detail: "Spotify → Suscripciones", color: "text-purple-400", side: "left" },
   { icon: "🔔", text: "Cuota 3/12 detectada", detail: "Bicicleta · −$133.250", color: "text-orange-400", side: "right" },
   { icon: "📊", text: "Presupuesto comida", detail: "78% usado · quedan 11 días", color: "text-amber-400", side: "left" },
-  // ── Movimientos del día ──
   { icon: "🍔", text: "Pago Uber Eats", detail: "−$12.500 · Comida", color: "text-white", side: "right" },
   { icon: "💰", text: "Ingreso sueldo", detail: "+$1.850.000", color: "text-success", side: "left" },
   { icon: "🏠", text: "Pago arriendo", detail: "−$450.000 · Hogar", color: "text-white", side: "left" },
@@ -119,16 +110,13 @@ function FloatingActivity() {
 
   useEffect(() => {
     function spawnCard() {
-      // Pick a random item, alternating sides strictly
       const targetSide = lastSideRef.current === "left" ? "right" : "left";
       lastSideRef.current = targetSide;
 
-      // Find items on the target side that haven't been used recently
       const candidates = ACTIVITY_ITEMS
         .map((item, i) => ({ item, i }))
         .filter(({ item, i }) => item.side === targetSide && !usedIndexes.current.has(i));
 
-      // Fallback to any unused item if no candidates on target side
       const pool = candidates.length > 0
         ? candidates
         : ACTIVITY_ITEMS.map((item, i) => ({ item, i })).filter(({ i }) => !usedIndexes.current.has(i));
@@ -154,13 +142,11 @@ function FloatingActivity() {
       setCards((prev) => [...prev.slice(-5), card]); // max 6 visible
     }
 
-    // Staggered entrance
     const initialTimers = [
       setTimeout(() => spawnCard(), 2000),
       setTimeout(() => spawnCard(), 6000),
     ];
 
-    // Continuous spawn — one every 4.5-7 seconds
     const spawn = () => {
       spawnCard();
       const nextDelay = 4500 + Math.random() * 2500;
@@ -214,14 +200,10 @@ function FloatingActivity() {
   );
 }
 
-// ── Ambient orbs ────────────────────────────────────────────────────────────
-
 function AmbientBackground() {
   return (
     <div className="absolute inset-0 overflow-hidden pointer-events-none">
-      {/* Radial gradient center glow */}
       <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] rounded-full bg-white/[0.012] blur-[120px]" />
-      {/* Noise texture */}
       <div
         className="absolute inset-0 opacity-[0.015]"
         style={{
@@ -231,8 +213,6 @@ function AmbientBackground() {
     </div>
   );
 }
-
-// ── Bank logos strip ────────────────────────────────────────────────────────
 
 const LANDING_BANKS = [
   { value: "bchile", label: "Banco de Chile" },
@@ -273,15 +253,11 @@ function BankStrip() {
   );
 }
 
-// ── Form transition variants ────────────────────────────────────────────────
-
 const formVariants = {
   enter: { opacity: 0, y: 20, filter: "blur(2px)" },
   center: { opacity: 1, y: 0, filter: "blur(0px)" },
   exit: { opacity: 0, y: -20, filter: "blur(2px)" },
 };
-
-// ── Main component ──────────────────────────────────────────────────────────
 
 export default function Auth() {
   const [isLogin, setIsLogin] = useState(true);
@@ -340,7 +316,6 @@ export default function Auth() {
       <FloatingActivity />
 
       <div className="relative z-10 w-full max-w-[360px] px-6">
-        {/* ── Logo + Brand ────────────────────────────────────────────────── */}
         <motion.div
           initial={{ opacity: 0, y: -12 }}
           animate={{ opacity: 1, y: 0 }}
@@ -360,7 +335,6 @@ export default function Auth() {
             rindo<span className="text-primary">.</span>
           </h1>
 
-          {/* Rotating capabilities */}
           <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
@@ -371,7 +345,6 @@ export default function Auth() {
           </motion.div>
         </motion.div>
 
-        {/* ── Separator line ──────────────────────────────────────────────── */}
         <motion.div
           initial={{ scaleX: 0, opacity: 0 }}
           animate={{ scaleX: 1, opacity: 1 }}
@@ -379,7 +352,6 @@ export default function Auth() {
           className="h-px bg-gradient-to-r from-transparent via-white/[0.06] to-transparent mb-8"
         />
 
-        {/* ── Form / Email Sent ───────────────────────────────────────────── */}
         <AnimatePresence mode="wait">
           {!emailSent ? (
             <motion.form
@@ -392,7 +364,6 @@ export default function Auth() {
               onSubmit={handleAuth}
               className="space-y-4"
             >
-              {/* Email */}
               <div className="space-y-2">
                 <Label htmlFor="email" className="text-xs font-medium text-white/25">
                   Correo
@@ -437,7 +408,6 @@ export default function Auth() {
                 )}
               </div>
 
-              {/* Password */}
               <div className="space-y-2">
                 <Label htmlFor="password" className="text-xs font-medium text-white/25">
                   Contraseña
@@ -458,7 +428,6 @@ export default function Auth() {
                 )}
               </div>
 
-              {/* Submit */}
               <div className="pt-2">
                 <Button
                   type="submit"
@@ -534,7 +503,6 @@ export default function Auth() {
           )}
         </AnimatePresence>
 
-        {/* ── Toggle ──────────────────────────────────────────────────────── */}
         {!emailSent && (
           <motion.div
             initial={{ opacity: 0 }}
@@ -556,12 +524,10 @@ export default function Auth() {
           </motion.div>
         )}
 
-        {/* ── Bank logos ────────────────────────────────────────────────────── */}
         <div className="mt-8">
           <BankStrip />
         </div>
 
-        {/* ── Bottom tagline ──────────────────────────────────────────────── */}
         <motion.p
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}

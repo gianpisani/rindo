@@ -1,6 +1,5 @@
 import { RefObject, useEffect } from "react";
 
-// Elementos donde Enter/Space ya tienen significado propio — no robarles el foco
 const INTERACTIVE_SELECTOR = [
   "input",
   "textarea",
@@ -22,11 +21,6 @@ const INTERACTIVE_SELECTOR = [
   '[role="slider"]',
 ].join(", ");
 
-/**
- * Keyboard-first: al presionar Enter, Space o "/" en la página (fuera de
- * inputs, botones o modales) enfoca la barra de búsqueda y selecciona su
- * contenido para empezar a escribir de inmediato.
- */
 export function useSearchFocusShortcut(inputRef: RefObject<HTMLInputElement>) {
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {

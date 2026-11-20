@@ -76,7 +76,6 @@ export default function Categories() {
     if (confirmDelete.id) deleteCategory.mutate(confirmDelete.id);
   };
 
-  // Crear vive al final de cada grupo, discreto: abre con el tipo del grupo, que se puede cambiar.
   const newChip = (type?: TransactionType) => (
     <Button variant="ghost" size="sm" className="text-muted-foreground" onClick={() => handleNew(type)}>
       <Plus />
@@ -91,7 +90,6 @@ export default function Categories() {
 
         {categories.length === 0 && newChip()}
 
-        {/* Solo los tipos con categorías; "Nueva" deja elegir cualquier tipo */}
         {(Object.entries(grouped) as [keyof typeof typeConfig, Category[]][]).filter(([, cats]) => cats.length > 0).map(([type, cats]) => {
           const { icon: Icon, label, color } = typeConfig[type];
           return (
@@ -112,7 +110,6 @@ export default function Categories() {
                     <span className="text-sm leading-none">{cat.icon || "🏷️"}</span>
                     <span>{cat.name}</span>
                     {cat.is_active === false && <span className="text-xs text-muted-foreground">Archivada</span>}
-                    {/* Hover actions */}
                     <div className="absolute inset-0 rounded-full flex items-center justify-end pr-1.5 gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity backdrop-blur-sm">
                       <Button
                         variant="ghost"

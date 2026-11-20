@@ -7,13 +7,6 @@ import { cn } from "@/lib/utils";
 import "../shared/whisper.css";
 import { clp } from "@/lib/format";
 
-/**
- * Nueva tarjeta al estilo Whisper: una línea con el cupo y el nombre
- * ("3000000 Banco de Chile"), el color en bolitas y tres campos chicos para
- * el cierre, el pago y los últimos dígitos. El composer toma el color de la
- * tarjeta a medida que lo eliges.
- */
-
 interface CreditCardModalProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
@@ -106,7 +99,6 @@ export function CreditCardModal({ open, onOpenChange, card, onSave }: CreditCard
     }
   };
 
-  // El accent es el color de la tarjeta; el negro no se ve sobre negro.
   const accent = color === "#000000" ? "#fafafa" : color;
 
   return (
