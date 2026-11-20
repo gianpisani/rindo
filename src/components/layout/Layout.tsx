@@ -15,6 +15,7 @@ import { useKeyboardShortcuts } from "@/hooks/useKeyboardShortcuts";
 import { useSoundFX } from "@/hooks/useSoundFX";
 import { initSounds } from "@/lib/snd";
 import { MobileBottomBar } from "./MobileBottomBar";
+import { UndoRedoControls } from "./UndoRedoControls";
 import { useIsMobile } from "@/hooks/useIsMobile";
 import {
   Tooltip,
@@ -123,33 +124,36 @@ export default function Layout({ children, fit = false }: LayoutProps) {
                 rindo<span className="text-primary">.</span>
               </span>
             )}
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <Button
-                  onClick={togglePrivacyMode}
-                  variant="ghost"
-                  size="sm"
-                  aria-label={isPrivacyMode ? "Desactivar modo privado" : "Activar modo privado"}
-                  className={cn(
-                    "ml-auto rounded-full size-9 p-0 transition-all duration-200",
-                    isPrivacyMode
-                      ? "bg-muted text-foreground"
-                      : "text-muted-foreground hover:bg-muted hover:text-foreground"
-                  )}
-                >
-                  {isPrivacyMode ? (
-                    <EyeOff className="h-4 w-4" />
-                  ) : (
-                    <Eye className="h-4 w-4" />
-                  )}
-                </Button>
-              </TooltipTrigger>
-              <TooltipContent>
-                {isPrivacyMode
-                  ? "Desactivar modo privado (P)"
-                  : "Activar modo privado (P)"}
-              </TooltipContent>
-            </Tooltip>
+            <div className="ml-auto flex items-center gap-1">
+              <UndoRedoControls />
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button
+                    onClick={togglePrivacyMode}
+                    variant="ghost"
+                    size="sm"
+                    aria-label={isPrivacyMode ? "Desactivar modo privado" : "Activar modo privado"}
+                    className={cn(
+                      "rounded-full size-9 p-0 transition-all duration-200",
+                      isPrivacyMode
+                        ? "bg-muted text-foreground"
+                        : "text-muted-foreground hover:bg-muted hover:text-foreground"
+                    )}
+                  >
+                    {isPrivacyMode ? (
+                      <EyeOff className="h-4 w-4" />
+                    ) : (
+                      <Eye className="h-4 w-4" />
+                    )}
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent>
+                  {isPrivacyMode
+                    ? "Desactivar modo privado (P)"
+                    : "Activar modo privado (P)"}
+                </TooltipContent>
+              </Tooltip>
+            </div>
           </header>
 
           <main
