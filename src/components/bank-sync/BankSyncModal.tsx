@@ -49,6 +49,7 @@ import type { SyncScheduleId } from "@/lib/banks";
 import { BankSyncSettings } from "@/components/bank-sync/BankSyncSettings";
 import { BankSyncHistory } from "@/components/bank-sync/BankSyncHistory";
 import { clp } from "@/lib/format";
+import { format } from "date-fns";
 
 const FORM_ID = "bank-sync-form";
 
@@ -134,8 +135,8 @@ export function BankSyncModal({
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
-    const fromStr = fromDate ? fromDate.toISOString().split("T")[0] : undefined;
-    const toStr = toDate ? toDate.toISOString().split("T")[0] : undefined;
+    const fromStr = fromDate ? format(fromDate, "yyyy-MM-dd") : undefined;
+    const toStr = toDate ? format(toDate, "yyyy-MM-dd") : undefined;
 
     if (storedCred) {
       onStartStored({ bank, fromDate: fromStr, toDate: toStr });
