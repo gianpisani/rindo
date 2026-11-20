@@ -40,13 +40,9 @@ App de finanzas personales (Vite + React + TS + Tailwind 3 + shadcn/ui + Supabas
 
 ## Antes de commitear
 ```
-npm run lint:design
-npx tsc -p tsconfig.app.json --noEmit
-npx eslint src          # 0 errores
-npm run test:jev
-npm run build
+npm run check   # lint:design, tsc, eslint src (0 errores), npm test y build
 ```
-Es lo mismo que corre el CI ("Revisar PR").
+Es lo mismo que corre el CI ("Revisar PR"). Los tests viven en `tests/`.
 
 ## Reglas de trabajo
 - No cambies funcionalidad ni datos si la tarea es visual.

@@ -2,7 +2,7 @@ import assert from 'node:assert/strict'
 import { createServer } from 'node:http'
 import type { AddressInfo } from 'node:net'
 import { test, type TestContext } from 'node:test'
-import { createLocalCategorizer } from './jev-local-server.ts'
+import { createLocalCategorizer } from '../scripts/jev-local-server.ts'
 import { ANALYZING_CATEGORY, shouldCategorize } from '../src/lib/auto-category-policy.ts'
 
 async function setup(t: TestContext) {
