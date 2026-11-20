@@ -79,7 +79,7 @@ export function useTransactionColumns({
       {
         accessorKey: "date",
         size: 120, minSize: 120, maxSize: 120,
-        header: ({ column }) => <SortHeader column={column} label="Fecha" />,
+        header: ({ column, table }) => <SortHeader column={column} table={table} label="Fecha" />,
         cell: ({ row }) => (
           <div className={cn("text-sm", isPrivacyMode && "privacy-blur-light")}>
             <InlineDateTimePicker
@@ -139,7 +139,7 @@ export function useTransactionColumns({
       {
         accessorKey: "category_name",
         size: 200, minSize: 170, maxSize: 240,
-        header: ({ column }) => <SortHeader column={column} label="Categoría" />,
+        header: ({ column, table }) => <SortHeader column={column} table={table} label="Categoría" />,
         cell: ({ row }) => {
           const t = row.original;
           const categoryName = t.category_name;
@@ -194,12 +194,7 @@ export function useTransactionColumns({
       ...((isLoadingCards || creditCards.length > 0) ? [{
         id: "card",
         size: 90, minSize: 80, maxSize: 110,
-        header: () => (
-          <div className="flex items-center gap-1 text-xs font-medium">
-            <CreditCard className="h-3.5 w-3.5" />
-            Tarjeta
-          </div>
-        ),
+        header: "Tarjeta",
         cell: ({ row }: { row: { original: Transaction } }) => {
           const t = row.original;
           if (INVESTMENT_TYPES.includes(t.type)) return <span className="text-xs text-muted-foreground">—</span>;
@@ -238,7 +233,7 @@ export function useTransactionColumns({
       {
         accessorKey: "amount",
         size: 170, minSize: 150, maxSize: 180,
-        header: ({ column }) => <SortHeader column={column} label="Monto" alignEnd />,
+        header: ({ column, table }) => <SortHeader column={column} table={table} label="Monto" alignEnd />,
         cell: ({ row }) => {
           const t = row.original;
           return (
