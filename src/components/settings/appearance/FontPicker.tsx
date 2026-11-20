@@ -17,18 +17,15 @@ export function FontPicker({
         {FONT_OPTIONS.map((font) => (
           <button
             key={font.id}
+            type="button"
+            aria-pressed={selectedFont === font.id}
             onClick={() => onChange(font.id)}
             className={cn(
-              "relative flex flex-col items-start px-3 py-2 rounded-card border transition-all duration-200 text-left",
-              selectedFont !== font.id &&
-                "hover:border-border active:scale-[0.97]"
+              "relative flex flex-col items-start px-3 py-2 rounded-card border text-left transition-[border-color,transform] duration-150",
+              selectedFont === font.id ? "border-foreground" : "hover:border-muted-foreground active:scale-[0.98]"
             )}
           >
-            {selectedFont === font.id && (
-              <div className="absolute top-2 right-2 size-4 rounded-full flex items-center justify-center">
-                <Check className="size-2.5 text-foreground" />
-              </div>
-            )}
+            {selectedFont === font.id && <Check className="absolute top-2 right-2 size-3.5" />}
             <span
               className="text-sm font-medium leading-tight"
               style={{ fontFamily: font.family }}

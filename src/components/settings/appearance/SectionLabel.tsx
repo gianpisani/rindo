@@ -8,11 +8,9 @@ export function SectionLabel({
   children: React.ReactNode;
 }) {
   return (
-    <div className="flex items-center gap-2 mb-2">
+    <div className="flex items-center gap-2 mb-2 text-muted-foreground">
       <Icon className="size-3.5" />
-      <span className="text-xs font-medium text-muted-foreground">
-        {children}
-      </span>
+      <span className="text-xs font-medium">{children}</span>
     </div>
   );
 }

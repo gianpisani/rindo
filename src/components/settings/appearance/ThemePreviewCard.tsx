@@ -17,6 +17,8 @@ export function ThemePreviewCard({
   );
   return (
     <button
+      type="button"
+      aria-pressed={selected}
       onClick={onClick}
       className={cn(
         "flex flex-col items-center gap-1.5 p-1.5 rounded-card transition-all duration-200",

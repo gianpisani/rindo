@@ -1,12 +1,7 @@
-import { Monitor, Moon, Sun } from "lucide-react";
 import { cn } from "@/lib/utils";
 import type { ColorMode } from "@/hooks/useThemeDraft";
+import { COLOR_MODES } from "./color-modes";
 
-const COLOR_MODES = [
-  { value: "light", label: "Claro", icon: Sun },
-  { value: "dark", label: "Oscuro", icon: Moon },
-  { value: "system", label: "Sistema", icon: Monitor },
-] as const;
 
 export function ColorModeToggle({
   colorMode,
@@ -20,6 +15,8 @@ export function ColorModeToggle({
       {COLOR_MODES.map(({ value, label, icon: Icon }) => (
         <button
           key={value}
+          type="button"
+          aria-pressed={colorMode === value}
           onClick={() => onChange(value)}
           className={cn(
             "flex h-9 items-center justify-center gap-2 rounded-full text-sm font-medium transition-colors",

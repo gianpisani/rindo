@@ -1,4 +1,4 @@
-import { findPreset, parseCustomSettings, type CustomThemeSettings, type PaletteVars } from "./theme";
+import { findPreset, parseCustomSettings, type CustomThemeSettings, type PaletteVars } from "./theme.ts";
 
 export const DEFAULT_RADIUS = 0.75;
 const DEFAULT_HUE = 240;
@@ -57,10 +57,19 @@ export function themeChoiceFromProfile(
   };
 }
 
-export function serializeThemeChoice({ themeId, hue, font, radius }: ThemeChoice): string | null {
+export function themeChoiceSettings({ themeId, hue, font, radius }: ThemeChoice): CustomThemeSettings {
   const settings: CustomThemeSettings = {};
   if (themeId === "custom") settings.hue = hue;
   if (font !== DEFAULT_FONT) settings.font = font;
   if (Math.abs(radius - DEFAULT_RADIUS) > 0.01) settings.radius = radius;
+  return settings;
+}
+
+export function serializeThemeChoice(choice: ThemeChoice): string | null {
+  const settings = themeChoiceSettings(choice);
   return Object.keys(settings).length > 0 ? JSON.stringify(settings) : null;
+}
+
+export function sameThemeChoice(a: ThemeChoice, b: ThemeChoice) {
+  return a.themeId === b.themeId && serializeThemeChoice(a) === serializeThemeChoice(b);
 }

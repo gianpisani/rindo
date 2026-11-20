@@ -36,6 +36,15 @@ export function HueSlider({
     [updateFromPointer]
   );
 
+  const handleKeyDown = (e: React.KeyboardEvent) => {
+    const step = e.shiftKey ? 30 : 5;
+    const delta =
+      e.key === "ArrowRight" || e.key === "ArrowUp" ? step : e.key === "ArrowLeft" || e.key === "ArrowDown" ? -step : 0;
+    if (!delta) return;
+    e.preventDefault();
+    onChange((value + delta + 360) % 360);
+  };
+
   const pct = (value / 360) * 100;
   const track = Array.from({ length: 13 }, (_, i) =>
     generatePaletteFromHue(i * 30, mode).primary
@@ -45,7 +54,14 @@ export function HueSlider({
   return (
     <div
       ref={trackRef}
-      className="relative h-9 cursor-pointer touch-none select-none"
+      role="slider"
+      tabIndex={0}
+      aria-label="Tono"
+      aria-valuemin={0}
+      aria-valuemax={360}
+      aria-valuenow={value}
+      onKeyDown={handleKeyDown}
+      className="relative h-9 cursor-pointer touch-none select-none rounded-full"
       onPointerDown={handlePointerDown}
       onPointerMove={handlePointerMove}
     >

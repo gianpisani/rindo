@@ -1,9 +1,8 @@
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
 import { useUserProfile } from "./useUserProfile";
-import { useThemeDraft } from "./useThemeDraft";
-import { clearThemeOverrides } from "@/lib/theme";
-import { themeChoiceFromProfile } from "@/lib/theme-choice";
+import { endThemeDraft, startThemeDraft, useThemeDraft } from "./useThemeDraft";
+import { serializeThemeChoice, themeChoiceFromProfile } from "@/lib/theme-choice";
 import { initialsOf } from "@/lib/profile-name";
 
 export type OnboardingMode = "onboarding" | "edit";
@@ -21,7 +20,6 @@ export function useOnboardingDraft({
 }) {
   const { profile, updateProfile, uploadAvatar, removeAvatar, avatarUrl } = useUserProfile();
   const themeDraft = useThemeDraft();
-  const loadTheme = themeDraft.load;
 
   const [fullName, setFullName] = useState("");
   const [nickname, setNickname] = useState("");
@@ -33,12 +31,12 @@ export function useOnboardingDraft({
       setFullName(profile.full_name || "");
       setNickname(profile.nickname || "");
       setLocalAvatarPreview(null);
-      loadTheme(themeChoiceFromProfile(profile.accent_color_1, profile.accent_color_2));
-      if (mode === "edit") restartSteps();
+      if (mode === "onboarding") startThemeDraft(themeChoiceFromProfile(profile.accent_color_1, profile.accent_color_2));
+      else restartSteps();
       setInitialized(true);
     }
     if (!open) setInitialized(false);
-  }, [open, profile, mode, initialized, loadTheme, restartSteps]);
+  }, [open, profile, mode, initialized, restartSteps]);
 
   const selectAvatarFile = (file: File) => {
     setLocalAvatarPreview(URL.createObjectURL(file));
@@ -50,16 +48,20 @@ export function useOnboardingDraft({
   };
 
   const save = () => {
+    const theme =
+      mode === "onboarding"
+        ? { accent_color_1: themeDraft.choice.themeId, accent_color_2: serializeThemeChoice(themeDraft.choice) }
+        : {};
     updateProfile.mutate(
       {
         full_name: fullName || null,
         nickname: nickname || null,
-        accent_color_1: themeDraft.selectedTheme,
-        accent_color_2: themeDraft.buildCustomSettings(),
+        ...theme,
         onboarding_completed: true,
       },
       {
         onSuccess: () => {
+          endThemeDraft();
           const name = nickname || fullName;
           if (mode === "onboarding" && name) toast.success(`Listo, bienvenido ${name}!`);
           else if (mode === "edit") toast.success("Perfil actualizado");
@@ -74,7 +76,7 @@ export function useOnboardingDraft({
       { onboarding_completed: true },
       {
         onSuccess: () => {
-          clearThemeOverrides();
+          endThemeDraft();
           onOpenChange(false);
         },
       },
