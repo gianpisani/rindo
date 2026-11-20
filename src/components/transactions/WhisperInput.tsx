@@ -13,16 +13,13 @@ import { usePrivacyMode } from '@/hooks/usePrivacyMode';
 import { categoryFrequency, parseWhisper, WHISPER_TYPES, type WhisperDraft } from '@/lib/whisper';
 import type { TransactionType } from '@/lib/ledger';
 import { cn } from '@/lib/utils';
+import { toLocalInput } from '@/lib/format';
 import SharedExpenseDrawer from './SharedExpenseDrawer';
 import '../shared/whisper.css';
 
 const types = WHISPER_TYPES;
 const foodCategoryOrder = ['Supermercado', 'Café y snacks', 'Comida diaria', 'Comidas y panoramas'];
 const fixedCategories: Partial<Record<TransactionType, string>> = { Rescate: 'Rescate', Rendimiento: 'Rendimiento', Reembolso: 'Reembolsos' };
-const localDate = () => {
-  const now = new Date();
-  return new Date(now.getTime() - now.getTimezoneOffset() * 60000).toISOString().slice(0, 16);
-};
 
 interface WhisperInputProps {
   open: boolean;
@@ -33,7 +30,7 @@ interface WhisperInputProps {
 
 export function WhisperInput({ open, onOpenChange, defaultType = 'Gasto', initialDraft }: WhisperInputProps) {
   const [draft, setDraft] = useState<WhisperDraft>(() => initialDraft ?? {
-    value: '', type: defaultType, category: '', date: localDate(), cardId: '', shared: false, reimbursementCategory: '', isLoss: false,
+    value: '', type: defaultType, category: '', date: toLocalInput(new Date()), cardId: '', shared: false, reimbursementCategory: '', isLoss: false,
   });
   const [dateTouched, setDateTouched] = useState(false);
   const [expanded, setExpanded] = useState(false);

@@ -11,3 +11,6 @@ export const clp = (value: number) => withSign(value, CLP.format(Math.abs(value)
 export const clpCompact = (value: number) => withSign(value, CLP_COMPACT.format(Math.abs(value)));
 
 export const groupDigits = (value: number) => DIGITS.format(value);
+
+export const toLocalInput = (date: Date) =>
+  new Date(date.getTime() - date.getTimezoneOffset() * 60000).toISOString().slice(0, 16);
