@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import { billingCycle, cardStatus, cardsDebt, cycleStatement, paidBetween, paymentDate } from '../src/lib/card-cycle.ts';
+import { installmentsOverview, labeledCycle, shortDay, shortMonthYear, withoutEmoji } from '../src/lib/card-view.ts';
 
 // Tarjeta que cierra el 20 y se paga el 5.
 const card = { id: 'c1', billing_day: 20, payment_day: 5 };
@@ -82,4 +83,27 @@ test('"A pagar" no se muestra si ya se pagó todo o si pasó el día de pago', (
   assert.deepEqual(late.nextPay, new Date(2027, 0, 5));
   // El mismo día de pago todavía se muestra.
   assert.equal(cardStatus(unpaid, card, new Date(2026, 11, 5, 18)).showAPagar, true);
+});
+
+test('el ciclo etiquetado lleva el mes del cierre', () => {
+  const cycle = labeledCycle(20, -1, now);
+  assert.deepEqual(cycle.end, new Date(2026, 10, 20, 14));
+  assert.equal(cycle.label, 'noviembre 2026');
+  assert.equal(shortDay(cycle.end), '20 nov');
+  assert.equal(shortMonthYear(new Date(2027, 2, 1)), 'mar 2027');
+});
+
+test('el detalle del estado de cuenta va sin emojis', () => {
+  assert.equal(withoutEmoji('🍕 Pizza  ❤️ casa'), 'Pizza casa');
+});
+
+test('las cuotas activas van primero y suman el pago mensual', () => {
+  const plan = (id: string, first: string, total: number, amount: number) =>
+    ({ id, first_installment_date: first, total_installments: total, installment_amount: amount });
+  const { rows, monthlyPayment } = installmentsOverview(
+    [plan('vieja', '2025-01-10T12:00:00', 3, 10_000), plan('nueva', '2026-10-10T12:00:00', 6, 25_000)],
+    now
+  );
+  assert.deepEqual(rows.map((r) => r.installment.id), ['nueva', 'vieja']);
+  assert.equal(monthlyPayment, 25_000);
 });
