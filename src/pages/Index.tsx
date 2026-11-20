@@ -23,7 +23,7 @@ import { useRealFlows } from "@/hooks/useRealFlows";
 import { limitUsage, summarizeCategoryPeriod } from "@/lib/category-spending";
 import { PiggyBank, ChevronRight, RefreshCw } from "lucide-react";
 import { BankSyncModal } from "@/components/bank-sync/BankSyncModal";
-import { useBankSyncContext } from "@/contexts/BankSyncContext";
+import { useBankSyncContext } from "@/hooks/useBankSyncContext";
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";

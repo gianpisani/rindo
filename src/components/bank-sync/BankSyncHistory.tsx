@@ -19,7 +19,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { cn } from "@/lib/utils";
 import { getBankById } from "@/lib/banks";
 import { BankLogo } from "@/components/bank-sync/BankLogo";
-import { useBankSyncContext } from "@/contexts/BankSyncContext";
+import { useBankSyncContext } from "@/hooks/useBankSyncContext";
 import { useBankSyncLog, type SyncLogEntry } from "@/hooks/useBankSyncLog";
 import { clp } from "@/lib/format";
 import { SKIP_REASON_LABELS } from "@/lib/banks";

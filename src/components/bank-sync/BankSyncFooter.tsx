@@ -1,6 +1,6 @@
 import { Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import type { SyncResult } from "@/contexts/BankSyncContext";
+import type { SyncResult } from "@/lib/bank-sync";
 import type { Bank } from "@/lib/banks";
 import type { BankSyncView } from "@/lib/bank-sync";
 

@@ -71,3 +71,24 @@ export function selectedItemIds(items: { id?: string }[], selected: Set<number>)
     .filter((item, i) => selected.has(i) && item.id)
     .map((item) => item.id as string);
 }
+
+export type SyncStep = "idle" | "submitting" | "polling" | "completed" | "failed";
+
+export interface SyncMovementItem {
+  id?: string;
+  date: string;
+  description: string;
+  amount: number;
+  type: string;
+  reason?: string;
+  card?: string;
+}
+
+export type SyncResult =
+  | { imported: number; skipped: number; importedItems: SyncMovementItem[]; skippedItems: SyncMovementItem[] }
+  | { error: string };
+
+export function toApiDate(yyyymmdd: string): string {
+  const [yyyy, mm, dd] = yyyymmdd.split("-");
+  return `${dd}-${mm}-${yyyy}`;
+}

@@ -1,5 +1,5 @@
 import { Plus, Trash2, XCircle } from "lucide-react";
-import type { SyncResult } from "@/contexts/BankSyncContext";
+import type { SyncResult } from "@/lib/bank-sync";
 import { SKIP_REASON_LABELS, type SyncScheduleId } from "@/lib/banks";
 import { creatableIndexes, formatMovementDate, isCreatableSkip } from "@/lib/bank-sync";
 import type { SyncResultSelection } from "@/hooks/useSyncResultSelection";

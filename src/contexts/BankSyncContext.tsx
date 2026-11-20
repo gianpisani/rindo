@@ -1,43 +1,10 @@
-import { createContext, useContext, useState, useRef, useCallback, ReactNode } from "react";
-import { supabase } from "@/integrations/supabase/client";
+import { useState, useRef, useCallback, type ReactNode } from "react";
 import { toast } from "sonner";
 import { useQueryClient } from "@tanstack/react-query";
 import { errorMessage } from "@/lib/errors";
-
-export type SyncStep = "idle" | "submitting" | "polling" | "completed" | "failed";
-
-export interface SyncMovementItem {
-  id?: string;
-  date: string;
-  description: string;
-  amount: number;
-  type: string;
-  reason?: string;
-  card?: string;
-}
-
-export type SyncResult =
-  | { imported: number; skipped: number; importedItems: SyncMovementItem[]; skippedItems: SyncMovementItem[] }
-  | { error: string };
-
-function toApiDate(yyyymmdd: string): string {
-  const [yyyy, mm, dd] = yyyymmdd.split("-");
-  return `${dd}-${mm}-${yyyy}`;
-}
-
-interface BankSyncContextValue {
-  step: SyncStep;
-  pollStatus: string;
-  result: SyncResult | null;
-  isRunning: boolean;
-  startSync: (params: { bank: string; rut: string; password: string; fromDate?: string; toDate?: string }) => void;
-  startSyncStored: (params: { bank: string; fromDate?: string; toDate?: string }) => void;
-  importSkipped: (movements: SyncMovementItem[], bank?: string) => Promise<number>;
-  deleteImported: (ids: string[]) => Promise<number>;
-  reset: () => void;
-}
-
-const BankSyncContext = createContext<BankSyncContextValue | null>(null);
+import { toApiDate, type SyncMovementItem, type SyncResult, type SyncStep } from "@/lib/bank-sync";
+import { invokeBankSync } from "@/hooks/useBankSyncCredentials";
+import { BankSyncContext } from "@/hooks/useBankSyncContext";
 
 export function BankSyncProvider({ children }: { children: ReactNode }) {
   const queryClient = useQueryClient();
@@ -87,9 +54,7 @@ export function BankSyncProvider({ children }: { children: ReactNode }) {
       }
 
       try {
-        const { data, error } = await supabase.functions.invoke("bank-sync", {
-          body: { action: "check", jobId },
-        });
+        const { data, error } = await invokeBankSync({ action: "check", jobId });
 
         if (error) {
           stopPolling();
@@ -143,7 +108,7 @@ export function BankSyncProvider({ children }: { children: ReactNode }) {
       if (range.fromDate) body.fromDate = toApiDate(range.fromDate);
       if (range.toDate) body.toDate = toApiDate(range.toDate);
       try {
-        const { data, error } = await supabase.functions.invoke("bank-sync", { body });
+        const { data, error } = await invokeBankSync(body);
         if (error || !data?.jobId) {
           setResult({ error: data?.error || errorMessage(error) });
           setStep("failed");
@@ -176,9 +141,7 @@ export function BankSyncProvider({ children }: { children: ReactNode }) {
   const importSkipped = useCallback(
     async (movements: SyncMovementItem[], bank?: string): Promise<number> => {
       try {
-        const { data, error } = await supabase.functions.invoke("bank-sync", {
-          body: { action: "import-skipped", movements, ...(bank ? { bank } : {}) },
-        });
+        const { data, error } = await invokeBankSync({ action: "import-skipped", movements, ...(bank ? { bank } : {}) });
         if (error || !data) {
           toast.error("Error al importar transacciones");
           return 0;
@@ -200,9 +163,7 @@ export function BankSyncProvider({ children }: { children: ReactNode }) {
   const deleteImported = useCallback(
     async (ids: string[]): Promise<number> => {
       try {
-        const { data, error } = await supabase.functions.invoke("bank-sync", {
-          body: { action: "delete-imported", ids },
-        });
+        const { data, error } = await invokeBankSync({ action: "delete-imported", ids });
         if (error || !data) {
           toast.error("Error al eliminar transacciones");
           return 0;
@@ -238,10 +199,4 @@ export function BankSyncProvider({ children }: { children: ReactNode }) {
       {children}
     </BankSyncContext.Provider>
   );
-}
-
-export function useBankSyncContext() {
-  const ctx = useContext(BankSyncContext);
-  if (!ctx) throw new Error("useBankSyncContext must be used inside BankSyncProvider");
-  return ctx;
 }

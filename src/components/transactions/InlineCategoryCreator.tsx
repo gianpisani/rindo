@@ -1,4 +1,5 @@
 import { Check } from "lucide-react";
+import { WhisperSwatches } from "@/components/shared/whisper/WhisperSwatches";
 import { NEW_CATEGORY_COLORS, type NewCategoryDraft } from "@/hooks/useTxEditor";
 
 interface InlineCategoryCreatorProps {
@@ -41,20 +42,12 @@ export function InlineCategoryCreator({ draft, typeLabel, creating, onChange, on
           }}
         />
       </div>
-      <div className="whisper-swatches" role="radiogroup" aria-label="Color de la categoría">
-        {NEW_CATEGORY_COLORS.map((c) => (
-          <button
-            key={c}
-            type="button"
-            role="radio"
-            aria-checked={draft.color === c}
-            aria-label={`Color ${c}`}
-            className="whisper-swatch"
-            style={{ "--swatch": c } as React.CSSProperties}
-            onClick={() => onChange({ ...draft, color: c })}
-          />
-        ))}
-      </div>
+      <WhisperSwatches
+        colors={NEW_CATEGORY_COLORS}
+        value={draft.color}
+        onChange={(color) => onChange({ ...draft, color })}
+        label="Color de la categoría"
+      />
       <div className="whisper-tx-inline">
         <button
           type="button"

@@ -24,8 +24,8 @@ import {
   SidebarMenu,
   SidebarMenuItem,
   SidebarRail,
-  useSidebar,
 } from "@/components/ui/sidebar";
+import { useSidebar } from "@/components/ui/sidebar-context";
 import {
   DropdownMenu,
   DropdownMenuContent,

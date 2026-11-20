@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { BaseModal } from "@/components/shared/BaseModal";
-import type { SyncStep, SyncResult, SyncMovementItem } from "@/contexts/BankSyncContext";
+import type { SyncStep, SyncResult, SyncMovementItem } from "@/lib/bank-sync";
 import { bankSyncHeading, bankSyncView, hasBankSyncFooter, type BankSyncTab } from "@/lib/bank-sync";
 import { useBankSyncForm } from "@/hooks/useBankSyncForm";
 import { useSyncResultSelection } from "@/hooks/useSyncResultSelection";

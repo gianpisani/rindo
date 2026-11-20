@@ -1,8 +1,8 @@
-import { useState, useCallback, type ChangeEvent, type FormEvent } from "react";
+import { useState, useCallback, useEffect, type ChangeEvent, type FormEvent } from "react";
 import { format } from "date-fns";
 import { BANKS, formatRut, validateRut, type SyncScheduleId } from "@/lib/banks";
 import { useSaveCredentials, useBankSyncCredentials } from "@/hooks/useBankSyncCredentials";
-import type { SyncStep } from "@/contexts/BankSyncContext";
+import type { SyncStep } from "@/lib/bank-sync";
 
 interface BankSyncFormParams {
   syncStep: SyncStep;
@@ -51,22 +51,14 @@ export function useBankSyncForm({ syncStep, onStart, onStartStored }: BankSyncFo
     onStart({ bank, rut, password, fromDate: fromStr, toDate: toStr });
   }
 
-  async function handleSyncComplete() {
-    if (saveCredentials && bank && rut && password && !hasCredentialsForBank) {
-      try {
-        await saveCredentialsMutation.mutateAsync({ bank, rut, password, syncSchedule });
-        setCredentialsSaved(true);
-      } catch (err) {
-        console.error("Error saving credentials:", err);
-      }
-    }
-  }
-
   const [saveTriggered, setSaveTriggered] = useState(false);
-  if (syncStep === "completed" && !saveTriggered && saveCredentials && password) {
+  const { mutate: saveCredentialsOnce } = saveCredentialsMutation;
+  useEffect(() => {
+    if (syncStep !== "completed" || saveTriggered || !saveCredentials || !password) return;
     setSaveTriggered(true);
-    handleSyncComplete();
-  }
+    if (!bank || !rut || hasCredentialsForBank) return;
+    saveCredentialsOnce({ bank, rut, password, syncSchedule }, { onSuccess: () => setCredentialsSaved(true) });
+  }, [syncStep, saveTriggered, saveCredentials, password, bank, rut, hasCredentialsForBank, syncSchedule, saveCredentialsOnce]);
 
   function resetForRetry() {
     setPassword("");

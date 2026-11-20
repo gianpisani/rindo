@@ -3,6 +3,7 @@ import { ChevronDown, Loader2 } from "lucide-react";
 import { toast } from "sonner";
 import { useTransactions } from "@/hooks/useTransactions";
 import { useSoundFX } from "@/hooks/useSoundFX";
+import { useComposerSubmit } from "@/hooks/useComposerSubmit";
 import { usePrivacyMode } from "@/hooks/usePrivacyMode";
 import { computeLedger } from "@/lib/real-flows";
 import { parseWhisper } from "@/lib/whisper";
@@ -43,7 +44,8 @@ export function InvestmentMoveDrawer({
   const [move, setMove] = useState<Move>(defaultMove);
   const [rescateValue, setRescateValue] = useState("");
   const [valorHoy, setValorHoy] = useState("");
-  const [isSaving, setIsSaving] = useState(false);
+  const { error, setError, guardedSubmit } = useComposerSubmit();
+  const isSaving = addTransaction.isPending;
   const inputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
@@ -66,6 +68,7 @@ export function InvestmentMoveDrawer({
 
   const changeMove = (next: Move) => {
     setMove(next);
+    setError("");
     playTap();
     inputRef.current?.focus();
   };
@@ -74,13 +77,13 @@ export function InvestmentMoveDrawer({
   const close = () => {
     setRescateValue("");
     setValorHoy("");
+    setError("");
     onOpenChange(false);
   };
 
-  const handleRescate = async () => {
-    if (rescate <= 0) return;
-    setIsSaving(true);
-    try {
+  const save = guardedSubmit(async () => {
+    if (!ready) return;
+    if (move === "rescate") {
       await addTransaction.mutateAsync({
         date: new Date().toISOString(),
         detail: rescateParsed?.detail ?? null,
@@ -88,17 +91,7 @@ export function InvestmentMoveDrawer({
         type: "Rescate",
         amount: rescate,
       });
-      playCelebration();
-      close();
-    } finally {
-      setIsSaving(false);
-    }
-  };
-
-  const handleRendimiento = async () => {
-    if (!hasValor || alDia) return;
-    setIsSaving(true);
-    try {
+    } else {
       await addTransaction.mutateAsync({
         date: new Date().toISOString(),
         detail: `Inversiones valen ${clp(valor)}`,
@@ -106,24 +99,11 @@ export function InvestmentMoveDrawer({
         type: "Rendimiento",
         amount: delta,
       });
-      playCelebration();
-      toast.success(
-        delta > 0
-          ? `Tu patrimonio subió ${clp(delta)}`
-          : `Tu patrimonio bajó ${clp(Math.abs(delta))}`
-      );
-      close();
-    } finally {
-      setIsSaving(false);
+      toast.success(delta > 0 ? `Tu patrimonio subió ${clp(delta)}` : `Tu patrimonio bajó ${clp(Math.abs(delta))}`);
     }
-  };
-
-  const submit = (event: React.FormEvent) => {
-    event.preventDefault();
-    if (isSaving) return;
-    if (move === "rescate") void handleRescate();
-    else void handleRendimiento();
-  };
+    playCelebration();
+    close();
+  }, "No se guardó el movimiento. Intenta de nuevo.");
 
   const previewTone = move === "valor" && hasValor && !alDia && delta < 0 ? LOSS_COLOR : undefined;
 
@@ -135,7 +115,7 @@ export function InvestmentMoveDrawer({
       description="Lo que sale de las inversiones y lo que crece solo. Tab cambia entre rescate y rendimiento. Para el rescate escribe el monto y, si quieres, de dónde salió. Para el rendimiento escribe cuánto valen hoy tus inversiones en total."
       accent={current.color}
       focusOnOpen={() => inputRef.current?.focus()}
-      onSubmit={submit}
+      onSubmit={save}
     >
       <div className="whisper-type">
         <span className="whisper-dot" aria-hidden="true" />
@@ -165,7 +145,10 @@ export function InvestmentMoveDrawer({
             spellCheck={false}
             maxLength={200}
             value={rescateValue}
-            onChange={(event) => setRescateValue(event.target.value)}
+            onChange={(event) => {
+              setRescateValue(event.target.value);
+              setError("");
+            }}
             placeholder={current.placeholder}
             className={cn("whisper-input", isPrivacyMode && rescateValue && "privacy-blur")}
             onKeyDown={(event) => {
@@ -184,7 +167,10 @@ export function InvestmentMoveDrawer({
             inputMode="numeric"
             maxLength={20}
             value={valorHoy}
-            onChange={(event) => setValorHoy(event.target.value.replace(/\D/g, ""))}
+            onChange={(event) => {
+              setValorHoy(event.target.value.replace(/\D/g, ""));
+              setError("");
+            }}
             placeholder={current.placeholder}
             className={cn("whisper-input", isPrivacyMode && valorHoy && "privacy-blur")}
             onKeyDown={(event) => {
@@ -229,6 +215,12 @@ export function InvestmentMoveDrawer({
           <span className={cn("whisper-inv-amount", isPrivacyMode && "privacy-blur")}>{clp(invertido)}</span>
         </p>
       </div>
+
+      {error && (
+        <p role="alert" className="whisper-error">
+          {error}
+        </p>
+      )}
 
       <div className="whisper-actions">
         <WhisperSubmit

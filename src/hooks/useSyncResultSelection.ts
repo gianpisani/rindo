@@ -1,5 +1,5 @@
 import { useState } from "react";
-import type { SyncResult, SyncMovementItem } from "@/contexts/BankSyncContext";
+import type { SyncResult, SyncMovementItem } from "@/lib/bank-sync";
 import { creatableIndexes, selectedItemIds, toggleAllIndexes, toggleIndex } from "@/lib/bank-sync";
 
 interface SyncResultSelectionParams {

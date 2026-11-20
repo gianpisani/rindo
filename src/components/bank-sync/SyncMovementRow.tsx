@@ -3,7 +3,7 @@ import { ArrowDownCircle, ArrowUpCircle } from "lucide-react";
 import { Checkbox } from "@/components/ui/checkbox";
 import { cn } from "@/lib/utils";
 import { clp } from "@/lib/format";
-import type { SyncMovementItem } from "@/contexts/BankSyncContext";
+import type { SyncMovementItem } from "@/lib/bank-sync";
 
 interface SyncMovementRowProps {
   item: SyncMovementItem;
