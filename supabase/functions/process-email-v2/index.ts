@@ -2,6 +2,7 @@ import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.39.3'
 import { corsHeaders } from '../_shared/cors.ts'
 import { bankSettlementDate } from '../_shared/business-day.ts'
 import { ingestTransaction } from '../_shared/ingest-transaction.ts'
+import { fetchUsdClpRate, formatUsd, usdIn, usdToClpInText } from '../_shared/usd.ts'
 
 interface EmailPayload {
   subject: string
@@ -363,7 +364,7 @@ Deno.serve(async (req) => {
 
     // Normalize: collapse whitespace, strip invisible chars, remove footer
     const rawText = `${subject || ''} ${content || ''}`
-    const text = stripBankFooter(normalizeEmailText(rawText))
+    let text = stripBankFooter(normalizeEmailText(rawText))
 
     if (isPromotionalEmail(subject || '', text)) {
       console.log('🚫 Email promocional, ignorando:', subject)
@@ -381,6 +382,14 @@ Deno.serve(async (req) => {
       transactionDate = new Date(date).toISOString()
     } else {
       transactionDate = new Date().toISOString()
+    }
+
+    // Compra en dólares: se pasa a pesos antes de parsear, para que ningún
+    // parser lea "US$23,79" como 23 pesos. Si no hay tipo de cambio, esto lanza
+    // y el correo queda sin marcar para el próximo intento.
+    let usd: number | null = null
+    if (usdIn(text) !== null) {
+      ({ text, usd } = usdToClpInText(text, await fetchUsdClpRate()))
     }
 
     const bank = detectBank(from || '', text)
@@ -423,6 +432,8 @@ Deno.serve(async (req) => {
     if (parsed.bank === 'Banco de Chile' && bank !== 'Banco') {
       parsed.bank = bank
     }
+
+    if (usd !== null) parsed.detail += ` · ${formatUsd(usd)}`
 
     const bankDescription = parsed.bankDescription ?? parsed.detail
     parsed.detail = `🤖 ${parsed.detail}`

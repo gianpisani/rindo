@@ -1,6 +1,7 @@
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.39.3'
 import { corsHeaders } from '../_shared/cors.ts'
 import { ingestTransaction } from '../_shared/ingest-transaction.ts'
+import { fetchUsdClpRate, formatUsd, parseUsdAmount } from '../_shared/usd.ts'
 
 const walletCorsHeaders = {
   ...corsHeaders,
@@ -71,9 +72,15 @@ Deno.serve(async (req) => {
       )
     }
 
-    // Parse amount — handle CLP format: "5.500" or "$5,500" or "5500"
+    const divisaUpper = divisa ? divisa.toUpperCase() : 'CLP'
+
+    // Parse amount — handle CLP format: "5.500" or "$5,500" or "5500".
+    // En dólares el monto trae decimales ("23,79") y se pasa a pesos al dólar del día.
+    const usd = divisaUpper === 'USD' ? parseUsdAmount(cantidad) : null
     const rawAmount = cantidad.replace(/[$\s]/g, '').replace(/\./g, '').replace(/,/g, '')
-    const parsedAmount = parseInt(rawAmount, 10)
+    const parsedAmount = usd !== null
+      ? Math.round(usd * await fetchUsdClpRate())
+      : parseInt(rawAmount, 10)
     if (isNaN(parsedAmount) || parsedAmount <= 0) {
       return new Response(
         JSON.stringify({ success: false, error: `Monto inválido: "${cantidad}"` }),
@@ -81,9 +88,10 @@ Deno.serve(async (req) => {
       )
     }
 
-    // Build detail: "📱 Starbucks" or "📱 Starbucks (USD)"
-    const divisaUpper = divisa ? divisa.toUpperCase() : 'CLP'
-    const divisaSuffix = divisaUpper && divisaUpper !== 'CLP' ? ` (${divisaUpper})` : ''
+    // Build detail: "📱 Starbucks", "📱 Starbucks · US$23,79" or "📱 Starbucks (EUR)"
+    const divisaSuffix = usd !== null
+      ? ` · ${formatUsd(usd)}`
+      : divisaUpper !== 'CLP' ? ` (${divisaUpper})` : ''
     const detail = `📱 ${comercio}${divisaSuffix}`
 
     const bankName = banco || 'Banco'
