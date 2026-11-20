@@ -517,7 +517,7 @@
   font-size: var(--fs-1); font-weight: 500; color: var(--muted-foreground); }
 .inicio-day::after { content: ""; flex: 1; height: 1px; background: var(--border); }
 .inicio-day span { order: 2; font-family: var(--font-mono); font-size: var(--fs-1); font-weight: 400; color: var(--inicio-faint); }
-.inicio-tx { position: relative; display: flex; align-items: center; gap: 12px; padding: 6px 16px; }
+.inicio-tx { position: relative; display: flex; align-items: center; gap: 12px; padding: 6px 50px 6px 16px; }
 .inicio-tx:hover { background: var(--inicio-hover); }
 .inicio-ico { flex: none; width: 30px; height: 30px; border-radius: 9999px; display: grid; place-items: center; font-size: var(--fs-2); line-height: 1; position: relative; }
 .inicio-bot { position: absolute; right: -3px; bottom: -3px; width: 21px; height: 21px; border-radius: 9999px; background: var(--card);
@@ -614,16 +614,12 @@
 .inline-amount-size input { grid-area: 1 / 1; width: 100%; min-width: 0; height: 1lh; margin: 0; padding: 0 3px 0 0; border: 0; outline: none;
   background: transparent; font: inherit; color: inherit; }
 
-.inicio-tx .m { transition: transform .18s cubic-bezier(.2, .8, .2, 1); }
 .inicio-delete { position: absolute; right: 8px; top: 50%; margin-top: -18px;
   opacity: 0; transform: scale(.85); pointer-events: none; transition: opacity .16s, transform .16s, color .15s, background .15s; }
 @media (hover: hover) {
   .inicio-tx.is-editable:hover .inicio-delete { opacity: 1; transform: none; pointer-events: auto; }
-  .inicio-tx.is-editable:hover > .m { transform: translateX(-32px); }
 }
 .inicio-tx.is-editing .inicio-delete, .inicio-delete:focus-visible { opacity: 1; transform: none; pointer-events: auto; }
-.inicio-tx.is-editing { padding-right: 50px; }
-.inicio-tx.is-editing > .m { transform: none !important; }
 
 @keyframes inicio-row-out {
   from { max-height: 64px; }
