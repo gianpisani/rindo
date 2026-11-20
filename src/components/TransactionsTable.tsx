@@ -518,10 +518,10 @@ interface TransactionsTableProps {
   transactions: Transaction[];
   onEdit: (transaction: Transaction) => void;
   onDelete: (id: string) => void;
-  onUpdateSilent: (id: string, updates: Partial<Transaction>) => Promise<void>;
-  onDeleteMultiple: (ids: string[]) => Promise<void>;
-  onUpdateMultiple: (ids: string[], updates: Partial<Pick<Transaction, "category_name" | "type">>) => Promise<void>;
-  onDuplicate: (ids: string[]) => Promise<void>;
+  onUpdateSilent: (id: string, updates: Partial<Transaction>) => void;
+  onDeleteMultiple: (ids: string[]) => void;
+  onUpdateMultiple: (ids: string[], updates: Partial<Pick<Transaction, "category_name" | "type">>) => void;
+  onDuplicate: (ids: string[]) => void;
   categories: Array<{ id?: string; name: string; type: string; color?: string | null; icon?: string | null }>;
   // Los filtros viven en la página (los edita TransactionsToolbar).
   searchValue: string;
@@ -621,9 +621,9 @@ export function TransactionsTable({
     setPageIndex(0);
   }, [pageSize]);
 
-  const handleInlineUpdate = useCallback(async (id: string, field: keyof Transaction, value: unknown) => {
+  const handleInlineUpdate = useCallback((id: string, field: keyof Transaction, value: unknown) => {
     if (id.startsWith("pending-")) return;
-    await onUpdateSilent(id, { [field]: value });
+    onUpdateSilent(id, { [field]: value });
   }, [onUpdateSilent]);
 
   // Cambiar la categoría es el mismo selector que en el inicio, y optimista:
@@ -1047,14 +1047,14 @@ export function TransactionsTable({
   })();
 
   // ── Batch handlers: aplican a lo seleccionado y limpian la selección ──────
-  const runBatch = async (action: Promise<void>) => {
-    await action;
+  const runBatch = (action: () => void) => {
+    action();
     setRowSelection({});
   };
 
   const handleBatchTypeChange = (type: Transaction["type"]) => {
     const matchingCategory = categories.find(c => c.type === type);
-    runBatch(onUpdateMultiple(selectedIds, { type, category_name: matchingCategory?.name || "Sin categoría" }));
+    runBatch(() => onUpdateMultiple(selectedIds, { type, category_name: matchingCategory?.name || "Sin categoría" }));
   };
 
   // ── Panel drag handlers ──────────────────────────────────────────────────
@@ -1337,7 +1337,7 @@ export function TransactionsTable({
                     {categories
                       .filter(c => c.name && c.name.trim().length > 0)
                       .map((cat) => (
-                        <DropdownMenuItem key={cat.name + cat.type} onClick={() => runBatch(onUpdateMultiple(selectedIds, { category_name: cat.name }))}>
+                        <DropdownMenuItem key={cat.name + cat.type} onClick={() => runBatch(() => onUpdateMultiple(selectedIds, { category_name: cat.name }))}>
                           <span className="mr-2">{cat.icon || getCategoryIcon(cat.name)}</span>
                           {cat.name}
                         </DropdownMenuItem>
@@ -1365,7 +1365,7 @@ export function TransactionsTable({
                 </DropdownMenu>
 
                 <button
-                  onClick={() => runBatch(onDuplicate(selectedIds))}
+                  onClick={() => runBatch(() => onDuplicate(selectedIds))}
                   className="w-full flex items-center gap-2 px-2 py-1.5 rounded-card text-sm transition-colors text-left"
                 >
                   <Copy className="h-3.5 w-3.5 text-muted-foreground" />
@@ -1375,7 +1375,7 @@ export function TransactionsTable({
                 <div className="my-1 border-t" />
 
                 <button
-                  onClick={() => runBatch(onDeleteMultiple(selectedIds))}
+                  onClick={() => runBatch(() => onDeleteMultiple(selectedIds))}
                   className="w-full flex items-center gap-2 px-2 py-1.5 rounded-card text-sm hover:bg-destructive/10 text-destructive transition-colors text-left"
                 >
                   <Trash2 className="h-3.5 w-3.5" />
@@ -1564,14 +1564,13 @@ export function TransactionsTable({
         pending={addCategory.isPending}
         onSave={async (category) => {
           if (!categoryDraft) return;
-          // addCategory ya notifica el error; si lanza, el composer se queda abierto.
           await addCategory.mutateAsync({
             name: category.name,
             type: category.type,
             color: category.color,
             icon: category.icon,
           });
-          await handleInlineUpdate(categoryDraft.transactionId, "category_name", category.name);
+          handleInlineUpdate(categoryDraft.transactionId, "category_name", category.name);
         }}
       />
     </div>

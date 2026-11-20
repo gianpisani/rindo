@@ -32,7 +32,7 @@ interface Category {
 }
 
 export default function Categories() {
-  const { categories, hasCategoryContext, addCategory, updateCategory, deleteCategory } = useCategories();
+  const { categories, addCategory, updateCategory, deleteCategory } = useCategories();
 
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingCategory, setEditingCategory] = useState<Category | null>(null);
@@ -50,14 +50,11 @@ export default function Categories() {
     {} as Record<TransactionType, Category[]>
   );
 
-  // Sin contexto de categorías en el perfil, descripción y "en uso" no se mandan.
   const handleSave = async (values: CategoryValues) => {
-    const { description, is_active, ...base } = values;
-    const payload = hasCategoryContext ? { ...base, description, is_active } : base;
     if (editingCategory) {
-      await updateCategory.mutateAsync({ id: editingCategory.id, ...payload });
+      await updateCategory.mutateAsync({ id: editingCategory.id, ...values });
     } else {
-      await addCategory.mutateAsync(payload);
+      await addCategory.mutateAsync(values);
     }
     setEditingCategory(null);
   };
@@ -75,8 +72,8 @@ export default function Categories() {
 
   const handleDelete = (id: string) => setConfirmDelete({ open: true, id });
 
-  const confirmDeleteAction = async () => {
-    if (confirmDelete.id) await deleteCategory.mutateAsync(confirmDelete.id);
+  const confirmDeleteAction = () => {
+    if (confirmDelete.id) deleteCategory.mutate(confirmDelete.id);
   };
 
   // Crear vive al final de cada grupo, discreto: abre con el tipo del grupo, que se puede cambiar.
@@ -153,7 +150,7 @@ export default function Categories() {
         }}
         category={editingCategory}
         initialType={newType}
-        withContext={hasCategoryContext}
+        withContext
         pending={addCategory.isPending || updateCategory.isPending}
         onSave={handleSave}
       />

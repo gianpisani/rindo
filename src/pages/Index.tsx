@@ -1,6 +1,7 @@
 import { useState, useMemo, useRef, useEffect, type CSSProperties, type TouchEvent } from "react";
 import Layout from "@/components/Layout";
-import { byNewest, useTransactions, type Transaction } from "@/hooks/useTransactions";
+import { useTransactions, type Transaction } from "@/hooks/useTransactions";
+import { byNewest } from "@/lib/tx-order";
 import { useLiveRows } from "@/hooks/useLiveRows";
 import { useInlineEdit } from "@/hooks/useInlineEdit";
 import { TxRow } from "@/components/TxRow";

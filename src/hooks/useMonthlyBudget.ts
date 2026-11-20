@@ -1,13 +1,13 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
+import { requireUserId } from "@/integrations/supabase/session";
 import { toast } from "sonner";
+import { optimistic } from "./optimistic";
 
 export interface MonthlyBudget {
   id: string;
   user_id: string;
-  /** Legacy/derivado: presupuesto de gasto manual. Fallback cuando no hay meta. */
   total_budget: number;
-  /** La meta de ahorro mensual — el input sagrado. */
   savings_goal: number | null;
   created_at: string;
   updated_at: string;
@@ -15,17 +15,15 @@ export interface MonthlyBudget {
 
 export type MonthlyBudgetPatch = Partial<Pick<MonthlyBudget, "total_budget" | "savings_goal">>;
 
+const BUDGET_KEY = ["monthly_budget"];
+
 export function useMonthlyBudget() {
   const queryClient = useQueryClient();
 
   const { data: budget, isLoading } = useQuery({
-    queryKey: ["monthly_budget"],
+    queryKey: BUDGET_KEY,
     queryFn: async () => {
-      const { data, error } = await supabase
-        .from("monthly_budgets")
-        .select("*")
-        .maybeSingle();
-
+      const { data, error } = await supabase.from("monthly_budgets").select("*").maybeSingle();
       if (error) throw error;
       return data as MonthlyBudget | null;
     },
@@ -33,36 +31,16 @@ export function useMonthlyBudget() {
 
   const upsertBudget = useMutation({
     mutationFn: async (patch: MonthlyBudgetPatch) => {
-      const { data: userData } = await supabase.auth.getUser();
-      if (!userData.user) throw new Error("No user found");
-
-      const { data, error } = await supabase
+      const userId = await requireUserId();
+      const { error } = await supabase
         .from("monthly_budgets")
-        .upsert(
-          {
-            user_id: userData.user.id,
-            ...patch,
-          },
-          { onConflict: "user_id" }
-        )
-        .select()
-        .single();
-
+        .upsert({ user_id: userId, ...patch }, { onConflict: "user_id" });
       if (error) throw error;
-      return data;
     },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["monthly_budget"] });
-      toast.success("Guardado");
-    },
-    onError: (error: Error) => {
-      toast.error(error.message);
-    },
+    ...optimistic<MonthlyBudget | null, MonthlyBudgetPatch>(queryClient, BUDGET_KEY, (current, patch) =>
+      current ? { ...current, ...patch } : current),
+    onSuccess: () => toast.success("Guardado"),
   });
 
-  return {
-    budget,
-    isLoading,
-    upsertBudget,
-  };
+  return { budget, isLoading, upsertBudget };
 }

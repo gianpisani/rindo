@@ -1,6 +1,8 @@
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { queryOptions, useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
+import { requireUserId } from "@/integrations/supabase/session";
 import { toast } from "sonner";
+import { optimistic } from "./optimistic";
 
 export type NavPreferencesData = {
   sidebarOrder: string[];
@@ -18,13 +20,12 @@ export interface UserProfile {
   accent_color_2: string | null;
   onboarding_completed: boolean;
   nav_preferences: NavPreferencesData | null;
-  /** Día en que empieza el mes financiero (1 = calendario). */
   period_start_day: number;
   created_at: string;
   updated_at: string;
 }
 
-function resizeImage(file: File, maxSize: number): Promise<Blob> {
+function squareCropped(file: File, maxSize: number): Promise<Blob> {
   return new Promise((resolve, reject) => {
     const img = new Image();
     img.onload = () => {
@@ -33,7 +34,6 @@ function resizeImage(file: File, maxSize: number): Promise<Blob> {
       canvas.height = maxSize;
       const ctx = canvas.getContext("2d")!;
 
-      // Cover crop (center)
       const size = Math.min(img.width, img.height);
       const sx = (img.width - size) / 2;
       const sy = (img.height - size) / 2;
@@ -53,126 +53,67 @@ function resizeImage(file: File, maxSize: number): Promise<Blob> {
   });
 }
 
+type ProfilePatch = Partial<Omit<UserProfile, "id" | "user_id" | "created_at" | "updated_at">>;
+
+const PROFILE_KEY = ["user-profile"];
+const AVATAR_SIZE = 256;
+
+export const userProfileQuery = queryOptions({
+  queryKey: PROFILE_KEY,
+  queryFn: async () => {
+    const userId = await requireUserId();
+    const { data, error } = await supabase.from("user_profiles").select("*").eq("user_id", userId).single();
+    if (error) throw error;
+    return data as UserProfile;
+  },
+  staleTime: 1000 * 60 * 5,
+});
+
+async function updateOwnProfile(changes: ProfilePatch) {
+  const userId = await requireUserId();
+  const { error } = await supabase.from("user_profiles").update(changes).eq("user_id", userId);
+  if (error) throw error;
+  return userId;
+}
+
 export function useUserProfile() {
   const queryClient = useQueryClient();
-
-  const { data: profile, isLoading } = useQuery({
-    queryKey: ["user-profile"],
-    queryFn: async () => {
-      const { data: userData } = await supabase.auth.getUser();
-      if (!userData.user) throw new Error("No user found");
-
-      const { data, error } = await supabase
-        .from("user_profiles")
-        .select("*")
-        .eq("user_id", userData.user.id)
-        .single();
-
-      if (error) throw error;
-      return data as UserProfile;
-    },
-    staleTime: 1000 * 60 * 5,
-  });
+  const { data: profile, isLoading } = useQuery(userProfileQuery);
+  const refresh = () => queryClient.invalidateQueries({ queryKey: PROFILE_KEY });
 
   const updateProfile = useMutation({
-    mutationFn: async (
-      updates: Partial<
-        Omit<UserProfile, "id" | "user_id" | "created_at" | "updated_at">
-      >
-    ) => {
-      const { data: userData } = await supabase.auth.getUser();
-      if (!userData.user) throw new Error("No user found");
-
-      const { data, error } = await supabase
-        .from("user_profiles")
-        .update(updates)
-        .eq("user_id", userData.user.id)
-        .select()
-        .single();
-
-      if (error) throw error;
-      return data as UserProfile;
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["user-profile"] });
-    },
-    onError: (error: Error) => {
-      toast.error(error.message);
-    },
+    mutationFn: updateOwnProfile,
+    ...optimistic<UserProfile, ProfilePatch>(queryClient, PROFILE_KEY, (current, changes) => ({ ...current, ...changes })),
   });
 
   const uploadAvatar = useMutation({
     mutationFn: async (file: File) => {
-      const { data: userData } = await supabase.auth.getUser();
-      if (!userData.user) throw new Error("No user found");
-
-      const resized = await resizeImage(file, 256);
-      const filePath = `${userData.user.id}/avatar.png`;
-
-      const { error: uploadError } = await supabase.storage
+      const userId = await requireUserId();
+      const avatarPath = `${userId}/avatar.png`;
+      const { error } = await supabase.storage
         .from("avatars")
-        .upload(filePath, resized, {
-          upsert: true,
-          contentType: "image/png",
-        });
-
-      if (uploadError) throw uploadError;
-
-      const { error: updateError } = await supabase
-        .from("user_profiles")
-        .update({ avatar_path: filePath })
-        .eq("user_id", userData.user.id);
-
-      if (updateError) throw updateError;
-
-      return filePath;
+        .upload(avatarPath, await squareCropped(file, AVATAR_SIZE), { upsert: true, contentType: "image/png" });
+      if (error) throw error;
+      await updateOwnProfile({ avatar_path: avatarPath });
     },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["user-profile"] });
-      toast.success("Avatar actualizado");
-    },
-    onError: (error: Error) => {
-      toast.error(`Error al subir avatar: ${error.message}`);
-    },
+    onSuccess: () => toast.success("Avatar actualizado"),
+    onSettled: refresh,
   });
 
   const removeAvatar = useMutation({
     mutationFn: async () => {
-      const { data: userData } = await supabase.auth.getUser();
-      if (!userData.user) throw new Error("No user found");
-
       if (profile?.avatar_path) {
-        await supabase.storage.from("avatars").remove([profile.avatar_path]);
+        const { error } = await supabase.storage.from("avatars").remove([profile.avatar_path]);
+        if (error) throw error;
       }
-
-      const { error } = await supabase
-        .from("user_profiles")
-        .update({ avatar_path: null })
-        .eq("user_id", userData.user.id);
-
-      if (error) throw error;
+      await updateOwnProfile({ avatar_path: null });
     },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["user-profile"] });
-    },
-    onError: (error: Error) => {
-      toast.error(`Error al eliminar avatar: ${error.message}`);
-    },
+    onSettled: refresh,
   });
 
   const avatarUrl = profile?.avatar_path
-    ? supabase.storage
-        .from("avatars")
-        .getPublicUrl(profile.avatar_path).data.publicUrl +
-      `?t=${profile.updated_at}`
+    ? `${supabase.storage.from("avatars").getPublicUrl(profile.avatar_path).data.publicUrl}?t=${profile.updated_at}`
     : null;
 
-  return {
-    profile,
-    isLoading,
-    updateProfile,
-    uploadAvatar,
-    removeAvatar,
-    avatarUrl,
-  };
+  return { profile, isLoading, updateProfile, uploadAvatar, removeAvatar, avatarUrl };
 }

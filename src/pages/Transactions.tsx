@@ -165,9 +165,7 @@ export default function Transactions() {
     futureTransactions,
     allTransactions,
     updateTransaction,
-    updateTransactionSilent,
-    deleteTransaction,
-    deleteMultipleTransactions,
+    deleteTransactions,
     updateMultipleTransactions,
     duplicateTransactions,
   } = useTransactions();
@@ -307,17 +305,18 @@ export default function Transactions() {
     changeType(WHISPER_TYPES[(index + (backwards ? WHISPER_TYPES.length - 1 : 1)) % WHISPER_TYPES.length].type);
   };
 
-  const createCategory = async () => {
+  const createCategory = () => {
     if (!newCategory || !newCategory.name.trim()) return;
     const name = newCategory.name.trim();
-    try {
-      await addCategory.mutateAsync({ name, type: formData.type, color: newCategory.color, icon: newCategory.icon || "🏷️" });
-    } catch {
-      // addCategory ya notifica el error; quedarse en el form.
-      return;
-    }
-    setNewCategory(null);
-    await saveEdit({ category_name: name });
+    addCategory.mutate(
+      { name, type: formData.type, color: newCategory.color, icon: newCategory.icon || "🏷️" },
+      {
+        onSuccess: () => {
+          setNewCategory(null);
+          saveEdit({ category_name: name });
+        },
+      },
+    );
   };
 
   // Lo que alimenta los paneles de deudas: lo pendiente en cada dirección, y
@@ -337,7 +336,7 @@ export default function Transactions() {
 
   /** Guarda el movimiento. `overrides` permite guardar al tocar una categoría,
    *  y `split` abre el reparto del gasto compartido después de guardar. */
-  const saveEdit = async (overrides: Partial<typeof formData> = {}, { split = false } = {}) => {
+  const saveEdit = (overrides: Partial<typeof formData> = {}, { split = false } = {}) => {
     if (!editingTransaction || updateTransaction.isPending) return;
     const data = { ...formData, ...overrides };
     if (!data.date || !Number.isFinite(new Date(data.date).getTime())) {
@@ -355,7 +354,7 @@ export default function Transactions() {
     const newDetail = detailText.trim();
     const detailChanged = !!newDetail && newDetail !== getCleanDetail(editingTransaction.detail);
 
-    await updateTransaction.mutateAsync({
+    updateTransaction.mutate({
       id: editingTransaction.id,
       category_name: data.category_name,
       type: data.type,
@@ -380,42 +379,42 @@ export default function Transactions() {
     saveEdit();
   };
 
-  const handleSharedExpenseConfirm = async (debtors: Array<{ name: string; amount: number }>) => {
+  const handleSharedExpenseConfirm = (debtors: Array<{ name: string; amount: number }>) => {
     if (!pendingTransaction) return;
-
-    try {
-      await addSharedExpenses.mutateAsync(
-        debtors.map((d) => ({
-          transaction_id: pendingTransaction.id,
-          debtor_name: d.name,
-          amount_owed: d.amount,
-          detail: null,
-        }))
-      );
-
-      toast.success(`Gasto compartido dividido entre ${debtors.length} persona${debtors.length > 1 ? "s" : ""}`);
-    } catch (error) {
-      console.error("Error guardando gastos compartidos:", error);
-    }
-
-    setPendingTransaction(null);
-    resetForm();
+    addSharedExpenses.mutate(
+      debtors.map((d) => ({
+        transaction_id: pendingTransaction.id,
+        debtor_name: d.name,
+        amount_owed: d.amount,
+        detail: null,
+      })),
+      {
+        onSuccess: () => {
+          toast.success(`Gasto compartido dividido entre ${debtors.length} persona${debtors.length > 1 ? "s" : ""}`);
+          resetForm();
+        },
+      },
+    );
   };
 
-  const handleMarkAsPaid = async () => {
+  const handleMarkAsPaid = () => {
     if (!confirmPaid) return;
-    await markAsPaid.mutateAsync({
-      sharedExpenseId: confirmPaid.id,
-      debtorName: confirmPaid.name,
-      amount: confirmPaid.amount,
-      transactionDetail: confirmPaid.detail,
-    });
-    // Actualizar el monto para que "Guardar cambios" no sobreescriba el monto reducido
-    const newAmount = effectiveAmount - confirmPaid.amount;
-    if (newAmount >= 0) {
-      setFormData((prev) => ({ ...prev, value: String(newAmount) }));
-    }
-    setConfirmPaid(null);
+    const paid = confirmPaid;
+    markAsPaid.mutate(
+      {
+        sharedExpenseId: paid.id,
+        debtorName: paid.name,
+        amount: paid.amount,
+        transactionDetail: paid.detail,
+      },
+      {
+        onSuccess: () => {
+          const reducedAmount = effectiveAmount - paid.amount;
+          if (reducedAmount >= 0) setFormData((prev) => ({ ...prev, value: String(reducedAmount) }));
+          setConfirmPaid(null);
+        },
+      },
+    );
   };
 
   const resetForm = () => {
@@ -470,7 +469,7 @@ export default function Transactions() {
     setDeleteId(id);
   };
 
-  const handleDeleteMultiple = async (ids: string[]) => {
+  const handleDeleteMultiple = (ids: string[]) => {
     armEditGuard();
     setDeleteIds(ids);
   };
@@ -800,18 +799,20 @@ export default function Transactions() {
                         blur={isPrivacyMode}
                         confirmLabel="Vincular seleccionadas"
                         pending={linkExistingTransactionToDebts.isPending}
-                        onConfirm={async () => {
-                          await linkExistingTransactionToDebts.mutateAsync({
-                            debts: debtsToLink.map((d) => ({
-                              sharedExpenseId: d.id,
-                              amount: d.amount,
-                              debtorName: d.debtorName,
-                              transactionDetail: d.transactionDetail,
-                            })),
-                            existingTransactionId: editingTransaction.id,
-                          });
-                          closeComposer();
-                        }}
+                        onConfirm={() =>
+                          linkExistingTransactionToDebts.mutate(
+                            {
+                              debts: debtsToLink.map((d) => ({
+                                sharedExpenseId: d.id,
+                                amount: d.amount,
+                                debtorName: d.debtorName,
+                                transactionDetail: d.transactionDetail,
+                              })),
+                              existingTransactionId: editingTransaction.id,
+                            },
+                            { onSuccess: closeComposer },
+                          )
+                        }
                       />
                     )}
 
@@ -845,10 +846,11 @@ export default function Transactions() {
                             const editRemaining = effectiveAmount - otherAssigned;
                             const editExceeds = editAmount > editRemaining;
                             const editValid = draft && editAmount > 0 && !editExceeds;
-                            const saveAmount = async () => {
-                              await updateSharedExpenseAmount.mutateAsync({ id: se.id, amount_owed: editAmount });
-                              setEditingDebtor(null);
-                            };
+                            const saveAmount = () =>
+                              updateSharedExpenseAmount.mutate(
+                                { id: se.id, amount_owed: editAmount },
+                                { onSuccess: () => setEditingDebtor(null) },
+                              );
 
                             return (
                               <div key={se.id} className="whisper-tx-row" data-paid={se.paid || undefined}>
@@ -990,15 +992,17 @@ export default function Transactions() {
                                   type="button"
                                   className="whisper-tx-mini primary"
                                   disabled={!isFormValid}
-                                  onClick={async () => {
-                                    await addSharedExpenses.mutateAsync([{
-                                      transaction_id: editingTransaction.id,
-                                      debtor_name: newDebtor.name.trim(),
-                                      amount_owed: newAmount,
-                                      detail: null,
-                                    }]);
-                                    setNewDebtor(null);
-                                  }}
+                                  onClick={() =>
+                                    addSharedExpenses.mutate(
+                                      [{
+                                        transaction_id: editingTransaction.id,
+                                        debtor_name: newDebtor.name.trim(),
+                                        amount_owed: newAmount,
+                                        detail: null,
+                                      }],
+                                      { onSuccess: () => setNewDebtor(null) },
+                                    )
+                                  }
                                 >
                                   <Check size={12} /> Agregar
                                 </button>
@@ -1043,13 +1047,15 @@ export default function Transactions() {
                         blur={isPrivacyMode}
                         confirmLabel="Saldar seleccionadas"
                         pending={settleDebtsIOwe.isPending}
-                        onConfirm={async () => {
-                          await settleDebtsIOwe.mutateAsync({
-                            debts: debtsIOweToSettle.map((d) => ({ sharedExpenseId: d.id })),
-                            existingTransactionId: editingTransaction.id,
-                          });
-                          closeComposer();
-                        }}
+                        onConfirm={() =>
+                          settleDebtsIOwe.mutate(
+                            {
+                              debts: debtsIOweToSettle.map((d) => ({ sharedExpenseId: d.id })),
+                              existingTransactionId: editingTransaction.id,
+                            },
+                            { onSuccess: closeComposer },
+                          )
+                        }
                       />
                     )}
 
@@ -1129,16 +1135,10 @@ export default function Transactions() {
           categories={categories}
           onEdit={handleEdit}
           onDelete={handleDelete}
-          onUpdateSilent={async (id, updates) => {
-            await updateTransactionSilent.mutateAsync({ id, ...updates });
-          }}
+          onUpdateSilent={(id, updates) => updateTransaction.mutate({ id, ...updates })}
           onDeleteMultiple={handleDeleteMultiple}
-          onUpdateMultiple={async (ids, updates) => {
-            await updateMultipleTransactions.mutateAsync({ ids, updates });
-          }}
-          onDuplicate={async (ids) => {
-            await duplicateTransactions.mutateAsync(ids);
-          }}
+          onUpdateMultiple={(ids, updates) => updateMultipleTransactions.mutate({ ids, updates })}
+          onDuplicate={(ids) => duplicateTransactions.mutate(ids)}
           searchValue={searchValue}
           onSearchChange={setSearchValue}
           typeFilter={typeFilter}
@@ -1170,7 +1170,7 @@ export default function Transactions() {
           armEditGuard();
           setDeleteId(null);
         }}
-        onConfirm={() => deleteId && deleteTransaction.mutateAsync(deleteId)}
+        onConfirm={() => deleteId && deleteTransactions.mutate([deleteId])}
         title="¿Eliminar transacción?"
         description="Esta acción no se puede deshacer."
         confirmText="Eliminar"
@@ -1206,7 +1206,7 @@ export default function Transactions() {
           armEditGuard();
           setDeleteIds([]);
         }}
-        onConfirm={() => deleteMultipleTransactions.mutateAsync(deleteIds)}
+        onConfirm={() => deleteTransactions.mutate(deleteIds)}
         title={`¿Eliminar ${deleteIds.length} transacciones?`}
         description="Esta acción eliminará las transacciones seleccionadas. Podrás deshacerlo desde el toast de confirmación."
         confirmText={`Eliminar ${deleteIds.length}`}

@@ -21,8 +21,7 @@ import { useSoundFX } from "@/hooks/useSoundFX";
 import { useSoundPreferences } from "@/hooks/useSoundPreferences";
 import { usePushNotifications } from "@/hooks/usePushNotifications";
 import { useUserProfile } from "@/hooks/useUserProfile";
-import { supabase } from "@/integrations/supabase/client";
-import { toast } from "sonner";
+import { useSignOut } from "@/hooks/useAccount";
 import { getMainRoutes, getToolRoutes, type RouteConfig } from "@/lib/routes-config";
 import {
   Drawer,
@@ -57,6 +56,7 @@ export function MobileBottomBar() {
     unsubscribe: pushUnsubscribe,
   } = usePushNotifications();
   const { profile, avatarUrl } = useUserProfile();
+  const signOut = useSignOut();
   const [drawerOpen, setDrawerOpen] = useState(false);
 
   const displayName = profile?.nickname || profile?.full_name || null;
@@ -253,10 +253,9 @@ export function MobileBottomBar() {
               <Button
                 variant="ghost"
                 size="icon"
-                onClick={async () => {
+                onClick={() => {
                   setDrawerOpen(false);
-                  await supabase.auth.signOut();
-                  toast.success("Sesión cerrada exitosamente");
+                  signOut.mutate();
                 }}
                 aria-label="Cerrar sesión"
                 className="size-11 shrink-0 active:bg-destructive/10"

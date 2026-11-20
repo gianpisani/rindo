@@ -1,18 +1,19 @@
-import { useQuery, useMutation, useMutationState, useQueryClient } from "@tanstack/react-query";
+import { queryOptions, useQuery, useMutation, useMutationState, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
+import { requireUserId } from "@/integrations/supabase/session";
 import { toast } from "sonner";
-import { useCallback, useMemo, useRef } from "react";
+import { useMemo, useRef } from "react";
 import type { TransactionType } from "@/lib/ledger";
+import { byNewest } from "@/lib/tx-order";
 import { categorizeSavedTransaction } from "@/lib/ai-categorizer";
-import { ANALYZING_CATEGORY, shouldCategorize, withManualCategorySource } from "@/lib/auto-category-policy";
-
-import { useCategories } from "./useCategories";
+import { ANALYZING_CATEGORY, UNCATEGORIZED, shouldCategorize, withManualCategorySource } from "@/lib/auto-category-policy";
+import { optimistic } from "./optimistic";
 
 export interface Transaction {
   category_source?: string | null;
   isPending?: boolean;
   id: string;
-  date: string; // Now TIMESTAMPTZ in Chile timezone
+  date: string;
   detail: string | null;
   category_name: string;
   type: TransactionType;
@@ -25,388 +26,228 @@ export interface Transaction {
   bank_description: string | null;
 }
 
-/**
- * Lo que hace falta para crear una transacción: las columnas que el usuario
- * siempre elige, más las opcionales (tarjeta, cuota, tag de reembolso) que
- * cada formulario llena solo si aplican.
- */
-export type NewTransaction = Omit<
-  Transaction,
-  | "id"
-  | "user_id"
-  | "created_at"
-  | "card_id"
-  | "installment_id"
-  | "reimbursement_for_category"
-  | "bank_description"
-  | "isPending"
-  | "category_source"
-> &
-  Partial<
-    Pick<
-      Transaction,
-      "card_id" | "installment_id" | "reimbursement_for_category" | "bank_description"
-    >
-  >;
+type OptionalColumns = "card_id" | "installment_id" | "reimbursement_for_category" | "bank_description";
 
-// Techo de filas por request de PostgREST. Pedimos bloques de este tamaño
-// hasta agotar la tabla; si el proyecto sube su límite, esto sigue sirviendo.
-const TRANSACTIONS_PAGE_SIZE = 1000;
+export type NewTransaction =
+  Omit<Transaction, "id" | "user_id" | "created_at" | "isPending" | "category_source" | OptionalColumns> &
+  Partial<Pick<Transaction, OptionalColumns>>;
 
-// Same minute is common (bank syncs, quick entries): creation order breaks the tie.
-export const byNewest = (a: Pick<Transaction, "date" | "created_at">, b: Pick<Transaction, "date" | "created_at">) =>
-  new Date(b.date).getTime() - new Date(a.date).getTime() ||
-  new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
+export type TransactionPatch = Partial<Transaction> & { id: string };
+
+const TRANSACTIONS_KEY = ["transactions"];
+const POSTGREST_MAX_ROWS = 1000;
+
+async function fetchAllTransactions() {
+  const all: Transaction[] = [];
+  for (let from = 0; ; from += POSTGREST_MAX_ROWS) {
+    const { data, error } = await supabase
+      .from("transactions")
+      .select("*")
+      .order("date", { ascending: false })
+      .order("created_at", { ascending: false })
+      .range(from, from + POSTGREST_MAX_ROWS - 1);
+    if (error) throw error;
+    all.push(...(data as Transaction[]));
+    if (data.length < POSTGREST_MAX_ROWS) return all;
+  }
+}
+
+export const transactionsQuery = queryOptions({
+  queryKey: TRANSACTIONS_KEY,
+  queryFn: fetchAllTransactions,
+  refetchOnWindowFocus: true,
+  staleTime: 0,
+});
+
+const endOfToday = () => {
+  const today = new Date();
+  today.setHours(23, 59, 59, 999);
+  return today;
+};
+
+const restorable = (t: Transaction, userId: string) => ({
+  date: t.date,
+  detail: t.detail,
+  category_name: t.category_name,
+  type: t.type,
+  amount: t.amount,
+  card_id: t.card_id,
+  installment_id: t.installment_id,
+  reimbursement_for_category: t.reimbursement_for_category,
+  bank_description: t.bank_description,
+  category_source: t.category_source ?? null,
+  user_id: userId,
+});
+
+const plural = (count: number, one: string, many: string) => (count === 1 ? one : `${count} ${many}`);
 
 export function useTransactions() {
   const queryClient = useQueryClient();
-  const { hasCategoryContext } = useCategories();
   const lastDeletedRef = useRef<Transaction[]>([]);
 
-  // Fetch ALL transactions (including future)
-  const { data: savedTransactions = [], isLoading } = useQuery({
-    queryKey: ["transactions"],
-    queryFn: async () => {
-      console.log("🔍 Fetching transactions...");
-      // Sin paginar, el servidor corta la respuesta en su techo de filas sin
-      // avisar: se perdía el historial más antiguo y los filtros por fecha
-      // devolvían vacío, porque corren en memoria sobre lo que ya llegó.
-      const all: Transaction[] = [];
-      for (let from = 0; ; from += TRANSACTIONS_PAGE_SIZE) {
-        const { data, error } = await supabase
-          .from("transactions")
-          .select("*")
-          .order("date", { ascending: false })
-          .order("created_at", { ascending: false })
-          .range(from, from + TRANSACTIONS_PAGE_SIZE - 1);
+  const { data: savedTransactions = [], isLoading } = useQuery(transactionsQuery);
 
-        if (error) throw error;
-        all.push(...((data ?? []) as Transaction[]));
-        // Una página corta es la última: el total no se sabe de antemano.
-        if (!data || data.length < TRANSACTIONS_PAGE_SIZE) break;
-      }
-      console.log("📦 Transactions fetched:", all.length);
-      return all;
-    },
-    refetchOnWindowFocus: true,
-    staleTime: 0,
-  });
-
-  // Pending mutations are shared across every mounted view, and disappear on
-  // success/error. Refetching cannot erase another save that is still pending.
   const pendingTransactions = useMutationState({
-    filters: { mutationKey: ['add-transaction'], status: 'pending' },
-    select: mutation => {
+    filters: { mutationKey: ["add-transaction"], status: "pending" },
+    select: (mutation) => {
       const draft = mutation.state.variables as NewTransaction;
       return {
         card_id: null, installment_id: null, reimbursement_for_category: null, bank_description: null,
-        ...draft, id: `pending-${mutation.mutationId}`, user_id: '',
+        ...draft, id: `pending-${mutation.mutationId}`, user_id: "",
         created_at: new Date(mutation.state.submittedAt).toISOString(), isPending: true,
         category_name: draft.category_name || ANALYZING_CATEGORY,
       } as Transaction;
     },
   });
-  const allTransactions = useMemo(() => [...pendingTransactions, ...savedTransactions]
-    .sort(byNewest), [savedTransactions, pendingTransactions]);
 
-  // Split into past/present and future transactions
-  const today = new Date();
-  today.setHours(23, 59, 59, 999); // End of today
-  
-  const transactions = allTransactions.filter(t => new Date(t.date) <= today);
-  const futureTransactions = allTransactions.filter(t => new Date(t.date) > today);
+  const allTransactions = useMemo(
+    () => [...pendingTransactions, ...savedTransactions].sort(byNewest),
+    [savedTransactions, pendingTransactions],
+  );
+  const today = endOfToday();
+  const transactions = allTransactions.filter((t) => new Date(t.date) <= today);
+  const futureTransactions = allTransactions.filter((t) => new Date(t.date) > today);
+
+  const patchList = (list: Transaction[], ids: string[], changes: Partial<Transaction>) =>
+    list.map((t) => (ids.includes(t.id) ? { ...t, ...changes } : t));
+
+  const categorizeInBackground = async (transaction: Transaction) => {
+    const toastId = `categorize-${transaction.id}`;
+    try {
+      const result = await categorizeSavedTransaction(transaction.id);
+      if (!result.applied) return;
+      queryClient.setQueryData<Transaction[]>(TRANSACTIONS_KEY, (previous) => previous?.map((tx) =>
+        tx.id === transaction.id && tx.category_name === ANALYZING_CATEGORY && tx.detail === transaction.detail && tx.type === transaction.type
+          ? { ...tx, category_name: result.category } : tx));
+      if (result.decision?.status === "unavailable" || result.decision?.status === "skipped") {
+        toast.warning("Guardado. No pudimos asignar una categoría.", { id: toastId, description: "Puedes elegirla en el movimiento.", duration: 4500 });
+      }
+    } catch {
+      const { data, error } = await releaseAnalyzingCategory(transaction);
+      if (!error && !data?.length) toast.dismiss(toastId);
+      else toast.warning("Movimiento guardado. No pudimos categorizarlo.", { id: toastId, description: "Puedes elegir una categoría manualmente.", duration: 4500 });
+    } finally {
+      queryClient.invalidateQueries({ queryKey: TRANSACTIONS_KEY });
+    }
+  };
 
   const addTransaction = useMutation({
-    mutationKey: ['add-transaction'],
+    mutationKey: ["add-transaction"],
     mutationFn: async (transaction: NewTransaction) => {
-      const { data: userData } = await supabase.auth.getUser();
-      if (!userData.user) throw new Error("No user found");
-
+      const userId = await requireUserId();
       const { data, error } = await supabase
         .from("transactions")
         .insert({
-          ...withManualCategorySource(transaction, hasCategoryContext),
-          category_name: shouldCategorize(transaction) ? ANALYZING_CATEGORY : transaction.category_name || 'Sin categoría',
-          user_id: userData.user.id,
+          ...withManualCategorySource(transaction),
+          category_name: shouldCategorize(transaction) ? ANALYZING_CATEGORY : transaction.category_name || UNCATEGORIZED,
+          user_id: userId,
         })
         .select()
         .single();
-
       if (error) throw error;
       return data as Transaction;
     },
     onSuccess: (transaction) => {
-      queryClient.setQueryData<Transaction[]>(['transactions'], previous =>
-        [transaction, ...(previous ?? []).filter(tx => tx.id !== transaction.id)]);
-      queryClient.invalidateQueries({ queryKey: ["transactions"] });
+      queryClient.setQueryData<Transaction[]>(TRANSACTIONS_KEY, (previous) =>
+        [transaction, ...(previous ?? []).filter((tx) => tx.id !== transaction.id)]);
+      queryClient.invalidateQueries({ queryKey: TRANSACTIONS_KEY });
       toast.success("Movimiento guardado", { duration: 1800 });
-      if (transaction.category_name !== ANALYZING_CATEGORY) {
-        return;
-      }
-      const toastId = `categorize-${transaction.id}`;
-      // Keep saving instant; this one background path serves every creation form.
-      void (async () => {
-        try {
-          const result = await categorizeSavedTransaction(transaction.id);
-          if (!result.applied) return;
-          queryClient.setQueryData<Transaction[]>(['transactions'], previous => previous?.map(tx =>
-            tx.id === transaction.id && tx.category_name === ANALYZING_CATEGORY && tx.detail === transaction.detail && tx.type === transaction.type
-              ? { ...tx, category_name: result.category } : tx));
-          if (result.decision?.status === 'unavailable' || result.decision?.status === 'skipped') {
-            toast.warning("Guardado. No pudimos asignar una categoría.", { id: toastId, description: "Puedes elegirla en el movimiento.", duration: 4500 });
-          }
-        } catch {
-          // Only clear our own pending state; never overwrite a concurrent edit.
-          let cleanup = supabase.from('transactions').update({ category_name: 'Sin categoría' })
-            .eq('id', transaction.id).eq('user_id', transaction.user_id)
-            .eq('category_name', ANALYZING_CATEGORY).eq('type', transaction.type);
-          cleanup = transaction.detail === null ? cleanup.is('detail', null) : cleanup.eq('detail', transaction.detail);
-          let changedWhileWaiting = false;
-          try {
-            const { data, error } = await cleanup.select('id');
-            changedWhileWaiting = !error && !data?.length;
-          } catch { /* A network failure must still settle the loading notification. */ }
-          if (changedWhileWaiting) toast.dismiss(toastId);
-          else toast.warning("Movimiento guardado. No pudimos categorizarlo.", { id: toastId, description: "Puedes elegir una categoría manualmente.", duration: 4500 });
-        } finally {
-          queryClient.invalidateQueries({ queryKey: ["transactions"] });
-        }
-      })();
-    },
-    onError: (error: Error) => {
-      toast.error(error.message, { id: 'transaction-save-error' });
+      if (transaction.category_name === ANALYZING_CATEGORY) void categorizeInBackground(transaction);
     },
   });
 
   const updateTransaction = useMutation({
-    mutationFn: async ({
-      id,
-      ...transaction
-    }: Partial<Transaction> & { id: string }) => {
-      const { data, error } = await supabase
-        .from("transactions")
-        .update(withManualCategorySource(transaction, hasCategoryContext))
-        .eq("id", id)
-        .select()
-        .single();
-
-      if (error) throw error;
-      return data;
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["transactions"] });
-    },
-  });
-
-  // Silent update (no toast) for inline editing
-  const updateTransactionSilent = useMutation({
-    mutationFn: async ({
-      id,
-      ...transaction
-    }: Partial<Transaction> & { id: string }) => {
-      const { data, error } = await supabase
-        .from("transactions")
-        .update(withManualCategorySource(transaction, hasCategoryContext))
-        .eq("id", id)
-        .select()
-        .single();
-
-      if (error) throw error;
-      return data;
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["transactions"] });
-    },
-    onError: (error: Error) => {
-      toast.error(error.message);
-    },
-  });
-
-  const deleteTransaction = useMutation({
-    mutationFn: async (id: string) => {
-      const toDelete = allTransactions.find(t => t.id === id);
-      if (toDelete) lastDeletedRef.current = [toDelete];
-
-      const { error } = await supabase.from("transactions").delete().eq("id", id);
+    mutationFn: async ({ id, ...changes }: TransactionPatch) => {
+      const { error } = await supabase.from("transactions").update(withManualCategorySource(changes)).eq("id", id);
       if (error) throw error;
     },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["transactions"] });
-      toast.success("Transacción eliminada", {
-        action: {
-          label: "Deshacer",
-          onClick: () => undoDelete(),
-        },
-        duration: 8000,
-      });
-    },
+    ...optimistic<Transaction[], TransactionPatch>(queryClient, TRANSACTIONS_KEY, (list, { id, ...changes }) =>
+      patchList(list, [id], changes)),
   });
 
-  // Delete multiple transactions
-  const deleteMultipleTransactions = useMutation({
-    mutationFn: async (ids: string[]) => {
-      // Store for undo
-      const toDelete = transactions.filter(t => ids.includes(t.id));
-      lastDeletedRef.current = toDelete;
-
-      const { error } = await supabase
-        .from("transactions")
-        .delete()
-        .in("id", ids);
-      
-      if (error) throw error;
-      return ids.length;
-    },
-    onSuccess: (count) => {
-      queryClient.invalidateQueries({ queryKey: ["transactions"] });
-      toast.success(`${count} transacciones eliminadas`, {
-        action: {
-          label: "Deshacer",
-          onClick: () => undoDelete(),
-        },
-        duration: 8000,
-      });
-    },
-    onError: (error: Error) => {
-      toast.error(error.message);
-    },
-  });
-
-  // Update multiple transactions (batch category/type change)
   const updateMultipleTransactions = useMutation({
-    mutationFn: async ({
-      ids,
-      updates,
-    }: {
-      ids: string[];
-      updates: Partial<Pick<Transaction, "category_name" | "type">>;
-    }) => {
-      const { error } = await supabase
-        .from("transactions")
-        .update(withManualCategorySource(updates, hasCategoryContext))
-        .in("id", ids);
-
+    mutationFn: async ({ ids, updates }: { ids: string[]; updates: Partial<Pick<Transaction, "category_name" | "type">> }) => {
+      const { error } = await supabase.from("transactions").update(withManualCategorySource(updates)).in("id", ids);
       if (error) throw error;
       return ids.length;
     },
-    onSuccess: (count) => {
-      queryClient.invalidateQueries({ queryKey: ["transactions"] });
-      toast.success(`${count} transacciones actualizadas`);
+    ...optimistic<Transaction[], { ids: string[]; updates: Partial<Transaction> }>(queryClient, TRANSACTIONS_KEY, (list, { ids, updates }) =>
+      patchList(list, ids, updates)),
+    onSuccess: (count) => toast.success(`${plural(count, "Movimiento actualizado", "movimientos actualizados")}`),
+  });
+
+  const restoreDeleted = useMutation({
+    mutationFn: async () => {
+      const userId = await requireUserId();
+      const rows = lastDeletedRef.current.map((t) => restorable(t, userId));
+      const { error } = await supabase.from("transactions").insert(rows);
+      if (error) throw error;
+      lastDeletedRef.current = [];
+      return rows.length;
     },
-    onError: (error: Error) => {
-      toast.error(error.message);
+    onSuccess: (count) => toast.success(plural(count, "Movimiento restaurado", "movimientos restaurados")),
+    onSettled: () => queryClient.invalidateQueries({ queryKey: TRANSACTIONS_KEY }),
+  });
+
+  const removeFromList = optimistic<Transaction[], string[]>(queryClient, TRANSACTIONS_KEY, (list, ids) =>
+    list.filter((t) => !ids.includes(t.id)));
+
+  const deleteTransactions = useMutation({
+    mutationFn: async (ids: string[]) => {
+      const { error } = await supabase.from("transactions").delete().in("id", ids);
+      if (error) throw error;
+      return ids.length;
+    },
+    ...removeFromList,
+    onMutate: async (ids: string[]) => {
+      const snapshot = await removeFromList.onMutate(ids);
+      lastDeletedRef.current = (snapshot.previous ?? []).filter((t) => ids.includes(t.id));
+      return snapshot;
+    },
+    onSuccess: (count) => {
+      toast.success(plural(count, "Movimiento eliminado", "movimientos eliminados"), {
+        action: { label: "Deshacer", onClick: () => restoreDeleted.mutate() },
+        duration: 8000,
+      });
     },
   });
 
-  // Duplicate transactions
   const duplicateTransactions = useMutation({
     mutationFn: async (ids: string[]) => {
-      const { data: userData } = await supabase.auth.getUser();
-      if (!userData.user) throw new Error("No user found");
-
-      const toDuplicate = transactions.filter(t => ids.includes(t.id));
-      const newTransactions = toDuplicate.map(t => ({
+      const userId = await requireUserId();
+      const copies = allTransactions.filter((t) => ids.includes(t.id)).map((t) => ({
         date: t.date,
         detail: t.detail ? `${t.detail} (copia)` : "(copia)",
         category_name: t.category_name,
         type: t.type,
         amount: t.amount,
-        user_id: userData.user!.id,
+        user_id: userId,
       }));
-
-      const { error } = await supabase
-        .from("transactions")
-        .insert(newTransactions);
-
+      const { error } = await supabase.from("transactions").insert(copies);
       if (error) throw error;
-      return newTransactions.length;
+      return copies.length;
     },
-    onSuccess: (count) => {
-      queryClient.invalidateQueries({ queryKey: ["transactions"] });
-      toast.success(`${count} transacciones duplicadas`);
-    },
-    onError: (error: Error) => {
-      toast.error(error.message);
-    },
+    onSuccess: (count) => toast.success(plural(count, "Movimiento duplicado", "movimientos duplicados")),
+    onSettled: () => queryClient.invalidateQueries({ queryKey: TRANSACTIONS_KEY }),
   });
-
-  const deleteAllTransactions = useMutation({
-    mutationFn: async () => {
-      const { data: userData } = await supabase.auth.getUser();
-      if (!userData.user) throw new Error("No user found");
-
-      const { error } = await supabase
-        .from("transactions")
-        .delete()
-        .eq("user_id", userData.user.id);
-
-      if (error) throw error;
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["transactions"] });
-      toast.success("Todas las transacciones eliminadas");
-    },
-    onError: (error: Error) => {
-      toast.error(error.message);
-    },
-  });
-
-  // Undo last batch delete
-  const undoDelete = useCallback(async () => {
-    if (lastDeletedRef.current.length === 0) return;
-
-    try {
-      const { data: userData } = await supabase.auth.getUser();
-      if (!userData.user) throw new Error("No user found");
-
-      // Todo lo que el usuario ve del movimiento, no solo lo básico: si no,
-      // deshacer devolvía un reembolso sin su vínculo o una compra sin tarjeta.
-      const toRestore = lastDeletedRef.current.map(t => ({
-        date: t.date,
-        detail: t.detail,
-        category_name: t.category_name,
-        type: t.type,
-        amount: t.amount,
-        card_id: t.card_id,
-        installment_id: t.installment_id,
-        reimbursement_for_category: t.reimbursement_for_category,
-        bank_description: t.bank_description,
-        ...(hasCategoryContext && t.category_source ? { category_source: t.category_source } : {}),
-        user_id: userData.user!.id,
-      }));
-
-      const { error } = await supabase
-        .from("transactions")
-        .insert(toRestore);
-
-      if (error) throw error;
-
-      lastDeletedRef.current = [];
-      queryClient.invalidateQueries({ queryKey: ["transactions"] });
-      
-      toast.success(`Se han restaurado ${toRestore.length} transacciones`);
-    } catch (error: unknown) {
-      if (error instanceof Error) {
-        toast.error(`Error al restaurar transacciones: ${error.message}`);
-      } else {
-        toast.error("Error al restaurar transacciones: error desconocido");
-      }
-    }
-  }, [queryClient, hasCategoryContext]);
 
   return {
-    transactions,        // Only past/present (for balance, tables by default)
-    futureTransactions,  // Future installments (for projections)
-    allTransactions,     // Everything (if needed)
+    transactions,
+    futureTransactions,
+    allTransactions,
     isLoading,
     addTransaction,
     updateTransaction,
-    updateTransactionSilent,
-    deleteTransaction,
-    deleteMultipleTransactions,
     updateMultipleTransactions,
+    deleteTransactions,
     duplicateTransactions,
-    deleteAllTransactions,
-    undoDelete,
   };
+}
+
+function releaseAnalyzingCategory(transaction: Transaction) {
+  const stillAnalyzing = supabase.from("transactions").update({ category_name: UNCATEGORIZED })
+    .eq("id", transaction.id).eq("user_id", transaction.user_id)
+    .eq("category_name", ANALYZING_CATEGORY).eq("type", transaction.type);
+  const sameDetail = transaction.detail === null ? stillAnalyzing.is("detail", null) : stillAnalyzing.eq("detail", transaction.detail);
+  return sameDetail.select("id");
 }

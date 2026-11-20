@@ -1,7 +1,9 @@
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { queryOptions, useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
+import { requireUserId } from "@/integrations/supabase/session";
 import { toast } from "sonner";
 import type { TransactionType } from "@/lib/ledger";
+import { optimistic } from "./optimistic";
 
 export interface Category {
   id: string;
@@ -15,65 +17,50 @@ export interface Category {
   created_at: string;
 }
 
+type CategoryPatch = Partial<Category> & { id: string };
+
+const CATEGORIES_KEY = ["categories"];
+
+export const categoriesQuery = queryOptions({
+  queryKey: CATEGORIES_KEY,
+  queryFn: async () => {
+    const { data, error } = await supabase
+      .from("categories")
+      .select("*")
+      .order("type", { ascending: true })
+      .order("name", { ascending: true });
+    if (error) throw error;
+    return data as Category[];
+  },
+});
+
 export function useCategories() {
   const queryClient = useQueryClient();
-
-  const { data: categories = [], isLoading } = useQuery({
-    queryKey: ["categories"],
-    queryFn: async () => {
-      const { data, error } = await supabase
-        .from("categories")
-        .select("*")
-        .order("type", { ascending: true })
-        .order("name", { ascending: true });
-
-      if (error) throw error;
-      return data as Category[];
-    },
-  });
+  const { data: categories = [], isLoading } = useQuery(categoriesQuery);
 
   const addCategory = useMutation({
     mutationFn: async (category: Omit<Category, "id" | "user_id" | "created_at">) => {
-      const { data: userData } = await supabase.auth.getUser();
-      if (!userData.user) throw new Error("No user found");
-
+      const userId = await requireUserId();
       const { data, error } = await supabase
         .from("categories")
-        .insert({
-          ...category,
-          user_id: userData.user.id,
-        })
+        .insert({ ...category, user_id: userId })
         .select()
         .single();
-
       if (error) throw error;
       return data;
     },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["categories"] });
-      toast.success("Categoría agregada");
-    },
-    onError: (error: Error) => {
-      toast.error(error.message);
-    },
+    onSuccess: () => toast.success("Categoría agregada"),
+    onSettled: () => queryClient.invalidateQueries({ queryKey: CATEGORIES_KEY }),
   });
 
   const updateCategory = useMutation({
-    mutationFn: async ({ id, ...category }: Partial<Category> & { id: string }) => {
-      const { data, error } = await supabase
-        .from("categories")
-        .update(category)
-        .eq("id", id)
-        .select()
-        .single();
-
+    mutationFn: async ({ id, ...changes }: CategoryPatch) => {
+      const { error } = await supabase.from("categories").update(changes).eq("id", id);
       if (error) throw error;
-      return data;
     },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["categories"] });
-      toast.success("Categoría actualizada");
-    },
+    ...optimistic<Category[], CategoryPatch>(queryClient, CATEGORIES_KEY, (list, { id, ...changes }) =>
+      list.map((c) => (c.id === id ? { ...c, ...changes } : c))),
+    onSuccess: () => toast.success("Categoría actualizada"),
   });
 
   const deleteCategory = useMutation({
@@ -81,19 +68,9 @@ export function useCategories() {
       const { error } = await supabase.from("categories").delete().eq("id", id);
       if (error) throw error;
     },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["categories"] });
-      toast.success("Categoría eliminada");
-    },
+    ...optimistic<Category[], string>(queryClient, CATEGORIES_KEY, (list, id) => list.filter((c) => c.id !== id)),
+    onSuccess: () => toast.success("Categoría eliminada"),
   });
 
-  return {
-    categories,
-    activeCategories: categories.filter(category => category.is_active !== false),
-    hasCategoryContext: categories.some(category => category.is_active !== undefined),
-    isLoading,
-    addCategory,
-    updateCategory,
-    deleteCategory,
-  };
+  return { categories, isLoading, addCategory, updateCategory, deleteCategory };
 }

@@ -251,8 +251,6 @@ export function OnboardingModal({
   const [customHue, setCustomHue] = useState(240);
   const [selectedFont, setSelectedFont] = useState<string>("default");
   const [customRadius, setCustomRadius] = useState(DEFAULT_RADIUS);
-  const [saving, setSaving] = useState(false);
-  const [uploading, setUploading] = useState(false);
   const [localAvatarPreview, setLocalAvatarPreview] = useState<string | null>(null);
   const [initialized, setInitialized] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -303,16 +301,11 @@ export function OnboardingModal({
 
   // ── Handlers ──────────────────────────────────────────────────────
 
-  const handleFileSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
     setLocalAvatarPreview(URL.createObjectURL(file));
-    setUploading(true);
-    try {
-      await uploadAvatar.mutateAsync(file);
-    } finally {
-      setUploading(false);
-    }
+    uploadAvatar.mutate(file);
   };
 
   const handleSelectTheme = useCallback(
@@ -356,48 +349,44 @@ export function OnboardingModal({
     [selectedTheme, setTheme, customHue]
   );
 
-  const handleRemoveAvatar = async () => {
-    setUploading(true);
-    try {
-      await removeAvatar.mutateAsync();
-      setLocalAvatarPreview(null);
-    } finally {
-      setUploading(false);
-    }
+  const handleRemoveAvatar = () => {
+    removeAvatar.mutate(undefined, { onSuccess: () => setLocalAvatarPreview(null) });
   };
 
-  const handleSave = async () => {
-    setSaving(true);
-    try {
-      await updateProfile.mutateAsync({
+  const handleSave = () => {
+    updateProfile.mutate(
+      {
         full_name: fullName || null,
         nickname: nickname || null,
         accent_color_1: selectedTheme,
         accent_color_2: buildCustomSettings(),
         onboarding_completed: true,
-      });
-      const name = nickname || fullName;
-      if (mode === "onboarding" && name) {
-        toast.success(`Listo, bienvenido ${name}!`);
-      } else if (mode === "edit") {
-        toast.success("Perfil actualizado");
-      }
-      onOpenChange(false);
-    } finally {
-      setSaving(false);
-    }
+      },
+      {
+        onSuccess: () => {
+          const name = nickname || fullName;
+          if (mode === "onboarding" && name) toast.success(`Listo, bienvenido ${name}!`);
+          else if (mode === "edit") toast.success("Perfil actualizado");
+          onOpenChange(false);
+        },
+      },
+    );
   };
 
-  const handleSkipAll = async () => {
-    setSaving(true);
-    try {
-      await updateProfile.mutateAsync({ onboarding_completed: true });
-      clearThemeOverrides();
-      onOpenChange(false);
-    } finally {
-      setSaving(false);
-    }
+  const handleSkipAll = () => {
+    updateProfile.mutate(
+      { onboarding_completed: true },
+      {
+        onSuccess: () => {
+          clearThemeOverrides();
+          onOpenChange(false);
+        },
+      },
+    );
   };
+
+  const saving = updateProfile.isPending;
+  const uploading = uploadAvatar.isPending || removeAvatar.isPending;
 
   const isLastStep = step === STEPS.length - 1;
   const customPalette = generatePaletteFromHue(customHue, currentMode);

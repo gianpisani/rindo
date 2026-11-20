@@ -1,5 +1,4 @@
 import { useState } from "react";
-import { useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   CheckCircle2,
   XCircle,
@@ -20,39 +19,8 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { cn } from "@/lib/utils";
 import { getBankById } from "@/lib/banks";
 import { BankLogo } from "@/components/BankLogo";
-import { supabase } from "@/integrations/supabase/client";
-
-// ── Types ──────────────────────────────────────────────────────────────────────
-
-interface ImportedItem {
-  id?: string;
-  date: string;
-  description: string;
-  amount: number;
-  type: string;
-}
-
-interface SkippedItem {
-  date: string;
-  description: string;
-  amount: number;
-  type: string;
-  reason: string;
-  card?: string;
-}
-
-interface SyncLogEntry {
-  id: string;
-  bank: string;
-  trigger: "cron" | "manual";
-  sync_date: string;
-  imported: number;
-  skipped: number;
-  status: "success" | "failed" | "2fa_blocked" | "invalid_credentials";
-  error: string | null;
-  imported_items: ImportedItem[] | null;
-  skipped_items: SkippedItem[] | null;
-}
+import { useBankSyncContext } from "@/contexts/BankSyncContext";
+import { useBankSyncLog, type SyncLogEntry } from "@/hooks/useBankSyncLog";
 
 // ── Helpers ────────────────────────────────────────────────────────────────────
 
@@ -76,7 +44,7 @@ const SKIP_REASON_LABELS: Record<string, string> = {
 // ── Expanded entry detail ─────────────────────────────────────────────────────
 
 function EntryDetail({ entry }: { entry: SyncLogEntry }) {
-  const queryClient = useQueryClient();
+  const { importSkipped, deleteImported } = useBankSyncContext();
   const [selectedSkipped, setSelectedSkipped] = useState<Set<number>>(new Set());
   const [isImporting, setIsImporting] = useState(false);
   const [importedCount, setImportedCount] = useState(0);
@@ -107,14 +75,10 @@ function EntryDetail({ entry }: { entry: SyncLogEntry }) {
   async function handleImport() {
     if (!selectedSkipped.size) return;
     setIsImporting(true);
-    const movements = skippedItems.filter((_, i) => selectedSkipped.has(i));
-    const { data } = await supabase.functions.invoke("bank-sync", {
-      body: { action: "import-skipped", movements, bank: entry.bank },
-    });
-    if (data?.created) {
-      setImportedCount((c) => c + data.created);
+    const created = await importSkipped(skippedItems.filter((_, i) => selectedSkipped.has(i)), entry.bank);
+    if (created > 0) {
+      setImportedCount((c) => c + created);
       setSelectedSkipped(new Set());
-      queryClient.invalidateQueries({ queryKey: ["transactions"] });
     }
     setIsImporting(false);
   }
@@ -141,13 +105,10 @@ function EntryDetail({ entry }: { entry: SyncLogEntry }) {
       .filter((item, i) => selectedImported.has(i) && item.id)
       .map((item) => item.id as string);
     if (ids.length === 0) { setIsDeleting(false); return; }
-    const { data } = await supabase.functions.invoke("bank-sync", {
-      body: { action: "delete-imported", ids },
-    });
-    if (data?.deleted) {
-      setDeletedCount((c) => c + data.deleted);
+    const deleted = await deleteImported(ids);
+    if (deleted > 0) {
+      setDeletedCount((c) => c + deleted);
       setSelectedImported(new Set());
-      queryClient.invalidateQueries({ queryKey: ["transactions"] });
     }
     setIsDeleting(false);
   }
@@ -368,22 +329,7 @@ function LogEntryRow({ entry }: { entry: SyncLogEntry }) {
 // ── Main component ────────────────────────────────────────────────────────────
 
 export function BankSyncHistory() {
-  const { data: entries, isLoading } = useQuery<SyncLogEntry[]>({
-    queryKey: ["bank-sync-log"],
-    queryFn: async () => {
-      const { data: userData } = await supabase.auth.getUser();
-      if (!userData.user) return [];
-      const { data, error } = await supabase
-        .from("bank_sync_log")
-        .select("*")
-        .eq("user_id", userData.user.id)
-        .order("sync_date", { ascending: false })
-        .limit(10);
-      if (error) throw error;
-      return (data ?? []) as unknown as SyncLogEntry[];
-    },
-    staleTime: 30_000,
-  });
+  const { data: entries, isLoading } = useBankSyncLog();
 
   if (isLoading) {
     return (

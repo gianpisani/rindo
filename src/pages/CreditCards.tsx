@@ -13,7 +13,8 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { useCreditCards, type CreditCard, type CreditCardSummary } from "@/hooks/useCreditCards";
-import { installmentProgress, useInstallments, type InstallmentPurchase } from "@/hooks/useInstallments";
+import { useInstallments, type InstallmentPurchase } from "@/hooks/useInstallments";
+import { installmentProgress } from "@/lib/installments";
 import { useTransactions } from "@/hooks/useTransactions";
 import { billingCycle, cardStatus, cycleStatement, type CardStatus } from "@/lib/card-cycle";
 import { isCardPayment } from "@/lib/ledger";

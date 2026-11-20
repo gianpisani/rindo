@@ -1,9 +1,8 @@
 import { useState, useCallback, useMemo, useEffect, useRef } from "react";
-import { supabase } from "@/integrations/supabase/client";
+import { useSignIn, useSignUp } from "@/hooks/useAccount";
 import { Button } from "./ui/button";
 import { Input } from "./ui/input";
 import { Label } from "./ui/label";
-import { toast } from "sonner";
 import { CheckCircle } from "lucide-react";
 import { AnimatePresence, motion } from "framer-motion";
 import { RindoLogo } from "./RindoLogo";
@@ -288,34 +287,15 @@ export default function Auth() {
   const [isLogin, setIsLogin] = useState(true);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const [loading, setLoading] = useState(false);
   const [emailSent, setEmailSent] = useState(false);
-  const [animationStage, setAnimationStage] = useState(0);
+  const signIn = useSignIn();
+  const signUp = useSignUp();
+  const loading = signIn.isPending || signUp.isPending;
 
-  useEffect(() => {
-    if (emailSent) {
-      setAnimationStage(1);
-      setTimeout(() => setAnimationStage(2), 800);
-    }
-  }, [emailSent]);
-
-  const handleAuth = async (e: React.FormEvent) => {
+  const handleAuth = (e: React.FormEvent) => {
     e.preventDefault();
-    setLoading(true);
-    try {
-      if (isLogin) {
-        const { error } = await supabase.auth.signInWithPassword({ email, password });
-        if (error) throw error;
-        toast.success("Has iniciado sesión correctamente");
-      } else {
-        const { error } = await supabase.auth.signUp({ email, password });
-        if (error) throw error;
-        setEmailSent(true);
-      }
-    } catch (error) {
-      toast.error(error instanceof Error ? error.message : "Error desconocido");
-      setLoading(false);
-    }
+    if (isLogin) signIn.mutate({ email, password });
+    else signUp.mutate({ email, password }, { onSuccess: () => setEmailSent(true) });
   };
 
   const domainSuggestion = getDomainSuggestion(email);
@@ -540,9 +520,7 @@ export default function Auth() {
                     <Button
                       onClick={() => {
                         setEmailSent(false);
-                        setAnimationStage(0);
                         setIsLogin(true);
-                        setLoading(false);
                       }}
                       variant="ghost"
                       className="w-full h-11 border border-white/[0.08] text-white/30 hover:text-white/60 hover:border-white/15 bg-transparent"

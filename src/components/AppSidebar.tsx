@@ -9,9 +9,7 @@ import {
   CalendarRange,
 } from "lucide-react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
-import { useEffect, useState } from "react";
-import { supabase } from "@/integrations/supabase/client";
-import { toast } from "sonner";
+import { useSignOut, useUserEmail } from "@/hooks/useAccount";
 import { useSoundPreferences } from "@/hooks/useSoundPreferences";
 import { useSoundFX } from "@/hooks/useSoundFX";
 import { usePushNotifications } from "@/hooks/usePushNotifications";
@@ -59,23 +57,15 @@ export function AppSidebar() {
   const { openProfileEdit, openPeriodSettings } = useGlobalDrawers();
   const { startDay } = usePeriodConfig();
 
-  const [userEmail, setUserEmail] = useState<string | null>(null);
-
-  useEffect(() => {
-    supabase.auth.getUser().then(({ data }) => {
-      setUserEmail(data.user?.email ?? null);
-    });
-  }, []);
+  const userEmail = useUserEmail();
+  const signOut = useSignOut();
 
   const displayName = profile?.nickname || profile?.full_name || "Yo";
   const userInitials = (profile?.nickname || profile?.full_name || userEmail || "U")
     .slice(0, 2)
     .toUpperCase();
 
-  const handleLogout = async () => {
-    await supabase.auth.signOut();
-    toast.success("Sesión cerrada exitosamente");
-  };
+  const handleLogout = () => signOut.mutate();
 
   return (
     <Sidebar collapsible="icon">

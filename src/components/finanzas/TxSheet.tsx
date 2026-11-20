@@ -8,7 +8,7 @@ import { useIsMobile } from "@/hooks/use-mobile";
 import type { Transaction } from "@/hooks/useTransactions";
 import type { InlineEdit } from "@/hooks/useInlineEdit";
 import { usePrivacyMode } from "@/hooks/usePrivacyMode";
-import { byNewest } from "@/hooks/useTransactions";
+import { byNewest } from "@/lib/tx-order";
 import { cn } from "@/lib/utils";
 import { tint } from "@/lib/category-color";
 
