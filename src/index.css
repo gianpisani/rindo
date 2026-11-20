@@ -1049,6 +1049,10 @@
   .tj-inst-detail { padding: 4px 12px 12px 32px; }
 }
 
+::view-transition {
+  pointer-events: none;
+}
+
 ::view-transition-old(root),
 ::view-transition-new(root) {
   animation: none;
