@@ -16,7 +16,7 @@ jobs:
           persist-credentials: false
       - uses: actions/setup-node@v4
         with:
-          node-version: '24'
+          node-version-file: .nvmrc
       - name: Configure server secret and category context
         run: node scripts/prepare-jev-production.mjs
         env:
