@@ -4,8 +4,6 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClientProvider } from "@tanstack/react-query";
 import { queryClient } from "@/integrations/query-client";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
-import { supabase } from "@/integrations/supabase/client";
-import { Session } from "@supabase/supabase-js";
 import Index from "./pages/Index";
 import Overview from "./pages/Overview";
 import Transactions from "./pages/Transactions";
@@ -17,13 +15,10 @@ import NotFound from "./pages/NotFound";
 import Auth from "./components/auth/Auth";
 import { OnboardingModal } from "./components/settings/OnboardingModal";
 import { useCustomTheme } from "./hooks/useCustomTheme";
-import { useUserProfile, userProfileQuery } from "./hooks/useUserProfile";
-import { transactionsQuery } from "./hooks/useTransactions";
-import { categoriesQuery } from "./hooks/useCategories";
-import { categoryLimitsQuery } from "./hooks/useCategoryLimits";
+import { useUserProfile } from "./hooks/useUserProfile";
+import { useSession } from "./hooks/useSession";
 import { BankSyncProvider } from "./contexts/BankSyncContext";
 import { useUndoShortcuts } from "./hooks/useUndoShortcuts";
-import { clearEditHistory, loadEditHistory } from "./hooks/useEditHistory";
 
 function dismissSplash() {
   const splash = document.getElementById("splash");
@@ -33,86 +28,30 @@ function dismissSplash() {
   splash.addEventListener("transitionend", () => splash.remove(), { once: true });
 }
 
-function prefetchAppData() {
-  return Promise.allSettled([
-    queryClient.prefetchQuery(userProfileQuery),
-    queryClient.prefetchQuery(transactionsQuery),
-    queryClient.prefetchQuery(categoriesQuery),
-    queryClient.prefetchQuery(categoryLimitsQuery),
-  ]);
-}
-
 const App = () => {
-  const [session, setSession] = useState<Session | null>(null);
-  const [loading, setLoading] = useState(true);
+  const { session, loading } = useSession();
 
   useEffect(() => {
-    const minDelay = new Promise((r) => setTimeout(r, 1200));
+    if (!loading) dismissSplash();
+  }, [loading]);
 
-    supabase.auth.getSession().then(async ({ data: { session } }) => {
-      if (session) loadEditHistory(session.user.id);
-      setSession(session);
-
-      if (session) {
-        await Promise.all([minDelay, prefetchAppData()]);
-      } else {
-        await minDelay;
-      }
-
-      setLoading(false);
-      dismissSplash();
-    });
-
-    const {
-      data: { subscription },
-    } = supabase.auth.onAuthStateChange((event, session) => {
-      if (event === "SIGNED_OUT") {
-        queryClient.clear();
-        clearEditHistory();
-      }
-      if (session) loadEditHistory(session.user.id);
-      setSession(session);
-    });
-
-    return () => subscription.unsubscribe();
-  }, []);
-
-  if (loading) {
-    return null;
-  }
-
-  if (!session) {
-    return (
-      <QueryClientProvider client={queryClient}>
-        <TooltipProvider>
-          <div className="app-enter">
-            <Sonner />
-            <Auth />
-          </div>
-        </TooltipProvider>
-      </QueryClientProvider>
-    );
-  }
+  if (loading) return null;
 
   return (
     <QueryClientProvider client={queryClient}>
       <TooltipProvider>
         <div className="app-enter">
           <Sonner />
-          <AuthenticatedApp />
+          {session ? <AuthenticatedApp /> : <Auth />}
         </div>
       </TooltipProvider>
     </QueryClientProvider>
   );
 };
 
-function UndoShortcuts() {
-  useUndoShortcuts();
-  return null;
-}
-
 function AuthenticatedApp() {
   useCustomTheme();
+  useUndoShortcuts();
   const { profile, isLoading } = useUserProfile();
   const [onboardingOpen, setOnboardingOpen] = useState(false);
 
@@ -124,7 +63,6 @@ function AuthenticatedApp() {
 
   return (
     <BankSyncProvider>
-      <UndoShortcuts />
       <OnboardingModal
         open={onboardingOpen}
         onOpenChange={setOnboardingOpen}

@@ -5,7 +5,7 @@ import { toast } from "sonner";
 import { useMemo } from "react";
 import type { TransactionType } from "@/lib/ledger";
 import { byNewest } from "@/lib/tx-order";
-import { categorizeSavedTransaction } from "@/lib/ai-categorizer";
+import { categorizeSavedTransaction } from "@/integrations/supabase/auto-categorize";
 import { ANALYZING_CATEGORY, UNCATEGORIZED, shouldCategorize, withManualCategorySource } from "@/lib/auto-category-policy";
 import { groupPatches } from "@/lib/edit-history";
 import { MissingRowsError } from "@/lib/errors";

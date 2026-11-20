@@ -32,6 +32,7 @@ App de finanzas personales (Vite + React + TS + Tailwind 3 + shadcn/ui + Supabas
 - **Carpetas firmes:**
   - `src/pages/` solo compone pantallas; no llama a Supabase directo.
   - `src/hooks/` es la única capa que habla con Supabase (queries y mutaciones con react-query).
+  - `src/integrations/supabase/` el cliente y sus llamadas crudas (sesión, edge functions); solo los usan los hooks.
   - `src/lib/` lógica pura, sin React ni Supabase, testeable.
   - `src/components/<área>/` componentes por área; `src/components/ui/` solo primitivas shadcn.
   - `supabase/functions/_shared/` todo lo que repiten las edge functions.
