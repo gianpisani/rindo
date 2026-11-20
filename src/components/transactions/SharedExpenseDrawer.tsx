@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { Check, Plus, X } from "lucide-react";
 import { DebtorNameCombobox } from "./DebtorNameCombobox";
 import { WhisperComposer, WhisperShortcuts, WhisperStaticType, WhisperSubmit } from "@/components/shared/whisper/WhisperComposer";
-import { clp } from "@/lib/format";
+import { clp, groupDigits, parseAmount } from "@/lib/format";
 
 interface Debtor {
   name: string;
@@ -17,8 +17,7 @@ interface SharedExpenseDrawerProps {
   suggestions?: string[];
 }
 
-const parseAmount = (raw: string) => parseInt(raw.replace(/\D/g, ""), 10) || 0;
-const formatInput = (amount: number) => (amount ? new Intl.NumberFormat("es-CL").format(amount) : "");
+const formatInput = (amount: number) => (amount ? groupDigits(amount) : "");
 
 export default function SharedExpenseDrawer({
   open,

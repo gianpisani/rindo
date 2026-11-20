@@ -3,6 +3,7 @@ import { parseWhisper } from "@/lib/whisper";
 import type { CreditCard } from "@/hooks/useCreditCards";
 import { useComposerSubmit } from "@/hooks/useComposerSubmit";
 import { WhisperComposer, WhisperShortcuts, WhisperStaticType, WhisperSubmit } from "@/components/shared/whisper/WhisperComposer";
+import { WhisperSwatches } from "@/components/shared/whisper/WhisperSwatches";
 import { clp } from "@/lib/format";
 
 interface CreditCardModalProps {
@@ -125,20 +126,7 @@ export function CreditCardModal({ open, onOpenChange, card, onSave }: CreditCard
       </div>
 
       <div className="whisper-category-space">
-        <div className="whisper-swatches" role="radiogroup" aria-label="Color de la tarjeta">
-          {CARD_COLORS.map((c) => (
-            <button
-              key={c}
-              type="button"
-              role="radio"
-              aria-checked={color === c}
-              aria-label={`Color ${c}`}
-              className="whisper-swatch"
-              style={{ "--swatch": c } as React.CSSProperties}
-              onClick={() => setColor(c)}
-            />
-          ))}
-        </div>
+        <WhisperSwatches colors={CARD_COLORS} value={color} onChange={setColor} label="Color de la tarjeta" />
         <p className="whisper-caption" aria-live="polite">
           {name ? `${name}${lastFour ? ` ···· ${lastFour}` : ""}` : "El nombre va después del cupo"} · cierra el {dayOf(billingDay, 25)} · se paga el{" "}
           {dayOf(paymentDay, 5)}

@@ -5,6 +5,8 @@ import {
   computeSavingsMonths,
   savingsMonthOf,
 } from '../src/lib/savings-goal.ts';
+import { currentSavingsNote, savingsTone, sweepDays } from '../src/lib/savings-goal-summary.ts';
+import { limitProjection, typicalRemainingSpend } from '../src/lib/limit-projection.ts';
 
 const inv = (date: string, amount: number) => ({ type: 'Inversión', date, amount });
 const resc = (date: string, amount: number) => ({ type: 'Rescate', date, amount });
@@ -85,4 +87,44 @@ test('what was already swept for next month is visible from the current one', ()
 test('without a goal nothing counts as met', () => {
   const months = computeSavingsMonths([inv('2026-09-02T15:00:00', 5_000_000)], 0, september);
   assert.equal(months[11].met, false);
+});
+
+test('the note celebrates what is already swept for next month first', () => {
+  const current = computeSavingsMonths([inv('2026-09-02T15:00:00', 500_000)], GOAL, september)[11];
+  const base = { current, currentTone: savingsTone(current, true, 26), goal: GOAL, thisPeriod: new Date(2026, 8, 1), startDay: 1 };
+  const partial = currentSavingsNote({ ...base, nextSweeps: [] });
+  assert.equal(partial.tone, 'part');
+  assert.match(partial.text, /^barrido el 2 sep · faltan /);
+  const ahead = currentSavingsNote({ ...base, nextSweeps: [{ date: new Date(2026, 8, 29), amount: 1_300_000 }] });
+  assert.equal(ahead.tone, 'met');
+  assert.match(ahead.text, /para octubre ✓$/);
+});
+
+test('an empty current month waits during the grace days, then reads as missed', () => {
+  const empty = computeSavingsMonths([], GOAL, september)[11];
+  assert.equal(savingsTone(empty, true, 5), 'wait');
+  assert.equal(savingsTone(empty, true, 6), 'none');
+  assert.equal(savingsTone(empty, false, 1), 'none');
+});
+
+test('sweep days are listed once each, joined with "y"', () => {
+  const at = (d: number) => ({ date: new Date(2026, 8, d, 12), amount: 1 });
+  assert.equal(sweepDays([]), '');
+  assert.equal(sweepDays([at(2), at(2)]), '2 sep');
+  assert.equal(sweepDays([at(2), at(9), at(16)]), '2 sep, 9 sep y 16 sep');
+});
+
+test('typical remaining spend averages the rest of the last three periods per category', () => {
+  const entries = [
+    gasto('2026-08-20T15:00:00', 300_000),
+    gasto('2026-08-05T15:00:00', 999_000),
+    gasto('2026-06-25T15:00:00', 300_000),
+    gasto('2026-05-25T15:00:00', 999_000),
+    { type: 'Ingreso', date: '2026-07-22T15:00:00', amount: 60_000, category_name: 'Reembolsos', reimbursement_for_category: 'Comida' },
+  ];
+  const rest = typicalRemainingSpend(entries, new Date(2026, 8, 1), 10, 1);
+  assert.equal(rest.get('Comida'), 180_000);
+  assert.equal(limitProjection({ state: 'ok', spent: 100_000, limit: 200_000 }, 100_000), 100);
+  assert.equal(limitProjection({ state: 'over', spent: 300_000, limit: 200_000 }, 100_000), null);
+  assert.equal(limitProjection({ state: 'ok', spent: 100_000, limit: 200_000 }, 0), null);
 });

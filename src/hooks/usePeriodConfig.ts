@@ -10,6 +10,7 @@ import {
   periodStartOf,
   shiftPeriod,
 } from "@/lib/period";
+import type { RealFlowsConfig } from "@/lib/real-flows";
 
 export function usePeriodConfig() {
   const { profile } = useUserProfile();
@@ -19,6 +20,7 @@ export function usePeriodConfig() {
     const startOf = (date: Date) => periodStartOf(date, startDay);
     return {
       startDay,
+      flowConfig: { periodStartDay: startDay } satisfies Partial<RealFlowsConfig>,
       endDay: periodEndDay(startDay),
       isCalendar: startDay === 1,
       currentPeriod: startOf(new Date()),

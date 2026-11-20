@@ -29,6 +29,7 @@ import {
   DrawerTitle,
 } from "@/components/ui/drawer";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
+import { initialsOf, profileDisplayName } from "@/lib/profile-name";
 
 function RouteIcon({ route, className }: { route: RouteConfig; className?: string }) {
   const Icon = route.icon;
@@ -58,8 +59,8 @@ export function MobileBottomBar() {
   const signOut = useSignOut();
   const [drawerOpen, setDrawerOpen] = useState(false);
 
-  const displayName = profile?.nickname || profile?.full_name || null;
-  const userInitials = (displayName || "U").slice(0, 2).toUpperCase();
+  const displayName = profileDisplayName(profile);
+  const userInitials = initialsOf(displayName || "U");
 
   const tabRoutes = getMainRoutes();
   const drawerRoutes = getToolRoutes();

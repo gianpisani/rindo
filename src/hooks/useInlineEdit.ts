@@ -2,7 +2,6 @@ import { useCallback, useState } from "react";
 import { useTransactions, type Transaction } from "@/hooks/useTransactions";
 import { useCategories } from "@/hooks/useCategories";
 import { useCategoryOptions } from "@/hooks/useCategoryOptions";
-import { getCategoryIcon } from "@/lib/category-icon";
 
 export type InlineChanges = Partial<Pick<Transaction, "detail" | "amount" | "category_name">>;
 
@@ -14,7 +13,7 @@ const without = (set: ReadonlySet<string>, id: string) => new Set([...set].filte
 export function useInlineEdit() {
   const { updateTransaction, deleteTransactions } = useTransactions();
   const categoryOptions = useCategoryOptions();
-  const { categories } = useCategories();
+  const { emojiOf, colorOf } = useCategories();
   const [changed, setChanged] = useState<ReadonlySet<string>>(new Set());
   const [leaving, setLeaving] = useState<ReadonlySet<string>>(new Set());
 
@@ -34,9 +33,6 @@ export function useInlineEdit() {
       });
     }, ROW_EXIT_MS);
   }, [deleteTransactions]);
-
-  const emojiOf = useCallback((name: string) => categories.find((c) => c.name === name)?.icon || getCategoryIcon(name), [categories]);
-  const colorOf = useCallback((name: string) => categories.find((c) => c.name === name)?.color ?? null, [categories]);
 
   return { save, remove, changed, leaving, categoryOptions, emojiOf, colorOf };
 }

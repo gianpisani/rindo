@@ -9,7 +9,8 @@ import { useCreditCards } from "@/hooks/useCreditCards";
 import { useSoundFX } from "@/hooks/useSoundFX";
 import { computeRealBalance } from "@/lib/real-flows";
 import { cardsDebt } from "@/lib/card-cycle";
-import { clp } from "@/lib/format";
+import { toast } from "sonner";
+import { clp, digitsOnly, formatAmountInput } from "@/lib/format";
 import { readJson, writeStorage } from "@/lib/storage";
 
 const RECONCILIATION_KEY = "reconciliation-data";
@@ -24,8 +25,8 @@ export function ReconciliationCard({ onSuccess }: ReconciliationCardProps = {}) 
   const { cardSummaries } = useCreditCards();
   const { playCelebration } = useSoundFX();
   const [cuentaCorriente, setCuentaCorriente] = useState<string>("");
-  const [isCreating, setIsCreating] = useState(false);
   const [showPreview, setShowPreview] = useState(false);
+  const isCreating = addTransaction.isPending;
 
   const balanceApp = computeRealBalance(transactions);
   const deudaTarjetas = cardsDebt(transactions, cardSummaries);
@@ -40,13 +41,7 @@ export function ReconciliationCard({ onSuccess }: ReconciliationCardProps = {}) 
     e: React.ChangeEvent<HTMLInputElement>,
     setter: (value: string) => void
   ) => {
-    const value = e.target.value.replace(/[^\d]/g, "");
-    setter(value);
-  };
-
-  const formatNumber = (value: string) => {
-    if (!value) return "";
-    return new Intl.NumberFormat("es-CL").format(Number(value));
+    setter(digitsOnly(e.target.value));
   };
 
   useEffect(() => {
@@ -66,39 +61,28 @@ export function ReconciliationCard({ onSuccess }: ReconciliationCardProps = {}) 
 
   const needsReconciliation = Math.abs(diferencia) >= 1000;
 
-  const handleCreateReconciliation = async () => {
-    if (!needsReconciliation) return;
-    
-    setIsCreating(true);
-    
-    try {
-      const conciliacionCategory = categories.find(c => 
-        c.name.toLowerCase().includes("conciliación") || 
-        c.name.toLowerCase().includes("ajuste")
-      );
-      const categoryName = conciliacionCategory?.name || "Otros";
-      
-      const type = diferencia > 0 ? "Ingreso" : "Gasto";
-      
-      await addTransaction.mutateAsync({
+  const handleCreateReconciliation = () => {
+    if (!needsReconciliation || isCreating) return;
+    const reconciliationCategory = categories.find((c) =>
+      c.name.toLowerCase().includes("conciliación") || c.name.toLowerCase().includes("ajuste"));
+    addTransaction.mutate(
+      {
         date: new Date().toISOString(),
         detail: `Conciliación automática - Ajuste de ${clp(Math.abs(diferencia))}`,
-        category_name: categoryName,
-        type: type,
+        category_name: reconciliationCategory?.name || "Otros",
+        type: diferencia > 0 ? "Ingreso" : "Gasto",
         amount: Math.abs(diferencia),
-      });
-      
-      setCuentaCorriente("");
-      setShowPreview(false);
-
-      playCelebration();
-
-      if (onSuccess) {
-        onSuccess();
-      }
-    } finally {
-      setIsCreating(false);
-    }
+      },
+      {
+        onSuccess: () => {
+          setCuentaCorriente("");
+          setShowPreview(false);
+          playCelebration();
+          onSuccess?.();
+        },
+        onError: () => toast.error("No se guardó el ajuste. Intenta de nuevo."),
+      },
+    );
   };
 
   const hasInputs = cuentaCorrienteNum > 0;
@@ -117,7 +101,7 @@ export function ReconciliationCard({ onSuccess }: ReconciliationCardProps = {}) 
               id="cuenta-corriente"
               type="text"
               placeholder="0"
-              value={formatNumber(cuentaCorriente)}
+              value={formatAmountInput(cuentaCorriente)}
               onChange={(e) => handleInputChange(e, setCuentaCorriente)}
               className="pl-7 h-11"
             />

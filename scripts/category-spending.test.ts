@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import { summarizeCategoryPeriod } from '../src/lib/category-spending.ts';
 import { withManualCategorySource } from '../src/lib/auto-category-policy.ts';
+import { categoryPeriodRows, categorySummary, daySpend, percentOf, rankCategorySpend, withoutTransit } from '../src/lib/home-summary.ts';
 const start = new Date('2026-09-01T00:00:00Z');
 const end = new Date('2026-09-30T23:59:59Z');
 const base = { date: '2026-09-10T12:00:00Z', category_name: 'Comidas y panoramas', amount: 60000, type: 'Gasto' };
@@ -31,4 +32,19 @@ test('records explicit choices without labelling old or pending predictions as c
   assert.deepEqual(withManualCategorySource({ category_name: '⚡ Analizando...' }), { category_name: '⚡ Analizando...', category_source: null });
   assert.deepEqual(withManualCategorySource({ category_name: 'Sin categoría' }), { category_name: 'Sin categoría', category_source: null });
   assert.deepEqual(withManualCategorySource({ detail: 'cena' } as { detail: string; category_name?: string }), { detail: 'cena' });
+});
+
+test('home summary ranks categories without transit or analyzing and filters a category period', () => {
+  const spend = withoutTransit(summarizeCategoryPeriod([base,
+    { ...base, amount: 90000, category_name: 'Supermercado' },
+    { ...base, amount: 5000, category_name: 'Reembolsos' },
+    { ...base, amount: 7000, category_name: '⚡ Analizando...' },
+  ], start, end));
+  assert.deepEqual(rankCategorySpend(spend).map((c) => c.category), ['Supermercado', base.category_name]);
+  assert.equal(percentOf(25, 200), 13);
+  assert.equal(percentOf(25, 0), 0);
+  const rows = categoryPeriodRows([base, { ...base, date: '2026-10-02T12:00:00Z' }, { ...base, type: 'Ingreso', reimbursement_for_category: base.category_name }], base.category_name, start, end);
+  assert.equal(rows.length, 2);
+  assert.match(categorySummary({ effectiveAmount: 1000, reimbursedAmount: 0, count: 1 }), /1 movimiento$/);
+  assert.equal(daySpend([base, { ...base, type: 'Ingreso' }]), 60000);
 });

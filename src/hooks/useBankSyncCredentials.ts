@@ -19,8 +19,12 @@ export interface BankCredential {
 
 const CREDENTIALS_KEY = ["bank-sync-credentials"];
 
+export function invokeBankSync(body: Record<string, unknown>) {
+  return supabase.functions.invoke("bank-sync", { body });
+}
+
 async function callBankSync(body: Record<string, unknown>) {
-  const { data, error } = await supabase.functions.invoke("bank-sync", { body });
+  const { data, error } = await invokeBankSync(body);
   if (error) throw error;
   return data;
 }

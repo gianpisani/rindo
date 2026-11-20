@@ -12,8 +12,9 @@ import { useCategories } from "@/hooks/useCategories";
 import { usePrivacyMode } from "@/hooks/usePrivacyMode";
 import { useInlineEdit } from "@/hooks/useInlineEdit";
 import { useGlobalDrawers } from "@/hooks/useGlobalDrawers";
-import { computeLedger, computeRealFlows, DEFAULT_TRANSIT_CATEGORIES } from "@/lib/real-flows";
+import { computeLedger, computeRealFlows } from "@/lib/real-flows";
 import { summarizeCategoryPeriod } from "@/lib/category-spending";
+import { categoryPeriodRows, withoutTransit } from "@/lib/home-summary";
 import {
   buildHistory,
   categoryTrends,
@@ -35,22 +36,19 @@ const RANGE_KEY = "finanzas-meses";
 const RANGES = [12, 6, 3] as const;
 type Range = (typeof RANGES)[number];
 
-const transit = new Set(DEFAULT_TRANSIT_CATEGORIES);
-
 const spendByCategory = (transactions: Transaction[], start: Date, end: Date) => {
-  const map = summarizeCategoryPeriod(transactions, start, end);
-  for (const key of [...map.keys()]) if (transit.has(key) || key === ANALYZING_CATEGORY) map.delete(key);
+  const map = withoutTransit(summarizeCategoryPeriod(transactions, start, end));
+  map.delete(ANALYZING_CATEGORY);
   return map;
 };
 
 export default function Overview() {
   const { transactions, isLoading } = useTransactions();
-  const { categories } = useCategories();
+  const { colorOf } = useCategories();
   const { isPrivacyMode } = usePrivacyMode();
   const edit = useInlineEdit();
   const { openReconciliation } = useGlobalDrawers();
-  const { startDay } = usePeriodConfig();
-  const flowConfig = useMemo(() => ({ periodStartDay: startDay }), [startDay]);
+  const { startDay, flowConfig } = usePeriodConfig();
 
   const now = new Date();
   const thisMonth = startOfMonthOf(now, startDay);
@@ -69,8 +67,6 @@ export default function Overview() {
     setRange(next);
     writeStorage(RANGE_KEY, String(next));
   };
-
-  const colorOf = (name: string) => categories.find((c) => c.name === name)?.color ?? null;
 
   const months = useMemo(() => {
     const first = transactions.reduce<Date | null>((min, t) => {
@@ -108,11 +104,7 @@ export default function Overview() {
   const hovered = hoverMonth !== null ? history[hoverMonth] : null;
 
   const openTrend = (c: typeof trends[number]) => {
-    const rows = transactions.filter((t) => {
-      const d = new Date(t.date);
-      if (d < rangeStart || d > rangeEnd) return false;
-      return (t.type === "Gasto" && t.category_name === c.category) || t.reimbursement_for_category === c.category;
-    });
+    const rows = categoryPeriodRows(transactions, c.category, rangeStart, rangeEnd);
     setSheet({
       title: c.category,
       icon: edit.emojiOf(c.category),

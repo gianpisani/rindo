@@ -4,6 +4,7 @@ import { Check, ChevronDown } from "lucide-react";
 import { EmojiPicker } from "@/components/categories/EmojiPicker";
 import { WhisperComposer, WhisperShortcuts, WhisperStaticType, WhisperSubmit } from "@/components/shared/whisper/WhisperComposer";
 import { WhisperOptions, WhisperOptionsToggle } from "@/components/shared/whisper/WhisperOptions";
+import { WhisperSwatches } from "@/components/shared/whisper/WhisperSwatches";
 import { useComposerSubmit } from "@/hooks/useComposerSubmit";
 import { TRANSACTION_TYPES, type TransactionType } from "@/lib/ledger";
 import { cn } from "@/lib/utils";
@@ -180,19 +181,7 @@ export function CategoryComposer({
             ))}
           </div>
         )}
-        <div className="whisper-swatches whisper-cat-swatches" role="radiogroup" aria-label="Color">
-          {DEFAULT_COLORS.map((c) => (
-            <button
-              key={c}
-              type="button"
-              role="radio"
-              aria-checked={color === c}
-              aria-label={`Color ${c}`}
-              className="whisper-swatch"
-              style={{ "--swatch": c } as React.CSSProperties}
-              onClick={() => setColor(c)}
-            />
-          ))}
+        <WhisperSwatches colors={DEFAULT_COLORS} value={color} onChange={setColor} label="Color" className="whisper-cat-swatches">
           <span
             className="whisper-swatch whisper-cat-custom"
             role="radio"
@@ -202,7 +191,7 @@ export function CategoryComposer({
           >
             <input type="color" aria-label="Otro color" value={color} onChange={(e) => setColor(e.target.value)} />
           </span>
-        </div>
+        </WhisperSwatches>
         <p className="whisper-caption" aria-live="polite">
           {fixedType
             ? `Se crea como categoría de ${fixedType.toLowerCase()}`

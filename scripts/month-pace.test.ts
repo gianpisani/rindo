@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import { computeMonthPace, paceVerdict } from '../src/lib/month-pace.ts';
+import { dayRange, explainingDrivers, leftoverLabel, linePath, pacePhrase, typicalIncome } from '../src/lib/pace-chart.ts';
 
 const gasto = (date: string, amount: number, category_name = 'Comida') => ({ type: 'Gasto', date, amount, category_name });
 const today = new Date(2026, 8, 15, 12);
@@ -45,4 +46,20 @@ test('a closed month is measured at its last day without projection', () => {
   assert.equal(pace.projectedTotal, 150_000);
   assert.equal(pace.delta, 50_000);
   assert.equal(paceVerdict(pace), 'over');
+});
+
+test('pace chart helpers draw paths, keep explaining drivers and pick the median income', () => {
+  assert.equal(linePath([[0, 1], [2.25, 3]]), 'M0.0,1.0L2.3,3.0');
+  assert.deepEqual(dayRange(3), [0, 1, 2, 3]);
+  const pace = computeMonthPace([gasto('2026-09-03T12:00:00', 40_000)], today, { today });
+  const drivers = explainingDrivers({ ...pace, typicalSoFar: 500_000, drivers: [
+    { category: 'A', me: 0, typical: 0, delta: 20_000 },
+    { category: 'B', me: 0, typical: 0, delta: -9_000 },
+  ] });
+  assert.deepEqual(drivers.map((d) => d.category), ['A']);
+  assert.equal(pacePhrase(true, 'under'), 'bajo tu ritmo');
+  assert.equal(pacePhrase(false, 'even'), 'igual que tu mes típico');
+  assert.equal(leftoverLabel(-1, false), 'Te faltó');
+  assert.equal(typicalIncome([0, 300, 100, 200]), 200);
+  assert.equal(typicalIncome([0, 0]), 0);
 });

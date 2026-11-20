@@ -9,7 +9,7 @@ import { TxEditor } from "@/components/transactions/TxEditor";
 import { DeleteTransactionsConfirm } from "@/components/transactions/DeleteTransactionsConfirm";
 import { BankSyncModal } from "@/components/bank-sync/BankSyncModal";
 import type { DateRangeValue } from "@/components/transactions/DateRangeFilter";
-import { useBankSyncContext } from "@/contexts/BankSyncContext";
+import { useBankSyncContext } from "@/hooks/useBankSyncContext";
 import { useGlobalDrawers } from "@/hooks/useGlobalDrawers";
 import { useTransactions, type Transaction } from "@/hooks/useTransactions";
 import { useSearchFocusShortcut } from "@/hooks/useSearchFocusShortcut";

@@ -1,5 +1,5 @@
-import { addMonths, format } from "date-fns";
-import { es } from "date-fns/locale";
+import { addMonths } from "date-fns";
+import { monthYear } from "./format.ts";
 
 const DEFAULT_INSTALLMENT_CATEGORY = "Otros gastos";
 
@@ -16,7 +16,7 @@ export function installmentTransactions(plan: InstallmentPlan, installmentId: st
   const first = new Date(plan.first_installment_date);
   return Array.from({ length: plan.total_installments }, (_, index) => {
     const date = addMonths(first, index);
-    const month = format(date, "MMMM yyyy", { locale: es });
+    const month = monthYear(date);
     return {
       user_id: userId,
       amount: plan.installment_amount,

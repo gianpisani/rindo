@@ -1,7 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { Check, ChevronDown } from "lucide-react";
 import { addMonths, format } from "date-fns";
-import { es } from "date-fns/locale";
 import { parseWhisper } from "@/lib/whisper";
 import { getCategoryIcon } from "@/lib/category-icon";
 import type { InstallmentPurchase } from "@/hooks/useInstallments";
@@ -13,7 +12,7 @@ import { useComposerSubmit } from "@/hooks/useComposerSubmit";
 import { isCardPaymentCategory } from "@/lib/ledger";
 import { WhisperComposer, WhisperShortcuts, WhisperStaticType, WhisperSubmit } from "@/components/shared/whisper/WhisperComposer";
 import { WhisperOptions, WhisperOptionsToggle } from "@/components/shared/whisper/WhisperOptions";
-import { clp } from "@/lib/format";
+import { clp, monthYear } from "@/lib/format";
 
 interface InstallmentModalProps {
   open: boolean;
@@ -32,7 +31,7 @@ const FALLBACK_ACCENT = "#fafafa";
 const isoDay = (d: Date) => format(d, "yyyy-MM-dd");
 const monthOf = (iso: string) => {
   const d = new Date(`${iso}T12:00:00`);
-  return Number.isFinite(d.getTime()) ? format(d, "MMMM yyyy", { locale: es }) : "";
+  return Number.isFinite(d.getTime()) ? monthYear(d) : "";
 };
 
 export function InstallmentModal({ open, onOpenChange, installment, creditCards, onSave }: InstallmentModalProps) {
