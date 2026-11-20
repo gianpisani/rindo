@@ -1,84 +1,55 @@
-# Welcome to your Rindo project
+# Rindo
 
-## Project info
+Finanzas personales que se llenan solas. Los movimientos llegan desde el banco, los correos y la billetera del celular; tú solo entras a ver en qué se te va la plata y a corregir alguna categoría.
 
-**URL**: https://lovable.dev/projects/cda9aa30-448e-452f-8bff-7a2e15615295
+[rindo.cl](https://www.rindo.cl)
 
-## How can I edit this code?
+## Cómo funciona
 
-There are several ways of editing your application.
-
-**Use Lovable**
-
-Simply visit the [Lovable Project](https://lovable.dev/projects/cda9aa30-448e-452f-8bff-7a2e15615295) and start prompting.
-
-Changes made via Lovable will be committed automatically to this repo.
-
-**Use your preferred IDE**
-
-If you want to work locally using your own IDE, you can clone this repo and push changes. Pushed changes will also be reflected in Lovable.
-
-The only requirement is having Node.js & npm installed - [install with nvm](https://github.com/nvm-sh/nvm#installing-and-updating)
-
-Follow these steps:
-
-```sh
-# Step 1: Clone the repository using the project's Git URL.
-git clone <YOUR_GIT_URL>
-
-# Step 2: Navigate to the project directory.
-cd <YOUR_PROJECT_NAME>
-
-# Step 3: Install the necessary dependencies.
-npm i
-
-# Step 4: Start the development server with auto-reloading and an instant preview.
-npm run dev
+```
+banco (open banking) ─┐
+correos del banco ────┼─▶ edge functions ─▶ Supabase (Postgres + RLS) ─▶ app web / PWA
+billetera iOS ────────┘        │
+                               └─▶ Jev: categoriza con IA (Vercel AI Gateway)
 ```
 
-**Edit a file directly in GitHub**
+| Edge function | Qué hace |
+| --- | --- |
+| `bank-sync`, `bank-sync-all` | Trae movimientos del banco (manual y por cron). |
+| `process-email-v2` | Convierte los correos de aviso del banco en movimientos. |
+| `process-ios-wallet-push-notification` | Igual, desde las notificaciones de la billetera del iPhone. |
+| `auto-categorize` | Jev, el categorizador. |
+| `send-push-notification` | Avisos push. |
 
-- Navigate to the desired file(s).
-- Click the "Edit" button (pencil icon) at the top right of the file view.
-- Make your changes and commit the changes.
+Lo que comparten vive en `supabase/functions/_shared/`.
 
-**Use GitHub Codespaces**
+## Stack
 
-- Navigate to the main page of your repository.
-- Click on the "Code" button (green button) near the top right.
-- Select the "Codespaces" tab.
-- Click on "New codespace" to launch a new Codespace environment.
-- Edit files directly within the Codespace and commit and push your changes once you're done.
+Vite · React · TypeScript · Tailwind · shadcn/ui · TanStack Query · Supabase. Se despliega en Vercel.
 
-## Escala de diseño
+## Correr en local
 
-La UI usa una escala cerrada (valores en `tailwind.config.ts` y los tokens de `src/index.css`):
+Necesitas Node 24.
 
-- **Texto:** `text-xs`, `text-sm`, `text-xl`, `text-hero` (en CSS: `var(--fs-1|2|3|hero)`), nunca `text-[Npx]`.
-- **Grosor:** `font-normal`, `font-medium`; `font-semibold` solo para el número protagonista.
-- **Radio:** `rounded-card` (superficies) y `rounded-full` (lo que se toca), más `rounded-none` y sus direccionales (`rounded-t-card`).
-- **Sombra:** `shadow-float` (solo lo que flota) o ninguna; sin `drop-shadow`.
+```sh
+npm ci
+npm run dev        # http://localhost:8080
+```
 
-`npm run lint:design` lo revisa (también corre en CI). Una excepción real se justifica con un comentario `design-scale-ok: motivo` en la misma línea o la anterior.
+`.env` trae las claves públicas de Supabase (las mismas que usa la app publicada). Para que Jev categorice en local, copia `.env.jev.example` a `.env.jev.local` y completa `AI_GATEWAY_API_KEY`.
 
-## What technologies are used for this project?
+## Antes de abrir una PR
 
-This project is built with:
+```sh
+npm run lint:design                    # escala de diseño
+npx tsc -p tsconfig.app.json --noEmit  # tipos
+npx eslint src                         # lint
+npm run test:jev                       # tests
+npm run build
+```
 
-- Vite
-- TypeScript
-- React
-- shadcn-ui
-- Tailwind CSS
+Es lo mismo que corre el CI.
 
-## How can I deploy this project?
+## Reglas
 
-Simply open [Lovable](https://lovable.dev/projects/cda9aa30-448e-452f-8bff-7a2e15615295) and click on Share -> Publish.
-
-## Can I connect a custom domain to my Lovable project?
-
-Yes, you can!
-
-To connect a domain, navigate to Project > Settings > Domains and click Connect Domain.
-
-Read more here: [Setting up a custom domain](https://docs.lovable.dev/features/custom-domain#custom-domain)
+Las reglas de diseño y de código (escala, colores, carpetas, errores, mutaciones optimistas) están en [`AGENTS.md`](AGENTS.md). Aplican a personas y a agentes por igual.
