@@ -46,6 +46,7 @@ import { usePeriodConfig } from "@/hooks/usePeriodConfig";
 import { periodShortLabel } from "@/lib/period";
 import { cn } from "@/lib/utils";
 import { APP_ROUTES, type RouteConfig } from "@/lib/routes-config";
+import { initialsOf, profileDisplayName } from "@/lib/profile-name";
 
 export function AppSidebar() {
   const location = useLocation();
@@ -60,10 +61,8 @@ export function AppSidebar() {
   const userEmail = useUserEmail();
   const signOut = useSignOut();
 
-  const displayName = profile?.nickname || profile?.full_name || "Yo";
-  const userInitials = (profile?.nickname || profile?.full_name || userEmail || "U")
-    .slice(0, 2)
-    .toUpperCase();
+  const displayName = profileDisplayName(profile) || "Yo";
+  const userInitials = initialsOf(profileDisplayName(profile) || userEmail || "U");
 
   const handleLogout = () => signOut.mutate();
 

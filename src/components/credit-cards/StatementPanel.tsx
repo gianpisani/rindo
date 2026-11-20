@@ -2,8 +2,8 @@ import { format } from "date-fns";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import { EmptyState } from "@/components/shared/EmptyState";
 import type { Transaction } from "@/hooks/useTransactions";
-import { shortDay, withoutEmoji, type labeledCycle } from "@/lib/card-view";
-import { clp } from "@/lib/format";
+import { withoutEmoji, type labeledCycle } from "@/lib/card-view";
+import { clp, shortDay } from "@/lib/format";
 import { isCardPayment } from "@/lib/ledger";
 import { cn } from "@/lib/utils";
 

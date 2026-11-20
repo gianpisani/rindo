@@ -64,7 +64,3 @@ export function serializeThemeChoice({ themeId, hue, font, radius }: ThemeChoice
   if (Math.abs(radius - DEFAULT_RADIUS) > 0.01) settings.radius = radius;
   return Object.keys(settings).length > 0 ? JSON.stringify(settings) : null;
 }
-
-export function profileInitials(nickname: string, fullName: string) {
-  return (nickname || fullName || "?").slice(0, 2).toUpperCase();
-}

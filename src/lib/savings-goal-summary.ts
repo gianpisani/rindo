@@ -1,6 +1,6 @@
 import { format } from "date-fns";
 import { es } from "date-fns/locale";
-import { clp } from "./format.ts";
+import { clp, shortDay } from "./format.ts";
 import { periodNameDate, shiftPeriod } from "./period.ts";
 import type { SavingsMonth, Sweep } from "./savings-goal.ts";
 
@@ -14,7 +14,6 @@ export interface SavingsNote {
   tone: SavingsTone;
 }
 
-const shortDay = (d: Date) => format(d, "d MMM", { locale: es }).replace(".", "");
 
 export const periodMonthLabel = (month: Date, startDay: number, pattern: "MMMM" | "MMM") =>
   format(periodNameDate(month, startDay), pattern, { locale: es }).replace(".", "");

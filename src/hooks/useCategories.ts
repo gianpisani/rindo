@@ -2,6 +2,8 @@ import { queryOptions, useQuery, useMutation, useQueryClient } from "@tanstack/r
 import { supabase } from "@/integrations/supabase/client";
 import { requireUserId } from "@/integrations/supabase/session";
 import { toast } from "sonner";
+import { useCallback } from "react";
+import { getCategoryIcon } from "@/lib/category-icon";
 import type { TransactionType } from "@/lib/ledger";
 import { optimistic } from "./optimistic";
 
@@ -72,5 +74,8 @@ export function useCategories() {
     onSuccess: () => toast.success("Categoría eliminada"),
   });
 
-  return { categories, isLoading, addCategory, updateCategory, deleteCategory };
+  const emojiOf = useCallback((name: string) => categories.find((c) => c.name === name)?.icon || getCategoryIcon(name), [categories]);
+  const colorOf = useCallback((name: string) => categories.find((c) => c.name === name)?.color ?? null, [categories]);
+
+  return { categories, isLoading, addCategory, updateCategory, deleteCategory, emojiOf, colorOf };
 }

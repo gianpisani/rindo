@@ -7,16 +7,9 @@ import {
   DialogDescription,
 } from "@/components/ui/dialog";
 import { Switch } from "@/components/ui/switch";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
 import { BankLogo } from "@/components/bank-sync/BankLogo";
-import { getBankById, SYNC_SCHEDULES, isCustomSchedule, getCustomHour } from "@/lib/banks";
-import type { SyncScheduleId } from "@/lib/banks";
+import { getBankById } from "@/lib/banks";
+import { SyncScheduleSelect } from "@/components/bank-sync/SyncScheduleSelect";
 import type { BankCredential } from "@/hooks/useBankSyncCredentials";
 import {
   useUpdateActive,
@@ -116,51 +109,12 @@ export function BankSyncPreferencesDialog({ cred, onOpenChange }: BankSyncPrefer
                   <p className="text-sm font-medium">Horario de sync</p>
                 </div>
                 <div className="flex items-center gap-2 pl-6">
-                  <Select
-                    value={isCustomSchedule(cred.sync_schedule) ? "custom" : cred.sync_schedule}
-                    onValueChange={(v) => {
-                      if (v === "custom") {
-                        scheduleMutation.mutate({ bank: cred.bank, syncSchedule: "custom_08" as SyncScheduleId });
-                      } else {
-                        scheduleMutation.mutate({ bank: cred.bank, syncSchedule: v as SyncScheduleId });
-                      }
-                    }}
+                  <SyncScheduleSelect
+                    value={cred.sync_schedule}
+                    onChange={(syncSchedule) => scheduleMutation.mutate({ bank: cred.bank, syncSchedule })}
                     disabled={!cred.is_active}
-                  >
-                    <SelectTrigger className="h-8 text-xs rounded-card flex-1">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {SYNC_SCHEDULES.map((s) => (
-                        <SelectItem key={s.value} value={s.value} className="text-xs">
-                          {s.label}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                  {isCustomSchedule(cred.sync_schedule) && (
-                    <Select
-                      value={String(getCustomHour(cred.sync_schedule))}
-                      onValueChange={(h) =>
-                        scheduleMutation.mutate({
-                          bank: cred.bank,
-                          syncSchedule: `custom_${h.padStart(2, "0")}` as SyncScheduleId,
-                        })
-                      }
-                      disabled={!cred.is_active}
-                    >
-                      <SelectTrigger className="h-8 text-xs rounded-card w-20 shrink-0">
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {Array.from({ length: 24 }, (_, i) => (
-                          <SelectItem key={i} value={String(i)} className="text-xs">
-                            {String(i).padStart(2, "0")}:00
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  )}
+                    includeOff
+                  />
                 </div>
               </div>
             </div>

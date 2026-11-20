@@ -7,16 +7,13 @@ import { useCategories } from "@/hooks/useCategories";
 import { useLimitEditor } from "@/hooks/useLimitEditor";
 import { usePrivacyMode } from "@/hooks/usePrivacyMode";
 import type { LimitRowUsage } from "@/hooks/useLimitUsage";
-import { getCategoryIcon } from "@/lib/category-icon";
 import { clp } from "@/lib/format";
 import { cn } from "@/lib/utils";
 
 export function LimitsCard({ rows, total }: { rows: LimitRowUsage[]; total: number }) {
   const { isPrivacyMode } = usePrivacyMode();
-  const { categories } = useCategories();
+  const { emojiOf, colorOf } = useCategories();
   const { edit, add } = useLimitEditor();
-
-  const categoryOf = (name: string) => categories.find((c) => c.name === name);
 
   return (
     <section className="meta-card meta-limits">
@@ -37,8 +34,8 @@ export function LimitsCard({ rows, total }: { rows: LimitRowUsage[]; total: numb
             key={row.category}
             row={row}
             index={index}
-            emoji={categoryOf(row.category)?.icon || getCategoryIcon(row.category)}
-            categoryColor={categoryOf(row.category)?.color ?? null}
+            emoji={emojiOf(row.category)}
+            categoryColor={colorOf(row.category)}
             edit={edit}
           />
         ))}

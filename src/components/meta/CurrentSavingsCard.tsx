@@ -1,10 +1,8 @@
-import { format } from "date-fns";
-import { es } from "date-fns/locale";
 import NumberFlow from "@number-flow/react";
 import { usePrivacyMode } from "@/hooks/usePrivacyMode";
 import type { PeriodConfig } from "@/hooks/usePeriodConfig";
 import { cn } from "@/lib/utils";
-import { clp } from "@/lib/format";
+import { clp, monthYear } from "@/lib/format";
 import type { SavingsMonth } from "@/lib/savings-goal";
 import { goalProgressPct, type SavingsNote, type SavingsTone } from "@/lib/savings-goal-summary";
 
@@ -29,7 +27,7 @@ export function CurrentSavingsCard({
   return (
     <section className="meta-card meta-now" data-tone={tone}>
       <span className="meta-month">
-        {period.isCalendar ? format(today, "MMMM yyyy", { locale: es }) : period.rangeLabel(period.currentPeriod)}
+        {period.isCalendar ? monthYear(today) : period.rangeLabel(period.currentPeriod)}
       </span>
       <div className={cn("meta-big", isPrivacyMode && "privacy-blur")}>
         $<NumberFlow

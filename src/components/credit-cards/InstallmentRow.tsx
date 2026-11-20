@@ -1,8 +1,7 @@
 import { Pencil, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import type { InstallmentPurchase } from "@/hooks/useInstallments";
-import { shortMonthYear } from "@/lib/card-view";
-import { clp } from "@/lib/format";
+import { clp, shortMonthYear } from "@/lib/format";
 import type { installmentProgress } from "@/lib/installments";
 import { cn } from "@/lib/utils";
 

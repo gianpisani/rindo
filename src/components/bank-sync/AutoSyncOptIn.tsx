@@ -1,14 +1,8 @@
 import { CalendarClock } from "lucide-react";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
-import { SYNC_SCHEDULES, getCustomHour, isCustomSchedule, type SyncScheduleId } from "@/lib/banks";
+import { SyncScheduleSelect } from "@/components/bank-sync/SyncScheduleSelect";
+import type { SyncScheduleId } from "@/lib/banks";
 
 interface AutoSyncOptInProps {
   checked: boolean;
@@ -42,44 +36,7 @@ export function AutoSyncOptIn({ checked, onCheckedChange, schedule, onScheduleCh
         <div className="space-y-1.5">
           <Label className="text-xs text-muted-foreground">Horario de sincronización</Label>
           <div className="flex gap-2">
-            <Select
-              value={isCustomSchedule(schedule) ? "custom" : schedule}
-              onValueChange={(v) => {
-                if (v === "custom") {
-                  onScheduleChange("custom_08" as SyncScheduleId);
-                } else {
-                  onScheduleChange(v as SyncScheduleId);
-                }
-              }}
-            >
-              <SelectTrigger className="h-8 text-xs rounded-card flex-1">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                {SYNC_SCHEDULES.filter((s) => s.value !== "disabled").map((s) => (
-                  <SelectItem key={s.value} value={s.value} className="text-xs">
-                    {s.label}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-            {isCustomSchedule(schedule) && (
-              <Select
-                value={String(getCustomHour(schedule))}
-                onValueChange={(h) => onScheduleChange(`custom_${h.padStart(2, "0")}` as SyncScheduleId)}
-              >
-                <SelectTrigger className="h-8 text-xs rounded-card w-20 shrink-0">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  {Array.from({ length: 24 }, (_, i) => (
-                    <SelectItem key={i} value={String(i)} className="text-xs">
-                      {String(i).padStart(2, "0")}:00
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            )}
+            <SyncScheduleSelect value={schedule} onChange={onScheduleChange} />
           </div>
         </div>
       )}

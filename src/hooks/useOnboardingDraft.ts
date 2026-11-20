@@ -3,7 +3,8 @@ import { toast } from "sonner";
 import { useUserProfile } from "./useUserProfile";
 import { useThemeDraft } from "./useThemeDraft";
 import { clearThemeOverrides } from "@/lib/theme";
-import { profileInitials, themeChoiceFromProfile } from "@/lib/theme-choice";
+import { themeChoiceFromProfile } from "@/lib/theme-choice";
+import { initialsOf } from "@/lib/profile-name";
 
 export type OnboardingMode = "onboarding" | "edit";
 
@@ -85,7 +86,7 @@ export function useOnboardingDraft({
     setFullName,
     nickname,
     setNickname,
-    initials: profileInitials(nickname, fullName),
+    initials: initialsOf(nickname || fullName || "?"),
     avatarSrc: localAvatarPreview || avatarUrl,
     uploading: uploadAvatar.isPending || removeAvatar.isPending,
     saving: updateProfile.isPending,

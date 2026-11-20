@@ -23,14 +23,7 @@ import { useBankSyncContext } from "@/hooks/useBankSyncContext";
 import { useBankSyncLog, type SyncLogEntry } from "@/hooks/useBankSyncLog";
 import { clp } from "@/lib/format";
 import { SKIP_REASON_LABELS } from "@/lib/banks";
-
-function formatMovDate(dateStr: string): string {
-  const parts = dateStr.split("-");
-  if (parts.length === 3 && parts[0].length <= 2) return `${parts[0]}/${parts[1]}`;
-  if (parts.length === 3 && parts[0].length === 4) return `${parts[2]}/${parts[1]}`;
-  return dateStr;
-}
-
+import { creatableIndexes, formatMovementDate, selectedItemIds, toggleAllIndexes, toggleIndex } from "@/lib/bank-sync";
 
 function EntryDetail({ entry }: { entry: SyncLogEntry }) {
   const { importSkipped, deleteImported } = useBankSyncContext();
@@ -43,23 +36,10 @@ function EntryDetail({ entry }: { entry: SyncLogEntry }) {
 
   const importedItems = entry.imported_items ?? [];
   const skippedItems = entry.skipped_items ?? [];
-  const creatableIndexes = skippedItems
-    .map((s, i) => (s.reason !== "zero_amount" ? i : -1))
-    .filter((i) => i !== -1);
+  const creatable = creatableIndexes(skippedItems);
 
-  function toggleSkipped(i: number) {
-    setSelectedSkipped((prev) => {
-      const next = new Set(prev);
-      if (next.has(i)) next.delete(i);
-      else next.add(i);
-      return next;
-    });
-  }
-
-  function toggleAll() {
-    const allSelected = creatableIndexes.every((i) => selectedSkipped.has(i));
-    setSelectedSkipped(allSelected ? new Set() : new Set(creatableIndexes));
-  }
+  const toggleSkipped = (i: number) => setSelectedSkipped((prev) => toggleIndex(prev, i));
+  const toggleAll = () => setSelectedSkipped((prev) => toggleAllIndexes(prev, creatable));
 
   async function handleImport() {
     if (!selectedSkipped.size) return;
@@ -72,27 +52,13 @@ function EntryDetail({ entry }: { entry: SyncLogEntry }) {
     setIsImporting(false);
   }
 
-  function toggleImported(i: number) {
-    setSelectedImported((prev) => {
-      const next = new Set(prev);
-      if (next.has(i)) next.delete(i);
-      else next.add(i);
-      return next;
-    });
-  }
-
-  function toggleAllImported() {
-    const allIndexes = importedItems.map((_, i) => i);
-    const allSelected = allIndexes.every((i) => selectedImported.has(i));
-    setSelectedImported(allSelected ? new Set() : new Set(allIndexes));
-  }
+  const toggleImported = (i: number) => setSelectedImported((prev) => toggleIndex(prev, i));
+  const toggleAllImported = () => setSelectedImported((prev) => toggleAllIndexes(prev, importedItems.map((_, i) => i)));
 
   async function handleDelete() {
     if (!selectedImported.size) return;
     setIsDeleting(true);
-    const ids = importedItems
-      .filter((item, i) => selectedImported.has(i) && item.id)
-      .map((item) => item.id as string);
+    const ids = selectedItemIds(importedItems, selectedImported);
     if (ids.length === 0) { setIsDeleting(false); return; }
     const deleted = await deleteImported(ids);
     if (deleted > 0) {
@@ -138,7 +104,7 @@ function EntryDetail({ entry }: { entry: SyncLogEntry }) {
                 </div>
                 <div className="flex-1 min-w-0">
                   <p className="truncate text-xs font-medium">{item.description}</p>
-                  <p className="text-xs text-muted-foreground">{formatMovDate(item.date)}</p>
+                  <p className="text-xs text-muted-foreground">{formatMovementDate(item.date)}</p>
                 </div>
                 <span className={cn("text-xs font-medium tabular-nums shrink-0",
                   item.type === "Ingreso" ? "text-success" : "")}>
@@ -173,13 +139,13 @@ function EntryDetail({ entry }: { entry: SyncLogEntry }) {
             <p className="text-xs font-medium text-muted-foreground">
               Ignoradas ({skippedItems.length})
             </p>
-            {creatableIndexes.length > 0 && (
+            {creatable.length > 0 && (
               <button
                 type="button"
                 onClick={toggleAll}
                 className="text-xs text-foreground hover:underline cursor-pointer"
               >
-                {creatableIndexes.every((i) => selectedSkipped.has(i)) ? "Deseleccionar todo" : "Seleccionar todo"}
+                {creatable.every((i) => selectedSkipped.has(i)) ? "Deseleccionar todo" : "Seleccionar todo"}
               </button>
             )}
           </div>
@@ -204,7 +170,7 @@ function EntryDetail({ entry }: { entry: SyncLogEntry }) {
                   <div className="flex-1 min-w-0">
                     <p className="truncate text-xs font-medium">{item.description}</p>
                     <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
-                      <span>{formatMovDate(item.date)}</span>
+                      <span>{formatMovementDate(item.date)}</span>
                       <span className="px-1 py-0.5 rounded-full bg-muted text-xs">
                         {SKIP_REASON_LABELS[item.reason] ?? "Omitida"}
                       </span>

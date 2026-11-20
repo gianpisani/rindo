@@ -1,4 +1,4 @@
-import { formatAmountInput } from "@/lib/amount-input";
+import { digitsOnly, formatAmountInput } from "@/lib/format";
 
 export function AmountField({
   value,
@@ -26,7 +26,7 @@ export function AmountField({
         placeholder={placeholder}
         autoFocus={autoFocus}
         aria-label={label}
-        onChange={(e) => onChange(e.target.value.replace(/\D/g, ""))}
+        onChange={(e) => onChange(digitsOnly(e.target.value))}
         onKeyDown={(e) => {
           if (e.key === "Enter") onSave();
           if (e.key === "Escape") onCancel();

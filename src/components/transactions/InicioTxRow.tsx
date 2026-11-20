@@ -3,6 +3,7 @@ import { Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { QuickCategoryPicker, type QuickCategoryOption } from "@/components/categories/QuickCategoryPicker";
 import { cn } from "@/lib/utils";
+import { formatAmountInput } from "@/lib/format";
 
 interface Props extends HTMLAttributes<HTMLDivElement> {
   detail: string;
@@ -21,8 +22,6 @@ interface Props extends HTMLAttributes<HTMLDivElement> {
 }
 
 type Field = "detail" | "amount" | null;
-
-const groupDigits = (digits: string) => (digits ? Number(digits).toLocaleString("es-CL") : "");
 
 export function InicioTxRow({
   detail, amount, sign, amountColor, icon, meta, category, categoryOptions, editable, privacy,
@@ -127,12 +126,12 @@ export function InicioTxRow({
       {field === "amount" ? (
         <span className="m inicio-amount-edit" style={{ color: amountColor }}>
           <span aria-hidden="true">{sign}$</span>
-          <span className="inicio-autosize" data-value={groupDigits(draft) || "0"}>
+          <span className="inicio-autosize" data-value={formatAmountInput(draft) || "0"}>
             <input
               ref={inputRef}
               className="inicio-edit amount"
               size={1}
-              value={groupDigits(draft)}
+              value={formatAmountInput(draft)}
               inputMode="numeric"
               aria-label="Monto del movimiento"
               onChange={onAmountChange}

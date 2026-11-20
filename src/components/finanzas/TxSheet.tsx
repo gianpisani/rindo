@@ -11,6 +11,7 @@ import { usePrivacyMode } from "@/hooks/usePrivacyMode";
 import { byNewest } from "@/lib/tx-order";
 import { cn } from "@/lib/utils";
 import { tint } from "@/lib/category-color";
+import { monthYear } from "@/lib/format";
 
 export interface TxSheetData {
   title: string;
@@ -34,7 +35,7 @@ export function TxSheet({ data, edit, onClose }: { data: TxSheetData | null; edi
   const label = (key: string) => {
     const [y, m, d] = key.split("-").map(Number);
     const date = new Date(y, m - 1, d ?? 1);
-    return format(date, data?.groupBy === "month" ? "MMMM yyyy" : "EEEE d", { locale: es });
+    return data?.groupBy === "month" ? monthYear(date) : format(date, "EEEE d", { locale: es });
   };
 
   return (

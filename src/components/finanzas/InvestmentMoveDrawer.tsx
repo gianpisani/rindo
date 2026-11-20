@@ -9,7 +9,7 @@ import { computeLedger } from "@/lib/real-flows";
 import { parseWhisper } from "@/lib/whisper";
 import { cn } from "@/lib/utils";
 import { WhisperComposer, WhisperShortcuts, WhisperSubmit } from "@/components/shared/whisper/WhisperComposer";
-import { clp } from "@/lib/format";
+import { clp, digitsOnly, parseAmount } from "@/lib/format";
 
 type Move = "rescate" | "valor";
 
@@ -20,11 +20,6 @@ const MOVES: { key: Move; label: string; color: string; placeholder: string }[] 
   { key: "valor", label: "Rendimiento", color: "#a78bfa", placeholder: "12500000" },
 ];
 const LOSS_COLOR = "oklch(var(--destructive))";
-
-function parseAmount(value: string): number {
-  const digits = value.replace(/\D/g, "");
-  return digits ? parseInt(digits, 10) : 0;
-}
 
 interface InvestmentMoveDrawerProps {
   open: boolean;
@@ -168,7 +163,7 @@ export function InvestmentMoveDrawer({
             maxLength={20}
             value={valorHoy}
             onChange={(event) => {
-              setValorHoy(event.target.value.replace(/\D/g, ""));
+              setValorHoy(digitsOnly(event.target.value));
               setError("");
             }}
             placeholder={current.placeholder}

@@ -11,6 +11,7 @@ import { Button } from "@/components/ui/button";
 import { greetingFor, sinceLabel } from "@/lib/home-summary";
 import { clpCompact } from "@/lib/format";
 import { HomeNotices, type HomeNotice } from "./HomeNotices";
+import { initialsOf, profileDisplayName } from "@/lib/profile-name";
 
 interface HomeHeaderProps {
   sweepAlert: { amount: number } | null;
@@ -24,8 +25,8 @@ export function HomeHeader({ sweepAlert, lastMonthName, onSync }: HomeHeaderProp
   const { profile: userProfile, avatarUrl } = useUserProfile();
   const lastSync = useLastBankSync();
 
-  const displayName = userProfile?.nickname || userProfile?.full_name || null;
-  const greetingInitials = (displayName || "").slice(0, 2).toUpperCase();
+  const displayName = profileDisplayName(userProfile);
+  const greetingInitials = initialsOf(displayName || "");
 
   const notices = useMemo(() => {
     const list: HomeNotice[] = [];

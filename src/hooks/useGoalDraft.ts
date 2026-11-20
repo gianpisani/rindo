@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { parseAmount } from "@/lib/amount-input";
+import { parseAmount } from "@/lib/format";
 
 export function useGoalDraft(goal: number, hasGoal: boolean, saveGoal: (value: number) => void) {
   const [editing, setEditing] = useState(false);

@@ -1,7 +1,8 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import { billingCycle, cardStatus, cardsDebt, cycleStatement, paidBetween, paymentDate } from '../src/lib/card-cycle.ts';
-import { installmentsOverview, labeledCycle, shortDay, shortMonthYear, withoutEmoji } from '../src/lib/card-view.ts';
+import { installmentsOverview, labeledCycle, withoutEmoji } from '../src/lib/card-view.ts';
+import { shortDay, shortMonthYear } from '../src/lib/format.ts';
 
 // Tarjeta que cierra el 20 y se paga el 5.
 const card = { id: 'c1', billing_day: 20, payment_day: 5 };

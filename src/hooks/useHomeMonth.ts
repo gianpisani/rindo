@@ -5,7 +5,7 @@ import { useMonthlyBudget } from "@/hooks/useMonthlyBudget";
 import { usePeriodConfig } from "@/hooks/usePeriodConfig";
 import { useRealFlows } from "@/hooks/useRealFlows";
 import { dayOfPeriod, periodEndOf, periodNameDate, shiftPeriod } from "@/lib/period";
-import { computeRealFlows, SWEEP_ALERT_THRESHOLD, type RealFlowsConfig } from "@/lib/real-flows";
+import { computeRealFlows, SWEEP_ALERT_THRESHOLD } from "@/lib/real-flows";
 import { limitUsage, summarizeCategoryPeriod } from "@/lib/category-spending";
 import { computeMonthPace } from "@/lib/month-pace";
 import {
@@ -27,7 +27,7 @@ export function useHomeMonth(transactions: Transaction[]) {
   const lastMonth = shiftPeriod(thisPeriod, -1, startDay);
   const lastMonthName = periodNameDate(lastMonth, startDay);
 
-  const flowConfig = useMemo<Partial<RealFlowsConfig>>(() => ({ periodStartDay: startDay }), [startDay]);
+  const { flowConfig } = period;
   const currentFlows = useRealFlows(transactions, thisPeriod, flowConfig);
   const lastMonthFlows = useMemo(
     () => computeRealFlows(transactions, lastMonth, flowConfig),

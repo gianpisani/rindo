@@ -3,7 +3,7 @@ import { useCategoryLimits } from "@/hooks/useCategoryLimits";
 import { useCategoryOptions } from "@/hooks/useCategoryOptions";
 import { DEFAULT_ALERT_AT } from "@/lib/category-spending";
 import { isCardPaymentCategory } from "@/lib/ledger";
-import { parseAmount } from "@/lib/amount-input";
+import { parseAmount } from "@/lib/format";
 
 export function useLimitEditor() {
   const { limits, upsertLimit, deleteLimit } = useCategoryLimits();

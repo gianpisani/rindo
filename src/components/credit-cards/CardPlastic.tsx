@@ -8,9 +8,8 @@ import {
 } from "@/components/ui/dropdown-menu";
 import type { CreditCardSummary } from "@/hooks/useCreditCards";
 import type { CardStatus } from "@/lib/card-cycle";
-import { shortDay } from "@/lib/card-view";
 import { inkOn } from "@/lib/category-color";
-import { clp } from "@/lib/format";
+import { clp, shortDay } from "@/lib/format";
 import { cn } from "@/lib/utils";
 
 interface CardPlasticProps {
