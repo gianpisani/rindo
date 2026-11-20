@@ -1,4 +1,4 @@
-import { readJson, readStorage, writeStorage } from "./storage";
+import { readJson, readStorage, writeStorage } from "./storage.ts";
 
 export interface PaletteVars {
   background: string;
@@ -246,48 +246,9 @@ function applyPalette(root: HTMLElement, p: PaletteVars) {
   });
 }
 
-export function applyThemePreview(
-  themeId: string | null,
-  mode: "light" | "dark",
-  customSettings?: CustomThemeSettings | null
-) {
-  const root = document.documentElement;
-
-  if (themeId === "custom" && customSettings?.hue != null) {
-    applyPalette(root, generatePaletteFromHue(customSettings.hue, mode));
-    return;
-  }
-
-  if (!themeId) {
-    clearAllOverrides(root);
-    if (customSettings?.font) applyFontPreview(customSettings.font);
-    if (customSettings?.radius != null) applyRadiusPreview(customSettings.radius);
-    return;
-  }
-
-  const preset = findPreset(themeId);
-  if (!preset) {
-    clearAllOverrides(root);
-    return;
-  }
-  applyPalette(root, mode === "dark" ? preset.dark : preset.light);
-}
-
-export function applyFontPreview(fontId: string | null) {
+function applyFont(fontId: string | null) {
   const fontOption = FONT_OPTIONS.find((f) => f.id === fontId);
-  if (fontOption && fontOption.id !== "default") {
-    document.body.style.fontFamily = fontOption.family;
-  } else {
-    document.body.style.fontFamily = "";
-  }
-}
-
-export function applyRadiusPreview(radius: number) {
-  document.documentElement.style.setProperty("--radius", `${radius}rem`);
-}
-
-export function clearThemeOverrides() {
-  clearAllOverrides(document.documentElement);
+  document.body.style.fontFamily = fontOption && fontOption.id !== "default" ? fontOption.family : "";
 }
 
 const THEME_CACHE_KEY = "rindo-theme-id";
@@ -321,8 +282,8 @@ export function applyTheme(themeId: string | null | undefined, settings: CustomT
   const palette = paletteFor(themeId, settings, mode);
   if (palette) applyPalette(root, palette);
   else clearAllOverrides(root);
-  applyFontPreview(settings.font ?? null);
-  if (settings.radius != null) applyRadiusPreview(settings.radius);
+  applyFont(settings.font ?? null);
+  if (settings.radius != null) root.style.setProperty("--radius", `${settings.radius}rem`);
   else root.style.removeProperty("--radius");
 }
 

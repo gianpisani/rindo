@@ -1,98 +1,40 @@
-import { useCallback, useState } from "react";
+import { create } from "zustand";
 import { useTheme } from "next-themes";
-import {
-  applyFontPreview,
-  applyRadiusPreview,
-  applyThemePreview,
-  generatePaletteFromHue,
-} from "@/lib/theme";
-import { INITIAL_THEME_CHOICE, serializeThemeChoice, type ThemeChoice } from "@/lib/theme-choice";
+import { generatePaletteFromHue, type ThemeMode } from "@/lib/theme";
+import { INITIAL_THEME_CHOICE, type ThemeChoice } from "@/lib/theme-choice";
 
-export type ColorMode = "light" | "dark" | "system";
+export type ColorMode = ThemeMode | "system";
+
+export const useThemeDraftStore = create<{ draft: ThemeChoice | null }>(() => ({ draft: null }));
+
+export const startThemeDraft = (choice: ThemeChoice) => useThemeDraftStore.setState({ draft: choice });
+
+export const endThemeDraft = () => useThemeDraftStore.setState({ draft: null });
+
+const patchDraft = (patch: Partial<ThemeChoice>) =>
+  useThemeDraftStore.setState(({ draft }) => ({ draft: { ...(draft ?? INITIAL_THEME_CHOICE), ...patch } }));
+
+export function useResolvedMode(): ThemeMode | undefined {
+  const { resolvedTheme } = useTheme();
+  if (resolvedTheme === "light" || resolvedTheme === "dark") return resolvedTheme;
+  return undefined;
+}
 
 export function useThemeDraft() {
-  const { theme, setTheme, resolvedTheme } = useTheme();
-  const [selectedTheme, setSelectedTheme] = useState<string | null>(INITIAL_THEME_CHOICE.themeId);
-  const [customHue, setCustomHue] = useState(INITIAL_THEME_CHOICE.hue);
-  const [selectedFont, setSelectedFont] = useState<string>(INITIAL_THEME_CHOICE.font);
-  const [customRadius, setCustomRadius] = useState(INITIAL_THEME_CHOICE.radius);
-
-  const currentMode = (resolvedTheme || "dark") as "light" | "dark";
-
-  const load = useCallback((choice: ThemeChoice) => {
-    setSelectedTheme(choice.themeId);
-    setCustomHue(choice.hue);
-    setSelectedFont(choice.font);
-    setCustomRadius(choice.radius);
-  }, []);
-
-  const buildCustomSettings = useCallback(
-    () =>
-      serializeThemeChoice({
-        themeId: selectedTheme,
-        hue: customHue,
-        font: selectedFont,
-        radius: customRadius,
-      }),
-    [selectedTheme, customHue, selectedFont, customRadius]
-  );
-
-  const selectTheme = useCallback(
-    (themeId: string | null) => {
-      setSelectedTheme(themeId);
-      applyThemePreview(themeId, currentMode, { hue: customHue });
-    },
-    [currentMode, customHue]
-  );
-
-  const changeHue = useCallback(
-    (hue: number) => {
-      setCustomHue(hue);
-      setSelectedTheme("custom");
-      applyThemePreview("custom", currentMode, { hue });
-    },
-    [currentMode]
-  );
-
-  const changeFont = useCallback((fontId: string) => {
-    setSelectedFont(fontId);
-    applyFontPreview(fontId);
-  }, []);
-
-  const changeRadius = useCallback((radius: number) => {
-    setCustomRadius(radius);
-    applyRadiusPreview(radius);
-  }, []);
-
-  const changeMode = useCallback(
-    (value: ColorMode) => {
-      setTheme(value);
-      const newMode =
-        value === "system"
-          ? window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light"
-          : value;
-      setTimeout(() => {
-        applyThemePreview(selectedTheme, newMode, { hue: customHue });
-      }, 50);
-    },
-    [selectedTheme, setTheme, customHue]
-  );
+  const { theme, setTheme } = useTheme();
+  const currentMode = useResolvedMode() ?? "dark";
+  const choice = useThemeDraftStore((s) => s.draft) ?? INITIAL_THEME_CHOICE;
 
   return {
-    colorMode: theme ?? "system",
+    colorMode: (theme ?? "system") as ColorMode,
     currentMode,
-    selectedTheme,
-    customHue,
-    customPalette: generatePaletteFromHue(customHue, currentMode),
-    selectedFont,
-    customRadius,
-    load,
-    buildCustomSettings,
-    selectTheme,
-    changeHue,
-    changeFont,
-    changeRadius,
-    changeMode,
+    choice,
+    customPalette: generatePaletteFromHue(choice.hue, currentMode),
+    selectTheme: (themeId: string | null) => patchDraft({ themeId }),
+    changeHue: (hue: number) => patchDraft({ hue, themeId: "custom" }),
+    changeFont: (font: string) => patchDraft({ font }),
+    changeRadius: (radius: number) => patchDraft({ radius }),
+    changeMode: (mode: ColorMode) => setTheme(mode),
   };
 }
 

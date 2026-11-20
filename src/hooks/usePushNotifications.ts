@@ -1,9 +1,12 @@
-import { useState, useEffect } from "react";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { requireUserId } from "@/integrations/supabase/session";
-import { toast } from "sonner";
+import { errorMessage } from "@/lib/errors";
+import { optimistic } from "./optimistic";
 
 const VAPID_PUBLIC_KEY = import.meta.env.VITE_VAPID_PUBLIC_KEY;
+const PUSH_KEY = ["push-subscription"];
 
 const pushSupported = () => "serviceWorker" in navigator && "PushManager" in window && "Notification" in window;
 
@@ -18,80 +21,66 @@ async function currentSubscription() {
   return registration.pushManager.getSubscription();
 }
 
+async function subscribeDevice() {
+  if (!VAPID_PUBLIC_KEY) throw new Error("Las notificaciones no están configuradas");
+  if ((await Notification.requestPermission()) !== "granted") {
+    throw new Error("Permite las notificaciones en tu navegador para activarlas");
+  }
+  const registration = await navigator.serviceWorker.register("/sw.js");
+  await navigator.serviceWorker.ready;
+  const subscription = await registration.pushManager.subscribe({
+    userVisibleOnly: true,
+    applicationServerKey: base64UrlToBytes(VAPID_PUBLIC_KEY),
+  });
+  const { endpoint, keys } = subscription.toJSON();
+  const { error } = await supabase
+    .from("push_subscriptions")
+    .upsert(
+      { user_id: await requireUserId(), endpoint: endpoint!, p256dh: keys!.p256dh!, auth: keys!.auth! },
+      { onConflict: "user_id,endpoint" },
+    );
+  if (error) throw error;
+}
+
+async function unsubscribeDevice() {
+  const subscription = await currentSubscription();
+  if (!subscription) return;
+  const { error } = await supabase
+    .from("push_subscriptions")
+    .delete()
+    .eq("user_id", await requireUserId())
+    .eq("endpoint", subscription.endpoint);
+  if (error) throw error;
+  await subscription.unsubscribe();
+}
+
 export function usePushNotifications() {
-  const [isSupported] = useState(pushSupported);
-  const [isSubscribed, setIsSubscribed] = useState(false);
-  const [isLoading, setIsLoading] = useState(false);
+  const queryClient = useQueryClient();
+  const isSupported = pushSupported();
 
-  useEffect(() => {
-    if (!isSupported) return;
-    currentSubscription()
-      .then((subscription) => setIsSubscribed(!!subscription))
-      .catch((error) => console.error("No se pudo leer la suscripción push", error));
-  }, [isSupported]);
+  const { data: isSubscribed = false, isPending: isChecking } = useQuery({
+    queryKey: PUSH_KEY,
+    queryFn: async () => !!(await currentSubscription()),
+    enabled: isSupported,
+    staleTime: Infinity,
+  });
 
-  const subscribe = async () => {
-    if (!isSupported) {
-      toast.error("Tu navegador no soporta notificaciones push");
-      return;
-    }
-    if (!VAPID_PUBLIC_KEY) {
-      toast.error("Las notificaciones no están configuradas");
-      return;
-    }
+  const sync = optimistic<boolean, boolean>(queryClient, PUSH_KEY, (_current, next) => next);
+  const setSubscribed = useMutation({
+    mutationFn: (next: boolean) => (next ? subscribeDevice() : unsubscribeDevice()),
+    meta: { handlesOwnError: true },
+    ...sync,
+    onError: (error, next, snapshot) => {
+      sync.onError(error, next, snapshot);
+      console.error("No se pudo cambiar la suscripción push", error);
+      toast.error(errorMessage(error), { id: "push-subscription" });
+    },
+  });
 
-    setIsLoading(true);
-    try {
-      if ((await Notification.requestPermission()) !== "granted") {
-        toast.error("Debes permitir las notificaciones");
-        return;
-      }
-      const registration = await navigator.serviceWorker.register("/sw.js");
-      await navigator.serviceWorker.ready;
-      const subscription = await registration.pushManager.subscribe({
-        userVisibleOnly: true,
-        applicationServerKey: base64UrlToBytes(VAPID_PUBLIC_KEY),
-      });
-      const { endpoint, keys } = subscription.toJSON();
-      const { error } = await supabase
-        .from("push_subscriptions")
-        .upsert(
-          { user_id: await requireUserId(), endpoint: endpoint!, p256dh: keys!.p256dh!, auth: keys!.auth! },
-          { onConflict: "user_id,endpoint" },
-        );
-      if (error) throw error;
-      setIsSubscribed(true);
-      toast.success("Notificaciones activadas");
-    } catch (error) {
-      console.error("Error al activar notificaciones", error);
-      toast.error("Error al activar notificaciones");
-    } finally {
-      setIsLoading(false);
-    }
+  return {
+    isSupported,
+    isSubscribed,
+    isBusy: (isSupported && isChecking) || setSubscribed.isPending,
+    setSubscribed: (next: boolean) => setSubscribed.mutate(next),
   };
-
-  const unsubscribe = async () => {
-    setIsLoading(true);
-    try {
-      const subscription = await currentSubscription();
-      if (subscription) {
-        await subscription.unsubscribe();
-        const { error } = await supabase
-          .from("push_subscriptions")
-          .delete()
-          .eq("user_id", await requireUserId())
-          .eq("endpoint", subscription.endpoint);
-        if (error) throw error;
-      }
-      setIsSubscribed(false);
-      toast.success("Notificaciones desactivadas");
-    } catch (error) {
-      console.error("Error al desactivar notificaciones", error);
-      toast.error("Error al desactivar notificaciones");
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  return { isSupported, isSubscribed, isLoading, subscribe, unsubscribe };
 }

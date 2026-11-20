@@ -1,16 +1,24 @@
 import { useEffect } from "react";
-import { useTheme } from "next-themes";
 import { useUserProfile } from "./useUserProfile";
-import { applyTheme, cacheTheme, parseCustomSettings } from "@/lib/theme";
+import { useResolvedMode, useThemeDraftStore } from "./useThemeDraft";
+import { applyTheme, cacheTheme } from "@/lib/theme";
+import { themeChoiceFromProfile, themeChoiceSettings } from "@/lib/theme-choice";
 
 export function useCustomTheme() {
   const { profile } = useUserProfile();
-  const { resolvedTheme } = useTheme();
-  const themeId = profile?.accent_color_1;
-  const settingsJson = profile?.accent_color_2;
+  const draft = useThemeDraftStore((s) => s.draft);
+  const mode = useResolvedMode();
+  const themeId = profile?.accent_color_1 ?? null;
+  const settingsJson = profile?.accent_color_2 ?? null;
+  const profileLoaded = profile !== undefined;
 
   useEffect(() => {
-    cacheTheme(themeId, settingsJson);
-    applyTheme(themeId, parseCustomSettings(settingsJson), resolvedTheme === "dark" ? "dark" : "light");
-  }, [themeId, settingsJson, resolvedTheme]);
+    if (profileLoaded) cacheTheme(themeId, settingsJson);
+  }, [profileLoaded, themeId, settingsJson]);
+
+  useEffect(() => {
+    if (!mode || (!profileLoaded && !draft)) return;
+    const choice = draft ?? themeChoiceFromProfile(themeId, settingsJson);
+    applyTheme(choice.themeId, themeChoiceSettings(choice), mode);
+  }, [draft, mode, profileLoaded, themeId, settingsJson]);
 }
