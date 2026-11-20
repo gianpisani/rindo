@@ -7,6 +7,7 @@ import {
   getFilteredRowModel,
   flexRender,
   SortingState,
+  Cell,
   Row,
   RowSelectionState,
 } from "@tanstack/react-table";
@@ -35,8 +36,14 @@ import type { DateRangeValue } from "./DateRangeFilter";
 import { useTransactionColumns, type TableCategory } from "./table/useTransactionColumns";
 import { MobileTxCard } from "./table/MobileTxCard";
 import { SelectionPanel } from "./table/SelectionPanel";
+import { useRecategorizedIds } from "./table/useRecategorizedIds";
 
 const MENU_GHOST_CLICK_MS = 400;
+
+const renderCellInPlace = (cell: Cell<Transaction, unknown>) => {
+  const render = cell.column.columnDef.cell;
+  return typeof render === "function" ? render(cell.getContext()) : render;
+};
 
 function TableEmpty({ hasFilters, onClear }: { hasFilters: boolean; onClear: () => void }) {
   return hasFilters ? (
@@ -102,6 +109,7 @@ export function TransactionsTable({
   const { addCategory } = useCategories();
   const isMobile = useIsMobile();
   const menuGhostGuard = useGhostClickGuard(MENU_GHOST_CLICK_MS);
+  const recategorized = useRecategorizedIds(transactions);
 
   const [categoryDraft, setCategoryDraft] = useState<{
     transactionId: string;
@@ -273,9 +281,11 @@ export function TransactionsTable({
       row={row}
       timeLabel={timeLabel}
       selecting={selecting}
+      resolved={recategorized.has(row.id)}
       categories={categories}
       isPrivacyMode={isPrivacyMode}
       withCategoryPicker={withCategoryPicker}
+      onInlineUpdate={handleInlineUpdate}
       onOpen={editUnlessMenuJustClosed}
       onEdit={onEdit}
       onDuplicate={onDuplicate}
@@ -294,6 +304,8 @@ export function TransactionsTable({
         data-state={row.getIsSelected() && "selected"}
         className={cn(
           "transition-colors",
+          !row.original.isPending && "is-editable",
+          recategorized.has(row.id) && "is-resolved",
           row.original.isPending && "pointer-events-none opacity-60",
           isMissing && "border-l-2 border-l-amber-400/70"
         )}
@@ -301,7 +313,7 @@ export function TransactionsTable({
       >
         {row.getVisibleCells().map((cell) => (
           <td key={cell.id} className={cn("px-3 py-1.5 overflow-hidden", isMissing && "bg-amber-400/5")}>
-            {flexRender(cell.column.columnDef.cell, cell.getContext())}
+            {renderCellInPlace(cell)}
           </td>
         ))}
       </tr>

@@ -185,40 +185,23 @@ export function InlineDateTimePicker({
     setOpen(false);
   };
 
-  const handleKeyDown = (e: React.KeyboardEvent) => {
-    if (e.key === "Escape") {
+  const handleOpenChange = (next: boolean) => {
+    if (!next) {
       setInternalDate(value);
       setTime(format(value, "HH:mm"));
-      setOpen(false);
     }
+    setOpen(next);
   };
 
   return (
-    <Popover open={open} onOpenChange={setOpen}>
+    <Popover open={open} onOpenChange={handleOpenChange}>
       <PopoverTrigger asChild>
-        <button
-          disabled={disabled}
-          className={cn(
-            "inline-flex items-center gap-1.5 px-2 py-1 rounded-full text-sm font-medium",
-            "transition-colors cursor-pointer",
-            "focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-1",
-            "group whitespace-nowrap"
-          )}
-        >
-          <span>{format(value, "d MMM", { locale: es })}</span>
-          {showTime && (
-            <span className="text-muted-foreground text-xs">
-              {format(value, "HH:mm")}
-            </span>
-          )}
-          <CalendarIcon className="h-3 w-3 opacity-0 group-hover:opacity-50 transition-opacity" />
+        <button type="button" disabled={disabled} className="inicio-editable inicio-pick">
+          {format(value, "d MMM", { locale: es })}
+          {showTime && <span className="ml-1 text-xs text-muted-foreground">{format(value, "HH:mm")}</span>}
         </button>
       </PopoverTrigger>
-      <PopoverContent 
-        className="w-auto p-0" 
-        align="start"
-        onKeyDown={handleKeyDown}
-      >
+      <PopoverContent className="w-auto p-0" align="start">
         <div className="flex flex-col">
           <Calendar
             mode="single"
@@ -235,6 +218,7 @@ export function InlineDateTimePicker({
                   type="time"
                   value={time}
                   onChange={handleTimeChange}
+                  onKeyDown={(e) => e.key === "Enter" && handleApply()}
                   className="w-auto bg-background"
                 />
                 <Button size="sm" onClick={handleApply} className="ml-auto">

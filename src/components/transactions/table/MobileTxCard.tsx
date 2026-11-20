@@ -1,14 +1,14 @@
 import type { ReactElement } from "react";
 import type { Row } from "@tanstack/react-table";
 import { Checkbox } from "@/components/ui/checkbox";
-import { AnalyzingBadge } from "@/components/transactions/AnalyzingBadge";
+import { InlineAmount, InlineText } from "@/components/transactions/InlineTxField";
+import { TxIcon } from "@/components/transactions/TxIcon";
 import type { Transaction } from "@/hooks/useTransactions";
 import { getCleanDetail } from "@/lib/whisper";
-import { signPrefix } from "@/lib/ledger";
-import { AMOUNT_TEXT_CLASS, categoryAvatar } from "@/lib/tx-display";
-import { ANALYZING_CATEGORY } from "@/lib/auto-category-policy";
+import { allowsNegativeAmount, signPrefix } from "@/lib/ledger";
+import { AMOUNT_TONE, categoryAvatar, isAnalyzing } from "@/lib/tx-display";
+import { detailToSave, isBotDetail } from "@/lib/tx-detail";
 import { cn } from "@/lib/utils";
-import { clp } from "@/lib/format";
 import { RowActionsMenu } from "./RowActionsMenu";
 import type { TableCategory } from "./useTransactionColumns";
 
@@ -16,9 +16,11 @@ interface MobileTxCardProps {
   row: Row<Transaction>;
   timeLabel: string;
   selecting: boolean;
+  resolved: boolean;
   categories: TableCategory[];
   isPrivacyMode: boolean;
   withCategoryPicker: (t: Transaction, trigger: ReactElement) => ReactElement;
+  onInlineUpdate: (id: string, field: keyof Transaction, value: unknown) => void;
   onOpen: (t: Transaction) => void;
   onEdit: (t: Transaction) => void;
   onDuplicate: (ids: string[]) => void;
@@ -30,9 +32,11 @@ export function MobileTxCard({
   row,
   timeLabel,
   selecting,
+  resolved,
   categories,
   isPrivacyMode,
   withCategoryPicker,
+  onInlineUpdate,
   onOpen,
   onEdit,
   onDuplicate,
@@ -40,28 +44,25 @@ export function MobileTxCard({
   onMenuOpenChange,
 }: MobileTxCardProps) {
   const t = row.original;
-  const clean = getCleanDetail(t.detail);
-  const avatar = categoryAvatar(t.category_name, categories);
-  const isBot = (t.detail || "").startsWith("🤖");
-  const catData = categories.find(c => c.name === t.category_name);
+  const analyzing = isAnalyzing(t);
   const isMissing = t.category_name === "Sin categoría";
   const isSelected = row.getIsSelected();
-  const avatarButton = (
-    <button
-      type="button"
-      className="w-10 h-10 rounded-full flex items-center justify-center text-xl leading-none select-none"
-      style={avatar.style}
-      aria-label={`Cambiar categoría (${t.category_name})`}
-      tabIndex={selecting ? -1 : undefined}
-    >
-      {avatar.emoji}
-    </button>
+  const editable = !selecting && !t.isPending;
+  const icon = (
+    <TxIcon
+      emoji={categoryAvatar(t.category_name, categories).emoji}
+      color={categories.find((c) => c.name === t.category_name)?.color}
+      thinking={analyzing}
+      bot={isBotDetail(t.detail)}
+    />
   );
 
   return (
     <div
       className={cn(
         "mobile-tx-card",
+        editable && "is-editable",
+        resolved && "is-resolved",
         t.isPending && "pointer-events-none opacity-60",
         isSelected && "mobile-tx-card-selected",
         isMissing && "mobile-tx-card-missing"
@@ -74,49 +75,55 @@ export function MobileTxCard({
         </div>
       )}
 
-      <div className="relative flex-shrink-0">
-        {selecting ? avatarButton : withCategoryPicker(t, avatarButton)}
-        {isBot && (
-          <div className="absolute -bottom-0.5 -right-0.5 w-4 h-4 rounded-full bg-background flex items-center justify-center">
-            <span className="text-xs leading-none scale-75">🤖</span>
+      {selecting ? (
+        <span className="grid size-9 flex-none place-items-center">{icon}</span>
+      ) : (
+        withCategoryPicker(t, (
+          <button
+            type="button"
+            className="grid size-9 flex-none place-items-center rounded-full"
+            aria-label={`Cambiar categoría (${t.category_name})`}
+          >
+            {icon}
+          </button>
+        ))
+      )}
+
+      <div className="ml-2 min-w-0 flex-1">
+        <div className="flex items-baseline justify-between gap-2 text-sm">
+          <div className={cn("min-w-0 flex-1", isPrivacyMode && "privacy-blur")}>
+            <InlineText
+              value={getCleanDetail(t.detail)}
+              editable={editable}
+              label="Detalle del movimiento"
+              onSave={(next) => onInlineUpdate(t.id, "detail", detailToSave(t.detail, next))}
+            />
           </div>
-        )}
+          <InlineAmount
+            className={cn("flex-none", isPrivacyMode && "privacy-blur")}
+            amount={Number(t.amount)}
+            signOf={(amount) => signPrefix(t.type, amount)}
+            color={AMOUNT_TONE[t.type]}
+            allowNegative={allowsNegativeAmount(t.type)}
+            editable={editable}
+            onSave={(amount) => onInlineUpdate(t.id, "amount", amount)}
+          />
+        </div>
+        <div className="flex items-center justify-between gap-2 text-xs text-muted-foreground">
+          {analyzing ? (
+            <span className="inicio-thinking truncate" role="status">
+              {t.isPending ? "Guardando…" : "Jev está categorizando…"}
+            </span>
+          ) : (
+            <span className={cn("tx-category truncate", isMissing && "text-amber-500")}>
+              {t.reimbursement_for_category ? `Reembolso de ${t.reimbursement_for_category}` : t.category_name}
+            </span>
+          )}
+          <span className="flex-none tabular-nums">{timeLabel}</span>
+        </div>
       </div>
 
-      <div className="flex-1 min-w-0 ml-3">
-        <div className="flex items-center justify-between gap-2">
-          <span className={cn("text-sm font-medium truncate", isPrivacyMode && "privacy-blur")}>
-            {clean || <span className="italic font-normal">Sin detalle</span>}
-          </span>
-          <span className={cn(
-            "text-sm font-medium tabular-nums whitespace-nowrap font-mono",
-            AMOUNT_TEXT_CLASS[t.type],
-            isPrivacyMode && "privacy-blur"
-          )}>
-            {signPrefix(t.type, t.amount)}
-            {clp(Math.abs(t.amount))}
-          </span>
-        </div>
-        <div className="flex items-center justify-between gap-2 mt-0.5">
-          <div className="flex items-center gap-1.5 min-w-0">
-            {t.isPending || t.category_name === ANALYZING_CATEGORY ? (
-              <AnalyzingBadge saving={t.isPending} />
-            ) : (
-              <>
-                <span className="h-1.5 w-1.5 rounded-full shrink-0" style={{ backgroundColor: catData?.color || "currentColor" }} aria-hidden="true" />
-                <span className={cn("text-xs truncate", isMissing ? "text-amber-500" : "text-muted-foreground")}>
-                  {t.category_name}
-                </span>
-              </>
-            )}
-          </div>
-          <span className="text-xs tabular-nums flex-shrink-0">
-            {timeLabel}
-          </span>
-        </div>
-      </div>
-
-      <div className="flex-shrink-0 ml-1">
+      <div className="ml-1 flex-shrink-0">
         <RowActionsMenu
           variant="card"
           onOpenChange={onMenuOpenChange}

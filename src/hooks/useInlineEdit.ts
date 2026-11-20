@@ -1,5 +1,6 @@
 import { useCallback, useState } from "react";
-import { useTransactions, type Transaction } from "@/hooks/useTransactions";
+import type { Transaction } from "@/hooks/useTransactions";
+import { useEditHistory } from "@/hooks/useEditHistory";
 import { useCategories } from "@/hooks/useCategories";
 import { useCategoryOptions } from "@/hooks/useCategoryOptions";
 
@@ -11,7 +12,7 @@ const ROW_EXIT_MS = 260;
 const without = (set: ReadonlySet<string>, id: string) => new Set([...set].filter((item) => item !== id));
 
 export function useInlineEdit() {
-  const { updateTransaction, deleteTransactions } = useTransactions();
+  const history = useEditHistory();
   const categoryOptions = useCategoryOptions();
   const { emojiOf, colorOf } = useCategories();
   const [changed, setChanged] = useState<ReadonlySet<string>>(new Set());
@@ -22,17 +23,15 @@ export function useInlineEdit() {
       setChanged((prev) => new Set(prev).add(t.id));
       window.setTimeout(() => setChanged((prev) => without(prev, t.id)), RECATEGORIZED_HIGHLIGHT_MS);
     }
-    updateTransaction.mutate({ id: t.id, ...changes });
-  }, [updateTransaction]);
+    history.update([t.id], changes);
+  }, [history]);
 
   const remove = useCallback((t: Transaction) => {
     setLeaving((prev) => new Set(prev).add(t.id));
     window.setTimeout(() => {
-      deleteTransactions.mutate([t.id], {
-        onSettled: () => setLeaving((prev) => without(prev, t.id)),
-      });
+      void history.remove([t.id]).finally(() => setLeaving((prev) => without(prev, t.id)));
     }, ROW_EXIT_MS);
-  }, [deleteTransactions]);
+  }, [history]);
 
   return { save, remove, changed, leaving, categoryOptions, emojiOf, colorOf };
 }

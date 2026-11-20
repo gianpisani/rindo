@@ -22,6 +22,8 @@ import { transactionsQuery } from "./hooks/useTransactions";
 import { categoriesQuery } from "./hooks/useCategories";
 import { categoryLimitsQuery } from "./hooks/useCategoryLimits";
 import { BankSyncProvider } from "./contexts/BankSyncContext";
+import { useUndoShortcuts } from "./hooks/useUndoShortcuts";
+import { clearEditHistory } from "./hooks/useEditHistory";
 
 function dismissSplash() {
   const splash = document.getElementById("splash");
@@ -63,7 +65,10 @@ const App = () => {
     const {
       data: { subscription },
     } = supabase.auth.onAuthStateChange((event, session) => {
-      if (event === "SIGNED_OUT") queryClient.clear();
+      if (event === "SIGNED_OUT") {
+        queryClient.clear();
+        clearEditHistory();
+      }
       setSession(session);
     });
 
@@ -99,6 +104,11 @@ const App = () => {
   );
 };
 
+function UndoShortcuts() {
+  useUndoShortcuts();
+  return null;
+}
+
 function AuthenticatedApp() {
   useCustomTheme();
   const { profile, isLoading } = useUserProfile();
@@ -112,6 +122,7 @@ function AuthenticatedApp() {
 
   return (
     <BankSyncProvider>
+      <UndoShortcuts />
       <OnboardingModal
         open={onboardingOpen}
         onOpenChange={setOnboardingOpen}

@@ -587,9 +587,9 @@
   100% { box-shadow: 0 0 0 10px color-mix(in oklch, var(--foreground) 0%, transparent); }
 }
 @keyframes inicio-fade-in { from { opacity: 0; transform: translateY(3px); } }
-.inicio-tx.is-resolved .inicio-ico { animation: inicio-ring .7s ease-out; }
-.inicio-tx.is-resolved .glyph { animation: inicio-pop .55s cubic-bezier(.3, 1.4, .5, 1) both; }
-.inicio-tx.is-resolved .c { animation: inicio-fade-in .35s ease-out .12s both; }
+.is-resolved .inicio-ico { animation: inicio-ring .7s ease-out; }
+.is-resolved .glyph { animation: inicio-pop .55s cubic-bezier(.3, 1.4, .5, 1) both; }
+.inicio-tx.is-resolved .c, .is-resolved .tx-category { animation: inicio-fade-in .35s ease-out .12s both; }
 
 .inicio-list-feed, .inicio-list-limits { animation: inicio-fade-in .22s ease-out; }
 
@@ -597,22 +597,22 @@
 
 .inicio-editable { display: inline-block; max-width: 100%; margin: -1px -4px; padding: 1px 4px; border-radius: var(--radius-card); text-align: left;
   color: inherit; font: inherit; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; vertical-align: bottom; transition: background .15s; }
-.inicio-editable:disabled { cursor: default; }
-.inicio-editable:focus-visible { background: color-mix(in oklch, var(--foreground) 8%, transparent); box-shadow: inset 0 0 0 1px color-mix(in oklch, var(--foreground) 22%, transparent); }
-.is-editable .inicio-editable:not(:disabled) { cursor: text; }
-.is-editable .inicio-editable:not(:disabled):hover, .is-editable .inicio-editable[data-state="open"] { background: color-mix(in oklch, var(--foreground) 8%, transparent); }
-.inicio-tx .body > .d.inicio-editable { display: block; width: fit-content; }
+.inicio-editable:focus-visible, .inline-field-input, .inline-amount.is-editing { background: color-mix(in oklch, var(--foreground) 8%, transparent);
+  box-shadow: inset 0 0 0 1px color-mix(in oklch, var(--foreground) 22%, transparent); }
+.is-editable button.inicio-editable { cursor: text; }
+.is-editable button.inicio-pick { cursor: pointer; }
+.is-editable button.inicio-editable:hover, .is-editable .inicio-editable[data-state="open"] { background: color-mix(in oklch, var(--foreground) 8%, transparent); }
 .inicio-placeholder { color: var(--inicio-faint); font-style: italic; }
-.inicio-edit { display: block; margin: -1px -4px; padding: 1px 4px; border: 0; border-radius: var(--radius-card); outline: none; color: var(--foreground);
-  background: color-mix(in oklch, var(--foreground) 8%, transparent); box-shadow: inset 0 0 0 1px color-mix(in oklch, var(--foreground) 22%, transparent); }
-.inicio-edit.d { width: calc(100% + 10px); font: inherit; font-size: var(--fs-2); }
-.inicio-amount-edit { display: flex; align-items: center; }
-.inicio-autosize { display: inline-grid; margin: -1px -4px -1px 1px; }
-.inicio-autosize::after, .inicio-edit.amount { grid-area: 1 / 1; margin: 0; padding: 1px 4px; font-family: var(--font-mono);
-  font-variant-numeric: tabular-nums; font-size: var(--fs-2); font-weight: 500; }
-.inicio-autosize::after { content: attr(data-value) " "; visibility: hidden; white-space: pre; }
-.inicio-edit.amount { width: 100%; min-width: 0; text-align: right; color: var(--foreground); }
-.inicio-edit::placeholder { color: var(--inicio-faint); }
+.inline-field { display: block; width: fit-content; }
+.inline-field-input { width: calc(100% + 8px); height: calc(1lh + 2px); margin: -1px -4px; padding: 1px 4px; border: 0; border-radius: var(--radius-card);
+  outline: none; font: inherit; color: var(--foreground); }
+.inline-field-input::placeholder { color: var(--inicio-faint); }
+.inline-amount { display: inline-flex; align-items: baseline; vertical-align: bottom; margin: -1px -4px; padding: 1px 4px; border-radius: var(--radius-card);
+  white-space: nowrap; font-family: var(--font-mono); font-variant-numeric: tabular-nums; font-size: var(--fs-2); font-weight: 500; }
+.inline-amount-size { display: inline-grid; margin-right: -3px; }
+.inline-amount-size::after { content: attr(data-value); grid-area: 1 / 1; padding-right: 3px; visibility: hidden; white-space: pre; }
+.inline-amount-size input { grid-area: 1 / 1; width: 100%; min-width: 0; height: 1lh; margin: 0; padding: 0 3px 0 0; border: 0; outline: none;
+  background: transparent; font: inherit; color: inherit; }
 
 .inicio-tx .m { transition: transform .18s cubic-bezier(.2, .8, .2, 1); }
 .inicio-delete { position: absolute; right: 8px; top: 50%; margin-top: -18px;
