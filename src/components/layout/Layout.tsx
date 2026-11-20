@@ -3,6 +3,7 @@ import { PeriodSettingsDialog } from "@/components/settings/PeriodSettingsDialog
 import { ReconciliationDrawer } from "../settings/ReconciliationDrawer";
 import { WhisperInput } from "../transactions/WhisperInput";
 import { OnboardingModal } from "../settings/OnboardingModal";
+import { AppearanceSheet } from "../settings/AppearanceSheet";
 import { SidebarProvider, SidebarTrigger, SidebarInset } from "@/components/ui/sidebar";
 import { AppSidebar } from "@/components/layout/AppSidebar";
 import { Button } from "../ui/button";
@@ -109,6 +110,8 @@ export default function Layout({ children, fit = false }: LayoutProps) {
           onOpenChange={setProfileEditOpen}
           mode="edit"
         />
+
+        <AppearanceSheet />
 
         <AppSidebar />
 

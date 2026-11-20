@@ -7,6 +7,7 @@ interface GlobalDrawersState {
   reconciliationOpen: boolean;
   profileEditOpen: boolean;
   periodSettingsOpen: boolean;
+  appearanceOpen: boolean;
   quickAddDefaultType?: TransactionType;
   quickAddDraft?: WhisperDraft;
   quickAddRevision: number;
@@ -20,6 +21,8 @@ interface GlobalDrawersState {
   setProfileEditOpen: (open: boolean) => void;
   openPeriodSettings: () => void;
   setPeriodSettingsOpen: (open: boolean) => void;
+  openAppearance: () => void;
+  setAppearanceOpen: (open: boolean) => void;
 }
 
 export const useGlobalDrawers = create<GlobalDrawersState>((set) => ({
@@ -27,6 +30,7 @@ export const useGlobalDrawers = create<GlobalDrawersState>((set) => ({
   reconciliationOpen: false,
   profileEditOpen: false,
   periodSettingsOpen: false,
+  appearanceOpen: false,
   quickAddDefaultType: undefined,
   quickAddRevision: 0,
   pendingShared: null,
@@ -40,4 +44,6 @@ export const useGlobalDrawers = create<GlobalDrawersState>((set) => ({
   setProfileEditOpen: (open) => set({ profileEditOpen: open }),
   openPeriodSettings: () => set({ periodSettingsOpen: true }),
   setPeriodSettingsOpen: (open) => set({ periodSettingsOpen: open }),
+  openAppearance: () => set({ appearanceOpen: true }),
+  setAppearanceOpen: (open) => set({ appearanceOpen: open }),
 }));
