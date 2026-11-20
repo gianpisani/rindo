@@ -1,35 +1,19 @@
 import { useCallback, useState } from "react";
 import { Link, useLocation } from "react-router-dom";
-import {
-  Plus,
-  ChevronUp,
-  UserPen,
-  LogOut,
-  CalendarRange,
-  Bell,
-  BellOff,
-  Volume2,
-  VolumeOff,
-} from "lucide-react";
-import { usePeriodConfig } from "@/hooks/usePeriodConfig";
-import { periodShortLabel } from "@/lib/period";
+import { Plus, ChevronUp } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { Button } from "@/components/ui/button";
 import { useIsMobile } from "@/hooks/useIsMobile";
 import { useGlobalDrawers } from "@/hooks/useGlobalDrawers";
 import { useSoundFX } from "@/hooks/useSoundFX";
-import { useSoundPreferences } from "@/hooks/useSoundPreferences";
-import { usePushNotifications } from "@/hooks/usePushNotifications";
-import { useUserProfile } from "@/hooks/useUserProfile";
-import { useSignOut } from "@/hooks/useAccount";
 import { getMainRoutes, getToolRoutes, type RouteConfig } from "@/lib/routes-config";
 import {
   Drawer,
   DrawerContent,
   DrawerTitle,
 } from "@/components/ui/drawer";
-import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
-import { initialsOf, profileDisplayName } from "@/lib/profile-name";
+import { AccountSection } from "./AccountMenu";
+
+const DRAWER_CLOSE_MS = 300;
 
 function RouteIcon({ route, className }: { route: RouteConfig; className?: string }) {
   const Icon = route.icon;
@@ -44,23 +28,14 @@ const rowIconClass =
 export function MobileBottomBar() {
   const isMobile = useIsMobile();
   const location = useLocation();
-  const { openQuickAdd, openProfileEdit, openPeriodSettings } = useGlobalDrawers();
-  const { startDay } = usePeriodConfig();
-  const { playToggleOn, playToggleOff } = useSoundFX();
-  const { soundEnabled, toggleSound } = useSoundPreferences();
-  const {
-    isSupported: pushSupported,
-    isSubscribed: pushSubscribed,
-    isLoading: pushLoading,
-    subscribe: pushSubscribe,
-    unsubscribe: pushUnsubscribe,
-  } = usePushNotifications();
-  const { profile, avatarUrl } = useUserProfile();
-  const signOut = useSignOut();
+  const { openQuickAdd } = useGlobalDrawers();
+  const { playToggleOn } = useSoundFX();
   const [drawerOpen, setDrawerOpen] = useState(false);
 
-  const displayName = profileDisplayName(profile);
-  const userInitials = initialsOf(displayName || "U");
+  const closeThen = useCallback((open: () => void) => {
+    setDrawerOpen(false);
+    setTimeout(open, DRAWER_CLOSE_MS);
+  }, []);
 
   const tabRoutes = getMainRoutes();
   const drawerRoutes = getToolRoutes();
@@ -168,92 +143,9 @@ export function MobileBottomBar() {
               );
             })}
 
-            <div className="my-2 mx-3 h-px" />
+            <div className="mx-3 my-2 h-px bg-border" />
 
-            <button
-              onClick={() => {
-                setDrawerOpen(false);
-                setTimeout(() => openPeriodSettings(), 300);
-              }}
-              className={rowClass}
-            >
-              <div className={rowIconClass}>
-                <CalendarRange className="size-4" />
-              </div>
-              <span className="flex-1 text-sm font-medium">Mes financiero</span>
-              <span className="text-xs text-muted-foreground">{periodShortLabel(startDay)}</span>
-            </button>
-
-            {pushSupported && (
-              <button
-                onClick={() => {
-                  if (pushSubscribed) pushUnsubscribe(); else pushSubscribe();
-                }}
-                disabled={pushLoading}
-                className={cn(rowClass, "disabled:opacity-60")}
-              >
-                <div className={rowIconClass}>
-                  {pushSubscribed ? <Bell className="size-4" /> : <BellOff className="size-4" />}
-                </div>
-                <span className="flex-1 text-sm font-medium">Notificaciones</span>
-                <span className="text-xs text-muted-foreground">
-                  {pushLoading ? "..." : pushSubscribed ? "Activadas" : "Desactivadas"}
-                </span>
-              </button>
-            )}
-
-            <button
-              onClick={() => {
-                toggleSound();
-                if (soundEnabled) playToggleOff(); else playToggleOn();
-              }}
-              className={rowClass}
-            >
-              <div className={rowIconClass}>
-                {soundEnabled ? <Volume2 className="size-4" /> : <VolumeOff className="size-4" />}
-              </div>
-              <span className="flex-1 text-sm font-medium">Sonidos</span>
-              <span className="text-xs text-muted-foreground">
-                {soundEnabled ? "Activados" : "Desactivados"}
-              </span>
-            </button>
-
-            <div className="my-2 mx-3 h-px" />
-
-            <div className="flex items-center gap-2">
-              <button
-                onClick={() => {
-                  setDrawerOpen(false);
-                  openProfileEdit();
-                }}
-                className={cn(rowClass, "min-w-0")}
-              >
-                <Avatar className="size-8 ring-1 shrink-0">
-                  {avatarUrl && <AvatarImage src={avatarUrl} alt="" className="object-cover" />}
-                  <AvatarFallback className="text-xs font-medium">
-                    {userInitials}
-                  </AvatarFallback>
-                </Avatar>
-                <div className="flex-1 min-w-0">
-                  <p className="text-sm font-medium truncate">{displayName || "Mi perfil"}</p>
-                  <p className="text-xs text-muted-foreground">Editar perfil</p>
-                </div>
-                <UserPen className="size-4 text-muted-foreground shrink-0" />
-              </button>
-
-              <Button
-                variant="ghost"
-                size="icon"
-                onClick={() => {
-                  setDrawerOpen(false);
-                  signOut.mutate();
-                }}
-                aria-label="Cerrar sesión"
-                className="size-11 shrink-0 active:bg-destructive/10"
-              >
-                <LogOut className="text-muted-foreground" />
-              </Button>
-            </div>
+            <AccountSection onOpen={closeThen} />
           </div>
 
           <div style={{ height: "env(safe-area-inset-bottom, 8px)", minHeight: 8 }} />
